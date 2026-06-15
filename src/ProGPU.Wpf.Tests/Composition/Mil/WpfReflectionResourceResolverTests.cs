@@ -15,6 +15,8 @@ using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPen = System.Windows.Media.Pen;
 using MediaTransform = System.Windows.Media.Transform;
+using ProGpuBlurEffect = ProGPU.Scene.BlurEffect;
+using ProGpuEffectBase = ProGPU.Scene.EffectBase;
 using ProGpuLinearGradientBrush = ProGPU.Vector.LinearGradientBrush;
 using ProGpuRadialGradientBrush = ProGPU.Vector.RadialGradientBrush;
 
@@ -2055,6 +2057,93 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
+    public void DecodeDrawDrawingPushesNativeDrawingGroupEffectWhenSinkSupportsVisualEffects()
+    {
+        var group = new FakeDrawingGroup(
+            new FakeGeometryDrawing(
+                new FakeSolidColorBrush(new FakeColor(255, 10, 20, 30)),
+                null,
+                new FakeRectangleGeometry(new FakeRect(2, 3, 10, 20))))
+        {
+            Bounds = new FakeRect(1, 2, 30, 40),
+            Effect = new FakeBlurEffect(8)
+        };
+        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var sink = new TestSink { AcceptVisualEffects = true };
+
+        var payload = new byte[8];
+        WriteUInt32(payload, 0, 1);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawDrawing, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        Assert.Equal(new[] { "PushVisualEffect", "DrawGeometry", "Pop" }, sink.Operations);
+        var effect = Assert.IsType<ProGpuBlurEffect>(Assert.Single(sink.VisualEffects));
+        Assert.Equal(8, effect.BlurRadius);
+        Assert.Equal(new Rect(1, 2, 30, 40), Assert.Single(sink.VisualEffectBounds));
+    }
+
+    [Fact]
+    public void DecodeDrawDrawingPushesNativeDrawingGroupBitmapEffectWhenEmulationIsSupported()
+    {
+        var group = new FakeDrawingGroup(
+            new FakeGeometryDrawing(
+                new FakeSolidColorBrush(new FakeColor(255, 10, 20, 30)),
+                null,
+                new FakeRectangleGeometry(new FakeRect(2, 3, 10, 20))))
+        {
+            BitmapEffect = new FakeBlurBitmapEffect(6),
+            BitmapEffectInput = new FakeContextBitmapEffectInput()
+        };
+        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var sink = new TestSink { AcceptVisualEffects = true };
+
+        var payload = new byte[8];
+        WriteUInt32(payload, 0, 1);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawDrawing, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        Assert.Equal(new[] { "PushVisualEffect", "DrawGeometry", "Pop" }, sink.Operations);
+        var effect = Assert.IsType<ProGpuBlurEffect>(Assert.Single(sink.VisualEffects));
+        Assert.Equal(6, effect.BlurRadius);
+        Assert.Equal(new Rect(2, 3, 10, 20), Assert.Single(sink.VisualEffectBounds));
+    }
+
+    [Fact]
+    public void DecodeDrawDrawingSkipsDrawingGroupEffectWhenSinkCannotApplyVisualEffects()
+    {
+        var group = new FakeDrawingGroup(
+            new FakeGeometryDrawing(
+                new FakeSolidColorBrush(new FakeColor(255, 10, 20, 30)),
+                null,
+                new FakeRectangleGeometry(new FakeRect(0, 0, 10, 20))))
+        {
+            Effect = new FakeBlurEffect(4)
+        };
+        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var sink = new TestSink();
+
+        var payload = new byte[8];
+        WriteUInt32(payload, 0, 1);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawDrawing, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 0, 0, 1), result);
+        Assert.Empty(sink.VisualEffects);
+        Assert.Empty(sink.DrawGeometries);
+    }
+
+    [Fact]
     public void DecodeDrawDrawingSkipsMissingDrawingResourceToken()
     {
         var resolver = WpfReflectionResourceResolver.FromDependentResources(Array.Empty<object?>());
@@ -3140,6 +3229,44 @@ public sealed class WpfReflectionResourceResolverTests
         public object? CacheMode { get; init; }
     }
 
+    private sealed class FakeBlurEffect
+    {
+        public FakeBlurEffect(double radius)
+        {
+            Radius = radius;
+        }
+
+        public double Radius { get; }
+    }
+
+    private sealed class FakeBlurBitmapEffect
+    {
+        public FakeBlurBitmapEffect(double radius)
+        {
+            Radius = radius;
+        }
+
+        public double Radius { get; }
+
+        private bool CanBeEmulatedUsingEffectPipeline()
+        {
+            return true;
+        }
+
+        private FakeBlurEffect GetEmulatingEffect()
+        {
+            return new FakeBlurEffect(Radius);
+        }
+    }
+
+    private sealed class FakeContextBitmapEffectInput
+    {
+        private bool ShouldSerializeInput()
+        {
+            return false;
+        }
+    }
+
     private sealed class FakeImageDrawing
     {
         public FakeImageDrawing(object? imageSource, FakeRect rect)
@@ -3379,7 +3506,7 @@ public sealed class WpfReflectionResourceResolverTests
         public object this[int index] => _items[index];
     }
 
-    private sealed class TestSink : IWpfCompositionCommandSink
+    private sealed class TestSink : IWpfCompositionCommandSink, IWpfVisualEffectCommandSink
     {
         public List<string> Operations { get; } = new();
 
@@ -3406,6 +3533,12 @@ public sealed class WpfReflectionResourceResolverTests
         public List<object?> EdgeModes { get; } = new();
 
         public List<object?> TextRenderingModes { get; } = new();
+
+        public List<ProGpuEffectBase> VisualEffects { get; } = new();
+
+        public List<Rect?> VisualEffectBounds { get; } = new();
+
+        public bool AcceptVisualEffects { get; init; }
 
         public int PopCount { get; private set; }
 
@@ -3512,6 +3645,24 @@ public sealed class WpfReflectionResourceResolverTests
         {
             Operations.Add("Pop");
             PopCount++;
+        }
+
+        public bool PushVisualEffect(ProGpuEffectBase effect)
+        {
+            return PushVisualEffect(effect, bounds: null);
+        }
+
+        public bool PushVisualEffect(ProGpuEffectBase effect, Rect? bounds)
+        {
+            if (!AcceptVisualEffects)
+            {
+                return false;
+            }
+
+            Operations.Add("PushVisualEffect");
+            VisualEffects.Add(effect);
+            VisualEffectBounds.Add(bounds);
+            return true;
         }
 
         public void Close()

@@ -483,7 +483,13 @@ internal static class WpfReflectionDrawingReplay
         IWpfCompositionCommandSink sink,
         Func<object?, MediaImageSource?>? imageSourceAdapter)
     {
-        if (HasUnsupportedEffectState(drawingGroup))
+        if (HasNonNullProperty(drawingGroup, "CacheMode")
+            || !TryResolveDrawingGroupEffect(
+                drawingGroup,
+                imageSourceAdapter,
+                out var effect,
+                out var effectBounds,
+                out var hasEffect))
         {
             return WpfDrawingReplayStatus.Unsupported;
         }
@@ -537,6 +543,22 @@ internal static class WpfReflectionDrawingReplay
         if (hasOpacityMask)
         {
             sink.PushOpacityMask(opacityMask, opacityMaskBounds);
+            popCount++;
+        }
+
+        if (hasEffect)
+        {
+            if (sink is not IWpfVisualEffectCommandSink effectSink
+                || !effectSink.PushVisualEffect(effect!, effectBounds))
+            {
+                for (var i = 0; i < popCount; i++)
+                {
+                    sink.Pop();
+                }
+
+                return WpfDrawingReplayStatus.Unsupported;
+            }
+
             popCount++;
         }
 
@@ -1306,17 +1328,66 @@ internal static class WpfReflectionDrawingReplay
         return true;
     }
 
-    private static bool HasUnsupportedEffectState(object drawingGroup)
-    {
-        return HasNonNullProperty(drawingGroup, "BitmapEffect")
-            || HasNonNullProperty(drawingGroup, "BitmapEffectInput")
-            || HasNonNullProperty(drawingGroup, "Effect")
-            || HasNonNullProperty(drawingGroup, "CacheMode");
-    }
-
     private static bool HasUnsupportedRenderOptionState(object drawingGroup)
     {
         return HasExplicitRenderingHint(drawingGroup, "ClearTypeHint");
+    }
+
+    private static bool TryResolveDrawingGroupEffect(
+        object drawingGroup,
+        Func<object?, MediaImageSource?>? imageSourceAdapter,
+        out global::ProGPU.Scene.EffectBase? effect,
+        out Rect? bounds,
+        out bool hasEffect)
+    {
+        effect = null;
+        bounds = null;
+        hasEffect = false;
+
+        if (TryGetPropertyValue(drawingGroup, "Effect", out var effectValue) && effectValue != null)
+        {
+            hasEffect = true;
+            if (!WpfEffectReflection.TryCreateProGpuEffect(effectValue, out var proGpuEffect)
+                || !TryGetDrawingGroupEffectBounds(drawingGroup, imageSourceAdapter, out bounds))
+            {
+                return false;
+            }
+
+            effect = proGpuEffect;
+            return true;
+        }
+
+        if (TryGetPropertyValue(drawingGroup, "BitmapEffect", out var bitmapEffect) && bitmapEffect != null)
+        {
+            hasEffect = true;
+            TryGetPropertyValue(drawingGroup, "BitmapEffectInput", out var bitmapEffectInput);
+            if (!WpfEffectReflection.TryCreateProGpuPushEffect(bitmapEffect, bitmapEffectInput, out var proGpuEffect)
+                || !TryGetDrawingGroupEffectBounds(drawingGroup, imageSourceAdapter, out bounds))
+            {
+                return false;
+            }
+
+            effect = proGpuEffect;
+            return true;
+        }
+
+        return !HasNonNullProperty(drawingGroup, "BitmapEffectInput");
+    }
+
+    private static bool TryGetDrawingGroupEffectBounds(
+        object drawingGroup,
+        Func<object?, MediaImageSource?>? imageSourceAdapter,
+        out Rect? bounds)
+    {
+        bounds = null;
+        if (TryReadFiniteRectProperty(drawingGroup, "Bounds", out var explicitBounds)
+            || TryInferDrawingGroupContentBounds(drawingGroup, imageSourceAdapter, out explicitBounds))
+        {
+            bounds = explicitBounds;
+            return true;
+        }
+
+        return false;
     }
 
     private static bool HasExplicitRenderingHint(object source, string propertyName)

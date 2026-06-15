@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Windows.Media.Imaging;
 using ProGPU.Backend;
 using MediaImageSource = System.Windows.Media.ImageSource;
@@ -28,7 +27,7 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
             || !TryReadIntProperty(imageSource, "PixelHeight", out var height)
             || width <= 0
             || height <= 0
-            || !TryCopyPixelsAsPbgra32(imageSource, width, height, out var pixels, out var stride))
+            || !TryCopyPixelsAsPbgra32Buffer(imageSource, width, height, out var pixelBuffer))
         {
             return null;
         }
@@ -36,19 +35,7 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
         var dpiX = TryReadDoubleProperty(imageSource, "DpiX", out var readDpiX) ? readDpiX : 96;
         var dpiY = TryReadDoubleProperty(imageSource, "DpiY", out var readDpiY) ? readDpiY : 96;
         var bitmap = new WriteableBitmap(width, height, dpiX, dpiY, PixelFormats.Pbgra32, palette: null);
-        var handle = GCHandle.Alloc(pixels, GCHandleType.Pinned);
-        try
-        {
-            bitmap.WritePixels(
-                new Int32Rect(0, 0, width, height),
-                handle.AddrOfPinnedObject(),
-                pixels.Length,
-                stride);
-        }
-        finally
-        {
-            handle.Free();
-        }
+        bitmap.WritePbgra32Pixels(new Int32Rect(0, 0, width, height), pixelBuffer);
 
         return bitmap;
     }
@@ -63,9 +50,27 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
         pixels = Array.Empty<byte>();
         stride = 0;
 
+        if (!TryCopyPixelsAsPbgra32Buffer(imageSource, width, height, out var pixelBuffer))
+        {
+            return false;
+        }
+
+        pixels = pixelBuffer.Pixels;
+        stride = pixelBuffer.Stride;
+        return true;
+    }
+
+    internal static bool TryCopyPixelsAsPbgra32Buffer(
+        object imageSource,
+        int width,
+        int height,
+        out Pbgra32PixelBuffer pixelBuffer)
+    {
+        pixelBuffer = default;
+
         if (width <= 0
             || height <= 0
-            || !TryReadPixelFormat(imageSource, out var formatKind, out var bitsPerPixel))
+            || !TryReadPixelFormat(imageSource, out var formatKind, out _))
         {
             return false;
         }
@@ -121,8 +126,7 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
             return false;
         }
 
-        pixels = pbgra32Buffer.Pixels;
-        stride = pbgra32Buffer.Stride;
+        pixelBuffer = pbgra32Buffer;
         return true;
     }
 

@@ -24,6 +24,30 @@ public sealed class WpfBitmapSourceImageAdapterTests
     }
 
     [Fact]
+    public void CopyPixelsAsPbgra32BufferReturnsTextureUploadBuffer()
+    {
+        var source = new FakeBitmapSource(
+            width: 2,
+            height: 1,
+            formatName: "Bgr24",
+            bitsPerPixel: 24,
+            pixels: new byte[] { 1, 2, 3, 4, 5, 6 });
+
+        Assert.True(WpfBitmapSourceImageAdapter.TryCopyPixelsAsPbgra32Buffer(
+            source,
+            2,
+            1,
+            out var buffer));
+
+        Assert.Equal(2, buffer.Width);
+        Assert.Equal(1, buffer.Height);
+        Assert.Equal(8, buffer.Stride);
+        Assert.True(buffer.IsCompact);
+        Assert.Equal(new byte[] { 1, 2, 3, 255, 4, 5, 6, 255 }, buffer.Pixels);
+        Assert.Equal(6, source.LastStride);
+    }
+
+    [Fact]
     public void CopyPixelsAsPbgra32PremultipliesBgra32()
     {
         var source = new FakeBitmapSource(

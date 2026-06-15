@@ -1926,7 +1926,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void DecodeDrawDrawingReportsUnsupportedDrawingGroupClearTypeTextRenderingModeAsPartial()
+    public void DecodeDrawDrawingPassesDrawingGroupClearTypeTextRenderingModeToSink()
     {
         var group = new FakeDrawingGroup(
             new FakeGeometryDrawing(
@@ -1947,9 +1947,9 @@ public sealed class WpfReflectionResourceResolverTests
             sink,
             resolver);
 
-        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 1), result);
-        Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
-        Assert.Empty(sink.TextRenderingModes);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        Assert.Equal(new[] { "PushTextRenderingMode", "DrawGeometry", "Pop" }, sink.Operations);
+        Assert.Equal(new[] { "ClearType" }, sink.TextRenderingModes.Select(mode => mode?.ToString()));
     }
 
     [Fact]

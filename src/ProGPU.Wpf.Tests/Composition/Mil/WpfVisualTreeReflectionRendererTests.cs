@@ -465,7 +465,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
-    public void ReplaySubtreeCountsClearTypeTextRenderingModeAsUnsupported()
+    public void ReplaySubtreeAppliesClearTypeTextRenderingMode()
     {
         var root = new FakeVisual
         {
@@ -476,9 +476,9 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var sink = new TestSink();
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
-        Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
-        Assert.Empty(sink.TextRenderingModes);
-        Assert.Equal(1, result.UnsupportedVisualStateCount);
+        Assert.Equal(new[] { "PushTextRenderingMode", "DrawRectangle", "Pop" }, sink.Operations);
+        Assert.Equal(new[] { "ClearType" }, sink.TextRenderingModes.Select(mode => mode?.ToString()));
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
     }
 

@@ -16,12 +16,21 @@ internal static class WpfTextRenderingModeReflection
 
     public static bool IsSupported(object? value)
     {
-        return TryMapToAliased(value, out _);
+        return TryMapToTextRenderingMode(value, out _);
     }
 
     public static bool TryMapToAliased(object? value, out bool isAliased)
     {
-        isAliased = false;
+        var mapped = TryMapToTextRenderingMode(value, out var mode);
+        isAliased = mode == global::ProGPU.Scene.TextRenderingMode.Aliased;
+        return mapped;
+    }
+
+    public static bool TryMapToTextRenderingMode(
+        object? value,
+        out global::ProGPU.Scene.TextRenderingMode mode)
+    {
+        mode = global::ProGPU.Scene.TextRenderingMode.Grayscale;
         var text = value?.ToString();
         if (string.IsNullOrWhiteSpace(text)
             || string.Equals(text, "Unspecified", StringComparison.OrdinalIgnoreCase)
@@ -35,11 +44,23 @@ internal static class WpfTextRenderingModeReflection
         if (string.Equals(text, "Aliased", StringComparison.OrdinalIgnoreCase)
             || string.Equals(text, "1", StringComparison.OrdinalIgnoreCase))
         {
-            isAliased = true;
+            mode = global::ProGPU.Scene.TextRenderingMode.Aliased;
             return true;
         }
 
-        return string.Equals(text, "Grayscale", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(text, "2", StringComparison.OrdinalIgnoreCase);
+        if (string.Equals(text, "Grayscale", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(text, "2", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (string.Equals(text, "ClearType", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(text, "3", StringComparison.OrdinalIgnoreCase))
+        {
+            mode = global::ProGPU.Scene.TextRenderingMode.ClearType;
+            return true;
+        }
+
+        return false;
     }
 }

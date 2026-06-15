@@ -2105,11 +2105,52 @@ public sealed class WpfReplayToProGpuCommandTests
             first =>
             {
                 Assert.Equal(RenderCommandType.DrawText, first.Type);
+                Assert.Equal(global::ProGPU.Scene.TextRenderingMode.Aliased, first.TextRenderingMode);
                 Assert.True(first.IsTextAliased);
             },
             second =>
             {
                 Assert.Equal(RenderCommandType.DrawGlyphRun, second.Type);
+                Assert.Equal(global::ProGPU.Scene.TextRenderingMode.Grayscale, second.TextRenderingMode);
+                Assert.False(second.IsTextAliased);
+            });
+    }
+
+    [Fact]
+    public void DrawTextWithClearTypeTextRenderingModeThroughProGpuSinkStoresAndRestoresMode()
+    {
+        var nativeContext = new ProGpuDrawingContext();
+        using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
+        var formattedText = new FormattedText(
+            "ProGPU",
+            CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight,
+            new Typeface(new FontFamily("Arial")),
+            14,
+            Brushes.Black);
+        var glyphRun = new GlyphRun(
+            null!,
+            16,
+            new ushort[] { 7 },
+            new[] { Vector2.Zero });
+
+        sink.PushTextRenderingMode("ClearType");
+        sink.DrawText(formattedText, new Point(2, 3));
+        sink.Pop();
+        sink.DrawGlyphRun(Brushes.Black, glyphRun);
+
+        Assert.Collection(
+            nativeContext.Commands,
+            first =>
+            {
+                Assert.Equal(RenderCommandType.DrawText, first.Type);
+                Assert.Equal(global::ProGPU.Scene.TextRenderingMode.ClearType, first.TextRenderingMode);
+                Assert.False(first.IsTextAliased);
+            },
+            second =>
+            {
+                Assert.Equal(RenderCommandType.DrawGlyphRun, second.Type);
+                Assert.Equal(global::ProGPU.Scene.TextRenderingMode.Grayscale, second.TextRenderingMode);
                 Assert.False(second.IsTextAliased);
             });
     }

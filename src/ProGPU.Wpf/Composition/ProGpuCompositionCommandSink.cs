@@ -57,7 +57,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
     private readonly Stack<Matrix4x4> _transformStack = new();
     private readonly Stack<global::ProGPU.Scene.TextureSamplingMode> _bitmapScalingModeStack = new();
     private readonly Stack<bool> _edgeModeStack = new();
-    private readonly Stack<bool> _textRenderingModeStack = new();
+    private readonly Stack<global::ProGPU.Scene.TextRenderingMode> _textRenderingModeStack = new();
     private readonly global::ProGPU.Backend.WgpuContext? _context;
     private readonly WpfViewport3DTextureCache? _viewport3DTextureCache;
     private readonly Func<VectorPathGeometry, VectorPathGeometry?>? _pathOperationResolver;
@@ -81,7 +81,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         _transformStack.Push(Matrix4x4.Identity);
         _bitmapScalingModeStack.Push(global::ProGPU.Scene.TextureSamplingMode.Linear);
         _edgeModeStack.Push(false);
-        _textRenderingModeStack.Push(false);
+        _textRenderingModeStack.Push(global::ProGPU.Scene.TextRenderingMode.Grayscale);
     }
 
     public MediaDrawingContext DrawingContext { get; }
@@ -511,7 +511,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             Brush = nativeBrush,
             Position = position,
             Transform = _transformStack.Peek(),
-            IsTextAliased = _textRenderingModeStack.Peek()
+            TextRenderingMode = _textRenderingModeStack.Peek()
         });
     }
 
@@ -536,7 +536,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             Transform = glyphRun.Transform * _transformStack.Peek(),
             IsBold = glyphRun.IsBold,
             IsItalic = glyphRun.IsItalic,
-            IsTextAliased = _textRenderingModeStack.Peek()
+            TextRenderingMode = _textRenderingModeStack.Peek()
         });
     }
 
@@ -677,9 +677,9 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
     {
         ThrowIfClosed();
 
-        if (WpfTextRenderingModeReflection.TryMapToAliased(textRenderingMode, out var isAliased))
+        if (WpfTextRenderingModeReflection.TryMapToTextRenderingMode(textRenderingMode, out var mode))
         {
-            _textRenderingModeStack.Push(isAliased);
+            _textRenderingModeStack.Push(mode);
             _pushStack.Push(PushKind.TextRenderingMode);
             return;
         }

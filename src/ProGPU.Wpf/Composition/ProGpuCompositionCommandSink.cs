@@ -1579,7 +1579,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         {
             if (!transform.IsIdentity)
             {
-                path = TransformPath(path, transform);
+                path = path.CreateTransformed(transform);
             }
 
             return true;
@@ -1612,7 +1612,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         var combinedTransform = geometryTransform * transform;
         if (!combinedTransform.IsIdentity)
         {
-            path = TransformPath(path, combinedTransform);
+            path = path.CreateTransformed(combinedTransform);
         }
 
         return true;
@@ -1680,89 +1680,6 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
                         {
                             nativeFigure.Segments.Add(new VectorLineSegment(
                                 Vector2.Transform(arc.Point, combinedTransform),
-                                arc.IsSmoothJoin));
-                        }
-
-                        sourceCurrentPoint = arc.Point;
-                        break;
-                }
-            }
-
-            path.Figures.Add(nativeFigure);
-        }
-
-        return path;
-    }
-
-    private static VectorPathGeometry TransformPath(VectorPathGeometry source, Matrix4x4 transform)
-    {
-        if (source.IsCombined)
-        {
-            return new VectorPathGeometry
-            {
-                IsCombined = true,
-                PathA = source.PathA == null ? new VectorPathGeometry() : TransformPath(source.PathA, transform),
-                PathB = source.PathB == null ? new VectorPathGeometry() : TransformPath(source.PathB, transform),
-                Op = source.Op
-            };
-        }
-
-        var path = new VectorPathGeometry();
-
-        foreach (var figure in source.Figures)
-        {
-            var sourceCurrentPoint = figure.StartPoint;
-            var nativeFigure = new VectorPathFigure
-            {
-                StartPoint = Vector2.Transform(figure.StartPoint, transform),
-                IsClosed = figure.IsClosed,
-                IsFilled = figure.IsFilled
-            };
-
-            foreach (var segment in figure.Segments)
-            {
-                switch (segment)
-                {
-                    case VectorLineSegment line:
-                        nativeFigure.Segments.Add(new VectorLineSegment(Vector2.Transform(line.Point, transform), line.IsSmoothJoin));
-                        sourceCurrentPoint = line.Point;
-                        break;
-
-                    case VectorQuadraticBezierSegment quadratic:
-                        nativeFigure.Segments.Add(new VectorQuadraticBezierSegment(
-                            Vector2.Transform(quadratic.ControlPoint, transform),
-                            Vector2.Transform(quadratic.Point, transform),
-                            quadratic.IsSmoothJoin));
-                        sourceCurrentPoint = quadratic.Point;
-                        break;
-
-                    case VectorCubicBezierSegment cubic:
-                        nativeFigure.Segments.Add(new VectorCubicBezierSegment(
-                            Vector2.Transform(cubic.ControlPoint1, transform),
-                            Vector2.Transform(cubic.ControlPoint2, transform),
-                            Vector2.Transform(cubic.Point, transform),
-                            cubic.IsSmoothJoin));
-                        sourceCurrentPoint = cubic.Point;
-                        break;
-
-                    case VectorArcSegment arc:
-                        if (TryTransformArcSegment(
-                            sourceCurrentPoint,
-                            arc.Point,
-                            arc.Size,
-                            arc.RotationAngle,
-                            arc.IsLargeArc,
-                            arc.SweepDirection,
-                            transform,
-                            out var transformedArc))
-                        {
-                            transformedArc.IsSmoothJoin = arc.IsSmoothJoin;
-                            nativeFigure.Segments.Add(transformedArc);
-                        }
-                        else
-                        {
-                            nativeFigure.Segments.Add(new VectorLineSegment(
-                                Vector2.Transform(arc.Point, transform),
                                 arc.IsSmoothJoin));
                         }
 

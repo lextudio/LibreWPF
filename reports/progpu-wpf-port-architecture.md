@@ -59,6 +59,8 @@ Direct ProGPU installation of the real WPF sink remains an assembly-boundary dec
 
 Rectangular clip scopes intentionally stay on ProGPU's native scissor path. The compositor now transforms all four local clip corners before deriving the conservative screen-space scissor bounds, so rotated or sheared WPF visual clips, scrollable-area clips, and unsupported-geometry rectangular fallbacks do not need managed WPF-side compensating bounds code.
 
+Combined geometry is now part of the ProGPU-owned vector path model for WPF shim users as well as the transition bridge. `ProGPU.Vector.PathGeometry.CreateTransformed(...)` preserves line, quadratic, cubic, and arc segment metadata while baking child transforms into native path-op operands, and shim-level `CombinedGeometry` maps WPF `Union`, `Intersect`, `Xor`, and `Exclude` to ProGPU path-op ids instead of forcing bounds fallback.
+
 ## Managed WPF Reuse Strategy
 
 The migration should move WPF managed code in layers:

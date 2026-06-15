@@ -36,6 +36,7 @@
 - Added `WpfVisualInvalidationTracker` to observe WPF-shaped visual/resource `Changed`, `Invalidated`, `INotifyPropertyChanged`, and `INotifyCollectionChanged` signals and mark the ProGPU retained root dirty.
 - Added retained `ProGPU.Scene.Visual.ChangeVersion` counters that advance on property invalidation, child invalidation propagation, and child collection changes, while render-time dirty clearing leaves the version stable.
 - Exposed `ProGpuWpfCompositionTarget.SceneChangeVersion`, `RetainedWpfChangeVersion`, and `FlatDrawingChangeVersion`, and changed WPF source invalidation to dirty the retained WPF root as well as the scene and flat drawing roots.
+- Moved arc stroke shader parameter construction into public `ProGPU.Vector.ArcShaderParameters`/`ArcSegmentGeometry.TryCreateShaderParameters(...)`, so WPF-shaped arcs can use a stable ProGPU native shader ABI for transformed ellipse axes instead of compositor-private math.
 - Added `IWpfRenderScheduler` and `CoalescingWpfRenderScheduler` as the first MediaContext-style render request boundary for the Silk.NET host.
 - Routed visual-level transform and clip replay through `WpfReflectionResourceResolver` so WPF-shaped matrix transforms and rectangle/path geometry clips are adapted consistently with `RenderData` resources.
 - Added `ProGpuWpfCompositionTarget.ReplayVisualSubtree` and `ProGpuWpfWindowHost.WpfRootVisual` to connect reflected WPF visual replay to the Silk.NET/WebGPU frame path.

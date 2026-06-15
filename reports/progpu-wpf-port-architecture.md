@@ -63,6 +63,8 @@ Combined geometry is now part of the ProGPU-owned vector path model for WPF shim
 
 Primitive WPF shim geometries now use the same native path representation. `LineGeometry`, `RectangleGeometry`, `EllipseGeometry`, and `GeometryGroup` expose `TryGetPathGeometry(...)`; rectangles and ellipses reuse `ProGPU.Vector.PrimitivePathGeometry`, so ellipse/group clips keep native arc segments and path masks. Shared `ProGPU.Vector.PathGeometry.TryGetBounds(...)` computes ordinary and combined path bounds, including transformed arc bounds after `CreateTransformed(...)`, so shim geometry bounds no longer need duplicate managed arc/bounds code. WPF `PathGeometry.Draw(...)` also splits fill and stroke only when a figure has `IsFilled=false`, excluding those figures from fill atlas commands while leaving the full path available to native stroke commands.
 
+WPF path fill and stroke metadata is now part of the ProGPU vector ABI. `ProGPU.Vector.PathGeometry.FillRule` is carried into `GpuPathRecord.FillRule`, where the path rasterizer and path-op shaders choose `EvenOdd` or `Nonzero` winding behavior natively. The WPF `PresentationCore` shim, WPF `GeometryGroup`, and WinUI path shim forward their API fill rules into that field. `PathSegment.IsStroked` is preserved from WPF `StreamGeometryContext` and through ProGPU affine transforms, Bezier/arc subdivision, and path-op figure copies; fill compilation still sees every segment, while stroke tessellation skips non-stroked segments and treats them as contour breaks for caps and joins. This keeps WPF-compatible path semantics in ProGPU rather than adding managed contour-rewrite or stroke-filter workarounds in the WPF bridge.
+
 ## Managed WPF Reuse Strategy
 
 The migration should move WPF managed code in layers:

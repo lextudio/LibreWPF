@@ -1,4 +1,5 @@
 using System.Windows.Media.ProGPU.Composition.Mil;
+using ProGPU.Backend;
 using Xunit;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
@@ -391,7 +392,7 @@ public sealed class WpfBitmapSourceImageAdapterTests
 
         Assert.True(WpfBitmapSourceImageAdapter.TryReadPixelFormat(source, out var formatKind, out var bitsPerPixel));
 
-        Assert.Equal(WpfBitmapSourceImageAdapter.ReflectedPixelFormatKind.Pbgra32, formatKind);
+        Assert.Equal(PixelDataFormat.Pbgra32, formatKind);
         Assert.Equal(32, bitsPerPixel);
     }
 

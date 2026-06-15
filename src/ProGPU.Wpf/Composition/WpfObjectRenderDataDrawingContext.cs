@@ -388,8 +388,19 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
     public void PushEffect(object? effect, object? effectInput)
     {
         ThrowIfClosed();
+
+        if (WpfEffectReflection.TryCreateProGpuPushEffect(effect, effectInput, out var proGpuEffect)
+            && _sink is IWpfVisualEffectCommandSink effectSink
+            && effectSink.PushVisualEffect(proGpuEffect))
+        {
+            _stackDepth++;
+            CountApplied();
+            return;
+        }
+
+        _sink.PushNoOpScope();
         _stackDepth++;
-        CountUnsupported();
+        CountPartiallyApplied();
     }
 
     public void Pop()
@@ -446,6 +457,13 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
         _unsupportedCount++;
     }
 
+    private void CountPartiallyApplied()
+    {
+        _operationCount++;
+        _appliedCount++;
+        _unsupportedCount++;
+    }
+
     private void CountUnsupportedIfPresent(params object?[] unsupportedState)
     {
         foreach (object? state in unsupportedState)
@@ -466,9 +484,7 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
                 CountApplied();
                 break;
             case WpfDrawingReplayStatus.PartiallyApplied:
-                _operationCount++;
-                _appliedCount++;
-                _unsupportedCount++;
+                CountPartiallyApplied();
                 break;
             case WpfDrawingReplayStatus.Unsupported:
                 CountUnsupported();

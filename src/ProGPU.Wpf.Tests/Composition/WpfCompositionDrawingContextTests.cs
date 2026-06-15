@@ -10,6 +10,8 @@ using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPen = System.Windows.Media.Pen;
 using MediaTransform = System.Windows.Media.Transform;
+using ProGpuBlurEffect = ProGPU.Scene.BlurEffect;
+using ProGpuEffectBase = ProGPU.Scene.EffectBase;
 
 namespace ProGPU.Wpf.Tests.Composition;
 
@@ -367,14 +369,64 @@ public sealed class WpfCompositionDrawingContextTests
         context.PushEffect(effect: new object(), effectInput: null);
 
         Assert.Equal(1, context.StackDepth);
-        Assert.Equal(new WpfCompositionDrawingContextResult(2, 0, 2), context.Result);
-        Assert.Empty(sink.Operations);
+        Assert.Equal(new WpfCompositionDrawingContextResult(2, 1, 2), context.Result);
+        Assert.Equal(new[] { "PushNoOpScope" }, sink.Operations);
 
         context.Pop();
 
         Assert.Equal(0, context.StackDepth);
-        Assert.Equal(new[] { "Pop" }, sink.Operations);
-        Assert.Equal(new WpfCompositionDrawingContextResult(3, 1, 2), context.Result);
+        Assert.Equal(new[] { "PushNoOpScope", "Pop" }, sink.Operations);
+        Assert.Equal(new WpfCompositionDrawingContextResult(3, 2, 2), context.Result);
+    }
+
+    [Fact]
+    public void PushEffectUsesNativeVisualEffectScopeWhenLegacyEffectCanBeEmulated()
+    {
+        var sink = new RecordingSink { AcceptVisualEffects = true };
+        using var context = new WpfCompositionDrawingContext(sink);
+
+        context.PushEffect(new FakeBlurBitmapEffect(7), new FakeContextBitmapEffectInput());
+
+        Assert.Equal(1, context.StackDepth);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+        Assert.Equal(new[] { "PushVisualEffect" }, sink.Operations);
+        var effect = Assert.IsType<ProGpuBlurEffect>(Assert.Single(sink.VisualEffects));
+        Assert.Equal(7f, effect.BlurRadius);
+
+        context.Pop();
+
+        Assert.Equal(0, context.StackDepth);
+        Assert.Equal(new[] { "PushVisualEffect", "Pop" }, sink.Operations);
+        Assert.Equal(new WpfCompositionDrawingContextResult(2, 2, 0), context.Result);
+    }
+
+    [Fact]
+    public void ObjectRenderDataPushEffectUsesNativeVisualEffectScopeWhenLegacyEffectCanBeEmulated()
+    {
+        var sink = new RecordingSink { AcceptVisualEffects = true };
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+
+        context.PushEffect(new FakeBlurBitmapEffect(9), new FakeContextBitmapEffectInput());
+
+        Assert.Equal(1, context.StackDepth);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+        Assert.Equal(new[] { "PushVisualEffect" }, sink.Operations);
+        var effect = Assert.IsType<ProGpuBlurEffect>(Assert.Single(sink.VisualEffects));
+        Assert.Equal(9f, effect.BlurRadius);
+    }
+
+    [Fact]
+    public void PushEffectWithNonContextInputFallsBackToUnsupportedNoOpScope()
+    {
+        var sink = new RecordingSink { AcceptVisualEffects = true };
+        using var context = new WpfCompositionDrawingContext(sink);
+
+        context.PushEffect(new FakeBlurBitmapEffect(7), new FakeBitmapSourceEffectInput());
+
+        Assert.Equal(1, context.StackDepth);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 1), context.Result);
+        Assert.Equal(new[] { "PushNoOpScope" }, sink.Operations);
+        Assert.Empty(sink.VisualEffects);
     }
 
     [Fact]
@@ -478,6 +530,52 @@ public sealed class WpfCompositionDrawingContextTests
     {
     }
 
+    private sealed class FakeBlurBitmapEffect
+    {
+        public FakeBlurBitmapEffect(double radius)
+        {
+            Radius = radius;
+        }
+
+        public double Radius { get; }
+
+        private bool CanBeEmulatedUsingEffectPipeline()
+        {
+            return true;
+        }
+
+        private FakeBlurEffect GetEmulatingEffect()
+        {
+            return new FakeBlurEffect(Radius);
+        }
+    }
+
+    private sealed class FakeBlurEffect
+    {
+        public FakeBlurEffect(double radius)
+        {
+            Radius = radius;
+        }
+
+        public double Radius { get; }
+    }
+
+    private sealed class FakeContextBitmapEffectInput
+    {
+        public bool ShouldSerializeInput()
+        {
+            return false;
+        }
+    }
+
+    private sealed class FakeBitmapSourceEffectInput
+    {
+        public bool ShouldSerializeInput()
+        {
+            return true;
+        }
+    }
+
     private sealed class FakeImageSourceAdapter : IWpfImageSourceAdapter
     {
         public MediaImageSource AdaptedImageSource { get; } = new FakeImageSource();
@@ -526,7 +624,7 @@ public sealed class WpfCompositionDrawingContextTests
         public double this[int index] => _values[index];
     }
 
-    private sealed class RecordingSink : IWpfCompositionCommandSink
+    private sealed class RecordingSink : IWpfCompositionCommandSink, IWpfVisualEffectCommandSink
     {
         public List<string> Operations { get; } = new();
 
@@ -549,6 +647,10 @@ public sealed class WpfCompositionDrawingContextTests
         public List<double> Opacities { get; } = new();
 
         public List<(double LeadingCoordinate, double OffsetToDrivenCoordinate)> GuidelineY2Values { get; } = new();
+
+        public List<ProGpuEffectBase> VisualEffects { get; } = new();
+
+        public bool AcceptVisualEffects { get; init; }
 
         public MediaDrawingContext DrawingContext => null!;
 
@@ -640,6 +742,18 @@ public sealed class WpfCompositionDrawingContextTests
         {
             Operations.Add("PushGuidelineY2");
             GuidelineY2Values.Add((leadingCoordinate, offsetToDrivenCoordinate));
+        }
+
+        public bool PushVisualEffect(ProGpuEffectBase effect)
+        {
+            if (!AcceptVisualEffects)
+            {
+                return false;
+            }
+
+            Operations.Add("PushVisualEffect");
+            VisualEffects.Add(effect);
+            return true;
         }
 
         public void Pop()

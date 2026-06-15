@@ -32,10 +32,29 @@ internal static class WpfEffectReflection
             {
                 return true;
             }
+
+            if (TryCreateEmulatedBitmapEffect(effect, out proGpuEffect))
+            {
+                return true;
+            }
         }
 
         proGpuEffect = null!;
         return false;
+    }
+
+    public static bool TryCreateProGpuPushEffect(
+        object? effect,
+        object? effectInput,
+        out global::ProGPU.Scene.EffectBase proGpuEffect)
+    {
+        proGpuEffect = null!;
+        if (effect == null || !IsSupportedBitmapEffectInput(effectInput))
+        {
+            return false;
+        }
+
+        return TryCreateProGpuEffect(effect, out proGpuEffect);
     }
 
     private static bool TryCreateBlurEffect(object effect, out global::ProGPU.Scene.EffectBase proGpuEffect)
@@ -130,6 +149,30 @@ internal static class WpfEffectReflection
 
         proGpuEffect = nativeEffect;
         return true;
+    }
+
+    private static bool TryCreateEmulatedBitmapEffect(object effect, out global::ProGPU.Scene.EffectBase proGpuEffect)
+    {
+        proGpuEffect = null!;
+        if (!TypeNameEndsWith(effect, "BitmapEffect"))
+        {
+            return false;
+        }
+
+        if (TryInvokeBoolMethod(effect, "CanBeEmulatedUsingEffectPipeline", out var canBeEmulated)
+            && !canBeEmulated)
+        {
+            return false;
+        }
+
+        if (TryInvokeMethod(effect, "GetEmulatingEffect", out var emulatedEffect)
+            && emulatedEffect != null
+            && !ReferenceEquals(effect, emulatedEffect))
+        {
+            return TryCreateProGpuEffect(emulatedEffect, out proGpuEffect);
+        }
+
+        return false;
     }
 
     private static bool TryResolveShaderReplacement(
@@ -303,6 +346,51 @@ internal static class WpfEffectReflection
         return (float)Math.Max(0d, padding);
     }
 
+    private static bool IsSupportedBitmapEffectInput(object? effectInput)
+    {
+        if (effectInput == null)
+        {
+            return true;
+        }
+
+        return IsContextBitmapEffectInput(effectInput)
+            && IsDefaultBitmapEffectArea(effectInput);
+    }
+
+    private static bool IsContextBitmapEffectInput(object effectInput)
+    {
+        if (TryInvokeBoolMethod(effectInput, "ShouldSerializeInput", out var shouldSerializeInput))
+        {
+            return !shouldSerializeInput;
+        }
+
+        if (!TryGetPropertyValue(effectInput, "Input", out var input))
+        {
+            return false;
+        }
+
+        if (input == null)
+        {
+            return true;
+        }
+
+        return TryGetStaticPropertyValue(effectInput.GetType(), "ContextInputSource", out var contextInputSource)
+            && ReferenceEquals(input, contextInputSource);
+    }
+
+    private static bool IsDefaultBitmapEffectArea(object effectInput)
+    {
+        if (TryGetPropertyValue(effectInput, "AreaToApplyEffect", out var area)
+            && area != null
+            && TryGetPropertyValue(area, "IsEmpty", out var isEmpty)
+            && isEmpty is bool empty)
+        {
+            return empty;
+        }
+
+        return true;
+    }
+
     private static bool TryReadColor(object? colorValue, double opacity, out Vector4 color)
     {
         color = default;
@@ -405,6 +493,31 @@ internal static class WpfEffectReflection
             }
 
             value = property.GetValue(instance);
+            return true;
+        }
+
+        value = null;
+        return false;
+    }
+
+    private static bool TryGetStaticPropertyValue(Type instanceType, string propertyName, out object? value)
+    {
+        const BindingFlags staticFlags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+
+        for (var type = instanceType; type != null; type = type.BaseType)
+        {
+            var property = type.GetProperty(propertyName, staticFlags | BindingFlags.DeclaredOnly);
+            if (property == null)
+            {
+                continue;
+            }
+
+            if (property.GetIndexParameters().Length != 0)
+            {
+                break;
+            }
+
+            value = property.GetValue(null);
             return true;
         }
 
@@ -546,6 +659,41 @@ internal static class WpfEffectReflection
             default:
                 return false;
         }
+    }
+
+    private static bool TryInvokeBoolMethod(object instance, string methodName, out bool value)
+    {
+        value = false;
+        if (!TryInvokeMethod(instance, methodName, out var methodValue) || methodValue is not bool boolValue)
+        {
+            return false;
+        }
+
+        value = boolValue;
+        return true;
+    }
+
+    private static bool TryInvokeMethod(object instance, string methodName, out object? value)
+    {
+        for (var type = instance.GetType(); type != null; type = type.BaseType)
+        {
+            var method = type.GetMethod(
+                methodName,
+                MemberFlags | BindingFlags.DeclaredOnly,
+                binder: null,
+                Type.EmptyTypes,
+                modifiers: null);
+            if (method == null)
+            {
+                continue;
+            }
+
+            value = method.Invoke(instance, null);
+            return true;
+        }
+
+        value = null;
+        return false;
     }
 
     private static TextureSamplingMode ConvertSamplingMode(object? samplingMode)

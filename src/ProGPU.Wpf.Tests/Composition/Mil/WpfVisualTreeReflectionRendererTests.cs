@@ -302,6 +302,25 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreePushesNativeBitmapEffectWhenEmulationIsSupported()
+    {
+        var root = new FakeVisual
+        {
+            BitmapEffect = new FakeBlurBitmapEffect(6)
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink { AcceptVisualEffects = true };
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushVisualEffect", "DrawRectangle", "Pop" }, sink.Operations);
+        var effect = Assert.IsType<ProGpuBlurEffect>(Assert.Single(sink.VisualEffects));
+        Assert.Equal(6f, effect.BlurRadius);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
     public void ReplaySubtreeCountsSupportedEffectUnsupportedWhenSinkCannotApplyVisualEffects()
     {
         var root = new FakeVisual
@@ -674,6 +693,26 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public double Opacity { get; init; } = 1;
 
         public Color Color { get; init; } = Colors.Black;
+    }
+
+    private sealed class FakeBlurBitmapEffect
+    {
+        public FakeBlurBitmapEffect(double radius)
+        {
+            Radius = radius;
+        }
+
+        public double Radius { get; }
+
+        private bool CanBeEmulatedUsingEffectPipeline()
+        {
+            return true;
+        }
+
+        private FakeBlurEffect GetEmulatingEffect()
+        {
+            return new FakeBlurEffect(Radius);
+        }
     }
 
     private sealed class FakeShaderEffect

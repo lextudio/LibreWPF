@@ -20,12 +20,14 @@ namespace System.Windows.Media.ProGPU.Composition;
 internal sealed class ProGpuRetainedCompositionCommandSink :
     IWpfCompositionCommandSink,
     IWpfViewport3DCommandSink,
-    IWpfVisualEffectCommandSink
+    IWpfVisualEffectCommandSink,
+    IWpfVisualCacheCommandSink
 {
     private enum ScopeKind
     {
         Delegate,
-        VisualEffect
+        VisualEffect,
+        VisualCache
     }
 
     private readonly Stack<ScopeKind> _scopeStack = new();
@@ -203,19 +205,23 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
             Size = new Vector2((float)effectBounds.Width, (float)effectBounds.Height)
         };
 
-        Current.Visual.AddChild(effectVisual);
+        PushVisualScope(effectVisual, effectBounds, ScopeKind.VisualEffect);
+        return true;
+    }
 
-        var scope = new VisualScope(effectVisual, Current.Context, Current.Viewport3DTextureCache);
-        if (effectBounds.X != 0 || effectBounds.Y != 0)
+    public bool PushVisualCache(Rect? bounds = null)
+    {
+        ThrowIfClosed();
+
+        var cacheBounds = NormalizeBounds(bounds);
+        var cacheVisual = new ProGpuRetainedDrawingVisual
         {
-            var matrix = Matrix.Identity;
-            matrix.Translate(-effectBounds.X, -effectBounds.Y);
-            scope.Sink.PushTransform(new MatrixTransform(matrix));
-            scope.HasBoundsTransform = true;
-        }
+            CacheAsLayer = true,
+            Offset = new Vector2((float)cacheBounds.X, (float)cacheBounds.Y),
+            Size = new Vector2((float)cacheBounds.Width, (float)cacheBounds.Height)
+        };
 
-        _visualScopes.Push(scope);
-        _scopeStack.Push(ScopeKind.VisualEffect);
+        PushVisualScope(cacheVisual, cacheBounds, ScopeKind.VisualCache);
         return true;
     }
 
@@ -236,7 +242,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
             return;
         }
 
-        PopVisualEffectScope();
+        PopVisualScope();
     }
 
     public void Close()
@@ -284,7 +290,24 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         return new Rect(0, 0, Math.Max(1, rootSize.X), Math.Max(1, rootSize.Y));
     }
 
-    private void PopVisualEffectScope()
+    private void PushVisualScope(ProGpuRetainedDrawingVisual visual, Rect bounds, ScopeKind scopeKind)
+    {
+        Current.Visual.AddChild(visual);
+
+        var scope = new VisualScope(visual, Current.Context, Current.Viewport3DTextureCache);
+        if (bounds.X != 0 || bounds.Y != 0)
+        {
+            var matrix = Matrix.Identity;
+            matrix.Translate(-bounds.X, -bounds.Y);
+            scope.Sink.PushTransform(new MatrixTransform(matrix));
+            scope.HasBoundsTransform = true;
+        }
+
+        _visualScopes.Push(scope);
+        _scopeStack.Push(scopeKind);
+    }
+
+    private void PopVisualScope()
     {
         if (_visualScopes.Count <= 1)
         {

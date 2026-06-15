@@ -229,6 +229,20 @@ public sealed class WpfVisualTreeReflectionRenderer
             stats.UnsupportedVisualStateCount++;
         }
 
+        if (TryGetPropertyValue(visual, "CacheMode", out var cacheMode) && cacheMode != null)
+        {
+            if (sink is IWpfVisualCacheCommandSink cacheSink
+                && cacheSink.PushVisualCache(
+                    TryReadOpacityMaskBounds(visual, out var cacheBounds) ? cacheBounds : null))
+            {
+                popCount++;
+            }
+            else
+            {
+                stats.UnsupportedVisualStateCount++;
+            }
+        }
+
         if (TryCreateVisualGuidelineSet(visual, out var guidelineSet))
         {
             sink.PushGuidelineSet(guidelineSet);
@@ -301,14 +315,6 @@ public sealed class WpfVisualTreeReflectionRenderer
     private static int CountUnsupportedVisualState(object visual)
     {
         var count = 0;
-
-        foreach (var propertyName in new[] { "CacheMode" })
-        {
-            if (HasNonNullProperty(visual, propertyName))
-            {
-                count++;
-            }
-        }
 
         if (TryGetPropertyValue(visual, "ClearTypeHint", out var clearTypeHint)
             && WpfTextRenderingModeReflection.HasExplicitClearTypeHint(clearTypeHint)

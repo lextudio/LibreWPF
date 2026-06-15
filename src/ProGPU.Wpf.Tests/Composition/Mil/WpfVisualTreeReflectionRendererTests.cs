@@ -270,6 +270,25 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreePushesNativeCacheWhenSinkSupportsVisualCaches()
+    {
+        var root = new FakeVisual
+        {
+            Bounds = new FakeRect(10, 20, 30, 40),
+            CacheMode = new object()
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink { AcceptVisualCaches = true };
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushVisualCache", "DrawRectangle", "Pop" }, sink.Operations);
+        Assert.Equal(new Rect(10, 20, 30, 40), Assert.Single(sink.VisualCacheBounds));
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
     public void ReplaySubtreePushesNativeDropShadowEffectWhenSinkSupportsVisualEffects()
     {
         var root = new FakeVisual
@@ -866,7 +885,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
     }
 
-    private sealed class TestSink : IWpfCompositionCommandSink, IWpfVisualEffectCommandSink
+    private sealed class TestSink : IWpfCompositionCommandSink, IWpfVisualEffectCommandSink, IWpfVisualCacheCommandSink
     {
         public List<string> Operations { get; } = new();
 
@@ -890,7 +909,11 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         public List<ProGpuEffectBase> VisualEffects { get; } = new();
 
+        public List<Rect?> VisualCacheBounds { get; } = new();
+
         public bool AcceptVisualEffects { get; init; }
+
+        public bool AcceptVisualCaches { get; init; }
 
         public MediaDrawingContext DrawingContext => null!;
 
@@ -992,6 +1015,18 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
             Operations.Add("PushVisualEffect");
             VisualEffects.Add(effect);
+            return true;
+        }
+
+        public bool PushVisualCache(Rect? bounds = null)
+        {
+            if (!AcceptVisualCaches)
+            {
+                return false;
+            }
+
+            Operations.Add("PushVisualCache");
+            VisualCacheBounds.Add(bounds);
             return true;
         }
 

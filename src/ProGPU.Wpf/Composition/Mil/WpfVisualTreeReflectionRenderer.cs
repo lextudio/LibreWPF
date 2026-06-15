@@ -192,6 +192,20 @@ public sealed class WpfVisualTreeReflectionRenderer
             }
         }
 
+        if (TryGetPropertyValue(visual, "Effect", out var effect) && effect != null)
+        {
+            if (WpfEffectReflection.TryCreateProGpuEffect(effect, out var proGpuEffect)
+                && sink is IWpfVisualEffectCommandSink effectSink
+                && effectSink.PushVisualEffect(proGpuEffect))
+            {
+                popCount++;
+            }
+            else
+            {
+                stats.UnsupportedVisualStateCount++;
+            }
+        }
+
         if (TryCreateVisualGuidelineSet(visual, out var guidelineSet))
         {
             sink.PushGuidelineSet(guidelineSet);
@@ -254,7 +268,7 @@ public sealed class WpfVisualTreeReflectionRenderer
     {
         var count = 0;
 
-        foreach (var propertyName in new[] { "Effect", "BitmapEffect", "BitmapEffectInput", "CacheMode" })
+        foreach (var propertyName in new[] { "BitmapEffect", "BitmapEffectInput", "CacheMode" })
         {
             if (HasNonNullProperty(visual, propertyName))
             {

@@ -13,6 +13,9 @@ using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPen = System.Windows.Media.Pen;
 using MediaTransform = System.Windows.Media.Transform;
 using WpfVector = System.Windows.Vector;
+using ProGpuBlurEffect = ProGPU.Scene.BlurEffect;
+using ProGpuDropShadowEffect = ProGPU.Scene.DropShadowEffect;
+using ProGpuEffectBase = ProGPU.Scene.EffectBase;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
 
@@ -223,7 +226,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
     {
         var root = new FakeVisual
         {
-            Effect = new object(),
+            Effect = new FakeBlurEffect(8),
             BitmapEffect = new object(),
             CacheMode = new object(),
             EdgeMode = new FakeRenderingHint("Aliased"),
@@ -242,6 +245,75 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.Equal(new[] { "Aliased" }, sink.EdgeModes.Select(mode => mode?.ToString()));
         Assert.Equal(new[] { "Aliased" }, sink.TextRenderingModes.Select(mode => mode?.ToString()));
         Assert.Equal(5, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreePushesNativeBlurEffectWhenSinkSupportsVisualEffects()
+    {
+        var root = new FakeVisual
+        {
+            Effect = new FakeBlurEffect(12.5)
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink { AcceptVisualEffects = true };
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushVisualEffect", "DrawRectangle", "Pop" }, sink.Operations);
+        var effect = Assert.IsType<ProGpuBlurEffect>(Assert.Single(sink.VisualEffects));
+        Assert.Equal(12.5f, effect.BlurRadius);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreePushesNativeDropShadowEffectWhenSinkSupportsVisualEffects()
+    {
+        var root = new FakeVisual
+        {
+            Effect = new FakeDropShadowEffect
+            {
+                BlurRadius = 7,
+                ShadowDepth = 10,
+                Direction = 315,
+                Opacity = 0.5,
+                Color = Color.FromArgb(128, 10, 20, 30)
+            }
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink { AcceptVisualEffects = true };
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushVisualEffect", "DrawRectangle", "Pop" }, sink.Operations);
+        var effect = Assert.IsType<ProGpuDropShadowEffect>(Assert.Single(sink.VisualEffects));
+        Assert.Equal(7f, effect.BlurRadius);
+        Assert.InRange(effect.Offset.X, 7.06f, 7.08f);
+        Assert.InRange(effect.Offset.Y, 7.06f, 7.08f);
+        Assert.Equal(10f / 255f, effect.Color.X);
+        Assert.Equal(20f / 255f, effect.Color.Y);
+        Assert.Equal(30f / 255f, effect.Color.Z);
+        Assert.InRange(effect.Color.W, 0.25f, 0.251f);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeCountsSupportedEffectUnsupportedWhenSinkCannotApplyVisualEffects()
+    {
+        var root = new FakeVisual
+        {
+            Effect = new FakeBlurEffect(4)
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
+        Assert.Empty(sink.VisualEffects);
+        Assert.Equal(1, result.UnsupportedVisualStateCount);
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
     }
 
@@ -489,6 +561,29 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
     }
 
+    private sealed class FakeBlurEffect
+    {
+        public FakeBlurEffect(double radius)
+        {
+            Radius = radius;
+        }
+
+        public double Radius { get; }
+    }
+
+    private sealed class FakeDropShadowEffect
+    {
+        public double BlurRadius { get; init; }
+
+        public double ShadowDepth { get; init; }
+
+        public double Direction { get; init; }
+
+        public double Opacity { get; init; } = 1;
+
+        public Color Color { get; init; } = Colors.Black;
+    }
+
     private sealed class FakeRenderData
     {
         private readonly byte[] _buffer;
@@ -562,7 +657,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
     }
 
-    private sealed class TestSink : IWpfCompositionCommandSink
+    private sealed class TestSink : IWpfCompositionCommandSink, IWpfVisualEffectCommandSink
     {
         public List<string> Operations { get; } = new();
 
@@ -583,6 +678,10 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public List<object?> EdgeModes { get; } = new();
 
         public List<object?> TextRenderingModes { get; } = new();
+
+        public List<ProGpuEffectBase> VisualEffects { get; } = new();
+
+        public bool AcceptVisualEffects { get; init; }
 
         public MediaDrawingContext DrawingContext => null!;
 
@@ -673,6 +772,18 @@ public sealed class WpfVisualTreeReflectionRendererTests
         {
             Operations.Add("PushTextRenderingMode");
             TextRenderingModes.Add(textRenderingMode);
+        }
+
+        public bool PushVisualEffect(ProGpuEffectBase effect)
+        {
+            if (!AcceptVisualEffects)
+            {
+                return false;
+            }
+
+            Operations.Add("PushVisualEffect");
+            VisualEffects.Add(effect);
+            return true;
         }
 
         public void Pop()

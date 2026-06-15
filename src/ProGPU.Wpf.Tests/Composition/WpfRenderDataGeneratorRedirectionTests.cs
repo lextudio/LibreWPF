@@ -424,6 +424,68 @@ public sealed class WpfRenderDataGeneratorRedirectionTests
         Assert.Contains("path.Replace('/', '\\\\')", source, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void WpfMcgElementsGenerationNoLongerRequiresXsdExe()
+    {
+        var generateElements = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "WpfGfx",
+            "codegen",
+            "mcg",
+            "tools",
+            "GenerateElements.cmd"));
+        var sourceModel = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "WpfGfx",
+            "codegen",
+            "mcg",
+            "ResourceModel",
+            "Generated",
+            "Elements.cs"));
+
+        Assert.DoesNotContain("xsd.exe", generateElements, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("-rsp:main\\Elements.rsp", generateElements, StringComparison.Ordinal);
+        Assert.Contains("XML serialization model for xml/Elements.xsd.", sourceModel, StringComparison.Ordinal);
+        Assert.DoesNotContain("auto-generated", sourceModel, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("GeneratedCodeAttribute(\"xsd\"", sourceModel, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WpfMcgElementsSourceModelMatchesElementsXsdAttributes()
+    {
+        var sourceModel = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "WpfGfx",
+            "codegen",
+            "mcg",
+            "ResourceModel",
+            "Generated",
+            "Elements.cs"));
+        var schema = XDocument.Load(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "WpfGfx",
+            "codegen",
+            "mcg",
+            "xml",
+            "Elements.xsd"));
+
+        Assert.Contains("public CGElement[] Elements", sourceModel, StringComparison.Ordinal);
+        Assert.Contains("public CGEvent[] Events", sourceModel, StringComparison.Ordinal);
+        Assert.Contains("public CGProperty[] Properties", sourceModel, StringComparison.Ordinal);
+
+        AssertSchemaAttributesMatchSourceModel(schema, sourceModel, "Element", "CGElement");
+        AssertSchemaAttributesMatchSourceModel(schema, sourceModel, "Event", "CGEvent");
+        AssertSchemaAttributesMatchSourceModel(schema, sourceModel, "Property", "CGProperty");
+    }
+
     private static IReadOnlyList<ResourceInstruction> ReadRenderDataInstructions()
     {
         var document = XDocument.Load(FindResourceXmlPath());
@@ -506,6 +568,40 @@ public sealed class WpfRenderDataGeneratorRedirectionTests
         Assert.True(branchIndex >= 0, $"Missing generated sink branch for {instructionName}({traceKind}).");
         Assert.True(returnIndex >= 0, $"Missing generated sink branch return for {instructionName}({traceKind}).");
         Assert.Contains(expected, generated[branchIndex..returnIndex], StringComparison.Ordinal);
+    }
+
+    private static void AssertSchemaAttributesMatchSourceModel(
+        XDocument schema,
+        string sourceModel,
+        string schemaElementName,
+        string sourceTypeName)
+    {
+        XNamespace xs = "http://www.w3.org/2001/XMLSchema";
+        XElement schemaElement = schema
+            .Descendants(xs + "element")
+            .Single(element => (string?)element.Attribute("name") == schemaElementName);
+        var attributes = schemaElement
+            .Descendants(xs + "attribute")
+            .Select(attribute => new
+            {
+                Name = (string)attribute.Attribute("name")!,
+                Type = (string)attribute.Attribute("type")!
+            })
+            .ToArray();
+
+        Assert.Contains($"public partial class {sourceTypeName}", sourceModel, StringComparison.Ordinal);
+
+        foreach (var attribute in attributes)
+        {
+            string expectedType = attribute.Type == "xs:boolean" ? "bool" : "string";
+
+            Assert.Contains($"public {expectedType} {attribute.Name}", sourceModel, StringComparison.Ordinal);
+
+            if (attribute.Type == "xs:boolean")
+            {
+                Assert.Contains($"public bool {attribute.Name}Specified", sourceModel, StringComparison.Ordinal);
+            }
+        }
     }
 
     private static string FindRepoPath(params string[] pathSegments)

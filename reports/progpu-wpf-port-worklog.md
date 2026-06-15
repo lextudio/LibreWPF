@@ -253,6 +253,9 @@
 - Added `WpfObjectRenderDataDrawingContext` in ProGPU.Wpf and updated `WpfRenderDataSinkProviderBridge` to prefer object-sink provider activation, with explicit provider `Type` and `Assembly` overloads for hosts that can see the real WPF `PresentationCore` assembly while ProGPU.Wpf still references the shim.
 - Threaded the active `IWpfImageSourceAdapter` through composition-target and Silk.NET host render-data provider registration so object-sink `DrawImage` calls can continue using the existing reflected image-source adaptation path.
 - Verified object-sink activation and conversion with `dotnet test ../ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj --no-restore --verbosity minimal` from `src/ProGPU.Wpf`; 347 tests passed.
+- Added `src/ProGPU.Wpf.RealPresentationCoreHarness`, a `net11.0` integration harness that loads the real built `PresentationCore.dll`, registers `WpfRenderDataSinkProviderBridge.TryRegisterRenderDataSinkProvider(Assembly, ...)` against the real `RenderDataDrawingContextSinkProvider`, and proves the real `ObjectRenderDataDrawingContextSink` forwards `PushOpacity`/`Pop` into a ProGPU frame.
+- The harness creates uninitialized real `DrawingVisual` owner instances for the provider call so the debug-only `CreateSink(Visual)` non-null contract is exercised without running WPF's dispatcher-bound constructor on macOS.
+- Verified the real-provider bridge with `dotnet run --project src/ProGPU.Wpf.RealPresentationCoreHarness/ProGPU.Wpf.RealPresentationCoreHarness.csproj --no-restore --verbosity minimal`; the harness completed with `Real PresentationCore render-data provider registration succeeded.`
 - Verified WPF builds after the object-sink hook with `dotnet build src/Microsoft.DotNet.Wpf/src/PresentationCore/PresentationCore.csproj --no-restore --verbosity minimal` and `dotnet build src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj --no-restore --verbosity minimal`; both completed with 0 warnings and 0 errors.
 - Attempted the documented WPF MCG path with `dotnet build src/Microsoft.DotNet.Wpf/src/WpfGfx/codegen/mcg/mcg.proj --verbosity minimal`. Restore completed for `mcg.proj` and `csp.csproj`, then build stopped before generation because `csp.csproj` still targets `net48`/x86 and the macOS lane has no .NET Framework 4.8 reference assemblies (`MSB3644`). No generated files changed.
 - Added a portable `net10.0` target to the legacy CSP tool, with a Roslyn-backed dynamic compile path for generated C# Prime projects, path normalization for response/source/reference arguments, and copy-local Roslyn runtime dependencies.
@@ -275,7 +278,6 @@
 
 ## Open Porting Items
 
-- Exercise `WpfRenderDataSinkProviderBridge.TryRegisterRenderDataSinkProvider(Assembly, ...)` against a real `PresentationCore` provider in an integration harness. ProGPU strong-name signing is now in place, and the non-Windows MCG path can now regenerate render-data output from the updated generator when needed.
 - Replace the remaining portable `MS.Internal.Text.TextInterface` simple glyph fallback, full-font-copy subsetting fallback, and LineServices dependencies with a ProGPU-backed or cross-platform shaping abstraction.
 - Wire `WpfRenderDataReflectionBridge` into real WPF visual rendering paths or replace it with an in-assembly bridge once the port lane compiles managed WPF directly.
 - Replace the reflection visual subtree renderer with in-assembly visual traversal when managed WPF compiles in the port lane.

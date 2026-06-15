@@ -9,6 +9,7 @@ The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and
 - ProGPU-owned affine arc transformation in `ProGPU.Vector.ArcSegmentGeometry`, so WPF transformed path arcs can remain native ProGPU arc segments through translation, scale, rotation, shear, and orientation-reversing transforms.
 - shader-native ProGPU arc stroke strips in `ProGPU.Scene.Compositor`/`ProGPU.Backend.Shaders`, using WPF arc center math once on the CPU and evaluating stroke vertices from transformed ellipse axes in WGSL instead of flattening arcs to line segments.
 - exact ProGPU arc bounds for `PathAtlas` and path-op compilation, so WPF path fills and combined-geometry operations can keep native GPU arc segment records without atlas clipping from coarse sampled bounds.
+- ProGPU-owned subarc construction for dashed WPF arc spans, allowing the WPF bridge to split visible dash intervals into native `ArcSegment` commands that still render through the ProGPU arc shader instead of cubic/polyline fallback geometry.
 - reusable `ProGPU.Text.SfntFontFace` metadata/table/cmap/glyph-metric APIs plus `FontApi` updates for TTC face enumeration, localized name strings, and cross-platform system font directory discovery.
 - `SfntFontFace` source-sharing visibility so the helper remains public in `ProGPU.Text` but compiles as internal when WPF links that single source file under `PresentationCore`.
 - a ProGPU-local `global.json` pinned to SDK `10.0.201` so the submodule builds consistently even when nested below WPF's .NET 11 preview SDK checkout.

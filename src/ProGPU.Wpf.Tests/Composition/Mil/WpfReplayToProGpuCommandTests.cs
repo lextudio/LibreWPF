@@ -961,6 +961,68 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
+    public void DecodeFilledDashedArcGeometryThroughProGpuSinkEmitsNativeArcDashCommands()
+    {
+        var geometry = new PathGeometry();
+        var figure = new PathFigure
+        {
+            StartPoint = new Vector2(0, 0),
+            IsClosed = false,
+            IsFilled = true
+        };
+        figure.Segments.Add(new ArcSegment
+        {
+            Point = new Vector2(30, 0),
+            Size = new Vector2(15, 15),
+            RotationAngle = 0,
+            IsLargeArc = false,
+            SweepDirection = SweepDirection.Clockwise
+        });
+        geometry.Figures.Add(figure);
+
+        var pen = new FakePen(
+            new FakeSolidColorBrush(new FakeColor(255, 0, 0, 0)),
+            1)
+        {
+            DashStyle = new FakeDashStyle(new[] { 100.0, 1.0 }, 0)
+        };
+        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[]
+        {
+            Brushes.Blue,
+            pen,
+            geometry
+        });
+        var nativeContext = new ProGpuDrawingContext();
+        using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
+
+        var payload = new byte[16];
+        WriteUInt32(payload, 0, 1);
+        WriteUInt32(payload, 4, 2);
+        WriteUInt32(payload, 8, 3);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawGeometry, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        Assert.Equal(2, nativeContext.Commands.Count);
+        Assert.Equal(RenderCommandType.DrawPath, nativeContext.Commands[0].Type);
+        Assert.NotNull(nativeContext.Commands[0].Brush);
+        Assert.Null(nativeContext.Commands[0].Pen);
+
+        var dashCommand = nativeContext.Commands[1];
+        Assert.Equal(RenderCommandType.DrawPath, dashCommand.Type);
+        Assert.Null(dashCommand.Brush);
+        Assert.NotNull(dashCommand.Pen);
+        var dashFigure = Assert.Single(dashCommand.Path!.Figures);
+        var nativeArc = Assert.IsType<ProGPU.Vector.ArcSegment>(Assert.Single(dashFigure.Segments));
+        Assert.Equal(ProGPU.Vector.SweepDirection.Clockwise, nativeArc.SweepDirection);
+        Assert.Equal(15, nativeArc.Size.X);
+        Assert.Equal(15, nativeArc.Size.Y);
+    }
+
+    [Fact]
     public void DecodeFilledDashedCombinedGeometryThroughProGpuSinkEmitsFillThenOperandDashSegments()
     {
         var geometry = new FakeCombinedGeometry(

@@ -888,25 +888,23 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             return combinedEmitted;
         }
 
-        var emitted = false;
+        var handled = false;
         foreach (var figure in path.Figures)
         {
-            var points = FlattenPathFigure(figure);
-            if (points.Count >= 2 && TryDrawDashedPolyline(nativePen, pen, points))
-            {
-                emitted = true;
-            }
+            handled |= TryDrawDashedPathFigure(nativePen, pen, figure);
         }
 
-        return emitted;
+        return handled;
     }
 
-    private static IReadOnlyList<Point> FlattenPathFigure(VectorPathFigure figure)
+    private bool TryDrawDashedPathFigure(VectorPen nativePen, ProGpuWpfPen pen, VectorPathFigure figure)
     {
-        var points = new List<Point>
+        if (!TryInitializeDashPattern(pen, out var pattern, out var patternIndex, out var distanceInPattern))
         {
-            ToPoint(figure.StartPoint)
-        };
+            return false;
+        }
+
+        var handled = false;
         var current = figure.StartPoint;
 
         foreach (var segment in figure.Segments)
@@ -914,33 +912,80 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             switch (segment)
             {
                 case VectorLineSegment line:
-                    points.Add(ToPoint(line.Point));
+                    handled |= TryDrawDashedLineSegment(
+                        nativePen,
+                        pen,
+                        current,
+                        line.Point,
+                        pattern,
+                        ref patternIndex,
+                        ref distanceInPattern);
                     current = line.Point;
                     break;
 
                 case VectorQuadraticBezierSegment quadratic:
+                {
+                    var points = new List<Point>
+                    {
+                        ToPoint(current)
+                    };
                     AppendQuadratic(points, current, quadratic.ControlPoint, quadratic.Point);
+                    handled |= TryDrawDashedPolylineSegments(
+                        nativePen,
+                        pen,
+                        points,
+                        pattern,
+                        ref patternIndex,
+                        ref distanceInPattern);
                     current = quadratic.Point;
                     break;
+                }
 
                 case VectorCubicBezierSegment cubic:
+                {
+                    var points = new List<Point>
+                    {
+                        ToPoint(current)
+                    };
                     AppendCubic(points, current, cubic.ControlPoint1, cubic.ControlPoint2, cubic.Point);
+                    handled |= TryDrawDashedPolylineSegments(
+                        nativePen,
+                        pen,
+                        points,
+                        pattern,
+                        ref patternIndex,
+                        ref distanceInPattern);
                     current = cubic.Point;
                     break;
+                }
 
                 case VectorArcSegment arc:
-                    AppendArcApproximation(points, current, arc);
+                    handled |= TryDrawDashedArcSegment(
+                        nativePen,
+                        pen,
+                        current,
+                        arc,
+                        pattern,
+                        ref patternIndex,
+                        ref distanceInPattern);
                     current = arc.Point;
                     break;
             }
         }
 
-        if (figure.IsClosed && (!AreClose(points[0].X, points[^1].X, TransformEpsilon) || !AreClose(points[0].Y, points[^1].Y, TransformEpsilon)))
+        if (figure.IsClosed && Vector2.DistanceSquared(current, figure.StartPoint) > TransformEpsilon * TransformEpsilon)
         {
-            points.Add(points[0]);
+            handled |= TryDrawDashedLineSegment(
+                nativePen,
+                pen,
+                current,
+                figure.StartPoint,
+                pattern,
+                ref patternIndex,
+                ref distanceInPattern);
         }
 
-        return points;
+        return handled;
     }
 
     private static void AppendQuadratic(List<Point> points, Vector2 p0, Vector2 p1, Vector2 p2)
@@ -967,33 +1012,6 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
                 + 3 * inverse * t * t * p2
                 + t * t * t * p3;
             points.Add(ToPoint(point));
-        }
-    }
-
-    private static void AppendArcApproximation(List<Point> points, Vector2 start, VectorArcSegment arc)
-    {
-        var cubics = new List<WpfCubicBezierSegmentData>();
-        if (!WpfArcSegmentConversion.TryAppendTransformedCubics(
-                cubics,
-                start,
-                arc.Point,
-                arc.Size,
-                arc.RotationAngle,
-                arc.IsLargeArc,
-                arc.SweepDirection == VectorSweepDirection.Clockwise
-                    ? MediaSweepDirection.Clockwise
-                    : MediaSweepDirection.Counterclockwise,
-                Matrix4x4.Identity))
-        {
-            points.Add(ToPoint(arc.Point));
-            return;
-        }
-
-        var current = start;
-        foreach (var cubic in cubics)
-        {
-            AppendCubic(points, current, cubic.ControlPoint1, cubic.ControlPoint2, cubic.Point);
-            current = cubic.Point;
         }
     }
 
@@ -1056,12 +1074,152 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
 
     private bool TryDrawDashedPolyline(VectorPen nativePen, ProGpuWpfPen pen, IReadOnlyList<Point> points)
     {
-        if (!TryBuildDashPattern(pen, out var pattern, out var dashOffset))
+        if (!TryInitializeDashPattern(pen, out var pattern, out var patternIndex, out var distanceInPattern))
         {
             return false;
         }
 
         if (points.Count < 2)
+        {
+            return false;
+        }
+
+        return TryDrawDashedPolylineSegments(
+            nativePen,
+            pen,
+            points,
+            pattern,
+            ref patternIndex,
+            ref distanceInPattern);
+    }
+
+    private bool TryDrawDashedPolylineSegments(
+        VectorPen nativePen,
+        ProGpuWpfPen pen,
+        IReadOnlyList<Point> points,
+        float[] pattern,
+        ref int patternIndex,
+        ref float distanceInPattern)
+    {
+        if (points.Count < 2)
+        {
+            return true;
+        }
+
+        for (var i = 0; i < points.Count - 1; i++)
+        {
+            TryDrawDashedLineSegment(
+                nativePen,
+                pen,
+                new Vector2((float)points[i].X, (float)points[i].Y),
+                new Vector2((float)points[i + 1].X, (float)points[i + 1].Y),
+                pattern,
+                ref patternIndex,
+                ref distanceInPattern);
+        }
+
+        return true;
+    }
+
+    private bool TryDrawDashedLineSegment(
+        VectorPen nativePen,
+        ProGpuWpfPen pen,
+        Vector2 start,
+        Vector2 end,
+        float[] pattern,
+        ref int patternIndex,
+        ref float distanceInPattern)
+    {
+        var delta = end - start;
+        var length = delta.Length();
+        if (length <= TransformEpsilon)
+        {
+            return true;
+        }
+
+        var direction = delta / length;
+        var distance = 0f;
+        while (distance < length)
+        {
+            var remainingInElement = pattern[patternIndex] - distanceInPattern;
+            var step = Math.Min(remainingInElement, length - distance);
+            if ((patternIndex % 2) == 0 && step > TransformEpsilon)
+            {
+                var dashStart = start + direction * distance;
+                var dashEnd = start + direction * (distance + step);
+                AddNativeLine(
+                    nativePen,
+                    new Point(dashStart.X, dashStart.Y),
+                    new Point(dashEnd.X, dashEnd.Y),
+                    pen.DashCap,
+                    pen.DashCap);
+            }
+
+            AdvanceDashPattern(pattern, ref patternIndex, ref distanceInPattern, remainingInElement, step);
+            distance += step;
+        }
+
+        return true;
+    }
+
+    private bool TryDrawDashedArcSegment(
+        VectorPen nativePen,
+        ProGpuWpfPen pen,
+        Vector2 start,
+        VectorArcSegment arc,
+        float[] pattern,
+        ref int patternIndex,
+        ref float distanceInPattern)
+    {
+        if (!TryBuildArcLengthTable(start, arc, out var cumulativeLengths, out var totalLength))
+        {
+            return TryDrawDashedLineSegment(
+                nativePen,
+                pen,
+                start,
+                arc.Point,
+                pattern,
+                ref patternIndex,
+                ref distanceInPattern);
+        }
+
+        var distance = 0f;
+        while (distance < totalLength)
+        {
+            var remainingInElement = pattern[patternIndex] - distanceInPattern;
+            var step = Math.Min(remainingInElement, totalLength - distance);
+            if ((patternIndex % 2) == 0 && step > TransformEpsilon)
+            {
+                var startParameter = GetArcParameterAtDistance(cumulativeLengths, distance);
+                var endParameter = GetArcParameterAtDistance(cumulativeLengths, distance + step);
+                if (global::ProGPU.Vector.ArcSegmentGeometry.TryCreateSubArcSegment(
+                        start,
+                        arc,
+                        startParameter,
+                        endParameter,
+                        out var dashStart,
+                        out var dashArc))
+                {
+                    AddNativeArcDash(nativePen, pen.DashCap, dashStart, dashArc);
+                }
+            }
+
+            AdvanceDashPattern(pattern, ref patternIndex, ref distanceInPattern, remainingInElement, step);
+            distance += step;
+        }
+
+        return true;
+    }
+
+    private static bool TryInitializeDashPattern(
+        ProGpuWpfPen pen,
+        out float[] pattern,
+        out int patternIndex,
+        out float distanceInPattern)
+    {
+        patternIndex = 0;
+        distanceInPattern = 0;
+        if (!TryBuildDashPattern(pen, out pattern, out var dashOffset))
         {
             return false;
         }
@@ -1077,59 +1235,124 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             return false;
         }
 
-        var distanceInPattern = PositiveModulo((float)(dashOffset * pen.Thickness), patternLength);
-        var patternIndex = 0;
+        distanceInPattern = PositiveModulo((float)(dashOffset * pen.Thickness), patternLength);
         while (distanceInPattern >= pattern[patternIndex])
         {
             distanceInPattern -= pattern[patternIndex];
             patternIndex = (patternIndex + 1) % pattern.Length;
         }
 
-        var emitted = false;
-        for (var i = 0; i < points.Count - 1; i++)
+        return true;
+    }
+
+    private static void AdvanceDashPattern(
+        float[] pattern,
+        ref int patternIndex,
+        ref float distanceInPattern,
+        float remainingInElement,
+        float step)
+    {
+        if (step >= remainingInElement - TransformEpsilon)
         {
-            var start = new Vector2((float)points[i].X, (float)points[i].Y);
-            var end = new Vector2((float)points[i + 1].X, (float)points[i + 1].Y);
-            var delta = end - start;
-            var length = delta.Length();
-            if (length <= TransformEpsilon)
-            {
-                continue;
-            }
+            distanceInPattern = 0;
+            patternIndex = (patternIndex + 1) % pattern.Length;
+        }
+        else
+        {
+            distanceInPattern += step;
+        }
+    }
 
-            var direction = delta / length;
-            var distance = 0f;
-            while (distance < length)
-            {
-                var remainingInElement = pattern[patternIndex] - distanceInPattern;
-                var step = Math.Min(remainingInElement, length - distance);
-                if ((patternIndex % 2) == 0 && step > TransformEpsilon)
-                {
-                    var dashStart = start + direction * distance;
-                    var dashEnd = start + direction * (distance + step);
-                    AddNativeLine(
-                        nativePen,
-                        new Point(dashStart.X, dashStart.Y),
-                        new Point(dashEnd.X, dashEnd.Y),
-                        pen.DashCap,
-                        pen.DashCap);
-                    emitted = true;
-                }
+    private void AddNativeArcDash(
+        VectorPen nativePen,
+        MediaPenLineCap dashCap,
+        Vector2 start,
+        VectorArcSegment arc)
+    {
+        var path = new VectorPathGeometry();
+        var figure = new VectorPathFigure(start)
+        {
+            IsFilled = false
+        };
+        figure.Segments.Add(arc);
+        path.Figures.Add(figure);
 
-                distance += step;
-                if (step >= remainingInElement - TransformEpsilon)
-                {
-                    distanceInPattern = 0;
-                    patternIndex = (patternIndex + 1) % pattern.Length;
-                }
-                else
-                {
-                    distanceInPattern += step;
-                }
+        AddNativePath(null, WithLineCaps(nativePen, dashCap, dashCap), path);
+    }
+
+    private static bool TryBuildArcLengthTable(
+        Vector2 start,
+        VectorArcSegment arc,
+        out float[] cumulativeLengths,
+        out float totalLength)
+    {
+        if (!global::ProGPU.Vector.ArcSegmentGeometry.TryGetArcCenter(
+                start,
+                arc.Point,
+                arc.Size,
+                arc.RotationAngle,
+                arc.IsLargeArc,
+                arc.SweepDirection,
+                out _,
+                out _,
+                out _,
+                out _,
+                out _))
+        {
+            cumulativeLengths = Array.Empty<float>();
+            totalLength = 0;
+            return false;
+        }
+
+        var points = global::ProGPU.Vector.ArcSegmentGeometry.FlattenArc(
+            start,
+            arc,
+            MathF.PI / 64f);
+        cumulativeLengths = new float[points.Length];
+        totalLength = 0;
+
+        if (points.Length < 2)
+        {
+            return false;
+        }
+
+        for (var i = 1; i < points.Length; i++)
+        {
+            totalLength += Vector2.Distance(points[i - 1], points[i]);
+            cumulativeLengths[i] = totalLength;
+        }
+
+        return totalLength > TransformEpsilon;
+    }
+
+    private static float GetArcParameterAtDistance(float[] cumulativeLengths, float distance)
+    {
+        if (distance <= 0)
+        {
+            return 0;
+        }
+
+        var totalLength = cumulativeLengths[^1];
+        if (distance >= totalLength)
+        {
+            return 1;
+        }
+
+        for (var i = 1; i < cumulativeLengths.Length; i++)
+        {
+            var current = cumulativeLengths[i];
+            if (distance <= current)
+            {
+                var previous = cumulativeLengths[i - 1];
+                var spanLength = current - previous;
+                var local = spanLength > TransformEpsilon
+                    ? (distance - previous) / spanLength
+                    : 0;
+                return (i - 1 + local) / (cumulativeLengths.Length - 1);
             }
         }
 
-        return emitted;
+        return 1;
     }
 
     private static bool TryBuildDashPattern(ProGpuWpfPen pen, out float[] pattern, out double dashOffset)
@@ -1455,6 +1678,18 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             MediaPenLineCap.Triangle => VectorPenLineCap.Triangle,
             _ => VectorPenLineCap.Flat
         };
+    }
+
+    private static VectorPen WithLineCaps(VectorPen pen, MediaPenLineCap startLineCap, MediaPenLineCap endLineCap)
+    {
+        return new VectorPen(
+            pen.Brush,
+            pen.Thickness,
+            pen.LineJoin,
+            pen.MiterLimit,
+            ToNativeLineCap(startLineCap),
+            ToNativeLineCap(endLineCap),
+            pen.DashCap);
     }
 
     private static bool TryConvertGeometryToNativePath(

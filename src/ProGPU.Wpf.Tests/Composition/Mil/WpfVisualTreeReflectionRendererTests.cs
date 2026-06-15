@@ -16,6 +16,8 @@ using WpfVector = System.Windows.Vector;
 using ProGpuBlurEffect = ProGPU.Scene.BlurEffect;
 using ProGpuDropShadowEffect = ProGPU.Scene.DropShadowEffect;
 using ProGpuEffectBase = ProGPU.Scene.EffectBase;
+using ProGpuWpfShaderEffect = ProGPU.Scene.WpfShaderEffect;
+using ProGpuTextureSamplingMode = ProGPU.Scene.TextureSamplingMode;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
 
@@ -318,6 +320,96 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreePushesNativeShaderEffectWhenReplacementIsRegistered()
+    {
+        var bytecode = new byte[] { 0, 3, 0, 0, 1, 2, 3, 4 };
+        var shaderSource = "fn wpf_effect_main(uv: vec2<f32>, inputColor: vec4<f32>) -> vec4<f32> { return inputColor; }";
+        var replacementKey = WpfShaderEffectRegistry.RegisterPixelShaderBytecode(
+            bytecode,
+            shaderSource,
+            shaderKey: "registered_fake_shader");
+
+        try
+        {
+            var shaderEffect = new FakeShaderEffect(bytecode);
+            shaderEffect.SetFloatConstant(2, 0.25f, 0.5f, 0.75f, 1f);
+            shaderEffect.SetImplicitInputSampler(1, FakeSamplingMode.NearestNeighbor);
+
+            var root = new FakeVisual { Effect = shaderEffect };
+            root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+            var sink = new TestSink { AcceptVisualEffects = true };
+            var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+            Assert.Equal(new[] { "PushVisualEffect", "DrawRectangle", "Pop" }, sink.Operations);
+            var effect = Assert.IsType<ProGpuWpfShaderEffect>(Assert.Single(sink.VisualEffects));
+            Assert.Equal(shaderSource, effect.Parameters.ShaderSource);
+            Assert.Equal("registered_fake_shader", effect.Parameters.ShaderKey);
+            Assert.Equal(1, effect.Parameters.SourceTextureRegisterIndex);
+            Assert.Equal(ProGpuTextureSamplingMode.Nearest, effect.Parameters.SamplingMode);
+            Assert.Equal(0.25f, effect.Parameters.Constants[8]);
+            Assert.Equal(0.5f, effect.Parameters.Constants[9]);
+            Assert.Equal(0.75f, effect.Parameters.Constants[10]);
+            Assert.Equal(1f, effect.Parameters.Constants[11]);
+            Assert.Equal(0, result.UnsupportedVisualStateCount);
+            Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+        }
+        finally
+        {
+            WpfShaderEffectRegistry.Unregister(replacementKey);
+        }
+    }
+
+    [Fact]
+    public void ReplaySubtreeCountsShaderEffectUnsupportedWhenReplacementIsMissing()
+    {
+        var root = new FakeVisual
+        {
+            Effect = new FakeShaderEffect(new byte[] { 0, 3, 0, 0, 9, 9, 9, 9 })
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink { AcceptVisualEffects = true };
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
+        Assert.Empty(sink.VisualEffects);
+        Assert.Equal(1, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeCountsShaderEffectUnsupportedForOutOfRangeInputSampler()
+    {
+        var bytecode = new byte[] { 0, 3, 0, 0, 4, 4, 4, 4 };
+        var replacementKey = WpfShaderEffectRegistry.RegisterPixelShaderBytecode(
+            bytecode,
+            "fn wpf_effect_main(uv: vec2<f32>, inputColor: vec4<f32>) -> vec4<f32> { return inputColor; }",
+            shaderKey: "registered_out_of_range_sampler_shader");
+
+        try
+        {
+            var shaderEffect = new FakeShaderEffect(bytecode);
+            shaderEffect.SetImplicitInputSampler(16, FakeSamplingMode.NearestNeighbor);
+
+            var root = new FakeVisual { Effect = shaderEffect };
+            root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+            var sink = new TestSink { AcceptVisualEffects = true };
+            var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+            Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
+            Assert.Empty(sink.VisualEffects);
+            Assert.Equal(1, result.UnsupportedVisualStateCount);
+            Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+        }
+        finally
+        {
+            WpfShaderEffectRegistry.Unregister(replacementKey);
+        }
+    }
+
+    [Fact]
     public void ReplaySubtreeAppliesLowQualityBitmapScalingAsLinearState()
     {
         var root = new FakeVisual
@@ -582,6 +674,66 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public double Opacity { get; init; } = 1;
 
         public Color Color { get; init; } = Colors.Black;
+    }
+
+    private sealed class FakeShaderEffect
+    {
+        private readonly List<FakeFloatRegister?> _floatRegisters = new();
+        private readonly List<FakeSamplerData?> _samplerData = new();
+
+        public FakeShaderEffect(byte[] shaderBytecode)
+        {
+            PixelShader = new FakePixelShader(shaderBytecode);
+        }
+
+        public FakePixelShader PixelShader { get; }
+
+        public void SetFloatConstant(int registerIndex, float r, float g, float b, float a)
+        {
+            while (_floatRegisters.Count <= registerIndex)
+            {
+                _floatRegisters.Add(null);
+            }
+
+            _floatRegisters[registerIndex] = new FakeFloatRegister(r, g, b, a);
+        }
+
+        public void SetImplicitInputSampler(int registerIndex, FakeSamplingMode samplingMode)
+        {
+            while (_samplerData.Count <= registerIndex)
+            {
+                _samplerData.Add(null);
+            }
+
+            _samplerData[registerIndex] = new FakeSamplerData(new FakeImplicitInputBrush(), samplingMode);
+        }
+    }
+
+    private sealed class FakePixelShader
+    {
+        private readonly byte[] _shaderBytecode;
+
+        public FakePixelShader(byte[] shaderBytecode)
+        {
+            _shaderBytecode = shaderBytecode;
+        }
+
+        public Uri? UriSource { get; init; }
+    }
+
+    private readonly record struct FakeFloatRegister(float r, float g, float b, float a);
+
+    private readonly record struct FakeSamplerData(object? _brush, object? _samplingMode);
+
+    private sealed class FakeImplicitInputBrush
+    {
+    }
+
+    private enum FakeSamplingMode
+    {
+        NearestNeighbor = 0,
+        Bilinear = 1,
+        Auto = 2
     }
 
     private sealed class FakeRenderData

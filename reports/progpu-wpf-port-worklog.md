@@ -275,6 +275,11 @@
 - Added shader-native ProGPU path arc stroking: `CompilePathCommand` now emits one parametric arc stroke strip per valid arc using transformed ellipse center/axis vectors, the vector WGSL evaluates arc vertices/tangents directly, and degenerate arcs are the only path that falls back to the older flattened line-strip emission.
 - Added a headless ProGPU compositor regression test proving stroked path arcs compile to arc shape type `11` instead of line shape type `3`, and verified it with `dotnet test src/ProGPU.Tests/ProGPU.Tests.csproj --no-restore --verbosity minimal --filter FullyQualifiedName~ArcStrokeShaderTests`; 1 test passed.
 - Re-ran the full WPF bridge suite against the shader-native arc submodule changes with `dotnet test ../ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj --no-restore --verbosity minimal` from `src/ProGPU.Wpf`; 354 tests passed.
+- Added exact ProGPU arc bounds in `ProGPU.Vector.ArcSegmentGeometry` and routed `PathAtlas.CompilePath(...)` plus `PathOpGeometrySolver.CompilePath(...)` through that helper, replacing the previous eight-sample arc bounds approximation so native path-fill/path-op arcs are not clipped in atlas bounds for WPF arc extrema.
+- Made `PathAtlas.CompilePath(...)` static so native path compilation can be covered without a live WebGPU context.
+- Added ProGPU arc path compiler tests proving partial circle arcs keep GPU path segment type `3` and exact extrema in both the atlas compiler and path-op compiler. Verified with `dotnet test src/ProGPU.Tests/ProGPU.Tests.csproj --no-restore --verbosity minimal --filter FullyQualifiedName~ArcPathCompilerTests`; 3 tests passed.
+- Re-ran ProGPU arc/signing coverage with `dotnet test src/ProGPU.Tests/ProGPU.Tests.csproj --no-restore --verbosity minimal --filter "FullyQualifiedName~StrongNameSigningTests|FullyQualifiedName~Arc"`; 8 tests passed.
+- Re-ran the full WPF bridge suite against the exact arc-bounds submodule changes with `dotnet test ../ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj --no-restore --verbosity minimal` from `src/ProGPU.Wpf`; 354 tests passed.
 
 ## Open Porting Items
 

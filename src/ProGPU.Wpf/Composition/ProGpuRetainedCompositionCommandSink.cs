@@ -21,13 +21,15 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
     IWpfCompositionCommandSink,
     IWpfViewport3DCommandSink,
     IWpfVisualEffectCommandSink,
-    IWpfVisualCacheCommandSink
+    IWpfVisualCacheCommandSink,
+    IWpfDrawingCacheCommandSink
 {
     private enum ScopeKind
     {
         Delegate,
         VisualEffect,
-        VisualCache
+        VisualCache,
+        DrawingCache
     }
 
     private readonly Stack<ScopeKind> _scopeStack = new();
@@ -211,8 +213,17 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
 
     public bool PushVisualCache(Rect? bounds = null)
     {
-        ThrowIfClosed();
+        return PushCacheVisual(bounds, ScopeKind.VisualCache);
+    }
 
+    public bool PushDrawingCache(Rect? bounds = null)
+    {
+        return PushCacheVisual(bounds, ScopeKind.DrawingCache);
+    }
+
+    private bool PushCacheVisual(Rect? bounds, ScopeKind scopeKind)
+    {
+        ThrowIfClosed();
         var cacheBounds = NormalizeBounds(bounds);
         var cacheVisual = new ProGpuRetainedDrawingVisual
         {
@@ -221,7 +232,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
             Size = new Vector2((float)cacheBounds.Width, (float)cacheBounds.Height)
         };
 
-        PushVisualScope(cacheVisual, cacheBounds, ScopeKind.VisualCache);
+        PushVisualScope(cacheVisual, cacheBounds, scopeKind);
         return true;
     }
 

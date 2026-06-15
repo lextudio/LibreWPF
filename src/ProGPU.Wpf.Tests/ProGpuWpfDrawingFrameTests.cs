@@ -100,6 +100,32 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void RetainedSinkCreatesBoundedNativeDrawingCacheVisual()
+    {
+        var sceneRoot = new ProGpuContainerVisual();
+        var retainedRoot = new ProGpuContainerVisual();
+        var flatRoot = new ProGpuDrawingVisual();
+        var frame = new ProGpuWpfDrawingFrame(sceneRoot, retainedRoot, flatRoot, 200, 100);
+        using var sink = new ProGpuRetainedCompositionCommandSink(frame, context: null, viewport3DTextureCache: null);
+        var drawingCacheSink = (IWpfDrawingCacheCommandSink)sink;
+
+        Assert.True(drawingCacheSink.PushDrawingCache(new Rect(12, 13, 40, 50)));
+        sink.DrawRectangle(Brushes.Red, null, new Rect(12, 13, 14, 15));
+        sink.Pop();
+
+        var retainedRootVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
+        var cacheVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRootVisual.Children));
+        Assert.True(cacheVisual.CacheAsLayer);
+        Assert.Null(cacheVisual.Effect);
+        Assert.Equal(new Vector2(12, 13), cacheVisual.Offset);
+        Assert.Equal(new Vector2(40, 50), cacheVisual.Size);
+        var command = Assert.Single(cacheVisual.Context.Commands);
+        Assert.Equal(ProGpuRenderCommandType.DrawRect, command.Type);
+        Assert.Equal(-12, command.Transform.M41);
+        Assert.Equal(-13, command.Transform.M42);
+    }
+
+    [Fact]
     public void DrawingContextFactoryAppendsMultipleWrappersToSameFrameBuffer()
     {
         var root = new ProGpuDrawingVisual();

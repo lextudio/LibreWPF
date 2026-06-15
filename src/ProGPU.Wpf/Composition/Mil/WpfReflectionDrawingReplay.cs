@@ -483,8 +483,7 @@ internal static class WpfReflectionDrawingReplay
         IWpfCompositionCommandSink sink,
         Func<object?, MediaImageSource?>? imageSourceAdapter)
     {
-        if (HasNonNullProperty(drawingGroup, "CacheMode")
-            || !TryResolveDrawingGroupEffect(
+        if (!TryResolveDrawingGroupEffect(
                 drawingGroup,
                 imageSourceAdapter,
                 out var effect,
@@ -544,6 +543,21 @@ internal static class WpfReflectionDrawingReplay
         {
             sink.PushOpacityMask(opacityMask, opacityMaskBounds);
             popCount++;
+        }
+
+        var unsupportedGroupState = false;
+        if (HasNonNullProperty(drawingGroup, "CacheMode"))
+        {
+            if (sink is IWpfDrawingCacheCommandSink cacheSink
+                && TryGetDrawingGroupCacheBounds(drawingGroup, imageSourceAdapter, out var cacheBounds)
+                && cacheSink.PushDrawingCache(cacheBounds))
+            {
+                popCount++;
+            }
+            else
+            {
+                unsupportedGroupState = true;
+            }
         }
 
         if (hasEffect)
@@ -623,7 +637,7 @@ internal static class WpfReflectionDrawingReplay
         }
 
         var appliedAny = false;
-        var unsupportedAny = unsupportedRenderOptions;
+        var unsupportedAny = unsupportedGroupState || unsupportedRenderOptions;
         foreach (var child in ExtractChildren(drawingGroup))
         {
             var childStatus = Replay(child, sink, imageSourceAdapter);
@@ -1401,6 +1415,14 @@ internal static class WpfReflectionDrawingReplay
         }
 
         return false;
+    }
+
+    private static bool TryGetDrawingGroupCacheBounds(
+        object drawingGroup,
+        Func<object?, MediaImageSource?>? imageSourceAdapter,
+        out Rect? bounds)
+    {
+        return TryGetDrawingGroupEffectBounds(drawingGroup, imageSourceAdapter, out bounds);
     }
 
     private static bool HasExplicitRenderingHint(object source, string propertyName)

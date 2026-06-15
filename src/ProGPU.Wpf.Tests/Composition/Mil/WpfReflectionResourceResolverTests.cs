@@ -1765,6 +1765,61 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
+    public void DecodeDrawDrawingPushesNativeDrawingGroupCacheWhenSinkSupportsDrawingCaches()
+    {
+        var group = new FakeDrawingGroup(
+            new FakeGeometryDrawing(
+                new FakeSolidColorBrush(new FakeColor(255, 10, 20, 30)),
+                null,
+                new FakeRectangleGeometry(new FakeRect(2, 3, 10, 20))))
+        {
+            Bounds = new FakeRect(1, 2, 30, 40),
+            CacheMode = new object()
+        };
+        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var sink = new TestSink { AcceptDrawingCaches = true };
+
+        var payload = new byte[8];
+        WriteUInt32(payload, 0, 1);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawDrawing, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        Assert.Equal(new[] { "PushDrawingCache", "DrawGeometry", "Pop" }, sink.Operations);
+        Assert.Equal(new Rect(1, 2, 30, 40), Assert.Single(sink.DrawingCacheBounds));
+    }
+
+    [Fact]
+    public void DecodeDrawDrawingReportsUnsupportedDrawingGroupCacheAsPartialWhenSinkCannotCache()
+    {
+        var group = new FakeDrawingGroup(
+            new FakeGeometryDrawing(
+                new FakeSolidColorBrush(new FakeColor(255, 10, 20, 30)),
+                null,
+                new FakeRectangleGeometry(new FakeRect(0, 0, 10, 20))))
+        {
+            CacheMode = new object()
+        };
+        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var sink = new TestSink();
+
+        var payload = new byte[8];
+        WriteUInt32(payload, 0, 1);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawDrawing, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 1), result);
+        Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
+        Assert.Empty(sink.DrawingCacheBounds);
+    }
+
+    [Fact]
     public void DecodeDrawDrawingPassesWpfShapedDrawingGroupGuidelineSetToSink()
     {
         var group = new FakeDrawingGroup(
@@ -3507,7 +3562,7 @@ public sealed class WpfReflectionResourceResolverTests
         public object this[int index] => _items[index];
     }
 
-    private sealed class TestSink : IWpfCompositionCommandSink, IWpfVisualEffectCommandSink
+    private sealed class TestSink : IWpfCompositionCommandSink, IWpfVisualEffectCommandSink, IWpfDrawingCacheCommandSink
     {
         public List<string> Operations { get; } = new();
 
@@ -3539,7 +3594,11 @@ public sealed class WpfReflectionResourceResolverTests
 
         public List<Rect?> VisualEffectBounds { get; } = new();
 
+        public List<Rect?> DrawingCacheBounds { get; } = new();
+
         public bool AcceptVisualEffects { get; init; }
+
+        public bool AcceptDrawingCaches { get; init; }
 
         public int PopCount { get; private set; }
 
@@ -3663,6 +3722,18 @@ public sealed class WpfReflectionResourceResolverTests
             Operations.Add("PushVisualEffect");
             VisualEffects.Add(effect);
             VisualEffectBounds.Add(bounds);
+            return true;
+        }
+
+        public bool PushDrawingCache(Rect? bounds = null)
+        {
+            if (!AcceptDrawingCaches)
+            {
+                return false;
+            }
+
+            Operations.Add("PushDrawingCache");
+            DrawingCacheBounds.Add(bounds);
             return true;
         }
 

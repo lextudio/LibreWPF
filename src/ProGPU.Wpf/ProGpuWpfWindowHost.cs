@@ -22,6 +22,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private IWpfWindowEventService? _attachedWindowEventService;
     private object? _wpfRootVisual;
     private bool _isDisposed;
+    private bool _hasPresentedFrame;
 
     public ProGpuWpfWindowHost(ProGpuWpfWindowOptions? options = null)
     {
@@ -68,6 +69,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public WpfCompositionDrawingContextResult LastSourceDrawingResult { get; private set; }
 
     public bool IsWpfRootVisualDirty => _target?.WpfInvalidationTracker.IsDirty ?? false;
+
+    public bool EnableFrameCoalescing { get; set; } = true;
+
+    public bool HasPresentedFrame => _hasPresentedFrame;
+
+    public ProGpuWpfFrameState LastPresentedFrameState { get; private set; }
+
+    public long SkippedFrameCount { get; private set; }
 
     public Action<MediaDrawingContext, ProGpuWpfFrameEventArgs>? Draw { get; set; }
 
@@ -210,6 +219,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         var pixelHeight = (uint)Math.Max(1, framebufferSize.Y);
         var logicalWidth = Math.Max(1, _window.Size.X);
         var dpiScale = pixelWidth / (double)logicalWidth;
+        var frameState = CaptureFrameState(_target, pixelWidth, pixelHeight);
+
+        if (!ShouldRenderFrame(frameState))
+        {
+            SkippedFrameCount++;
+            return;
+        }
 
         _target.Context.ReconfigureIfNeeded(pixelWidth, pixelHeight);
 
@@ -259,14 +275,17 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             WpfRenderScheduler.ConsumeRenderRequest();
         }
 
-        Present(pixelWidth, pixelHeight);
+        if (Present(pixelWidth, pixelHeight))
+        {
+            RecordPresentedFrame(CaptureFrameState(_target, pixelWidth, pixelHeight));
+        }
     }
 
-    private void Present(uint pixelWidth, uint pixelHeight)
+    private bool Present(uint pixelWidth, uint pixelHeight)
     {
         if (_target == null)
         {
-            return;
+            return false;
         }
 
         var surfaceTexture = new SurfaceTexture();
@@ -274,7 +293,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         if (surfaceTexture.Status != SurfaceGetCurrentTextureStatus.Success)
         {
-            return;
+            return false;
         }
 
         var viewDescriptor = new TextureViewDescriptor
@@ -293,6 +312,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         {
             _target.Render(pixelWidth, pixelHeight, targetView);
             _target.Context.Wgpu.SurfacePresent(_target.Context.Surface);
+            return true;
         }
         finally
         {
@@ -311,6 +331,47 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private void OnCompositionTargetRenderInvalidated(object? sender, EventArgs e)
     {
         WpfRenderScheduler.RequestRender();
+    }
+
+    internal bool ShouldRenderFrame(ProGpuWpfFrameState frameState)
+    {
+        if (!EnableFrameCoalescing)
+        {
+            return true;
+        }
+
+        if (HasExplicitFrameCallbacks)
+        {
+            return true;
+        }
+
+        if (WpfRenderScheduler.HasPendingRenderRequest)
+        {
+            return true;
+        }
+
+        return !_hasPresentedFrame || LastPresentedFrameState != frameState;
+    }
+
+    internal void RecordPresentedFrame(ProGpuWpfFrameState frameState)
+    {
+        LastPresentedFrameState = frameState;
+        _hasPresentedFrame = true;
+    }
+
+    private bool HasExplicitFrameCallbacks => Draw != null || WpfDraw != null || Render != null;
+
+    private static ProGpuWpfFrameState CaptureFrameState(
+        ProGpuWpfCompositionTarget target,
+        uint pixelWidth,
+        uint pixelHeight)
+    {
+        return new ProGpuWpfFrameState(
+            pixelWidth,
+            pixelHeight,
+            target.SceneChangeVersion,
+            target.RetainedWpfChangeVersion,
+            target.FlatDrawingChangeVersion);
     }
 
     internal IDisposable? RegisterRenderDataSinkProvider(ProGpuWpfDrawingFrame drawingFrame)
@@ -497,6 +558,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _target.Dispose();
         _target = null;
         WpfRenderScheduler.Reset();
+        LastPresentedFrameState = default;
+        _hasPresentedFrame = false;
+        SkippedFrameCount = 0;
     }
 
     private void ThrowIfDisposed()

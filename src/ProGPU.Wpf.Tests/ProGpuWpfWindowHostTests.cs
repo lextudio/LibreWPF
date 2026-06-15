@@ -72,6 +72,102 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void ShouldRenderFrameReturnsTrueBeforeAnyFrameIsPresented()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var frameState = new ProGpuWpfFrameState(100, 50, 1, 2, 3);
+
+        Assert.True(host.ShouldRenderFrame(frameState));
+    }
+
+    [Fact]
+    public void ShouldRenderFrameReturnsFalseWhenPresentedFrameStateIsUnchanged()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var frameState = new ProGpuWpfFrameState(100, 50, 1, 2, 3);
+
+        host.RecordPresentedFrame(frameState);
+
+        Assert.True(host.HasPresentedFrame);
+        Assert.Equal(frameState, host.LastPresentedFrameState);
+        Assert.False(host.ShouldRenderFrame(frameState));
+    }
+
+    [Fact]
+    public void ShouldRenderFrameReturnsTrueWhenSchedulerHasPendingRequest()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var frameState = new ProGpuWpfFrameState(100, 50, 1, 2, 3);
+        host.RecordPresentedFrame(frameState);
+
+        scheduler.RequestRender();
+
+        Assert.True(host.ShouldRenderFrame(frameState));
+    }
+
+    [Fact]
+    public void ShouldRenderFrameReturnsTrueWhenNativeVersionChanges()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var frameState = new ProGpuWpfFrameState(100, 50, 1, 2, 3);
+        host.RecordPresentedFrame(frameState);
+
+        var changedFrameState = new ProGpuWpfFrameState(100, 50, 1, 4, 3);
+
+        Assert.True(host.ShouldRenderFrame(changedFrameState));
+    }
+
+    [Fact]
+    public void ShouldRenderFrameReturnsTrueWhenPixelSizeChanges()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var frameState = new ProGpuWpfFrameState(100, 50, 1, 2, 3);
+        host.RecordPresentedFrame(frameState);
+
+        var resizedFrameState = new ProGpuWpfFrameState(200, 100, 1, 2, 3);
+
+        Assert.True(host.ShouldRenderFrame(resizedFrameState));
+    }
+
+    [Fact]
+    public void ShouldRenderFrameReturnsTrueWhenCoalescingIsDisabled()
+    {
+        using var host = new ProGpuWpfWindowHost
+        {
+            EnableFrameCoalescing = false
+        };
+        var frameState = new ProGpuWpfFrameState(100, 50, 1, 2, 3);
+        host.RecordPresentedFrame(frameState);
+
+        Assert.True(host.ShouldRenderFrame(frameState));
+    }
+
+    [Fact]
+    public void ShouldRenderFrameReturnsTrueWhenExplicitFrameCallbacksAreRegistered()
+    {
+        var frameState = new ProGpuWpfFrameState(100, 50, 1, 2, 3);
+        using var drawHost = new ProGpuWpfWindowHost();
+        drawHost.RecordPresentedFrame(frameState);
+        drawHost.Draw = (_, _) => { };
+
+        using var wpfDrawHost = new ProGpuWpfWindowHost();
+        wpfDrawHost.RecordPresentedFrame(frameState);
+        wpfDrawHost.WpfDraw = (_, _) => { };
+
+        using var renderHost = new ProGpuWpfWindowHost();
+        renderHost.RecordPresentedFrame(frameState);
+        renderHost.Render += (_, _) => { };
+
+        Assert.True(drawHost.ShouldRenderFrame(frameState));
+        Assert.True(wpfDrawHost.ShouldRenderFrame(frameState));
+        Assert.True(renderHost.ShouldRenderFrame(frameState));
+    }
+
+    [Fact]
     public void ProcessDispatcherQueueRunsQueuedPlatformCallbacks()
     {
         using var host = new ProGpuWpfWindowHost

@@ -44,6 +44,21 @@ namespace System.Windows.Media
                 });
         }
 
+        internal static IDisposable PushObjectSinkFactory(Func<Visual, object> sinkFactory)
+        {
+            if (sinkFactory == null)
+            {
+                throw new ArgumentNullException(nameof(sinkFactory));
+            }
+
+            return PushSinkFactory(
+                delegate(Visual ownerVisual)
+                {
+                    object sink = sinkFactory(ownerVisual);
+                    return sink == null ? null : new ObjectRenderDataDrawingContextSink(sink);
+                });
+        }
+
         internal static IRenderDataDrawingContextSink CreateSink(Visual ownerVisual)
         {
             Debug.Assert(ownerVisual != null);

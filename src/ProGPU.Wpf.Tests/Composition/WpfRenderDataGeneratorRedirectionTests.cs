@@ -206,15 +206,18 @@ public sealed class WpfRenderDataGeneratorRedirectionTests
         Assert.Contains("internal static Func<Visual, IRenderDataDrawingContextSink> SinkFactory { get; private set; }", provider, StringComparison.Ordinal);
         Assert.Contains("internal static IDisposable PushSinkFactory(Func<Visual, IRenderDataDrawingContextSink> sinkFactory)", provider, StringComparison.Ordinal);
         Assert.Contains("internal static IDisposable PushDrawingContextFactory(Func<Visual, DrawingContext> drawingContextFactory)", provider, StringComparison.Ordinal);
+        Assert.Contains("internal static IDisposable PushObjectSinkFactory(Func<Visual, object> sinkFactory)", provider, StringComparison.Ordinal);
         Assert.Contains("throw new ArgumentNullException(nameof(sinkFactory));", provider, StringComparison.Ordinal);
         Assert.Contains("throw new ArgumentNullException(nameof(drawingContextFactory));", provider, StringComparison.Ordinal);
         Assert.Contains("new DrawingContextRenderDataSink(drawingContext)", provider, StringComparison.Ordinal);
+        Assert.Contains("new ObjectRenderDataDrawingContextSink(sink)", provider, StringComparison.Ordinal);
         Assert.Contains("private static SinkFactoryScope s_currentScope;", provider, StringComparison.Ordinal);
         Assert.Contains("new SinkFactoryScope(s_currentScope, sinkFactory);", provider, StringComparison.Ordinal);
         Assert.Contains("RestoreSinkFactory(this);", provider, StringComparison.Ordinal);
         Assert.Contains("lock (s_syncRoot)", provider, StringComparison.Ordinal);
         Assert.Contains("return sinkFactory?.Invoke(ownerVisual);", provider, StringComparison.Ordinal);
         Assert.Contains(@"<Compile Include=""System\Windows\Media\DrawingContextRenderDataSink.cs"" />", project, StringComparison.Ordinal);
+        Assert.Contains(@"<Compile Include=""System\Windows\Media\ObjectRenderDataDrawingContextSink.cs"" />", project, StringComparison.Ordinal);
         Assert.Contains(@"<Compile Include=""System\Windows\Media\RenderDataDrawingContextSinkProvider.cs"" />", project, StringComparison.Ordinal);
     }
 
@@ -265,6 +268,34 @@ public sealed class WpfRenderDataGeneratorRedirectionTests
         }
 
         Assert.Contains("_drawingContext.Close();", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WpfObjectRenderDataDrawingContextSinkForwardsEveryRenderDataInstructionToObjectSink()
+    {
+        var source = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "ObjectRenderDataDrawingContextSink.cs"));
+
+        Assert.Contains("internal sealed class ObjectRenderDataDrawingContextSink : IRenderDataDrawingContextSink", source, StringComparison.Ordinal);
+        Assert.Contains("_sink = sink ?? throw new ArgumentNullException(nameof(sink));", source, StringComparison.Ordinal);
+
+        foreach (var instruction in WpfRenderDataInstructionRedirectionCatalog.Instructions)
+        {
+            var forwardCount = Regex.Matches(
+                source,
+                @"Invoke\s*\(\s*nameof\(IRenderDataDrawingContextSink\." + Regex.Escape(instruction.Name) + @"\)",
+                RegexOptions.CultureInvariant).Count;
+            var expectedCount = instruction.HasAdvancedOverload ? 2 : 1;
+
+            Assert.Equal(expectedCount, forwardCount);
+        }
     }
 
     [Fact]

@@ -65,6 +65,49 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void ObjectRenderDataDrawingContextAdaptsReflectedPrimitiveValues()
+    {
+        var sink = new RecordingSink();
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+        var pen = new MediaPen(Brushes.Black, 2);
+
+        context.DrawLine(pen, new FakePoint(1, 2), new FakePoint(3, 4));
+        context.DrawRectangle(Brushes.Red, pen, new FakeRect(5, 6, 7, 8));
+        context.DrawRoundedRectangle(Brushes.Green, pen, new FakeRect(9, 10, 11, 12), 2, 3);
+        context.DrawEllipse(Brushes.Blue, null, new FakePoint(13, 14), 15, 16);
+
+        Assert.Equal(new[]
+        {
+            "DrawLine",
+            "DrawRectangle",
+            "DrawRoundedRectangle",
+            "DrawEllipse"
+        }, sink.Operations);
+        Assert.Equal((pen, new Point(1, 2), new Point(3, 4)), sink.Lines.Single());
+        Assert.Equal((Brushes.Red, pen, new Rect(5, 6, 7, 8)), sink.Rectangles.Single());
+        Assert.Equal((Brushes.Green, pen, new Rect(9, 10, 11, 12), 2d, 3d), sink.RoundedRectangles.Single());
+        Assert.Equal((Brushes.Blue, null, new Point(13, 14), 15d, 16d), sink.Ellipses.Single());
+        Assert.Equal(new WpfCompositionDrawingContextResult(4, 4, 0), context.Result);
+    }
+
+    [Fact]
+    public void ObjectRenderDataDrawingContextUsesImageSourceAdapter()
+    {
+        var sink = new RecordingSink();
+        var imageSource = new FakeBitmapSource();
+        var adapter = new FakeImageSourceAdapter();
+        using var context = new WpfObjectRenderDataDrawingContext(sink, adapter);
+
+        context.DrawImage(imageSource, new FakeRect(17, 18, 19, 20));
+
+        Assert.Same(imageSource, adapter.LastImageSource);
+        var replayed = Assert.Single(sink.Images);
+        Assert.Same(adapter.AdaptedImageSource, replayed.ImageSource);
+        Assert.Equal(new Rect(17, 18, 19, 20), replayed.Rectangle);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void GeneratedNoOpDrawGuardsDoNotForwardOrCountOperations()
     {
         var sink = new RecordingSink();
@@ -449,6 +492,8 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     private readonly record struct FakeRect(double X, double Y, double Width, double Height);
+
+    private readonly record struct FakePoint(double X, double Y);
 
     private sealed class FakeGuidelineSet
     {

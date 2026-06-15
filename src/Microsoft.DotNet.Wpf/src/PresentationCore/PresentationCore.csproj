@@ -726,6 +726,7 @@
     <Compile Include="System\Windows\Media\DrawingCollection.cs" />
     <Compile Include="System\Windows\Media\DrawingContext.cs" />
     <Compile Include="System\Windows\Media\DrawingContextRenderDataSink.cs" />
+    <Compile Include="System\Windows\Media\ObjectRenderDataDrawingContextSink.cs" />
     <Compile Include="System\Windows\Media\DrawingContextDrawingContextWalker.cs" />
     <Compile Include="System\Windows\Media\DrawingContextWalker.cs" />
     <Compile Include="System\Windows\Media\DrawingDrawingContext.cs" />

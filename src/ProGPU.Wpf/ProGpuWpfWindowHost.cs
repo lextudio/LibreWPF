@@ -73,7 +73,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     public Action<WpfCompositionDrawingContext, ProGpuWpfFrameEventArgs>? WpfDraw { get; set; }
 
-    internal Func<ProGpuWpfDrawingFrame, IDisposable?> RenderDataSinkProviderRegistrationFactory { get; set; } = RegisterDefaultRenderDataSinkProvider;
+    internal Func<ProGpuWpfDrawingFrame, IWpfImageSourceAdapter?, IDisposable?> RenderDataSinkProviderRegistrationFactory { get; set; } = RegisterDefaultRenderDataSinkProvider;
 
     public void Run()
     {
@@ -316,7 +316,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     {
         ArgumentNullException.ThrowIfNull(drawingFrame);
 
-        return RenderDataSinkProviderRegistrationFactory(drawingFrame);
+        return RenderDataSinkProviderRegistrationFactory(drawingFrame, WpfImageSourceAdapter);
     }
 
     internal void InvokeSourceDraw(
@@ -503,9 +503,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         ObjectDisposedException.ThrowIf(_isDisposed, this);
     }
 
-    private static IDisposable? RegisterDefaultRenderDataSinkProvider(ProGpuWpfDrawingFrame drawingFrame)
+    private static IDisposable? RegisterDefaultRenderDataSinkProvider(
+        ProGpuWpfDrawingFrame drawingFrame,
+        IWpfImageSourceAdapter? imageSourceAdapter)
     {
-        return drawingFrame.TryRegisterRenderDataSinkProvider(out IDisposable? registration)
+        return drawingFrame.TryRegisterRenderDataSinkProvider(imageSourceAdapter, out IDisposable? registration)
             ? registration
             : null;
     }

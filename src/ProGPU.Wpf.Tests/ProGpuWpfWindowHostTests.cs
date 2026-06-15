@@ -160,7 +160,7 @@ public sealed class ProGpuWpfWindowHostTests
         var frame = new ProGpuWpfDrawingFrame(new ProGPU.Scene.DrawingVisual(), 100, 50);
         var registration = new TestRegistration();
         ProGpuWpfDrawingFrame? capturedFrame = null;
-        host.RenderDataSinkProviderRegistrationFactory = drawingFrame =>
+        host.RenderDataSinkProviderRegistrationFactory = (drawingFrame, _) =>
         {
             capturedFrame = drawingFrame;
             return registration;

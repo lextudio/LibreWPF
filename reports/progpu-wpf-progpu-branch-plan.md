@@ -30,6 +30,7 @@ The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and
 ## WPF Integration Follow-Ups
 
 - Replace the local `PortableTextInterface` SFNT reader with signed `ProGPU.Text` services incrementally: face-offset/table/cmap/glyph-metric discovery now uses the ProGPU-owned helper, while shaping, fallback-chain policy, and subsetting should move as the ProGPU text APIs cover those surfaces.
-- Make the ProGPU-backed WPF `DrawingContext` live in the real WPF type identity or a signed friend assembly so `RenderDataDrawingContextSinkProvider.PushDrawingContextFactory(...)` can be activated without reflection/type mismatch.
+- Use the new object-sink render-data provider path as the immediate integration bridge for real WPF `PresentationCore`: `PushObjectSinkFactory(...)` can pass real WPF media objects to ProGPU.Wpf for reflection adaptation while the shim and real WPF type identities are still separate.
+- Make the ProGPU-backed WPF `DrawingContext` live in the real WPF type identity or a signed friend assembly later so `RenderDataDrawingContextSinkProvider.PushDrawingContextFactory(...)` can replace the object/reflection bridge.
 - Add root WPF project references to signed ProGPU assemblies only when the referenced APIs are actually used by the non-Windows WPF implementation.
 - Keep documenting each new backend requirement here before adding WPF-side compatibility code, so durable backend fixes are preferred over short-lived bridge workarounds.

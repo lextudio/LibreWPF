@@ -40,6 +40,8 @@ public sealed class ProGpuWpfDrawingFrame
 
     public int CompositionDrawingContextCount { get; private set; }
 
+    public int ObjectRenderDataSinkContextCount { get; private set; }
+
     public object? LastOwnerVisual { get; private set; }
 
     public MediaDrawingContext OpenDrawingContext()
@@ -61,7 +63,17 @@ public sealed class ProGpuWpfDrawingFrame
 
     public bool TryRegisterRenderDataSinkProvider(out IDisposable? registration)
     {
-        return WpfRenderDataSinkProviderBridge.TryRegisterDrawingContextFactory(this, out registration);
+        return TryRegisterRenderDataSinkProvider(null, out registration);
+    }
+
+    public bool TryRegisterRenderDataSinkProvider(
+        IWpfImageSourceAdapter? imageSourceAdapter,
+        out IDisposable? registration)
+    {
+        return WpfRenderDataSinkProviderBridge.TryRegisterRenderDataSinkProvider(
+            this,
+            imageSourceAdapter,
+            out registration);
     }
 
     public WpfCompositionDrawingContext OpenCompositionDrawingContext()
@@ -82,5 +94,24 @@ public sealed class ProGpuWpfDrawingFrame
     public Func<object?, WpfCompositionDrawingContext> CreateCompositionDrawingContextFactory()
     {
         return OpenCompositionDrawingContext;
+    }
+
+    public WpfObjectRenderDataDrawingContext OpenObjectRenderDataSinkContext(
+        object? ownerVisual,
+        IWpfImageSourceAdapter? imageSourceAdapter = null)
+    {
+        ObjectRenderDataSinkContextCount++;
+        return new WpfObjectRenderDataDrawingContext(
+            new ProGpuCompositionCommandSink(
+                OpenDrawingContext(ownerVisual),
+                _context,
+                _viewport3DTextureCache),
+            imageSourceAdapter);
+    }
+
+    public Func<object?, object> CreateObjectRenderDataSinkFactory(
+        IWpfImageSourceAdapter? imageSourceAdapter = null)
+    {
+        return ownerVisual => OpenObjectRenderDataSinkContext(ownerVisual, imageSourceAdapter);
     }
 }

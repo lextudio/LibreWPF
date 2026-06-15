@@ -24,9 +24,15 @@ public sealed class WpfPortableTextInterfaceTests
         Assert.Contains("FontCollection.FromFontSources(fontSources)", source, StringComparison.Ordinal);
         Assert.Contains("internal sealed class PortableFontData", source, StringComparison.Ordinal);
         Assert.Contains("using ProGpuSfntFontFace = ProGPU.Text.SfntFontFace;", source, StringComparison.Ordinal);
+        Assert.Contains("using ProGpuSfntGlyphBounds = ProGPU.Text.SfntGlyphBounds;", source, StringComparison.Ordinal);
+        Assert.Contains("using ProGpuSfntHorizontalGlyphMetrics = ProGPU.Text.SfntHorizontalGlyphMetrics;", source, StringComparison.Ordinal);
         Assert.Contains("IReadOnlyList<ProGpuSfntFontFace> faces = ProGpuSfntFontFace.LoadFaces(data);", source, StringComparison.Ordinal);
         Assert.Contains("_sfntFace.TryGetTable(TagToString(tag), out ReadOnlyMemory<byte> tableDataMemory)", source, StringComparison.Ordinal);
-        Assert.Contains("private CmapData ParseCmap()", source, StringComparison.Ordinal);
+        Assert.Contains("_sfntFace.TryGetGlyphCount(out ushort glyphCount)", source, StringComparison.Ordinal);
+        Assert.Contains("_sfntFace.TryGetGlyphIndex(codePoint, out ushort glyphIndex)", source, StringComparison.Ordinal);
+        Assert.Contains("_sfntFace.TryGetHorizontalGlyphMetrics(glyphIndex, out ProGpuSfntHorizontalGlyphMetrics metrics)", source, StringComparison.Ordinal);
+        Assert.Contains("_sfntFace.TryGetGlyphBounds(glyphIndex, out ProGpuSfntGlyphBounds glyphBounds)", source, StringComparison.Ordinal);
+        Assert.Contains("return _sfntFace.TryGetEmbeddingRights(out fsType);", source, StringComparison.Ordinal);
         Assert.Contains("internal ushort GetGlyphIndex(uint codePoint)", source, StringComparison.Ordinal);
         Assert.Contains("internal GlyphMetrics GetGlyphMetrics(ushort glyphIndex)", source, StringComparison.Ordinal);
         Assert.Contains("internal bool TryGetTable(uint tag, out byte[] tableData)", source, StringComparison.Ordinal);
@@ -44,6 +50,9 @@ public sealed class WpfPortableTextInterfaceTests
         Assert.DoesNotContain("The portable WPF font collection is not yet backed", source, StringComparison.Ordinal);
         Assert.DoesNotContain("The portable WPF text analyzer is not yet backed", source, StringComparison.Ordinal);
         Assert.DoesNotContain("The portable WPF TrueType subsetter is not yet backed", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("private CmapData ParseCmap()", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("private ushort GetAdvanceWidth(ushort glyphIndex)", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("private short GetLeftSideBearing(ushort glyphIndex)", source, StringComparison.Ordinal);
     }
 
     private static string FindRepoPath(params string[] pathSegments)

@@ -9,6 +9,8 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Media;
 using ProGpuSfntFontFace = ProGPU.Text.SfntFontFace;
+using ProGpuSfntGlyphBounds = ProGPU.Text.SfntGlyphBounds;
+using ProGpuSfntHorizontalGlyphMetrics = ProGPU.Text.SfntHorizontalGlyphMetrics;
 
 namespace MS.Internal.Text.TextInterface
 {
@@ -854,8 +856,6 @@ namespace MS.Internal.Text.TextInterface
         private const uint TagName = 0x6E616D65;
         private const uint TagOs2 = 0x4F532F32;
         private const uint TagPost = 0x706F7374;
-        private const uint TagLoca = 0x6C6F6361;
-        private const uint TagGlyf = 0x676C7966;
         private const uint TagCff = 0x43464620;
 
         private readonly byte[] _data;
@@ -864,17 +864,6 @@ namespace MS.Internal.Text.TextInterface
         private readonly Dictionary<ushort, LocalizedStrings> _nameStrings = new Dictionary<ushort, LocalizedStrings>();
         private readonly uint _faceOffset;
         private readonly bool _isCollection;
-        private readonly ushort _numberOfHMetrics;
-        private readonly short _indexToLocFormat;
-        private readonly ushort _fsType;
-        private readonly ushort[] _format4EndCodes = Array.Empty<ushort>();
-        private readonly ushort[] _format4StartCodes = Array.Empty<ushort>();
-        private readonly short[] _format4Deltas = Array.Empty<short>();
-        private readonly ushort[] _format4RangeOffsets = Array.Empty<ushort>();
-        private readonly uint _format4RangeOffsetsTableOffset;
-        private readonly uint[] _format12StartCodes = Array.Empty<uint>();
-        private readonly uint[] _format12EndCodes = Array.Empty<uint>();
-        private readonly uint[] _format12StartGlyphIds = Array.Empty<uint>();
 
         private PortableFontData(byte[] data, Uri sourceUri, uint faceIndex, uint faceOffset, bool isCollection)
         {
@@ -893,21 +882,11 @@ namespace MS.Internal.Text.TextInterface
             FaceName = GetFirstName(NameIdPreferredSubfamily, NameIdSubfamily) ?? "Regular";
             FullName = GetFirstName(NameIdFullName) ?? string.Concat(FamilyName, " ", FaceName).Trim();
 
-            (Metrics, _numberOfHMetrics, _indexToLocFormat, Version) = ParseMetrics();
-            (Weight, Stretch, Style, _fsType) = ParseOs2AndStyle();
+            (Metrics, Version) = ParseMetrics();
+            (Weight, Stretch, Style) = ParseOs2AndStyle();
             FaceType = _isCollection ? FontFaceType.TrueTypeCollection : (_tables.ContainsKey(TagCff) ? FontFaceType.CFF : FontFaceType.TrueType);
             GlyphCount = ParseGlyphCount();
-
-            CmapData cmapData = ParseCmap();
-            _format4EndCodes = cmapData.Format4EndCodes;
-            _format4StartCodes = cmapData.Format4StartCodes;
-            _format4Deltas = cmapData.Format4Deltas;
-            _format4RangeOffsets = cmapData.Format4RangeOffsets;
-            _format4RangeOffsetsTableOffset = cmapData.Format4RangeOffsetsTableOffset;
-            _format12StartCodes = cmapData.Format12StartCodes;
-            _format12EndCodes = cmapData.Format12EndCodes;
-            _format12StartGlyphIds = cmapData.Format12StartGlyphIds;
-            IsSymbolFont = cmapData.IsSymbolFont;
+            IsSymbolFont = _sfntFace.UsesSymbolCharacterMap;
         }
 
         internal Uri SourceUri { get; }
@@ -1034,68 +1013,9 @@ namespace MS.Internal.Text.TextInterface
 
         internal ushort GetGlyphIndex(uint codePoint)
         {
-            if (_format12StartCodes.Length > 0)
-            {
-                int low = 0;
-                int high = _format12StartCodes.Length - 1;
-                while (low <= high)
-                {
-                    int mid = low + ((high - low) / 2);
-                    uint start = _format12StartCodes[mid];
-                    uint end = _format12EndCodes[mid];
-                    if (codePoint >= start && codePoint <= end)
-                    {
-                        uint glyphIndex = _format12StartGlyphIds[mid] + (codePoint - start);
-                        return glyphIndex <= ushort.MaxValue ? (ushort)glyphIndex : (ushort)0;
-                    }
-
-                    if (codePoint < start)
-                    {
-                        high = mid - 1;
-                    }
-                    else
-                    {
-                        low = mid + 1;
-                    }
-                }
-            }
-
-            if (_format4EndCodes.Length == 0 || codePoint > ushort.MaxValue)
-            {
-                return 0;
-            }
-
-            ushort code = (ushort)codePoint;
-            int segment = -1;
-            for (int i = 0; i < _format4EndCodes.Length; i++)
-            {
-                if (_format4EndCodes[i] >= code)
-                {
-                    segment = i;
-                    break;
-                }
-            }
-
-            if (segment < 0 || _format4StartCodes[segment] > code)
-            {
-                return 0;
-            }
-
-            ushort rangeOffset = _format4RangeOffsets[segment];
-            if (rangeOffset == 0)
-            {
-                return (ushort)((code + _format4Deltas[segment]) & 0xFFFF);
-            }
-
-            uint rangeOffsetAddress = _format4RangeOffsetsTableOffset + checked((uint)(segment * 2));
-            uint glyphIndexAddress = rangeOffsetAddress + rangeOffset + checked((uint)((code - _format4StartCodes[segment]) * 2));
-            if (!CanRead(glyphIndexAddress, sizeof(ushort)))
-            {
-                return 0;
-            }
-
-            ushort rawIndex = ReadUShort(glyphIndexAddress);
-            return rawIndex == 0 ? (ushort)0 : (ushort)((rawIndex + _format4Deltas[segment]) & 0xFFFF);
+            return _sfntFace.TryGetGlyphIndex(codePoint, out ushort glyphIndex)
+                ? glyphIndex
+                : (ushort)0;
         }
 
         internal GlyphMetrics GetGlyphMetrics(ushort glyphIndex)
@@ -1105,9 +1025,12 @@ namespace MS.Internal.Text.TextInterface
                 throw new ArgumentOutOfRangeException(nameof(glyphIndex));
             }
 
-            ushort advanceWidth = GetAdvanceWidth(glyphIndex);
-            short leftSideBearing = GetLeftSideBearing(glyphIndex);
-            GlyphBounds bounds = GetGlyphBounds(glyphIndex);
+            ProGpuSfntHorizontalGlyphMetrics horizontalMetrics = _sfntFace.TryGetHorizontalGlyphMetrics(glyphIndex, out ProGpuSfntHorizontalGlyphMetrics metrics)
+                ? metrics
+                : new ProGpuSfntHorizontalGlyphMetrics(checked((ushort)(Metrics.DesignUnitsPerEm / 2)), 0);
+            ProGpuSfntGlyphBounds bounds = _sfntFace.TryGetGlyphBounds(glyphIndex, out ProGpuSfntGlyphBounds glyphBounds)
+                ? glyphBounds
+                : default;
 
             int blackBoxWidth = bounds.XMax - bounds.XMin;
             int advanceHeight = Metrics.Ascent + Metrics.Descent + Math.Max(0, (int)Metrics.LineGap);
@@ -1118,9 +1041,9 @@ namespace MS.Internal.Text.TextInterface
 
             return new GlyphMetrics
             {
-                LeftSideBearing = leftSideBearing,
-                AdvanceWidth = advanceWidth,
-                RightSideBearing = advanceWidth - leftSideBearing - blackBoxWidth,
+                LeftSideBearing = horizontalMetrics.LeftSideBearing,
+                AdvanceWidth = horizontalMetrics.AdvanceWidth,
+                RightSideBearing = horizontalMetrics.AdvanceWidth - horizontalMetrics.LeftSideBearing - blackBoxWidth,
                 TopSideBearing = Metrics.Ascent - bounds.YMax,
                 AdvanceHeight = checked((uint)advanceHeight),
                 BottomSideBearing = advanceHeight - Metrics.Ascent + bounds.YMin,
@@ -1149,8 +1072,7 @@ namespace MS.Internal.Text.TextInterface
 
         internal bool TryGetEmbeddingRights(out ushort fsType)
         {
-            fsType = _fsType;
-            return _tables.ContainsKey(TagOs2);
+            return _sfntFace.TryGetEmbeddingRights(out fsType);
         }
 
         private static PortableFontData CreateFace(byte[] data, Uri uri, uint faceIndex, uint faceOffset, bool isCollection)
@@ -1232,7 +1154,7 @@ namespace MS.Internal.Text.TextInterface
             RequireTable(TagCmap);
         }
 
-        private (FontMetrics metrics, ushort numberOfHMetrics, short indexToLocFormat, double version) ParseMetrics()
+        private (FontMetrics metrics, double version) ParseMetrics()
         {
             TableRecord head = RequireTable(TagHead);
             TableRecord hhea = RequireTable(TagHhea);
@@ -1290,19 +1212,16 @@ namespace MS.Internal.Text.TextInterface
                 metrics.UnderlineThickness = checked((ushort)Math.Max(1, metrics.DesignUnitsPerEm / 20));
             }
 
-            ushort numberOfHMetrics = ReadUShort(hhea.Offset + 34);
-            short indexToLocFormat = ReadShort(head.Offset + 50);
             double version = ReadFixed(head.Offset + 4);
 
-            return (metrics, numberOfHMetrics, indexToLocFormat, version);
+            return (metrics, version);
         }
 
-        private (FontWeight weight, FontStretch stretch, FontStyle style, ushort fsType) ParseOs2AndStyle()
+        private (FontWeight weight, FontStretch stretch, FontStyle style) ParseOs2AndStyle()
         {
             FontWeight weight = FontWeight.Normal;
             FontStretch stretch = FontStretch.Normal;
             FontStyle style = FontStyle.Normal;
-            ushort fsType = 0;
 
             if (_tables.TryGetValue(TagOs2, out TableRecord os2))
             {
@@ -1315,8 +1234,6 @@ namespace MS.Internal.Text.TextInterface
                     {
                         stretch = (FontStretch)widthClass;
                     }
-
-                    fsType = ReadUShort(os2.Offset + 8);
                 }
 
                 if (os2.Length >= 64)
@@ -1341,13 +1258,12 @@ namespace MS.Internal.Text.TextInterface
                 weight = FontWeight.Bold;
             }
 
-            return (weight, stretch, style, fsType);
+            return (weight, stretch, style);
         }
 
         private ushort ParseGlyphCount()
         {
-            TableRecord maxp = RequireTable(TagMaxp);
-            return ReadUShort(maxp.Offset + 4);
+            return _sfntFace.TryGetGlyphCount(out ushort glyphCount) ? glyphCount : (ushort)0;
         }
 
         private void ParseNames()
@@ -1398,168 +1314,6 @@ namespace MS.Internal.Text.TextInterface
                     strings[culture] = value.Trim();
                 }
             }
-        }
-
-        private CmapData ParseCmap()
-        {
-            TableRecord cmap = RequireTable(TagCmap);
-            ushort tableCount = ReadUShort(cmap.Offset + 2);
-            uint format4Offset = 0;
-            uint format12Offset = 0;
-            bool symbolFont = false;
-
-            for (int i = 0; i < tableCount; i++)
-            {
-                uint recordOffset = cmap.Offset + 4 + checked((uint)(i * 8));
-                ushort platformId = ReadUShort(recordOffset);
-                ushort encodingId = ReadUShort(recordOffset + 2);
-                uint subtableOffset = cmap.Offset + ReadUInt(recordOffset + 4);
-                if (!CanRead(subtableOffset, sizeof(ushort)))
-                {
-                    continue;
-                }
-
-                ushort format = ReadUShort(subtableOffset);
-                if (format == 12 && IsUnicodeCmap(platformId, encodingId))
-                {
-                    format12Offset = subtableOffset;
-                }
-                else if (format == 4 && IsUnicodeCmap(platformId, encodingId))
-                {
-                    format4Offset = subtableOffset;
-                }
-                else if (format == 4 && platformId == 3 && encodingId == 0 && format4Offset == 0)
-                {
-                    symbolFont = true;
-                    format4Offset = subtableOffset;
-                }
-            }
-
-            CmapData data = new CmapData
-            {
-                Format4EndCodes = Array.Empty<ushort>(),
-                Format4StartCodes = Array.Empty<ushort>(),
-                Format4Deltas = Array.Empty<short>(),
-                Format4RangeOffsets = Array.Empty<ushort>(),
-                Format12StartCodes = Array.Empty<uint>(),
-                Format12EndCodes = Array.Empty<uint>(),
-                Format12StartGlyphIds = Array.Empty<uint>(),
-                IsSymbolFont = symbolFont
-            };
-
-            if (format12Offset != 0 && CanRead(format12Offset, 16))
-            {
-                uint groupCount = ReadUInt(format12Offset + 12);
-                data.Format12StartCodes = new uint[groupCount];
-                data.Format12EndCodes = new uint[groupCount];
-                data.Format12StartGlyphIds = new uint[groupCount];
-                uint groupOffset = format12Offset + 16;
-                for (uint i = 0; i < groupCount; i++)
-                {
-                    uint offset = groupOffset + i * 12;
-                    if (!CanRead(offset, 12))
-                    {
-                        break;
-                    }
-
-                    data.Format12StartCodes[i] = ReadUInt(offset);
-                    data.Format12EndCodes[i] = ReadUInt(offset + 4);
-                    data.Format12StartGlyphIds[i] = ReadUInt(offset + 8);
-                }
-            }
-
-            if (format4Offset != 0 && CanRead(format4Offset, 14))
-            {
-                ushort segCount = checked((ushort)(ReadUShort(format4Offset + 6) / 2));
-                data.Format4EndCodes = new ushort[segCount];
-                data.Format4StartCodes = new ushort[segCount];
-                data.Format4Deltas = new short[segCount];
-                data.Format4RangeOffsets = new ushort[segCount];
-
-                uint endCodeOffset = format4Offset + 14;
-                uint startCodeOffset = endCodeOffset + checked((uint)(segCount * 2)) + 2;
-                uint deltaOffset = startCodeOffset + checked((uint)(segCount * 2));
-                uint rangeOffset = deltaOffset + checked((uint)(segCount * 2));
-                data.Format4RangeOffsetsTableOffset = rangeOffset;
-
-                for (int i = 0; i < segCount; i++)
-                {
-                    data.Format4EndCodes[i] = ReadUShort(endCodeOffset + checked((uint)(i * 2)));
-                    data.Format4StartCodes[i] = ReadUShort(startCodeOffset + checked((uint)(i * 2)));
-                    data.Format4Deltas[i] = ReadShort(deltaOffset + checked((uint)(i * 2)));
-                    data.Format4RangeOffsets[i] = ReadUShort(rangeOffset + checked((uint)(i * 2)));
-                }
-            }
-
-            return data;
-        }
-
-        private ushort GetAdvanceWidth(ushort glyphIndex)
-        {
-            if (_numberOfHMetrics == 0 || !_tables.TryGetValue(TagHmtx, out TableRecord hmtx))
-            {
-                return checked((ushort)(Metrics.DesignUnitsPerEm / 2));
-            }
-
-            uint offset = glyphIndex < _numberOfHMetrics
-                ? hmtx.Offset + checked((uint)(glyphIndex * 4))
-                : hmtx.Offset + checked((uint)((_numberOfHMetrics - 1) * 4));
-
-            return ReadUShort(offset);
-        }
-
-        private short GetLeftSideBearing(ushort glyphIndex)
-        {
-            if (_numberOfHMetrics == 0 || !_tables.TryGetValue(TagHmtx, out TableRecord hmtx))
-            {
-                return 0;
-            }
-
-            uint offset = glyphIndex < _numberOfHMetrics
-                ? hmtx.Offset + checked((uint)(glyphIndex * 4)) + 2
-                : hmtx.Offset + checked((uint)(_numberOfHMetrics * 4)) + checked((uint)((glyphIndex - _numberOfHMetrics) * 2));
-
-            return CanRead(offset, sizeof(ushort)) ? ReadShort(offset) : (short)0;
-        }
-
-        private GlyphBounds GetGlyphBounds(ushort glyphIndex)
-        {
-            if (!_tables.TryGetValue(TagLoca, out TableRecord loca) || !_tables.TryGetValue(TagGlyf, out TableRecord glyf))
-            {
-                return default;
-            }
-
-            uint startOffset;
-            uint endOffset;
-            if (_indexToLocFormat == 0)
-            {
-                uint locaOffset = loca.Offset + checked((uint)(glyphIndex * 2));
-                startOffset = checked((uint)(ReadUShort(locaOffset) * 2));
-                endOffset = checked((uint)(ReadUShort(locaOffset + 2) * 2));
-            }
-            else
-            {
-                uint locaOffset = loca.Offset + checked((uint)(glyphIndex * 4));
-                startOffset = ReadUInt(locaOffset);
-                endOffset = ReadUInt(locaOffset + 4);
-            }
-
-            if (startOffset == endOffset)
-            {
-                return default;
-            }
-
-            uint glyphOffset = glyf.Offset + startOffset;
-            if (!CanRead(glyphOffset, 10))
-            {
-                return default;
-            }
-
-            return new GlyphBounds(
-                ReadShort(glyphOffset + 2),
-                ReadShort(glyphOffset + 4),
-                ReadShort(glyphOffset + 6),
-                ReadShort(glyphOffset + 8));
         }
 
         private string GetFirstName(params ushort[] nameIds)
@@ -1659,12 +1413,6 @@ namespace MS.Internal.Text.TextInterface
             return CultureInfo.InvariantCulture;
         }
 
-        private static bool IsUnicodeCmap(ushort platformId, ushort encodingId)
-        {
-            return platformId == 0
-                || (platformId == 3 && (encodingId == 1 || encodingId == 10));
-        }
-
         private static ushort ToPositiveMetric(short value)
         {
             int positive = value < 0 ? -value : value;
@@ -1710,37 +1458,6 @@ namespace MS.Internal.Text.TextInterface
             internal uint Length { get; }
         }
 
-        private readonly struct GlyphBounds
-        {
-            internal GlyphBounds(short xMin, short yMin, short xMax, short yMax)
-            {
-                XMin = xMin;
-                YMin = yMin;
-                XMax = xMax;
-                YMax = yMax;
-            }
-
-            internal int XMin { get; }
-
-            internal int YMin { get; }
-
-            internal int XMax { get; }
-
-            internal int YMax { get; }
-        }
-
-        private struct CmapData
-        {
-            internal ushort[] Format4EndCodes;
-            internal ushort[] Format4StartCodes;
-            internal short[] Format4Deltas;
-            internal ushort[] Format4RangeOffsets;
-            internal uint Format4RangeOffsetsTableOffset;
-            internal uint[] Format12StartCodes;
-            internal uint[] Format12EndCodes;
-            internal uint[] Format12StartGlyphIds;
-            internal bool IsSymbolFont;
-        }
     }
 
     internal sealed class FontFile : IDisposable

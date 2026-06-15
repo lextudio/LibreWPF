@@ -246,6 +246,8 @@
 - Linked `external/ProGPU/src/ProGPU.Text/SfntFontFace.cs` into non-Windows `PresentationCore`, and routed portable text face-offset enumeration plus OpenType table-byte reads through the ProGPU-owned helper while keeping WPF-local metrics, cmap, shaping, and subsetting fallback code in place.
 - Verified the source-sharing slice with `dotnet clean src/Microsoft.DotNet.Wpf/src/PresentationCore/PresentationCore.csproj --verbosity minimal` followed by `dotnet build src/Microsoft.DotNet.Wpf/src/PresentationCore/PresentationCore.csproj --no-restore --verbosity minimal`; the real WPF `PresentationCore` builds with 0 warnings and 0 errors.
 - Verified source-level contracts with focused `WpfManagedProjectGraphTests` and `WpfPortableTextInterfaceTests`; 5 tests passed.
+- Committed and pushed ProGPU branch commit `b451f6a`, adding reusable SFNT APIs for glyph count, cmap format 4/12 lookup, symbol-cmap detection, horizontal glyph metrics, `glyf`/`loca` bounds, and OS/2 embedding rights, with deterministic synthetic-font coverage.
+- Routed WPF `PortableTextInterface` glyph count, glyph index lookup, glyph advances/bearings, glyph bounds, symbol-cmap detection, and embedding-right reads through the source-shared ProGPU helper, removing the duplicate WPF-local cmap/hmtx/loca/glyf parsing block while retaining WPF-specific wrapper and fallback policy.
 - Added `reports/progpu-wpf-progpu-branch-plan.md` to track backend features that should be implemented directly in ProGPU to accelerate the WPF port instead of accumulating temporary bridge code.
 
 ## Open Porting Items

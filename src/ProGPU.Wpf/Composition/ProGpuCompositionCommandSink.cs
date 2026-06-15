@@ -17,6 +17,7 @@ using MediaSweepDirection = System.Windows.Media.SweepDirection;
 using MediaTransform = System.Windows.Media.Transform;
 using VectorArcSegment = ProGPU.Vector.ArcSegment;
 using VectorCubicBezierSegment = ProGPU.Vector.CubicBezierSegment;
+using VectorDashPattern = ProGPU.Vector.DashPattern;
 using VectorLineSegment = ProGPU.Vector.LineSegment;
 using VectorPen = ProGPU.Vector.Pen;
 using VectorPathFigure = ProGPU.Vector.PathFigure;
@@ -1020,7 +1021,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         VectorPen nativePen,
         ProGpuWpfPen pen,
         IReadOnlyList<Point> points,
-        float[] pattern,
+        VectorDashPattern pattern,
         ref int patternIndex,
         ref float distanceInPattern)
     {
@@ -1049,39 +1050,34 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         ProGpuWpfPen pen,
         Vector2 start,
         Vector2 end,
-        float[] pattern,
+        VectorDashPattern pattern,
         ref int patternIndex,
         ref float distanceInPattern)
     {
-        var delta = end - start;
-        var length = delta.Length();
-        if (length <= TransformEpsilon)
+        if (!pattern.TryCreateLineSegments(
+                start,
+                end,
+                patternIndex,
+                distanceInPattern,
+                out var dashSegments,
+                out var finalPatternIndex,
+                out var finalDistanceInPattern))
         {
-            return true;
+            return Vector2.DistanceSquared(start, end) <= TransformEpsilon * TransformEpsilon;
         }
 
-        var direction = delta / length;
-        var distance = 0f;
-        while (distance < length)
+        foreach (var dashSegment in dashSegments)
         {
-            var remainingInElement = pattern[patternIndex] - distanceInPattern;
-            var step = Math.Min(remainingInElement, length - distance);
-            if ((patternIndex % 2) == 0 && step > TransformEpsilon)
-            {
-                var dashStart = start + direction * distance;
-                var dashEnd = start + direction * (distance + step);
-                AddNativeLine(
-                    nativePen,
-                    new Point(dashStart.X, dashStart.Y),
-                    new Point(dashEnd.X, dashEnd.Y),
-                    pen.DashCap,
-                    pen.DashCap);
-            }
-
-            AdvanceDashPattern(pattern, ref patternIndex, ref distanceInPattern, remainingInElement, step);
-            distance += step;
+            AddNativeLine(
+                nativePen,
+                new Point(dashSegment.Start.X, dashSegment.Start.Y),
+                new Point(dashSegment.End.X, dashSegment.End.Y),
+                pen.DashCap,
+                pen.DashCap);
         }
 
+        patternIndex = finalPatternIndex;
+        distanceInPattern = finalDistanceInPattern;
         return true;
     }
 
@@ -1090,14 +1086,14 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         ProGpuWpfPen pen,
         Vector2 start,
         VectorQuadraticBezierSegment segment,
-        float[] pattern,
+        VectorDashPattern pattern,
         ref int patternIndex,
         ref float distanceInPattern)
     {
         if (!global::ProGPU.Vector.BezierSegmentGeometry.TryCreateDashedQuadraticBezierSegments(
                 start,
                 segment,
-                pattern,
+                pattern.Intervals,
                 patternIndex,
                 distanceInPattern,
                 out var dashSegments,
@@ -1129,14 +1125,14 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         ProGpuWpfPen pen,
         Vector2 start,
         VectorCubicBezierSegment segment,
-        float[] pattern,
+        VectorDashPattern pattern,
         ref int patternIndex,
         ref float distanceInPattern)
     {
         if (!global::ProGPU.Vector.BezierSegmentGeometry.TryCreateDashedCubicBezierSegments(
                 start,
                 segment,
-                pattern,
+                pattern.Intervals,
                 patternIndex,
                 distanceInPattern,
                 out var dashSegments,
@@ -1168,14 +1164,14 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         ProGpuWpfPen pen,
         Vector2 start,
         VectorArcSegment arc,
-        float[] pattern,
+        VectorDashPattern pattern,
         ref int patternIndex,
         ref float distanceInPattern)
     {
         if (!global::ProGPU.Vector.ArcSegmentGeometry.TryCreateDashedArcSegments(
                 start,
                 arc,
-                pattern,
+                pattern.Intervals,
                 patternIndex,
                 distanceInPattern,
                 out var dashSegments,
@@ -1204,54 +1200,20 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
 
     private static bool TryInitializeDashPattern(
         ProGpuWpfPen pen,
-        out float[] pattern,
+        out VectorDashPattern pattern,
         out int patternIndex,
         out float distanceInPattern)
     {
         patternIndex = 0;
         distanceInPattern = 0;
-        if (!TryBuildDashPattern(pen, out pattern, out var dashOffset))
+        if (!VectorDashPattern.TryCreate(pen.DashArray, pen.DashOffset, pen.Thickness, out pattern))
         {
             return false;
         }
 
-        var patternLength = 0f;
-        foreach (var value in pattern)
-        {
-            patternLength += value;
-        }
-
-        if (patternLength <= TransformEpsilon)
-        {
-            return false;
-        }
-
-        distanceInPattern = PositiveModulo((float)(dashOffset * pen.Thickness), patternLength);
-        while (distanceInPattern >= pattern[patternIndex])
-        {
-            distanceInPattern -= pattern[patternIndex];
-            patternIndex = (patternIndex + 1) % pattern.Length;
-        }
-
+        patternIndex = pattern.InitialIndex;
+        distanceInPattern = pattern.InitialDistance;
         return true;
-    }
-
-    private static void AdvanceDashPattern(
-        float[] pattern,
-        ref int patternIndex,
-        ref float distanceInPattern,
-        float remainingInElement,
-        float step)
-    {
-        if (step >= remainingInElement - TransformEpsilon)
-        {
-            distanceInPattern = 0;
-            patternIndex = (patternIndex + 1) % pattern.Length;
-        }
-        else
-        {
-            distanceInPattern += step;
-        }
     }
 
     private void AddNativeArcDash(
@@ -1303,52 +1265,6 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         path.Figures.Add(figure);
 
         AddNativePath(null, WithLineCaps(nativePen, dashCap, dashCap), path);
-    }
-
-    private static bool TryBuildDashPattern(ProGpuWpfPen pen, out float[] pattern, out double dashOffset)
-    {
-        pattern = Array.Empty<float>();
-        dashOffset = pen.DashOffset;
-
-        if (pen.DashArray.Length == 0 || pen.Thickness <= 0)
-        {
-            return false;
-        }
-
-        var patternLength = pen.DashArray.Length % 2 == 0
-            ? pen.DashArray.Length
-            : pen.DashArray.Length * 2;
-        pattern = new float[patternLength];
-        for (var i = 0; i < pattern.Length; i++)
-        {
-            var value = pen.DashArray[i % pen.DashArray.Length] * pen.Thickness;
-            if (!double.IsFinite(value) || value < 0)
-            {
-                pattern = Array.Empty<float>();
-                return false;
-            }
-
-            if (value <= TransformEpsilon)
-            {
-                if ((i % 2) != 0)
-                {
-                    pattern = Array.Empty<float>();
-                    return false;
-                }
-
-                value = pen.Thickness;
-            }
-
-            pattern[i] = (float)value;
-        }
-
-        return true;
-    }
-
-    private static float PositiveModulo(float value, float modulus)
-    {
-        var result = value % modulus;
-        return result < 0 ? result + modulus : result;
     }
 
     private Point SnapGuideline(Point point)

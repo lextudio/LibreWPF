@@ -61,6 +61,7 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.IsType<SilkNetWpfMonitorService>(services.Monitors);
         Assert.IsType<ThreadPoolWpfTimerService>(services.Timers);
         Assert.IsType<SilkNetWpfWindowEventService>(services.WindowEvents);
+        Assert.IsType<DispatcherWpfRenderScheduler>(host.WpfRenderScheduler);
     }
 
     [Fact]
@@ -69,6 +70,32 @@ public sealed class ProGpuWpfWindowHostTests
         using var host = new ProGpuWpfWindowHost();
 
         Assert.False(host.SetCursor(WpfCursor.Hand));
+    }
+
+    [Fact]
+    public void SettingPlatformServicesRebuildsDefaultRenderScheduler()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var originalScheduler = host.WpfRenderScheduler;
+
+        host.PlatformServices = new CrossPlatformWpfPlatformServices();
+
+        Assert.IsType<DispatcherWpfRenderScheduler>(host.WpfRenderScheduler);
+        Assert.NotSame(originalScheduler, host.WpfRenderScheduler);
+    }
+
+    [Fact]
+    public void CustomRenderSchedulerIsPreservedWhenPlatformServicesChange()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+
+        host.PlatformServices = new CrossPlatformWpfPlatformServices();
+
+        Assert.Same(scheduler, host.WpfRenderScheduler);
     }
 
     [Fact]

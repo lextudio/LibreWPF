@@ -20,13 +20,17 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private IWpfDragDropService? _attachedDragDropService;
     private IDisposable? _windowEventSubscription;
     private IWpfWindowEventService? _attachedWindowEventService;
+    private IWpfPlatformServices _platformServices = CrossPlatformWpfPlatformServices.Instance;
+    private IWpfRenderScheduler _wpfRenderScheduler;
     private object? _wpfRootVisual;
     private bool _isDisposed;
     private bool _hasPresentedFrame;
+    private bool _ownsRenderScheduler;
 
     public ProGpuWpfWindowHost(ProGpuWpfWindowOptions? options = null)
     {
         _options = options ?? new ProGpuWpfWindowOptions();
+        _wpfRenderScheduler = CreateDefaultRenderScheduler(_platformServices, out _ownsRenderScheduler);
     }
 
     public event EventHandler<ProGpuWpfFrameEventArgs>? Render;
@@ -41,7 +45,22 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     public ProGpuWpfCompositionTarget? CompositionTarget => _target;
 
-    public IWpfPlatformServices PlatformServices { get; set; } = CrossPlatformWpfPlatformServices.Instance;
+    public IWpfPlatformServices PlatformServices
+    {
+        get => _platformServices;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            _platformServices = value;
+            if (_ownsRenderScheduler)
+            {
+                ReplaceRenderScheduler(
+                    CreateDefaultRenderScheduler(_platformServices, out var ownsScheduler),
+                    ownsScheduler);
+            }
+        }
+    }
 
     public object? WpfRootVisual
     {
@@ -62,7 +81,15 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     public IWpfImageSourceAdapter? WpfImageSourceAdapter { get; set; } = new WpfBitmapSourceImageAdapter();
 
-    public IWpfRenderScheduler WpfRenderScheduler { get; set; } = new CoalescingWpfRenderScheduler();
+    public IWpfRenderScheduler WpfRenderScheduler
+    {
+        get => _wpfRenderScheduler;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            ReplaceRenderScheduler(value, ownsScheduler: false);
+        }
+    }
 
     public WpfVisualReplayResult LastVisualReplayResult { get; private set; }
 
@@ -147,6 +174,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         DetachWindowEventService();
         DisposeTarget();
         _window?.Dispose();
+        DisposeOwnedRenderScheduler();
 
         _target = null;
         _window = null;
@@ -564,6 +592,29 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         SkippedFrameCount = 0;
     }
 
+    private void ReplaceRenderScheduler(IWpfRenderScheduler scheduler, bool ownsScheduler)
+    {
+        if (ReferenceEquals(_wpfRenderScheduler, scheduler))
+        {
+            _ownsRenderScheduler = ownsScheduler;
+            return;
+        }
+
+        DisposeOwnedRenderScheduler();
+        _wpfRenderScheduler = scheduler;
+        _ownsRenderScheduler = ownsScheduler;
+    }
+
+    private void DisposeOwnedRenderScheduler()
+    {
+        if (_ownsRenderScheduler && _wpfRenderScheduler is IDisposable disposable)
+        {
+            disposable.Dispose();
+        }
+
+        _ownsRenderScheduler = false;
+    }
+
     private void ThrowIfDisposed()
     {
         ObjectDisposedException.ThrowIf(_isDisposed, this);
@@ -576,5 +627,23 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return drawingFrame.TryRegisterRenderDataSinkProvider(imageSourceAdapter, out IDisposable? registration)
             ? registration
             : null;
+    }
+
+    private static IWpfRenderScheduler CreateDefaultRenderScheduler(
+        IWpfPlatformServices platformServices,
+        out bool ownsScheduler)
+    {
+        try
+        {
+            ownsScheduler = true;
+            return new DispatcherWpfRenderScheduler(
+                platformServices.Dispatcher,
+                platformServices.Timers);
+        }
+        catch (PlatformNotSupportedException)
+        {
+            ownsScheduler = false;
+            return new CoalescingWpfRenderScheduler();
+        }
     }
 }

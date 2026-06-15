@@ -154,6 +154,20 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("using var drawingContext = drawingFrame.OpenDrawingContext();", source, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void CompositionTargetExposesNativeChangeVersionsForWpfInvalidation()
+    {
+        var source = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "ProGpuWpfCompositionTarget.cs"));
+
+        Assert.Contains("public long SceneChangeVersion => SceneRootVisual.ChangeVersion;", source, StringComparison.Ordinal);
+        Assert.Contains("public long RetainedWpfChangeVersion => RetainedWpfVisualRoot.ChangeVersion;", source, StringComparison.Ordinal);
+        Assert.Contains("public long FlatDrawingChangeVersion => RootVisual.ChangeVersion;", source, StringComparison.Ordinal);
+        Assert.Contains("RetainedWpfVisualRoot.Invalidate();", source, StringComparison.Ordinal);
+    }
+
     private sealed class FakeVisual
     {
     }

@@ -35,6 +35,12 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
 
     public WpfVisualInvalidationTracker WpfInvalidationTracker { get; } = new();
 
+    public long SceneChangeVersion => SceneRootVisual.ChangeVersion;
+
+    public long RetainedWpfChangeVersion => RetainedWpfVisualRoot.ChangeVersion;
+
+    public long FlatDrawingChangeVersion => RootVisual.ChangeVersion;
+
     internal WpfViewport3DTextureCache Viewport3DTextureCache { get; }
 
     public ProGpuWpfCompositionTarget(
@@ -212,6 +218,7 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
     private void OnWpfSourceInvalidated(object? sender, EventArgs e)
     {
         SceneRootVisual.Invalidate();
+        RetainedWpfVisualRoot.Invalidate();
         RootVisual.Invalidate();
         RenderInvalidated?.Invoke(this, EventArgs.Empty);
     }

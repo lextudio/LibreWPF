@@ -13,7 +13,10 @@ using MediaDrawingContext = System.Windows.Media.DrawingContext;
 using ProGpuDrawingContext = ProGPU.Scene.DrawingContext;
 using ProGpuArcSegment = ProGPU.Vector.ArcSegment;
 using ProGpuCubicBezierSegment = ProGPU.Vector.CubicBezierSegment;
+using ProGpuLineSegment = ProGPU.Vector.LineSegment;
 using ProGpuLinearGradientBrush = ProGPU.Vector.LinearGradientBrush;
+using ProGpuPathFigure = ProGPU.Vector.PathFigure;
+using ProGpuPathGeometry = ProGPU.Vector.PathGeometry;
 using ProGpuQuadraticBezierSegment = ProGPU.Vector.QuadraticBezierSegment;
 using ProGpuRadialGradientBrush = ProGPU.Vector.RadialGradientBrush;
 
@@ -1087,6 +1090,68 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
+    public void DecodeFilledDashedCombinedGeometryThroughProGpuSinkDashesResolvedBooleanPathWhenAvailable()
+    {
+        var geometry = new FakeCombinedGeometry(
+            "Union",
+            new FakeRectangleGeometry(new FakeRect(0, 0, 20, 20)),
+            new FakeRectangleGeometry(new FakeRect(30, 0, 20, 20)));
+        var pen = new FakePen(
+            new FakeSolidColorBrush(new FakeColor(255, 0, 0, 0)),
+            1)
+        {
+            DashStyle = new FakeDashStyle(new[] { 100.0, 1.0 }, 0)
+        };
+        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[]
+        {
+            Brushes.Blue,
+            pen,
+            geometry
+        });
+        var nativeContext = new ProGpuDrawingContext();
+        var resolvedPath = new ProGpuPathGeometry();
+        var resolvedFigure = new ProGpuPathFigure(new Vector2(0, 0), isClosed: true);
+        resolvedFigure.Segments.Add(new ProGpuLineSegment(new Vector2(60, 0)));
+        resolvedFigure.Segments.Add(new ProGpuLineSegment(new Vector2(60, 20)));
+        resolvedFigure.Segments.Add(new ProGpuLineSegment(new Vector2(0, 20)));
+        resolvedPath.Figures.Add(resolvedFigure);
+        var resolverCalls = 0;
+        using var sink = new ProGpuCompositionCommandSink(
+            new MediaDrawingContext(nativeContext),
+            context: null,
+            viewport3DTextureCache: null,
+            pathOperationResolver: path =>
+            {
+                resolverCalls++;
+                Assert.True(path.IsCombined);
+                return resolvedPath;
+            });
+
+        var payload = new byte[16];
+        WriteUInt32(payload, 0, 1);
+        WriteUInt32(payload, 4, 2);
+        WriteUInt32(payload, 8, 3);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawGeometry, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        Assert.Equal(1, resolverCalls);
+        Assert.True(nativeContext.Commands.Count > 1);
+        var fillCommand = nativeContext.Commands[0];
+        Assert.Equal(RenderCommandType.DrawPath, fillCommand.Type);
+        Assert.True(fillCommand.Path!.IsCombined);
+        Assert.NotNull(fillCommand.Brush);
+        Assert.Null(fillCommand.Pen);
+        Assert.All(nativeContext.Commands.Skip(1), command => Assert.Equal(RenderCommandType.DrawLine, command.Type));
+        Assert.Contains(nativeContext.Commands.Skip(1), command => command.Position.X == 0 && command.Position2.X == 60);
+        Assert.DoesNotContain(nativeContext.Commands.Skip(1), command => command.Position.X == 30 && command.Position2.X == 50);
+        Assert.Equal(0, sink.UnsupportedStateCount);
+    }
+
+    [Fact]
     public void DecodeNullResourcePushesThroughProGpuSinkDoNotAffectNativeCommands()
     {
         var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.Red });
@@ -1246,6 +1311,51 @@ public sealed class WpfReplayToProGpuCommandTests
         Assert.Equal(RenderCommandType.DrawPath, command.Type);
         var nativeFigure = Assert.Single(command.Path!.Figures);
         Assert.All(nativeFigure.Segments, segment => Assert.True(segment.IsSmoothJoin));
+    }
+
+    [Fact]
+    public void DecodeDrawGeometryThroughProGpuSinkPreservesPathFillRuleAndStrokeMetadata()
+    {
+        var geometry = new PathGeometry
+        {
+            FillRule = FillRule.EvenOdd
+        };
+        var figure = new PathFigure
+        {
+            StartPoint = new Vector2(0, 0),
+            IsClosed = false
+        };
+        figure.Segments.Add(new LineSegment(new Vector2(10, 0)) { IsStroked = false });
+        figure.Segments.Add(new QuadraticBezierSegment(new Vector2(15, 5), new Vector2(20, 0)) { IsStroked = false });
+        figure.Segments.Add(new BezierSegment(new Vector2(25, 5), new Vector2(30, 5), new Vector2(35, 0)) { IsStroked = false });
+        figure.Segments.Add(new ArcSegment
+        {
+            Point = new Vector2(45, 0),
+            Size = new Vector2(4, 8),
+            RotationAngle = 0,
+            IsLargeArc = false,
+            SweepDirection = SweepDirection.Clockwise,
+            IsStroked = false
+        });
+        geometry.Figures.Add(figure);
+        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.White, geometry });
+        var nativeContext = new ProGpuDrawingContext();
+        using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
+
+        var payload = new byte[16];
+        WriteUInt32(payload, 0, 1);
+        WriteUInt32(payload, 8, 2);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawGeometry, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        var command = Assert.Single(nativeContext.Commands);
+        Assert.Equal(ProGPU.Vector.FillRule.EvenOdd, command.Path!.FillRule);
+        var nativeFigure = Assert.Single(command.Path.Figures);
+        Assert.All(nativeFigure.Segments, segment => Assert.False(segment.IsStroked));
     }
 
     [Theory]

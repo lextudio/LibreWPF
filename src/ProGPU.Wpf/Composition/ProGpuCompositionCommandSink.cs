@@ -9,6 +9,7 @@ using MediaFormattedText = System.Windows.Media.FormattedText;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
+using MediaFillRule = System.Windows.Media.FillRule;
 using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPathGeometry = System.Windows.Media.PathGeometry;
 using MediaPen = System.Windows.Media.Pen;
@@ -25,6 +26,7 @@ using VectorPathGeometry = ProGPU.Vector.PathGeometry;
 using VectorPrimitivePathGeometry = ProGPU.Vector.PrimitivePathGeometry;
 using VectorQuadraticBezierSegment = ProGPU.Vector.QuadraticBezierSegment;
 using VectorBrush = ProGPU.Vector.Brush;
+using VectorFillRule = ProGPU.Vector.FillRule;
 using VectorPenLineCap = ProGPU.Vector.PenLineCap;
 using VectorPenLineJoin = ProGPU.Vector.PenLineJoin;
 using VectorSolidColorBrush = ProGPU.Vector.SolidColorBrush;
@@ -58,6 +60,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
     private readonly Stack<bool> _textRenderingModeStack = new();
     private readonly global::ProGPU.Backend.WgpuContext? _context;
     private readonly WpfViewport3DTextureCache? _viewport3DTextureCache;
+    private readonly Func<VectorPathGeometry, VectorPathGeometry?>? _pathOperationResolver;
     private bool _isClosed;
 
     public ProGpuCompositionCommandSink(MediaDrawingContext drawingContext)
@@ -68,11 +71,13 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
     internal ProGpuCompositionCommandSink(
         MediaDrawingContext drawingContext,
         global::ProGPU.Backend.WgpuContext? context,
-        WpfViewport3DTextureCache? viewport3DTextureCache)
+        WpfViewport3DTextureCache? viewport3DTextureCache,
+        Func<VectorPathGeometry, VectorPathGeometry?>? pathOperationResolver = null)
     {
         DrawingContext = drawingContext ?? throw new ArgumentNullException(nameof(drawingContext));
         _context = context;
         _viewport3DTextureCache = viewport3DTextureCache;
+        _pathOperationResolver = pathOperationResolver;
         _transformStack.Push(Matrix4x4.Identity);
         _bitmapScalingModeStack.Push(global::ProGPU.Scene.TextureSamplingMode.Linear);
         _edgeModeStack.Push(false);
@@ -888,6 +893,17 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
                 return false;
             }
 
+            if (TryResolveCombinedPathForDashing(path, out var resolvedPath)
+                && !resolvedPath.IsCombined)
+            {
+                if (resolvedPath.Figures.Count == 0)
+                {
+                    return true;
+                }
+
+                return TryDrawDashedPath(nativePen, pen, resolvedPath, depth + 1);
+            }
+
             UnsupportedStateCount++;
             var combinedEmitted = false;
             if (path.PathA != null)
@@ -910,6 +926,80 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         }
 
         return handled;
+    }
+
+    private bool TryResolveCombinedPathForDashing(
+        VectorPathGeometry path,
+        out VectorPathGeometry resolvedPath)
+    {
+        if (!path.IsCombined)
+        {
+            resolvedPath = path;
+            return true;
+        }
+
+        if (_pathOperationResolver != null)
+        {
+            var resolved = _pathOperationResolver(path);
+            if (resolved == null)
+            {
+                resolvedPath = new VectorPathGeometry();
+                return false;
+            }
+
+            resolvedPath = resolved;
+            return true;
+        }
+
+        if (_context == null)
+        {
+            resolvedPath = new VectorPathGeometry();
+            return false;
+        }
+
+        try
+        {
+            return TryResolveCombinedPathWithProGpuSolver(path, out resolvedPath);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or TimeoutException)
+        {
+            resolvedPath = new VectorPathGeometry();
+            return false;
+        }
+    }
+
+    private static bool TryResolveCombinedPathWithProGpuSolver(
+        VectorPathGeometry path,
+        out VectorPathGeometry resolvedPath,
+        int depth = 0)
+    {
+        if (depth > 32)
+        {
+            resolvedPath = new VectorPathGeometry();
+            return false;
+        }
+
+        if (!path.IsCombined)
+        {
+            resolvedPath = path;
+            return true;
+        }
+
+        if (path.PathA == null || path.PathB == null)
+        {
+            resolvedPath = new VectorPathGeometry();
+            return false;
+        }
+
+        if (!TryResolveCombinedPathWithProGpuSolver(path.PathA, out var pathA, depth + 1)
+            || !TryResolveCombinedPathWithProGpuSolver(path.PathB, out var pathB, depth + 1))
+        {
+            resolvedPath = new VectorPathGeometry();
+            return false;
+        }
+
+        resolvedPath = global::ProGPU.Vector.PathOpGeometrySolver.Combine(pathA, pathB, path.Op);
+        return true;
     }
 
     private bool TryDrawDashedPathFigure(VectorPen nativePen, ProGpuWpfPen pen, VectorPathFigure figure)
@@ -1620,7 +1710,12 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
 
     private static VectorPathGeometry ConvertPathGeometry(MediaPathGeometry geometry, Matrix4x4 transform)
     {
-        var path = new VectorPathGeometry();
+        var path = new VectorPathGeometry
+        {
+            FillRule = geometry.FillRule == MediaFillRule.Nonzero
+                ? VectorFillRule.Nonzero
+                : VectorFillRule.EvenOdd
+        };
         var geometryTransform = geometry.Transform?.Value ?? Matrix4x4.Identity;
         var combinedTransform = geometryTransform * transform;
 
@@ -1639,7 +1734,10 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
                 switch (segment)
                 {
                     case LineSegment line:
-                        nativeFigure.Segments.Add(new VectorLineSegment(Vector2.Transform(line.Point, combinedTransform), line.IsSmoothJoin));
+                        nativeFigure.Segments.Add(new VectorLineSegment(
+                            Vector2.Transform(line.Point, combinedTransform),
+                            line.IsSmoothJoin,
+                            line.IsStroked));
                         sourceCurrentPoint = line.Point;
                         break;
 
@@ -1647,7 +1745,8 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
                         nativeFigure.Segments.Add(new VectorQuadraticBezierSegment(
                             Vector2.Transform(quadratic.Point1, combinedTransform),
                             Vector2.Transform(quadratic.Point2, combinedTransform),
-                            quadratic.IsSmoothJoin));
+                            quadratic.IsSmoothJoin,
+                            quadratic.IsStroked));
                         sourceCurrentPoint = quadratic.Point2;
                         break;
 
@@ -1656,7 +1755,8 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
                             Vector2.Transform(cubic.Point1, combinedTransform),
                             Vector2.Transform(cubic.Point2, combinedTransform),
                             Vector2.Transform(cubic.Point3, combinedTransform),
-                            cubic.IsSmoothJoin));
+                            cubic.IsSmoothJoin,
+                            cubic.IsStroked));
                         sourceCurrentPoint = cubic.Point3;
                         break;
 
@@ -1674,13 +1774,15 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
                             out var transformedArc))
                         {
                             transformedArc.IsSmoothJoin = arc.IsSmoothJoin;
+                            transformedArc.IsStroked = arc.IsStroked;
                             nativeFigure.Segments.Add(transformedArc);
                         }
                         else
                         {
                             nativeFigure.Segments.Add(new VectorLineSegment(
                                 Vector2.Transform(arc.Point, combinedTransform),
-                                arc.IsSmoothJoin));
+                                arc.IsSmoothJoin,
+                                arc.IsStroked));
                         }
 
                         sourceCurrentPoint = arc.Point;

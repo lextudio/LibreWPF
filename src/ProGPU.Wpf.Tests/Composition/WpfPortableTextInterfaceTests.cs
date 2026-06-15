@@ -23,6 +23,9 @@ public sealed class WpfPortableTextInterfaceTests
         Assert.Contains("TTO_GDEF = 0x47444546", source, StringComparison.Ordinal);
         Assert.Contains("FontCollection.FromFontSources(fontSources)", source, StringComparison.Ordinal);
         Assert.Contains("internal sealed class PortableFontData", source, StringComparison.Ordinal);
+        Assert.Contains("using ProGpuSfntFontFace = ProGPU.Text.SfntFontFace;", source, StringComparison.Ordinal);
+        Assert.Contains("IReadOnlyList<ProGpuSfntFontFace> faces = ProGpuSfntFontFace.LoadFaces(data);", source, StringComparison.Ordinal);
+        Assert.Contains("_sfntFace.TryGetTable(TagToString(tag), out ReadOnlyMemory<byte> tableDataMemory)", source, StringComparison.Ordinal);
         Assert.Contains("private CmapData ParseCmap()", source, StringComparison.Ordinal);
         Assert.Contains("internal ushort GetGlyphIndex(uint codePoint)", source, StringComparison.Ordinal);
         Assert.Contains("internal GlyphMetrics GetGlyphMetrics(ushort glyphIndex)", source, StringComparison.Ordinal);

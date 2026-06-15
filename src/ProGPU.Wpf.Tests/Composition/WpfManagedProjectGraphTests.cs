@@ -14,19 +14,34 @@ public sealed class WpfManagedProjectGraphTests
         var projectPath = FindRepoPath(relativeProjectPath.Split('/'));
         var document = XDocument.Load(projectPath);
 
-        var directWriteReferences = document
-            .Descendants("ProjectReference")
-            .Where(reference =>
+        var reference = Assert.Single(
+            document.Descendants("ProjectReference"),
+            reference =>
             {
                 var include = reference.Attribute("Include")?.Value.Replace('/', '\\');
                 return include?.EndsWith(@"DirectWriteForwarder\DirectWriteForwarder.vcxproj", StringComparison.OrdinalIgnoreCase) == true;
-            })
-            .ToArray();
-
-        var reference = Assert.Single(directWriteReferences);
+            });
 
         Assert.Equal("'$(OS)' == 'Windows_NT'", reference.Attribute("Condition")?.Value);
         Assert.Equal("TargetFramework;TargetFrameworks", reference.Element("UndefineProperties")?.Value);
+    }
+
+    [Fact]
+    public void PresentationCoreIncludesProGpuSfntSourceOnNonWindows()
+    {
+        var projectPath = FindRepoPath("src", "Microsoft.DotNet.Wpf", "src", "PresentationCore", "PresentationCore.csproj");
+        var document = XDocument.Load(projectPath);
+
+        var compileItem = Assert.Single(
+            document.Descendants("Compile"),
+            item =>
+            {
+                var include = item.Attribute("Include")?.Value.Replace('/', '\\');
+                return include?.EndsWith(@"external\ProGPU\src\ProGPU.Text\SfntFontFace.cs", StringComparison.OrdinalIgnoreCase) == true;
+            });
+
+        Assert.Equal("'$(OS)' != 'Windows_NT'", compileItem.Attribute("Condition")?.Value);
+        Assert.Equal(@"MS\Internal\Text\TextInterface\ProGPU\SfntFontFace.cs", compileItem.Attribute("Link")?.Value);
     }
 
     private static string FindRepoPath(params string[] pathSegments)

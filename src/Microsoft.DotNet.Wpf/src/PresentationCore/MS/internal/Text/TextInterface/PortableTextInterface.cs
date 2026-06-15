@@ -8,6 +8,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Media;
+using ProGpuSfntFontFace = ProGPU.Text.SfntFontFace;
 
 namespace MS.Internal.Text.TextInterface
 {
@@ -858,6 +859,7 @@ namespace MS.Internal.Text.TextInterface
         private const uint TagCff = 0x43464620;
 
         private readonly byte[] _data;
+        private readonly ProGpuSfntFontFace _sfntFace;
         private readonly Dictionary<uint, TableRecord> _tables = new Dictionary<uint, TableRecord>();
         private readonly Dictionary<ushort, LocalizedStrings> _nameStrings = new Dictionary<ushort, LocalizedStrings>();
         private readonly uint _faceOffset;
@@ -881,6 +883,7 @@ namespace MS.Internal.Text.TextInterface
             FaceIndex = faceIndex;
             _faceOffset = faceOffset;
             _isCollection = isCollection;
+            _sfntFace = ProGpuSfntFontFace.Load(data, checked((int)faceIndex));
 
             ParseTableDirectory();
             ParseNames();
@@ -1127,6 +1130,12 @@ namespace MS.Internal.Text.TextInterface
 
         internal bool TryGetTable(uint tag, out byte[] tableData)
         {
+            if (_sfntFace.TryGetTable(TagToString(tag), out ReadOnlyMemory<byte> tableDataMemory))
+            {
+                tableData = tableDataMemory.ToArray();
+                return true;
+            }
+
             if (_tables.TryGetValue(tag, out TableRecord table))
             {
                 tableData = new byte[table.Length];
@@ -1150,7 +1159,7 @@ namespace MS.Internal.Text.TextInterface
             {
                 return new PortableFontData(data, uri, faceIndex, faceOffset, isCollection);
             }
-            catch (Exception ex) when (ex is ArgumentException || ex is IndexOutOfRangeException || ex is OverflowException)
+            catch (Exception ex) when (ex is ArgumentException || ex is FormatException || ex is IndexOutOfRangeException || ex is OverflowException)
             {
                 throw new FileFormatException(uri.AbsoluteUri, ex);
             }
@@ -1179,32 +1188,21 @@ namespace MS.Internal.Text.TextInterface
 
         private static List<uint> GetFaceOffsets(byte[] data)
         {
-            if (data.Length < 12)
+            try
             {
-                throw new FileFormatException();
-            }
-
-            List<uint> offsets = new List<uint>();
-            if (ReadUInt(data, 0) == TagTrueTypeCollection)
-            {
-                if (data.Length < 16)
+                IReadOnlyList<ProGpuSfntFontFace> faces = ProGpuSfntFontFace.LoadFaces(data);
+                List<uint> offsets = new List<uint>(faces.Count);
+                foreach (ProGpuSfntFontFace face in faces)
                 {
-                    throw new FileFormatException();
+                    offsets.Add(face.BaseOffset);
                 }
 
-                uint faceCount = ReadUInt(data, 8);
-                uint offsetTable = 12;
-                for (uint i = 0; i < faceCount; i++)
-                {
-                    offsets.Add(ReadUInt(data, offsetTable + i * sizeof(uint)));
-                }
+                return offsets;
             }
-            else
+            catch (FormatException ex)
             {
-                offsets.Add(0);
+                throw new FileFormatException("Invalid SFNT font data.", ex);
             }
-
-            return offsets;
         }
 
         private void ParseTableDirectory()
@@ -1686,6 +1684,17 @@ namespace MS.Internal.Text.TextInterface
                 | ((uint)data[index + 1] << 16)
                 | ((uint)data[index + 2] << 8)
                 | data[index + 3];
+        }
+
+        private static string TagToString(uint tag)
+        {
+            return new string(new[]
+            {
+                (char)((tag >> 24) & 0xFF),
+                (char)((tag >> 16) & 0xFF),
+                (char)((tag >> 8) & 0xFF),
+                (char)(tag & 0xFF)
+            });
         }
 
         private readonly struct TableRecord

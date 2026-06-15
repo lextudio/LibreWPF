@@ -280,6 +280,9 @@
     <Compile Include="MS\Internal\Text\TextInterface\FontCollectionLoader.cs"
              Condition="'$(OS)' == 'Windows_NT'" />
     <Compile Include="MS\Internal\Text\TextInterface\IFontSourceCollection.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Text\SfntFontFace.cs"
+             Link="MS\Internal\Text\TextInterface\ProGPU\SfntFontFace.cs"
+             Condition="'$(OS)' != 'Windows_NT'" />
     <Compile Include="MS\Internal\Text\TextInterface\PortableTextInterface.cs"
              Condition="'$(OS)' != 'Windows_NT'" />
     <Compile Include="MS\Internal\TextFormatting\Bidi.cs" />

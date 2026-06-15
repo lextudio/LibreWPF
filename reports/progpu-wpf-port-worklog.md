@@ -403,6 +403,8 @@
 - Preserved WPF `PathGeometry.FillRule` and `PathSegment.IsStroked` metadata when the WPF bridge converts real/shim path geometry into `ProGPU.Vector.PathGeometry`, aligning the bridge with the ProGPU ABI added in `f942988`.
 - Verified the ProGPU path-op bound with `dotnet test src/ProGPU.Tests/ProGPU.Tests.csproj --no-restore --verbosity minimal --filter FullyQualifiedName~ArcPathCompilerTests`; 13 focused tests passed with existing warning noise outside this slice.
 - Verified the WPF bridge against ProGPU submodule head `ba59fdf` with `dotnet build src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj --no-restore --verbosity minimal -m:1` and `/Users/wieslawsoltes/.dotnet/dotnet test /Users/wieslawsoltes/GitHub/wpf/src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj --no-build --verbosity minimal --filter "FullyQualifiedName~WpfReplayToProGpuCommandTests|FullyQualifiedName~ArcSegmentGeometryTests"` from `/tmp`; 77 focused tests passed. A direct root `dotnet test` remains blocked by the WPF repo's `global.json` Microsoft.Testing.Platform policy while this xUnit test project still uses VSTest.
+- Added ProGPU submodule commit `759191f`: `WgpuContext.CleanupPendingResources()` now releases queued bind-group layouts, pipeline layouts, render pipelines, compute pipelines, and shader modules instead of clearing those queues without native release. This addresses the ProGPU PR #17 queued pipeline/shader resource leak review comments.
+- Verified the ProGPU backend resource-release fix with `dotnet build src/ProGPU.Backend/ProGPU.Backend.csproj --no-restore --verbosity minimal`; 0 warnings and 0 errors.
 
 ## Open Porting Items
 

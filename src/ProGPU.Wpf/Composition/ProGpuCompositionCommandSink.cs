@@ -1,0 +1,1863 @@
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using System.Windows;
+using System.Windows.Media.ProGPU.Composition.Mil;
+using MediaBrush = System.Windows.Media.Brush;
+using MediaDrawingContext = System.Windows.Media.DrawingContext;
+using MediaFormattedText = System.Windows.Media.FormattedText;
+using MediaGeometry = System.Windows.Media.Geometry;
+using MediaGlyphRun = System.Windows.Media.GlyphRun;
+using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
+using MediaImageSource = System.Windows.Media.ImageSource;
+using MediaPathGeometry = System.Windows.Media.PathGeometry;
+using MediaPen = System.Windows.Media.Pen;
+using MediaPenLineCap = System.Windows.Media.PenLineCap;
+using MediaSweepDirection = System.Windows.Media.SweepDirection;
+using MediaTransform = System.Windows.Media.Transform;
+using VectorArcSegment = ProGPU.Vector.ArcSegment;
+using VectorCubicBezierSegment = ProGPU.Vector.CubicBezierSegment;
+using VectorLineSegment = ProGPU.Vector.LineSegment;
+using VectorPen = ProGPU.Vector.Pen;
+using VectorPathFigure = ProGPU.Vector.PathFigure;
+using VectorPathGeometry = ProGPU.Vector.PathGeometry;
+using VectorPathSegment = ProGPU.Vector.PathSegment;
+using VectorQuadraticBezierSegment = ProGPU.Vector.QuadraticBezierSegment;
+using VectorBrush = ProGPU.Vector.Brush;
+using VectorPenLineCap = ProGPU.Vector.PenLineCap;
+using VectorPenLineJoin = ProGPU.Vector.PenLineJoin;
+using VectorSolidColorBrush = ProGPU.Vector.SolidColorBrush;
+using VectorSweepDirection = ProGPU.Vector.SweepDirection;
+
+namespace System.Windows.Media.ProGPU.Composition;
+
+public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, IWpfViewport3DCommandSink, IWpfCompositionCommandSinkDiagnostics
+{
+    private const float TransformEpsilon = 0.0001f;
+    private const int DashedCurveSegmentsPerQuadrant = 8;
+    private const int DashedBezierSegments = 16;
+
+    private enum PushKind
+    {
+        DrawingContext,
+        GeometryClip,
+        Guideline,
+        NoOp,
+        Opacity,
+        OpacityMask,
+        Transform,
+        BitmapScalingMode,
+        EdgeMode,
+        TextRenderingMode
+    }
+
+    private readonly Stack<PushKind> _pushStack = new();
+    private readonly Stack<GuidelineState> _guidelineStack = new();
+    private readonly Stack<Matrix4x4> _transformStack = new();
+    private readonly Stack<global::ProGPU.Scene.TextureSamplingMode> _bitmapScalingModeStack = new();
+    private readonly Stack<bool> _edgeModeStack = new();
+    private readonly Stack<bool> _textRenderingModeStack = new();
+    private readonly global::ProGPU.Backend.WgpuContext? _context;
+    private readonly WpfViewport3DTextureCache? _viewport3DTextureCache;
+    private bool _isClosed;
+
+    public ProGpuCompositionCommandSink(MediaDrawingContext drawingContext)
+        : this(drawingContext, context: null, viewport3DTextureCache: null)
+    {
+    }
+
+    internal ProGpuCompositionCommandSink(
+        MediaDrawingContext drawingContext,
+        global::ProGPU.Backend.WgpuContext? context,
+        WpfViewport3DTextureCache? viewport3DTextureCache)
+    {
+        DrawingContext = drawingContext ?? throw new ArgumentNullException(nameof(drawingContext));
+        _context = context;
+        _viewport3DTextureCache = viewport3DTextureCache;
+        _transformStack.Push(Matrix4x4.Identity);
+        _bitmapScalingModeStack.Push(global::ProGPU.Scene.TextureSamplingMode.Linear);
+        _edgeModeStack.Push(false);
+        _textRenderingModeStack.Push(false);
+    }
+
+    public MediaDrawingContext DrawingContext { get; }
+
+    public int UnsupportedStateCount { get; private set; }
+
+    public bool DrawViewport3D(object viewportVisual)
+    {
+        ThrowIfClosed();
+
+        if (_context == null || _viewport3DTextureCache == null)
+        {
+            return false;
+        }
+
+        if (!WpfViewport3DReflectionBridge.TryCreateReplayData(
+                viewportVisual,
+                _viewport3DTextureCache,
+                out var replayData)
+            || replayData.Payload.ColorTexture == null
+            || replayData.Payload.MsaaColorTexture == null
+            || replayData.Payload.DepthTexture == null)
+        {
+            return false;
+        }
+
+        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        {
+            Type = global::ProGPU.Scene.RenderCommandType.DrawExtension,
+            ExtensionId = global::ProGPU.Scene.CompositorBuiltInExtensions.Mesh3D,
+            UseGpuTransforms = true,
+            CameraView = replayData.View,
+            Transform = replayData.Projection,
+            DataParam = replayData.Payload
+        });
+
+        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        {
+            Type = global::ProGPU.Scene.RenderCommandType.DrawTexture,
+            Texture = replayData.Payload.ColorTexture,
+            Rect = replayData.Viewport,
+            Transform = _transformStack.Peek(),
+            TextureSamplingMode = _bitmapScalingModeStack.Peek()
+        });
+
+        return true;
+    }
+
+    public void DrawLine(MediaPen? pen, Point point0, Point point1)
+    {
+        ThrowIfClosed();
+
+        point0 = SnapGuideline(point0);
+        point1 = SnapGuideline(point1);
+        var bounds = new Rect(point0, point1);
+        if (pen == null || ToNativePen(pen, bounds) is not { } nativePen)
+        {
+            return;
+        }
+
+        if (pen is ProGpuWpfPen wpfPen && TryDrawDashedPolyline(nativePen, wpfPen, new[] { point0, point1 }))
+        {
+            return;
+        }
+
+        AddNativeLine(nativePen, point0, point1, pen.StartLineCap, pen.EndLineCap);
+    }
+
+    private void AddNativeLine(
+        VectorPen pen,
+        Point point0,
+        Point point1,
+        MediaPenLineCap startLineCap = MediaPenLineCap.Flat,
+        MediaPenLineCap endLineCap = MediaPenLineCap.Flat)
+    {
+        var originalPoint0 = point0;
+        var originalPoint1 = point1;
+        ApplySquareLineCaps(pen, ref point0, ref point1, startLineCap, endLineCap);
+
+        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        {
+            Type = global::ProGPU.Scene.RenderCommandType.DrawLine,
+            Pen = pen,
+            Position = new Vector2((float)point0.X, (float)point0.Y),
+            Position2 = new Vector2((float)point1.X, (float)point1.Y),
+            Transform = _transformStack.Peek(),
+            IsEdgeAliased = _edgeModeStack.Peek()
+        });
+
+        AddRoundLineCap(pen, originalPoint0, startLineCap);
+        AddRoundLineCap(pen, originalPoint1, endLineCap);
+        AddTriangleLineCap(pen, originalPoint0, originalPoint1, startLineCap, isStart: true);
+        AddTriangleLineCap(pen, originalPoint0, originalPoint1, endLineCap, isStart: false);
+    }
+
+    private static void ApplySquareLineCaps(
+        VectorPen pen,
+        ref Point point0,
+        ref Point point1,
+        MediaPenLineCap startLineCap,
+        MediaPenLineCap endLineCap)
+    {
+        if (startLineCap != MediaPenLineCap.Square && endLineCap != MediaPenLineCap.Square)
+        {
+            return;
+        }
+
+        var start = new Vector2((float)point0.X, (float)point0.Y);
+        var end = new Vector2((float)point1.X, (float)point1.Y);
+        var delta = end - start;
+        var length = delta.Length();
+        if (length <= TransformEpsilon)
+        {
+            return;
+        }
+
+        var extension = delta / length * (pen.Thickness / 2);
+        if (startLineCap == MediaPenLineCap.Square)
+        {
+            start -= extension;
+            point0 = new Point(start.X, start.Y);
+        }
+
+        if (endLineCap == MediaPenLineCap.Square)
+        {
+            end += extension;
+            point1 = new Point(end.X, end.Y);
+        }
+    }
+
+    private void AddRoundLineCap(VectorPen pen, Point point, MediaPenLineCap lineCap)
+    {
+        if (lineCap != MediaPenLineCap.Round || pen.Thickness <= TransformEpsilon)
+        {
+            return;
+        }
+
+        var radius = pen.Thickness / 2;
+        AddNativeEllipse(pen.Brush, null, point, radius, radius);
+    }
+
+    private void AddTriangleLineCap(
+        VectorPen pen,
+        Point point0,
+        Point point1,
+        MediaPenLineCap lineCap,
+        bool isStart)
+    {
+        if (lineCap != MediaPenLineCap.Triangle || pen.Thickness <= TransformEpsilon)
+        {
+            return;
+        }
+
+        var start = new Vector2((float)point0.X, (float)point0.Y);
+        var end = new Vector2((float)point1.X, (float)point1.Y);
+        var delta = end - start;
+        var length = delta.Length();
+        if (length <= TransformEpsilon)
+        {
+            return;
+        }
+
+        var direction = delta / length;
+        var radius = pen.Thickness / 2;
+        var perpendicular = new Vector2(-direction.Y, direction.X) * radius;
+        var center = isStart ? start : end;
+        var outward = isStart ? -direction : direction;
+
+        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        {
+            Type = global::ProGPU.Scene.RenderCommandType.FillTriangle,
+            Brush = pen.Brush,
+            Position = center - perpendicular,
+            Position2 = center + outward * radius,
+            Position3 = center + perpendicular,
+            Transform = _transformStack.Peek(),
+            IsEdgeAliased = _edgeModeStack.Peek()
+        });
+    }
+
+    public void DrawRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle)
+    {
+        ThrowIfClosed();
+        rectangle = SnapGuidelines(rectangle);
+        var nativeBrush = ToNativeBrush(brush, rectangle);
+        var nativePen = ToNativePen(pen, rectangle);
+
+        if (pen is ProGpuWpfPen dashedPen
+            && nativePen != null)
+        {
+            if (nativeBrush != null)
+            {
+                AddNativeRect(nativeBrush, null, rectangle);
+            }
+
+            if (TryDrawDashedRectangle(nativePen, dashedPen, rectangle))
+            {
+                return;
+            }
+
+            if (nativeBrush != null)
+            {
+                AddNativeRect(null, nativePen, rectangle);
+                return;
+            }
+        }
+
+        AddNativeRect(nativeBrush, nativePen, rectangle);
+    }
+
+    private void AddNativeRect(VectorBrush? brush, VectorPen? pen, Rect rectangle)
+    {
+        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        {
+            Type = global::ProGPU.Scene.RenderCommandType.DrawRect,
+            Brush = brush,
+            Pen = pen,
+            Rect = ToNativeRect(rectangle),
+            Transform = _transformStack.Peek(),
+            IsEdgeAliased = _edgeModeStack.Peek()
+        });
+    }
+
+    public void DrawRoundedRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle, double radiusX, double radiusY)
+    {
+        ThrowIfClosed();
+        rectangle = SnapGuidelines(rectangle);
+        var nativeBrush = ToNativeBrush(brush, rectangle);
+        var nativePen = ToNativePen(pen, rectangle);
+
+        if (pen is ProGpuWpfPen dashedPen
+            && nativePen != null)
+        {
+            if (nativeBrush != null)
+            {
+                AddNativeRoundedRect(nativeBrush, null, rectangle, radiusX, radiusY);
+            }
+
+            if (TryDrawDashedRoundedRectangle(nativePen, dashedPen, rectangle, radiusX, radiusY))
+            {
+                return;
+            }
+
+            if (nativeBrush != null)
+            {
+                AddNativeRoundedRect(null, nativePen, rectangle, radiusX, radiusY);
+                return;
+            }
+        }
+
+        AddNativeRoundedRect(nativeBrush, nativePen, rectangle, radiusX, radiusY);
+    }
+
+    private void AddNativeRoundedRect(VectorBrush? brush, VectorPen? pen, Rect rectangle, double radiusX, double radiusY)
+    {
+        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        {
+            Type = global::ProGPU.Scene.RenderCommandType.DrawRoundedRect,
+            Brush = brush,
+            Pen = pen,
+            Rect = ToNativeRect(rectangle),
+            RadiusX = (float)radiusX,
+            RadiusY = (float)radiusY,
+            Transform = _transformStack.Peek(),
+            IsEdgeAliased = _edgeModeStack.Peek()
+        });
+    }
+
+    public void DrawEllipse(MediaBrush? brush, MediaPen? pen, Point center, double radiusX, double radiusY)
+    {
+        ThrowIfClosed();
+        var bounds = new Rect(center.X - radiusX, center.Y - radiusY, radiusX * 2, radiusY * 2);
+        bounds = SnapGuidelines(bounds);
+        center = new Point(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2);
+        radiusX = bounds.Width / 2;
+        radiusY = bounds.Height / 2;
+        var nativeBrush = ToNativeBrush(brush, bounds);
+        var nativePen = ToNativePen(pen, bounds);
+
+        if (pen is ProGpuWpfPen dashedPen
+            && nativePen != null)
+        {
+            if (nativeBrush != null)
+            {
+                AddNativeEllipse(nativeBrush, null, center, radiusX, radiusY);
+            }
+
+            if (TryDrawDashedEllipse(nativePen, dashedPen, center, radiusX, radiusY))
+            {
+                return;
+            }
+
+            if (nativeBrush != null)
+            {
+                AddNativeEllipse(null, nativePen, center, radiusX, radiusY);
+                return;
+            }
+        }
+
+        AddNativeEllipse(nativeBrush, nativePen, center, radiusX, radiusY);
+    }
+
+    private void AddNativeEllipse(VectorBrush? brush, VectorPen? pen, Point center, double radiusX, double radiusY)
+    {
+        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        {
+            Type = global::ProGPU.Scene.RenderCommandType.DrawEllipse,
+            Brush = brush,
+            Pen = pen,
+            Position2 = new Vector2((float)center.X, (float)center.Y),
+            RadiusX = (float)radiusX,
+            RadiusY = (float)radiusY,
+            Transform = _transformStack.Peek(),
+            IsEdgeAliased = _edgeModeStack.Peek()
+        });
+    }
+
+    public void DrawGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
+    {
+        ThrowIfClosed();
+
+        if ((brush != null || pen != null)
+            && TryConvertGeometryToNativePath(geometry, Matrix4x4.Identity, out var path))
+        {
+            var bounds = geometry.Bounds;
+            var nativeBrush = ToNativeBrush(brush, bounds);
+            var nativePen = ToNativePen(pen, bounds);
+
+            if (pen is ProGpuWpfPen dashedPen
+                && nativePen != null)
+            {
+                if (nativeBrush != null)
+                {
+                    AddNativePath(nativeBrush, null, path);
+                }
+
+                if (TryDrawDashedPath(nativePen, dashedPen, path))
+                {
+                    return;
+                }
+
+                if (nativeBrush != null)
+                {
+                    AddNativePath(null, nativePen, path);
+                    return;
+                }
+            }
+
+            AddNativePath(nativeBrush, nativePen, path);
+            return;
+        }
+
+        DrawingContext.DrawGeometry(brush, pen, geometry);
+    }
+
+    private void AddNativePath(VectorBrush? brush, VectorPen? pen, VectorPathGeometry path)
+    {
+        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        {
+            Type = global::ProGPU.Scene.RenderCommandType.DrawPath,
+            Brush = brush,
+            Pen = pen,
+            Path = path,
+            Transform = _transformStack.Peek(),
+            IsEdgeAliased = _edgeModeStack.Peek()
+        });
+    }
+
+    public void DrawImage(MediaImageSource imageSource, Rect rectangle)
+    {
+        ThrowIfClosed();
+
+        if (imageSource is MediaBitmapSource bitmapSource)
+        {
+            DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+            {
+                Type = global::ProGPU.Scene.RenderCommandType.DrawTexture,
+                Texture = bitmapSource.GpuTexture,
+                Rect = ToNativeRect(rectangle),
+                Transform = _transformStack.Peek(),
+                TextureSamplingMode = _bitmapScalingModeStack.Peek()
+            });
+            return;
+        }
+
+        DrawingContext.DrawImage(imageSource, rectangle);
+    }
+
+    public void DrawImage(MediaImageSource imageSource, Rect rectangle, Rect sourceRectangle)
+    {
+        ThrowIfClosed();
+
+        if (imageSource is MediaBitmapSource bitmapSource)
+        {
+            DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+            {
+                Type = global::ProGPU.Scene.RenderCommandType.DrawTexture,
+                Texture = bitmapSource.GpuTexture,
+                Rect = ToNativeRect(rectangle),
+                SrcRect = ToNativeRect(sourceRectangle),
+                Transform = _transformStack.Peek(),
+                TextureSamplingMode = _bitmapScalingModeStack.Peek()
+            });
+        }
+    }
+
+    public void DrawText(MediaFormattedText formattedText, Point origin)
+    {
+        ThrowIfClosed();
+
+        if (formattedText == null || formattedText.Font == null)
+        {
+            return;
+        }
+
+        var nativeBrush = formattedText.Foreground?.ToNative() ?? new VectorSolidColorBrush(Vector4.One);
+        var position = new Vector2(
+            (float)origin.X,
+            (float)(origin.Y + formattedText.Height * 0.8));
+
+        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        {
+            Type = global::ProGPU.Scene.RenderCommandType.DrawText,
+            Text = formattedText.Text,
+            Font = formattedText.Font,
+            FontSize = (float)formattedText.FontSize,
+            Brush = nativeBrush,
+            Position = position,
+            Transform = _transformStack.Peek(),
+            IsTextAliased = _textRenderingModeStack.Peek()
+        });
+    }
+
+    public void DrawGlyphRun(MediaBrush? foregroundBrush, MediaGlyphRun glyphRun)
+    {
+        ThrowIfClosed();
+
+        if (foregroundBrush == null || glyphRun == null)
+        {
+            return;
+        }
+
+        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        {
+            Type = global::ProGPU.Scene.RenderCommandType.DrawGlyphRun,
+            GlyphIndices = glyphRun.GlyphIndices,
+            GlyphPositions = glyphRun.GlyphPositions,
+            Font = glyphRun.Font,
+            FontSize = glyphRun.FontSize,
+            Brush = foregroundBrush.ToNative(),
+            Position = glyphRun.Position,
+            Transform = glyphRun.Transform * _transformStack.Peek(),
+            IsBold = glyphRun.IsBold,
+            IsItalic = glyphRun.IsItalic,
+            IsTextAliased = _textRenderingModeStack.Peek()
+        });
+    }
+
+    public void PushClip(MediaGeometry clipGeometry)
+    {
+        ThrowIfClosed();
+
+        if (TryConvertGeometryToNativePath(clipGeometry, _transformStack.Peek(), out var path))
+        {
+            DrawingContext.NativeContext.PushGeometryClip(path);
+            _pushStack.Push(PushKind.GeometryClip);
+            return;
+        }
+
+        DrawingContext.PushClip(clipGeometry);
+        _pushStack.Push(PushKind.DrawingContext);
+    }
+
+    public void PushOpacity(double opacity)
+    {
+        ThrowIfClosed();
+        DrawingContext.NativeContext.PushOpacity((float)opacity);
+        _pushStack.Push(PushKind.Opacity);
+    }
+
+    public void PushOpacityMask(MediaBrush? opacityMask, Rect bounds)
+    {
+        ThrowIfClosed();
+
+        if (opacityMask == null)
+        {
+            PushNoOpScope();
+            return;
+        }
+
+        var nativeBounds = new global::ProGPU.Scene.Rect(
+            (float)bounds.X,
+            (float)bounds.Y,
+            (float)bounds.Width,
+            (float)bounds.Height);
+
+        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        {
+            Type = global::ProGPU.Scene.RenderCommandType.PushOpacityMask,
+            Brush = ToNativeBrush(opacityMask, bounds),
+            Rect = nativeBounds,
+            Transform = _transformStack.Peek()
+        });
+        _pushStack.Push(PushKind.OpacityMask);
+    }
+
+    public void PushTransform(MediaTransform transform)
+    {
+        ThrowIfClosed();
+        _transformStack.Push(transform.Value * _transformStack.Peek());
+        DrawingContext.PushTransform(transform);
+        _pushStack.Push(PushKind.Transform);
+    }
+
+    public void PushNoOpScope()
+    {
+        ThrowIfClosed();
+        _pushStack.Push(PushKind.NoOp);
+    }
+
+    public void PushGuidelineSet()
+    {
+        PushNoOpScope();
+    }
+
+    public void PushGuidelineSet(object? guidelines)
+    {
+        ThrowIfClosed();
+
+        if (WpfGuidelineSetReflection.TryReadDynamicGuidelineSet(guidelines, out var guidelinesX, out var guidelinesY))
+        {
+            _guidelineStack.Push(GuidelineState.FromGuidelineSet(guidelinesX, guidelinesY));
+            _pushStack.Push(PushKind.Guideline);
+            return;
+        }
+
+        _pushStack.Push(PushKind.NoOp);
+    }
+
+    public void PushGuidelineY1(double coordinate)
+    {
+        ThrowIfClosed();
+        _guidelineStack.Push(GuidelineState.FromGuidelineY1(coordinate));
+        _pushStack.Push(PushKind.Guideline);
+    }
+
+    public void PushGuidelineY2(double leadingCoordinate, double offsetToDrivenCoordinate)
+    {
+        ThrowIfClosed();
+        _guidelineStack.Push(GuidelineState.FromGuidelineY2(leadingCoordinate, offsetToDrivenCoordinate));
+        _pushStack.Push(PushKind.Guideline);
+    }
+
+    public void PushBitmapScalingMode(object? bitmapScalingMode)
+    {
+        ThrowIfClosed();
+
+        if (WpfBitmapScalingModeReflection.TryMapToTextureSamplingMode(bitmapScalingMode, out var samplingMode))
+        {
+            _bitmapScalingModeStack.Push(samplingMode);
+            _pushStack.Push(PushKind.BitmapScalingMode);
+            return;
+        }
+
+        if (bitmapScalingMode != null)
+        {
+            UnsupportedStateCount++;
+        }
+
+        PushNoOpScope();
+    }
+
+    public void PushEdgeMode(object? edgeMode)
+    {
+        ThrowIfClosed();
+
+        if (WpfEdgeModeReflection.TryMapToAliased(edgeMode, out var isAliased))
+        {
+            _edgeModeStack.Push(isAliased);
+            _pushStack.Push(PushKind.EdgeMode);
+            return;
+        }
+
+        if (edgeMode != null)
+        {
+            UnsupportedStateCount++;
+        }
+
+        PushNoOpScope();
+    }
+
+    public void PushTextRenderingMode(object? textRenderingMode)
+    {
+        ThrowIfClosed();
+
+        if (WpfTextRenderingModeReflection.TryMapToAliased(textRenderingMode, out var isAliased))
+        {
+            _textRenderingModeStack.Push(isAliased);
+            _pushStack.Push(PushKind.TextRenderingMode);
+            return;
+        }
+
+        if (textRenderingMode != null)
+        {
+            UnsupportedStateCount++;
+        }
+
+        PushNoOpScope();
+    }
+
+    public void Pop()
+    {
+        ThrowIfClosed();
+
+        if (_pushStack.Count == 0)
+        {
+            DrawingContext.Pop();
+            return;
+        }
+
+        var pushKind = _pushStack.Pop();
+        if (pushKind == PushKind.GeometryClip)
+        {
+            DrawingContext.NativeContext.PopGeometryClip();
+            return;
+        }
+
+        if (pushKind == PushKind.OpacityMask)
+        {
+            DrawingContext.NativeContext.PopOpacityMask();
+            return;
+        }
+
+        if (pushKind == PushKind.Opacity)
+        {
+            DrawingContext.NativeContext.PopOpacity();
+            return;
+        }
+
+        if (pushKind == PushKind.NoOp)
+        {
+            return;
+        }
+
+        if (pushKind == PushKind.Guideline)
+        {
+            if (_guidelineStack.Count > 0)
+            {
+                _guidelineStack.Pop();
+            }
+
+            return;
+        }
+
+        if (pushKind == PushKind.BitmapScalingMode)
+        {
+            if (_bitmapScalingModeStack.Count > 1)
+            {
+                _bitmapScalingModeStack.Pop();
+            }
+
+            return;
+        }
+
+        if (pushKind == PushKind.EdgeMode)
+        {
+            if (_edgeModeStack.Count > 1)
+            {
+                _edgeModeStack.Pop();
+            }
+
+            return;
+        }
+
+        if (pushKind == PushKind.TextRenderingMode)
+        {
+            if (_textRenderingModeStack.Count > 1)
+            {
+                _textRenderingModeStack.Pop();
+            }
+
+            return;
+        }
+
+        if (pushKind == PushKind.Transform && _transformStack.Count > 1)
+        {
+            _transformStack.Pop();
+        }
+
+        DrawingContext.Pop();
+    }
+
+    public void Close()
+    {
+        if (_isClosed)
+        {
+            return;
+        }
+
+        DrawingContext.Close();
+        _isClosed = true;
+    }
+
+    public void Dispose()
+    {
+        Close();
+    }
+
+    private void ThrowIfClosed()
+    {
+        if (_isClosed)
+        {
+            throw new ObjectDisposedException(nameof(ProGpuCompositionCommandSink));
+        }
+    }
+
+    private static global::ProGPU.Scene.Rect ToNativeRect(Rect rectangle)
+    {
+        return new global::ProGPU.Scene.Rect(
+            (float)rectangle.X,
+            (float)rectangle.Y,
+            (float)rectangle.Width,
+            (float)rectangle.Height);
+    }
+
+    private bool TryDrawDashedRectangle(VectorPen nativePen, ProGpuWpfPen pen, Rect rectangle)
+    {
+        if (rectangle.Width <= TransformEpsilon || rectangle.Height <= TransformEpsilon)
+        {
+            return false;
+        }
+
+        return TryDrawDashedPolyline(
+            nativePen,
+            pen,
+            new[]
+            {
+                new Point(rectangle.X, rectangle.Y),
+                new Point(rectangle.X + rectangle.Width, rectangle.Y),
+                new Point(rectangle.X + rectangle.Width, rectangle.Y + rectangle.Height),
+                new Point(rectangle.X, rectangle.Y + rectangle.Height),
+                new Point(rectangle.X, rectangle.Y)
+            });
+    }
+
+    private bool TryDrawDashedRoundedRectangle(
+        VectorPen nativePen,
+        ProGpuWpfPen pen,
+        Rect rectangle,
+        double radiusX,
+        double radiusY)
+    {
+        if (rectangle.Width <= TransformEpsilon || rectangle.Height <= TransformEpsilon)
+        {
+            return false;
+        }
+
+        radiusX = Math.Min(Math.Abs(radiusX), rectangle.Width / 2);
+        radiusY = Math.Min(Math.Abs(radiusY), rectangle.Height / 2);
+        if (radiusX <= TransformEpsilon || radiusY <= TransformEpsilon)
+        {
+            return TryDrawDashedRectangle(nativePen, pen, rectangle);
+        }
+
+        return TryDrawDashedPolyline(nativePen, pen, BuildRoundedRectanglePolyline(rectangle, radiusX, radiusY));
+    }
+
+    private bool TryDrawDashedEllipse(
+        VectorPen nativePen,
+        ProGpuWpfPen pen,
+        Point center,
+        double radiusX,
+        double radiusY)
+    {
+        if (radiusX <= TransformEpsilon || radiusY <= TransformEpsilon)
+        {
+            return false;
+        }
+
+        return TryDrawDashedPolyline(nativePen, pen, BuildEllipsePolyline(center, radiusX, radiusY));
+    }
+
+    private bool TryDrawDashedPath(VectorPen nativePen, ProGpuWpfPen pen, VectorPathGeometry path)
+    {
+        return TryDrawDashedPath(nativePen, pen, path, depth: 0);
+    }
+
+    private bool TryDrawDashedPath(VectorPen nativePen, ProGpuWpfPen pen, VectorPathGeometry path, int depth)
+    {
+        if (path.IsCombined)
+        {
+            if (depth > 32)
+            {
+                return false;
+            }
+
+            UnsupportedStateCount++;
+            var combinedEmitted = false;
+            if (path.PathA != null)
+            {
+                combinedEmitted |= TryDrawDashedPath(nativePen, pen, path.PathA, depth + 1);
+            }
+
+            if (path.PathB != null)
+            {
+                combinedEmitted |= TryDrawDashedPath(nativePen, pen, path.PathB, depth + 1);
+            }
+
+            return combinedEmitted;
+        }
+
+        var emitted = false;
+        foreach (var figure in path.Figures)
+        {
+            var points = FlattenPathFigure(figure);
+            if (points.Count >= 2 && TryDrawDashedPolyline(nativePen, pen, points))
+            {
+                emitted = true;
+            }
+        }
+
+        return emitted;
+    }
+
+    private static IReadOnlyList<Point> FlattenPathFigure(VectorPathFigure figure)
+    {
+        var points = new List<Point>
+        {
+            ToPoint(figure.StartPoint)
+        };
+        var current = figure.StartPoint;
+
+        foreach (var segment in figure.Segments)
+        {
+            switch (segment)
+            {
+                case VectorLineSegment line:
+                    points.Add(ToPoint(line.Point));
+                    current = line.Point;
+                    break;
+
+                case VectorQuadraticBezierSegment quadratic:
+                    AppendQuadratic(points, current, quadratic.ControlPoint, quadratic.Point);
+                    current = quadratic.Point;
+                    break;
+
+                case VectorCubicBezierSegment cubic:
+                    AppendCubic(points, current, cubic.ControlPoint1, cubic.ControlPoint2, cubic.Point);
+                    current = cubic.Point;
+                    break;
+
+                case VectorArcSegment arc:
+                    AppendArcApproximation(points, current, arc);
+                    current = arc.Point;
+                    break;
+            }
+        }
+
+        if (figure.IsClosed && (!AreClose(points[0].X, points[^1].X, TransformEpsilon) || !AreClose(points[0].Y, points[^1].Y, TransformEpsilon)))
+        {
+            points.Add(points[0]);
+        }
+
+        return points;
+    }
+
+    private static void AppendQuadratic(List<Point> points, Vector2 p0, Vector2 p1, Vector2 p2)
+    {
+        for (var i = 1; i <= DashedBezierSegments; i++)
+        {
+            var t = (float)i / DashedBezierSegments;
+            var inverse = 1 - t;
+            var point = inverse * inverse * p0
+                + 2 * inverse * t * p1
+                + t * t * p2;
+            points.Add(ToPoint(point));
+        }
+    }
+
+    private static void AppendCubic(List<Point> points, Vector2 p0, Vector2 p1, Vector2 p2, Vector2 p3)
+    {
+        for (var i = 1; i <= DashedBezierSegments; i++)
+        {
+            var t = (float)i / DashedBezierSegments;
+            var inverse = 1 - t;
+            var point = inverse * inverse * inverse * p0
+                + 3 * inverse * inverse * t * p1
+                + 3 * inverse * t * t * p2
+                + t * t * t * p3;
+            points.Add(ToPoint(point));
+        }
+    }
+
+    private static void AppendArcApproximation(List<Point> points, Vector2 start, VectorArcSegment arc)
+    {
+        var cubics = new List<WpfCubicBezierSegmentData>();
+        if (!WpfArcSegmentConversion.TryAppendTransformedCubics(
+                cubics,
+                start,
+                arc.Point,
+                arc.Size,
+                arc.RotationAngle,
+                arc.IsLargeArc,
+                arc.SweepDirection == VectorSweepDirection.Clockwise
+                    ? MediaSweepDirection.Clockwise
+                    : MediaSweepDirection.Counterclockwise,
+                Matrix4x4.Identity))
+        {
+            points.Add(ToPoint(arc.Point));
+            return;
+        }
+
+        var current = start;
+        foreach (var cubic in cubics)
+        {
+            AppendCubic(points, current, cubic.ControlPoint1, cubic.ControlPoint2, cubic.Point);
+            current = cubic.Point;
+        }
+    }
+
+    private static IReadOnlyList<Point> BuildRoundedRectanglePolyline(Rect rectangle, double radiusX, double radiusY)
+    {
+        var points = new List<Point>
+        {
+            new(rectangle.X + radiusX, rectangle.Y),
+            new(rectangle.X + rectangle.Width - radiusX, rectangle.Y)
+        };
+
+        AppendArc(points, rectangle.X + rectangle.Width - radiusX, rectangle.Y + radiusY, radiusX, radiusY, -Math.PI / 2, 0);
+        points.Add(new Point(rectangle.X + rectangle.Width, rectangle.Y + rectangle.Height - radiusY));
+        AppendArc(points, rectangle.X + rectangle.Width - radiusX, rectangle.Y + rectangle.Height - radiusY, radiusX, radiusY, 0, Math.PI / 2);
+        points.Add(new Point(rectangle.X + radiusX, rectangle.Y + rectangle.Height));
+        AppendArc(points, rectangle.X + radiusX, rectangle.Y + rectangle.Height - radiusY, radiusX, radiusY, Math.PI / 2, Math.PI);
+        points.Add(new Point(rectangle.X, rectangle.Y + radiusY));
+        AppendArc(points, rectangle.X + radiusX, rectangle.Y + radiusY, radiusX, radiusY, Math.PI, Math.PI * 1.5);
+        points.Add(points[0]);
+        return points;
+    }
+
+    private static IReadOnlyList<Point> BuildEllipsePolyline(Point center, double radiusX, double radiusY)
+    {
+        var segments = Math.Clamp((int)Math.Ceiling(Math.Max(radiusX, radiusY) * Math.PI / 4), 16, 96);
+        var points = new List<Point>(segments + 1);
+        for (var i = 0; i <= segments; i++)
+        {
+            var angle = Math.PI * 2 * i / segments;
+            points.Add(new Point(
+                center.X + Math.Cos(angle) * radiusX,
+                center.Y + Math.Sin(angle) * radiusY));
+        }
+
+        return points;
+    }
+
+    private static Point ToPoint(Vector2 point)
+    {
+        return new Point(point.X, point.Y);
+    }
+
+    private static void AppendArc(
+        List<Point> points,
+        double centerX,
+        double centerY,
+        double radiusX,
+        double radiusY,
+        double startAngle,
+        double endAngle)
+    {
+        for (var i = 1; i <= DashedCurveSegmentsPerQuadrant; i++)
+        {
+            var angle = startAngle + (endAngle - startAngle) * i / DashedCurveSegmentsPerQuadrant;
+            points.Add(new Point(
+                centerX + Math.Cos(angle) * radiusX,
+                centerY + Math.Sin(angle) * radiusY));
+        }
+    }
+
+    private bool TryDrawDashedPolyline(VectorPen nativePen, ProGpuWpfPen pen, IReadOnlyList<Point> points)
+    {
+        if (!TryBuildDashPattern(pen, out var pattern, out var dashOffset))
+        {
+            return false;
+        }
+
+        if (points.Count < 2)
+        {
+            return false;
+        }
+
+        var patternLength = 0f;
+        foreach (var value in pattern)
+        {
+            patternLength += value;
+        }
+
+        if (patternLength <= TransformEpsilon)
+        {
+            return false;
+        }
+
+        var distanceInPattern = PositiveModulo((float)(dashOffset * pen.Thickness), patternLength);
+        var patternIndex = 0;
+        while (distanceInPattern >= pattern[patternIndex])
+        {
+            distanceInPattern -= pattern[patternIndex];
+            patternIndex = (patternIndex + 1) % pattern.Length;
+        }
+
+        var emitted = false;
+        for (var i = 0; i < points.Count - 1; i++)
+        {
+            var start = new Vector2((float)points[i].X, (float)points[i].Y);
+            var end = new Vector2((float)points[i + 1].X, (float)points[i + 1].Y);
+            var delta = end - start;
+            var length = delta.Length();
+            if (length <= TransformEpsilon)
+            {
+                continue;
+            }
+
+            var direction = delta / length;
+            var distance = 0f;
+            while (distance < length)
+            {
+                var remainingInElement = pattern[patternIndex] - distanceInPattern;
+                var step = Math.Min(remainingInElement, length - distance);
+                if ((patternIndex % 2) == 0 && step > TransformEpsilon)
+                {
+                    var dashStart = start + direction * distance;
+                    var dashEnd = start + direction * (distance + step);
+                    AddNativeLine(
+                        nativePen,
+                        new Point(dashStart.X, dashStart.Y),
+                        new Point(dashEnd.X, dashEnd.Y),
+                        pen.DashCap,
+                        pen.DashCap);
+                    emitted = true;
+                }
+
+                distance += step;
+                if (step >= remainingInElement - TransformEpsilon)
+                {
+                    distanceInPattern = 0;
+                    patternIndex = (patternIndex + 1) % pattern.Length;
+                }
+                else
+                {
+                    distanceInPattern += step;
+                }
+            }
+        }
+
+        return emitted;
+    }
+
+    private static bool TryBuildDashPattern(ProGpuWpfPen pen, out float[] pattern, out double dashOffset)
+    {
+        pattern = Array.Empty<float>();
+        dashOffset = pen.DashOffset;
+
+        if (pen.DashArray.Length == 0 || pen.Thickness <= 0)
+        {
+            return false;
+        }
+
+        var patternLength = pen.DashArray.Length % 2 == 0
+            ? pen.DashArray.Length
+            : pen.DashArray.Length * 2;
+        pattern = new float[patternLength];
+        for (var i = 0; i < pattern.Length; i++)
+        {
+            var value = pen.DashArray[i % pen.DashArray.Length] * pen.Thickness;
+            if (!double.IsFinite(value) || value < 0)
+            {
+                pattern = Array.Empty<float>();
+                return false;
+            }
+
+            if (value <= TransformEpsilon)
+            {
+                if ((i % 2) != 0)
+                {
+                    pattern = Array.Empty<float>();
+                    return false;
+                }
+
+                value = pen.Thickness;
+            }
+
+            pattern[i] = (float)value;
+        }
+
+        return true;
+    }
+
+    private static float PositiveModulo(float value, float modulus)
+    {
+        var result = value % modulus;
+        return result < 0 ? result + modulus : result;
+    }
+
+    private Point SnapGuideline(Point point)
+    {
+        var x = TrySnapGuidelineX(point.X, out var snappedX) ? snappedX : point.X;
+        var y = TrySnapGuidelineY(point.Y, out var snappedY) ? snappedY : point.Y;
+        return x == point.X && y == point.Y ? point : new Point(x, y);
+    }
+
+    private Rect SnapGuidelines(Rect rectangle)
+    {
+        var left = rectangle.X;
+        var right = rectangle.X + rectangle.Width;
+        var top = rectangle.Y;
+        var bottom = rectangle.Y + rectangle.Height;
+        var snappedLeft = TrySnapGuidelineX(left, out var newLeft) ? newLeft : left;
+        var snappedRight = TrySnapGuidelineX(right, out var newRight) ? newRight : right;
+        var snappedTop = TrySnapGuidelineY(top, out var newTop) ? newTop : top;
+        var snappedBottom = TrySnapGuidelineY(bottom, out var newBottom) ? newBottom : bottom;
+
+        if (snappedLeft == left && snappedRight == right && snappedTop == top && snappedBottom == bottom)
+        {
+            return rectangle;
+        }
+
+        return new Rect(
+            snappedLeft,
+            snappedTop,
+            Math.Max(0, snappedRight - snappedLeft),
+            Math.Max(0, snappedBottom - snappedTop));
+    }
+
+    private bool TrySnapGuidelineX(double x, out double snappedX)
+    {
+        snappedX = x;
+        if (_guidelineStack.Count == 0
+            || !TryGetAxisAlignedMapping(
+                _transformStack.Peek(),
+                out var scaleX,
+                out var translateX,
+                out _,
+                out _))
+        {
+            return false;
+        }
+
+        foreach (var guideline in _guidelineStack)
+        {
+            if (guideline.TrySnapX(x, scaleX, translateX, out snappedX))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool TrySnapGuidelineY(double y, out double snappedY)
+    {
+        snappedY = y;
+        if (_guidelineStack.Count == 0
+            || !TryGetAxisAlignedMapping(
+                _transformStack.Peek(),
+                out _,
+                out _,
+                out var scaleY,
+                out var translateY))
+        {
+            return false;
+        }
+
+        foreach (var guideline in _guidelineStack)
+        {
+            if (guideline.TrySnapY(y, scaleY, translateY, out snappedY))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TryGetAxisAlignedMapping(
+        Matrix4x4 transform,
+        out double scaleX,
+        out double translateX,
+        out double scaleY,
+        out double translateY)
+    {
+        scaleX = transform.M11;
+        translateX = transform.M41;
+        scaleY = transform.M22;
+        translateY = transform.M42;
+
+        return !AreClose(scaleX, 0)
+            && !AreClose(scaleY, 0)
+            && double.IsFinite(scaleX)
+            && double.IsFinite(translateX)
+            && double.IsFinite(scaleY)
+            && double.IsFinite(translateY)
+            && AreClose(transform.M12, 0)
+            && AreClose(transform.M21, 0)
+            && AreClose(transform.M13, 0)
+            && AreClose(transform.M14, 0)
+            && AreClose(transform.M23, 0)
+            && AreClose(transform.M24, 0)
+            && AreClose(transform.M31, 0)
+            && AreClose(transform.M32, 0)
+            && AreClose(transform.M34, 0)
+            && AreClose(transform.M43, 0)
+            && AreClose(transform.M33, 1)
+            && AreClose(transform.M44, 1);
+    }
+
+    private static bool AreClose(double left, double right)
+    {
+        return Math.Abs(left - right) <= TransformEpsilon;
+    }
+
+    private static bool AreClose(double left, double right, double epsilon)
+    {
+        return Math.Abs(left - right) <= epsilon;
+    }
+
+    private VectorBrush? ToNativeBrush(MediaBrush? brush, Rect bounds)
+    {
+        return brush switch
+        {
+            null => null,
+            ProGpuNativeBrush nativeBrush => ToNativeBrush(nativeBrush, bounds),
+            _ => brush.ToNative()
+        };
+    }
+
+    private VectorBrush ToNativeBrush(ProGpuNativeBrush brush, Rect bounds)
+    {
+        UnsupportedStateCount += brush.CountUnsupportedStateForBounds(bounds);
+        return brush.ToNative(bounds);
+    }
+
+    private readonly struct GuidelineState
+    {
+        private readonly double[] _guidelinesX;
+        private readonly double[] _guidelinesY;
+        private readonly bool _preserveDrivenYOffset;
+        private readonly double _leadingY;
+        private readonly double _offsetToDrivenY;
+
+        private GuidelineState(
+            double[] guidelinesX,
+            double[] guidelinesY,
+            bool preserveDrivenYOffset,
+            double leadingY,
+            double offsetToDrivenY)
+        {
+            _guidelinesX = guidelinesX;
+            _guidelinesY = guidelinesY;
+            _preserveDrivenYOffset = preserveDrivenYOffset;
+            _leadingY = leadingY;
+            _offsetToDrivenY = offsetToDrivenY;
+        }
+
+        public static GuidelineState FromGuidelineSet(double[] guidelinesX, double[] guidelinesY)
+        {
+            return new GuidelineState(guidelinesX, guidelinesY, preserveDrivenYOffset: false, leadingY: 0, offsetToDrivenY: 0);
+        }
+
+        public static GuidelineState FromGuidelineY1(double coordinate)
+        {
+            return new GuidelineState(Array.Empty<double>(), new[] { coordinate }, preserveDrivenYOffset: false, leadingY: 0, offsetToDrivenY: 0);
+        }
+
+        public static GuidelineState FromGuidelineY2(double leadingCoordinate, double offsetToDrivenCoordinate)
+        {
+            return new GuidelineState(
+                Array.Empty<double>(),
+                new[] { leadingCoordinate, leadingCoordinate + offsetToDrivenCoordinate },
+                preserveDrivenYOffset: true,
+                leadingCoordinate,
+                offsetToDrivenCoordinate);
+        }
+
+        public bool TrySnapX(double x, double scaleX, double translateX, out double snappedX)
+        {
+            return TrySnapCoordinate(_guidelinesX, x, scaleX, translateX, out snappedX);
+        }
+
+        public bool TrySnapY(double y, double scaleY, double translateY, out double snappedY)
+        {
+            if (_preserveDrivenYOffset)
+            {
+                if (AreClose(y, _leadingY))
+                {
+                    snappedY = SnapCoordinate(_leadingY, scaleY, translateY);
+                    return true;
+                }
+
+                var drivenCoordinate = _leadingY + _offsetToDrivenY;
+                if (AreClose(y, drivenCoordinate))
+                {
+                    var snappedLeading = SnapCoordinate(_leadingY, scaleY, translateY);
+                    snappedY = drivenCoordinate + snappedLeading - _leadingY;
+                    return true;
+                }
+
+                snappedY = y;
+                return false;
+            }
+
+            return TrySnapCoordinate(_guidelinesY, y, scaleY, translateY, out snappedY);
+        }
+
+        private static bool TrySnapCoordinate(
+            double[] guidelines,
+            double coordinate,
+            double scale,
+            double translate,
+            out double snappedCoordinate)
+        {
+            foreach (var guideline in guidelines)
+            {
+                if (AreClose(coordinate, guideline))
+                {
+                    snappedCoordinate = SnapCoordinate(guideline, scale, translate);
+                    return true;
+                }
+            }
+
+            snappedCoordinate = coordinate;
+            return false;
+        }
+
+        private static double SnapCoordinate(double coordinate, double scale, double translate)
+        {
+            var deviceCoordinate = coordinate * scale + translate;
+            var snappedDeviceCoordinate = Math.Round(deviceCoordinate, MidpointRounding.AwayFromZero);
+            return (snappedDeviceCoordinate - translate) / scale;
+        }
+    }
+
+    private VectorPen? ToNativePen(MediaPen? pen, Rect bounds)
+    {
+        if (pen?.Brush == null)
+        {
+            return null;
+        }
+
+        var brush = ToNativeBrush(pen.Brush, bounds);
+        return brush == null
+            ? null
+            : new VectorPen(
+                brush,
+                (float)pen.Thickness,
+                ToNativeLineJoin(pen.LineJoin),
+                (float)Math.Max(1.0, pen.MiterLimit),
+                ToNativeLineCap(pen.StartLineCap),
+                ToNativeLineCap(pen.EndLineCap),
+                ToNativeLineCap(pen.DashCap));
+    }
+
+    private static VectorPenLineJoin ToNativeLineJoin(PenLineJoin lineJoin)
+    {
+        return lineJoin switch
+        {
+            PenLineJoin.Bevel => VectorPenLineJoin.Bevel,
+            PenLineJoin.Round => VectorPenLineJoin.Round,
+            _ => VectorPenLineJoin.Miter
+        };
+    }
+
+    private static VectorPenLineCap ToNativeLineCap(MediaPenLineCap lineCap)
+    {
+        return lineCap switch
+        {
+            MediaPenLineCap.Square => VectorPenLineCap.Square,
+            MediaPenLineCap.Round => VectorPenLineCap.Round,
+            MediaPenLineCap.Triangle => VectorPenLineCap.Triangle,
+            _ => VectorPenLineCap.Flat
+        };
+    }
+
+    private static bool TryConvertGeometryToNativePath(
+        MediaGeometry geometry,
+        Matrix4x4 transform,
+        out VectorPathGeometry path,
+        bool allowEmpty = false)
+    {
+        if (geometry is ProGpuCombinedGeometry combinedGeometry)
+        {
+            return TryConvertCombinedGeometryToNativePath(combinedGeometry, transform, out path);
+        }
+
+        if (geometry is MediaPathGeometry pathGeometry)
+        {
+            path = ConvertPathGeometry(pathGeometry, transform);
+            return allowEmpty || path.Figures.Count > 0;
+        }
+
+        if (TryRecordGeometryPath(geometry, out path))
+        {
+            if (!transform.IsIdentity)
+            {
+                path = TransformPath(path, transform);
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryConvertCombinedGeometryToNativePath(
+        ProGpuCombinedGeometry geometry,
+        Matrix4x4 transform,
+        out VectorPathGeometry path)
+    {
+        if (!TryConvertGeometryToNativePath(geometry.Geometry1, Matrix4x4.Identity, out var pathA, allowEmpty: true)
+            || !TryConvertGeometryToNativePath(geometry.Geometry2, Matrix4x4.Identity, out var pathB, allowEmpty: true))
+        {
+            path = new VectorPathGeometry();
+            return false;
+        }
+
+        path = new VectorPathGeometry
+        {
+            IsCombined = true,
+            PathA = pathA,
+            PathB = pathB,
+            Op = geometry.PathOperation
+        };
+
+        var geometryTransform = geometry.Transform?.Value ?? Matrix4x4.Identity;
+        var combinedTransform = geometryTransform * transform;
+        if (!combinedTransform.IsIdentity)
+        {
+            path = TransformPath(path, combinedTransform);
+        }
+
+        return true;
+    }
+
+    private static VectorPathGeometry ConvertPathGeometry(MediaPathGeometry geometry, Matrix4x4 transform)
+    {
+        var path = new VectorPathGeometry();
+        var geometryTransform = geometry.Transform?.Value ?? Matrix4x4.Identity;
+        var combinedTransform = geometryTransform * transform;
+
+        foreach (var figure in geometry.Figures)
+        {
+            var sourceCurrentPoint = figure.StartPoint;
+            var nativeFigure = new VectorPathFigure
+            {
+                StartPoint = Vector2.Transform(figure.StartPoint, combinedTransform),
+                IsClosed = figure.IsClosed,
+                IsFilled = figure.IsFilled
+            };
+
+            foreach (var segment in figure.Segments)
+            {
+                switch (segment)
+                {
+                    case LineSegment line:
+                        nativeFigure.Segments.Add(new VectorLineSegment(Vector2.Transform(line.Point, combinedTransform), line.IsSmoothJoin));
+                        sourceCurrentPoint = line.Point;
+                        break;
+
+                    case QuadraticBezierSegment quadratic:
+                        nativeFigure.Segments.Add(new VectorQuadraticBezierSegment(
+                            Vector2.Transform(quadratic.Point1, combinedTransform),
+                            Vector2.Transform(quadratic.Point2, combinedTransform),
+                            quadratic.IsSmoothJoin));
+                        sourceCurrentPoint = quadratic.Point2;
+                        break;
+
+                    case BezierSegment cubic:
+                        nativeFigure.Segments.Add(new VectorCubicBezierSegment(
+                            Vector2.Transform(cubic.Point1, combinedTransform),
+                            Vector2.Transform(cubic.Point2, combinedTransform),
+                            Vector2.Transform(cubic.Point3, combinedTransform),
+                            cubic.IsSmoothJoin));
+                        sourceCurrentPoint = cubic.Point3;
+                        break;
+
+                    case ArcSegment arc when TryTransformArcSegment(
+                        arc.Point,
+                        arc.Size,
+                        arc.RotationAngle,
+                        arc.IsLargeArc,
+                        arc.SweepDirection == MediaSweepDirection.Clockwise
+                            ? VectorSweepDirection.Clockwise
+                            : VectorSweepDirection.Counterclockwise,
+                            combinedTransform,
+                            out var transformedArc):
+                        transformedArc.IsSmoothJoin = arc.IsSmoothJoin;
+                        nativeFigure.Segments.Add(transformedArc);
+                        sourceCurrentPoint = arc.Point;
+                        break;
+
+                    case ArcSegment arc:
+                        AppendTransformedArcAsCubics(
+                            nativeFigure.Segments,
+                            sourceCurrentPoint,
+                            arc.Point,
+                            arc.Size,
+                            arc.RotationAngle,
+                            arc.IsLargeArc,
+                            arc.SweepDirection == MediaSweepDirection.Clockwise
+                                ? VectorSweepDirection.Clockwise
+                                : VectorSweepDirection.Counterclockwise,
+                            combinedTransform,
+                            arc.IsSmoothJoin);
+                        sourceCurrentPoint = arc.Point;
+                        break;
+                }
+            }
+
+            path.Figures.Add(nativeFigure);
+        }
+
+        return path;
+    }
+
+    private static VectorPathGeometry TransformPath(VectorPathGeometry source, Matrix4x4 transform)
+    {
+        if (source.IsCombined)
+        {
+            return new VectorPathGeometry
+            {
+                IsCombined = true,
+                PathA = source.PathA == null ? new VectorPathGeometry() : TransformPath(source.PathA, transform),
+                PathB = source.PathB == null ? new VectorPathGeometry() : TransformPath(source.PathB, transform),
+                Op = source.Op
+            };
+        }
+
+        var path = new VectorPathGeometry();
+
+        foreach (var figure in source.Figures)
+        {
+            var sourceCurrentPoint = figure.StartPoint;
+            var nativeFigure = new VectorPathFigure
+            {
+                StartPoint = Vector2.Transform(figure.StartPoint, transform),
+                IsClosed = figure.IsClosed,
+                IsFilled = figure.IsFilled
+            };
+
+            foreach (var segment in figure.Segments)
+            {
+                switch (segment)
+                {
+                    case VectorLineSegment line:
+                        nativeFigure.Segments.Add(new VectorLineSegment(Vector2.Transform(line.Point, transform), line.IsSmoothJoin));
+                        sourceCurrentPoint = line.Point;
+                        break;
+
+                    case VectorQuadraticBezierSegment quadratic:
+                        nativeFigure.Segments.Add(new VectorQuadraticBezierSegment(
+                            Vector2.Transform(quadratic.ControlPoint, transform),
+                            Vector2.Transform(quadratic.Point, transform),
+                            quadratic.IsSmoothJoin));
+                        sourceCurrentPoint = quadratic.Point;
+                        break;
+
+                    case VectorCubicBezierSegment cubic:
+                        nativeFigure.Segments.Add(new VectorCubicBezierSegment(
+                            Vector2.Transform(cubic.ControlPoint1, transform),
+                            Vector2.Transform(cubic.ControlPoint2, transform),
+                            Vector2.Transform(cubic.Point, transform),
+                            cubic.IsSmoothJoin));
+                        sourceCurrentPoint = cubic.Point;
+                        break;
+
+                    case VectorArcSegment arc when TryTransformArcSegment(
+                        arc.Point,
+                        arc.Size,
+                        arc.RotationAngle,
+                        arc.IsLargeArc,
+                        arc.SweepDirection,
+                        transform,
+                        out var transformedArc):
+                        transformedArc.IsSmoothJoin = arc.IsSmoothJoin;
+                        nativeFigure.Segments.Add(transformedArc);
+                        sourceCurrentPoint = arc.Point;
+                        break;
+
+                    case VectorArcSegment arc:
+                        AppendTransformedArcAsCubics(
+                            nativeFigure.Segments,
+                            sourceCurrentPoint,
+                            arc.Point,
+                            arc.Size,
+                            arc.RotationAngle,
+                            arc.IsLargeArc,
+                            arc.SweepDirection,
+                            transform,
+                            arc.IsSmoothJoin);
+                        sourceCurrentPoint = arc.Point;
+                        break;
+                }
+            }
+
+            path.Figures.Add(nativeFigure);
+        }
+
+        return path;
+    }
+
+    private static bool TryTransformArcSegment(
+        Vector2 point,
+        Vector2 size,
+        float rotationAngle,
+        bool isLargeArc,
+        VectorSweepDirection sweepDirection,
+        Matrix4x4 transform,
+        out VectorArcSegment arc)
+    {
+        if (TryGetPositiveSimilarityTransform(transform, out var uniformScale, out var rotationDegrees))
+        {
+            arc = new VectorArcSegment(
+                Vector2.Transform(point, transform),
+                new Vector2(size.X * uniformScale, size.Y * uniformScale),
+                rotationAngle + rotationDegrees,
+                isLargeArc,
+                sweepDirection);
+            return true;
+        }
+
+        if (TryGetPositiveAxisAlignedScale(transform, rotationAngle, out var scale))
+        {
+            arc = new VectorArcSegment(
+                Vector2.Transform(point, transform),
+                new Vector2(size.X * scale.X, size.Y * scale.Y),
+                rotationAngle,
+                isLargeArc,
+                sweepDirection);
+            return true;
+        }
+
+        arc = null!;
+        return false;
+    }
+
+    private static void AppendTransformedArcAsCubics(
+        ICollection<VectorPathSegment> target,
+        Vector2 startPoint,
+        Vector2 endPoint,
+        Vector2 size,
+        float rotationAngle,
+        bool isLargeArc,
+        VectorSweepDirection sweepDirection,
+        Matrix4x4 transform,
+        bool isSmoothJoin = false)
+    {
+        var cubics = new List<WpfCubicBezierSegmentData>();
+        if (!WpfArcSegmentConversion.TryAppendTransformedCubics(
+                cubics,
+                startPoint,
+                endPoint,
+                size,
+                rotationAngle,
+                isLargeArc,
+                sweepDirection == VectorSweepDirection.Clockwise
+                    ? MediaSweepDirection.Clockwise
+                    : MediaSweepDirection.Counterclockwise,
+                transform))
+        {
+            target.Add(new VectorLineSegment(Vector2.Transform(endPoint, transform), isSmoothJoin));
+            return;
+        }
+
+        foreach (var cubic in cubics)
+        {
+            target.Add(new VectorCubicBezierSegment(cubic.ControlPoint1, cubic.ControlPoint2, cubic.Point, isSmoothJoin));
+        }
+    }
+
+    private static bool TryGetPositiveSimilarityTransform(
+        Matrix4x4 transform,
+        out float scale,
+        out float rotationDegrees)
+    {
+        if (!Is2DAffineTransform(transform))
+        {
+            scale = 0;
+            rotationDegrees = 0;
+            return false;
+        }
+
+        var xAxis = new Vector2(transform.M11, transform.M12);
+        var yAxis = new Vector2(transform.M21, transform.M22);
+        var xScale = xAxis.Length();
+        var yScale = yAxis.Length();
+        var determinant = transform.M11 * transform.M22 - transform.M12 * transform.M21;
+
+        if (xScale <= TransformEpsilon
+            || yScale <= TransformEpsilon
+            || determinant <= TransformEpsilon
+            || !NearlyEqual(xScale, yScale)
+            || MathF.Abs(Vector2.Dot(xAxis, yAxis)) > TransformEpsilon * xScale * yScale)
+        {
+            scale = 0;
+            rotationDegrees = 0;
+            return false;
+        }
+
+        scale = xScale;
+        rotationDegrees = MathF.Atan2(transform.M12, transform.M11) * 180f / MathF.PI;
+        return true;
+    }
+
+    private static bool TryGetPositiveAxisAlignedScale(
+        Matrix4x4 transform,
+        float arcRotationAngle,
+        out Vector2 scale)
+    {
+        if (!Is2DAffineTransform(transform)
+            || !NearlyZero(transform.M12)
+            || !NearlyZero(transform.M21)
+            || transform.M11 <= TransformEpsilon
+            || transform.M22 <= TransformEpsilon
+            || !IsAxisAlignedArcRotation(arcRotationAngle))
+        {
+            scale = default;
+            return false;
+        }
+
+        scale = new Vector2(transform.M11, transform.M22);
+        return true;
+    }
+
+    private static bool IsAxisAlignedArcRotation(float rotationAngle)
+    {
+        var normalized = rotationAngle % 180f;
+        if (normalized < 0)
+        {
+            normalized += 180f;
+        }
+
+        return NearlyZero(normalized);
+    }
+
+    private static bool Is2DAffineTransform(Matrix4x4 transform)
+    {
+        return NearlyZero(transform.M13)
+            && NearlyZero(transform.M14)
+            && NearlyZero(transform.M23)
+            && NearlyZero(transform.M24)
+            && NearlyZero(transform.M31)
+            && NearlyZero(transform.M32)
+            && NearlyEqual(transform.M33, 1f)
+            && NearlyZero(transform.M34)
+            && NearlyZero(transform.M43)
+            && NearlyEqual(transform.M44, 1f);
+    }
+
+    private static bool NearlyZero(float value)
+    {
+        return MathF.Abs(value) <= TransformEpsilon;
+    }
+
+    private static bool NearlyEqual(float left, float right)
+    {
+        return MathF.Abs(left - right) <= TransformEpsilon;
+    }
+
+    private static bool TryRecordGeometryPath(MediaGeometry geometry, out VectorPathGeometry path)
+    {
+        var recordingContext = new global::ProGPU.Scene.DrawingContext();
+        geometry.Draw(recordingContext, new VectorSolidColorBrush(new Vector4(1f, 1f, 1f, 1f)), null);
+
+        foreach (var command in recordingContext.Commands)
+        {
+            if (command.Type == global::ProGPU.Scene.RenderCommandType.DrawPath && command.Path != null)
+            {
+                path = command.Path;
+                return true;
+            }
+        }
+
+        path = new VectorPathGeometry();
+        return false;
+    }
+}

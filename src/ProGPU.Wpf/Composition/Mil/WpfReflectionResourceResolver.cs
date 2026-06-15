@@ -1,0 +1,2159 @@
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Numerics;
+using System.Reflection;
+using System.Windows.Media.ProGPU.Composition;
+using ProGPU.Text;
+using MediaBrush = System.Windows.Media.Brush;
+using MediaColor = System.Windows.Media.Color;
+using MediaGeometry = System.Windows.Media.Geometry;
+using MediaGlyphRun = System.Windows.Media.GlyphRun;
+using MediaImageSource = System.Windows.Media.ImageSource;
+using MediaMatrix = System.Windows.Media.Matrix;
+using MediaPen = System.Windows.Media.Pen;
+using MediaPenLineCap = System.Windows.Media.PenLineCap;
+using MediaTransform = System.Windows.Media.Transform;
+
+namespace System.Windows.Media.ProGPU.Composition.Mil;
+
+public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWpfDrawingResourceResolver, IWpfGuidelineSetResourceResolver
+{
+    private const BindingFlags MemberFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+    private const int UnionPathOperation = 2;
+    private const int MaxSupportedGradientStops = 65536;
+    private static readonly ConcurrentDictionary<string, TtfFont> s_fontFileCache = new(StringComparer.OrdinalIgnoreCase);
+
+    private readonly Dictionary<uint, object> _resources = new();
+    private readonly Dictionary<uint, MediaBrush?> _brushes = new();
+    private readonly Dictionary<uint, MediaPen?> _pens = new();
+    private readonly Dictionary<uint, MediaGeometry?> _geometries = new();
+    private readonly Dictionary<uint, MediaImageSource?> _imageSources = new();
+    private readonly Dictionary<uint, MediaGlyphRun?> _glyphRuns = new();
+    private readonly Dictionary<uint, MediaTransform?> _transforms = new();
+    private readonly IWpfImageSourceAdapter? _imageSourceAdapter;
+
+    public WpfReflectionResourceResolver()
+    {
+    }
+
+    public WpfReflectionResourceResolver(IWpfImageSourceAdapter? imageSourceAdapter)
+    {
+        _imageSourceAdapter = imageSourceAdapter;
+    }
+
+    public static WpfReflectionResourceResolver FromDependentResources(
+        IEnumerable<object?> dependentResources,
+        IWpfImageSourceAdapter? imageSourceAdapter = null)
+    {
+        ArgumentNullException.ThrowIfNull(dependentResources);
+
+        var resolver = new WpfReflectionResourceResolver(imageSourceAdapter);
+        uint token = 1;
+        foreach (var resource in dependentResources)
+        {
+            if (resource != null)
+            {
+                resolver.Register(token, resource);
+            }
+
+            token++;
+        }
+
+        return resolver;
+    }
+
+    public void Register(uint resourceToken, object resource)
+    {
+        if (resourceToken == 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(resourceToken), "WPF MIL dependent resource tokens are one-based.");
+        }
+
+        ArgumentNullException.ThrowIfNull(resource);
+        _resources[resourceToken] = resource;
+    }
+
+    public MediaBrush? ResolveBrush(uint resourceToken)
+    {
+        return Resolve(resourceToken, _brushes, AdaptBrush);
+    }
+
+    public MediaPen? ResolvePen(uint resourceToken)
+    {
+        return Resolve(resourceToken, _pens, AdaptPen);
+    }
+
+    public MediaGeometry? ResolveGeometry(uint resourceToken)
+    {
+        return Resolve(resourceToken, _geometries, AdaptGeometry);
+    }
+
+    public MediaImageSource? ResolveImageSource(uint resourceToken)
+    {
+        return Resolve(resourceToken, _imageSources, AdaptImageSource);
+    }
+
+    public MediaGlyphRun? ResolveGlyphRun(uint resourceToken)
+    {
+        return Resolve(resourceToken, _glyphRuns, AdaptGlyphRun);
+    }
+
+    public MediaTransform? ResolveTransform(uint resourceToken)
+    {
+        return Resolve(resourceToken, _transforms, AdaptTransform);
+    }
+
+    public object? ResolveGuidelineSet(uint resourceToken)
+    {
+        return resourceToken != 0 && _resources.TryGetValue(resourceToken, out var resource)
+            ? resource
+            : null;
+    }
+
+    public bool TryReplayDrawing(uint resourceToken, IWpfCompositionCommandSink sink)
+    {
+        var status = ReplayDrawing(resourceToken, sink);
+        return status == WpfDrawingReplayStatus.Applied
+            || status == WpfDrawingReplayStatus.PartiallyApplied;
+    }
+
+    public WpfDrawingReplayStatus ReplayDrawing(uint resourceToken, IWpfCompositionCommandSink sink)
+    {
+        ArgumentNullException.ThrowIfNull(sink);
+
+        if (resourceToken == 0 || !_resources.TryGetValue(resourceToken, out var drawing))
+        {
+            return WpfDrawingReplayStatus.Skipped;
+        }
+
+        return WpfReflectionDrawingReplay.Replay(drawing, sink, AdaptImageSource);
+    }
+
+    private T? Resolve<T>(uint resourceToken, Dictionary<uint, T?> cache, Func<object, T?> adapter)
+        where T : class
+    {
+        if (resourceToken == 0)
+        {
+            return null;
+        }
+
+        if (cache.TryGetValue(resourceToken, out var cached))
+        {
+            return cached;
+        }
+
+        var resolved = _resources.TryGetValue(resourceToken, out var resource)
+            ? adapter(resource)
+            : null;
+
+        cache[resourceToken] = resolved;
+        return resolved;
+    }
+
+    public static MediaBrush? AdaptBrush(object? resource)
+    {
+        if (resource == null)
+        {
+            return null;
+        }
+
+        if (resource is MediaBrush brush)
+        {
+            return brush;
+        }
+
+        if (TypeNameEndsWith(resource, "LinearGradientBrush")
+            && TryGetPropertyValue(resource, "StartPoint", out var startPointValue)
+            && TryGetPropertyValue(resource, "EndPoint", out var endPointValue)
+            && startPointValue != null
+            && endPointValue != null
+            && TryReadPoint(startPointValue, out var startPoint)
+            && TryReadPoint(endPointValue, out var endPoint)
+            && TryReadGradientStops(resource, out var linearStops, out var linearStopsTruncated))
+        {
+            var nativeBrush = new global::ProGPU.Vector.LinearGradientBrush(
+                new Vector2((float)startPoint.X, (float)startPoint.Y),
+                new Vector2((float)endPoint.X, (float)endPoint.Y),
+                linearStops);
+            nativeBrush.SpreadMethod = ReadGradientSpreadMethod(resource);
+            nativeBrush.ColorInterpolationMode = ReadGradientColorInterpolationMode(resource, out var linearUnsupportedColorInterpolationMode);
+            ApplyBrushOpacity(resource, nativeBrush);
+            return new ProGpuNativeBrush(
+                nativeBrush,
+                ReadBrushMappingMode(resource),
+                ReadBrushTransform(resource, "Transform"),
+                ReadBrushTransform(resource, "RelativeTransform"),
+                CountUnsupportedGradientState(linearStopsTruncated, linearUnsupportedColorInterpolationMode));
+        }
+
+        if (TypeNameEndsWith(resource, "RadialGradientBrush")
+            && TryGetPropertyValue(resource, "Center", out var centerValue)
+            && centerValue != null
+            && TryReadPoint(centerValue, out var center)
+            && TryGetOptionalPointProperty(resource, "GradientOrigin", center, out var gradientOrigin)
+            && TryReadDoubleProperty(resource, "RadiusX", out var radiusX)
+            && TryReadDoubleProperty(resource, "RadiusY", out var radiusY)
+            && TryReadGradientStops(resource, out var radialStops, out var radialStopsTruncated))
+        {
+            var nativeBrush = new global::ProGPU.Vector.RadialGradientBrush(
+                new Vector2((float)center.X, (float)center.Y),
+                new Vector2((float)gradientOrigin.X, (float)gradientOrigin.Y),
+                (float)radiusX,
+                (float)radiusY,
+                radialStops);
+            nativeBrush.SpreadMethod = ReadGradientSpreadMethod(resource);
+            nativeBrush.ColorInterpolationMode = ReadGradientColorInterpolationMode(resource, out var radialUnsupportedColorInterpolationMode);
+            ApplyBrushOpacity(resource, nativeBrush);
+            return new ProGpuNativeBrush(
+                nativeBrush,
+                ReadBrushMappingMode(resource),
+                ReadBrushTransform(resource, "Transform"),
+                ReadBrushTransform(resource, "RelativeTransform"),
+                CountUnsupportedGradientState(radialStopsTruncated, radialUnsupportedColorInterpolationMode));
+        }
+
+        if (!TypeNameEndsWith(resource, "SolidColorBrush")
+            || !TryGetPropertyValue(resource, "Color", out var colorValue)
+            || colorValue == null
+            || !TryReadColor(colorValue, out var color))
+        {
+            return null;
+        }
+
+        if (TryReadDoubleProperty(resource, "Opacity", out var opacity))
+        {
+            color.A = ClampToByte(color.A * opacity);
+        }
+
+        return new SolidColorBrush(color);
+    }
+
+    private static void ApplyBrushOpacity(object resource, global::ProGPU.Vector.Brush nativeBrush)
+    {
+        if (TryReadDoubleProperty(resource, "Opacity", out var opacity))
+        {
+            nativeBrush.Opacity = (float)Math.Clamp(opacity, 0, 1);
+        }
+    }
+
+    private static bool TryReadGradientStops(
+        object brush,
+        out global::ProGPU.Vector.GradientStop[] stops,
+        out bool truncated)
+    {
+        stops = Array.Empty<global::ProGPU.Vector.GradientStop>();
+        truncated = false;
+
+        if (!TryGetPropertyValue(brush, "GradientStops", out var stopsValue) || stopsValue == null)
+        {
+            return false;
+        }
+
+        if (!TryReadIntProperty(stopsValue, "Count", out var count) || count <= 0)
+        {
+            return false;
+        }
+
+        var getStop = FindIndexer(stopsValue.GetType());
+        if (getStop == null)
+        {
+            return false;
+        }
+
+        var result = new List<global::ProGPU.Vector.GradientStop>(count);
+        for (var i = 0; i < count; i++)
+        {
+            var stop = getStop(stopsValue, i);
+            if (stop == null
+                || !TryGetPropertyValue(stop, "Color", out var colorValue)
+                || colorValue == null
+                || !TryReadColor(colorValue, out var color)
+                || !TryReadDoubleProperty(stop, "Offset", out var offset))
+            {
+                continue;
+            }
+
+            result.Add(new global::ProGPU.Vector.GradientStop(
+                new Vector4(color.R / 255f, color.G / 255f, color.B / 255f, color.A / 255f),
+                (float)offset));
+        }
+
+        if (result.Count == 0)
+        {
+            return false;
+        }
+
+        truncated = result.Count > MaxSupportedGradientStops;
+        stops = truncated
+            ? result.Take(MaxSupportedGradientStops).ToArray()
+            : result.ToArray();
+        return true;
+    }
+
+    private static bool TryGetOptionalPointProperty(object resource, string propertyName, Point fallback, out Point point)
+    {
+        point = fallback;
+        if (!TryGetPropertyValue(resource, propertyName, out var value) || value == null)
+        {
+            return true;
+        }
+
+        return TryReadPoint(value, out point);
+    }
+
+    private static global::ProGPU.Vector.GradientSpreadMethod ReadGradientSpreadMethod(object resource)
+    {
+        if (!TryGetPropertyValue(resource, "SpreadMethod", out var spreadMethodValue)
+            || spreadMethodValue == null)
+        {
+            return global::ProGPU.Vector.GradientSpreadMethod.Pad;
+        }
+
+        return spreadMethodValue.ToString() switch
+        {
+            "Reflect" => global::ProGPU.Vector.GradientSpreadMethod.Reflect,
+            "Repeat" => global::ProGPU.Vector.GradientSpreadMethod.Repeat,
+            _ => global::ProGPU.Vector.GradientSpreadMethod.Pad
+        };
+    }
+
+    private static ProGpuBrushMappingMode ReadBrushMappingMode(object resource)
+    {
+        if (!TryGetPropertyValue(resource, "MappingMode", out var mappingModeValue)
+            || mappingModeValue == null)
+        {
+            return ProGpuBrushMappingMode.RelativeToBoundingBox;
+        }
+
+        return string.Equals(mappingModeValue.ToString(), "Absolute", StringComparison.Ordinal)
+            ? ProGpuBrushMappingMode.Absolute
+            : ProGpuBrushMappingMode.RelativeToBoundingBox;
+    }
+
+    private static int CountUnsupportedGradientState(bool stopsTruncated, bool unsupportedColorInterpolationMode)
+    {
+        var count = stopsTruncated ? 1 : 0;
+        if (unsupportedColorInterpolationMode)
+        {
+            count++;
+        }
+
+        return count;
+    }
+
+    private static global::ProGPU.Vector.GradientColorInterpolationMode ReadGradientColorInterpolationMode(
+        object resource,
+        out bool unsupported)
+    {
+        unsupported = false;
+        if (!TryGetPropertyValue(resource, "ColorInterpolationMode", out var modeValue)
+            || modeValue == null)
+        {
+            return global::ProGPU.Vector.GradientColorInterpolationMode.SRgbLinearInterpolation;
+        }
+
+        return modeValue.ToString() switch
+        {
+            "ScRgbLinearInterpolation" => global::ProGPU.Vector.GradientColorInterpolationMode.ScRgbLinearInterpolation,
+            "SRgbLinearInterpolation" => global::ProGPU.Vector.GradientColorInterpolationMode.SRgbLinearInterpolation,
+            _ => ReadUnsupportedGradientColorInterpolationMode(out unsupported)
+        };
+    }
+
+    private static global::ProGPU.Vector.GradientColorInterpolationMode ReadUnsupportedGradientColorInterpolationMode(out bool unsupported)
+    {
+        unsupported = true;
+        return global::ProGPU.Vector.GradientColorInterpolationMode.SRgbLinearInterpolation;
+    }
+
+    private static Matrix4x4? ReadBrushTransform(object resource, string propertyName)
+    {
+        if (!TryGetPropertyValue(resource, propertyName, out var transformValue)
+            || transformValue == null)
+        {
+            return null;
+        }
+
+        var transform = AdaptTransform(transformValue);
+        if (transform == null || transform.Value.IsIdentity)
+        {
+            return null;
+        }
+
+        return transform.Value;
+    }
+
+    public static MediaPen? AdaptPen(object? resource)
+    {
+        if (resource == null)
+        {
+            return null;
+        }
+
+        if (resource is MediaPen pen)
+        {
+            return pen;
+        }
+
+        if (!TypeNameEndsWith(resource, "Pen")
+            || !TryGetPropertyValue(resource, "Brush", out var brushValue)
+            || brushValue == null
+            || !TryReadDoubleProperty(resource, "Thickness", out var thickness))
+        {
+            return null;
+        }
+
+        var brush = AdaptBrush(brushValue);
+        if (brush == null)
+        {
+            return null;
+        }
+
+        var startLineCap = ReadLineCap(resource, "StartLineCap");
+        var endLineCap = ReadLineCap(resource, "EndLineCap");
+        var dashCap = ReadLineCap(resource, "DashCap");
+        var lineJoin = ReadLineJoin(resource);
+        var miterLimit = ReadMiterLimit(resource);
+        var hasSupportedDash = TryReadSupportedDashStyle(resource, thickness, out var dashArray, out var dashOffset);
+
+        if (hasSupportedDash
+            || startLineCap != MediaPenLineCap.Flat
+            || endLineCap != MediaPenLineCap.Flat
+            || dashCap != MediaPenLineCap.Flat
+            || lineJoin != PenLineJoin.Miter
+            || !AreClose(miterLimit, 10.0))
+        {
+            return new ProGpuWpfPen(
+                brush,
+                thickness,
+                dashArray,
+                dashOffset,
+                startLineCap,
+                endLineCap,
+                dashCap,
+                lineJoin,
+                miterLimit);
+        }
+
+        return new MediaPen(brush, thickness)
+        {
+            LineJoin = lineJoin,
+            MiterLimit = miterLimit
+        };
+    }
+
+    private static MediaPenLineCap ReadLineCap(object pen, string propertyName)
+    {
+        if (!TryGetPropertyValue(pen, propertyName, out var capValue) || capValue == null)
+        {
+            return MediaPenLineCap.Flat;
+        }
+
+        return capValue.ToString() switch
+        {
+            "Square" => MediaPenLineCap.Square,
+            "Round" => MediaPenLineCap.Round,
+            "Triangle" => MediaPenLineCap.Triangle,
+            _ => MediaPenLineCap.Flat
+        };
+    }
+
+    private static PenLineJoin ReadLineJoin(object pen)
+    {
+        if (!TryGetPropertyValue(pen, "LineJoin", out var joinValue) || joinValue == null)
+        {
+            return PenLineJoin.Miter;
+        }
+
+        return joinValue.ToString() switch
+        {
+            "Bevel" => PenLineJoin.Bevel,
+            "Round" => PenLineJoin.Round,
+            _ => PenLineJoin.Miter
+        };
+    }
+
+    private static double ReadMiterLimit(object pen)
+    {
+        if (!TryReadDoubleProperty(pen, "MiterLimit", out var miterLimit) || !double.IsFinite(miterLimit))
+        {
+            return 10.0;
+        }
+
+        return Math.Max(1.0, miterLimit);
+    }
+
+    private static bool AreClose(double left, double right)
+    {
+        return Math.Abs(left - right) <= 0.0001;
+    }
+
+    private static bool TryReadSupportedDashStyle(
+        object pen,
+        double thickness,
+        out double[] dashArray,
+        out double dashOffset)
+    {
+        dashArray = Array.Empty<double>();
+        dashOffset = 0;
+
+        if (thickness <= 0
+            || !TryGetPropertyValue(pen, "DashStyle", out var dashStyle)
+            || dashStyle == null
+            || !TryGetPropertyValue(dashStyle, "Dashes", out var dashes)
+            || !TryReadDoubleList(dashes, out var values)
+            || values.Length == 0)
+        {
+            return false;
+        }
+
+        var hasPositiveEntry = false;
+        foreach (var value in values)
+        {
+            if (!double.IsFinite(value) || value < 0)
+            {
+                return false;
+            }
+
+            hasPositiveEntry |= value > 0;
+        }
+
+        if (!hasPositiveEntry)
+        {
+            return false;
+        }
+
+        if (TryReadDoubleProperty(dashStyle, "Offset", out var offset) && double.IsFinite(offset))
+        {
+            dashOffset = offset;
+        }
+
+        dashArray = values;
+        return true;
+    }
+
+    public MediaImageSource? AdaptImageSource(object? resource)
+    {
+        if (resource == null)
+        {
+            return null;
+        }
+
+        if (resource is MediaImageSource imageSource)
+        {
+            return imageSource;
+        }
+
+        return _imageSourceAdapter?.AdaptImageSource(resource);
+    }
+
+    public static MediaTransform? AdaptTransform(object? resource)
+    {
+        if (resource == null)
+        {
+            return null;
+        }
+
+        if (resource is MediaTransform transform)
+        {
+            return transform;
+        }
+
+        if (!TryGetPropertyValue(resource, "Value", out var matrixValue)
+            || matrixValue == null
+            || !TryReadMatrix(matrixValue, out var matrix))
+        {
+            return TryCreateTransformMatrix(resource, out matrix)
+                ? new MatrixTransform(matrix)
+                : null;
+        }
+
+        return new MatrixTransform(matrix);
+    }
+
+    public static MediaGlyphRun? AdaptGlyphRun(object? resource)
+    {
+        if (resource == null)
+        {
+            return null;
+        }
+
+        if (resource is MediaGlyphRun glyphRun)
+        {
+            return glyphRun;
+        }
+
+        if (!TryGetPropertyValue(resource, "GlyphIndices", out var glyphIndicesValue)
+            || glyphIndicesValue == null
+            || !TryReadUShortList(glyphIndicesValue, out var glyphIndices)
+            || glyphIndices.Length == 0
+            || !TryReadDoubleProperty(resource, "FontRenderingEmSize", out var fontSize)
+            || fontSize <= 0
+            || TryResolveGlyphRunFont(resource) is not { } font)
+        {
+            return null;
+        }
+
+        TryGetPropertyValue(resource, "AdvanceWidths", out var advanceWidthsValue);
+        TryReadDoubleList(advanceWidthsValue, out var advanceWidths);
+
+        TryGetPropertyValue(resource, "GlyphOffsets", out var glyphOffsetsValue);
+        TryReadPointList(glyphOffsetsValue, out var glyphOffsets);
+
+        var baseline = new Point();
+        if (TryGetPropertyValue(resource, "BaselineOrigin", out var baselineValue)
+            && baselineValue != null
+            && TryReadPoint(baselineValue, out var baselineOrigin))
+        {
+            baseline = baselineOrigin;
+        }
+
+        var glyphPositions = CreateGlyphPositions(glyphIndices.Length, advanceWidths, glyphOffsets);
+        var styleSimulations = ReadGlyphTypefaceStyleSimulations(resource);
+        return new MediaGlyphRun(font, (float)fontSize, glyphIndices, glyphPositions)
+        {
+            Position = new Vector2((float)baseline.X, (float)baseline.Y),
+            IsBold = styleSimulations.IsBold,
+            IsItalic = styleSimulations.IsItalic
+        };
+    }
+
+    public static MediaGeometry? AdaptGeometry(object? resource)
+    {
+        if (resource == null)
+        {
+            return null;
+        }
+
+        if (resource is MediaGeometry geometry)
+        {
+            return geometry;
+        }
+
+        if (TypeNameEndsWith(resource, "LineGeometry")
+            && TryGetPropertyValue(resource, "StartPoint", out var startPointValue)
+            && TryGetPropertyValue(resource, "EndPoint", out var endPointValue)
+            && startPointValue != null
+            && endPointValue != null
+            && TryReadPoint(startPointValue, out var startPoint)
+            && TryReadPoint(endPointValue, out var endPoint))
+        {
+            return ApplyGeometryTransform(resource, CreateLinePath(startPoint, endPoint));
+        }
+
+        if (TypeNameEndsWith(resource, "RectangleGeometry")
+            && TryGetPropertyValue(resource, "Rect", out var rectValue)
+            && rectValue != null
+            && TryReadRect(rectValue, out var rectangle))
+        {
+            return ApplyGeometryTransform(resource, CreateRectanglePath(rectangle));
+        }
+
+        if (TypeNameEndsWith(resource, "EllipseGeometry")
+            && TryGetPropertyValue(resource, "Center", out var centerValue)
+            && centerValue != null
+            && TryReadPoint(centerValue, out var center)
+            && TryReadDoubleProperty(resource, "RadiusX", out var radiusX)
+            && TryReadDoubleProperty(resource, "RadiusY", out var radiusY))
+        {
+            return ApplyGeometryTransform(resource, CreateEllipsePath(center, radiusX, radiusY));
+        }
+
+        if (TypeNameEndsWith(resource, "CombinedGeometry")
+            && TryGetPropertyValue(resource, "Geometry1", out var geometry1Value)
+            && TryGetPropertyValue(resource, "Geometry2", out var geometry2Value)
+            && TryGetPropertyValue(resource, "GeometryCombineMode", out var combineModeValue)
+            && TryReadGeometryCombineMode(combineModeValue, out var pathOperation))
+        {
+            var geometry1 = geometry1Value == null ? new PathGeometry() : AdaptGeometry(geometry1Value);
+            var geometry2 = geometry2Value == null ? new PathGeometry() : AdaptGeometry(geometry2Value);
+            if (geometry1 == null || geometry2 == null)
+            {
+                return null;
+            }
+
+            return ApplyGeometryTransform(resource, new ProGpuCombinedGeometry(geometry1, geometry2, pathOperation));
+        }
+
+        if (TypeNameEndsWith(resource, "GeometryGroup")
+            && TryGetPropertyValue(resource, "Children", out var children)
+            && children != null)
+        {
+            var groupGeometry = CreateGeometryGroupGeometry(resource, children);
+            return groupGeometry == null ? null : ApplyGeometryTransform(resource, groupGeometry);
+        }
+
+        if (TypeNameEndsWith(resource, "PathGeometry")
+            && TryCreatePathGeometry(resource, out var reflectedPathGeometry))
+        {
+            return ApplyGeometryTransform(resource, reflectedPathGeometry);
+        }
+
+        var pathText = resource.ToString();
+        if (!string.IsNullOrWhiteSpace(pathText) && !string.Equals(pathText, resource.GetType().FullName, StringComparison.Ordinal))
+        {
+            try
+            {
+                var pathGeometry = PathGeometry.Parse(pathText);
+                if (pathGeometry.Figures.Count > 0)
+                {
+                    return ApplyGeometryTransform(resource, pathGeometry);
+                }
+            }
+            catch (FormatException)
+            {
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
+
+        return null;
+    }
+
+    private static T ApplyGeometryTransform<T>(object resource, T geometry)
+        where T : MediaGeometry
+    {
+        if (TryGetPropertyValue(resource, "Transform", out var transformValue) && transformValue != null)
+        {
+            geometry.Transform = AdaptTransform(transformValue);
+        }
+
+        return geometry;
+    }
+
+    private static PathGeometry CreateLinePath(Point startPoint, Point endPoint)
+    {
+        var geometry = new PathGeometry();
+        var figure = new PathFigure
+        {
+            StartPoint = new Vector2((float)startPoint.X, (float)startPoint.Y),
+            IsClosed = false,
+            IsFilled = false
+        };
+
+        figure.Segments.Add(new LineSegment(new Vector2((float)endPoint.X, (float)endPoint.Y)));
+        geometry.Figures.Add(figure);
+
+        return geometry;
+    }
+
+    internal static PathGeometry CreateRectanglePath(Rect rectangle)
+    {
+        var geometry = new PathGeometry();
+        var figure = new PathFigure
+        {
+            StartPoint = new Vector2((float)rectangle.X, (float)rectangle.Y),
+            IsClosed = true,
+            IsFilled = true
+        };
+
+        figure.Segments.Add(new LineSegment(new Vector2((float)(rectangle.X + rectangle.Width), (float)rectangle.Y)));
+        figure.Segments.Add(new LineSegment(new Vector2((float)(rectangle.X + rectangle.Width), (float)(rectangle.Y + rectangle.Height))));
+        figure.Segments.Add(new LineSegment(new Vector2((float)rectangle.X, (float)(rectangle.Y + rectangle.Height))));
+        geometry.Figures.Add(figure);
+
+        return geometry;
+    }
+
+    private static PathGeometry CreateEllipsePath(Point center, double radiusX, double radiusY)
+    {
+        var geometry = new PathGeometry();
+        if (radiusX <= 0 || radiusY <= 0)
+        {
+            return geometry;
+        }
+
+        const double kappa = 0.5522847498307936;
+        var cx = center.X;
+        var cy = center.Y;
+        var rx = radiusX;
+        var ry = radiusY;
+        var ox = rx * kappa;
+        var oy = ry * kappa;
+
+        var figure = new PathFigure
+        {
+            StartPoint = new Vector2((float)(cx + rx), (float)cy),
+            IsClosed = true,
+            IsFilled = true
+        };
+
+        figure.Segments.Add(new BezierSegment(
+            new Vector2((float)(cx + rx), (float)(cy + oy)),
+            new Vector2((float)(cx + ox), (float)(cy + ry)),
+            new Vector2((float)cx, (float)(cy + ry))));
+        figure.Segments.Add(new BezierSegment(
+            new Vector2((float)(cx - ox), (float)(cy + ry)),
+            new Vector2((float)(cx - rx), (float)(cy + oy)),
+            new Vector2((float)(cx - rx), (float)cy)));
+        figure.Segments.Add(new BezierSegment(
+            new Vector2((float)(cx - rx), (float)(cy - oy)),
+            new Vector2((float)(cx - ox), (float)(cy - ry)),
+            new Vector2((float)cx, (float)(cy - ry))));
+        figure.Segments.Add(new BezierSegment(
+            new Vector2((float)(cx + ox), (float)(cy - ry)),
+            new Vector2((float)(cx + rx), (float)(cy - oy)),
+            new Vector2((float)(cx + rx), (float)cy)));
+
+        geometry.Figures.Add(figure);
+        return geometry;
+    }
+
+    private static MediaGeometry? CreateGeometryGroupGeometry(object group, object children)
+    {
+        var flattenedPath = new PathGeometry();
+        if (TryGetPropertyValue(group, "FillRule", out var fillRuleValue)
+            && TryReadFillRule(fillRuleValue, out var fillRule))
+        {
+            flattenedPath.FillRule = fillRule;
+        }
+
+        if (!TryReadIntProperty(children, "Count", out var count) || count <= 0)
+        {
+            return null;
+        }
+
+        var getChild = FindIndexer(children.GetType());
+        if (getChild == null)
+        {
+            return null;
+        }
+
+        var adaptedChildren = new List<MediaGeometry>(count);
+        var canFlattenAllChildren = true;
+        for (var i = 0; i < count; i++)
+        {
+            var child = getChild(children, i);
+            var childGeometry = AdaptGeometry(child);
+            if (childGeometry == null)
+            {
+                continue;
+            }
+
+            adaptedChildren.Add(childGeometry);
+            if (childGeometry is PathGeometry childPathGeometry)
+            {
+                AppendFigures(flattenedPath, childPathGeometry);
+            }
+            else
+            {
+                canFlattenAllChildren = false;
+            }
+        }
+
+        if (adaptedChildren.Count == 0)
+        {
+            return null;
+        }
+
+        if (canFlattenAllChildren)
+        {
+            return flattenedPath.Figures.Count == 0 ? null : flattenedPath;
+        }
+
+        return FoldGeometryGroupChildrenAsUnion(adaptedChildren);
+    }
+
+    private static MediaGeometry FoldGeometryGroupChildrenAsUnion(IReadOnlyList<MediaGeometry> children)
+    {
+        var combined = children[0];
+        for (var i = 1; i < children.Count; i++)
+        {
+            combined = new ProGpuCombinedGeometry(combined, children[i], UnionPathOperation);
+        }
+
+        return combined;
+    }
+
+    private static void AppendFigures(PathGeometry target, PathGeometry source)
+    {
+        var transform = source.Transform?.Value ?? Matrix4x4.Identity;
+        foreach (var figure in source.Figures)
+        {
+            target.Figures.Add(CloneFigure(figure, transform));
+        }
+    }
+
+    private static bool TryCreatePathGeometry(object resource, out PathGeometry geometry)
+    {
+        geometry = new PathGeometry();
+
+        if (TryGetPropertyValue(resource, "FillRule", out var fillRuleValue)
+            && TryReadFillRule(fillRuleValue, out var fillRule))
+        {
+            geometry.FillRule = fillRule;
+        }
+
+        if (!TryGetPropertyValue(resource, "Figures", out var figuresValue)
+            || figuresValue == null
+            || !TryReadIntProperty(figuresValue, "Count", out var count)
+            || count <= 0)
+        {
+            return false;
+        }
+
+        var getFigure = FindIndexer(figuresValue.GetType());
+        if (getFigure == null)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < count; i++)
+        {
+            var figureValue = getFigure(figuresValue, i);
+            if (figureValue != null && TryCreatePathFigure(figureValue, out var figure))
+            {
+                geometry.Figures.Add(figure);
+            }
+        }
+
+        return geometry.Figures.Count > 0;
+    }
+
+    private static bool TryCreatePathFigure(object figureValue, out PathFigure figure)
+    {
+        figure = new PathFigure();
+
+        if (!TryGetPropertyValue(figureValue, "StartPoint", out var startPointValue)
+            || startPointValue == null
+            || !TryReadPoint(startPointValue, out var startPoint))
+        {
+            return false;
+        }
+
+        figure.StartPoint = ToVector2(startPoint);
+
+        if (TryReadBoolProperty(figureValue, "IsClosed", out var isClosed))
+        {
+            figure.IsClosed = isClosed;
+        }
+
+        if (TryReadBoolProperty(figureValue, "IsFilled", out var isFilled))
+        {
+            figure.IsFilled = isFilled;
+        }
+
+        if (!TryGetPropertyValue(figureValue, "Segments", out var segmentsValue) || segmentsValue == null)
+        {
+            return true;
+        }
+
+        if (!TryReadIntProperty(segmentsValue, "Count", out var count) || count <= 0)
+        {
+            return true;
+        }
+
+        var getSegment = FindIndexer(segmentsValue.GetType());
+        if (getSegment == null)
+        {
+            return true;
+        }
+
+        for (var i = 0; i < count; i++)
+        {
+            var segmentValue = getSegment(segmentsValue, i);
+            if (segmentValue != null)
+            {
+                AppendPathSegment(figure, segmentValue);
+            }
+        }
+
+        return true;
+    }
+
+    private static void AppendPathSegment(PathFigure figure, object segmentValue)
+    {
+        var isSmoothJoin = ReadIsSmoothJoin(segmentValue);
+
+        if (TypeNameEndsWith(segmentValue, "PolyLineSegment"))
+        {
+            foreach (var point in ReadPointCollection(segmentValue))
+            {
+                figure.Segments.Add(new LineSegment(ToVector2(point), isSmoothJoin));
+            }
+
+            return;
+        }
+
+        if (TypeNameEndsWith(segmentValue, "PolyQuadraticBezierSegment"))
+        {
+            var points = ReadPointCollection(segmentValue);
+            for (var i = 0; i + 1 < points.Count; i += 2)
+            {
+                figure.Segments.Add(new QuadraticBezierSegment(ToVector2(points[i]), ToVector2(points[i + 1]), isSmoothJoin));
+            }
+
+            return;
+        }
+
+        if (TypeNameEndsWith(segmentValue, "PolyBezierSegment"))
+        {
+            var points = ReadPointCollection(segmentValue);
+            for (var i = 0; i + 2 < points.Count; i += 3)
+            {
+                figure.Segments.Add(new BezierSegment(ToVector2(points[i]), ToVector2(points[i + 1]), ToVector2(points[i + 2]), isSmoothJoin));
+            }
+
+            return;
+        }
+
+        if (TypeNameEndsWith(segmentValue, "LineSegment")
+            && TryGetPropertyValue(segmentValue, "Point", out var linePointValue)
+            && linePointValue != null
+            && TryReadPoint(linePointValue, out var linePoint))
+        {
+            figure.Segments.Add(new LineSegment(ToVector2(linePoint), isSmoothJoin));
+            return;
+        }
+
+        if (TypeNameEndsWith(segmentValue, "QuadraticBezierSegment")
+            && TryGetPropertyValue(segmentValue, "Point1", out var quadraticPoint1Value)
+            && TryGetPropertyValue(segmentValue, "Point2", out var quadraticPoint2Value)
+            && quadraticPoint1Value != null
+            && quadraticPoint2Value != null
+            && TryReadPoint(quadraticPoint1Value, out var quadraticPoint1)
+            && TryReadPoint(quadraticPoint2Value, out var quadraticPoint2))
+        {
+            figure.Segments.Add(new QuadraticBezierSegment(ToVector2(quadraticPoint1), ToVector2(quadraticPoint2), isSmoothJoin));
+            return;
+        }
+
+        if (TypeNameEndsWith(segmentValue, "BezierSegment")
+            && TryGetPropertyValue(segmentValue, "Point1", out var bezierPoint1Value)
+            && TryGetPropertyValue(segmentValue, "Point2", out var bezierPoint2Value)
+            && TryGetPropertyValue(segmentValue, "Point3", out var bezierPoint3Value)
+            && bezierPoint1Value != null
+            && bezierPoint2Value != null
+            && bezierPoint3Value != null
+            && TryReadPoint(bezierPoint1Value, out var bezierPoint1)
+            && TryReadPoint(bezierPoint2Value, out var bezierPoint2)
+            && TryReadPoint(bezierPoint3Value, out var bezierPoint3))
+        {
+            figure.Segments.Add(new BezierSegment(ToVector2(bezierPoint1), ToVector2(bezierPoint2), ToVector2(bezierPoint3), isSmoothJoin));
+            return;
+        }
+
+        if (TypeNameEndsWith(segmentValue, "ArcSegment")
+            && TryGetPropertyValue(segmentValue, "Point", out var arcPointValue)
+            && TryGetPropertyValue(segmentValue, "Size", out var arcSizeValue)
+            && arcPointValue != null
+            && arcSizeValue != null
+            && TryReadPoint(arcPointValue, out var arcPoint)
+            && TryReadSize(arcSizeValue, out var arcSize))
+        {
+            var arc = new ArcSegment
+            {
+                Point = ToVector2(arcPoint),
+                Size = arcSize,
+                IsSmoothJoin = isSmoothJoin
+            };
+
+            if (TryReadDoubleProperty(segmentValue, "RotationAngle", out var rotationAngle))
+            {
+                arc.RotationAngle = (float)rotationAngle;
+            }
+
+            if (TryReadBoolProperty(segmentValue, "IsLargeArc", out var isLargeArc))
+            {
+                arc.IsLargeArc = isLargeArc;
+            }
+
+            if (TryGetPropertyValue(segmentValue, "SweepDirection", out var sweepDirectionValue)
+                && TryReadSweepDirection(sweepDirectionValue, out var sweepDirection))
+            {
+                arc.SweepDirection = sweepDirection;
+            }
+
+            figure.Segments.Add(arc);
+        }
+    }
+
+    private static IReadOnlyList<Point> ReadPointCollection(object segmentValue)
+    {
+        if (!TryGetPropertyValue(segmentValue, "Points", out var pointsValue)
+            || !TryReadPointList(pointsValue, out var points))
+        {
+            return Array.Empty<Point>();
+        }
+
+        return points;
+    }
+
+    private static bool ReadIsSmoothJoin(object segmentValue)
+    {
+        return TryReadBoolProperty(segmentValue, "IsSmoothJoin", out var isSmoothJoin) && isSmoothJoin;
+    }
+
+    private static bool TryReadFillRule(object? value, out FillRule fillRule)
+    {
+        if (value is FillRule mediaFillRule)
+        {
+            fillRule = mediaFillRule;
+            return true;
+        }
+
+        if (value != null && Enum.TryParse(value.ToString(), ignoreCase: false, out FillRule parsedFillRule))
+        {
+            fillRule = parsedFillRule;
+            return true;
+        }
+
+        if (TryConvertToInt32(value, out var intValue) && Enum.IsDefined(typeof(FillRule), intValue))
+        {
+            fillRule = (FillRule)intValue;
+            return true;
+        }
+
+        fillRule = FillRule.EvenOdd;
+        return false;
+    }
+
+    private static bool TryReadGeometryCombineMode(object? value, out int pathOperation)
+    {
+        if (value != null)
+        {
+            switch (value.ToString())
+            {
+                case "Union":
+                    pathOperation = 2;
+                    return true;
+                case "Intersect":
+                    pathOperation = 1;
+                    return true;
+                case "Xor":
+                    pathOperation = 3;
+                    return true;
+                case "Exclude":
+                    pathOperation = 0;
+                    return true;
+            }
+        }
+
+        if (TryConvertToInt32(value, out var intValue))
+        {
+            pathOperation = intValue switch
+            {
+                0 => 2,
+                1 => 1,
+                2 => 3,
+                3 => 0,
+                _ => -1
+            };
+            return pathOperation >= 0;
+        }
+
+        pathOperation = -1;
+        return false;
+    }
+
+    private static bool TryReadSweepDirection(object? value, out SweepDirection sweepDirection)
+    {
+        if (value is SweepDirection mediaSweepDirection)
+        {
+            sweepDirection = mediaSweepDirection;
+            return true;
+        }
+
+        if (value != null && Enum.TryParse(value.ToString(), ignoreCase: false, out SweepDirection parsedSweepDirection))
+        {
+            sweepDirection = parsedSweepDirection;
+            return true;
+        }
+
+        if (TryConvertToInt32(value, out var intValue) && Enum.IsDefined(typeof(SweepDirection), intValue))
+        {
+            sweepDirection = (SweepDirection)intValue;
+            return true;
+        }
+
+        sweepDirection = SweepDirection.Counterclockwise;
+        return false;
+    }
+
+    private static bool TryReadSize(object sizeValue, out Vector2 size)
+    {
+        if (TryReadDoubleProperty(sizeValue, "Width", out var width)
+            && TryReadDoubleProperty(sizeValue, "Height", out var height))
+        {
+            size = new Vector2((float)width, (float)height);
+            return true;
+        }
+
+        size = default;
+        return false;
+    }
+
+    private static Vector2 ToVector2(Point point)
+    {
+        return new Vector2((float)point.X, (float)point.Y);
+    }
+
+    private static PathFigure CloneFigure(PathFigure source)
+    {
+        return CloneFigure(source, Matrix4x4.Identity);
+    }
+
+    private static PathFigure CloneFigure(PathFigure source, Matrix4x4 transform)
+    {
+        var sourceCurrentPoint = source.StartPoint;
+        var target = new PathFigure
+        {
+            StartPoint = Vector2.Transform(source.StartPoint, transform),
+            IsClosed = source.IsClosed,
+            IsFilled = source.IsFilled
+        };
+
+        foreach (var segment in source.Segments)
+        {
+            switch (segment)
+            {
+                case LineSegment line:
+                    target.Segments.Add(new LineSegment(Vector2.Transform(line.Point, transform), line.IsSmoothJoin));
+                    sourceCurrentPoint = line.Point;
+                    break;
+                case QuadraticBezierSegment quadratic:
+                    target.Segments.Add(new QuadraticBezierSegment(
+                        Vector2.Transform(quadratic.Point1, transform),
+                        Vector2.Transform(quadratic.Point2, transform),
+                        quadratic.IsSmoothJoin));
+                    sourceCurrentPoint = quadratic.Point2;
+                    break;
+                case BezierSegment bezier:
+                    target.Segments.Add(new BezierSegment(
+                        Vector2.Transform(bezier.Point1, transform),
+                        Vector2.Transform(bezier.Point2, transform),
+                        Vector2.Transform(bezier.Point3, transform),
+                        bezier.IsSmoothJoin));
+                    sourceCurrentPoint = bezier.Point3;
+                    break;
+                case ArcSegment arc:
+                    if (transform.IsIdentity)
+                    {
+                        target.Segments.Add(new ArcSegment
+                        {
+                            Point = arc.Point,
+                            Size = arc.Size,
+                            RotationAngle = arc.RotationAngle,
+                            IsLargeArc = arc.IsLargeArc,
+                            SweepDirection = arc.SweepDirection,
+                            IsSmoothJoin = arc.IsSmoothJoin
+                        });
+                    }
+                    else if (!TryAppendTransformedArcAsCubics(
+                        target.Segments,
+                        sourceCurrentPoint,
+                        arc,
+                        transform))
+                    {
+                        target.Segments.Add(new LineSegment(Vector2.Transform(arc.Point, transform), arc.IsSmoothJoin));
+                    }
+
+                    sourceCurrentPoint = arc.Point;
+                    break;
+            }
+        }
+
+        return target;
+    }
+
+    private static bool TryAppendTransformedArcAsCubics(
+        ICollection<PathSegment> target,
+        Vector2 startPoint,
+        ArcSegment arc,
+        Matrix4x4 transform)
+    {
+        var cubics = new List<WpfCubicBezierSegmentData>();
+        if (!WpfArcSegmentConversion.TryAppendTransformedCubics(
+                cubics,
+                startPoint,
+                arc.Point,
+                arc.Size,
+                arc.RotationAngle,
+                arc.IsLargeArc,
+                arc.SweepDirection,
+                transform))
+        {
+            return false;
+        }
+
+        foreach (var cubic in cubics)
+        {
+            target.Add(new BezierSegment(cubic.ControlPoint1, cubic.ControlPoint2, cubic.Point, arc.IsSmoothJoin));
+        }
+
+        return true;
+    }
+
+    private static bool TryReadColor(object colorValue, out MediaColor color)
+    {
+        if (colorValue is MediaColor mediaColor)
+        {
+            color = mediaColor;
+            return true;
+        }
+
+        if (TryReadByteProperty(colorValue, "A", out var a)
+            && TryReadByteProperty(colorValue, "R", out var r)
+            && TryReadByteProperty(colorValue, "G", out var g)
+            && TryReadByteProperty(colorValue, "B", out var b))
+        {
+            color = MediaColor.FromArgb(a, r, g, b);
+            return true;
+        }
+
+        color = default;
+        return false;
+    }
+
+    private static bool TryReadMatrix(object matrixValue, out MediaMatrix matrix)
+    {
+        if (matrixValue is MediaMatrix mediaMatrix)
+        {
+            matrix = mediaMatrix;
+            return true;
+        }
+
+        if (TryReadDoubleProperty(matrixValue, "M11", out var m11)
+            && TryReadDoubleProperty(matrixValue, "M12", out var m12)
+            && TryReadDoubleProperty(matrixValue, "M21", out var m21)
+            && TryReadDoubleProperty(matrixValue, "M22", out var m22)
+            && TryReadDoubleProperty(matrixValue, "OffsetX", out var offsetX)
+            && TryReadDoubleProperty(matrixValue, "OffsetY", out var offsetY))
+        {
+            matrix = new MediaMatrix
+            {
+                M11 = m11,
+                M12 = m12,
+                M21 = m21,
+                M22 = m22,
+                OffsetX = offsetX,
+                OffsetY = offsetY
+            };
+            return true;
+        }
+
+        matrix = default;
+        return false;
+    }
+
+    private static bool TryCreateTransformMatrix(object transform, out MediaMatrix matrix)
+    {
+        if (TypeNameEndsWith(transform, "TranslateTransform"))
+        {
+            if (!TryReadOptionalDoubleProperty(transform, "X", 0, out var x)
+                || !TryReadOptionalDoubleProperty(transform, "Y", 0, out var y))
+            {
+                matrix = default;
+                return false;
+            }
+
+            return TryUseFiniteMatrix(CreateTranslationMatrix(x, y), out matrix);
+        }
+
+        if (TypeNameEndsWith(transform, "ScaleTransform"))
+        {
+            if (!TryReadOptionalDoubleProperty(transform, "ScaleX", 1, out var scaleX)
+                || !TryReadOptionalDoubleProperty(transform, "ScaleY", 1, out var scaleY)
+                || !TryReadOptionalDoubleProperty(transform, "CenterX", 0, out var centerX)
+                || !TryReadOptionalDoubleProperty(transform, "CenterY", 0, out var centerY))
+            {
+                matrix = default;
+                return false;
+            }
+
+            return TryUseFiniteMatrix(CreateScaleMatrix(scaleX, scaleY, centerX, centerY), out matrix);
+        }
+
+        if (TypeNameEndsWith(transform, "RotateTransform"))
+        {
+            if (!TryReadOptionalDoubleProperty(transform, "Angle", 0, out var angle)
+                || !TryReadOptionalDoubleProperty(transform, "CenterX", 0, out var centerX)
+                || !TryReadOptionalDoubleProperty(transform, "CenterY", 0, out var centerY))
+            {
+                matrix = default;
+                return false;
+            }
+
+            return TryUseFiniteMatrix(CreateRotationMatrix(angle, centerX, centerY), out matrix);
+        }
+
+        if (TypeNameEndsWith(transform, "SkewTransform"))
+        {
+            if (!TryReadOptionalDoubleProperty(transform, "AngleX", 0, out var angleX)
+                || !TryReadOptionalDoubleProperty(transform, "AngleY", 0, out var angleY)
+                || !TryReadOptionalDoubleProperty(transform, "CenterX", 0, out var centerX)
+                || !TryReadOptionalDoubleProperty(transform, "CenterY", 0, out var centerY))
+            {
+                matrix = default;
+                return false;
+            }
+
+            matrix = MultiplyMatrix(
+                MultiplyMatrix(
+                    CreateTranslationMatrix(-centerX, -centerY),
+                    CreateSkewMatrix(angleX, angleY)),
+                CreateTranslationMatrix(centerX, centerY));
+            return TryUseFiniteMatrix(matrix, out matrix);
+        }
+
+        if (TypeNameEndsWith(transform, "TransformGroup"))
+        {
+            return TryCreateTransformGroupMatrix(transform, out matrix);
+        }
+
+        matrix = default;
+        return false;
+    }
+
+    private static bool TryCreateTransformGroupMatrix(object transformGroup, out MediaMatrix matrix)
+    {
+        matrix = MediaMatrix.Identity;
+        if (!TryGetPropertyValue(transformGroup, "Children", out var children)
+            || children == null)
+        {
+            return true;
+        }
+
+        if (!TryReadIntProperty(children, "Count", out var count))
+        {
+            return false;
+        }
+
+        if (count <= 0)
+        {
+            return true;
+        }
+
+        var getChild = FindIndexer(children.GetType());
+        if (getChild == null)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < count; i++)
+        {
+            var child = getChild(children, i);
+            if (child == null || AdaptTransform(child) is not { } childTransform)
+            {
+                matrix = default;
+                return false;
+            }
+
+            if (!TryReadMatrix4x4(childTransform.Value, out var childMatrix))
+            {
+                matrix = default;
+                return false;
+            }
+
+            matrix = MultiplyMatrix(matrix, childMatrix);
+        }
+
+        return TryUseFiniteMatrix(matrix, out matrix);
+    }
+
+    private static bool TryReadOptionalDoubleProperty(
+        object instance,
+        string propertyName,
+        double defaultValue,
+        out double value)
+    {
+        if (!TryGetPropertyValue(instance, propertyName, out var propertyValue) || propertyValue == null)
+        {
+            value = defaultValue;
+            return true;
+        }
+
+        return TryConvertToDouble(propertyValue, out value);
+    }
+
+    private static MediaMatrix CreateTranslationMatrix(double x, double y)
+    {
+        return new MediaMatrix
+        {
+            M11 = 1,
+            M22 = 1,
+            OffsetX = x,
+            OffsetY = y
+        };
+    }
+
+    private static MediaMatrix CreateScaleMatrix(double scaleX, double scaleY, double centerX, double centerY)
+    {
+        return new MediaMatrix
+        {
+            M11 = scaleX,
+            M22 = scaleY,
+            OffsetX = centerX - scaleX * centerX,
+            OffsetY = centerY - scaleY * centerY
+        };
+    }
+
+    private static MediaMatrix CreateRotationMatrix(double angle, double centerX, double centerY)
+    {
+        var radians = angle % 360 * Math.PI / 180.0;
+        var sin = Math.Sin(radians);
+        var cos = Math.Cos(radians);
+        return new MediaMatrix
+        {
+            M11 = cos,
+            M12 = sin,
+            M21 = -sin,
+            M22 = cos,
+            OffsetX = centerX * (1.0 - cos) + centerY * sin,
+            OffsetY = centerY * (1.0 - cos) - centerX * sin
+        };
+    }
+
+    private static MediaMatrix CreateSkewMatrix(double angleX, double angleY)
+    {
+        return new MediaMatrix
+        {
+            M11 = 1,
+            M12 = Math.Tan(angleY % 360 * Math.PI / 180.0),
+            M21 = Math.Tan(angleX % 360 * Math.PI / 180.0),
+            M22 = 1
+        };
+    }
+
+    private static MediaMatrix MultiplyMatrix(MediaMatrix left, MediaMatrix right)
+    {
+        return new MediaMatrix
+        {
+            M11 = left.M11 * right.M11 + left.M12 * right.M21,
+            M12 = left.M11 * right.M12 + left.M12 * right.M22,
+            M21 = left.M21 * right.M11 + left.M22 * right.M21,
+            M22 = left.M21 * right.M12 + left.M22 * right.M22,
+            OffsetX = left.OffsetX * right.M11 + left.OffsetY * right.M21 + right.OffsetX,
+            OffsetY = left.OffsetX * right.M12 + left.OffsetY * right.M22 + right.OffsetY
+        };
+    }
+
+    private static bool TryReadMatrix4x4(Matrix4x4 value, out MediaMatrix matrix)
+    {
+        if (!NearlyEqual(value.M13, 0)
+            || !NearlyEqual(value.M14, 0)
+            || !NearlyEqual(value.M23, 0)
+            || !NearlyEqual(value.M24, 0)
+            || !NearlyEqual(value.M31, 0)
+            || !NearlyEqual(value.M32, 0)
+            || !NearlyEqual(value.M33, 1)
+            || !NearlyEqual(value.M34, 0)
+            || !NearlyEqual(value.M43, 0)
+            || !NearlyEqual(value.M44, 1))
+        {
+            matrix = default;
+            return false;
+        }
+
+        return TryUseFiniteMatrix(
+            new MediaMatrix
+            {
+                M11 = value.M11,
+                M12 = value.M12,
+                M21 = value.M21,
+                M22 = value.M22,
+                OffsetX = value.M41,
+                OffsetY = value.M42
+            },
+            out matrix);
+    }
+
+    private static bool TryUseFiniteMatrix(MediaMatrix value, out MediaMatrix matrix)
+    {
+        matrix = value;
+        return double.IsFinite(value.M11)
+            && double.IsFinite(value.M12)
+            && double.IsFinite(value.M21)
+            && double.IsFinite(value.M22)
+            && double.IsFinite(value.OffsetX)
+            && double.IsFinite(value.OffsetY);
+    }
+
+    private static bool NearlyEqual(float left, float right)
+    {
+        return Math.Abs(left - right) < 0.0001f;
+    }
+
+    private static bool TryReadRect(object rectValue, out Rect rectangle)
+    {
+        if (rectValue is Rect mediaRect)
+        {
+            rectangle = mediaRect;
+            return true;
+        }
+
+        if (TryReadDoubleProperty(rectValue, "X", out var x)
+            && TryReadDoubleProperty(rectValue, "Y", out var y)
+            && TryReadDoubleProperty(rectValue, "Width", out var width)
+            && TryReadDoubleProperty(rectValue, "Height", out var height))
+        {
+            rectangle = new Rect(x, y, width, height);
+            return true;
+        }
+
+        rectangle = default;
+        return false;
+    }
+
+    private static bool TryReadPoint(object pointValue, out Point point)
+    {
+        if (pointValue is Point mediaPoint)
+        {
+            point = mediaPoint;
+            return true;
+        }
+
+        if (TryReadDoubleProperty(pointValue, "X", out var x)
+            && TryReadDoubleProperty(pointValue, "Y", out var y))
+        {
+            point = new Point(x, y);
+            return true;
+        }
+
+        point = default;
+        return false;
+    }
+
+    private static Vector2[] CreateGlyphPositions(int glyphCount, double[] advanceWidths, Point[] glyphOffsets)
+    {
+        var positions = new Vector2[glyphCount];
+        double x = 0;
+
+        for (var i = 0; i < glyphCount; i++)
+        {
+            var offset = i < glyphOffsets.Length ? glyphOffsets[i] : new Point();
+            positions[i] = new Vector2((float)(x + offset.X), (float)offset.Y);
+
+            if (i < advanceWidths.Length)
+            {
+                x += advanceWidths[i];
+            }
+        }
+
+        return positions;
+    }
+
+    private static (bool IsBold, bool IsItalic) ReadGlyphTypefaceStyleSimulations(object glyphRun)
+    {
+        if (!TryGetPropertyValue(glyphRun, "GlyphTypeface", out var glyphTypeface)
+            || glyphTypeface == null
+            || !TryGetPropertyValue(glyphTypeface, "StyleSimulations", out var styleSimulations)
+            || styleSimulations == null)
+        {
+            return default;
+        }
+
+        if (TryConvertToInt32(styleSimulations, out var flags))
+        {
+            return ((flags & 0x1) != 0, (flags & 0x2) != 0);
+        }
+
+        var text = styleSimulations.ToString();
+        return string.IsNullOrEmpty(text)
+            ? default
+            : (text.Contains("Bold", StringComparison.OrdinalIgnoreCase),
+                text.Contains("Italic", StringComparison.OrdinalIgnoreCase)
+                    || text.Contains("Oblique", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static TtfFont? TryResolveGlyphRunFont(object glyphRun)
+    {
+        if (TryGetPropertyValue(glyphRun, "Font", out var fontValue) && fontValue is TtfFont font)
+        {
+            return font;
+        }
+
+        if (TryResolveGlyphTypefaceFontFile(glyphRun) is { } fontFromFile)
+        {
+            return fontFromFile;
+        }
+
+        foreach (var familyName in EnumerateGlyphTypefaceFamilyNames(glyphRun))
+        {
+            var resolved = TryResolveFontFamily(familyName);
+            if (resolved != null)
+            {
+                return resolved;
+            }
+        }
+
+        return TryResolveFontFamily("Arial");
+    }
+
+    private static TtfFont? TryResolveGlyphTypefaceFontFile(object glyphRun)
+    {
+        if (!TryGetPropertyValue(glyphRun, "GlyphTypeface", out var glyphTypeface) || glyphTypeface == null)
+        {
+            return null;
+        }
+
+        foreach (var propertyName in new[] { "FontUri", "FilePath", "Source" })
+        {
+            if (TryGetPropertyValue(glyphTypeface, propertyName, out var fontPathValue)
+                && TryResolveFontFileValue(fontPathValue) is { } font)
+            {
+                return font;
+            }
+        }
+
+        return null;
+    }
+
+    private static TtfFont? TryResolveFontFileValue(object? value)
+    {
+        return value != null && TryGetLocalFontPath(value, out var path)
+            ? TryLoadFontFile(path)
+            : null;
+    }
+
+    private static bool TryGetLocalFontPath(object value, out string path)
+    {
+        path = string.Empty;
+
+        if (value is Uri uri)
+        {
+            return TryGetLocalFontPath(uri, out path);
+        }
+
+        if (value is string text)
+        {
+            if (TryGetLocalFontPath(text, out path))
+            {
+                return true;
+            }
+
+            path = text;
+            return File.Exists(path);
+        }
+
+        foreach (var propertyName in new[] { "LocalPath", "OriginalString", "AbsoluteUri" })
+        {
+            if (TryGetPropertyValue(value, propertyName, out var propertyValue)
+                && propertyValue is string propertyText
+                && TryGetLocalFontPath(propertyText, out path))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TryGetLocalFontPath(string value, out string path)
+    {
+        path = string.Empty;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        if (Uri.TryCreate(value, UriKind.Absolute, out var uri))
+        {
+            return TryGetLocalFontPath(uri, out path);
+        }
+
+        path = value;
+        return File.Exists(path);
+    }
+
+    private static bool TryGetLocalFontPath(Uri uri, out string path)
+    {
+        path = string.Empty;
+        if (uri.IsAbsoluteUri)
+        {
+            if (!uri.IsFile)
+            {
+                return false;
+            }
+
+            path = uri.LocalPath;
+            return File.Exists(path);
+        }
+
+        path = uri.OriginalString;
+        return File.Exists(path);
+    }
+
+    private static TtfFont? TryLoadFontFile(string path)
+    {
+        try
+        {
+            var fullPath = Path.GetFullPath(path);
+            return File.Exists(fullPath)
+                ? s_fontFileCache.GetOrAdd(fullPath, static filePath => new TtfFont(filePath))
+                : null;
+        }
+        catch (Exception ex) when (IsRecoverableFontLoadException(ex))
+        {
+            return null;
+        }
+    }
+
+    private static bool IsRecoverableFontLoadException(Exception exception)
+    {
+        return exception is IOException
+            or UnauthorizedAccessException
+            or ArgumentException
+            or FormatException
+            or InvalidDataException
+            or KeyNotFoundException
+            or IndexOutOfRangeException
+            or OverflowException
+            or NotSupportedException;
+    }
+
+    private static IEnumerable<string> EnumerateGlyphTypefaceFamilyNames(object glyphRun)
+    {
+        if (!TryGetPropertyValue(glyphRun, "GlyphTypeface", out var glyphTypeface) || glyphTypeface == null)
+        {
+            yield break;
+        }
+
+        foreach (var propertyName in new[] { "FamilyNames", "Win32FamilyNames", "FaceNames", "Win32FaceNames" })
+        {
+            if (!TryGetPropertyValue(glyphTypeface, propertyName, out var namesValue) || namesValue == null)
+            {
+                continue;
+            }
+
+            foreach (var name in EnumerateStringValues(namesValue))
+            {
+                if (!string.IsNullOrWhiteSpace(name))
+                {
+                    yield return name;
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<string> EnumerateStringValues(object value)
+    {
+        if (value is string text)
+        {
+            yield return text;
+            yield break;
+        }
+
+        if (value is IEnumerable<string> strings)
+        {
+            foreach (var item in strings)
+            {
+                yield return item;
+            }
+
+            yield break;
+        }
+
+        if (value is System.Collections.IEnumerable enumerable)
+        {
+            foreach (var item in enumerable)
+            {
+                if (item is string itemText)
+                {
+                    yield return itemText;
+                    continue;
+                }
+
+                if (item != null && TryGetPropertyValue(item, "Value", out var itemValue) && itemValue is string valueText)
+                {
+                    yield return valueText;
+                }
+            }
+
+            yield break;
+        }
+
+        if (TryGetPropertyValue(value, "Values", out var values) && values != null)
+        {
+            foreach (var item in EnumerateStringValues(values))
+            {
+                yield return item;
+            }
+        }
+    }
+
+    private static TtfFont? TryResolveFontFamily(string familyName)
+    {
+        try
+        {
+            return new FontFamily(familyName).NativeFont;
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    private static bool TryReadUShortList(object? listValue, out ushort[] values)
+    {
+        return TryReadList(listValue, ConvertToUShort, out values);
+    }
+
+    private static bool TryReadDoubleList(object? listValue, out double[] values)
+    {
+        return TryReadList(listValue, TryConvertToDouble, out values);
+    }
+
+    private static bool TryReadPointList(object? listValue, out Point[] values)
+    {
+        return TryReadList(listValue, TryReadPoint, out values);
+    }
+
+    private static bool TryReadList<T>(
+        object? listValue,
+        TryConvertValue<T> convert,
+        out T[] values)
+    {
+        values = Array.Empty<T>();
+
+        if (listValue == null)
+        {
+            return false;
+        }
+
+        if (listValue is IEnumerable<T> typedValues)
+        {
+            values = typedValues.ToArray();
+            return true;
+        }
+
+        if (!TryReadIntProperty(listValue, "Count", out var count) || count < 0)
+        {
+            return false;
+        }
+
+        var getItem = FindIndexer(listValue.GetType());
+        if (getItem == null)
+        {
+            return false;
+        }
+
+        var result = new T[count];
+        for (var i = 0; i < count; i++)
+        {
+            var item = getItem(listValue, i);
+            if (item == null || !convert(item, out result[i]))
+            {
+                values = Array.Empty<T>();
+                return false;
+            }
+        }
+
+        values = result;
+        return true;
+    }
+
+    private delegate bool TryConvertValue<T>(object value, out T result);
+
+    private static bool ConvertToUShort(object value, out ushort result)
+    {
+        switch (value)
+        {
+            case ushort ushortValue:
+                result = ushortValue;
+                return true;
+            case short shortValue when shortValue >= 0:
+                result = (ushort)shortValue;
+                return true;
+            case int intValue when intValue is >= 0 and <= ushort.MaxValue:
+                result = (ushort)intValue;
+                return true;
+            case uint uintValue when uintValue <= ushort.MaxValue:
+                result = (ushort)uintValue;
+                return true;
+            default:
+                result = 0;
+                return false;
+        }
+    }
+
+    private static bool TryReadByteProperty(object instance, string propertyName, out byte value)
+    {
+        value = 0;
+        if (!TryGetPropertyValue(instance, propertyName, out var propertyValue))
+        {
+            return false;
+        }
+
+        switch (propertyValue)
+        {
+            case byte byteValue:
+                value = byteValue;
+                return true;
+            case int intValue:
+                value = ClampToByte(intValue);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static bool TryReadBoolProperty(object instance, string propertyName, out bool value)
+    {
+        value = false;
+        if (!TryGetPropertyValue(instance, propertyName, out var propertyValue))
+        {
+            return false;
+        }
+
+        if (propertyValue is bool boolValue)
+        {
+            value = boolValue;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryReadDoubleProperty(object instance, string propertyName, out double value)
+    {
+        value = 0;
+        if (!TryGetPropertyValue(instance, propertyName, out var propertyValue))
+        {
+            return false;
+        }
+
+        return TryConvertToDouble(propertyValue, out value);
+    }
+
+    private static bool TryConvertToDouble(object? value, out double result)
+    {
+        switch (value)
+        {
+            case double doubleValue:
+                result = doubleValue;
+                return true;
+            case float floatValue:
+                result = floatValue;
+                return true;
+            case int intValue:
+                result = intValue;
+                return true;
+            case uint uintValue:
+                result = uintValue;
+                return true;
+            case byte byteValue:
+                result = byteValue;
+                return true;
+            default:
+                result = 0;
+                return false;
+        }
+    }
+
+    private static bool TryConvertToInt32(object? value, out int result)
+    {
+        switch (value)
+        {
+            case int intValue:
+                result = intValue;
+                return true;
+            case uint uintValue when uintValue <= int.MaxValue:
+                result = (int)uintValue;
+                return true;
+            case short shortValue:
+                result = shortValue;
+                return true;
+            case ushort ushortValue:
+                result = ushortValue;
+                return true;
+            case byte byteValue:
+                result = byteValue;
+                return true;
+            case Enum enumValue:
+                try
+                {
+                    result = Convert.ToInt32(enumValue, CultureInfo.InvariantCulture);
+                    return true;
+                }
+                catch (Exception ex) when (ex is InvalidCastException or OverflowException)
+                {
+                    result = 0;
+                    return false;
+                }
+            default:
+                result = 0;
+                return false;
+        }
+    }
+
+    private static bool TryReadIntProperty(object instance, string propertyName, out int value)
+    {
+        value = 0;
+        if (!TryGetPropertyValue(instance, propertyName, out var propertyValue))
+        {
+            return false;
+        }
+
+        if (propertyValue is int intValue)
+        {
+            value = intValue;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryGetPropertyValue(object instance, string propertyName, out object? value)
+    {
+        var property = instance.GetType().GetProperty(propertyName, MemberFlags);
+        if (property == null || property.GetIndexParameters().Length != 0)
+        {
+            value = null;
+            return false;
+        }
+
+        value = property.GetValue(instance);
+        return true;
+    }
+
+    private static Func<object, int, object?>? FindIndexer(Type type)
+    {
+        var indexer = type.GetProperty("Item", MemberFlags, binder: null, returnType: null, types: new[] { typeof(int) }, modifiers: null);
+        if (indexer != null)
+        {
+            return (instance, index) => indexer.GetValue(instance, new object[] { index });
+        }
+
+        var getter = type.GetMethod("get_Item", MemberFlags, binder: null, types: new[] { typeof(int) }, modifiers: null);
+        if (getter != null)
+        {
+            return (instance, index) => getter.Invoke(instance, new object[] { index });
+        }
+
+        return null;
+    }
+
+    private static bool TypeNameEndsWith(object resource, string typeName)
+    {
+        return resource.GetType().Name.EndsWith(typeName, StringComparison.Ordinal);
+    }
+
+    private static byte ClampToByte(double value)
+    {
+        if (value <= 0)
+        {
+            return 0;
+        }
+
+        if (value >= 255)
+        {
+            return 255;
+        }
+
+        return (byte)Math.Round(value);
+    }
+}

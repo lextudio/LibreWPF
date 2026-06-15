@@ -1,0 +1,691 @@
+using System.Buffers.Binary;
+using System.Linq;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.ProGPU.Composition;
+using System.Windows.Media.ProGPU.Composition.Mil;
+using Xunit;
+using MediaBrush = System.Windows.Media.Brush;
+using MediaDrawingContext = System.Windows.Media.DrawingContext;
+using MediaGeometry = System.Windows.Media.Geometry;
+using MediaGlyphRun = System.Windows.Media.GlyphRun;
+using MediaImageSource = System.Windows.Media.ImageSource;
+using MediaPen = System.Windows.Media.Pen;
+using MediaTransform = System.Windows.Media.Transform;
+using WpfVector = System.Windows.Vector;
+
+namespace ProGPU.Wpf.Tests.Composition.Mil;
+
+public sealed class WpfVisualTreeReflectionRendererTests
+{
+    [Fact]
+    public void ReplaySubtreeRecursesThroughChildren()
+    {
+        var parentBrush = Brushes.Red;
+        var childBrush = Brushes.Blue;
+        var parent = new FakeDrawingVisual(CreateRenderData(parentBrush));
+        parent.Children.Add(new FakeDrawingVisual(CreateRenderData(childBrush)));
+        var sink = new TestSink();
+
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(parent, sink);
+
+        Assert.Equal(2, result.VisualCount);
+        Assert.Equal(2, result.ContentCount);
+        Assert.Equal(1, result.ChildEdgeCount);
+        Assert.Equal(0, result.UnsupportedContentCount);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(2, 2, 0, 0), result.RenderData);
+        Assert.Equal(2, sink.DrawRectangles.Count);
+        Assert.Same(parentBrush, sink.DrawRectangles[0].Brush);
+        Assert.Same(childBrush, sink.DrawRectangles[1].Brush);
+    }
+
+    [Fact]
+    public void ReplaySubtreeAppliesOffsetAndOpacityAroundContentAndChildren()
+    {
+        var root = new FakeVisual
+        {
+            Offset = new WpfVector(10, 20),
+            Opacity = 0.5
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushTransform", "PushOpacity", "DrawRectangle", "Pop", "Pop" }, sink.Operations);
+        Assert.Single(sink.Transforms);
+        Assert.Equal(10, sink.Transforms[0].Value.M41);
+        Assert.Equal(20, sink.Transforms[0].Value.M42);
+        Assert.Equal(new[] { 0.5 }, sink.Opacities);
+        Assert.Equal(2, result.VisualCount);
+        Assert.Equal(1, result.ContentCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeCountsUnsupportedContentWithoutThrowing()
+    {
+        var root = new FakeDrawingVisual(new object());
+        var sink = new TestSink();
+
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(1, result.VisualCount);
+        Assert.Equal(0, result.ContentCount);
+        Assert.Equal(1, result.UnsupportedContentCount);
+        Assert.Empty(sink.Operations);
+    }
+
+    [Fact]
+    public void ReplaySubtreeAdaptsWpfShapedTransformAndClip()
+    {
+        var root = new FakeVisual
+        {
+            Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 3, 4)),
+            Clip = new FakeRectangleGeometry(new FakeRect(0, 0, 100, 50))
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushTransform", "PushClip", "DrawRectangle", "Pop", "Pop" }, sink.Operations);
+        Assert.Single(sink.Transforms);
+        Assert.Equal(3, sink.Transforms[0].Value.M41);
+        Assert.Equal(4, sink.Transforms[0].Value.M42);
+        var clip = Assert.Single(sink.Clips);
+        Assert.Equal(new Rect(0, 0, 100, 50), clip.Bounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeAppliesOpacityMaskWhenBoundsAreAvailable()
+    {
+        var root = new FakeVisual
+        {
+            Bounds = new FakeRect(1, 2, 100, 50),
+            OpacityMask = Brushes.White
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushOpacityMask", "DrawRectangle", "Pop" }, sink.Operations);
+        var mask = Assert.Single(sink.OpacityMasks);
+        Assert.Same(Brushes.White, mask.OpacityMask);
+        Assert.Equal(new Rect(1, 2, 100, 50), mask.Bounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeInfersOpacityMaskBoundsFromRenderDataContent()
+    {
+        var root = new FakeDrawingVisual(CreateRenderData(Brushes.Green))
+        {
+            OpacityMask = Brushes.White
+        };
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushOpacityMask", "DrawRectangle", "Pop" }, sink.Operations);
+        var mask = Assert.Single(sink.OpacityMasks);
+        Assert.Same(Brushes.White, mask.OpacityMask);
+        Assert.Equal(new Rect(1, 2, 30, 40), mask.Bounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeInfersOpacityMaskBoundsFromTransformedRenderDataContent()
+    {
+        var root = new FakeDrawingVisual(CreateTransformedRenderData(
+            new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 7, 9)),
+            Brushes.Green))
+        {
+            OpacityMask = Brushes.White
+        };
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushOpacityMask", "PushTransform", "DrawRectangle", "Pop", "Pop" }, sink.Operations);
+        var mask = Assert.Single(sink.OpacityMasks);
+        Assert.Same(Brushes.White, mask.OpacityMask);
+        Assert.Equal(new Rect(8, 11, 30, 40), mask.Bounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(3, 3, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeInfersOpacityMaskBoundsFromChildRenderDataContent()
+    {
+        var root = new FakeVisual
+        {
+            OpacityMask = Brushes.White
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushOpacityMask", "DrawRectangle", "Pop" }, sink.Operations);
+        var mask = Assert.Single(sink.OpacityMasks);
+        Assert.Same(Brushes.White, mask.OpacityMask);
+        Assert.Equal(new Rect(1, 2, 30, 40), mask.Bounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(2, result.VisualCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeAppliesGuidelineCollectionsAsNoOpScope()
+    {
+        var root = new FakeVisual
+        {
+            XSnappingGuidelines = new FakeDoubleCollection(10)
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushGuidelineSetObject", "DrawRectangle", "Pop" }, sink.Operations);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeAppliesScrollableAreaClipAsRectangleClip()
+    {
+        var root = new FakeVisual
+        {
+            ScrollableAreaClip = new FakeRect(2, 3, 40, 50)
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushClip", "DrawRectangle", "Pop" }, sink.Operations);
+        var clip = Assert.Single(sink.Clips);
+        Assert.Equal(new Rect(2, 3, 40, 50), clip.Bounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeCountsUnsupportedVisualEffectAndRenderingHintState()
+    {
+        var root = new FakeVisual
+        {
+            Effect = new object(),
+            BitmapEffect = new object(),
+            CacheMode = new object(),
+            EdgeMode = new FakeRenderingHint("Aliased"),
+            BitmapScalingMode = new FakeRenderingHint("NearestNeighbor"),
+            ClearTypeHint = new FakeRenderingHint("Enabled"),
+            TextRenderingMode = new FakeRenderingHint("Aliased"),
+            TextHintingMode = new FakeRenderingHint("Fixed")
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushBitmapScalingMode", "PushEdgeMode", "PushTextRenderingMode", "DrawRectangle", "Pop", "Pop", "Pop" }, sink.Operations);
+        Assert.Equal(new[] { "NearestNeighbor" }, sink.BitmapScalingModes.Select(mode => mode?.ToString()));
+        Assert.Equal(new[] { "Aliased" }, sink.EdgeModes.Select(mode => mode?.ToString()));
+        Assert.Equal(new[] { "Aliased" }, sink.TextRenderingModes.Select(mode => mode?.ToString()));
+        Assert.Equal(5, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeAppliesLowQualityBitmapScalingAsLinearState()
+    {
+        var root = new FakeVisual
+        {
+            BitmapScalingMode = new FakeRenderingHint("LowQuality")
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushBitmapScalingMode", "DrawRectangle", "Pop" }, sink.Operations);
+        Assert.Equal(new[] { "LowQuality" }, sink.BitmapScalingModes.Select(mode => mode?.ToString()));
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeAppliesHighQualityBitmapScalingAsCubicState()
+    {
+        var root = new FakeVisual
+        {
+            BitmapScalingMode = new FakeRenderingHint("HighQuality")
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushBitmapScalingMode", "DrawRectangle", "Pop" }, sink.Operations);
+        Assert.Equal(new[] { "HighQuality" }, sink.BitmapScalingModes.Select(mode => mode?.ToString()));
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeCountsClearTypeTextRenderingModeAsUnsupported()
+    {
+        var root = new FakeVisual
+        {
+            TextRenderingMode = new FakeRenderingHint("ClearType")
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
+        Assert.Empty(sink.TextRenderingModes);
+        Assert.Equal(1, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreePassesImageSourceAdapterToDefaultRenderDataResolver()
+    {
+        var source = new FakeBitmapSource();
+        var adapter = new FakeImageSourceAdapter();
+        var root = new FakeDrawingVisual(CreateImageRenderData(source));
+        var sink = new TestSink();
+
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(
+            root,
+            sink,
+            imageSourceAdapter: adapter);
+
+        Assert.Equal(1, result.VisualCount);
+        Assert.Equal(1, result.ContentCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+        Assert.Same(source, adapter.LastImageSource);
+        var image = Assert.Single(sink.Images);
+        Assert.Same(adapter.AdaptedImageSource, image.ImageSource);
+        Assert.Equal(new Rect(1, 2, 30, 40), image.Rectangle);
+    }
+
+    private static FakeRenderData CreateRenderData(MediaBrush brush)
+    {
+        var record = CreateRectangleRecord(1, 0);
+        return new FakeRenderData(record, record.Length, new FakeDependentResources(brush));
+    }
+
+    private static FakeRenderData CreateImageRenderData(object imageSource)
+    {
+        var record = CreateImageRecord(1);
+        return new FakeRenderData(record, record.Length, new FakeDependentResources(imageSource));
+    }
+
+    private static FakeRenderData CreateTransformedRenderData(object transform, MediaBrush brush)
+    {
+        var pushTransformPayload = new byte[8];
+        WriteUInt32(pushTransformPayload, 0, 1);
+
+        var rectanglePayload = new byte[40];
+        WriteRect(rectanglePayload, 0, 1, 2, 30, 40);
+        WriteUInt32(rectanglePayload, 32, 2);
+
+        var record = CreateRecord(WpfMilCommandId.PushTransform, pushTransformPayload)
+            .Concat(CreateRecord(WpfMilCommandId.DrawRectangle, rectanglePayload))
+            .Concat(CreateRecord(WpfMilCommandId.Pop, Array.Empty<byte>()))
+            .ToArray();
+
+        return new FakeRenderData(record, record.Length, new FakeDependentResources(transform, brush));
+    }
+
+    private static byte[] CreateRectangleRecord(uint brushToken, uint penToken)
+    {
+        var payload = new byte[40];
+        WriteRect(payload, 0, 1, 2, 30, 40);
+        WriteUInt32(payload, 32, brushToken);
+        WriteUInt32(payload, 36, penToken);
+        return CreateRecord(WpfMilCommandId.DrawRectangle, payload);
+    }
+
+    private static byte[] CreateImageRecord(uint imageSourceToken)
+    {
+        var payload = new byte[40];
+        WriteRect(payload, 0, 1, 2, 30, 40);
+        WriteUInt32(payload, 32, imageSourceToken);
+        return CreateRecord(WpfMilCommandId.DrawImage, payload);
+    }
+
+    private static byte[] CreateRecord(WpfMilCommandId commandId, byte[] payload)
+    {
+        var record = new byte[payload.Length + 8];
+        WriteInt32(record, 0, record.Length);
+        WriteInt32(record, 4, (int)commandId);
+        payload.CopyTo(record.AsSpan(8));
+        return record;
+    }
+
+    private static void WriteRect(byte[] target, int offset, double x, double y, double width, double height)
+    {
+        WriteDouble(target, offset, x);
+        WriteDouble(target, offset + 8, y);
+        WriteDouble(target, offset + 16, width);
+        WriteDouble(target, offset + 24, height);
+    }
+
+    private static void WriteInt32(byte[] target, int offset, int value)
+    {
+        BinaryPrimitives.WriteInt32LittleEndian(target.AsSpan(offset, 4), value);
+    }
+
+    private static void WriteUInt32(byte[] target, int offset, uint value)
+    {
+        BinaryPrimitives.WriteUInt32LittleEndian(target.AsSpan(offset, 4), value);
+    }
+
+    private static void WriteDouble(byte[] target, int offset, double value)
+    {
+        BinaryPrimitives.WriteInt64LittleEndian(target.AsSpan(offset, 8), BitConverter.DoubleToInt64Bits(value));
+    }
+
+    private class FakeVisual
+    {
+        public FakeVisualCollection Children { get; } = new();
+
+        public WpfVector Offset { get; init; }
+
+        public double Opacity { get; init; } = 1;
+
+        public object? Transform { get; init; }
+
+        public object? Clip { get; init; }
+
+        public object? Bounds { get; init; }
+
+        public MediaBrush? OpacityMask { get; init; }
+
+        public object? XSnappingGuidelines { get; init; }
+
+        public object? Effect { get; init; }
+
+        public object? BitmapEffect { get; init; }
+
+        public object? CacheMode { get; init; }
+
+        public object? ScrollableAreaClip { get; init; }
+
+        public object? EdgeMode { get; init; }
+
+        public object? BitmapScalingMode { get; init; }
+
+        public object? ClearTypeHint { get; init; }
+
+        public object? TextRenderingMode { get; init; }
+
+        public object? TextHintingMode { get; init; }
+    }
+
+    private sealed class FakeDrawingVisual : FakeVisual
+    {
+        private readonly object? _content;
+
+        public FakeDrawingVisual(object? content)
+        {
+            _content = content;
+        }
+    }
+
+    private sealed class FakeVisualCollection
+    {
+        private readonly List<object> _children = new();
+
+        public int Count => _children.Count;
+
+        public object this[int index] => _children[index];
+
+        public void Add(object child)
+        {
+            _children.Add(child);
+        }
+    }
+
+    private sealed class FakeDoubleCollection
+    {
+        private readonly double[] _values;
+
+        public FakeDoubleCollection(params double[] values)
+        {
+            _values = values;
+        }
+
+        public int Count => _values.Length;
+
+        public double this[int index] => _values[index];
+    }
+
+    private sealed class FakeRenderingHint
+    {
+        private readonly string _name;
+
+        public FakeRenderingHint(string name)
+        {
+            _name = name;
+        }
+
+        public override string ToString()
+        {
+            return _name;
+        }
+    }
+
+    private sealed class FakeRenderData
+    {
+        private readonly byte[] _buffer;
+        private readonly int _curOffset;
+        private readonly FakeDependentResources _dependentResources;
+
+        public FakeRenderData(byte[] buffer, int curOffset, FakeDependentResources dependentResources)
+        {
+            _buffer = buffer;
+            _curOffset = curOffset;
+            _dependentResources = dependentResources;
+        }
+    }
+
+    private sealed class FakeDependentResources
+    {
+        private readonly object?[] _items;
+
+        public FakeDependentResources(params object?[] items)
+        {
+            _items = items;
+        }
+
+        public int Count => _items.Length;
+
+        public object? this[int index] => _items[index];
+    }
+
+    private sealed class FakeMatrixTransform
+    {
+        public FakeMatrixTransform(FakeMatrix value)
+        {
+            Value = value;
+        }
+
+        public FakeMatrix Value { get; }
+    }
+
+    private readonly record struct FakeMatrix(double M11, double M12, double M21, double M22, double OffsetX, double OffsetY);
+
+    private sealed class FakeRectangleGeometry
+    {
+        public FakeRectangleGeometry(FakeRect rect)
+        {
+            Rect = rect;
+        }
+
+        public FakeRect Rect { get; }
+    }
+
+    private readonly record struct FakeRect(double X, double Y, double Width, double Height);
+
+    private sealed class FakeBitmapSource
+    {
+    }
+
+    private sealed class FakeImageSource : MediaImageSource
+    {
+    }
+
+    private sealed class FakeImageSourceAdapter : IWpfImageSourceAdapter
+    {
+        public MediaImageSource AdaptedImageSource { get; } = new FakeImageSource();
+
+        public object? LastImageSource { get; private set; }
+
+        public MediaImageSource? AdaptImageSource(object? imageSource)
+        {
+            LastImageSource = imageSource;
+            return AdaptedImageSource;
+        }
+    }
+
+    private sealed class TestSink : IWpfCompositionCommandSink
+    {
+        public List<string> Operations { get; } = new();
+
+        public List<(MediaBrush? Brush, MediaPen? Pen, Rect Rectangle)> DrawRectangles { get; } = new();
+
+        public List<(MediaImageSource ImageSource, Rect Rectangle)> Images { get; } = new();
+
+        public List<MediaTransform> Transforms { get; } = new();
+
+        public List<MediaGeometry> Clips { get; } = new();
+
+        public List<double> Opacities { get; } = new();
+
+        public List<(MediaBrush? OpacityMask, Rect Bounds)> OpacityMasks { get; } = new();
+
+        public List<object?> BitmapScalingModes { get; } = new();
+
+        public List<object?> EdgeModes { get; } = new();
+
+        public List<object?> TextRenderingModes { get; } = new();
+
+        public MediaDrawingContext DrawingContext => null!;
+
+        public void DrawLine(MediaPen? pen, Point point0, Point point1)
+        {
+        }
+
+        public void DrawRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle)
+        {
+            Operations.Add("DrawRectangle");
+            DrawRectangles.Add((brush, pen, rectangle));
+        }
+
+        public void DrawRoundedRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle, double radiusX, double radiusY)
+        {
+        }
+
+        public void DrawEllipse(MediaBrush? brush, MediaPen? pen, Point center, double radiusX, double radiusY)
+        {
+        }
+
+        public void DrawGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
+        {
+        }
+
+        public void DrawImage(MediaImageSource imageSource, Rect rectangle)
+        {
+            Operations.Add("DrawImage");
+            Images.Add((imageSource, rectangle));
+        }
+
+        public void DrawText(FormattedText formattedText, Point origin)
+        {
+        }
+
+        public void DrawGlyphRun(MediaBrush? foregroundBrush, MediaGlyphRun glyphRun)
+        {
+        }
+
+        public void PushClip(MediaGeometry clipGeometry)
+        {
+            Operations.Add("PushClip");
+            Clips.Add(clipGeometry);
+        }
+
+        public void PushOpacity(double opacity)
+        {
+            Operations.Add("PushOpacity");
+            Opacities.Add(opacity);
+        }
+
+        public void PushOpacityMask(MediaBrush? opacityMask, Rect bounds)
+        {
+            Operations.Add("PushOpacityMask");
+            OpacityMasks.Add((opacityMask, bounds));
+        }
+
+        public void PushTransform(MediaTransform transform)
+        {
+            Operations.Add("PushTransform");
+            Transforms.Add(transform);
+        }
+
+        public void PushGuidelineSet()
+        {
+            Operations.Add("PushGuidelineSet");
+        }
+
+        public void PushGuidelineSet(object? guidelines)
+        {
+            Operations.Add("PushGuidelineSetObject");
+            Assert.NotNull(guidelines);
+        }
+
+        public void PushBitmapScalingMode(object? bitmapScalingMode)
+        {
+            Operations.Add("PushBitmapScalingMode");
+            BitmapScalingModes.Add(bitmapScalingMode);
+        }
+
+        public void PushEdgeMode(object? edgeMode)
+        {
+            Operations.Add("PushEdgeMode");
+            EdgeModes.Add(edgeMode);
+        }
+
+        public void PushTextRenderingMode(object? textRenderingMode)
+        {
+            Operations.Add("PushTextRenderingMode");
+            TextRenderingModes.Add(textRenderingMode);
+        }
+
+        public void Pop()
+        {
+            Operations.Add("Pop");
+        }
+
+        public void Close()
+        {
+        }
+
+        public void Dispose()
+        {
+        }
+    }
+}

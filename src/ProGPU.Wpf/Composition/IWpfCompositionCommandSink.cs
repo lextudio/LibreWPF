@@ -1,0 +1,86 @@
+using System;
+using System.Windows;
+using MediaBrush = System.Windows.Media.Brush;
+using MediaDrawingContext = System.Windows.Media.DrawingContext;
+using MediaGeometry = System.Windows.Media.Geometry;
+using MediaGlyphRun = System.Windows.Media.GlyphRun;
+using MediaImageSource = System.Windows.Media.ImageSource;
+using MediaPen = System.Windows.Media.Pen;
+using MediaTransform = System.Windows.Media.Transform;
+using MediaFormattedText = System.Windows.Media.FormattedText;
+
+namespace System.Windows.Media.ProGPU.Composition;
+
+public interface IWpfCompositionCommandSink : IDisposable
+{
+    MediaDrawingContext DrawingContext { get; }
+
+    void DrawLine(MediaPen? pen, Point point0, Point point1);
+
+    void DrawRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle);
+
+    void DrawRoundedRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle, double radiusX, double radiusY);
+
+    void DrawEllipse(MediaBrush? brush, MediaPen? pen, Point center, double radiusX, double radiusY);
+
+    void DrawGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry);
+
+    void DrawImage(MediaImageSource imageSource, Rect rectangle);
+
+    void DrawImage(MediaImageSource imageSource, Rect rectangle, Rect sourceRectangle)
+    {
+        DrawImage(imageSource, rectangle);
+    }
+
+    void DrawText(MediaFormattedText formattedText, Point origin);
+
+    void DrawGlyphRun(MediaBrush? foregroundBrush, MediaGlyphRun glyphRun);
+
+    void PushClip(MediaGeometry clipGeometry);
+
+    void PushOpacity(double opacity);
+
+    void PushOpacityMask(MediaBrush? opacityMask, Rect bounds);
+
+    void PushTransform(MediaTransform transform);
+
+    void PushNoOpScope()
+    {
+    }
+
+    void PushGuidelineSet()
+    {
+    }
+
+    void PushGuidelineSet(object? guidelines)
+    {
+        PushGuidelineSet();
+    }
+
+    void PushGuidelineY1(double coordinate)
+    {
+    }
+
+    void PushGuidelineY2(double leadingCoordinate, double offsetToDrivenCoordinate)
+    {
+    }
+
+    void PushBitmapScalingMode(object? bitmapScalingMode)
+    {
+        PushNoOpScope();
+    }
+
+    void PushEdgeMode(object? edgeMode)
+    {
+        PushNoOpScope();
+    }
+
+    void PushTextRenderingMode(object? textRenderingMode)
+    {
+        PushNoOpScope();
+    }
+
+    void Pop();
+
+    void Close();
+}

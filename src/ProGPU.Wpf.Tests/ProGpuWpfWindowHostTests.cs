@@ -99,6 +99,57 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void RenderSchedulerWakeupIsObservedByHost()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var wakeupCount = 0;
+        host.RenderWakeupRequested += (_, _) => wakeupCount++;
+
+        scheduler.RequestRender();
+
+        Assert.Equal(1, host.RenderSchedulerWakeupCount);
+        Assert.Equal(1, wakeupCount);
+    }
+
+    [Fact]
+    public void ReplacingRenderSchedulerDisconnectsPreviousWakeupSource()
+    {
+        var firstScheduler = new TestRenderScheduler();
+        var secondScheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = firstScheduler
+        };
+
+        host.WpfRenderScheduler = secondScheduler;
+
+        firstScheduler.RequestRender();
+        Assert.Equal(0, host.RenderSchedulerWakeupCount);
+
+        secondScheduler.RequestRender();
+        Assert.Equal(1, host.RenderSchedulerWakeupCount);
+    }
+
+    [Fact]
+    public void DisposingHostDisconnectsRenderSchedulerWakeups()
+    {
+        var scheduler = new TestRenderScheduler();
+        var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        host.Dispose();
+
+        scheduler.RequestRender();
+
+        Assert.Equal(0, host.RenderSchedulerWakeupCount);
+    }
+
+    [Fact]
     public void ShouldRenderFrameReturnsTrueBeforeAnyFrameIsPresented()
     {
         using var host = new ProGpuWpfWindowHost();

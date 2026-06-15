@@ -26,14 +26,19 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private bool _isDisposed;
     private bool _hasPresentedFrame;
     private bool _ownsRenderScheduler;
+    private bool _isRendering;
+    private bool _isProcessingRenderSchedulerWakeup;
 
     public ProGpuWpfWindowHost(ProGpuWpfWindowOptions? options = null)
     {
         _options = options ?? new ProGpuWpfWindowOptions();
         _wpfRenderScheduler = CreateDefaultRenderScheduler(_platformServices, out _ownsRenderScheduler);
+        AttachRenderScheduler(_wpfRenderScheduler);
     }
 
     public event EventHandler<ProGpuWpfFrameEventArgs>? Render;
+
+    internal event EventHandler? RenderWakeupRequested;
 
     public event EventHandler<WpfInputEventArgs>? InputReceived;
 
@@ -105,6 +110,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     public long SkippedFrameCount { get; private set; }
 
+    internal long RenderSchedulerWakeupCount { get; private set; }
+
     public Action<MediaDrawingContext, ProGpuWpfFrameEventArgs>? Draw { get; set; }
 
     public Action<WpfCompositionDrawingContext, ProGpuWpfFrameEventArgs>? WpfDraw { get; set; }
@@ -174,6 +181,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         DetachWindowEventService();
         DisposeTarget();
         _window?.Dispose();
+        DetachRenderScheduler(_wpfRenderScheduler);
         DisposeOwnedRenderScheduler();
 
         _target = null;
@@ -235,78 +243,91 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void OnRender(double deltaSeconds)
     {
-        ProcessDispatcherQueueCore();
-
-        if (_target == null || _window == null || _target.Context.Surface == null)
+        if (_isRendering)
         {
             return;
         }
 
-        var framebufferSize = _window.FramebufferSize;
-        var pixelWidth = (uint)Math.Max(1, framebufferSize.X);
-        var pixelHeight = (uint)Math.Max(1, framebufferSize.Y);
-        var logicalWidth = Math.Max(1, _window.Size.X);
-        var dpiScale = pixelWidth / (double)logicalWidth;
-        _target.DetectWpfSourceChanges();
-        var frameState = CaptureFrameState(_target, pixelWidth, pixelHeight);
-
-        if (!ShouldRenderFrame(frameState))
+        _isRendering = true;
+        try
         {
-            SkippedFrameCount++;
-            return;
+            ProcessDispatcherQueueCore();
+
+            if (_target == null || _window == null || _target.Context.Surface == null)
+            {
+                return;
+            }
+
+            var framebufferSize = _window.FramebufferSize;
+            var pixelWidth = (uint)Math.Max(1, framebufferSize.X);
+            var pixelHeight = (uint)Math.Max(1, framebufferSize.Y);
+            var logicalWidth = Math.Max(1, _window.Size.X);
+            var dpiScale = pixelWidth / (double)logicalWidth;
+            _target.DetectWpfSourceChanges();
+            var frameState = CaptureFrameState(_target, pixelWidth, pixelHeight);
+
+            if (!ShouldRenderFrame(frameState))
+            {
+                SkippedFrameCount++;
+                return;
+            }
+
+            _target.Context.ReconfigureIfNeeded(pixelWidth, pixelHeight);
+
+            var drawingFrame = _target.BeginDrawingFrame(pixelWidth, pixelHeight);
+
+            using (IDisposable? renderDataSinkProviderRegistration = RegisterRenderDataSinkProvider(drawingFrame))
+            using (var drawingContext = drawingFrame.OpenDrawingContext())
+            {
+                var args = new ProGpuWpfFrameEventArgs(
+                    drawingContext,
+                    pixelWidth,
+                    pixelHeight,
+                    deltaSeconds,
+                    dpiScale,
+                    drawingFrame);
+
+                if (_wpfRootVisual != null)
+                {
+                    using var sink = new ProGpuRetainedCompositionCommandSink(
+                        drawingFrame,
+                        _target.Context,
+                        _target.Viewport3DTextureCache);
+                    LastVisualReplayResult = _target.ReplayVisualSubtree(
+                        _wpfRootVisual,
+                        sink,
+                        WpfResourceResolver,
+                        WpfImageSourceAdapter);
+                }
+                else
+                {
+                    _target.WpfInvalidationTracker.Detach();
+                    LastVisualReplayResult = default;
+                }
+
+                if (WpfDraw != null)
+                {
+                    using var sourceDrawingContext = drawingFrame.OpenCompositionDrawingContext();
+                    InvokeSourceDraw(sourceDrawingContext, args);
+                }
+                else
+                {
+                    LastSourceDrawingResult = default;
+                }
+
+                Draw?.Invoke(drawingContext, args);
+                Render?.Invoke(this, args);
+                WpfRenderScheduler.ConsumeRenderRequest();
+            }
+
+            if (Present(pixelWidth, pixelHeight))
+            {
+                RecordPresentedFrame(CaptureFrameState(_target, pixelWidth, pixelHeight));
+            }
         }
-
-        _target.Context.ReconfigureIfNeeded(pixelWidth, pixelHeight);
-
-        var drawingFrame = _target.BeginDrawingFrame(pixelWidth, pixelHeight);
-
-        using (IDisposable? renderDataSinkProviderRegistration = RegisterRenderDataSinkProvider(drawingFrame))
-        using (var drawingContext = drawingFrame.OpenDrawingContext())
+        finally
         {
-            var args = new ProGpuWpfFrameEventArgs(
-                drawingContext,
-                pixelWidth,
-                pixelHeight,
-                deltaSeconds,
-                dpiScale,
-                drawingFrame);
-
-            if (_wpfRootVisual != null)
-            {
-                using var sink = new ProGpuRetainedCompositionCommandSink(
-                    drawingFrame,
-                    _target.Context,
-                    _target.Viewport3DTextureCache);
-                LastVisualReplayResult = _target.ReplayVisualSubtree(
-                    _wpfRootVisual,
-                    sink,
-                    WpfResourceResolver,
-                    WpfImageSourceAdapter);
-            }
-            else
-            {
-                _target.WpfInvalidationTracker.Detach();
-                LastVisualReplayResult = default;
-            }
-
-            if (WpfDraw != null)
-            {
-                using var sourceDrawingContext = drawingFrame.OpenCompositionDrawingContext();
-                InvokeSourceDraw(sourceDrawingContext, args);
-            }
-            else
-            {
-                LastSourceDrawingResult = default;
-            }
-
-            Draw?.Invoke(drawingContext, args);
-            Render?.Invoke(this, args);
-            WpfRenderScheduler.ConsumeRenderRequest();
-        }
-
-        if (Present(pixelWidth, pixelHeight))
-        {
-            RecordPresentedFrame(CaptureFrameState(_target, pixelWidth, pixelHeight));
+            _isRendering = false;
         }
     }
 
@@ -600,9 +621,59 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return;
         }
 
+        DetachRenderScheduler(_wpfRenderScheduler);
         DisposeOwnedRenderScheduler();
         _wpfRenderScheduler = scheduler;
         _ownsRenderScheduler = ownsScheduler;
+        AttachRenderScheduler(_wpfRenderScheduler);
+    }
+
+    private void AttachRenderScheduler(IWpfRenderScheduler scheduler)
+    {
+        scheduler.RenderRequested += OnRenderSchedulerRenderRequested;
+    }
+
+    private void DetachRenderScheduler(IWpfRenderScheduler scheduler)
+    {
+        scheduler.RenderRequested -= OnRenderSchedulerRenderRequested;
+    }
+
+    private void OnRenderSchedulerRenderRequested(object? sender, EventArgs e)
+    {
+        RenderSchedulerWakeupCount++;
+        RenderWakeupRequested?.Invoke(this, EventArgs.Empty);
+        TryProcessRenderSchedulerWakeup();
+    }
+
+    internal bool TryProcessRenderSchedulerWakeup()
+    {
+        if (_window == null || _isRendering || _isProcessingRenderSchedulerWakeup)
+        {
+            return false;
+        }
+
+        try
+        {
+            if (!PlatformServices.Dispatcher.CheckAccess())
+            {
+                return false;
+            }
+        }
+        catch (PlatformNotSupportedException)
+        {
+            return false;
+        }
+
+        _isProcessingRenderSchedulerWakeup = true;
+        try
+        {
+            _window.DoRender();
+            return true;
+        }
+        finally
+        {
+            _isProcessingRenderSchedulerWakeup = false;
+        }
     }
 
     private void DisposeOwnedRenderScheduler()

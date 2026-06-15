@@ -405,6 +405,9 @@
 - Verified the WPF bridge against ProGPU submodule head `ba59fdf` with `dotnet build src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj --no-restore --verbosity minimal -m:1` and `/Users/wieslawsoltes/.dotnet/dotnet test /Users/wieslawsoltes/GitHub/wpf/src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj --no-build --verbosity minimal --filter "FullyQualifiedName~WpfReplayToProGpuCommandTests|FullyQualifiedName~ArcSegmentGeometryTests"` from `/tmp`; 77 focused tests passed. A direct root `dotnet test` remains blocked by the WPF repo's `global.json` Microsoft.Testing.Platform policy while this xUnit test project still uses VSTest.
 - Added ProGPU submodule commit `759191f`: `WgpuContext.CleanupPendingResources()` now releases queued bind-group layouts, pipeline layouts, render pipelines, compute pipelines, and shader modules instead of clearing those queues without native release. This addresses the ProGPU PR #17 queued pipeline/shader resource leak review comments.
 - Verified the ProGPU backend resource-release fix with `dotnet build src/ProGPU.Backend/ProGPU.Backend.csproj --no-restore --verbosity minimal`; 0 warnings and 0 errors.
+- Added ProGPU submodule commit `d697304`: WPF shim `WriteableBitmap` now preserves the requested `PixelFormat`, exposes `Format`, validates `WritePixels(...)` byte length through backend stride helpers, keeps padded PBgra32 rows on the `Pbgra32PixelBuffer` upload path, and converts `Bgr32` writes to opaque PBgra32 before `GpuTexture.WritePbgra32SubRect(...)`.
+- Added `WriteableBitmapTests` coverage for distinct shim pixel formats, padded PBgra32 row handling, and Bgr32-to-opaque-PBgra32 upload conversion.
+- Verified the ProGPU WriteableBitmap upload fix with `dotnet build src/PresentationCore/PresentationCore.csproj --no-restore --verbosity minimal` and `dotnet test src/ProGPU.Tests/ProGPU.Tests.csproj --no-restore --verbosity minimal --filter FullyQualifiedName~WriteableBitmapTests`; 3 focused tests passed. Existing warning noise remains in unrelated ProGPU projects.
 
 ## Open Porting Items
 
@@ -416,6 +419,6 @@
 - Add custom `IWpfMilResourceResolver` adapters for real WPF resource instances until type identity is unified with the ProGPU shim.
 - Port WPF `CompositionTarget`/`HwndTarget` to a Silk.NET-backed target.
 - Replace `MilCoreApi` geometry helpers with managed/ProGPU vector implementations.
-- Replace WIC imaging paths with ProGPU texture-backed bitmap sources and platform codecs; pixel-row conversion, compact PBgra32 row packing, and upload buffer/texture validation are now in ProGPU.Backend, but codecs, color management, caching, download state, and lifetime remain open.
+- Replace WIC imaging paths with ProGPU texture-backed bitmap sources and platform codecs; pixel-row conversion, compact PBgra32 row packing, WriteableBitmap Bgr32/PBgra32 upload conversion, and upload buffer/texture validation are now in ProGPU.Backend/shims, but codecs, color management, caching, download state, and lifetime remain open.
 - Replace DWrite, DirectWriteForwarder subsetting, and LineServices dependencies with the ProGPU text path or a cross-platform shaping stack.
 - Harden process-backed platform services or replace them with native per-OS implementations behind the same interfaces, and implement WPF input routing, IME/stylus handling, full routed drag/drop behavior over the drag/drop payload boundary, native event-loop wakeups, animation ticks, dirty-region scheduling, and full WPF Dispatcher/MediaContext integration.

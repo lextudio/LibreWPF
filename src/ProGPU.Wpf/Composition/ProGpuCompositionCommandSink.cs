@@ -34,7 +34,6 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
 {
     private const float TransformEpsilon = 0.0001f;
     private const int DashedCurveSegmentsPerQuadrant = 8;
-    private const int DashedBezierSegments = 16;
 
     private enum PushKind
     {
@@ -924,40 +923,28 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
                     break;
 
                 case VectorQuadraticBezierSegment quadratic:
-                {
-                    var points = new List<Point>
-                    {
-                        ToPoint(current)
-                    };
-                    AppendQuadratic(points, current, quadratic.ControlPoint, quadratic.Point);
-                    handled |= TryDrawDashedPolylineSegments(
+                    handled |= TryDrawDashedQuadraticBezierSegment(
                         nativePen,
                         pen,
-                        points,
+                        current,
+                        quadratic,
                         pattern,
                         ref patternIndex,
                         ref distanceInPattern);
                     current = quadratic.Point;
                     break;
-                }
 
                 case VectorCubicBezierSegment cubic:
-                {
-                    var points = new List<Point>
-                    {
-                        ToPoint(current)
-                    };
-                    AppendCubic(points, current, cubic.ControlPoint1, cubic.ControlPoint2, cubic.Point);
-                    handled |= TryDrawDashedPolylineSegments(
+                    handled |= TryDrawDashedCubicBezierSegment(
                         nativePen,
                         pen,
-                        points,
+                        current,
+                        cubic,
                         pattern,
                         ref patternIndex,
                         ref distanceInPattern);
                     current = cubic.Point;
                     break;
-                }
 
                 case VectorArcSegment arc:
                     handled |= TryDrawDashedArcSegment(
@@ -986,33 +973,6 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         }
 
         return handled;
-    }
-
-    private static void AppendQuadratic(List<Point> points, Vector2 p0, Vector2 p1, Vector2 p2)
-    {
-        for (var i = 1; i <= DashedBezierSegments; i++)
-        {
-            var t = (float)i / DashedBezierSegments;
-            var inverse = 1 - t;
-            var point = inverse * inverse * p0
-                + 2 * inverse * t * p1
-                + t * t * p2;
-            points.Add(ToPoint(point));
-        }
-    }
-
-    private static void AppendCubic(List<Point> points, Vector2 p0, Vector2 p1, Vector2 p2, Vector2 p3)
-    {
-        for (var i = 1; i <= DashedBezierSegments; i++)
-        {
-            var t = (float)i / DashedBezierSegments;
-            var inverse = 1 - t;
-            var point = inverse * inverse * inverse * p0
-                + 3 * inverse * inverse * t * p1
-                + 3 * inverse * t * t * p2
-                + t * t * t * p3;
-            points.Add(ToPoint(point));
-        }
     }
 
     private static IReadOnlyList<Point> BuildRoundedRectanglePolyline(Rect rectangle, double radiusX, double radiusY)
@@ -1162,6 +1122,84 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         return true;
     }
 
+    private bool TryDrawDashedQuadraticBezierSegment(
+        VectorPen nativePen,
+        ProGpuWpfPen pen,
+        Vector2 start,
+        VectorQuadraticBezierSegment segment,
+        float[] pattern,
+        ref int patternIndex,
+        ref float distanceInPattern)
+    {
+        if (!global::ProGPU.Vector.BezierSegmentGeometry.TryCreateDashedQuadraticBezierSegments(
+                start,
+                segment,
+                pattern,
+                patternIndex,
+                distanceInPattern,
+                out var dashSegments,
+                out var finalPatternIndex,
+                out var finalDistanceInPattern))
+        {
+            return TryDrawDashedLineSegment(
+                nativePen,
+                pen,
+                start,
+                segment.Point,
+                pattern,
+                ref patternIndex,
+                ref distanceInPattern);
+        }
+
+        foreach (var dashSegment in dashSegments)
+        {
+            AddNativeQuadraticBezierDash(nativePen, pen.DashCap, dashSegment.Start, dashSegment.Segment);
+        }
+
+        patternIndex = finalPatternIndex;
+        distanceInPattern = finalDistanceInPattern;
+        return true;
+    }
+
+    private bool TryDrawDashedCubicBezierSegment(
+        VectorPen nativePen,
+        ProGpuWpfPen pen,
+        Vector2 start,
+        VectorCubicBezierSegment segment,
+        float[] pattern,
+        ref int patternIndex,
+        ref float distanceInPattern)
+    {
+        if (!global::ProGPU.Vector.BezierSegmentGeometry.TryCreateDashedCubicBezierSegments(
+                start,
+                segment,
+                pattern,
+                patternIndex,
+                distanceInPattern,
+                out var dashSegments,
+                out var finalPatternIndex,
+                out var finalDistanceInPattern))
+        {
+            return TryDrawDashedLineSegment(
+                nativePen,
+                pen,
+                start,
+                segment.Point,
+                pattern,
+                ref patternIndex,
+                ref distanceInPattern);
+        }
+
+        foreach (var dashSegment in dashSegments)
+        {
+            AddNativeCubicBezierDash(nativePen, pen.DashCap, dashSegment.Start, dashSegment.Segment);
+        }
+
+        patternIndex = finalPatternIndex;
+        distanceInPattern = finalDistanceInPattern;
+        return true;
+    }
+
     private bool TryDrawDashedArcSegment(
         VectorPen nativePen,
         ProGpuWpfPen pen,
@@ -1265,6 +1303,40 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             IsFilled = false
         };
         figure.Segments.Add(arc);
+        path.Figures.Add(figure);
+
+        AddNativePath(null, WithLineCaps(nativePen, dashCap, dashCap), path);
+    }
+
+    private void AddNativeQuadraticBezierDash(
+        VectorPen nativePen,
+        MediaPenLineCap dashCap,
+        Vector2 start,
+        VectorQuadraticBezierSegment segment)
+    {
+        var path = new VectorPathGeometry();
+        var figure = new VectorPathFigure(start)
+        {
+            IsFilled = false
+        };
+        figure.Segments.Add(segment);
+        path.Figures.Add(figure);
+
+        AddNativePath(null, WithLineCaps(nativePen, dashCap, dashCap), path);
+    }
+
+    private void AddNativeCubicBezierDash(
+        VectorPen nativePen,
+        MediaPenLineCap dashCap,
+        Vector2 start,
+        VectorCubicBezierSegment segment)
+    {
+        var path = new VectorPathGeometry();
+        var figure = new VectorPathFigure(start)
+        {
+            IsFilled = false
+        };
+        figure.Segments.Add(segment);
         path.Figures.Add(figure);
 
         AddNativePath(null, WithLineCaps(nativePen, dashCap, dashCap), path);

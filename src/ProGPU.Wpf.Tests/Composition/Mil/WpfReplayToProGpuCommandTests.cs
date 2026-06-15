@@ -11,7 +11,9 @@ using ProGPU.Backend;
 using Xunit;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
 using ProGpuDrawingContext = ProGPU.Scene.DrawingContext;
+using ProGpuCubicBezierSegment = ProGPU.Vector.CubicBezierSegment;
 using ProGpuLinearGradientBrush = ProGPU.Vector.LinearGradientBrush;
+using ProGpuQuadraticBezierSegment = ProGPU.Vector.QuadraticBezierSegment;
 using ProGpuRadialGradientBrush = ProGPU.Vector.RadialGradientBrush;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
@@ -910,7 +912,7 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
-    public void DecodeFilledDashedGeometryThroughProGpuSinkEmitsFillThenDashSegmentCommands()
+    public void DecodeFilledDashedGeometryThroughProGpuSinkEmitsFillThenNativeBezierDashCommands()
     {
         var geometry = new PathGeometry();
         var figure = new PathFigure
@@ -954,10 +956,18 @@ public sealed class WpfReplayToProGpuCommandTests
         Assert.Equal(RenderCommandType.DrawPath, nativeContext.Commands[0].Type);
         Assert.NotNull(nativeContext.Commands[0].Brush);
         Assert.Null(nativeContext.Commands[0].Pen);
-        Assert.All(nativeContext.Commands.Skip(1), command => Assert.Equal(RenderCommandType.DrawLine, command.Type));
         Assert.Contains(nativeContext.Commands.Skip(1), command =>
-            command.Position.X != command.Position2.X
-            && command.Position.Y != command.Position2.Y);
+            command.Type == RenderCommandType.DrawPath
+            && command.Brush == null
+            && command.Pen != null
+            && command.Path != null
+            && command.Path.Figures.SelectMany(figure => figure.Segments).OfType<ProGpuQuadraticBezierSegment>().Any());
+        Assert.Contains(nativeContext.Commands.Skip(1), command =>
+            command.Type == RenderCommandType.DrawPath
+            && command.Brush == null
+            && command.Pen != null
+            && command.Path != null
+            && command.Path.Figures.SelectMany(figure => figure.Segments).OfType<ProGpuCubicBezierSegment>().Any());
     }
 
     [Fact]

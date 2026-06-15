@@ -25,6 +25,7 @@ public sealed class WpfPortableTextInterfaceTests
         Assert.Contains("internal sealed class PortableFontData", source, StringComparison.Ordinal);
         Assert.Contains("using ProGpuSfntFontFace = ProGPU.Text.SfntFontFace;", source, StringComparison.Ordinal);
         Assert.Contains("using ProGpuSfntGlyphBounds = ProGPU.Text.SfntGlyphBounds;", source, StringComparison.Ordinal);
+        Assert.Contains("using ProGpuSfntFontSubsetter = ProGPU.Text.SfntFontSubsetter;", source, StringComparison.Ordinal);
         Assert.Contains("using ProGpuSfntHorizontalGlyphMetrics = ProGPU.Text.SfntHorizontalGlyphMetrics;", source, StringComparison.Ordinal);
         Assert.Contains("using ProGpuSfntSimpleGlyphMetrics = ProGPU.Text.SfntSimpleGlyphMetrics;", source, StringComparison.Ordinal);
         Assert.Contains("using ProGpuSfntSimpleGlyphRun = ProGPU.Text.SfntSimpleGlyphRun;", source, StringComparison.Ordinal);
@@ -46,6 +47,7 @@ public sealed class WpfPortableTextInterfaceTests
         Assert.Contains("return new ProGpuSfntSimpleGlyphMetrics(metrics.AdvanceWidth, metrics.AdvanceHeight);", source, StringComparison.Ordinal);
         Assert.Contains("private static void FillGlyphPlacements(", source, StringComparison.Ordinal);
         Assert.Contains("Marshal.Copy((IntPtr)fontData, fontCopy, 0, fileSize);", source, StringComparison.Ordinal);
+        Assert.Contains("ProGpuSfntFontSubsetter.TryCreateGlyphIdPreservingSubset(", source, StringComparison.Ordinal);
 
         Assert.DoesNotContain("The portable WPF font face is not yet backed", source, StringComparison.Ordinal);
         Assert.DoesNotContain("The portable WPF font object is not yet backed", source, StringComparison.Ordinal);

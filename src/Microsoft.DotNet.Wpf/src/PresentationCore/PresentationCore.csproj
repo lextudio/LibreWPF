@@ -286,6 +286,9 @@
     <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Text\SfntSimpleGlyphShaper.cs"
              Link="MS\Internal\Text\TextInterface\ProGPU\SfntSimpleGlyphShaper.cs"
              Condition="'$(OS)' != 'Windows_NT'" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Text\SfntFontSubsetter.cs"
+             Link="MS\Internal\Text\TextInterface\ProGPU\SfntFontSubsetter.cs"
+             Condition="'$(OS)' != 'Windows_NT'" />
     <Compile Include="MS\Internal\Text\TextInterface\PortableTextInterface.cs"
              Condition="'$(OS)' != 'Windows_NT'" />
     <Compile Include="MS\Internal\TextFormatting\Bidi.cs" />

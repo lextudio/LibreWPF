@@ -289,10 +289,13 @@
 - Verified the source-shared text slice with `dotnet test src/ProGPU.Tests/ProGPU.Tests.csproj --no-restore --verbosity minimal --filter "FullyQualifiedName~SfntSimpleGlyphShaperTests|FullyQualifiedName~StrongNameSigningTests"`; 7 tests passed.
 - Verified real WPF source-sharing with `dotnet build src/Microsoft.DotNet.Wpf/src/PresentationCore/PresentationCore.csproj --no-restore --verbosity minimal`; `PresentationCore` built with 0 warnings and 0 errors.
 - Re-ran the full WPF bridge suite with `dotnet test ../ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj --no-restore --verbosity minimal` from `src/ProGPU.Wpf`; 356 tests passed.
+- Added `ProGPU.Text.SfntFontSubsetter`, a source-shareable glyph-ID-preserving TrueType subset writer. It parses a selected SFNT face, keeps glyph 0 and requested glyph IDs, recursively includes composite glyph component dependencies, rewrites `glyf`, long `loca`, and `head.indexToLocFormat`, recalculates SFNT checksums, and drops stale `DSIG` signatures.
+- Linked `SfntFontSubsetter.cs` into non-Windows real WPF `PresentationCore`, and routed `TrueTypeSubsetter.ComputeSubset(...)` through the ProGPU helper before falling back to the full-font copy for unsupported or invalid font shapes.
+- Added ProGPU subsetter tests covering composite dependency inclusion, omitted glyph stripping, stale `DSIG` removal, and invalid-font fail-closed behavior, plus WPF source/project graph tests requiring the new source-shared subsetter and call site.
 
 ## Open Porting Items
 
-- Replace the source-shared portable `MS.Internal.Text.TextInterface` one-scalar-to-one-glyph fallback, full-font-copy subsetting fallback, and LineServices dependencies with a full ProGPU-backed or cross-platform shaping/subsetting abstraction.
+- Replace the source-shared portable `MS.Internal.Text.TextInterface` one-scalar-to-one-glyph fallback, remaining compact/CFF subsetting gaps, and LineServices dependencies with a full ProGPU-backed or cross-platform shaping/subsetting abstraction.
 - Wire `WpfRenderDataReflectionBridge` into real WPF visual rendering paths or replace it with an in-assembly bridge once the port lane compiles managed WPF directly.
 - Replace the reflection visual subtree renderer with in-assembly visual traversal when managed WPF compiles in the port lane.
 - Expand adapters for cross-assembly real WPF visual resources: remaining tile-brush cases including non-affine or unreadable transform types and advanced visual-brush state, platform codecs, color management and color-profile fidelity, formatted text, complex glyph/typeface identity beyond local font-file URI and bold/italic style-simulation replay, animation resources, and drawing effects.

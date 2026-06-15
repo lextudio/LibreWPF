@@ -10,6 +10,7 @@ using System.Text;
 using System.Windows.Media;
 using ProGpuSfntFontFace = ProGPU.Text.SfntFontFace;
 using ProGpuSfntGlyphBounds = ProGPU.Text.SfntGlyphBounds;
+using ProGpuSfntFontSubsetter = ProGPU.Text.SfntFontSubsetter;
 using ProGpuSfntHorizontalGlyphMetrics = ProGPU.Text.SfntHorizontalGlyphMetrics;
 using ProGpuSfntSimpleGlyphMetrics = ProGPU.Text.SfntSimpleGlyphMetrics;
 using ProGpuSfntSimpleGlyphRun = ProGPU.Text.SfntSimpleGlyphRun;
@@ -1803,6 +1804,15 @@ namespace MS.Internal
 
             byte[] fontCopy = new byte[fileSize];
             Marshal.Copy((IntPtr)fontData, fontCopy, 0, fileSize);
+            if (ProGpuSfntFontSubsetter.TryCreateGlyphIdPreservingSubset(
+                fontCopy,
+                directoryOffset,
+                glyphArray,
+                out byte[] subset))
+            {
+                return subset;
+            }
+
             return fontCopy;
         }
     }

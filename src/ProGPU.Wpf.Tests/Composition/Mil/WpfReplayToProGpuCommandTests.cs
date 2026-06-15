@@ -1358,7 +1358,7 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
-    public void DecodeDrawGeometryThroughProGpuSinkApproximatesComplexTransformedPathArcSegmentsAsCubics()
+    public void DecodeDrawGeometryThroughProGpuSinkPreservesComplexTransformedPathArcSegments()
     {
         var matrix = new Matrix
         {
@@ -1388,16 +1388,18 @@ public sealed class WpfReplayToProGpuCommandTests
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
         var nativePath = Assert.Single(nativeContext.Commands).Path;
         var nativeFigure = Assert.Single(nativePath!.Figures);
-        Assert.NotEmpty(nativeFigure.Segments);
-        Assert.All(nativeFigure.Segments, segment => Assert.IsType<ProGPU.Vector.CubicBezierSegment>(segment));
+        var nativeArc = Assert.IsType<ProGPU.Vector.ArcSegment>(Assert.Single(nativeFigure.Segments));
 
         var expectedStart = Vector2.Transform(new Vector2(0, 0), matrixTransform.Value);
         var expectedEnd = Vector2.Transform(new Vector2(30, 40), matrixTransform.Value);
-        var finalSegment = Assert.IsType<ProGPU.Vector.CubicBezierSegment>(nativeFigure.Segments[nativeFigure.Segments.Count - 1]);
         Assert.Equal(expectedStart.X, nativeFigure.StartPoint.X, 4);
         Assert.Equal(expectedStart.Y, nativeFigure.StartPoint.Y, 4);
-        Assert.Equal(expectedEnd.X, finalSegment.Point.X, 4);
-        Assert.Equal(expectedEnd.Y, finalSegment.Point.Y, 4);
+        Assert.Equal(expectedEnd.X, nativeArc.Point.X, 4);
+        Assert.Equal(expectedEnd.Y, nativeArc.Point.Y, 4);
+        Assert.True(nativeArc.Size.X > 0);
+        Assert.True(nativeArc.Size.Y > 0);
+        Assert.True(float.IsFinite(nativeArc.RotationAngle));
+        Assert.Equal(ProGPU.Vector.SweepDirection.Clockwise, nativeArc.SweepDirection);
     }
 
     [Fact]
@@ -1431,7 +1433,7 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
-    public void DecodeTransformedClipThroughProGpuSinkApproximatesComplexTransformedPathArcSegmentsAsCubics()
+    public void DecodeTransformedClipThroughProGpuSinkPreservesComplexTransformedPathArcSegments()
     {
         var transform = new FakeMatrixTransform(new FakeMatrix(1, 0.35, 0.2, 1, 5, 7));
         var transformMatrix = new Matrix4x4(
@@ -1460,13 +1462,14 @@ public sealed class WpfReplayToProGpuCommandTests
         var clipCommand = nativeContext.Commands[0];
         Assert.Equal(RenderCommandType.PushGeometryClip, clipCommand.Type);
         var nativeFigure = Assert.Single(clipCommand.Path!.Figures);
-        Assert.NotEmpty(nativeFigure.Segments);
-        Assert.All(nativeFigure.Segments, segment => Assert.IsType<ProGPU.Vector.CubicBezierSegment>(segment));
+        var nativeArc = Assert.IsType<ProGPU.Vector.ArcSegment>(Assert.Single(nativeFigure.Segments));
 
         var expectedEnd = Vector2.Transform(new Vector2(30, 40), transformMatrix);
-        var finalSegment = Assert.IsType<ProGPU.Vector.CubicBezierSegment>(nativeFigure.Segments[nativeFigure.Segments.Count - 1]);
-        Assert.Equal(expectedEnd.X, finalSegment.Point.X, 4);
-        Assert.Equal(expectedEnd.Y, finalSegment.Point.Y, 4);
+        Assert.Equal(expectedEnd.X, nativeArc.Point.X, 4);
+        Assert.Equal(expectedEnd.Y, nativeArc.Point.Y, 4);
+        Assert.True(nativeArc.Size.X > 0);
+        Assert.True(nativeArc.Size.Y > 0);
+        Assert.True(float.IsFinite(nativeArc.RotationAngle));
     }
 
     [Fact]

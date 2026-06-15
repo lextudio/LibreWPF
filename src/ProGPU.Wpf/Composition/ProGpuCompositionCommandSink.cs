@@ -21,7 +21,6 @@ using VectorLineSegment = ProGPU.Vector.LineSegment;
 using VectorPen = ProGPU.Vector.Pen;
 using VectorPathFigure = ProGPU.Vector.PathFigure;
 using VectorPathGeometry = ProGPU.Vector.PathGeometry;
-using VectorPathSegment = ProGPU.Vector.PathSegment;
 using VectorQuadraticBezierSegment = ProGPU.Vector.QuadraticBezierSegment;
 using VectorBrush = ProGPU.Vector.Brush;
 using VectorPenLineCap = ProGPU.Vector.PenLineCap;
@@ -1560,24 +1559,8 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
                         sourceCurrentPoint = cubic.Point3;
                         break;
 
-                    case ArcSegment arc when TryTransformArcSegment(
-                        arc.Point,
-                        arc.Size,
-                        arc.RotationAngle,
-                        arc.IsLargeArc,
-                        arc.SweepDirection == MediaSweepDirection.Clockwise
-                            ? VectorSweepDirection.Clockwise
-                            : VectorSweepDirection.Counterclockwise,
-                            combinedTransform,
-                            out var transformedArc):
-                        transformedArc.IsSmoothJoin = arc.IsSmoothJoin;
-                        nativeFigure.Segments.Add(transformedArc);
-                        sourceCurrentPoint = arc.Point;
-                        break;
-
                     case ArcSegment arc:
-                        AppendTransformedArcAsCubics(
-                            nativeFigure.Segments,
+                        if (TryTransformArcSegment(
                             sourceCurrentPoint,
                             arc.Point,
                             arc.Size,
@@ -1587,7 +1570,18 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
                                 ? VectorSweepDirection.Clockwise
                                 : VectorSweepDirection.Counterclockwise,
                             combinedTransform,
-                            arc.IsSmoothJoin);
+                            out var transformedArc))
+                        {
+                            transformedArc.IsSmoothJoin = arc.IsSmoothJoin;
+                            nativeFigure.Segments.Add(transformedArc);
+                        }
+                        else
+                        {
+                            nativeFigure.Segments.Add(new VectorLineSegment(
+                                Vector2.Transform(arc.Point, combinedTransform),
+                                arc.IsSmoothJoin));
+                        }
+
                         sourceCurrentPoint = arc.Point;
                         break;
                 }
@@ -1650,22 +1644,8 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
                         sourceCurrentPoint = cubic.Point;
                         break;
 
-                    case VectorArcSegment arc when TryTransformArcSegment(
-                        arc.Point,
-                        arc.Size,
-                        arc.RotationAngle,
-                        arc.IsLargeArc,
-                        arc.SweepDirection,
-                        transform,
-                        out var transformedArc):
-                        transformedArc.IsSmoothJoin = arc.IsSmoothJoin;
-                        nativeFigure.Segments.Add(transformedArc);
-                        sourceCurrentPoint = arc.Point;
-                        break;
-
                     case VectorArcSegment arc:
-                        AppendTransformedArcAsCubics(
-                            nativeFigure.Segments,
+                        if (TryTransformArcSegment(
                             sourceCurrentPoint,
                             arc.Point,
                             arc.Size,
@@ -1673,7 +1653,18 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
                             arc.IsLargeArc,
                             arc.SweepDirection,
                             transform,
-                            arc.IsSmoothJoin);
+                            out var transformedArc))
+                        {
+                            transformedArc.IsSmoothJoin = arc.IsSmoothJoin;
+                            nativeFigure.Segments.Add(transformedArc);
+                        }
+                        else
+                        {
+                            nativeFigure.Segments.Add(new VectorLineSegment(
+                                Vector2.Transform(arc.Point, transform),
+                                arc.IsSmoothJoin));
+                        }
+
                         sourceCurrentPoint = arc.Point;
                         break;
                 }
@@ -1686,6 +1677,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
     }
 
     private static bool TryTransformArcSegment(
+        Vector2 startPoint,
         Vector2 point,
         Vector2 size,
         float rotationAngle,
@@ -1694,153 +1686,12 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         Matrix4x4 transform,
         out VectorArcSegment arc)
     {
-        if (TryGetPositiveSimilarityTransform(transform, out var uniformScale, out var rotationDegrees))
-        {
-            arc = new VectorArcSegment(
-                Vector2.Transform(point, transform),
-                new Vector2(size.X * uniformScale, size.Y * uniformScale),
-                rotationAngle + rotationDegrees,
-                isLargeArc,
-                sweepDirection);
-            return true;
-        }
-
-        if (TryGetPositiveAxisAlignedScale(transform, rotationAngle, out var scale))
-        {
-            arc = new VectorArcSegment(
-                Vector2.Transform(point, transform),
-                new Vector2(size.X * scale.X, size.Y * scale.Y),
-                rotationAngle,
-                isLargeArc,
-                sweepDirection);
-            return true;
-        }
-
-        arc = null!;
-        return false;
-    }
-
-    private static void AppendTransformedArcAsCubics(
-        ICollection<VectorPathSegment> target,
-        Vector2 startPoint,
-        Vector2 endPoint,
-        Vector2 size,
-        float rotationAngle,
-        bool isLargeArc,
-        VectorSweepDirection sweepDirection,
-        Matrix4x4 transform,
-        bool isSmoothJoin = false)
-    {
-        var cubics = new List<WpfCubicBezierSegmentData>();
-        if (!WpfArcSegmentConversion.TryAppendTransformedCubics(
-                cubics,
-                startPoint,
-                endPoint,
-                size,
-                rotationAngle,
-                isLargeArc,
-                sweepDirection == VectorSweepDirection.Clockwise
-                    ? MediaSweepDirection.Clockwise
-                    : MediaSweepDirection.Counterclockwise,
-                transform))
-        {
-            target.Add(new VectorLineSegment(Vector2.Transform(endPoint, transform), isSmoothJoin));
-            return;
-        }
-
-        foreach (var cubic in cubics)
-        {
-            target.Add(new VectorCubicBezierSegment(cubic.ControlPoint1, cubic.ControlPoint2, cubic.Point, isSmoothJoin));
-        }
-    }
-
-    private static bool TryGetPositiveSimilarityTransform(
-        Matrix4x4 transform,
-        out float scale,
-        out float rotationDegrees)
-    {
-        if (!Is2DAffineTransform(transform))
-        {
-            scale = 0;
-            rotationDegrees = 0;
-            return false;
-        }
-
-        var xAxis = new Vector2(transform.M11, transform.M12);
-        var yAxis = new Vector2(transform.M21, transform.M22);
-        var xScale = xAxis.Length();
-        var yScale = yAxis.Length();
-        var determinant = transform.M11 * transform.M22 - transform.M12 * transform.M21;
-
-        if (xScale <= TransformEpsilon
-            || yScale <= TransformEpsilon
-            || determinant <= TransformEpsilon
-            || !NearlyEqual(xScale, yScale)
-            || MathF.Abs(Vector2.Dot(xAxis, yAxis)) > TransformEpsilon * xScale * yScale)
-        {
-            scale = 0;
-            rotationDegrees = 0;
-            return false;
-        }
-
-        scale = xScale;
-        rotationDegrees = MathF.Atan2(transform.M12, transform.M11) * 180f / MathF.PI;
-        return true;
-    }
-
-    private static bool TryGetPositiveAxisAlignedScale(
-        Matrix4x4 transform,
-        float arcRotationAngle,
-        out Vector2 scale)
-    {
-        if (!Is2DAffineTransform(transform)
-            || !NearlyZero(transform.M12)
-            || !NearlyZero(transform.M21)
-            || transform.M11 <= TransformEpsilon
-            || transform.M22 <= TransformEpsilon
-            || !IsAxisAlignedArcRotation(arcRotationAngle))
-        {
-            scale = default;
-            return false;
-        }
-
-        scale = new Vector2(transform.M11, transform.M22);
-        return true;
-    }
-
-    private static bool IsAxisAlignedArcRotation(float rotationAngle)
-    {
-        var normalized = rotationAngle % 180f;
-        if (normalized < 0)
-        {
-            normalized += 180f;
-        }
-
-        return NearlyZero(normalized);
-    }
-
-    private static bool Is2DAffineTransform(Matrix4x4 transform)
-    {
-        return NearlyZero(transform.M13)
-            && NearlyZero(transform.M14)
-            && NearlyZero(transform.M23)
-            && NearlyZero(transform.M24)
-            && NearlyZero(transform.M31)
-            && NearlyZero(transform.M32)
-            && NearlyEqual(transform.M33, 1f)
-            && NearlyZero(transform.M34)
-            && NearlyZero(transform.M43)
-            && NearlyEqual(transform.M44, 1f);
-    }
-
-    private static bool NearlyZero(float value)
-    {
-        return MathF.Abs(value) <= TransformEpsilon;
-    }
-
-    private static bool NearlyEqual(float left, float right)
-    {
-        return MathF.Abs(left - right) <= TransformEpsilon;
+        return global::ProGPU.Vector.ArcSegmentGeometry.TryTransformArcSegment(
+            startPoint,
+            new VectorArcSegment(point, size, rotationAngle, isLargeArc, sweepDirection),
+            transform,
+            out _,
+            out arc);
     }
 
     private static bool TryRecordGeometryPath(MediaGeometry geometry, out VectorPathGeometry path)

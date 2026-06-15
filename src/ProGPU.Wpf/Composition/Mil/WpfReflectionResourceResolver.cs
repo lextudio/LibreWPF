@@ -1232,23 +1232,11 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
                     sourceCurrentPoint = bezier.Point3;
                     break;
                 case ArcSegment arc:
-                    if (transform.IsIdentity)
+                    if (TryTransformArcSegment(sourceCurrentPoint, arc, transform, out var transformedArc))
                     {
-                        target.Segments.Add(new ArcSegment
-                        {
-                            Point = arc.Point,
-                            Size = arc.Size,
-                            RotationAngle = arc.RotationAngle,
-                            IsLargeArc = arc.IsLargeArc,
-                            SweepDirection = arc.SweepDirection,
-                            IsSmoothJoin = arc.IsSmoothJoin
-                        });
+                        target.Segments.Add(transformedArc);
                     }
-                    else if (!TryAppendTransformedArcAsCubics(
-                        target.Segments,
-                        sourceCurrentPoint,
-                        arc,
-                        transform))
+                    else
                     {
                         target.Segments.Add(new LineSegment(Vector2.Transform(arc.Point, transform), arc.IsSmoothJoin));
                     }
@@ -1261,31 +1249,39 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
         return target;
     }
 
-    private static bool TryAppendTransformedArcAsCubics(
-        ICollection<PathSegment> target,
+    private static bool TryTransformArcSegment(
         Vector2 startPoint,
         ArcSegment arc,
-        Matrix4x4 transform)
+        Matrix4x4 transform,
+        out ArcSegment transformedArc)
     {
-        var cubics = new List<WpfCubicBezierSegmentData>();
-        if (!WpfArcSegmentConversion.TryAppendTransformedCubics(
-                cubics,
+        transformedArc = null!;
+
+        if (!global::ProGPU.Vector.ArcSegmentGeometry.TryTransformArcSegment(
                 startPoint,
-                arc.Point,
-                arc.Size,
-                arc.RotationAngle,
-                arc.IsLargeArc,
-                arc.SweepDirection,
-                transform))
+                new global::ProGPU.Vector.ArcSegment(
+                    arc.Point,
+                    arc.Size,
+                    arc.RotationAngle,
+                    arc.IsLargeArc,
+                    (global::ProGPU.Vector.SweepDirection)(int)arc.SweepDirection,
+                    arc.IsSmoothJoin),
+                transform,
+                out _,
+                out var vectorArc))
         {
             return false;
         }
 
-        foreach (var cubic in cubics)
+        transformedArc = new ArcSegment
         {
-            target.Add(new BezierSegment(cubic.ControlPoint1, cubic.ControlPoint2, cubic.Point, arc.IsSmoothJoin));
-        }
-
+            Point = vectorArc.Point,
+            Size = vectorArc.Size,
+            RotationAngle = vectorArc.RotationAngle,
+            IsLargeArc = vectorArc.IsLargeArc,
+            SweepDirection = (SweepDirection)(int)vectorArc.SweepDirection,
+            IsSmoothJoin = vectorArc.IsSmoothJoin
+        };
         return true;
     }
 

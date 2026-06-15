@@ -6,6 +6,7 @@ The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and
 
 - vector rendering fidelity work for WPF-style pens, caps, joins, arcs, dashed geometry, gradient brush packing, brush transforms, bitmap sampling modes, aliased vector/text rendering flags, and related shader/storage-buffer changes.
 - repo-level strong-name signing for ProGPU assemblies with public key token `c29c9752855ee183`.
+- ProGPU-owned affine arc transformation in `ProGPU.Vector.ArcSegmentGeometry`, so WPF transformed path arcs can remain native ProGPU arc segments through translation, scale, rotation, shear, and orientation-reversing transforms.
 - reusable `ProGPU.Text.SfntFontFace` metadata/table/cmap/glyph-metric APIs plus `FontApi` updates for TTC face enumeration, localized name strings, and cross-platform system font directory discovery.
 - `SfntFontFace` source-sharing visibility so the helper remains public in `ProGPU.Text` but compiles as internal when WPF links that single source file under `PresentationCore`.
 - a ProGPU-local `global.json` pinned to SDK `10.0.201` so the submodule builds consistently even when nested below WPF's .NET 11 preview SDK checkout.
@@ -14,6 +15,7 @@ The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and
 ## Decisions
 
 - Keep feature work that accelerates WPF rendering fidelity in the ProGPU branch when it improves the backend model directly, instead of compensating in the WPF bridge.
+- Keep WPF arc semantics in ProGPU vector primitives. The WPF bridge may adapt WPF types, but affine arc math, sweep flipping, and shader-rasterized arc records belong in `ProGPU.Vector`/`ProGPU.Scene`.
 - Keep WPF-specific type adaptation in `src/ProGPU.Wpf` until the real WPF `PresentationCore` and ProGPU shim type identities are unified.
 - Prefer adding reusable ProGPU primitives for WPF concepts that also benefit other frontends: exact path stroking, gradient tables, texture sampling modes, text flags, mesh extensions, image effects, and retained resource lifetime helpers.
 - Use signed ProGPU assemblies for direct references from strong-named WPF assemblies when the TFM/project graph is compatible. Until then, source-share small ProGPU-owned helpers only when they remain internal to WPF and avoid exposing ProGPU namespaces as WPF public API.
@@ -21,7 +23,7 @@ The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and
 ## ProGPU Features to Implement Next
 
 - Text: build on the reusable SFNT helper by adding richer OpenType layout table APIs, glyph shaping hooks, glyph placement, fallback chains, and exact subset writing so WPF `PortableTextInterface` can delegate more of the remaining text stack instead of carrying compatibility code.
-- Geometry: move remaining WPF fidelity gaps into ProGPU vector code, including exact boolean-result dashed outlines, non-axis-aligned guideline snapping policy, exact arc stroking beyond bounded polyline approximation, and robust cap clipping at complex joins.
+- Geometry: move remaining WPF fidelity gaps into ProGPU vector code, including exact boolean-result dashed outlines, non-axis-aligned guideline snapping policy, shader-native arc stroking beyond bounded polyline approximation, and robust cap clipping at complex joins.
 - Brushes: keep expanding ProGPU brush ABI and shaders for WPF brush semantics, including more tile-brush transform cases, color-profile policy, and any remaining gradient interpolation/spread edge cases.
 - Images: add ProGPU image codec and color-management seams so WPF bitmap sources can move away from reflection-based `CopyPixels` transition upload and toward backend-owned image resources.
 - Composition: add backend-level retained resource invalidation/versioning helpers so WPF `Freezable`/visual invalidation can map to ProGPU dirty tracking without reflection polling.

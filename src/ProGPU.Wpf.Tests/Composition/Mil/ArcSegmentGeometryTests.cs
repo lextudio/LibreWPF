@@ -81,6 +81,66 @@ public sealed class ArcSegmentGeometryTests
     }
 
     [Fact]
+    public void TryTransformArcSegmentPreservesArcThroughShear()
+    {
+        var start = new Vector2(0, 0);
+        var arc = new ArcSegment(
+            new Vector2(30, 40),
+            new Vector2(10, 20),
+            rotationAngle: 45,
+            isLargeArc: true,
+            SweepDirection.Clockwise);
+        var transform = new Matrix4x4(
+            1f, 0.35f, 0f, 0f,
+            0.2f, 1f, 0f, 0f,
+            0f, 0f, 1f, 0f,
+            5f, 7f, 0f, 1f);
+
+        var result = ArcSegmentGeometry.TryTransformArcSegment(
+            start,
+            arc,
+            transform,
+            out var transformedStart,
+            out var transformedArc);
+
+        Assert.True(result);
+        AssertClose(Vector2.Transform(start, transform), transformedStart);
+        AssertClose(Vector2.Transform(arc.Point, transform), transformedArc.Point);
+        Assert.True(transformedArc.Size.X > 0.0f);
+        Assert.True(transformedArc.Size.Y > 0.0f);
+        Assert.True(float.IsFinite(transformedArc.RotationAngle));
+        Assert.True(transformedArc.IsLargeArc);
+        Assert.Equal(SweepDirection.Clockwise, transformedArc.SweepDirection);
+    }
+
+    [Fact]
+    public void TryTransformArcSegmentFlipsSweepForReflection()
+    {
+        var start = new Vector2(0, 0);
+        var arc = new ArcSegment(
+            new Vector2(10, 0),
+            new Vector2(5, 5),
+            rotationAngle: 0,
+            isLargeArc: false,
+            SweepDirection.Clockwise);
+        var transform = Matrix4x4.CreateScale(-1.0f, 1.0f, 1.0f);
+
+        var result = ArcSegmentGeometry.TryTransformArcSegment(
+            start,
+            arc,
+            transform,
+            out var transformedStart,
+            out var transformedArc);
+
+        Assert.True(result);
+        AssertClose(Vector2.Transform(start, transform), transformedStart);
+        AssertClose(Vector2.Transform(arc.Point, transform), transformedArc.Point);
+        Assert.Equal(SweepDirection.Counterclockwise, transformedArc.SweepDirection);
+        AssertClose(5.0f, transformedArc.Size.X);
+        AssertClose(5.0f, transformedArc.Size.Y);
+    }
+
+    [Fact]
     public void CompilePathPreservesValidArcRecord()
     {
         var path = new PathGeometry();

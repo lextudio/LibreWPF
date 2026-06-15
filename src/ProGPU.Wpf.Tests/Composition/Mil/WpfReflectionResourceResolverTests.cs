@@ -2345,7 +2345,7 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
-    public void AdaptGeometryApproximatesTransformedArcsInsideWpfShapedGeometryGroup()
+    public void AdaptGeometryPreservesTransformedArcsInsideWpfShapedGeometryGroup()
     {
         var childTransform = new FakeMatrixTransform(new FakeMatrix(1, 0.35, 0.2, 1, 5, 7));
         var transformMatrix = new Matrix4x4(
@@ -2372,16 +2372,18 @@ public sealed class WpfReflectionResourceResolverTests
         var adaptedGeometry = Assert.IsType<PathGeometry>(WpfReflectionResourceResolver.AdaptGeometry(group));
 
         var figure = Assert.Single(adaptedGeometry.Figures);
-        Assert.NotEmpty(figure.Segments);
-        Assert.All(figure.Segments, segment => Assert.IsType<BezierSegment>(segment));
+        var arc = Assert.IsType<ArcSegment>(Assert.Single(figure.Segments));
 
         var expectedStart = Vector2.Transform(new Vector2(0, 0), transformMatrix);
         var expectedEnd = Vector2.Transform(new Vector2(30, 40), transformMatrix);
-        var finalSegment = Assert.IsType<BezierSegment>(figure.Segments[figure.Segments.Count - 1]);
         Assert.Equal(expectedStart.X, figure.StartPoint.X, 4);
         Assert.Equal(expectedStart.Y, figure.StartPoint.Y, 4);
-        Assert.Equal(expectedEnd.X, finalSegment.Point3.X, 4);
-        Assert.Equal(expectedEnd.Y, finalSegment.Point3.Y, 4);
+        Assert.Equal(expectedEnd.X, arc.Point.X, 4);
+        Assert.Equal(expectedEnd.Y, arc.Point.Y, 4);
+        Assert.True(arc.Size.X > 0);
+        Assert.True(arc.Size.Y > 0);
+        Assert.True(float.IsFinite(arc.RotationAngle));
+        Assert.Equal(SweepDirection.Clockwise, arc.SweepDirection);
     }
 
     [Fact]

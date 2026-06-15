@@ -88,8 +88,13 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
             return false;
         }
 
-        var sourceStride = checked((width * bitsPerPixel + 7) / 8);
-        var sourcePixels = new byte[checked(sourceStride * height)];
+        if (!PixelDataConverter.TryGetMinimumStride(width, formatKind, out var sourceStride)
+            || !PixelDataConverter.TryGetSourceByteLength(width, height, sourceStride, formatKind, out var sourceByteLength))
+        {
+            return false;
+        }
+
+        var sourcePixels = new byte[sourceByteLength];
 
         try
         {
@@ -104,15 +109,21 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
             return false;
         }
 
-        return PixelDataConverter.TryConvertToPbgra32(
-            sourcePixels,
+        var sourceBuffer = new PixelDataBuffer(
             width,
             height,
             sourceStride,
             formatKind,
-            palette,
-            out pixels,
-            out stride);
+            sourcePixels,
+            palette);
+        if (!sourceBuffer.TryConvertToPbgra32(out var pbgra32Buffer))
+        {
+            return false;
+        }
+
+        pixels = pbgra32Buffer.Pixels;
+        stride = pbgra32Buffer.Stride;
+        return true;
     }
 
     internal static bool TryReadPixelFormat(

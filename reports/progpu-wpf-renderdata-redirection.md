@@ -64,13 +64,13 @@ The real WPF source tree now has the first in-assembly redirection hook:
 
 The provider registration is deliberately owned by WPF `PresentationCore` for this step. The real WPF assembly uses strong-named friend access. The ProGPU submodule assemblies are now strong-name signed, but the current `ProGPU.Wpf` bridge still references the ProGPU shim `PresentationCore`; keeping the hook internal avoids exposing real WPF media types through a public cross-assembly API before the type-identity plan is settled.
 
-The checked-in generated file was updated directly before the local workspace had the root WPF SDK pinned by `global.json`. The SDK is now installed under the ignored `.dotnet/` directory, `PresentationBuildTasks` was moved to the repo's bundled .NET target for Core MSBuild, and the non-Windows `PresentationCore` compile is unblocked. Rerun the WPF codegen pipeline next to verify the generated file is identical to `renderdata.cs` output.
+The checked-in generated file was updated directly before the local workspace had the root WPF SDK pinned by `global.json`. The SDK is now installed under the ignored `.dotnet/` directory, `PresentationBuildTasks` was moved to the repo's bundled .NET target for Core MSBuild, and the non-Windows `PresentationCore` compile is unblocked. A later attempt to run `dotnet build src/Microsoft.DotNet.Wpf/src/WpfGfx/codegen/mcg/mcg.proj --verbosity minimal` restored `mcg.proj` and `csp.csproj`, then failed before generation because the `csp` tool still targets `net48`/x86 and macOS lacks .NET Framework 4.8 reference assemblies. Rerun the WPF codegen pipeline after `csp`/MCG is made cross-platform, or on a Windows lane, to verify the generated file is identical to `renderdata.cs` output.
 
 ## Generator Migration
 
 The long-term change should complete the ProGPU generated path:
 
-1. Rerun the WPF codegen pipeline with the required SDK and verify `System/Windows/Media/Generated/RenderDataDrawingContext.cs` remains in sync with the updated `renderdata.cs` generator.
+1. Make the WPF MCG toolchain runnable on non-Windows, or run it on a Windows lane. The current macOS blocker is `src/WpfGfx/tools/csp/csp.csproj` targeting `net48`/x86 plus batch/xsd wrappers. Then verify `System/Windows/Media/Generated/RenderDataDrawingContext.cs` remains in sync with the updated `renderdata.cs` generator.
 2. Exercise `WpfRenderDataSinkProviderBridge.TryRegisterRenderDataSinkProvider(Assembly, ...)` against a real WPF `PresentationCore` load in an integration harness, using `PushObjectSinkFactory(...)` while WPF and ProGPU shim media types have different identities.
 3. Resolve WPF `PresentationCore` type identity and friend-assembly shape so the bridge can eventually use a real ProGPU-backed WPF `DrawingContext` through `PushDrawingContextFactory(...)` without reflection/object adaptation. Strong-name signing for ProGPU assemblies is now in place.
 4. Preserve current behavior for animated parameters by forwarding base values first, count animation clocks as unsupported state while animation resources are unavailable, and add animation-aware sink methods only when ProGPU animation resource support exists.

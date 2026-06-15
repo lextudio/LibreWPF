@@ -196,7 +196,9 @@ public sealed class WpfVisualTreeReflectionRenderer
         {
             if (WpfEffectReflection.TryCreateProGpuEffect(effect, out var proGpuEffect)
                 && sink is IWpfVisualEffectCommandSink effectSink
-                && effectSink.PushVisualEffect(proGpuEffect))
+                && effectSink.PushVisualEffect(
+                    proGpuEffect,
+                    TryReadOpacityMaskBounds(visual, out var effectBounds) ? effectBounds : null))
             {
                 popCount++;
             }

@@ -2,8 +2,12 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Composition;
+using System.Numerics;
 using Xunit;
+using ProGpuBlurEffect = ProGPU.Scene.BlurEffect;
+using ProGpuContainerVisual = ProGPU.Scene.ContainerVisual;
 using ProGpuDrawingVisual = ProGPU.Scene.DrawingVisual;
+using ProGpuRetainedDrawingVisual = System.Windows.Media.ProGPU.Composition.ProGpuRetainedDrawingVisual;
 using ProGpuRenderCommandType = ProGPU.Scene.RenderCommandType;
 
 namespace ProGPU.Wpf.Tests;
@@ -22,6 +26,52 @@ public sealed class ProGpuWpfDrawingFrameTests
         Assert.Equal(1u, frame.PixelHeight);
         Assert.Equal(new System.Numerics.Vector2(1, 1), root.Size);
         Assert.Empty(root.Context.Commands);
+    }
+
+    [Fact]
+    public void ConstructorResetsSceneRootWithRetainedWpfLayerBeforeFlatLayer()
+    {
+        var sceneRoot = new ProGpuContainerVisual();
+        var retainedRoot = new ProGpuContainerVisual();
+        var flatRoot = new ProGpuDrawingVisual();
+        retainedRoot.AddChild(new ProGpuDrawingVisual());
+        flatRoot.Context.DrawRectangle(null, null, new ProGPU.Scene.Rect(1, 2, 3, 4));
+
+        var frame = new ProGpuWpfDrawingFrame(sceneRoot, retainedRoot, flatRoot, 200, 100);
+
+        Assert.Equal(200u, frame.PixelWidth);
+        Assert.Equal(100u, frame.PixelHeight);
+        Assert.Empty(retainedRoot.Children);
+        Assert.Empty(flatRoot.Context.Commands);
+        Assert.Equal(new Vector2(200, 100), sceneRoot.Size);
+        Assert.Equal(new Vector2(200, 100), retainedRoot.Size);
+        Assert.Equal(new Vector2(200, 100), flatRoot.Size);
+        Assert.Equal(new ProGPU.Scene.Visual[] { retainedRoot, flatRoot }, sceneRoot.Children.ToArray());
+    }
+
+    [Fact]
+    public void RetainedSinkCreatesBoundedNativeEffectVisual()
+    {
+        var sceneRoot = new ProGpuContainerVisual();
+        var retainedRoot = new ProGpuContainerVisual();
+        var flatRoot = new ProGpuDrawingVisual();
+        var frame = new ProGpuWpfDrawingFrame(sceneRoot, retainedRoot, flatRoot, 200, 100);
+        using var sink = new ProGpuRetainedCompositionCommandSink(frame, context: null, viewport3DTextureCache: null);
+        var blur = new ProGpuBlurEffect(6);
+
+        Assert.True(sink.PushVisualEffect(blur, new Rect(10, 20, 30, 40)));
+        sink.DrawRectangle(Brushes.Red, null, new Rect(10, 20, 5, 6));
+        sink.Pop();
+
+        var retainedRootVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
+        var effectVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRootVisual.Children));
+        Assert.Same(blur, effectVisual.Effect);
+        Assert.Equal(new Vector2(10, 20), effectVisual.Offset);
+        Assert.Equal(new Vector2(30, 40), effectVisual.Size);
+        var command = Assert.Single(effectVisual.Context.Commands);
+        Assert.Equal(ProGpuRenderCommandType.DrawRect, command.Type);
+        Assert.Equal(-10, command.Transform.M41);
+        Assert.Equal(-20, command.Transform.M42);
     }
 
     [Fact]

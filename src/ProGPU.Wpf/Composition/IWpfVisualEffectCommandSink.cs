@@ -3,4 +3,9 @@ namespace System.Windows.Media.ProGPU.Composition;
 public interface IWpfVisualEffectCommandSink
 {
     bool PushVisualEffect(global::ProGPU.Scene.EffectBase effect);
+
+    bool PushVisualEffect(global::ProGPU.Scene.EffectBase effect, System.Windows.Rect? bounds)
+    {
+        return PushVisualEffect(effect);
+    }
 }

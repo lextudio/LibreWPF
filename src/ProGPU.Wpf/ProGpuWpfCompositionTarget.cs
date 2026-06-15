@@ -5,6 +5,7 @@ using Silk.NET.Windowing;
 using System.Windows.Media.ProGPU.Composition;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
+using ProGpuContainerVisual = global::ProGPU.Scene.ContainerVisual;
 using ProGpuCompositor = global::ProGPU.Scene.Compositor;
 using ProGpuDrawingVisual = global::ProGPU.Scene.DrawingVisual;
 using ProGpuWgpuContext = global::ProGPU.Backend.WgpuContext;
@@ -21,6 +22,10 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
     public ProGpuWgpuContext Context { get; }
 
     public ProGpuCompositor Compositor { get; }
+
+    public ProGpuContainerVisual SceneRootVisual { get; } = new();
+
+    public ProGpuContainerVisual RetainedWpfVisualRoot { get; } = new();
 
     public ProGpuDrawingVisual RootVisual { get; } = new();
 
@@ -44,6 +49,7 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         _ownsCompositor = ownsCompositor;
         Viewport3DTextureCache = new WpfViewport3DTextureCache(Context);
         WpfInvalidationTracker.Invalidated += OnWpfSourceInvalidated;
+        ResetSceneRoot();
     }
 
     public static ProGpuWpfCompositionTarget CreateHeadless(TextureFormat renderFormat = TextureFormat.Rgba8Unorm)
@@ -84,6 +90,8 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         ThrowIfDisposed();
 
         return new ProGpuWpfDrawingFrame(
+            SceneRootVisual,
+            RetainedWpfVisualRoot,
             RootVisual,
             pixelWidth,
             pixelHeight,
@@ -158,16 +166,21 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
 
         pixelWidth = Math.Max(1, pixelWidth);
         pixelHeight = Math.Max(1, pixelHeight);
+        SceneRootVisual.Size = new Vector2(pixelWidth, pixelHeight);
+        RetainedWpfVisualRoot.Size = new Vector2(pixelWidth, pixelHeight);
         RootVisual.Size = new Vector2(pixelWidth, pixelHeight);
 
-        Compositor.RenderScene(RootVisual, pixelWidth, pixelHeight, targetView);
+        Compositor.RenderScene(SceneRootVisual, pixelWidth, pixelHeight, targetView);
     }
 
     public void Clear()
     {
         ThrowIfDisposed();
         RootVisual.Context.Clear();
+        RetainedWpfVisualRoot.ClearChildren();
+        ResetSceneRoot();
         Viewport3DTextureCache.Clear();
+        SceneRootVisual.Invalidate();
         RootVisual.Invalidate();
     }
 
@@ -198,6 +211,7 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
 
     private void OnWpfSourceInvalidated(object? sender, EventArgs e)
     {
+        SceneRootVisual.Invalidate();
         RootVisual.Invalidate();
         RenderInvalidated?.Invoke(this, EventArgs.Empty);
     }
@@ -231,5 +245,12 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
     private void ThrowIfDisposed()
     {
         ObjectDisposedException.ThrowIf(_isDisposed, this);
+    }
+
+    private void ResetSceneRoot()
+    {
+        SceneRootVisual.ClearChildren();
+        SceneRootVisual.AddChild(RetainedWpfVisualRoot);
+        SceneRootVisual.AddChild(RootVisual);
     }
 }

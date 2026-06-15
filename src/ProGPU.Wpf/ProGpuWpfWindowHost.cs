@@ -191,6 +191,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _target.Context.ConfigureSwapChain(
             (uint)Math.Max(1, framebufferSize.X),
             (uint)Math.Max(1, framebufferSize.Y));
+        _target.SceneRootVisual.Invalidate();
         _target.RootVisual.Invalidate();
         WpfRenderScheduler.RequestRender();
     }
@@ -227,8 +228,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
             if (_wpfRootVisual != null)
             {
-                using var sink = new ProGpuCompositionCommandSink(
-                    drawingContext,
+                using var sink = new ProGpuRetainedCompositionCommandSink(
+                    drawingFrame,
                     _target.Context,
                     _target.Viewport3DTextureCache);
                 LastVisualReplayResult = _target.ReplayVisualSubtree(

@@ -67,7 +67,7 @@ namespace System.Windows.Media
         {
             VerifyAPIReadWrite();
 
-            return new VisualDrawingContext(this);
+            return VisualDrawingContext.Create(this);
         }
 
         /// <summary>
@@ -270,4 +270,3 @@ namespace System.Windows.Media
         }  
     }
 }
-

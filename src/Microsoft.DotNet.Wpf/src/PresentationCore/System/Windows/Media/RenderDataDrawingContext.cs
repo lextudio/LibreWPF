@@ -27,6 +27,11 @@ namespace System.Windows.Media
         {
         }
 
+        internal RenderDataDrawingContext(IRenderDataDrawingContextSink renderDataSink)
+        {
+            _renderDataSink = renderDataSink ?? throw new ArgumentNullException(nameof(renderDataSink));
+        }
+
         #endregion Constructors
 
         #region Public Methods
@@ -64,6 +69,7 @@ namespace System.Windows.Media
             if (!_disposed)
             {
                 EnsureCorrectNesting();
+                _renderDataSink?.Close();
                 CloseCore(_renderData);
                 _disposed = true;
             }
@@ -115,7 +121,7 @@ namespace System.Windows.Media
         /// </summary>
         private void EnsureCorrectNesting()
         {
-            if (_renderData != null && _stackDepth > 0)
+            if (_stackDepth > 0)
             {
                 int stackDepth = _stackDepth;
                 for (int i = 0; i < stackDepth; i++)
@@ -132,6 +138,7 @@ namespace System.Windows.Media
         #region Fields
 
         private RenderData _renderData;
+        private readonly IRenderDataDrawingContextSink _renderDataSink;
         private bool _disposed;
         private int _stackDepth;
 

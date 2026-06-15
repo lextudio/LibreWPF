@@ -3118,7 +3118,7 @@ namespace System.Windows
         /// </summary>
         internal DrawingContext RenderOpen()
         {
-            return new VisualDrawingContext(this);
+            return VisualDrawingContext.Create(this);
         }
 
         /// <summary>
@@ -4816,6 +4816,5 @@ namespace System.Windows
         TouchEnterCache                 = 0x80000000,
     }
 }
-
 
 

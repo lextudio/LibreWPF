@@ -493,6 +493,8 @@ namespace MS.Internal.MilCodeGen.Generators
                             MediaTrace.DrawingContextOp.Trace("[[renderdataInstruction.Name]](const)");
                         #endif
 
+                            [[WriteRenderDataSinkRedirect(renderdataInstruction, true /* skip advanced params */)]]
+
                             unsafe
                             {
                                 EnsureRenderData();
@@ -574,6 +576,8 @@ namespace MS.Internal.MilCodeGen.Generators
                             MediaTrace.DrawingContextOp.Trace("[[renderdataInstruction.Name]](const)");
                         #endif
 
+                            [[WriteRenderDataSinkRedirect(renderdataInstruction, true /* skip advanced params */)]]
+
                             unsafe
                             {
                                 EnsureRenderData();
@@ -653,6 +657,8 @@ namespace MS.Internal.MilCodeGen.Generators
                             MediaTrace.DrawingContextOp.Trace("[[renderdataInstruction.Name]](animate)");
                         #endif
 
+                            [[WriteRenderDataSinkRedirect(renderdataInstruction, false /* don't skip advanced params */)]]
+
                             unsafe
                             {
                                 EnsureRenderData();
@@ -683,6 +689,40 @@ namespace MS.Internal.MilCodeGen.Generators
                     [[/inline]]
                     );
             }
+            return cs.ToString();
+        }
+
+        private static string WriteRenderDataSinkRedirect(McgRenderDataInstruction renderdataInstruction, bool skipAdvancedParameters)
+        {
+            StringCodeSink cs = new StringCodeSink();
+
+            ParameterList callingList = new ParameterList();
+            Helpers.CodeGenHelpers.ParameterType paramType = Helpers.CodeGenHelpers.ParameterType.ManagedCallParamList;
+
+            if (skipAdvancedParameters)
+            {
+                paramType |= Helpers.CodeGenHelpers.ParameterType.SkipAnimations;
+            }
+
+            Helpers.CodeGenHelpers.AppendParameters(
+                callingList,
+                skipAdvancedParameters ? renderdataInstruction.BasicPublicFields : renderdataInstruction.AllPublicFields,
+                paramType);
+
+            cs.Write(
+                [[inline]]
+                    if (_renderDataSink != null)
+                    {
+                        _renderDataSink.[[renderdataInstruction.Name]](
+                            [[callingList]]
+                            );
+
+                        [[WriteStackOperation(renderdataInstruction, true)]]
+                        return;
+                    }
+                [[/inline]]
+                );
+
             return cs.ToString();
         }
 
@@ -2415,7 +2455,6 @@ namespace MS.Internal.MilCodeGen.Generators
         #endregion Public Methods
     }
 }
-
 
 
 

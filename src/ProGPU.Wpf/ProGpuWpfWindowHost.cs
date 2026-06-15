@@ -219,6 +219,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         var pixelHeight = (uint)Math.Max(1, framebufferSize.Y);
         var logicalWidth = Math.Max(1, _window.Size.X);
         var dpiScale = pixelWidth / (double)logicalWidth;
+        _target.DetectWpfSourceChanges();
         var frameState = CaptureFrameState(_target, pixelWidth, pixelHeight);
 
         if (!ShouldRenderFrame(frameState))

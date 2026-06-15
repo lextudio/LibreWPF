@@ -12,6 +12,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     private const BindingFlags MemberFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
     private static readonly string[] s_eventNames = { "Changed", "Invalidated" };
+    private static readonly string[] s_versionPropertyNames = { "ChangeVersion", "InternalVersion", "Version" };
+    private static readonly string[] s_versionFieldNames = { "_changeVersion", "_internalVersion", "_version" };
     private static readonly string[] s_referencePropertyNames =
     {
         "Children",
@@ -49,6 +51,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     private static readonly string[] s_fieldNames = { "_content" };
 
     private readonly List<Action> _unsubscribeActions = new();
+    private readonly Dictionary<object, object> _versionSnapshots = new(ReferenceEqualityComparer.Instance);
     private object? _root;
     private bool _isDirty;
     private bool _isRefreshing;
@@ -60,6 +63,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     public bool IsDirty => _isDirty;
 
     public int SubscriptionCount => _unsubscribeActions.Count;
+
+    public int VersionSnapshotCount => _versionSnapshots.Count;
 
     public void AttachIfChanged(object? root)
     {
@@ -90,6 +95,28 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         return wasDirty;
     }
 
+    public bool DetectVersionChanges()
+    {
+        if (_root == null)
+        {
+            return false;
+        }
+
+        if (_isDirty)
+        {
+            return true;
+        }
+
+        var currentSnapshots = CaptureVersionSnapshots(_root);
+        if (VersionSnapshotsEqual(_versionSnapshots, currentSnapshots))
+        {
+            return false;
+        }
+
+        MarkDirtyAndRefresh();
+        return true;
+    }
+
     public void MarkDirty()
     {
         if (_isDirty)
@@ -104,6 +131,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     public void Detach()
     {
         ClearSubscriptions();
+        _versionSnapshots.Clear();
         _root = null;
         _isDirty = false;
     }
@@ -130,6 +158,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         try
         {
             ClearSubscriptions();
+            _versionSnapshots.Clear();
             SubscribeGraph(_root);
         }
         finally
@@ -152,6 +181,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         SubscribeInvalidationEvents(source);
+        CaptureVersionSnapshot(source);
 
         if (source is INotifyCollectionChanged collectionChanged)
         {
@@ -180,6 +210,161 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 SubscribeObject(value, visited);
             }
         }
+    }
+
+    private void CaptureVersionSnapshot(object source)
+    {
+        if (TryReadVersionValue(source, out var version))
+        {
+            _versionSnapshots[source] = version;
+        }
+    }
+
+    private static Dictionary<object, object> CaptureVersionSnapshots(object root)
+    {
+        var snapshots = new Dictionary<object, object>(ReferenceEqualityComparer.Instance);
+        var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        CaptureObjectVersions(root, snapshots, visited);
+        return snapshots;
+    }
+
+    private static void CaptureObjectVersions(
+        object? source,
+        Dictionary<object, object> snapshots,
+        HashSet<object> visited)
+    {
+        if (source == null || IsTerminalValue(source) || !visited.Add(source))
+        {
+            return;
+        }
+
+        if (TryReadVersionValue(source, out var version))
+        {
+            snapshots[source] = version;
+        }
+
+        foreach (var item in EnumerateCollection(source))
+        {
+            CaptureObjectVersions(item, snapshots, visited);
+        }
+
+        foreach (var propertyName in s_referencePropertyNames)
+        {
+            if (TryGetPropertyValue(source, propertyName, out var value))
+            {
+                CaptureObjectVersions(value, snapshots, visited);
+            }
+        }
+
+        foreach (var fieldName in s_fieldNames)
+        {
+            if (TryGetFieldValue(source, fieldName, out var value))
+            {
+                CaptureObjectVersions(value, snapshots, visited);
+            }
+        }
+    }
+
+    private static bool VersionSnapshotsEqual(
+        IReadOnlyDictionary<object, object> previous,
+        IReadOnlyDictionary<object, object> current)
+    {
+        if (previous.Count != current.Count)
+        {
+            return false;
+        }
+
+        foreach (var snapshot in current)
+        {
+            if (!previous.TryGetValue(snapshot.Key, out var previousVersion) ||
+                !Equals(previousVersion, snapshot.Value))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool TryReadVersionValue(object source, out object version)
+    {
+        foreach (var propertyName in s_versionPropertyNames)
+        {
+            if (TryGetVersionPropertyValue(source, propertyName, out version))
+            {
+                return true;
+            }
+        }
+
+        foreach (var fieldName in s_versionFieldNames)
+        {
+            if (TryGetVersionFieldValue(source, fieldName, out version))
+            {
+                return true;
+            }
+        }
+
+        version = 0;
+        return false;
+    }
+
+    private static bool TryGetVersionPropertyValue(object instance, string propertyName, out object version)
+    {
+        version = 0;
+        var property = instance.GetType().GetProperty(propertyName, MemberFlags);
+        if (property == null || property.GetIndexParameters().Length != 0)
+        {
+            return false;
+        }
+
+        try
+        {
+            var value = property.GetValue(instance);
+            if (TryNormalizeVersionValue(value, out var normalizedVersion))
+            {
+                version = normalizedVersion;
+                return true;
+            }
+        }
+        catch (TargetInvocationException)
+        {
+        }
+        catch (MethodAccessException)
+        {
+        }
+
+        return false;
+    }
+
+    private static bool TryGetVersionFieldValue(object instance, string fieldName, out object version)
+    {
+        version = 0;
+        var field = instance.GetType().GetField(fieldName, MemberFlags);
+        if (field == null)
+        {
+            return false;
+        }
+
+        var value = field.GetValue(instance);
+        if (!TryNormalizeVersionValue(value, out var normalizedVersion))
+        {
+            return false;
+        }
+
+        version = normalizedVersion;
+        return true;
+    }
+
+    private static bool TryNormalizeVersionValue(object? value, out object version)
+    {
+        if (value is byte or sbyte or short or ushort or int or uint or long or ulong)
+        {
+            version = value;
+            return true;
+        }
+
+        version = 0;
+        return false;
     }
 
     private void SubscribeInvalidationEvents(object source)

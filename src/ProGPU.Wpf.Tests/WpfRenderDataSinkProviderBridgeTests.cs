@@ -168,6 +168,26 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("RetainedWpfVisualRoot.Invalidate();", source, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void CompositionTargetAndHostPollTrackedWpfSourceVersionsBeforeFrameSkip()
+    {
+        var targetSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "ProGpuWpfCompositionTarget.cs"));
+        var hostSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "ProGpuWpfWindowHost.cs"));
+
+        Assert.Contains("public bool DetectWpfSourceChanges()", targetSource, StringComparison.Ordinal);
+        Assert.Contains("return WpfInvalidationTracker.DetectVersionChanges();", targetSource, StringComparison.Ordinal);
+        Assert.Contains("_target.DetectWpfSourceChanges();", hostSource, StringComparison.Ordinal);
+        Assert.True(
+            hostSource.IndexOf("_target.DetectWpfSourceChanges();", StringComparison.Ordinal) <
+            hostSource.IndexOf("var frameState = CaptureFrameState(_target, pixelWidth, pixelHeight);", StringComparison.Ordinal));
+    }
+
     private sealed class FakeVisual
     {
     }

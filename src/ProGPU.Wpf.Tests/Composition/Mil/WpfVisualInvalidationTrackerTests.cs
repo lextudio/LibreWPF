@@ -52,6 +52,71 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
+    public void AttachCapturesNestedVersionSnapshots()
+    {
+        var root = new FakeVisual
+        {
+            Brush = new FakePublicVersionResource()
+        };
+        using var tracker = new WpfVisualInvalidationTracker();
+
+        tracker.Attach(root);
+
+        Assert.Equal(1, tracker.VersionSnapshotCount);
+    }
+
+    [Fact]
+    public void DetectVersionChangesReturnsFalseWhenVersionsAreUnchanged()
+    {
+        var root = new FakeVisual
+        {
+            Brush = new FakePublicVersionResource()
+        };
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        Assert.False(tracker.DetectVersionChanges());
+        Assert.False(tracker.IsDirty);
+    }
+
+    [Fact]
+    public void PublicVersionChangeMarksTrackerDirtyWithoutEvent()
+    {
+        var brush = new FakePublicVersionResource();
+        var root = new FakeVisual
+        {
+            Brush = brush
+        };
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        brush.IncrementVersion();
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+    }
+
+    [Fact]
+    public void PrivateVersionFieldChangeMarksTrackerDirtyWithoutEvent()
+    {
+        var brush = new FakePrivateVersionResource();
+        var root = new FakeVisual
+        {
+            Brush = brush
+        };
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        brush.IncrementVersion();
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+    }
+
+    [Fact]
     public void CollectionChangeRefreshesSubscriptionsForNewChildren()
     {
         var root = new FakeVisual();
@@ -145,6 +210,8 @@ public sealed class WpfVisualInvalidationTrackerTests
 
         public object? Drawing { get; init; }
 
+        public object? Brush { get; init; }
+
         public object? Clip { get; init; }
 
         public double Opacity { get; set; } = 1;
@@ -182,6 +249,26 @@ public sealed class WpfVisualInvalidationTrackerTests
         public void RaiseChanged()
         {
             Changed?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private sealed class FakePublicVersionResource
+    {
+        public int Version { get; private set; }
+
+        public void IncrementVersion()
+        {
+            Version++;
+        }
+    }
+
+    private sealed class FakePrivateVersionResource
+    {
+        private uint _version;
+
+        public void IncrementVersion()
+        {
+            _version++;
         }
     }
 

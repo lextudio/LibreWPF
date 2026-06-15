@@ -179,6 +179,12 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         Compositor.RenderScene(SceneRootVisual, pixelWidth, pixelHeight, targetView);
     }
 
+    public bool DetectWpfSourceChanges()
+    {
+        ThrowIfDisposed();
+        return WpfInvalidationTracker.DetectVersionChanges();
+    }
+
     public void Clear()
     {
         ThrowIfDisposed();

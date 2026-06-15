@@ -1,0 +1,259 @@
+# ProGPU WPF Port Worklog
+
+## 2026-06-14
+
+- Created WPF integration branch `progpu-rendering-port`.
+- Added ProGPU as a submodule at `external/ProGPU`, tracking `fix/render-invalidation-and-leaks`.
+- Added `external/Directory.Build.props` and `external/Directory.Build.targets` so submodule projects do not inherit the WPF Arcade SDK imports from the superproject.
+- Added `src/ProGPU.Wpf`, a cross-platform port lane for ProGPU-backed WPF rendering.
+- Added `ProGpuWpfCompositionTarget` and `ProGpuWpfWindowHost`.
+- Added `IWpfCompositionCommandSink` and `ProGpuCompositionCommandSink` as the first DUCE/MIL replacement seam.
+- Added `WpfMilRenderDataDecoder` for primitive generated WPF `RenderData` records:
+  - line
+  - rectangle
+  - rounded rectangle
+  - ellipse
+  - geometry
+  - image
+  - glyph run
+  - clip
+  - opacity
+  - opacity mask
+  - transform
+  - pop
+- Added `WpfMilResourceRegistry` for WPF's one-based dependent resource token convention.
+- Added `WpfReflectionResourceResolver` to adapt common real-WPF-shaped media resources to ProGPU shim types during `RenderData` replay.
+- Added `IWpfImageSourceAdapter` and `WpfBitmapSourceImageAdapter` so WPF-shaped 32-bit `BitmapSource` pixels can be copied into ProGPU-backed `WriteableBitmap` instances when a replay caller opts into image upload.
+- Added native ProGPU vector brush wrapping so WPF-shaped linear and radial gradient brushes can replay through the existing WPF `Brush` abstraction.
+- Extended `WpfReflectionResourceResolver` geometry adaptation to cover WPF-shaped line geometry, ellipse geometry, and geometry groups in addition to rectangle/path geometry.
+- Extended WPF-shaped `GeometryGroup` adaptation to preserve group fill rule and bake child geometry transforms into copied path figures.
+- Extended WPF-shaped `PathGeometry` reflection adaptation to preserve figures, fill rule, line/polyline, quadratic/polyquadratic bezier, cubic/polycubic bezier, and arc segment metadata.
+- Added WPF-shaped `CombinedGeometry` reflection adaptation, preserving union/intersect/xor/exclude boolean intent as ProGPU combined vector paths.
+- Added `IWpfDrawingResourceResolver` and reflection replay for `MilDrawDrawing`, covering WPF-shaped `GeometryDrawing` and simple `DrawingGroup` resources.
+- Added `WpfRenderDataReflectionBridge` to snapshot WPF `RenderData` private buffers and dependent resources, then replay them through the decoder.
+- Added `WpfVisualContentReflectionBridge` to extract `DrawingVisual._content` and replay `RenderData` content through the same bridge.
+- Added `WpfVisualTreeReflectionRenderer` for limited recursive visual subtree replay with transform, offset, clip, and opacity support.
+- Added `WpfVisualInvalidationTracker` to observe WPF-shaped visual/resource `Changed`, `Invalidated`, `INotifyPropertyChanged`, and `INotifyCollectionChanged` signals and mark the ProGPU retained root dirty.
+- Added `IWpfRenderScheduler` and `CoalescingWpfRenderScheduler` as the first MediaContext-style render request boundary for the Silk.NET host.
+- Routed visual-level transform and clip replay through `WpfReflectionResourceResolver` so WPF-shaped matrix transforms and rectangle/path geometry clips are adapted consistently with `RenderData` resources.
+- Added `ProGpuWpfCompositionTarget.ReplayVisualSubtree` and `ProGpuWpfWindowHost.WpfRootVisual` to connect reflected WPF visual replay to the Silk.NET/WebGPU frame path.
+- Threaded optional image-source upload through `WpfRenderDataReflectionBridge`, `WpfVisualContentReflectionBridge`, `WpfVisualTreeReflectionRenderer`, and `ProGpuWpfCompositionTarget`.
+- Enabled `ProGpuWpfWindowHost` to use `WpfBitmapSourceImageAdapter` by default for transition visual replay, while still allowing callers to replace or disable the adapter.
+- Wired `ProGpuWpfWindowHost` root changes, resize, load, and ProGPU target invalidations into the coalescing render scheduler.
+- Added WPF-shaped `GlyphRun` adaptation for MIL `DrawGlyphRun` and reflected `GlyphRunDrawing`, preserving glyph indices, baseline origin, font size, advance widths, and glyph offsets through the ProGPU glyph-run command path.
+- Added ProGPU sink push-stack tracking for native opacity-mask scopes so decoded WPF `PushOpacityMask` records emit matching `PushOpacityMask`/`PopOpacityMask` render commands.
+- Stored the active WPF transform on native opacity-mask commands so transformed visual and drawing mask scopes replay correctly in ProGPU.
+- Added reflected `DrawingGroup.OpacityMask` replay when the mask brush can be adapted and the drawing exposes finite bounds.
+- Added bounded visual-level `OpacityMask` replay when a reflected visual exposes usable bounds, content bounds, render size, or actual size.
+- Replaced the ProGPU sink's default rectangular clip fallback with native `PushGeometryClip`/`PopGeometryClip` command emission for path-convertible WPF clip geometries.
+- Replaced the ProGPU sink's default shim geometry draw path with native `DrawPath` command emission for path-convertible WPF geometries, preserving untransformed arc metadata.
+- Extended native path conversion so translated, rotated/uniformly scaled, and axis-aligned positively scaled WPF arc segments remain ProGPU arc segments instead of degrading to endpoint lines.
+- Replaced the ProGPU sink's primitive line, rectangle, rounded-rectangle, and ellipse draw paths with direct native `RenderCommand` emission carrying the active WPF transform.
+- Replaced shim-compatible bitmap image drawing with direct native `DrawTexture` command emission carrying the active WPF transform.
+- Replaced shim-compatible glyph-run drawing with direct native `DrawGlyphRun` command emission carrying the glyph-run transform composed with the active WPF transform.
+- Replaced shim-compatible formatted text drawing with direct native `DrawText` command emission carrying the active WPF transform.
+- Replaced shim opacity-scope handling with direct native `PushOpacity`/`PopOpacity` command emission.
+- Added initial balance-only guideline-scope replay for `MilPushGuidelineSet`, `MilPushGuidelineY1`, and `MilPushGuidelineY2` so WPF render-data push/pop balance is preserved.
+- Added reflected `DrawingGroup.GuidelineSet` replay as a matching no-op guideline scope around children.
+- Added reflected visual snapping guideline replay as a matching no-op guideline scope around visual content and children.
+- Added reflected visual `ScrollableAreaClip` replay as a rectangular clip scope around visual content and children.
+- Added explicit unsupported-state accounting for reflected visual effects, bitmap effects, cache mode, edge mode, then-unsupported bitmap scaling, ClearType, and text rendering or hinting modes so transition replay does not silently drop those WPF visual states.
+- Hardened reflected `DrawingGroup` replay so non-adaptable transform/clip state and unsupported effect/cache state skip the drawing group instead of replaying children with incorrect visual state.
+- Split reflected drawing replay results into applied, skipped, and unsupported states so decoded `MilDrawDrawing` records report unsupported drawing resources separately from unresolved resource tokens.
+- Added `IWpfPlatformServices` and default unsupported service implementations as the initial Win32 abstraction boundary.
+- Added `CrossPlatformWpfPlatformServices` and `ProcessWpfLauncher` so the Silk.NET host has a portable `ShellExecute` replacement for URI and file launch requests.
+- Added `ProcessWpfClipboard` so the Silk.NET host has a cross-platform clipboard service behind `IWpfClipboard` using `pbcopy`/`pbpaste`, PowerShell `Set-Clipboard`/`Get-Clipboard`, or Linux `wl-copy`/`wl-paste` with `xclip`/`xsel` fallbacks.
+- Added `ProcessWpfFileDialogService` so the Silk.NET host has a cross-platform file open, file save, and folder picker service behind `IWpfFileDialogService` using `osascript`, PowerShell Windows Forms dialogs, or `zenity`.
+- Added `SilkNetWpfMonitorService` so the Silk.NET host can enumerate monitor bounds and primary monitor identity without Win32 monitor APIs.
+- Added `IWpfInputService` and `SilkNetWpfInputService` so the Silk.NET host exposes normalized key, text, mouse, and wheel events without depending on Win32 messages.
+- Added `IWpfWindowEventService` and `SilkNetWpfWindowEventService` so the Silk.NET host exposes activation/deactivation and external file-drop events without depending on Win32 window messages.
+- Added `IWpfTimerService`/`IWpfTimer` and `ThreadPoolWpfTimerService` so the port lane has a cross-platform timer boundary for future MediaContext, animation, hover, and scheduling work without Win32 timers.
+- Added `IWpfViewport3DCommandSink` and `WpfViewport3DReflectionBridge` so reflected WPF-shaped `Viewport3DVisual` content can compile into ProGPU's `Mesh3D` compositor extension payload.
+- Added reflected Viewport3D support for projection cameras, `ModelVisual3D`, `Model3DGroup`, `GeometryModel3D`, `MeshGeometry3D`, diffuse/specular/material-group color extraction, model transforms, directional/ambient light hints, generated mesh normals, and front/back material entries.
+- Added `WpfViewport3DTextureCache`, owned by `ProGpuWpfCompositionTarget`, to reuse and dispose Viewport3D offscreen color/MSAA/depth textures across replay frames.
+- Routed `WpfVisualTreeReflectionRenderer` so `Viewport3DVisual.Children` stay inside the 3D bridge instead of being recursively treated as 2D visual children.
+- Extended `ProGpuCompositionCommandSink` to emit `DrawExtension(CompositorBuiltInExtensions.Mesh3D)` followed by a transformed `DrawTexture` composite for WPF-shaped Viewport3D content when a context-backed texture cache is available.
+- Added `WpfCompositionDrawingContext` as the first source-level command sink adapter for managed WPF draw calls that should bypass `RenderData.WriteDataRecord` and write directly to `IWpfCompositionCommandSink`.
+- Added stack-depth tracking and close-time auto-pop behavior to the source-level adapter to match `RenderDataDrawingContext.EnsureCorrectNesting`.
+- Added source-level drawing-context operation counters and explicit unsupported `DrawVideo`/`PushEffect` hooks so generator redirection can report unsupported operations without silently dropping them.
+- Added `ProGpuWpfCompositionTarget.OpenCompositionDrawingContext` and `CreateCompositionDrawingContext` so source-level managed draw calls can write into a ProGPU frame through `WpfCompositionDrawingContext`.
+- Added `ProGpuWpfWindowHost.WpfDraw` and `LastSourceDrawingResult` so the Silk.NET host can run source-level managed WPF drawing callbacks during each frame before lower-level ProGPU draw callbacks.
+- Added `src/ProGPU.Wpf.Tests` with focused decoder tests.
+- Added GPU-free integration coverage that decodes WPF-shaped records through `ProGpuCompositionCommandSink` into real `ProGPU.Scene.RenderCommand` output.
+- Added GPU-free Viewport3D reflection coverage for WPF-shaped mesh payload compilation and replay routing.
+- Added GPU-free source-level drawing-context adapter coverage for direct managed draw forwarding, push/pop balancing, unsupported video/effect accounting, and unsupported push-scope balance.
+- Added GPU-free host callback coverage for source-level draw invocation, result capture, close-time auto-pop, and no-callback reset behavior.
+- Documented the initial architecture and ADR in `reports/`.
+- Verified with `dotnet build src/ProGPU.Wpf/ProGPU.Wpf.csproj` from the project directory using the local net10 SDK boundary.
+- Verified with `dotnet test src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj --verbosity minimal`.
+
+## 2026-06-15
+
+- Added `IWpfCursorService` and `WpfCursor` as a local cursor abstraction for replacing Win32 cursor APIs in the ProGPU WPF lane.
+- Added `SilkNetWpfCursorService` so WPF-shaped cursor requests map to Silk.NET `StandardCursor` values and apply through Silk.NET input cursor objects.
+- Added `ProGpuWpfWindowHost.SetCursor` as the host-level cursor update path.
+- Extended `CrossPlatformWpfPlatformServices` and `UnsupportedWpfPlatformServices` with cursor-service slots.
+- Added GPU-free cursor coverage for cursor translation, unsupported input-source validation, and default host/service composition.
+- Added `IWpfDispatcherService`, `IWpfDispatcherOperation`, and `WpfDispatcherPriority` as a local dispatcher-posting abstraction for replacing Windows message-loop posting and WPF dispatcher assumptions in the ProGPU lane.
+- Added `QueuedWpfDispatcherService`, preserving owner-thread callback processing, WPF-shaped priority order, FIFO behavior within a priority, and pending-operation cancellation.
+- Added `ProGpuWpfWindowHost.ProcessDispatcherQueue` and host pumping from `DoEvents` and render callbacks so Silk.NET can drain pending WPF-shaped dispatcher work.
+- Added GPU-free dispatcher coverage for owner-thread access, invalid arguments, priority order, cancellation, cross-thread posting, host pumping, and default host/service composition.
+- Extended `WpfCompositionDrawingContext` with generated animated overload shapes for line, rectangle, rounded rectangle, ellipse, image, video, and opacity so generator redirection can target the source-level sink without MIL animation records.
+- The animated source-level overloads forward base values and count non-null animation clocks as unsupported animation state until ProGPU animation resource support is designed.
+- Added GPU-free coverage for animated source-level draw and opacity overload degradation.
+- Added source-level `WpfCompositionDrawingContext.DrawDrawing`, reusing the transition WPF-shaped drawing replay helper for `GeometryDrawing`, `DrawingGroup`, `ImageDrawing`, and `GlyphRunDrawing` instead of forcing `MilDrawDrawing` byte records.
+- Added GPU-free coverage for source-level `DrawDrawing` applied, skipped, unsupported, and image-adapter replay status.
+- Added `IWpfCompositionCommandSink.PushNoOpScope` and routed null source-level clip, transform, and opacity-mask pushes through no-op scopes so generated-resource nulls preserve matching pop behavior.
+- Added source-level dynamic guideline-set handling for WPF's generated `PushGuidelineY1` and `PushGuidelineY2` fast paths, routing one- and two-Y-guideline cases into the ProGPU command sink.
+- Added GPU-free coverage for null generated push resources, no-op close-time auto-pop, and dynamic guideline fast paths.
+- Updated `WpfMilRenderDataDecoder` so token `0` clip, opacity-mask, and transform push records replay as applied no-op scopes while nonzero unresolved resource pushes remain skipped.
+- Added GPU-free decoder and ProGPU sink integration coverage for null MIL resource push scopes.
+- Updated `WpfMilRenderDataDecoder` so base-value replayed animated line, rectangle, rounded rectangle, ellipse, image, and opacity records count nonzero animation handles as unsupported state instead of silently dropping them.
+- Added GPU-free decoder coverage for animated MIL base-value replay with nonzero and zero animation handles.
+- Aligned `WpfCompositionDrawingContext` draw methods with generated `RenderDataDrawingContext` no-op guards so null pens, null image/glyph resources, null geometry, brush-plus-pen-null shape draws, and null video players do not emit commands or count unsupported animation state.
+- Added GPU-free source-level coverage for generated no-op draw guards and animated no-op guard behavior.
+- Added `IWpfGeneratedRenderDataDrawingContext` as the source-level generated-method contract that `WpfCompositionDrawingContext` implements for future render-data generator redirection.
+- Added `WpfRenderDataInstructionRedirectionCatalog` to track WPF render-data instruction names, advanced overloads, generated no-op checks, generated internal methods, scope operations, unsupported operation categories, and ProGPU null-resource scope preservation decisions.
+- Added XML-backed generator-redirection tests that parse WPF's `src/Microsoft.DotNet.Wpf/src/WpfGfx/codegen/mcg/xml/Resource.xml` and verify the ProGPU contract/catalog stay aligned with the source render-data instruction metadata.
+- Added WPF in-tree `IRenderDataDrawingContextSink`, using real `PresentationCore` media types as the generated-method sink surface.
+- Added a sink-aware internal `RenderDataDrawingContext` constructor, sink close on dispose, and close-time auto-pop behavior that no longer depends on `_renderData` being allocated.
+- Updated WPF `renderdata.cs` codegen so generated constant and animated drawing methods branch to `_renderDataSink` before MIL serialization, while existing generated no-op checks and push/pop stack accounting remain in `RenderDataDrawingContext`.
+- Updated checked-in WPF `System/Windows/Media/Generated/RenderDataDrawingContext.cs` so every generated draw/push/pop method redirects to `_renderDataSink` before `EnsureRenderData()` and MIL `WriteDataRecord(...)`.
+- Added `RenderDataDrawingContextSinkProvider` as the WPF internal visual-owner-to-render-data-sink factory seam.
+- Added scoped `RenderDataDrawingContextSinkProvider.PushSinkFactory(...)` registration so future ProGPU composition targets can install a sink while active and restore the previous MIL/default route on dispose.
+- Hardened `RenderDataDrawingContextSinkProvider` registration as a nested scope stack, so out-of-order disposal marks stale scopes inactive and top-scope disposal restores the nearest still-active route.
+- Added WPF in-tree `DrawingContextRenderDataSink`, forwarding every render-data sink instruction to a managed `DrawingContext`.
+- Added scoped `RenderDataDrawingContextSinkProvider.PushDrawingContextFactory(...)` registration so a ProGPU-backed WPF `DrawingContext` can be installed without exposing the lower-level sink implementation to the eventual target.
+- Added `ProGpuWpfDrawingFrame`, which clears/sizes the ProGPU root visual once per frame and exposes drawing-context factories that append multiple WPF-shaped drawing contexts into the same command buffer.
+- Added `ProGpuWpfDrawingFrame` diagnostics for created drawing-context counts and last owner visual, and exposed the active frame through `ProGpuWpfFrameEventArgs.DrawingFrame`.
+- Added `WpfRenderDataSinkProviderBridge`, a reflection bridge that installs an active frame's drawing-context factory into WPF's internal `RenderDataDrawingContextSinkProvider.PushDrawingContextFactory(...)` when the loaded `PresentationCore` identity exposes that provider.
+- Updated `ProGpuWpfCompositionTarget` and `ProGpuWpfWindowHost` to use the frame object for per-frame drawing setup, keeping reflected visual replay, source-level WPF drawing, raw drawing, and future provider-created contexts on one active command buffer.
+- Updated direct `ProGpuWpfCompositionTarget.ReplayVisualSubtree(..., pixelWidth, pixelHeight, ...)` to scope `ProGpuWpfDrawingFrame.TryRegisterRenderDataSinkProvider(...)` around composition-target-only replay.
+- Updated `ProGpuWpfWindowHost` to scope `WpfRenderDataSinkProviderBridge` registration around each active render frame, so provider-backed `RenderOpen()` calls are frame-local and the previous WPF/MIL route is restored afterward.
+- Added `VisualDrawingContext.Create`, including a sink-backed constructor path and default MIL-backed fallback.
+- Routed `DrawingVisual.RenderOpen()` and `UIElement.RenderOpen()` through `VisualDrawingContext.Create(this)` so managed WPF visual rendering can opt into the ProGPU sink path.
+- Included `IRenderDataDrawingContextSink.cs` in `PresentationCore.csproj`.
+- Included `RenderDataDrawingContextSinkProvider.cs` in `PresentationCore.csproj`.
+- Added static generator-redirection coverage for the WPF sink interface, project inclusion, `RenderDataDrawingContext` lifetime hook, scoped sink-provider registration, `DrawingContextRenderDataSink` forwarding, generator branch placement, checked-in generated-file branch placement, sink push/pop stack accounting, and visual render-open factory routing.
+- Added static coverage for nested provider-scope restoration semantics in the WPF source.
+- Added GPU-free `ProGpuWpfDrawingFrame` coverage for clear-once frame setup, clamped pixel dimensions, drawing-context factories, and composition-context factories appending to the same ProGPU command buffer.
+- Extended frame/host coverage for owner tracking, context creation counters, and active-frame event args.
+- Added GPU-free `WpfRenderDataSinkProviderBridge` coverage for typed provider-delegate adaptation, frame-factory registration, direct composition-target replay wiring, missing provider behavior, and incompatible delegate rejection.
+- Added host coverage for default missing-provider registration and injected frame-registration scope disposal.
+- Extended `WpfBitmapSourceImageAdapter` with managed Pbgra32 conversion for reflected `Pbgra32`, `Bgra32`, `Bgr32`, `Bgr101010`, `Bgr24`, `Rgb24`, `BlackWhite`, `Gray2`, `Gray4`, `Gray8`, `Gray16`, `Bgr555`, `Bgr565`, `Rgb48`, `Rgba64`, `Prgba64`, `Gray32Float`, `Rgb128Float`, `Rgba128Float`, `Prgba128Float`, `Cmyk32`, and indexed 1/2/4/8 bpp bitmap sources.
+- Added GPU-free bitmap-adapter coverage for Pbgra32 copy, Bgra32 premultiplication, Bgr32 opaque alpha normalization, Bgr101010 expansion, 24-bit row conversion, packed grayscale expansion, Gray8/Gray16 expansion, Bgr555/Bgr565 expansion, Rgb48/Rgba64/Prgba64 down-conversion, non-profiled scRGB float down-conversion, device-CMYK conversion, indexed palette lookup with alpha premultiplication, unnamed 32-bit format fallback, and unsupported format rejection.
+- Extended reflected `GeometryDrawing` replay with the first bounded `ImageBrush` transition path: simple non-tiled relative/absolute-viewport image brushes are replayed as `PushClip` plus `DrawImage` over the adapted geometry bounds or absolute viewport, with brush opacity preserved through a ProGPU opacity scope.
+- Added GPU-free coverage for reflected `ImageBrush` geometry fills and for unsupported image-brush tile cases that still replay a supported geometry stroke while reporting partial unsupported content.
+- Extended reflected `GeometryDrawing` replay with a bounded `DrawingBrush` transition path: simple non-tiled relative/absolute-viewport drawing brushes clip to the filled geometry, map inferred drawing content bounds into the brush viewport, and recursively replay the nested drawing through the same ProGPU command sink.
+- Added GPU-free coverage for reflected `DrawingBrush` geometry fills and for partially replayed drawing-brush content being surfaced as applied-plus-unsupported decoder output.
+- Extended reflected `GeometryDrawing` replay with a bounded `VisualBrush` transition path: simple non-tiled relative/absolute-viewport visual brushes clip to the filled geometry, map reflected visual bounds into the brush viewport, and replay the visual subtree through `WpfVisualTreeReflectionRenderer`.
+- Added GPU-free coverage for reflected `VisualBrush` geometry fills and for partially replayed visual-brush content being surfaced as applied-plus-unsupported decoder output.
+- Added GPU-free coverage for absolute `ViewportUnits` on reflected non-tiled `ImageBrush`, `DrawingBrush`, and `VisualBrush` geometry fills.
+- Added simple absolute `Transform` support for reflected non-tiled `ImageBrush`, `DrawingBrush`, and `VisualBrush` geometry fills, with bounded `RelativeTransform` support deferred to a later slice.
+- Added a source-rectangle image draw path to `IWpfCompositionCommandSink` and `ProGpuCompositionCommandSink`, mapping cropped bitmap draws to ProGPU `DrawTexture.SrcRect`.
+- Extended reflected non-tiled `ImageBrush` geometry fills with relative and absolute `Viewbox` cropping when the adapted image exposes pixel dimensions.
+- Extended reflected non-tiled `DrawingBrush` and `VisualBrush` geometry fills with relative and absolute `Viewbox` cropping by mapping the selected source bounds into the brush viewport and pushing a transformed source-space clip before replaying nested content.
+- Extended reflected `ImageBrush`, `DrawingBrush`, and `VisualBrush` geometry fills with bounded `TileMode=Tile`, `FlipX`, `FlipY`, and `FlipXY` replay for finite fill geometry, including simple absolute brush `Transform` scopes.
+- Added bounded `RelativeTransform` support for reflected `ImageBrush`, `DrawingBrush`, and `VisualBrush` geometry fills by converting adaptable affine relative transforms through the filled geometry bounds before replay.
+- Added bounded `Stretch=None`, `Stretch=Uniform`, and `Stretch=UniformToFill` support for reflected `ImageBrush`, `DrawingBrush`, and `VisualBrush` geometry fills with `AlignmentX`/`AlignmentY` placement; stretched content that overflows a tile is clipped to that tile before replay.
+- Extended `SilkNetWpfMonitorService` so `WpfMonitorInfo.DpiScale` is derived from reflected backend scale/DPI properties when available, or from Silk.NET video-mode resolution versus monitor bounds as a portable fallback.
+- Added GPU-free monitor coverage for video-mode/bounds DPI inference, reflected scalar DPI scale, reflected DpiX/DpiY, and invalid reflected scale fallback.
+- Added `WpfDrawingReplayStatus.PartiallyApplied` so reflected `DrawingGroup` replay can count supported children as applied while still reporting unsupported sibling content.
+- Added GPU-free source-level and MIL-decoder coverage for partially replayed drawing groups.
+- Replaced the sink-level endpoint-line fallback for complex transformed WPF arcs with SVG-style cubic Bezier approximation, keeping exact ProGPU arc segments for transforms ProGPU can represent natively.
+- Added GPU-free coverage for complex transformed arc geometry and clip conversion through the native ProGPU command sink.
+- Factored transformed arc cubic decomposition into a shared helper and routed geometry-group child-transform flattening through it, so transformed child arcs are copied as Bezier segments instead of endpoint lines.
+- Added GPU-free coverage for transformed arcs inside reflected WPF-shaped geometry groups.
+- Added `IWpfDragDropService`, `WpfDragDropData`, `WpfDragDropEventArgs`, and `SilkNetWpfDragDropService` as the first portable drag/drop payload boundary, mapping Silk.NET file drops to WPF-shaped drop events.
+- Wired `CrossPlatformWpfPlatformServices`, `UnsupportedWpfPlatformServices`, and `ProGpuWpfWindowHost.DragDropReceived` through the new drag/drop service.
+- Added GPU-free drag/drop coverage for file-drop payload mapping, null file lists, invalid attach arguments, and default host/service composition.
+- Extended reflected drawing-resource opacity-mask replay so `DrawingGroup` masks can infer finite bounds from child geometry, image, glyph-run, and nested drawing-group content when `DrawingGroup.Bounds` is unavailable.
+- Intersected inferred drawing-resource opacity-mask bounds with adaptable `DrawingGroup.ClipGeometry` bounds before pushing the native ProGPU opacity-mask scope.
+- Added GPU-free coverage for inferred drawing-group opacity-mask bounds and clipped inferred opacity-mask bounds.
+- Extended reflected visual-level opacity-mask replay so visuals without exposed bounds can infer finite mask bounds from replayable self or child `RenderData` content, including transformed content records.
+- Added GPU-free visual-tree coverage for self, transformed, and child render-data-inferred visual opacity-mask bounds.
+- Extended `WpfVisualInvalidationTracker` graph traversal to follow additional WPF media/resource references including drawing collections, foreground brushes, combined-geometry operands, path figures/segments/points, gradient stops, clips, guideline sets, and Viewport3D camera/model/material/mesh collections.
+- Added GPU-free invalidation coverage for nested drawing foreground-brush changes and path-geometry figure/segment collection refreshes.
+- Extended reflected `GeometryGroup` adaptation so mixed child sets containing `CombinedGeometry` preserve every adaptable child by folding them into ProGPU union combined-path trees instead of dropping non-path children.
+- Added GPU-free decoder coverage for mixed `GeometryGroup`/`CombinedGeometry` replay, preserving the nested boolean operation inside the group union.
+- Extended `WpfReflectionResourceResolver` transform adaptation beyond precomputed `Value` matrices so WPF-shaped `TranslateTransform`, `ScaleTransform`, `RotateTransform`, `SkewTransform`, and `TransformGroup` resources can replay even when the reflected object does not expose a readable `Value` property.
+- Added GPU-free decoder coverage for WPF-shaped translate/scale transform groups, centered rotate transforms, and centered skew transforms without `Value` matrices.
+- Extended the ProGPU vector radial-gradient brush, GPU brush packing, and WGSL gradient evaluation to carry separate X/Y radii plus gradient-origin/focal-point coordinates, then changed the WPF-shaped radial-gradient adapter to preserve `RadiusX`, `RadiusY`, and `GradientOrigin` instead of collapsing them to a larger circular radius centered at `Center`.
+- Added ProGPU gradient spread-method support for `Pad`, `Reflect`, and `Repeat`, packed it into the GPU brush layout, applied it in the vector and hatch WGSL gradient paths, and mapped WPF-shaped gradient `SpreadMethod` values in the reflection resolver.
+- Added WPF gradient `MappingMode` preservation for reflected gradient brushes and command-sink materialization of `RelativeToBoundingBox` linear/radial gradients against finite rectangle, rounded-rectangle, ellipse, geometry, line, pen, and opacity-mask bounds before recording ProGPU commands. Explicit `MappingMode=Absolute` gradients keep their source coordinates.
+- Added WPF gradient `Transform` and `RelativeTransform` preservation for reflected gradient brushes. Linear and radial gradients now map finite-bounds coordinates first, then carry adaptable invertible 2D affine brush transforms as inverse ProGPU brush-coordinate transforms so the shader samples transformed brush space, including non-axis-aligned radial-gradient transforms.
+- Added optional command-sink diagnostics sampled by `WpfMilRenderDataDecoder`, and wired `ProGpuCompositionCommandSink` to count non-invertible reflected gradient transforms, unrecognized reflected gradient `ColorInterpolationMode` values, and reflected gradient stop-table overflow above 65,536 stops as unsupported state when replay must fall back.
+- Changed WPF-shaped gradient adaptation to preserve reflected valid gradient stops in the ProGPU vector brush up to the current 65,536-stop table capacity instead of trimming at the old fixed brush ABI boundary.
+- Added ProGPU gradient color-interpolation support for WPF `SRgbLinearInterpolation` and `ScRgbLinearInterpolation`, carrying the mode through vector brushes, `GpuBrush`, vector WGSL, and hatch WGSL. The scRGB path converts sRGB stop colors to linear light for interpolation and converts the interpolated RGB result back to sRGB for output.
+- Expanded ProGPU's `GpuBrush` ABI, vector brushes, vector WGSL, and hatch WGSL with a two-row affine brush-coordinate transform so transformed WPF linear and radial gradients are evaluated in shader space instead of CPU-flattening endpoints or radii.
+- Moved ProGPU gradient stop sampling out of the fixed brush color slots and into a `GpuGradientStop` storage table shared by dynamic vector rendering, static DXF buffers, and hatch rendering. `GpuBrush` now stores a stop-table offset/count, vector group 0 binds the stop table, and the hatch extension binds the same table at its group 0 binding 4.
+- Added basic ProGPU sink Y-guideline snapping for generated `PushGuidelineY1` and `PushGuidelineY2` scopes on axis-aligned primitive line, rectangle, rounded-rectangle, and ellipse coordinates; the `PushGuidelineY2` path snaps the leading coordinate and preserves the driven-edge offset.
+- Added GPU-free coverage for Y-guideline snapping through decoded MIL records and for preserving unsnapped coordinates under rotated transforms.
+- Added `IWpfCompositionCommandSink.PushGuidelineSet(object?)`, shared dynamic guideline-set reflection, and optional `IWpfGuidelineSetResourceResolver` support so dynamic frozen `GuidelineSet` X/Y arrays can reach the ProGPU sink from source-level drawing and MIL dependent-resource replay.
+- Extended ProGPU primitive guideline snapping to both X and Y axes for dynamic `GuidelineSet` scopes on axis-aligned line, rectangle, rounded-rectangle, and ellipse commands.
+- Added GPU-free coverage for dynamic `GuidelineSet` pass-through and decoded MIL `PushGuidelineSet` X/Y primitive snapping.
+- Routed reflected `DrawingGroup.GuidelineSet` objects and readable reflected visual X/Y snapping guideline collections through `PushGuidelineSet(object?)`, preserving old no-op fallback behavior when visual collections cannot be read.
+- Updated GPU-free drawing-resource and visual replay coverage to assert guideline object propagation through the sink overload.
+- Added `ProGpuWpfPen` as a transition pen wrapper for reflected nonnegative WPF `DashStyle` arrays, offsets, line-cap metadata, `LineJoin`, and miter limits.
+- Added `PenLineJoin`, `MiterLimit`, and `PenLineCap` metadata to the ProGPU vector `Pen` and WPF shim `Pen`, then copied reflected WPF join/miter/cap intent onto native ProGPU command pens.
+- Added `PathSegment.IsSmoothJoin` metadata to the ProGPU vector path model and WPF shim path model, preserving it through reflected WPF-shaped path geometry, shim `StreamGeometryContext`, transformed path copies, and native `DrawPath` command emission.
+- Added `StrokeJoinGeometry` to ProGPU vector code and wired `ProGPU.Scene.Compositor` path stroking to emit filled native triangle geometry for straight line-line `Miter`, `Bevel`, and `Round` joins, with miter-limit fallback and `IsSmoothJoin` suppression.
+- Added `StrokeCapGeometry` to ProGPU vector code and wired `ProGPU.Scene.Compositor` path stroking to emit filled native triangle geometry for open line, quadratic Bezier, and cubic Bezier path start/end `Square`, `Round`, and `Triangle` caps using segment endpoint tangents.
+- Added `ArcSegmentGeometry` to ProGPU vector code, moved native arc center/point math onto that helper, and wired `ProGPU.Scene.Compositor` path stroking to emit native arc strokes as bounded line-strip approximations with arc endpoint directions for open-path caps.
+- Extended `StrokeJoinGeometry` and `ProGPU.Scene.Compositor` path stroking so adjacent line, quadratic Bezier, cubic Bezier, and arc segments emit native miter/bevel/round join fillers from endpoint tangents instead of only joining straight line-line corners.
+- Added straight-line dashed pen replay in `ProGpuCompositionCommandSink` by splitting supported dashed `DrawLine` calls into native ProGPU line segment commands while preserving the active transform and original brush bounds.
+- Added dashed rectangle-outline replay in `ProGpuCompositionCommandSink`, emitting any fill before segmented outline commands and carrying dash phase continuously across rectangle corners.
+- Added dashed rounded-rectangle and ellipse outline replay by approximating supported primitive curves as local line segments before dash emission.
+- Added dashed path-compatible geometry outline replay by flattening line, quadratic, cubic, and arc path figures to local polylines before dash emission. Filled dashed geometries emit the native fill path before the segmented outline.
+- Added dashed combined-geometry transition replay: native combined fill remains a `DrawPath`, while dashed outlines are emitted from each combined operand's flattened boundary and counted as unsupported fidelity until exact boolean-result dash boundaries are implemented.
+- Added transition dot-style dash replay for WPF zero-length drawn dash entries by emitting one-thickness local dot segments while leaving fuller vector-stroking fidelity as later work.
+- Added transition `Square`, `Round`, and `Triangle` cap replay for emitted line segments: square caps extend segment endpoints by half the pen thickness, round caps emit filled circular cap geometry, and triangle caps emit filled triangle geometry with the apex one pen radius outward.
+- Extended WPF-shaped glyph-run font adaptation to prefer reflected local `GlyphTypeface.FontUri` or font file paths before falling back to family-name lookup or platform fallback, with loaded ProGPU `TtfFont` instances cached by path.
+- Preserved reflected `GlyphTypeface.StyleSimulations` by carrying bold/italic transition flags through the ProGPU shim `GlyphRun`, `DrawingContext.DrawGlyphRun(...)`, `ProGPU.Scene.DrawingContext.DrawGlyphRun(...)`, and `ProGpuCompositionCommandSink` into native `DrawGlyphRun` render commands.
+- Added scoped `BitmapScalingMode` replay for WPF-shaped visuals: `NearestNeighbor` maps to ProGPU nearest-neighbor texture sampling, `LowQuality`, `Linear`, and default modes keep linear texture sampling, and `HighQuality`/`Fant` map to shader-side cubic texture sampling.
+- Extended ProGPU texture draw commands, compositor draw calls, and texture bind-group cache keys with `TextureSamplingMode` so nearest, linear, and cubic sampler paths for the same texture do not alias.
+- Extended reflected `DrawingGroup.BitmapScalingMode` replay through the same scoped sampling path, including `HighQuality`/`Fant` as cubic texture sampling while unknown values still report partial replay when supported children draw.
+- Centralized reflected bitmap-scaling alias handling in `WpfBitmapScalingModeReflection` so visual replay, drawing-resource replay, and the ProGPU sink share the same WPF enum-name/numeric-value mapping.
+- Added scoped reflected `EdgeMode=Aliased` replay for WPF-shaped visuals and drawing groups; `ProGpuCompositionCommandSink` stamps native vector commands with `RenderCommand.IsEdgeAliased`, ProGPU encodes that state into the existing vector `ShapeType` channel, and the vector shader thresholds primitive, stroke, curve, and path-atlas coverage instead of smoothing it. `ClearTypeHint` remains reported as unsupported partial render-option state.
+- Added scoped reflected `TextRenderingMode=Aliased`/`Grayscale` replay for WPF-shaped visuals and drawing groups; `ProGpuCompositionCommandSink` stamps native text commands with `RenderCommand.IsTextAliased`, ProGPU encodes that state into the existing text flags channel, and the text shader thresholds glyph atlas alpha for aliased text while preserving the current grayscale smoothing path. `TextRenderingMode=ClearType` and `TextHintingMode` remain unsupported.
+- Added GPU-free coverage for reflected pen dash metadata preservation, line-cap metadata preservation, line-join/miter metadata preservation, path-segment smooth-join metadata preservation, native ProGPU pen line-join/miter/cap metadata emission, native `DrawPath` smooth-join metadata emission, native vector bevel/miter/round line-line join geometry, tangent-driven curve join geometry, miter-limit bevel fallback, smooth-join hard-corner suppression, native vector square/round/triangle line-cap geometry including tangent-driven curve endpoint caps, native arc center/flattening geometry, native arc path compiler records, zero-radius arc line fallback, zero-length dot dash metadata preservation, decoded MIL dashed-line segment emission, decoded MIL dotted-line segment emission, square-capped line endpoint extension, round dash-cap geometry emission, triangle-capped line geometry emission, triangle dash-cap geometry emission, filled dashed-rectangle outline segment emission, filled dashed rounded-rectangle/ellipse segment emission, filled dashed geometry segment emission, and filled dashed combined-geometry operand-boundary segment emission with unsupported-fidelity accounting.
+- Documented the current assembly-boundary decision: WPF `PresentationCore` is strong-named, `ProGPU.Wpf` is currently unsigned and points at the shim `PresentationCore`, so direct external sink installation is deferred until signing/type identity is resolved.
+- Installed the repo-pinned .NET SDK `11.0.100-preview.4.26210.111` into the ignored `.dotnet/` directory through `./eng/common/dotnet.sh --info`, unblocking root WPF SDK selection on this machine.
+- Updated `eng/WpfArcadeSdk/tools/Pbt.props` so Core MSBuild builds local `PresentationBuildTasks` for `$(BundledNETCoreAppTargetFramework)` instead of stale `net6.0`; `PresentationBuildTasks` now restores/builds for `net11.0` in the root lane.
+- Updated WPF build tooling for the macOS/Linux bring-up lane: `DirectWriteForwarder.vcxproj` project references are conditioned to Windows, ApiCompat now resolves the `Microsoft.DotNet.ApiCompat` `tools/net9.0` layout used by the pinned package, and Perl-backed source generation uses `/usr/bin/perl` outside Windows instead of Strawberry Perl's `portableshell.bat`.
+- Extended the same Windows-only `DirectWriteForwarder.vcxproj` guard to `ReachFramework.csproj`, which is pulled into the `PresentationFramework` graph and otherwise imports Visual C++ targets on macOS.
+- Added a non-Windows managed `MS.Internal.Text.TextInterface` compile boundary in `PortableTextInterface.cs`, preserving WPF's expected DirectWriteForwarder-managed type surface while marking unimplemented runtime shaping and subsetting paths as portable text work.
+- Conditioned WPF's DirectWrite-specific `Factory.cs` and `FontCollectionLoader.cs` to Windows and guarded `ModuleInitializer` so non-Windows loads do not call `user32.dll`, `dwrite.dll`, or the native WPF DWrite loader.
+- Restored the legacy non-generic `MS.Internal.Span` payload struct and updated mutable `FrugalStructList<Span>` writes for modern C# value-type semantics.
+- Added non-Windows compile shims for `TrueTypeSubsetter`, `NativeWPFDLLLoader`, and `DWriteTypeConverter` so remaining DirectWriteForwarder references are isolated behind explicit portable replacement points.
+- Replaced the throw-only portable font collection/font family/font/font-face path with a managed SFNT font boundary for `.ttf`, `.otf`, and `.ttc` files.
+- Added portable TTC face-index parsing, SFNT table directory validation, localized `name` string extraction, `head`/`hhea`/`maxp`/`hmtx`/`OS/2`/`post` metrics, cmap format 4 and format 12 Unicode mapping, `glyf`/`loca` basic glyph bounds, embedding-right reads, and GSUB/GPOS/GDEF table byte access for WPF's existing OpenType layout cache.
+- Added cross-platform system font folder scanning for the portable text factory on macOS, Linux, and Windows, while continuing to use WPF's existing `IFontSourceCollection` enumeration for custom font folders and packaged font sources.
+- Documented the text assembly-boundary decision: direct `ProGPU.Text` references from root `PresentationCore` are deferred because WPF remains on Arcade strong-name signing and ProGPU assemblies are currently unsigned, so this slice keeps the SFNT reader self-contained while mirroring ProGPU's `TtfFont` responsibilities.
+- Added a basic portable `TextAnalyzer` glyph fallback that maps one Unicode scalar to one glyph, preserves cluster maps including surrogate pairs, treats formatting controls conservatively, and computes glyph advances from portable font-face design metrics for `GetGlyphs`, `GetGlyphPlacements`, and `GetGlyphsAndTheirPlacements`.
+- Replaced the non-Windows `TrueTypeSubsetter.ComputeSubset` hard throw with a conservative full-font-copy fallback so `GlyphTypeface.ComputeSubset` and XPS font embedding paths can proceed cross-platform until an exact managed subsetter is available.
+- Added source-level coverage that guards the portable text boundary against regressing to throw-only font wrappers/analyzers/subsetter and verifies real OpenType table tags, source enumeration, cmap mapping, glyph metrics, table lookup, embedding-right hooks, simple glyph mapping, scalar reading, placement hooks, and the subsetter full-copy fallback are present.
+- Added XML-backed project-graph coverage that keeps the managed WPF `PresentationCore`, `PresentationFramework`, and `ReachFramework` references to `DirectWriteForwarder.vcxproj` Windows-only.
+- Verified with `dotnet build src/ProGPU.Wpf/ProGPU.Wpf.csproj --no-restore`.
+- Verified with `dotnet test ../ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj --no-restore --verbosity minimal` from `src/ProGPU.Wpf` after bounded tile-brush relative/absolute viewport, absolute and relative brush transforms, cropped viewbox, bounded tile/flip-mode, transformed tiled-brush, tile-brush stretch/alignment, render-data-inferred visual opacity-mask bounds, WPF-shaped affine transform fallback, radial-gradient radius/origin preservation, gradient spread-method coverage, bounded gradient mapping-mode coverage, gradient coordinate-transform coverage including non-axis-aligned radial transforms, supported scRGB gradient color-interpolation coverage, unrecognized reflected gradient color-interpolation diagnostics, non-invertible gradient-transform diagnostics, many-stop gradient preservation, all-stop bridge preservation, the ProGPU gradient stop-table ABI, Y-guideline snapping, dynamic `GuidelineSet` X/Y snapping, straight dashed-line replay, dotted-line replay, square/round/triangle line-cap replay, WPF line-join/miter/cap metadata replay, WPF path-segment smooth-join metadata replay, native line-line and tangent-driven curve join geometry, native open line/Bezier path cap geometry, native arc flattening geometry, native arc path compiler records, dashed rectangle-outline replay, dashed rounded-rectangle/ellipse outline replay, dashed path-compatible geometry outline replay, dashed combined-geometry operand-boundary replay, glyph-run local font URI replay, glyph-run style-simulation flag replay, scoped visual/drawing-group nearest/low-quality/linear/high-quality/fant bitmap-scaling replay, scoped visual/drawing-group aliased edge-mode replay, scoped visual/drawing-group aliased/grayscale text-rendering-mode replay, drawing-group ClearType partial diagnostics, the portable text boundary source contract, and managed WPF project-graph DirectWrite guards; 341 tests passed.
+- Verified with `dotnet build src/Microsoft.DotNet.Wpf/src/PresentationCore/PresentationCore.csproj --no-restore --verbosity minimal`; the real WPF `PresentationCore` now builds on macOS with 0 warnings and 0 errors.
+- Verified with `dotnet build src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj --no-restore --verbosity minimal`; the real WPF `PresentationFramework` graph now builds on macOS after restore and after guarding the transitive `ReachFramework` native DirectWrite reference.
+- Fast-forwarded ProGPU submodule branch `fix/render-invalidation-and-leaks` to latest origin commits `61fce4c`, `805e8e8`, and `f126b6e`, then reapplied the WPF-port rendering work on top.
+- Committed and pushed ProGPU branch commit `d84212b` with WPF-oriented vector rendering fidelity improvements, including reusable ProGPU geometry helpers and compositor/shader changes needed by WPF stroke, dash, gradient, sampling, and text-rendering semantics.
+- Committed and pushed ProGPU branch commit `8d725c1`, adding repo-level strong-name signing for ProGPU assemblies, key `eng/ProGPU.snk`, SDK pin `global.json`, and a signing regression test. Built ProGPU assemblies report public key token `c29c9752855ee183`.
+- Added `reports/progpu-wpf-progpu-branch-plan.md` to track backend features that should be implemented directly in ProGPU to accelerate the WPF port instead of accumulating temporary bridge code.
+
+## Open Porting Items
+
+- Rerun WPF codegen with SDK `11.0.100-preview.4.26210.111` to verify checked-in `System/Windows/Media/Generated/RenderDataDrawingContext.cs` stays synchronized with the updated render-data generator, then resolve type identity/friend-assembly shape so `WpfRenderDataSinkProviderBridge` can activate against the real `PresentationCore` provider. ProGPU strong-name signing is now in place.
+- Replace the remaining portable `MS.Internal.Text.TextInterface` simple glyph fallback, full-font-copy subsetting fallback, and LineServices dependencies with a ProGPU-backed or cross-platform shaping abstraction.
+- Wire `WpfRenderDataReflectionBridge` into real WPF visual rendering paths or replace it with an in-assembly bridge once the port lane compiles managed WPF directly.
+- Replace the reflection visual subtree renderer with in-assembly visual traversal when managed WPF compiles in the port lane.
+- Expand adapters for cross-assembly real WPF visual resources: remaining tile-brush cases including non-affine or unreadable transform types and advanced visual-brush state, platform codecs, color management and color-profile fidelity, formatted text, complex glyph/typeface identity beyond local font-file URI and bold/italic style-simulation replay, animation resources, drawing effects, and backend-native transformed-arc rendering.
+- Add visual state support for visual opacity masks whose finite bounds are not exposed or inferable from replayable content, effects, non-axis-aligned/exact WPF guideline snapping fidelity, exact curve-join fidelity beyond the current endpoint tangent approximation, exact native arc stroking beyond the current bounded polyline approximation, and exact smooth-join rasterization fidelity, exact cap clipping at complex joins, exact curve dash fidelity and exact boolean-result combined-geometry dash outlines, cache mode, ClearType/subpixel text rendering, text hinting, advanced 3D interop (`Viewport2DVisual3D`, hit testing, animations, textures/material fidelity), and full retained invalidation coalescing.
+- Add custom `IWpfMilResourceResolver` adapters for real WPF resource instances until type identity is unified with the ProGPU shim.
+- Port WPF `CompositionTarget`/`HwndTarget` to a Silk.NET-backed target.
+- Replace `MilCoreApi` geometry helpers with managed/ProGPU vector implementations.
+- Replace WIC imaging paths with ProGPU texture-backed bitmap sources and platform codecs.
+- Replace DWrite, DirectWriteForwarder subsetting, and LineServices dependencies with the ProGPU text path or a cross-platform shaping stack.
+- Harden process-backed platform services or replace them with native per-OS implementations behind the same interfaces, and implement WPF input routing, IME/stylus handling, full routed drag/drop behavior over the drag/drop payload boundary, and full WPF Dispatcher/MediaContext integration.

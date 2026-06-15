@@ -26,10 +26,12 @@ The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and
 - Images: add ProGPU image codec and color-management seams so WPF bitmap sources can move away from reflection-based `CopyPixels` transition upload and toward backend-owned image resources.
 - Composition: add backend-level retained resource invalidation/versioning helpers so WPF `Freezable`/visual invalidation can map to ProGPU dirty tracking without reflection polling.
 - Windowing: keep Silk.NET surface and input abstractions in ProGPU reusable enough for WPF's eventual `CompositionTarget` replacement, including resize, DPI, activation, file-drop, cursor, timer, and dispatcher wakeup hooks.
+- WPF command conformance: add ProGPU-side fixtures for every generated WPF render-data instruction that reaches `IWpfCompositionCommandSink`, so unsupported command state is tracked in ProGPU tests before WPF bridge code grows new compatibility branches.
 
 ## WPF Integration Follow-Ups
 
 - Replace the local `PortableTextInterface` SFNT reader with signed `ProGPU.Text` services incrementally: face-offset/table/cmap/glyph-metric discovery now uses the ProGPU-owned helper, while shaping, fallback-chain policy, and subsetting should move as the ProGPU text APIs cover those surfaces.
+- Use the portable WPF MCG path before editing generated render-data files by hand: `mcg.proj` can now run `Resources.rsp` and `Elements.rsp` through the Roslyn-backed `net10.0` CSP target on non-Windows. A managed replacement for the old `xsd.exe` schema step is still needed before changing MCG XSD inputs outside Windows.
 - Use the new object-sink render-data provider path as the immediate integration bridge for real WPF `PresentationCore`: `PushObjectSinkFactory(...)` can pass real WPF media objects to ProGPU.Wpf for reflection adaptation while the shim and real WPF type identities are still separate.
 - Make the ProGPU-backed WPF `DrawingContext` live in the real WPF type identity or a signed friend assembly later so `RenderDataDrawingContextSinkProvider.PushDrawingContextFactory(...)` can replace the object/reflection bridge.
 - Add root WPF project references to signed ProGPU assemblies only when the referenced APIs are actually used by the non-Windows WPF implementation.

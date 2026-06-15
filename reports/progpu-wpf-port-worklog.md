@@ -259,6 +259,7 @@
 - Normalized MCG `FileCodeSink` output paths so XML destination strings containing Windows backslashes create real platform directories on macOS/Linux instead of literal backslash-named directories.
 - Updated `mcg.proj` to keep the existing Windows `.cmd`/`xsd.exe` flow on Windows but run the `Resources.rsp` and `Elements.rsp` generators directly through `dotnet csp.dll` on non-Windows. The non-Windows path currently relies on checked-in `ResourceModel/Generated/Elements.cs`; a managed XSD-codegen replacement is still needed before editing `xml/Elements.xsd` off Windows.
 - Verified portable MCG with `dotnet build src/Microsoft.DotNet.Wpf/src/WpfGfx/tools/csp/csp.csproj -f net10.0 --no-restore --verbosity minimal` and `dotnet build src/Microsoft.DotNet.Wpf/src/WpfGfx/codegen/mcg/mcg.proj -p:McgOutputDirectory=/tmp/wpf-mcg-proj-output --verbosity minimal`; the MCG build completed with expected legacy generator warnings and 0 errors.
+- Added ProGPU.Wpf test coverage that source-checks the portable MCG project wiring, the CSP `net10.0` Roslyn compile path, and generated output path normalization. Verified with focused `WpfRenderDataGeneratorRedirectionTests` and the full `ProGPU.Wpf.Tests` project; 350 tests passed.
 
 ## Open Porting Items
 

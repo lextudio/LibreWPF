@@ -353,6 +353,77 @@ public sealed class WpfRenderDataGeneratorRedirectionTests
         AssertSinkBranchContains(generated, "Pop", "const", "_stackDepth--;");
     }
 
+    [Fact]
+    public void WpfMcgProjectUsesPortableCspPathOnNonWindows()
+    {
+        var project = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "WpfGfx",
+            "codegen",
+            "mcg",
+            "mcg.proj"));
+
+        Assert.Contains("<CspTargetFramework Condition=\"'$(CspTargetFramework)' == '' and '$(OS)' == 'Windows_NT'\">net48</CspTargetFramework>", project, StringComparison.Ordinal);
+        Assert.Contains("<CspTargetFramework Condition=\"'$(CspTargetFramework)' == ''\">net10.0</CspTargetFramework>", project, StringComparison.Ordinal);
+        Assert.Contains("Properties=\"TargetFramework=$(CspTargetFramework)\"", project, StringComparison.Ordinal);
+        Assert.Contains("Condition=\"'$(OS)' == 'Windows_NT'\" Command=\"tools\\GenerateFiles.cmd\"", project, StringComparison.Ordinal);
+        Assert.Contains("Condition=\"'$(OS)' != 'Windows_NT'\"", project, StringComparison.Ordinal);
+        Assert.Contains("dotnet &quot;$(CspExe)&quot; -rsp:main/Resources.rsp", project, StringComparison.Ordinal);
+        Assert.Contains("dotnet &quot;$(CspExe)&quot; -rsp:main/Elements.rsp", project, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WpfCspToolKeepsNetCoreRoslynBuildPath()
+    {
+        var project = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "WpfGfx",
+            "tools",
+            "csp",
+            "csp.csproj"));
+        var source = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "WpfGfx",
+            "tools",
+            "csp",
+            "Project.cs"));
+
+        Assert.Contains("<TargetFrameworks>net48;net10.0</TargetFrameworks>", project, StringComparison.Ordinal);
+        Assert.Contains("<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>", project, StringComparison.Ordinal);
+        Assert.Contains("Microsoft.CodeAnalysis.CSharp", project, StringComparison.Ordinal);
+        Assert.Contains("#if NETCOREAPP", source, StringComparison.Ordinal);
+        Assert.Contains("return BuildWithRoslyn(", source, StringComparison.Ordinal);
+        Assert.Contains("CSharpCompilation.Create(", source, StringComparison.Ordinal);
+        Assert.Contains("LanguageVersion.Preview", source, StringComparison.Ordinal);
+        Assert.Contains("TRUSTED_PLATFORM_ASSEMBLIES", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WpfMcgFileCodeSinkNormalizesGeneratedPaths()
+    {
+        var source = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "WpfGfx",
+            "codegen",
+            "mcg",
+            "Runtime",
+            "FileCodeSink.cs"));
+
+        Assert.Contains("_filePath = NormalizePath(Path.Combine(dir, filename));", source, StringComparison.Ordinal);
+        Assert.Contains("string directory = Path.GetDirectoryName(_filePath);", source, StringComparison.Ordinal);
+        Assert.Contains("Directory.CreateDirectory(directory);", source, StringComparison.Ordinal);
+        Assert.Contains("path.Replace('\\\\', '/')", source, StringComparison.Ordinal);
+        Assert.Contains("path.Replace('/', '\\\\')", source, StringComparison.Ordinal);
+    }
+
     private static IReadOnlyList<ResourceInstruction> ReadRenderDataInstructions()
     {
         var document = XDocument.Load(FindResourceXmlPath());

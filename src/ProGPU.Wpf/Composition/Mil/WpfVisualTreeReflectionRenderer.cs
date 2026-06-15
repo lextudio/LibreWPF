@@ -268,6 +268,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             }
         }
 
+        var pushedTextRenderingMode = false;
         if (TryGetPropertyValue(visual, "TextRenderingMode", out var textRenderingMode)
             && WpfTextRenderingModeReflection.HasExplicitValue(textRenderingMode))
         {
@@ -275,11 +276,21 @@ public sealed class WpfVisualTreeReflectionRenderer
             {
                 sink.PushTextRenderingMode(textRenderingMode);
                 popCount++;
+                pushedTextRenderingMode = true;
             }
             else
             {
                 stats.UnsupportedVisualStateCount++;
             }
+        }
+
+        if (!pushedTextRenderingMode
+            && TryGetPropertyValue(visual, "ClearTypeHint", out var clearTypeHint)
+            && WpfTextRenderingModeReflection.HasExplicitClearTypeHint(clearTypeHint)
+            && WpfTextRenderingModeReflection.TryMapClearTypeHintToTextRenderingMode(clearTypeHint, out var clearTypeMode))
+        {
+            sink.PushTextRenderingMode(clearTypeMode);
+            popCount++;
         }
 
         stats.UnsupportedVisualStateCount += CountUnsupportedVisualState(visual);
@@ -299,11 +310,14 @@ public sealed class WpfVisualTreeReflectionRenderer
             }
         }
 
-        foreach (var propertyName in new[]
+        if (TryGetPropertyValue(visual, "ClearTypeHint", out var clearTypeHint)
+            && WpfTextRenderingModeReflection.HasExplicitClearTypeHint(clearTypeHint)
+            && !WpfTextRenderingModeReflection.IsSupportedClearTypeHint(clearTypeHint))
         {
-            "ClearTypeHint",
-            "TextHintingMode"
-        })
+            count++;
+        }
+
+        foreach (var propertyName in new[] { "TextHintingMode" })
         {
             if (HasExplicitRenderingHint(visual, propertyName))
             {

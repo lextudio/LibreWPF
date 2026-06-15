@@ -597,6 +597,7 @@ internal static class WpfReflectionDrawingReplay
             }
         }
 
+        var pushedTextRenderingMode = false;
         if (TryGetPropertyValue(drawingGroup, "TextRenderingMode", out var textRenderingMode)
             && WpfTextRenderingModeReflection.HasExplicitValue(textRenderingMode))
         {
@@ -604,11 +605,21 @@ internal static class WpfReflectionDrawingReplay
             {
                 sink.PushTextRenderingMode(textRenderingMode);
                 popCount++;
+                pushedTextRenderingMode = true;
             }
             else
             {
                 unsupportedRenderOptions = true;
             }
+        }
+
+        if (!pushedTextRenderingMode
+            && TryGetPropertyValue(drawingGroup, "ClearTypeHint", out var clearTypeHint)
+            && WpfTextRenderingModeReflection.HasExplicitClearTypeHint(clearTypeHint)
+            && WpfTextRenderingModeReflection.TryMapClearTypeHintToTextRenderingMode(clearTypeHint, out var clearTypeMode))
+        {
+            sink.PushTextRenderingMode(clearTypeMode);
+            popCount++;
         }
 
         var appliedAny = false;
@@ -1330,7 +1341,9 @@ internal static class WpfReflectionDrawingReplay
 
     private static bool HasUnsupportedRenderOptionState(object drawingGroup)
     {
-        return HasExplicitRenderingHint(drawingGroup, "ClearTypeHint");
+        return TryGetPropertyValue(drawingGroup, "ClearTypeHint", out var clearTypeHint)
+            && WpfTextRenderingModeReflection.HasExplicitClearTypeHint(clearTypeHint)
+            && !WpfTextRenderingModeReflection.IsSupportedClearTypeHint(clearTypeHint);
     }
 
     private static bool TryResolveDrawingGroupEffect(

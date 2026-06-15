@@ -19,6 +19,37 @@ internal static class WpfTextRenderingModeReflection
         return TryMapToTextRenderingMode(value, out _);
     }
 
+    public static bool HasExplicitClearTypeHint(object? value)
+    {
+        var text = value?.ToString();
+        return !string.IsNullOrWhiteSpace(text)
+            && !string.Equals(text, "Unspecified", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(text, "Default", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(text, "Auto", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(text, "0", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool IsSupportedClearTypeHint(object? value)
+    {
+        return TryMapClearTypeHintToTextRenderingMode(value, out _);
+    }
+
+    public static bool TryMapClearTypeHintToTextRenderingMode(
+        object? value,
+        out global::ProGPU.Scene.TextRenderingMode mode)
+    {
+        mode = global::ProGPU.Scene.TextRenderingMode.Grayscale;
+        var text = value?.ToString();
+        if (string.Equals(text, "Enabled", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(text, "1", StringComparison.OrdinalIgnoreCase))
+        {
+            mode = global::ProGPU.Scene.TextRenderingMode.ClearType;
+            return true;
+        }
+
+        return false;
+    }
+
     public static bool TryMapToAliased(object? value, out bool isAliased)
     {
         var mapped = TryMapToTextRenderingMode(value, out var mode);

@@ -246,7 +246,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.Equal(new[] { "NearestNeighbor" }, sink.BitmapScalingModes.Select(mode => mode?.ToString()));
         Assert.Equal(new[] { "Aliased" }, sink.EdgeModes.Select(mode => mode?.ToString()));
         Assert.Equal(new[] { "Aliased" }, sink.TextRenderingModes.Select(mode => mode?.ToString()));
-        Assert.Equal(5, result.UnsupportedVisualStateCount);
+        Assert.Equal(4, result.UnsupportedVisualStateCount);
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
     }
 
@@ -470,6 +470,24 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var root = new FakeVisual
         {
             TextRenderingMode = new FakeRenderingHint("ClearType")
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushTextRenderingMode", "DrawRectangle", "Pop" }, sink.Operations);
+        Assert.Equal(new[] { "ClearType" }, sink.TextRenderingModes.Select(mode => mode?.ToString()));
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeAppliesClearTypeHintAsTextRenderingMode()
+    {
+        var root = new FakeVisual
+        {
+            ClearTypeHint = new FakeRenderingHint("Enabled")
         };
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 

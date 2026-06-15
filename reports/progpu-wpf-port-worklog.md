@@ -408,6 +408,9 @@
 - Added ProGPU submodule commit `d697304`: WPF shim `WriteableBitmap` now preserves the requested `PixelFormat`, exposes `Format`, validates `WritePixels(...)` byte length through backend stride helpers, keeps padded PBgra32 rows on the `Pbgra32PixelBuffer` upload path, and converts `Bgr32` writes to opaque PBgra32 before `GpuTexture.WritePbgra32SubRect(...)`.
 - Added `WriteableBitmapTests` coverage for distinct shim pixel formats, padded PBgra32 row handling, and Bgr32-to-opaque-PBgra32 upload conversion.
 - Verified the ProGPU WriteableBitmap upload fix with `dotnet build src/PresentationCore/PresentationCore.csproj --no-restore --verbosity minimal` and `dotnet test src/ProGPU.Tests/ProGPU.Tests.csproj --no-restore --verbosity minimal --filter FullyQualifiedName~WriteableBitmapTests`; 3 focused tests passed. Existing warning noise remains in unrelated ProGPU projects.
+- Added ProGPU submodule commit `ae133cf`: `ProGPU.Scene.Compositor` now compiles geometry clip masks and opacity mask brush passes with `_activeOpacity` temporarily reset to `1.0`, then restores the caller's opacity stack before content drawing resumes. This keeps WPF-style `PushOpacity(...); PushGeometryClip(...)` from applying opacity once to the mask texture and a second time to the clipped content.
+- Added headless compositor coverage comparing clipped and unclipped rectangles under the same `PushOpacity(0.5)` scope, proving geometry mask compilation no longer dims the clipped draw.
+- Verified the native mask-opacity fix with `git diff --check`, `dotnet build src/ProGPU.Scene/ProGPU.Scene.csproj --no-restore --verbosity minimal`, and `dotnet test src/ProGPU.Tests/ProGPU.Tests.csproj --no-restore --verbosity minimal --filter FullyQualifiedName~CompositorClipTests`; 2 focused tests passed. Existing warning noise remains in unrelated ProGPU projects.
 
 ## Open Porting Items
 

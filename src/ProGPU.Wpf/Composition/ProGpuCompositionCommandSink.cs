@@ -1171,7 +1171,15 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         ref int patternIndex,
         ref float distanceInPattern)
     {
-        if (!TryBuildArcLengthTable(start, arc, out var cumulativeLengths, out var totalLength))
+        if (!global::ProGPU.Vector.ArcSegmentGeometry.TryCreateDashedArcSegments(
+                start,
+                arc,
+                pattern,
+                patternIndex,
+                distanceInPattern,
+                out var dashSegments,
+                out var finalPatternIndex,
+                out var finalDistanceInPattern))
         {
             return TryDrawDashedLineSegment(
                 nativePen,
@@ -1183,31 +1191,13 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
                 ref distanceInPattern);
         }
 
-        var distance = 0f;
-        while (distance < totalLength)
+        foreach (var dashSegment in dashSegments)
         {
-            var remainingInElement = pattern[patternIndex] - distanceInPattern;
-            var step = Math.Min(remainingInElement, totalLength - distance);
-            if ((patternIndex % 2) == 0 && step > TransformEpsilon)
-            {
-                var startParameter = GetArcParameterAtDistance(cumulativeLengths, distance);
-                var endParameter = GetArcParameterAtDistance(cumulativeLengths, distance + step);
-                if (global::ProGPU.Vector.ArcSegmentGeometry.TryCreateSubArcSegment(
-                        start,
-                        arc,
-                        startParameter,
-                        endParameter,
-                        out var dashStart,
-                        out var dashArc))
-                {
-                    AddNativeArcDash(nativePen, pen.DashCap, dashStart, dashArc);
-                }
-            }
-
-            AdvanceDashPattern(pattern, ref patternIndex, ref distanceInPattern, remainingInElement, step);
-            distance += step;
+            AddNativeArcDash(nativePen, pen.DashCap, dashSegment.Start, dashSegment.Arc);
         }
 
+        patternIndex = finalPatternIndex;
+        distanceInPattern = finalDistanceInPattern;
         return true;
     }
 
@@ -1278,81 +1268,6 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         path.Figures.Add(figure);
 
         AddNativePath(null, WithLineCaps(nativePen, dashCap, dashCap), path);
-    }
-
-    private static bool TryBuildArcLengthTable(
-        Vector2 start,
-        VectorArcSegment arc,
-        out float[] cumulativeLengths,
-        out float totalLength)
-    {
-        if (!global::ProGPU.Vector.ArcSegmentGeometry.TryGetArcCenter(
-                start,
-                arc.Point,
-                arc.Size,
-                arc.RotationAngle,
-                arc.IsLargeArc,
-                arc.SweepDirection,
-                out _,
-                out _,
-                out _,
-                out _,
-                out _))
-        {
-            cumulativeLengths = Array.Empty<float>();
-            totalLength = 0;
-            return false;
-        }
-
-        var points = global::ProGPU.Vector.ArcSegmentGeometry.FlattenArc(
-            start,
-            arc,
-            MathF.PI / 64f);
-        cumulativeLengths = new float[points.Length];
-        totalLength = 0;
-
-        if (points.Length < 2)
-        {
-            return false;
-        }
-
-        for (var i = 1; i < points.Length; i++)
-        {
-            totalLength += Vector2.Distance(points[i - 1], points[i]);
-            cumulativeLengths[i] = totalLength;
-        }
-
-        return totalLength > TransformEpsilon;
-    }
-
-    private static float GetArcParameterAtDistance(float[] cumulativeLengths, float distance)
-    {
-        if (distance <= 0)
-        {
-            return 0;
-        }
-
-        var totalLength = cumulativeLengths[^1];
-        if (distance >= totalLength)
-        {
-            return 1;
-        }
-
-        for (var i = 1; i < cumulativeLengths.Length; i++)
-        {
-            var current = cumulativeLengths[i];
-            if (distance <= current)
-            {
-                var previous = cumulativeLengths[i - 1];
-                var spanLength = current - previous;
-                var local = spanLength > TransformEpsilon
-                    ? (distance - previous) / spanLength
-                    : 0;
-                return (i - 1 + local) / (cumulativeLengths.Length - 1);
-            }
-        }
-
-        return 1;
     }
 
     private static bool TryBuildDashPattern(ProGpuWpfPen pen, out float[] pattern, out double dashOffset)

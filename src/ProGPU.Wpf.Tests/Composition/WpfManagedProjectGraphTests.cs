@@ -26,8 +26,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Equal("TargetFramework;TargetFrameworks", reference.Element("UndefineProperties")?.Value);
     }
 
-    [Fact]
-    public void PresentationCoreIncludesProGpuSfntSourceOnNonWindows()
+    [Theory]
+    [InlineData(@"external\ProGPU\src\ProGPU.Text\SfntFontFace.cs", @"MS\Internal\Text\TextInterface\ProGPU\SfntFontFace.cs")]
+    [InlineData(@"external\ProGPU\src\ProGPU.Text\SfntSimpleGlyphShaper.cs", @"MS\Internal\Text\TextInterface\ProGPU\SfntSimpleGlyphShaper.cs")]
+    public void PresentationCoreIncludesProGpuTextSourceOnNonWindows(string sourcePath, string linkPath)
     {
         var projectPath = FindRepoPath("src", "Microsoft.DotNet.Wpf", "src", "PresentationCore", "PresentationCore.csproj");
         var document = XDocument.Load(projectPath);
@@ -37,11 +39,11 @@ public sealed class WpfManagedProjectGraphTests
             item =>
             {
                 var include = item.Attribute("Include")?.Value.Replace('/', '\\');
-                return include?.EndsWith(@"external\ProGPU\src\ProGPU.Text\SfntFontFace.cs", StringComparison.OrdinalIgnoreCase) == true;
+                return include?.EndsWith(sourcePath, StringComparison.OrdinalIgnoreCase) == true;
             });
 
         Assert.Equal("'$(OS)' != 'Windows_NT'", compileItem.Attribute("Condition")?.Value);
-        Assert.Equal(@"MS\Internal\Text\TextInterface\ProGPU\SfntFontFace.cs", compileItem.Attribute("Link")?.Value);
+        Assert.Equal(linkPath, compileItem.Attribute("Link")?.Value);
     }
 
     private static string FindRepoPath(params string[] pathSegments)

@@ -26,6 +26,9 @@ public sealed class WpfPortableTextInterfaceTests
         Assert.Contains("using ProGpuSfntFontFace = ProGPU.Text.SfntFontFace;", source, StringComparison.Ordinal);
         Assert.Contains("using ProGpuSfntGlyphBounds = ProGPU.Text.SfntGlyphBounds;", source, StringComparison.Ordinal);
         Assert.Contains("using ProGpuSfntHorizontalGlyphMetrics = ProGPU.Text.SfntHorizontalGlyphMetrics;", source, StringComparison.Ordinal);
+        Assert.Contains("using ProGpuSfntSimpleGlyphMetrics = ProGPU.Text.SfntSimpleGlyphMetrics;", source, StringComparison.Ordinal);
+        Assert.Contains("using ProGpuSfntSimpleGlyphRun = ProGPU.Text.SfntSimpleGlyphRun;", source, StringComparison.Ordinal);
+        Assert.Contains("using ProGpuSfntSimpleGlyphShaper = ProGPU.Text.SfntSimpleGlyphShaper;", source, StringComparison.Ordinal);
         Assert.Contains("IReadOnlyList<ProGpuSfntFontFace> faces = ProGpuSfntFontFace.LoadFaces(data);", source, StringComparison.Ordinal);
         Assert.Contains("_sfntFace.TryGetTable(TagToString(tag), out ReadOnlyMemory<byte> tableDataMemory)", source, StringComparison.Ordinal);
         Assert.Contains("_sfntFace.TryGetGlyphCount(out ushort glyphCount)", source, StringComparison.Ordinal);
@@ -38,11 +41,10 @@ public sealed class WpfPortableTextInterfaceTests
         Assert.Contains("internal bool TryGetTable(uint tag, out byte[] tableData)", source, StringComparison.Ordinal);
         Assert.Contains("return _fontData.TryGetTable((uint)openTypeTableTag, out tableData);", source, StringComparison.Ordinal);
         Assert.Contains("return _fontData.TryGetEmbeddingRights(out fsType);", source, StringComparison.Ordinal);
-        Assert.Contains("SimpleGlyphRun glyphRun = CreateSimpleGlyphRun(textString, textLength, font, blankGlyphIndex);", source, StringComparison.Ordinal);
-        Assert.Contains("private static ushort GetSimpleGlyphIndex(Font font, uint codePoint, ushort blankGlyphIndex)", source, StringComparison.Ordinal);
+        Assert.Contains("ProGpuSfntSimpleGlyphRun glyphRun = ProGpuSfntSimpleGlyphShaper.CreateGlyphRun(", source, StringComparison.Ordinal);
+        Assert.Contains("ProGpuSfntSimpleGlyphShaper.FillGlyphAdvances(", source, StringComparison.Ordinal);
+        Assert.Contains("return new ProGpuSfntSimpleGlyphMetrics(metrics.AdvanceWidth, metrics.AdvanceHeight);", source, StringComparison.Ordinal);
         Assert.Contains("private static void FillGlyphPlacements(", source, StringComparison.Ordinal);
-        Assert.Contains("designAdvance * fontEmSize * scalingFactor / font.Metrics.DesignUnitsPerEm", source, StringComparison.Ordinal);
-        Assert.Contains("private static uint ReadCodePoint(char* textString, uint textLength, uint textIndex, out uint codeUnitCount)", source, StringComparison.Ordinal);
         Assert.Contains("Marshal.Copy((IntPtr)fontData, fontCopy, 0, fileSize);", source, StringComparison.Ordinal);
 
         Assert.DoesNotContain("The portable WPF font face is not yet backed", source, StringComparison.Ordinal);
@@ -53,6 +55,11 @@ public sealed class WpfPortableTextInterfaceTests
         Assert.DoesNotContain("private CmapData ParseCmap()", source, StringComparison.Ordinal);
         Assert.DoesNotContain("private ushort GetAdvanceWidth(ushort glyphIndex)", source, StringComparison.Ordinal);
         Assert.DoesNotContain("private short GetLeftSideBearing(ushort glyphIndex)", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("private static SimpleGlyphRun CreateSimpleGlyphRun", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("private static ushort GetSimpleGlyphIndex", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("private static bool IsControlGlyph", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("private static uint ReadCodePoint(char* textString", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("private readonly struct SimpleGlyphRun", source, StringComparison.Ordinal);
     }
 
     private static string FindRepoPath(params string[] pathSegments)

@@ -11,6 +11,9 @@ using System.Windows.Media;
 using ProGpuSfntFontFace = ProGPU.Text.SfntFontFace;
 using ProGpuSfntGlyphBounds = ProGPU.Text.SfntGlyphBounds;
 using ProGpuSfntHorizontalGlyphMetrics = ProGPU.Text.SfntHorizontalGlyphMetrics;
+using ProGpuSfntSimpleGlyphMetrics = ProGPU.Text.SfntSimpleGlyphMetrics;
+using ProGpuSfntSimpleGlyphRun = ProGPU.Text.SfntSimpleGlyphRun;
+using ProGpuSfntSimpleGlyphShaper = ProGPU.Text.SfntSimpleGlyphShaper;
 
 namespace MS.Internal.Text.TextInterface
 {
@@ -1543,7 +1546,11 @@ namespace MS.Internal.Text.TextInterface
         {
             ArgumentNullException.ThrowIfNull(font);
 
-            SimpleGlyphRun glyphRun = CreateSimpleGlyphRun(textString, textLength, font, blankGlyphIndex);
+            ProGpuSfntSimpleGlyphRun glyphRun = ProGpuSfntSimpleGlyphShaper.CreateGlyphRun(
+                new ReadOnlySpan<char>(textString, checked((int)textLength)),
+                font.FontData.GetGlyphIndex,
+                blankGlyphIndex,
+                font.FontData.GetGlyphIndex(CharHyphen));
             clusterMap = glyphRun.ClusterMap;
             glyphIndices = glyphRun.GlyphIndices;
             glyphAdvances = new int[glyphIndices.Length];
@@ -1585,7 +1592,11 @@ namespace MS.Internal.Text.TextInterface
         {
             ArgumentNullException.ThrowIfNull(font);
 
-            SimpleGlyphRun glyphRun = CreateSimpleGlyphRun(textString, textLength, font, blankGlyphIndex);
+            ProGpuSfntSimpleGlyphRun glyphRun = ProGpuSfntSimpleGlyphShaper.CreateGlyphRun(
+                new ReadOnlySpan<char>(textString, checked((int)textLength)),
+                font.FontData.GetGlyphIndex,
+                blankGlyphIndex,
+                font.FontData.GetGlyphIndex(CharHyphen));
             actualGlyphCount = checked((uint)glyphRun.GlyphIndices.Length);
 
             for (uint i = 0; i < textLength; i++)
@@ -1660,46 +1671,6 @@ namespace MS.Internal.Text.TextInterface
                 glyphOffsets);
         }
 
-        private static SimpleGlyphRun CreateSimpleGlyphRun(char* textString, uint textLength, Font font, ushort blankGlyphIndex)
-        {
-            ushort[] clusterMap = new ushort[textLength];
-            List<ushort> glyphIndices = new List<ushort>(checked((int)textLength));
-
-            uint textIndex = 0;
-            while (textIndex < textLength)
-            {
-                ushort glyphCluster = checked((ushort)glyphIndices.Count);
-                uint codePoint = ReadCodePoint(textString, textLength, textIndex, out uint codeUnitCount);
-                ushort glyphIndex = GetSimpleGlyphIndex(font, codePoint, blankGlyphIndex);
-                glyphIndices.Add(glyphIndex);
-
-                for (uint i = 0; i < codeUnitCount; i++)
-                {
-                    clusterMap[textIndex + i] = glyphCluster;
-                }
-
-                textIndex += codeUnitCount;
-            }
-
-            return new SimpleGlyphRun(clusterMap, glyphIndices.ToArray());
-        }
-
-        private static ushort GetSimpleGlyphIndex(Font font, uint codePoint, ushort blankGlyphIndex)
-        {
-            if (codePoint == 0x00AD)
-            {
-                ushort hyphenGlyph = font.FontData.GetGlyphIndex(CharHyphen);
-                return hyphenGlyph != 0 ? hyphenGlyph : blankGlyphIndex;
-            }
-
-            if (IsFormattingControl(codePoint))
-            {
-                return blankGlyphIndex;
-            }
-
-            return font.FontData.GetGlyphIndex(codePoint);
-        }
-
         private static void FillGlyphPlacements(
             char* textString,
             ushort* clusterMap,
@@ -1713,19 +1684,23 @@ namespace MS.Internal.Text.TextInterface
             int* glyphAdvances,
             GlyphOffset[] glyphOffsets)
         {
-            for (uint i = 0; i < glyphCount; i++)
-            {
-                ushort glyphIndex = glyphIndices[i];
-                int advance = 0;
-
-                if (!IsControlGlyph(textString, clusterMap, textLength, i))
+            ProGpuSfntSimpleGlyphShaper.FillGlyphAdvances(
+                new ReadOnlySpan<char>(textString, checked((int)textLength)),
+                new ReadOnlySpan<ushort>(clusterMap, checked((int)textLength)),
+                new ReadOnlySpan<ushort>(glyphIndices, checked((int)glyphCount)),
+                glyphIndex =>
                 {
                     GlyphMetrics metrics = font.FontData.GetGlyphMetrics(glyphIndex);
-                    uint designAdvance = isSideways ? metrics.AdvanceHeight : metrics.AdvanceWidth;
-                    advance = checked((int)Math.Round(designAdvance * fontEmSize * scalingFactor / font.Metrics.DesignUnitsPerEm));
-                }
+                    return new ProGpuSfntSimpleGlyphMetrics(metrics.AdvanceWidth, metrics.AdvanceHeight);
+                },
+                font.Metrics.DesignUnitsPerEm,
+                fontEmSize,
+                scalingFactor,
+                isSideways,
+                new Span<int>(glyphAdvances, checked((int)glyphCount)));
 
-                glyphAdvances[i] = advance;
+            for (int i = 0; i < glyphOffsets.Length; i++)
+            {
                 glyphOffsets[i] = default;
             }
         }
@@ -1762,50 +1737,6 @@ namespace MS.Internal.Text.TextInterface
             }
         }
 
-        private static bool IsControlGlyph(char* textString, ushort* clusterMap, uint textLength, uint glyphIndex)
-        {
-            for (uint i = 0; i < textLength; i++)
-            {
-                if (clusterMap[i] == glyphIndex)
-                {
-                    uint codePoint = ReadCodePoint(textString, textLength, i, out _);
-                    return IsFormattingControl(codePoint);
-                }
-            }
-
-            return false;
-        }
-
-        private static uint ReadCodePoint(char* textString, uint textLength, uint textIndex, out uint codeUnitCount)
-        {
-            char current = textString[textIndex];
-            if (char.IsHighSurrogate(current) && textIndex + 1 < textLength && char.IsLowSurrogate(textString[textIndex + 1]))
-            {
-                codeUnitCount = 2;
-                return checked((uint)char.ConvertToUtf32(current, textString[textIndex + 1]));
-            }
-
-            codeUnitCount = 1;
-            return current;
-        }
-
-        private static bool IsFormattingControl(uint codePoint)
-        {
-            return codePoint < 0x20 || (codePoint >= 0x7F && codePoint <= 0x9F);
-        }
-
-        private readonly struct SimpleGlyphRun
-        {
-            internal SimpleGlyphRun(ushort[] clusterMap, ushort[] glyphIndices)
-            {
-                ClusterMap = clusterMap;
-                GlyphIndices = glyphIndices;
-            }
-
-            internal ushort[] ClusterMap { get; }
-
-            internal ushort[] GlyphIndices { get; }
-        }
     }
 
     internal static class DWriteTypeConverter

@@ -283,10 +283,16 @@
 - Added ProGPU-owned `ArcSegmentGeometry.TryCreateSubArcSegment(...)` so callers can split a WPF/SVG arc span while preserving the same ellipse, sweep direction, scaled radii, and large-arc flag for the subspan.
 - Replaced the WPF bridge's dashed path-arc cubic/polyline workaround with native dashed arc emission: `ProGpuCompositionCommandSink` now advances dash state over an arc-length table, records visible dash intervals as `DrawPath` commands containing ProGPU `ArcSegment` subspans, and uses the existing shader-native arc stroke path for rendering. Degenerate arcs still fall back to dashed line emission.
 - Added ProGPU and WPF bridge regression coverage proving subarc construction and decoded dashed WPF arc geometry produce native arc dash commands instead of line fallback commands.
+- Added `ProGPU.Text.SfntSimpleGlyphShaper`, a source-shareable helper for the current portable one-scalar-to-one-glyph text fallback. It owns surrogate/code-point reading, WPF-compatible cluster-map filling, soft-hyphen mapping, formatting-control blanking, and metric-derived advance calculation.
+- Linked `SfntSimpleGlyphShaper.cs` into non-Windows real WPF `PresentationCore` beside `SfntFontFace.cs`, and routed `PortableTextInterface.TextAnalyzer` glyph-run creation and glyph advance filling through the ProGPU helper instead of WPF-local `SimpleGlyphRun`, `ReadCodePoint`, `GetSimpleGlyphIndex`, and control-glyph helpers.
+- Added ProGPU text tests for surrogate clusters, soft hyphen/control behavior, and sideways advance calculation, plus WPF source/project graph tests that require the new source-shared helper and reject the removed local simple-shaper code.
+- Verified the source-shared text slice with `dotnet test src/ProGPU.Tests/ProGPU.Tests.csproj --no-restore --verbosity minimal --filter "FullyQualifiedName~SfntSimpleGlyphShaperTests|FullyQualifiedName~StrongNameSigningTests"`; 7 tests passed.
+- Verified real WPF source-sharing with `dotnet build src/Microsoft.DotNet.Wpf/src/PresentationCore/PresentationCore.csproj --no-restore --verbosity minimal`; `PresentationCore` built with 0 warnings and 0 errors.
+- Re-ran the full WPF bridge suite with `dotnet test ../ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj --no-restore --verbosity minimal` from `src/ProGPU.Wpf`; 356 tests passed.
 
 ## Open Porting Items
 
-- Replace the remaining portable `MS.Internal.Text.TextInterface` simple glyph fallback, full-font-copy subsetting fallback, and LineServices dependencies with a ProGPU-backed or cross-platform shaping abstraction.
+- Replace the source-shared portable `MS.Internal.Text.TextInterface` one-scalar-to-one-glyph fallback, full-font-copy subsetting fallback, and LineServices dependencies with a full ProGPU-backed or cross-platform shaping/subsetting abstraction.
 - Wire `WpfRenderDataReflectionBridge` into real WPF visual rendering paths or replace it with an in-assembly bridge once the port lane compiles managed WPF directly.
 - Replace the reflection visual subtree renderer with in-assembly visual traversal when managed WPF compiles in the port lane.
 - Expand adapters for cross-assembly real WPF visual resources: remaining tile-brush cases including non-affine or unreadable transform types and advanced visual-brush state, platform codecs, color management and color-profile fidelity, formatted text, complex glyph/typeface identity beyond local font-file URI and bold/italic style-simulation replay, animation resources, and drawing effects.

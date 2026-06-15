@@ -61,6 +61,8 @@ Rectangular clip scopes intentionally stay on ProGPU's native scissor path. The 
 
 Combined geometry is now part of the ProGPU-owned vector path model for WPF shim users as well as the transition bridge. `ProGPU.Vector.PathGeometry.CreateTransformed(...)` preserves line, quadratic, cubic, and arc segment metadata while baking child transforms into native path-op operands, and shim-level `CombinedGeometry` maps WPF `Union`, `Intersect`, `Xor`, and `Exclude` to ProGPU path-op ids instead of forcing bounds fallback.
 
+Primitive WPF shim geometries now use the same native path representation. `LineGeometry`, `RectangleGeometry`, `EllipseGeometry`, and `GeometryGroup` expose `TryGetPathGeometry(...)`; rectangles and ellipses reuse `ProGPU.Vector.PrimitivePathGeometry`, so ellipse/group clips keep native arc segments and path masks. Shared `ProGPU.Vector.PathGeometry.TryGetBounds(...)` computes ordinary and combined path bounds, including transformed arc bounds after `CreateTransformed(...)`, so shim geometry bounds no longer need duplicate managed arc/bounds code. WPF `PathGeometry.Draw(...)` also splits fill and stroke only when a figure has `IsFilled=false`, excluding those figures from fill atlas commands while leaving the full path available to native stroke commands.
+
 ## Managed WPF Reuse Strategy
 
 The migration should move WPF managed code in layers:

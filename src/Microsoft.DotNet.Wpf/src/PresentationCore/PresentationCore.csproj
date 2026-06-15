@@ -275,9 +275,13 @@
     <Compile Include="MS\Internal\Text\TextInterface\DWriteInterfaces.cs" />
     <Compile Include="MS\Internal\Text\TextInterface\DWriteLoader.cs" />
     <Compile Include="MS\Internal\Text\TextInterface\DWriteUtil.cs" />
-    <Compile Include="MS\Internal\Text\TextInterface\Factory.cs" />
-    <Compile Include="MS\Internal\Text\TextInterface\FontCollectionLoader.cs" />
+    <Compile Include="MS\Internal\Text\TextInterface\Factory.cs"
+             Condition="'$(OS)' == 'Windows_NT'" />
+    <Compile Include="MS\Internal\Text\TextInterface\FontCollectionLoader.cs"
+             Condition="'$(OS)' == 'Windows_NT'" />
     <Compile Include="MS\Internal\Text\TextInterface\IFontSourceCollection.cs" />
+    <Compile Include="MS\Internal\Text\TextInterface\PortableTextInterface.cs"
+             Condition="'$(OS)' != 'Windows_NT'" />
     <Compile Include="MS\Internal\TextFormatting\Bidi.cs" />
     <Compile Include="MS\Internal\TextFormatting\CultureMapper.cs" />
     <Compile Include="MS\Internal\TextFormatting\DrawingState.cs" />
@@ -718,6 +722,7 @@
     <Compile Include="System\Windows\Media\DrawingBrush.cs" />
     <Compile Include="System\Windows\Media\DrawingCollection.cs" />
     <Compile Include="System\Windows\Media\DrawingContext.cs" />
+    <Compile Include="System\Windows\Media\DrawingContextRenderDataSink.cs" />
     <Compile Include="System\Windows\Media\DrawingContextDrawingContextWalker.cs" />
     <Compile Include="System\Windows\Media\DrawingContextWalker.cs" />
     <Compile Include="System\Windows\Media\DrawingDrawingContext.cs" />
@@ -819,7 +824,9 @@
     <Compile Include="System\Windows\Media\RenderCapability.cs" />
     <Compile Include="System\Windows\Media\RenderContext.cs" />
     <Compile Include="System\Windows\Media\RenderData.cs" />
+    <Compile Include="System\Windows\Media\IRenderDataDrawingContextSink.cs" />
     <Compile Include="System\Windows\Media\RenderDataDrawingContext.cs" />
+    <Compile Include="System\Windows\Media\RenderDataDrawingContextSinkProvider.cs" />
     <Compile Include="System\Windows\Media\Renderer.cs" />
     <Compile Include="System\Windows\Media\RenderingEventArgs.cs" />
     <Compile Include="System\Windows\Media\RenderOptions.cs" />
@@ -1393,7 +1400,8 @@
   <ItemGroup>
     <!-- required for internals access -->
     <ProjectReference Include="$(WpfSourceDir)WindowsBase\WindowsBase.csproj" />
-    <ProjectReference Include="$(WpfSourceDir)DirectWriteForwarder\DirectWriteForwarder.vcxproj">
+    <ProjectReference Include="$(WpfSourceDir)DirectWriteForwarder\DirectWriteForwarder.vcxproj"
+                      Condition="'$(OS)' == 'Windows_NT'">
       <UndefineProperties>TargetFramework;TargetFrameworks</UndefineProperties>
     </ProjectReference>
     <ProjectReference Include="$(WpfSourceDir)System.Xaml\System.Xaml.csproj" />

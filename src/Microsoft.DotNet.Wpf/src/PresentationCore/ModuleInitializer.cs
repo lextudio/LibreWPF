@@ -20,6 +20,11 @@ internal static class ModuleInitializer
     [ModuleInitializer]
     public static void Initialize()
     {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
         IsProcessDpiAware();
 
         DWriteLoader.LoadDWrite();

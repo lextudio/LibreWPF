@@ -21,6 +21,7 @@ using VectorLineSegment = ProGPU.Vector.LineSegment;
 using VectorPen = ProGPU.Vector.Pen;
 using VectorPathFigure = ProGPU.Vector.PathFigure;
 using VectorPathGeometry = ProGPU.Vector.PathGeometry;
+using VectorPrimitivePathGeometry = ProGPU.Vector.PrimitivePathGeometry;
 using VectorQuadraticBezierSegment = ProGPU.Vector.QuadraticBezierSegment;
 using VectorBrush = ProGPU.Vector.Brush;
 using VectorPenLineCap = ProGPU.Vector.PenLineCap;
@@ -33,7 +34,6 @@ namespace System.Windows.Media.ProGPU.Composition;
 public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, IWpfViewport3DCommandSink, IWpfCompositionCommandSinkDiagnostics
 {
     private const float TransformEpsilon = 0.0001f;
-    private const int DashedCurveSegmentsPerQuadrant = 8;
 
     private enum PushKind
     {
@@ -840,7 +840,16 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             return TryDrawDashedRectangle(nativePen, pen, rectangle);
         }
 
-        return TryDrawDashedPolyline(nativePen, pen, BuildRoundedRectanglePolyline(rectangle, radiusX, radiusY));
+        return TryDrawDashedPath(
+            nativePen,
+            pen,
+            VectorPrimitivePathGeometry.CreateRoundedRectangle(
+                (float)rectangle.X,
+                (float)rectangle.Y,
+                (float)rectangle.Width,
+                (float)rectangle.Height,
+                (float)radiusX,
+                (float)radiusY));
     }
 
     private bool TryDrawDashedEllipse(
@@ -855,7 +864,13 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             return false;
         }
 
-        return TryDrawDashedPolyline(nativePen, pen, BuildEllipsePolyline(center, radiusX, radiusY));
+        return TryDrawDashedPath(
+            nativePen,
+            pen,
+            VectorPrimitivePathGeometry.CreateEllipse(
+                new Vector2((float)center.X, (float)center.Y),
+                (float)radiusX,
+                (float)radiusY));
     }
 
     private bool TryDrawDashedPath(VectorPen nativePen, ProGpuWpfPen pen, VectorPathGeometry path)
@@ -975,61 +990,9 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         return handled;
     }
 
-    private static IReadOnlyList<Point> BuildRoundedRectanglePolyline(Rect rectangle, double radiusX, double radiusY)
-    {
-        var points = new List<Point>
-        {
-            new(rectangle.X + radiusX, rectangle.Y),
-            new(rectangle.X + rectangle.Width - radiusX, rectangle.Y)
-        };
-
-        AppendArc(points, rectangle.X + rectangle.Width - radiusX, rectangle.Y + radiusY, radiusX, radiusY, -Math.PI / 2, 0);
-        points.Add(new Point(rectangle.X + rectangle.Width, rectangle.Y + rectangle.Height - radiusY));
-        AppendArc(points, rectangle.X + rectangle.Width - radiusX, rectangle.Y + rectangle.Height - radiusY, radiusX, radiusY, 0, Math.PI / 2);
-        points.Add(new Point(rectangle.X + radiusX, rectangle.Y + rectangle.Height));
-        AppendArc(points, rectangle.X + radiusX, rectangle.Y + rectangle.Height - radiusY, radiusX, radiusY, Math.PI / 2, Math.PI);
-        points.Add(new Point(rectangle.X, rectangle.Y + radiusY));
-        AppendArc(points, rectangle.X + radiusX, rectangle.Y + radiusY, radiusX, radiusY, Math.PI, Math.PI * 1.5);
-        points.Add(points[0]);
-        return points;
-    }
-
-    private static IReadOnlyList<Point> BuildEllipsePolyline(Point center, double radiusX, double radiusY)
-    {
-        var segments = Math.Clamp((int)Math.Ceiling(Math.Max(radiusX, radiusY) * Math.PI / 4), 16, 96);
-        var points = new List<Point>(segments + 1);
-        for (var i = 0; i <= segments; i++)
-        {
-            var angle = Math.PI * 2 * i / segments;
-            points.Add(new Point(
-                center.X + Math.Cos(angle) * radiusX,
-                center.Y + Math.Sin(angle) * radiusY));
-        }
-
-        return points;
-    }
-
     private static Point ToPoint(Vector2 point)
     {
         return new Point(point.X, point.Y);
-    }
-
-    private static void AppendArc(
-        List<Point> points,
-        double centerX,
-        double centerY,
-        double radiusX,
-        double radiusY,
-        double startAngle,
-        double endAngle)
-    {
-        for (var i = 1; i <= DashedCurveSegmentsPerQuadrant; i++)
-        {
-            var angle = startAngle + (endAngle - startAngle) * i / DashedCurveSegmentsPerQuadrant;
-            points.Add(new Point(
-                centerX + Math.Cos(angle) * radiusX,
-                centerY + Math.Sin(angle) * radiusY));
-        }
     }
 
     private bool TryDrawDashedPolyline(VectorPen nativePen, ProGpuWpfPen pen, IReadOnlyList<Point> points)

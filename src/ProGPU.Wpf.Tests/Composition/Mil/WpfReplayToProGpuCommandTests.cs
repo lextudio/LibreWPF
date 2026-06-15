@@ -11,6 +11,7 @@ using ProGPU.Backend;
 using Xunit;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
 using ProGpuDrawingContext = ProGPU.Scene.DrawingContext;
+using ProGpuArcSegment = ProGPU.Vector.ArcSegment;
 using ProGpuCubicBezierSegment = ProGPU.Vector.CubicBezierSegment;
 using ProGpuLinearGradientBrush = ProGPU.Vector.LinearGradientBrush;
 using ProGpuQuadraticBezierSegment = ProGPU.Vector.QuadraticBezierSegment;
@@ -832,7 +833,7 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
-    public void DecodeFilledDashedRoundedRectangleThroughProGpuSinkEmitsFillThenDashSegmentCommands()
+    public void DecodeFilledDashedRoundedRectangleThroughProGpuSinkEmitsFillThenNativeArcDashCommands()
     {
         var pen = new FakePen(
             new FakeSolidColorBrush(new FakeColor(255, 0, 0, 0)),
@@ -865,14 +866,20 @@ public sealed class WpfReplayToProGpuCommandTests
         Assert.Equal(RenderCommandType.DrawRoundedRect, nativeContext.Commands[0].Type);
         Assert.NotNull(nativeContext.Commands[0].Brush);
         Assert.Null(nativeContext.Commands[0].Pen);
-        Assert.All(nativeContext.Commands.Skip(1), command => Assert.Equal(RenderCommandType.DrawLine, command.Type));
         Assert.Contains(nativeContext.Commands.Skip(1), command =>
-            command.Position.X != command.Position2.X
+            command.Type == RenderCommandType.DrawPath
+            && command.Brush == null
+            && command.Pen != null
+            && command.Path != null
+            && command.Path.Figures.SelectMany(figure => figure.Segments).OfType<ProGpuArcSegment>().Any());
+        Assert.DoesNotContain(nativeContext.Commands.Skip(1), command =>
+            command.Type == RenderCommandType.DrawLine
+            && command.Position.X != command.Position2.X
             && command.Position.Y != command.Position2.Y);
     }
 
     [Fact]
-    public void DecodeFilledDashedEllipseThroughProGpuSinkEmitsFillThenDashSegmentCommands()
+    public void DecodeFilledDashedEllipseThroughProGpuSinkEmitsFillThenNativeArcDashCommands()
     {
         var pen = new FakePen(
             new FakeSolidColorBrush(new FakeColor(255, 0, 0, 0)),
@@ -905,10 +912,13 @@ public sealed class WpfReplayToProGpuCommandTests
         Assert.Equal(RenderCommandType.DrawEllipse, nativeContext.Commands[0].Type);
         Assert.NotNull(nativeContext.Commands[0].Brush);
         Assert.Null(nativeContext.Commands[0].Pen);
-        Assert.All(nativeContext.Commands.Skip(1), command => Assert.Equal(RenderCommandType.DrawLine, command.Type));
         Assert.Contains(nativeContext.Commands.Skip(1), command =>
-            command.Position.X != command.Position2.X
-            && command.Position.Y != command.Position2.Y);
+            command.Type == RenderCommandType.DrawPath
+            && command.Brush == null
+            && command.Pen != null
+            && command.Path != null
+            && command.Path.Figures.SelectMany(figure => figure.Segments).OfType<ProGpuArcSegment>().Any());
+        Assert.DoesNotContain(nativeContext.Commands.Skip(1), command => command.Type == RenderCommandType.DrawLine);
     }
 
     [Fact]

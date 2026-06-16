@@ -873,6 +873,9 @@
 - Advanced the ProGPU submodule to `56d1c7f` (`backend: Preserve straight alpha texture uploads`) and replied to ProGPU PR #17 review thread `discussion_r3424679624`.
 - Restored `GpuTexture` constructor defaults so existing generic `WritePixels(...)` callers keep straight-alpha RGBA upload semantics, while Skia surfaces, GDI bitmaps, WPF `WriteableBitmap`, host offscreen targets, retained layers, and effect textures now opt into premultiplied render-target semantics explicitly.
 - Verified the ProGPU straight-alpha upload slice with `git diff --check`, focused `TextureBlendRenderTests`, and adjacent `TextureBlendRenderTests|SkSurfaceBackendRenderTargetTests|SkImageBitmapTests|GdiShimTests|ImageEffectRenderTests`; 31 adjacent tests passed with existing warnings only.
+- Advanced the ProGPU submodule to `6108c63` (`scene: Invalidate visuals when effects mutate`) and replied to ProGPU PR #17 review thread `discussion_r3424663066`.
+- ProGPU `EffectBase` now tracks weak owning visuals and invalidates them when mutable effect properties change, so cached/effected retained visuals and cached ancestors re-render through native scene dirty propagation instead of requiring WPF bridge-side effect polling or managed replay workarounds.
+- Verified the ProGPU effect-owner invalidation slice with `git diff --check`, focused `VisualChangeVersionTests`, and adjacent `VisualChangeVersionTests|VisualEffectRenderTests|LayerRenderTests|WpfShaderEffectRenderTests`; 27 adjacent tests passed with existing warnings only.
 
 ## Open Porting Items
 

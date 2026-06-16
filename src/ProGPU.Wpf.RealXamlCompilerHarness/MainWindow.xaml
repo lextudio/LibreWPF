@@ -44,6 +44,11 @@
             CommandParameter="routed command payload"
             CommandTarget="{Binding ElementName=InputBox}"
             Content="run routed command" />
+        <Button
+            x:Name="TemplatedButton"
+            Margin="0,8,0,0"
+            Content="templated button"
+            Template="{StaticResource SmokeButtonTemplate}" />
         <ListBox
             x:Name="ItemsList"
             Margin="0,8,0,0"

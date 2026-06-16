@@ -89,11 +89,18 @@ internal static class Program
         AssertEqual("MainWindow.xaml", GetProperty(application, "StartupUri").ToString(), "startup URI");
 
         object resources = GetProperty(application, "Resources");
-        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 2, "application resource keys");
+        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 4, "application resource keys");
 
         object accentBrush = GetDictionaryValue(resources, "AccentBrush");
         AssertType(accentBrush, "System.Windows.Media.SolidColorBrush", "accent brush");
         AssertEqual("#FF356D9E", GetProperty(accentBrush, "Color").ToString(), "accent brush color");
+
+        object replacementAccentBrush = GetDictionaryValue(resources, "ReplacementAccentBrush");
+        AssertType(replacementAccentBrush, "System.Windows.Media.SolidColorBrush", "replacement accent brush");
+        AssertEqual("#FF9C4A2F", GetProperty(replacementAccentBrush, "Color").ToString(), "replacement accent brush color");
+
+        object smokeButtonTemplate = GetDictionaryValue(resources, "SmokeButtonTemplate");
+        AssertType(smokeButtonTemplate, "System.Windows.Controls.ControlTemplate", "button control template");
 
         object textBoxStyle = GetDictionaryValue(resources, "SmokeTextBoxStyle");
         AssertType(textBoxStyle, "System.Windows.Style", "TextBox style");
@@ -110,7 +117,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 7, "stack panel children");
+        AssertCollectionCount(children, expected: 8, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -137,6 +144,7 @@ internal static class Program
 
         ValidateBindingAndCommand(window);
         ValidateRoutedCommand(window);
+        ValidateTemplateAndDynamicResource(window, application);
         ValidateItemsBindingAndTemplate(window);
     }
 
@@ -188,6 +196,27 @@ internal static class Program
         InvokeTwoArgumentCommand(routedCommand, "Execute", commandParameter, inputBox);
         AssertEqual(1, GetProperty(window, "RoutedCommandExecutionCount"), "routed command execution count");
         AssertEqual("routed command payload", GetProperty(window, "LastRoutedCommandParameter"), "routed command executed parameter");
+    }
+
+    private static void ValidateTemplateAndDynamicResource(object window, object application)
+    {
+        object resources = GetProperty(application, "Resources");
+        object accentBrush = GetDictionaryValue(resources, "AccentBrush");
+        object replacementAccentBrush = GetDictionaryValue(resources, "ReplacementAccentBrush");
+        object expectedTemplate = GetDictionaryValue(resources, "SmokeButtonTemplate");
+
+        object templatedButton = GetField(window, "TemplatedButton");
+        AssertType(templatedButton, "System.Windows.Controls.Button", "compiled templated Button");
+        AssertEqual("templated button", GetProperty(templatedButton, "Content"), "compiled templated Button content");
+        AssertSame(expectedTemplate, GetProperty(templatedButton, "Template"), "compiled Button control template");
+        AssertEqual(true, Invoke(templatedButton, "ApplyTemplate"), "compiled Button template application");
+
+        object templateBorder = Invoke(expectedTemplate, "FindName", "TemplateBorder", templatedButton);
+        AssertType(templateBorder, "System.Windows.Controls.Border", "compiled ControlTemplate named part");
+        AssertSame(accentBrush, GetProperty(templateBorder, "Background"), "compiled ControlTemplate dynamic resource initial value");
+
+        SetDictionaryValue(resources, "AccentBrush", replacementAccentBrush);
+        AssertSame(replacementAccentBrush, GetProperty(templateBorder, "Background"), "compiled ControlTemplate dynamic resource update");
     }
 
     private static void ValidateItemsBindingAndTemplate(object window)
@@ -326,6 +355,17 @@ internal static class Program
         }
 
         return value;
+    }
+
+    private static void SetDictionaryValue(object dictionary, object key, object value)
+    {
+        if (dictionary is IDictionary nonGenericDictionary)
+        {
+            nonGenericDictionary[key] = value;
+            return;
+        }
+
+        Invoke(dictionary, "set_Item", key, value);
     }
 
     private static object GetCollectionItem(object collection, int index)

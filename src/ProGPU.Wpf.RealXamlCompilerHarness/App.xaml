@@ -5,6 +5,18 @@
     StartupUri="MainWindow.xaml">
     <Application.Resources>
         <SolidColorBrush x:Key="AccentBrush" Color="#356D9E" />
+        <SolidColorBrush x:Key="ReplacementAccentBrush" Color="#9C4A2F" />
+        <ControlTemplate x:Key="SmokeButtonTemplate" TargetType="{x:Type Button}">
+            <Border
+                x:Name="TemplateBorder"
+                Background="{DynamicResource AccentBrush}"
+                Padding="4">
+                <ContentPresenter
+                    Content="{TemplateBinding Content}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center" />
+            </Border>
+        </ControlTemplate>
         <Style x:Key="SmokeTextBoxStyle" TargetType="{x:Type TextBox}">
             <Setter Property="MinWidth" Value="180" />
             <Setter Property="Margin" Value="0,8,0,0" />

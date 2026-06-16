@@ -17,6 +17,7 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
 
     private readonly IWpfCompositionCommandSink _sink;
     private readonly WpfReflectionResourceResolver _resources;
+    private readonly IWpfImageSourceAdapter? _imageSourceAdapter;
     private int _stackDepth;
     private int _operationCount;
     private int _appliedCount;
@@ -28,6 +29,7 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
         IWpfImageSourceAdapter? imageSourceAdapter = null)
     {
         _sink = sink ?? throw new ArgumentNullException(nameof(sink));
+        _imageSourceAdapter = imageSourceAdapter;
         _resources = new WpfReflectionResourceResolver(imageSourceAdapter);
     }
 
@@ -389,7 +391,7 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
     {
         ThrowIfClosed();
 
-        if (WpfEffectReflection.TryCreateProGpuPushEffect(effect, effectInput, out var proGpuEffect)
+        if (WpfEffectReflection.TryCreateProGpuPushEffect(effect, effectInput, out var proGpuEffect, _imageSourceAdapter)
             && _sink is IWpfVisualEffectCommandSink effectSink
             && effectSink.PushVisualEffect(proGpuEffect))
         {

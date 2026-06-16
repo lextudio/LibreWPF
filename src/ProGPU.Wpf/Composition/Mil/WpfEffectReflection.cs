@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Numerics;
 using System.Reflection;
 using ProGPU.Scene;
+using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
+using MediaImageSource = System.Windows.Media.ImageSource;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
 
@@ -11,7 +13,10 @@ internal static class WpfEffectReflection
 {
     private const BindingFlags MemberFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
-    public static bool TryCreateProGpuEffect(object? effect, out global::ProGPU.Scene.EffectBase proGpuEffect)
+    public static bool TryCreateProGpuEffect(
+        object? effect,
+        out global::ProGPU.Scene.EffectBase proGpuEffect,
+        IWpfImageSourceAdapter? imageSourceAdapter = null)
     {
         if (effect != null)
         {
@@ -28,12 +33,12 @@ internal static class WpfEffectReflection
             }
 
             if (IsShaderEffectLike(effect)
-                && TryCreateShaderEffect(effect, out proGpuEffect))
+                && TryCreateShaderEffect(effect, imageSourceAdapter, out proGpuEffect))
             {
                 return true;
             }
 
-            if (TryCreateEmulatedBitmapEffect(effect, out proGpuEffect))
+            if (TryCreateEmulatedBitmapEffect(effect, imageSourceAdapter, out proGpuEffect))
             {
                 return true;
             }
@@ -46,7 +51,8 @@ internal static class WpfEffectReflection
     public static bool TryCreateProGpuPushEffect(
         object? effect,
         object? effectInput,
-        out global::ProGPU.Scene.EffectBase proGpuEffect)
+        out global::ProGPU.Scene.EffectBase proGpuEffect,
+        IWpfImageSourceAdapter? imageSourceAdapter = null)
     {
         proGpuEffect = null!;
         if (effect == null || !IsSupportedBitmapEffectInput(effectInput))
@@ -54,7 +60,7 @@ internal static class WpfEffectReflection
             return false;
         }
 
-        return TryCreateProGpuEffect(effect, out proGpuEffect);
+        return TryCreateProGpuEffect(effect, out proGpuEffect, imageSourceAdapter);
     }
 
     private static bool TryCreateBlurEffect(object effect, out global::ProGPU.Scene.EffectBase proGpuEffect)
@@ -104,7 +110,10 @@ internal static class WpfEffectReflection
         return true;
     }
 
-    private static bool TryCreateShaderEffect(object effect, out global::ProGPU.Scene.EffectBase proGpuEffect)
+    private static bool TryCreateShaderEffect(
+        object effect,
+        IWpfImageSourceAdapter? imageSourceAdapter,
+        out global::ProGPU.Scene.EffectBase proGpuEffect)
     {
         proGpuEffect = null!;
 
@@ -128,7 +137,12 @@ internal static class WpfEffectReflection
             return false;
         }
 
-        if (!TryReadShaderSamplerState(effect, out var sourceTextureRegisterIndex, out var samplingMode))
+        if (!TryReadShaderSamplerState(
+                effect,
+                imageSourceAdapter,
+                out var sourceTextureRegisterIndex,
+                out var samplingMode,
+                out var samplers))
         {
             return false;
         }
@@ -138,6 +152,7 @@ internal static class WpfEffectReflection
             ShaderSource = replacement.ShaderSource,
             ShaderKey = replacement.ShaderKey,
             Constants = ReadFloatConstants(effect),
+            Samplers = samplers,
             SamplingMode = samplingMode,
             SourceTextureRegisterIndex = sourceTextureRegisterIndex
         };
@@ -151,7 +166,10 @@ internal static class WpfEffectReflection
         return true;
     }
 
-    private static bool TryCreateEmulatedBitmapEffect(object effect, out global::ProGPU.Scene.EffectBase proGpuEffect)
+    private static bool TryCreateEmulatedBitmapEffect(
+        object effect,
+        IWpfImageSourceAdapter? imageSourceAdapter,
+        out global::ProGPU.Scene.EffectBase proGpuEffect)
     {
         proGpuEffect = null!;
         if (!TypeNameEndsWith(effect, "BitmapEffect"))
@@ -169,7 +187,7 @@ internal static class WpfEffectReflection
             && emulatedEffect != null
             && !ReferenceEquals(effect, emulatedEffect))
         {
-            return TryCreateProGpuEffect(emulatedEffect, out proGpuEffect);
+            return TryCreateProGpuEffect(emulatedEffect, out proGpuEffect, imageSourceAdapter);
         }
 
         return false;
@@ -266,11 +284,14 @@ internal static class WpfEffectReflection
 
     private static bool TryReadShaderSamplerState(
         object effect,
+        IWpfImageSourceAdapter? imageSourceAdapter,
         out int sourceTextureRegisterIndex,
-        out TextureSamplingMode samplingMode)
+        out TextureSamplingMode samplingMode,
+        out WpfShaderEffectSampler[] samplers)
     {
         sourceTextureRegisterIndex = 0;
         samplingMode = TextureSamplingMode.Linear;
+        samplers = Array.Empty<WpfShaderEffectSampler>();
 
         if (!TryGetFieldValue(effect, "_samplerData", out var samplerData) || samplerData is not IEnumerable enumerable)
         {
@@ -279,45 +300,103 @@ internal static class WpfEffectReflection
 
         var registerIndex = 0;
         var hasImplicitInput = false;
+        List<WpfShaderEffectSampler>? samplerList = null;
 
         foreach (var sampler in enumerable)
         {
             if (sampler != null)
             {
+                if (registerIndex >= WpfShaderEffectParams.MaxSamplerRegisterCount)
+                {
+                    return false;
+                }
+
                 if (!TryGetMemberValue(sampler, "_brush", out var brush) || brush == null)
                 {
                     registerIndex++;
                     continue;
                 }
 
-                if (!IsImplicitInputBrush(brush))
-                {
-                    return false;
-                }
-
-                if (hasImplicitInput)
-                {
-                    return false;
-                }
-
-                if (registerIndex >= WpfShaderEffectParams.MaxSamplerRegisterCount)
-                {
-                    return false;
-                }
-
-                sourceTextureRegisterIndex = registerIndex;
-                hasImplicitInput = true;
-
+                var samplerSamplingMode = TextureSamplingMode.Linear;
                 if (TryGetMemberValue(sampler, "_samplingMode", out var reflectedSamplingMode))
                 {
-                    samplingMode = ConvertSamplingMode(reflectedSamplingMode);
+                    samplerSamplingMode = ConvertSamplingMode(reflectedSamplingMode);
+                }
+
+                if (IsImplicitInputBrush(brush))
+                {
+                    if (hasImplicitInput)
+                    {
+                        return false;
+                    }
+
+                    sourceTextureRegisterIndex = registerIndex;
+                    samplingMode = samplerSamplingMode;
+                    hasImplicitInput = true;
+                }
+                else if (TryCreateShaderSampler(
+                             brush,
+                             imageSourceAdapter,
+                             registerIndex,
+                             samplerSamplingMode,
+                             out var shaderSampler))
+                {
+                    samplerList ??= new List<WpfShaderEffectSampler>();
+                    samplerList.Add(shaderSampler);
+                }
+                else
+                {
+                    return false;
                 }
             }
 
             registerIndex++;
         }
 
+        if (samplerList != null)
+        {
+            foreach (var shaderSampler in samplerList)
+            {
+                if (shaderSampler.RegisterIndex == sourceTextureRegisterIndex)
+                {
+                    return false;
+                }
+            }
+
+            samplers = samplerList.ToArray();
+        }
+
         return true;
+    }
+
+    private static bool TryCreateShaderSampler(
+        object brush,
+        IWpfImageSourceAdapter? imageSourceAdapter,
+        int registerIndex,
+        TextureSamplingMode samplingMode,
+        out WpfShaderEffectSampler sampler)
+    {
+        sampler = null!;
+        if (!TypeNameEndsWith(brush, "ImageBrush")
+            || !TryGetPropertyValue(brush, "ImageSource", out var imageSource)
+            || ResolveImageSource(imageSource, imageSourceAdapter) is not MediaBitmapSource bitmapSource
+            || bitmapSource.PixelWidth <= 0
+            || bitmapSource.PixelHeight <= 0)
+        {
+            return false;
+        }
+
+        sampler = new WpfShaderEffectSampler(registerIndex, bitmapSource.GpuTexture, samplingMode);
+        return true;
+    }
+
+    private static MediaImageSource? ResolveImageSource(
+        object? imageSource,
+        IWpfImageSourceAdapter? imageSourceAdapter)
+    {
+        return imageSource is MediaImageSource mediaImageSource
+            ? mediaImageSource
+            : imageSourceAdapter?.AdaptImageSource(imageSource);
     }
 
     private static float ReadMaxShaderPadding(object effect)

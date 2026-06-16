@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.ProGPU.Composition;
@@ -11,9 +12,11 @@ using MediaDrawingContext = System.Windows.Media.DrawingContext;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
+using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
 using MediaPen = System.Windows.Media.Pen;
 using MediaTransform = System.Windows.Media.Transform;
 using WpfVector = System.Windows.Vector;
+using ProGpuTexture = ProGPU.Backend.GpuTexture;
 using ProGpuBlurEffect = ProGPU.Scene.BlurEffect;
 using ProGpuDropShadowEffect = ProGPU.Scene.DropShadowEffect;
 using ProGpuEffectBase = ProGPU.Scene.EffectBase;
@@ -763,6 +766,82 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreePushesNativeShaderEffectWithImageBrushSampler()
+    {
+        var bytecode = new byte[] { 0, 3, 0, 0, 2, 4, 6, 8 };
+        var shaderSource = "fn wpf_effect_main(uv: vec2<f32>, inputColor: vec4<f32>) -> vec4<f32> { return inputColor; }";
+        var replacementKey = WpfShaderEffectRegistry.RegisterPixelShaderBytecode(
+            bytecode,
+            shaderSource,
+            shaderKey: "registered_image_sampler_shader");
+        var samplerTexture = (ProGpuTexture)RuntimeHelpers.GetUninitializedObject(typeof(ProGpuTexture));
+        var rawSamplerSource = new FakeBitmapSource();
+        var imageAdapter = new FakeImageSourceAdapter(new FakeSamplerBitmapSource(samplerTexture));
+
+        try
+        {
+            var shaderEffect = new FakeShaderEffect(bytecode);
+            shaderEffect.SetImplicitInputSampler(0, FakeSamplingMode.Bilinear);
+            shaderEffect.SetSampler(2, new FakeShaderImageBrush(rawSamplerSource), FakeSamplingMode.NearestNeighbor);
+
+            var root = new FakeVisual { Effect = shaderEffect };
+            root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+            var sink = new TestSink { AcceptVisualEffects = true };
+            var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(
+                root,
+                sink,
+                imageSourceAdapter: imageAdapter);
+
+            Assert.Equal(new[] { "PushVisualEffect", "DrawRectangle", "Pop" }, sink.Operations);
+            var effect = Assert.IsType<ProGpuWpfShaderEffect>(Assert.Single(sink.VisualEffects));
+            var sampler = Assert.Single(effect.Parameters.Samplers);
+            Assert.Equal(2, sampler.RegisterIndex);
+            Assert.Same(samplerTexture, sampler.Texture);
+            Assert.Equal(ProGpuTextureSamplingMode.Nearest, sampler.SamplingMode);
+            Assert.Equal(0, effect.Parameters.SourceTextureRegisterIndex);
+            Assert.Equal(ProGpuTextureSamplingMode.Linear, effect.Parameters.SamplingMode);
+            Assert.Same(rawSamplerSource, imageAdapter.LastImageSource);
+            Assert.Equal(0, result.UnsupportedVisualStateCount);
+        }
+        finally
+        {
+            WpfShaderEffectRegistry.Unregister(replacementKey);
+        }
+    }
+
+    [Fact]
+    public void ReplaySubtreeCountsShaderEffectUnsupportedForUnsupportedSamplerBrush()
+    {
+        var bytecode = new byte[] { 0, 3, 0, 0, 5, 7, 9, 11 };
+        var replacementKey = WpfShaderEffectRegistry.RegisterPixelShaderBytecode(
+            bytecode,
+            "fn wpf_effect_main(uv: vec2<f32>, inputColor: vec4<f32>) -> vec4<f32> { return inputColor; }",
+            shaderKey: "registered_unsupported_sampler_shader");
+
+        try
+        {
+            var shaderEffect = new FakeShaderEffect(bytecode);
+            shaderEffect.SetImplicitInputSampler(0, FakeSamplingMode.Bilinear);
+            shaderEffect.SetSampler(2, new FakeUnsupportedSamplerBrush(), FakeSamplingMode.NearestNeighbor);
+
+            var root = new FakeVisual { Effect = shaderEffect };
+            root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+            var sink = new TestSink { AcceptVisualEffects = true };
+            var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+            Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
+            Assert.Empty(sink.VisualEffects);
+            Assert.Equal(1, result.UnsupportedVisualStateCount);
+        }
+        finally
+        {
+            WpfShaderEffectRegistry.Unregister(replacementKey);
+        }
+    }
+
+    [Fact]
     public void ReplaySubtreeCountsShaderEffectUnsupportedWhenReplacementIsMissing()
     {
         var root = new FakeVisual
@@ -1173,12 +1252,17 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         public void SetImplicitInputSampler(int registerIndex, FakeSamplingMode samplingMode)
         {
+            SetSampler(registerIndex, new FakeImplicitInputBrush(), samplingMode);
+        }
+
+        public void SetSampler(int registerIndex, object? brush, FakeSamplingMode samplingMode)
+        {
             while (_samplerData.Count <= registerIndex)
             {
                 _samplerData.Add(null);
             }
 
-            _samplerData[registerIndex] = new FakeSamplerData(new FakeImplicitInputBrush(), samplingMode);
+            _samplerData[registerIndex] = new FakeSamplerData(brush, samplingMode);
         }
     }
 
@@ -1200,6 +1284,36 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
     private sealed class FakeImplicitInputBrush
     {
+    }
+
+    private sealed class FakeShaderImageBrush
+    {
+        public FakeShaderImageBrush(object? imageSource)
+        {
+            ImageSource = imageSource;
+        }
+
+        public object? ImageSource { get; }
+    }
+
+    private sealed class FakeUnsupportedSamplerBrush
+    {
+    }
+
+    private sealed class FakeSamplerBitmapSource : MediaBitmapSource
+    {
+        private readonly ProGpuTexture _texture;
+
+        public FakeSamplerBitmapSource(ProGpuTexture texture)
+        {
+            _texture = texture;
+        }
+
+        public override int PixelWidth => 1;
+
+        public override int PixelHeight => 1;
+
+        public override ProGpuTexture GpuTexture => _texture;
     }
 
     private enum FakeSamplingMode
@@ -1275,7 +1389,12 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
     private sealed class FakeImageSourceAdapter : IWpfImageSourceAdapter
     {
-        public MediaImageSource AdaptedImageSource { get; } = new FakeImageSource();
+        public FakeImageSourceAdapter(MediaImageSource? adaptedImageSource = null)
+        {
+            AdaptedImageSource = adaptedImageSource ?? new FakeImageSource();
+        }
+
+        public MediaImageSource AdaptedImageSource { get; }
 
         public object? LastImageSource { get; private set; }
 

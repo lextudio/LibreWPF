@@ -405,7 +405,7 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         foreach (var target in targets)
         {
             if (target.Visual is not ProGpuRetainedDrawingVisual branchVisual ||
-                !_visualTreeRenderer.CanReplaySubtreeIntoCurrentRetainedVisual(target.Source))
+                !_visualTreeRenderer.CanReplaySubtreeIntoCurrentRetainedVisual(target.Source, WpfImageSourceAdapter))
             {
                 targets = Array.Empty<WpfRetainedVisualBranchReplayTarget>();
                 return false;

@@ -1395,7 +1395,10 @@ internal static class WpfReflectionDrawingReplay
         if (TryGetPropertyValue(drawingGroup, "Effect", out var effectValue) && effectValue != null)
         {
             hasEffect = true;
-            if (!WpfEffectReflection.TryCreateProGpuEffect(effectValue, out var proGpuEffect)
+            if (!WpfEffectReflection.TryCreateProGpuEffect(
+                    effectValue,
+                    out var proGpuEffect,
+                    CreateImageSourceAdapter(imageSourceAdapter))
                 || !TryGetDrawingGroupEffectBounds(drawingGroup, imageSourceAdapter, out bounds))
             {
                 return false;
@@ -1409,7 +1412,11 @@ internal static class WpfReflectionDrawingReplay
         {
             hasEffect = true;
             TryGetPropertyValue(drawingGroup, "BitmapEffectInput", out var bitmapEffectInput);
-            if (!WpfEffectReflection.TryCreateProGpuPushEffect(bitmapEffect, bitmapEffectInput, out var proGpuEffect)
+            if (!WpfEffectReflection.TryCreateProGpuPushEffect(
+                    bitmapEffect,
+                    bitmapEffectInput,
+                    out var proGpuEffect,
+                    CreateImageSourceAdapter(imageSourceAdapter))
                 || !TryGetDrawingGroupEffectBounds(drawingGroup, imageSourceAdapter, out bounds))
             {
                 return false;

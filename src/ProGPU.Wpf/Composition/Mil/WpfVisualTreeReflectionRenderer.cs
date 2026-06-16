@@ -45,10 +45,12 @@ public sealed class WpfVisualTreeReflectionRenderer
         return stats.ToResult();
     }
 
-    internal bool CanReplaySubtreeIntoCurrentRetainedVisual(object rootVisual)
+    internal bool CanReplaySubtreeIntoCurrentRetainedVisual(
+        object rootVisual,
+        IWpfImageSourceAdapter? imageSourceAdapter = null)
     {
         ArgumentNullException.ThrowIfNull(rootVisual);
-        return TryCreateRetainedVisualState(rootVisual, out _);
+        return TryCreateRetainedVisualState(rootVisual, imageSourceAdapter, out _);
     }
 
     internal bool TryReplaySubtreeIntoCurrentRetainedVisual(
@@ -88,7 +90,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             return;
         }
 
-        var popCount = PushVisualState(visual, sink, stats);
+        var popCount = PushVisualState(visual, sink, imageSourceAdapter, stats);
         RegisterRetainedVisualOwner(visual, sink);
         RegisterRetainedVisualStateDependencies(visual, sink);
 
@@ -120,7 +122,7 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         if (sink is not IWpfRetainedVisualBranchSink retainedVisualBranchSink
             || sink is not IWpfRetainedVisualStateSink retainedVisualStateSink
-            || !TryCreateRetainedVisualState(visual, out var visualState))
+            || !TryCreateRetainedVisualState(visual, imageSourceAdapter, out var visualState))
         {
             return false;
         }
@@ -160,7 +162,7 @@ public sealed class WpfVisualTreeReflectionRenderer
     {
         if (sink is not IWpfRetainedVisualBranchSink retainedVisualBranchSink
             || sink is not IWpfRetainedVisualStateSink retainedVisualStateSink
-            || !TryCreateRetainedVisualState(visual, out var visualState))
+            || !TryCreateRetainedVisualState(visual, imageSourceAdapter, out var visualState))
         {
             return false;
         }
@@ -273,7 +275,10 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
     }
 
-    private static bool TryCreateRetainedVisualState(object visual, out WpfRetainedVisualState state)
+    private static bool TryCreateRetainedVisualState(
+        object visual,
+        IWpfImageSourceAdapter? imageSourceAdapter,
+        out WpfRetainedVisualState state)
     {
         state = default;
         var offset = Vector2.Zero;
@@ -350,6 +355,7 @@ public sealed class WpfVisualTreeReflectionRenderer
                 transform,
                 opacity,
                 clipBounds,
+                imageSourceAdapter,
                 out state))
         {
             return true;
@@ -443,6 +449,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         Matrix4x4 transform,
         float opacity,
         Rect? clipBounds,
+        IWpfImageSourceAdapter? imageSourceAdapter,
         out WpfRetainedVisualState state)
     {
         state = default;
@@ -453,7 +460,7 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         if (TryGetPropertyValue(visual, "Effect", out var effectValue) && effectValue != null)
         {
-            if (!WpfEffectReflection.TryCreateProGpuEffect(effectValue, out effect))
+            if (!WpfEffectReflection.TryCreateProGpuEffect(effectValue, out effect, imageSourceAdapter))
             {
                 return false;
             }
@@ -469,7 +476,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             }
 
             TryGetPropertyValue(visual, "BitmapEffectInput", out var bitmapEffectInput);
-            if (!WpfEffectReflection.TryCreateProGpuPushEffect(bitmapEffect, bitmapEffectInput, out effect))
+            if (!WpfEffectReflection.TryCreateProGpuPushEffect(bitmapEffect, bitmapEffectInput, out effect, imageSourceAdapter))
             {
                 return false;
             }
@@ -636,7 +643,11 @@ public sealed class WpfVisualTreeReflectionRenderer
         stats.AddRenderData(_renderDataBridge.Replay(snapshot, sink, resources, imageSourceAdapter));
     }
 
-    private static int PushVisualState(object visual, IWpfCompositionCommandSink sink, ReplayStats stats)
+    private static int PushVisualState(
+        object visual,
+        IWpfCompositionCommandSink sink,
+        IWpfImageSourceAdapter? imageSourceAdapter,
+        ReplayStats stats)
     {
         var popCount = 0;
 
@@ -713,7 +724,7 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         if (TryGetPropertyValue(visual, "Effect", out var effect) && effect != null)
         {
-            if (WpfEffectReflection.TryCreateProGpuEffect(effect, out var proGpuEffect)
+            if (WpfEffectReflection.TryCreateProGpuEffect(effect, out var proGpuEffect, imageSourceAdapter)
                 && sink is IWpfVisualEffectCommandSink effectSink
                 && effectSink.PushVisualEffect(
                     proGpuEffect,
@@ -730,7 +741,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         if (TryGetPropertyValue(visual, "BitmapEffect", out var bitmapEffect) && bitmapEffect != null)
         {
             TryGetPropertyValue(visual, "BitmapEffectInput", out var bitmapEffectInput);
-            if (WpfEffectReflection.TryCreateProGpuPushEffect(bitmapEffect, bitmapEffectInput, out var proGpuBitmapEffect)
+            if (WpfEffectReflection.TryCreateProGpuPushEffect(bitmapEffect, bitmapEffectInput, out var proGpuBitmapEffect, imageSourceAdapter)
                 && sink is IWpfVisualEffectCommandSink effectSink
                 && effectSink.PushVisualEffect(
                     proGpuBitmapEffect,

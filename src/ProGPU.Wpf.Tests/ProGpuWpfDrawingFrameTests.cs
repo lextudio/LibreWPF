@@ -700,6 +700,112 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void CompositionDrawingContextFactoryMapsOwnerToRetainedBranchWhenLayerIsRebuilt()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var retainedRoot = new ProGpuContainerVisual();
+        var flatRoot = new ProGpuDrawingVisual();
+        var frame = new ProGpuWpfDrawingFrame(
+            new ProGpuContainerVisual(),
+            retainedRoot,
+            flatRoot,
+            200,
+            100,
+            retainedVisualBranchMap: branchMap);
+        var ownerVisual = new object();
+        var brush = Brushes.Red;
+        var factory = frame.CreateCompositionDrawingContextFactory();
+
+        using (var context = factory(ownerVisual))
+        {
+            context.DrawRectangle(brush, null, new Rect(1, 2, 3, 4));
+        }
+
+        Assert.Equal(1, frame.DrawingContextCount);
+        Assert.Equal(1, frame.CompositionDrawingContextCount);
+        Assert.Same(ownerVisual, frame.LastOwnerVisual);
+        Assert.Empty(flatRoot.Context.Commands);
+        var retainedFrameRoot = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
+        var ownerBranch = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedFrameRoot.Children));
+        Assert.Empty(retainedFrameRoot.Context.Commands);
+        Assert.Equal(ProGpuRenderCommandType.DrawRect, Assert.Single(ownerBranch.Context.Commands).Type);
+        Assert.True(branchMap.TryGetVisuals(ownerVisual, out var ownerVisuals));
+        Assert.Same(ownerBranch, Assert.Single(ownerVisuals));
+
+        var dependencyTarget = Assert.Single(branchMap.GetReplayTargetsForSources(new object[] { brush }));
+        Assert.Same(ownerVisual, dependencyTarget.Source);
+        Assert.Same(ownerBranch, dependencyTarget.Visual);
+    }
+
+    [Fact]
+    public void CompositionDrawingContextFactoryFallsBackToFlatLayerWhenRetainedLayerIsPreserved()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var retainedRoot = new ProGpuContainerVisual();
+        var preservedBranch = new ProGpuDrawingVisual();
+        retainedRoot.AddChild(preservedBranch);
+        var flatRoot = new ProGpuDrawingVisual();
+        var frame = new ProGpuWpfDrawingFrame(
+            new ProGpuContainerVisual(),
+            retainedRoot,
+            flatRoot,
+            200,
+            100,
+            clearRetainedWpfVisualRoot: false,
+            retainedVisualBranchMap: branchMap);
+        var ownerVisual = new object();
+        var factory = frame.CreateCompositionDrawingContextFactory();
+
+        using (var context = factory(ownerVisual))
+        {
+            context.DrawRectangle(Brushes.Blue, null, new Rect(5, 6, 7, 8));
+        }
+
+        Assert.Equal(1, frame.DrawingContextCount);
+        Assert.Equal(1, frame.CompositionDrawingContextCount);
+        Assert.Same(ownerVisual, frame.LastOwnerVisual);
+        Assert.Same(preservedBranch, Assert.Single(retainedRoot.Children));
+        Assert.Equal(ProGpuRenderCommandType.DrawRect, Assert.Single(flatRoot.Context.Commands).Type);
+        Assert.False(branchMap.TryGetVisuals(ownerVisual, out _));
+    }
+
+    [Fact]
+    public void ObjectRenderDataSinkContextMapsOwnerToRetainedBranchWhenLayerIsRebuilt()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var retainedRoot = new ProGpuContainerVisual();
+        var flatRoot = new ProGpuDrawingVisual();
+        var frame = new ProGpuWpfDrawingFrame(
+            new ProGpuContainerVisual(),
+            retainedRoot,
+            flatRoot,
+            200,
+            100,
+            retainedVisualBranchMap: branchMap);
+        var ownerVisual = new object();
+        var brush = Brushes.Green;
+
+        using (var context = frame.OpenObjectRenderDataSinkContext(ownerVisual))
+        {
+            context.DrawRectangle(brush, null, new Rect(9, 10, 11, 12));
+        }
+
+        Assert.Equal(1, frame.DrawingContextCount);
+        Assert.Equal(0, frame.CompositionDrawingContextCount);
+        Assert.Equal(1, frame.ObjectRenderDataSinkContextCount);
+        Assert.Empty(flatRoot.Context.Commands);
+        var retainedFrameRoot = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
+        var ownerBranch = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedFrameRoot.Children));
+        Assert.Equal(ProGpuRenderCommandType.DrawRect, Assert.Single(ownerBranch.Context.Commands).Type);
+        Assert.True(branchMap.TryGetVisuals(ownerVisual, out var ownerVisuals));
+        Assert.Same(ownerBranch, Assert.Single(ownerVisuals));
+
+        var dependencyTarget = Assert.Single(branchMap.GetReplayTargetsForSources(new object[] { brush }));
+        Assert.Same(ownerVisual, dependencyTarget.Source);
+        Assert.Same(ownerBranch, dependencyTarget.Visual);
+    }
+
+    [Fact]
     public void TryRegisterRenderDataSinkProviderReturnsFalseWhenProviderIsAbsent()
     {
         var frame = new ProGpuWpfDrawingFrame(new ProGpuDrawingVisual(), 200, 100);

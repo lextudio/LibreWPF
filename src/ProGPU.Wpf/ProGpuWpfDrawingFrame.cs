@@ -18,6 +18,7 @@ public sealed class ProGpuWpfDrawingFrame
     private readonly ProGpuWgpuContext? _context;
     private readonly WpfViewport3DTextureCache? _viewport3DTextureCache;
     private readonly WpfRetainedVisualBranchMap? _retainedVisualBranchMap;
+    private readonly bool _allowRetainedOwnerContexts;
 
     internal ProGpuWpfDrawingFrame(
         ProGpuDrawingVisual rootVisual,
@@ -53,6 +54,7 @@ public sealed class ProGpuWpfDrawingFrame
         _context = context;
         _viewport3DTextureCache = viewport3DTextureCache;
         _retainedVisualBranchMap = retainedVisualBranchMap;
+        _allowRetainedOwnerContexts = clearRetainedWpfVisualRoot;
 
         PixelWidth = Math.Max(1, pixelWidth);
         PixelHeight = Math.Max(1, pixelHeight);
@@ -168,10 +170,7 @@ public sealed class ProGpuWpfDrawingFrame
     {
         CompositionDrawingContextCount++;
         return new WpfCompositionDrawingContext(
-            new ProGpuCompositionCommandSink(
-                OpenDrawingContext(ownerVisual),
-                _context,
-                _viewport3DTextureCache));
+            OpenCompositionCommandSink(ownerVisual));
     }
 
     public Func<object?, WpfCompositionDrawingContext> CreateCompositionDrawingContextFactory()
@@ -185,10 +184,7 @@ public sealed class ProGpuWpfDrawingFrame
     {
         ObjectRenderDataSinkContextCount++;
         return new WpfObjectRenderDataDrawingContext(
-            new ProGpuCompositionCommandSink(
-                OpenDrawingContext(ownerVisual),
-                _context,
-                _viewport3DTextureCache),
+            OpenCompositionCommandSink(ownerVisual),
             imageSourceAdapter);
     }
 
@@ -196,5 +192,31 @@ public sealed class ProGpuWpfDrawingFrame
         IWpfImageSourceAdapter? imageSourceAdapter = null)
     {
         return ownerVisual => OpenObjectRenderDataSinkContext(ownerVisual, imageSourceAdapter);
+    }
+
+    private IWpfCompositionCommandSink OpenCompositionCommandSink(object? ownerVisual)
+    {
+        if (ownerVisual != null && _retainedWpfVisualRoot != null && _allowRetainedOwnerContexts)
+        {
+            DrawingContextCount++;
+            LastOwnerVisual = ownerVisual;
+
+            var retainedSink = new ProGpuRetainedCompositionCommandSink(
+                this,
+                _context,
+                _viewport3DTextureCache);
+            var retainedBranchSink = (IWpfRetainedVisualBranchSink)retainedSink;
+            if (retainedBranchSink.PushVisualOwner(ownerVisual))
+            {
+                return retainedSink;
+            }
+
+            retainedSink.Dispose();
+        }
+
+        return new ProGpuCompositionCommandSink(
+            OpenDrawingContext(ownerVisual),
+            _context,
+            _viewport3DTextureCache);
     }
 }

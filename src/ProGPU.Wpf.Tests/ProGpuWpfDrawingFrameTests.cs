@@ -211,6 +211,35 @@ public sealed class ProGpuWpfDrawingFrameTests
         Assert.Equal(1, branchMap.InvalidateVisuals(new[] { firstSource, secondSource }));
         Assert.True(visual.IsDirty);
         Assert.Equal(cleanVersion + 1, visual.ChangeVersion);
+
+        var result = branchMap.InvalidateVisualsForSources(new[] { firstSource, secondSource });
+        Assert.Equal(2, result.DirtySourceCount);
+        Assert.Equal(2, result.MappedSourceCount);
+        Assert.Equal(0, result.UnmappedSourceCount);
+        Assert.Equal(1, result.InvalidatedVisualCount);
+        Assert.True(result.CanTargetAllDirtySources);
+    }
+
+    [Fact]
+    public void BranchMapReportsUnmappedDirtySourcesForFallbackDecisions()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var mappedSource = new object();
+        var unmappedSource = new object();
+        var visual = new ProGpuDrawingVisual
+        {
+            IsDirty = false
+        };
+        branchMap.Register(mappedSource, visual);
+
+        var result = branchMap.InvalidateVisualsForSources(new[] { mappedSource, unmappedSource, mappedSource });
+
+        Assert.Equal(2, result.DirtySourceCount);
+        Assert.Equal(1, result.MappedSourceCount);
+        Assert.Equal(1, result.UnmappedSourceCount);
+        Assert.Equal(1, result.InvalidatedVisualCount);
+        Assert.False(result.CanTargetAllDirtySources);
+        Assert.True(visual.IsDirty);
     }
 
     [Fact]

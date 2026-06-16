@@ -168,7 +168,9 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("public int DirtySourceCount => WpfInvalidationTracker.DirtySourceCount;", source, StringComparison.Ordinal);
         Assert.Contains("public object? LastDirtySource => WpfInvalidationTracker.LastDirtySource;", source, StringComparison.Ordinal);
         Assert.Contains("public int LastRetainedBranchInvalidationCount { get; private set; }", source, StringComparison.Ordinal);
-        Assert.Contains("RetainedVisualBranchMap.InvalidateVisuals(WpfInvalidationTracker.DirtySources)", source, StringComparison.Ordinal);
+        Assert.Contains("public int LastRetainedBranchUnmappedSourceCount { get; private set; }", source, StringComparison.Ordinal);
+        Assert.Contains("RetainedVisualBranchMap.InvalidateVisualsForSources(WpfInvalidationTracker.DirtySources)", source, StringComparison.Ordinal);
+        Assert.Contains("LastRetainedBranchInvalidationUsedFallback = !result.CanTargetAllDirtySources;", source, StringComparison.Ordinal);
         Assert.Contains("RetainedWpfVisualRoot.Invalidate();", source, StringComparison.Ordinal);
     }
 

@@ -53,6 +53,12 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
 
     public int LastRetainedBranchInvalidationCount { get; private set; }
 
+    public int LastRetainedBranchDirtySourceCount { get; private set; }
+
+    public int LastRetainedBranchMappedSourceCount { get; private set; }
+
+    public int LastRetainedBranchUnmappedSourceCount { get; private set; }
+
     public bool LastRetainedBranchInvalidationUsedFallback { get; private set; }
 
     internal WpfViewport3DTextureCache Viewport3DTextureCache { get; }
@@ -265,8 +271,12 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
 
     private void InvalidateRetainedWpfBranchesForDirtySources()
     {
-        LastRetainedBranchInvalidationCount = RetainedVisualBranchMap.InvalidateVisuals(WpfInvalidationTracker.DirtySources);
-        LastRetainedBranchInvalidationUsedFallback = LastRetainedBranchInvalidationCount == 0;
+        var result = RetainedVisualBranchMap.InvalidateVisualsForSources(WpfInvalidationTracker.DirtySources);
+        LastRetainedBranchInvalidationCount = result.InvalidatedVisualCount;
+        LastRetainedBranchDirtySourceCount = result.DirtySourceCount;
+        LastRetainedBranchMappedSourceCount = result.MappedSourceCount;
+        LastRetainedBranchUnmappedSourceCount = result.UnmappedSourceCount;
+        LastRetainedBranchInvalidationUsedFallback = !result.CanTargetAllDirtySources;
 
         if (LastRetainedBranchInvalidationUsedFallback)
         {

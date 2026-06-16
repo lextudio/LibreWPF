@@ -88,15 +88,33 @@ public sealed class WpfRetainedVisualBranchMap
 
     public int InvalidateVisuals(IEnumerable<object> sources)
     {
+        return InvalidateVisualsForSources(sources).InvalidatedVisualCount;
+    }
+
+    public WpfRetainedVisualBranchInvalidationResult InvalidateVisualsForSources(IEnumerable<object> sources)
+    {
         ArgumentNullException.ThrowIfNull(sources);
 
+        var visitedSources = new HashSet<object>(ReferenceEqualityComparer.Instance);
         var invalidatedVisuals = new HashSet<ProGpuVisual>(ReferenceEqualityComparer.Instance);
+        var dirtySourceCount = 0;
+        var mappedSourceCount = 0;
+
         foreach (var source in sources)
         {
+            if (!visitedSources.Add(source))
+            {
+                continue;
+            }
+
+            dirtySourceCount++;
+
             if (!_visualsBySource.TryGetValue(source, out var visuals))
             {
                 continue;
             }
+
+            mappedSourceCount++;
 
             foreach (var visual in visuals)
             {
@@ -107,8 +125,37 @@ public sealed class WpfRetainedVisualBranchMap
             }
         }
 
-        return invalidatedVisuals.Count;
+        return new WpfRetainedVisualBranchInvalidationResult(
+            dirtySourceCount,
+            mappedSourceCount,
+            invalidatedVisuals.Count);
     }
+}
+
+public readonly struct WpfRetainedVisualBranchInvalidationResult
+{
+    public WpfRetainedVisualBranchInvalidationResult(
+        int dirtySourceCount,
+        int mappedSourceCount,
+        int invalidatedVisualCount)
+    {
+        DirtySourceCount = dirtySourceCount;
+        MappedSourceCount = mappedSourceCount;
+        InvalidatedVisualCount = invalidatedVisualCount;
+    }
+
+    public int DirtySourceCount { get; }
+
+    public int MappedSourceCount { get; }
+
+    public int UnmappedSourceCount => DirtySourceCount - MappedSourceCount;
+
+    public int InvalidatedVisualCount { get; }
+
+    public bool CanTargetAllDirtySources =>
+        DirtySourceCount > 0 &&
+        UnmappedSourceCount == 0 &&
+        InvalidatedVisualCount > 0;
 }
 
 internal interface IWpfRetainedVisualBranchSink

@@ -173,6 +173,58 @@ public sealed class WpfPortableWindowActivationTests
         Assert.True(scheduler.RequestCount >= 3);
     }
 
+    [Fact]
+    public void HostActivationEventsForwardToWpfWindowActivationState()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeActivatableWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        RaiseHostWindowEvent(host, WpfWindowEventKind.Activated);
+        RaiseHostWindowEvent(host, WpfWindowEventKind.Activated);
+        RaiseHostWindowEvent(host, WpfWindowEventKind.FilesDropped);
+        RaiseHostWindowEvent(host, WpfWindowEventKind.Deactivated);
+        RaiseHostWindowEvent(host, WpfWindowEventKind.Deactivated);
+
+        Assert.False(window.IsActive);
+        Assert.Equal(1, window.ActivatedCount);
+        Assert.Equal(1, window.DeactivatedCount);
+    }
+
+    [Fact]
+    public void DisposingActivationStopsWindowEventForwarding()
+    {
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = new TestRenderScheduler()
+        };
+        var window = new FakeActivatableWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        activation.Dispose();
+        RaiseHostWindowEvent(host, WpfWindowEventKind.Activated);
+
+        Assert.False(window.IsActive);
+        Assert.Equal(0, window.ActivatedCount);
+    }
+
+    private static void RaiseHostWindowEvent(ProGpuWpfWindowHost host, WpfWindowEventKind kind)
+    {
+        typeof(ProGpuWpfWindowHost)
+            .GetMethod("OnPlatformWindowEventReceived", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(host, new object?[] { null, new WpfWindowEventArgs(kind) });
+    }
+
     private sealed class FakeWindow
     {
         public string? Title { get; set; }
@@ -219,6 +271,29 @@ public sealed class WpfPortableWindowActivationTests
             if (!CancelClose)
             {
                 _disposed = true;
+            }
+        }
+    }
+
+    private sealed class FakeActivatableWindow
+    {
+        public bool IsActive { get; private set; }
+
+        public int ActivatedCount { get; private set; }
+
+        public int DeactivatedCount { get; private set; }
+
+        internal void HandleActivate(bool isActive)
+        {
+            if (isActive && !IsActive)
+            {
+                IsActive = true;
+                ActivatedCount++;
+            }
+            else if (!isActive && IsActive)
+            {
+                IsActive = false;
+                DeactivatedCount++;
             }
         }
     }

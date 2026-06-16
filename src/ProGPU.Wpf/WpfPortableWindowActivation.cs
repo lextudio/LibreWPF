@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using System.Windows.Media.ProGPU.Platform;
 
 namespace System.Windows.Media.ProGPU;
 
@@ -21,6 +22,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         RootVisual = rootVisual;
         PortablePresentationSource = portablePresentationSource;
         Host.Closing += OnHostClosing;
+        Host.WindowEventReceived += OnHostWindowEventReceived;
     }
 
     public ProGpuWpfWindowHost Host { get; }
@@ -144,6 +146,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
 
         Host.Closing -= OnHostClosing;
+        Host.WindowEventReceived -= OnHostWindowEventReceived;
         Host.Dispose();
         _isDisposed = true;
     }
@@ -269,6 +272,24 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
     }
 
+    private void OnHostWindowEventReceived(object? sender, WpfWindowEventArgs e)
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        switch (e.Kind)
+        {
+            case WpfWindowEventKind.Activated:
+                TrySetWindowActivationState(Window, isActive: true);
+                break;
+            case WpfWindowEventKind.Deactivated:
+                TrySetWindowActivationState(Window, isActive: false);
+                break;
+        }
+    }
+
     private static WpfWindowCloseResult TryInvokeWindowClose(object window)
     {
         var closeMethod = window.GetType().GetMethod(
@@ -306,6 +327,68 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
         isClosed = false;
         return false;
+    }
+
+    private static bool TrySetWindowActivationState(object window, bool isActive)
+    {
+        if (TryInvokePortableWindowActivationService(window, isActive))
+        {
+            return true;
+        }
+
+        var handleActivateMethod = window.GetType().GetMethod(
+            "HandleActivate",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            types: new[] { typeof(bool) },
+            modifiers: null);
+        if (handleActivateMethod == null)
+        {
+            return false;
+        }
+
+        handleActivateMethod.Invoke(window, new object[] { isActive });
+        return true;
+    }
+
+    private static bool TryInvokePortableWindowActivationService(object window, bool isActive)
+    {
+        var serviceType = window.GetType().Assembly.GetType(
+            PortableWindowActivationServiceTypeName,
+            throwOnError: false);
+        if (serviceType == null)
+        {
+            return false;
+        }
+
+        var setActivationStateMethod = serviceType.GetMethod(
+            "SetActivationState",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            types: new[] { window.GetType(), typeof(bool) },
+            modifiers: null);
+        setActivationStateMethod ??= serviceType
+            .GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            .FirstOrDefault(method =>
+            {
+                if (!string.Equals(method.Name, "SetActivationState", StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                var parameters = method.GetParameters();
+                return parameters.Length == 2 &&
+                    parameters[0].ParameterType.IsAssignableFrom(window.GetType()) &&
+                    parameters[1].ParameterType == typeof(bool);
+            });
+
+        if (setActivationStateMethod == null)
+        {
+            return false;
+        }
+
+        setActivationStateMethod.Invoke(null, new object[] { window, isActive });
+        return true;
     }
 
     private static bool TryReadBooleanProperty(object instance, string propertyName, out bool value)

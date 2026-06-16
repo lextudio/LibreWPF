@@ -210,6 +210,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static bool TryActivate(Window window, out object activation)", activationService, StringComparison.Ordinal);
         Assert.Contains("Action<object, object> setWindowState", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void SetWindowState(object activation, WindowState windowState)", activationService, StringComparison.Ordinal);
+        Assert.Contains("internal static void SetActivationState(Window window, bool isActive)", activationService, StringComparison.Ordinal);
+        Assert.Contains("window.HandleActivate(isActive)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryRun(Window window)", activationService, StringComparison.Ordinal);
         Assert.Contains("window.PortableWindowActivation", activationService, StringComparison.Ordinal);
         Assert.Contains(@"<Compile Include=""System\Windows\PortableWindowActivationService.cs"" />", project, StringComparison.Ordinal);

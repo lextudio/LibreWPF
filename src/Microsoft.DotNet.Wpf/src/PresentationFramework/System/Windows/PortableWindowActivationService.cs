@@ -89,6 +89,16 @@ namespace System.Windows
             Volatile.Read(ref _setWindowState)?.Invoke(activation, windowState);
         }
 
+        internal static void SetActivationState(Window window, bool isActive)
+        {
+            if (OperatingSystem.IsWindows() || window == null)
+            {
+                return;
+            }
+
+            window.HandleActivate(isActive);
+        }
+
         internal static void Close(object activation)
         {
             Volatile.Read(ref _close)?.Invoke(activation);

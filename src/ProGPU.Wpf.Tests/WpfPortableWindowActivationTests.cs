@@ -82,7 +82,8 @@ public sealed class WpfPortableWindowActivationTests
             Title = "Portable WPF",
             Width = 640.2,
             Height = double.NaN,
-            ActualHeight = 480.1
+            ActualHeight = 480.1,
+            WindowState = FakeWindowState.Minimized
         };
 
         var options = WpfPortableWindowActivation.CreateHostOptions(window, fallback);
@@ -91,6 +92,31 @@ public sealed class WpfPortableWindowActivationTests
         Assert.Equal(641, options.Width);
         Assert.Equal(481, options.Height);
         Assert.True(options.VSync);
+        Assert.Equal(ProGpuWpfWindowState.Minimized, options.WindowState);
+    }
+
+    [Fact]
+    public void HideAndSetWindowStateUpdateHostWithoutNativeWindow()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        activation.Hide();
+        activation.SetWindowState(FakeWindowState.Maximized);
+
+        Assert.False(host.IsVisible);
+        Assert.Equal(ProGpuWpfWindowState.Maximized, host.WindowState);
+        Assert.True(scheduler.RequestCount >= 3);
     }
 
     private sealed class FakeWindow
@@ -105,12 +131,21 @@ public sealed class WpfPortableWindowActivationTests
 
         public double ActualHeight { get; set; }
 
+        public FakeWindowState WindowState { get; set; } = FakeWindowState.Normal;
+
         public int CloseCount { get; private set; }
 
         public void Close()
         {
             CloseCount++;
         }
+    }
+
+    private enum FakeWindowState
+    {
+        Normal,
+        Minimized,
+        Maximized
     }
 
     private sealed class FakePortablePresentationSource : IDisposable

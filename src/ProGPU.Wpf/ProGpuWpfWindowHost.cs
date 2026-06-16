@@ -7,6 +7,7 @@ using System.Windows.Media.ProGPU.Composition;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using System.Windows.Media.ProGPU.Platform;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
+using SilkWindowState = Silk.NET.Windowing.WindowState;
 
 namespace System.Windows.Media.ProGPU;
 
@@ -32,10 +33,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private bool _ownsRenderScheduler;
     private bool _isRendering;
     private bool _isProcessingRenderSchedulerWakeup;
+    private bool _isHostVisible;
+    private ProGpuWpfWindowState _windowState;
 
     public ProGpuWpfWindowHost(ProGpuWpfWindowOptions? options = null)
     {
         _options = options ?? new ProGpuWpfWindowOptions();
+        _isHostVisible = _options.IsVisible;
+        _windowState = _options.WindowState;
         _wpfRenderScheduler = CreateDefaultRenderScheduler(_platformServices, out _ownsRenderScheduler);
         AttachRenderScheduler(_wpfRenderScheduler);
     }
@@ -55,6 +60,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public IWindow? SilkWindow => _window;
 
     public ProGpuWpfCompositionTarget? CompositionTarget => _target;
+
+    public bool IsVisible => _window?.IsVisible ?? _isHostVisible;
+
+    public ProGpuWpfWindowState WindowState => _windowState;
 
     public object? PortablePresentationSource => _portablePresentationSourceBridge?.Source;
 
@@ -131,15 +140,48 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public void Run()
     {
         ThrowIfDisposed();
+        _isHostVisible = true;
         EnsureWindow();
+        _window!.IsVisible = true;
         _window!.Run();
     }
 
     public void Initialize()
     {
         ThrowIfDisposed();
-        EnsureWindow();
-        _window!.Initialize();
+        ShowCore(requestRenderWhenInitialized: false);
+    }
+
+    public void Show()
+    {
+        ThrowIfDisposed();
+        ShowCore(requestRenderWhenInitialized: true);
+    }
+
+    public void Hide()
+    {
+        ThrowIfDisposed();
+
+        _isHostVisible = false;
+        if (_window != null)
+        {
+            _window.IsVisible = false;
+        }
+
+        WpfRenderScheduler.RequestRender();
+    }
+
+    public void SetWindowState(ProGpuWpfWindowState windowState)
+    {
+        ThrowIfDisposed();
+
+        _windowState = windowState;
+        if (_window != null)
+        {
+            _window.WindowState = ToSilkWindowState(windowState);
+        }
+
+        WpfRenderScheduler.RequestRender();
     }
 
     public void DoEvents()
@@ -257,6 +299,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         windowOptions.Size = new Vector2D<int>(_options.Width, _options.Height);
         windowOptions.Title = _options.Title;
         windowOptions.VSync = _options.VSync;
+        windowOptions.IsVisible = _isHostVisible;
+        windowOptions.WindowState = ToSilkWindowState(_windowState);
 
         _window = Window.Create(windowOptions);
         _window.Load += OnLoad;
@@ -794,6 +838,22 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         ObjectDisposedException.ThrowIf(_isDisposed, this);
     }
 
+    private void ShowCore(bool requestRenderWhenInitialized)
+    {
+        _isHostVisible = true;
+        EnsureWindow();
+        _window!.IsVisible = true;
+
+        if (!_window.IsInitialized)
+        {
+            _window.Initialize();
+        }
+        else if (requestRenderWhenInitialized)
+        {
+            WpfRenderScheduler.RequestRender();
+        }
+    }
+
     private static IDisposable? RegisterDefaultRenderDataSinkProvider(
         ProGpuWpfDrawingFrame drawingFrame,
         IWpfImageSourceAdapter? imageSourceAdapter)
@@ -819,5 +879,15 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             ownsScheduler = false;
             return new CoalescingWpfRenderScheduler();
         }
+    }
+
+    private static SilkWindowState ToSilkWindowState(ProGpuWpfWindowState windowState)
+    {
+        return windowState switch
+        {
+            ProGpuWpfWindowState.Minimized => SilkWindowState.Minimized,
+            ProGpuWpfWindowState.Maximized => SilkWindowState.Maximized,
+            _ => SilkWindowState.Normal
+        };
     }
 }

@@ -208,6 +208,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Func<object, object> activate", activationService, StringComparison.Ordinal);
         Assert.Contains("!OperatingSystem.IsWindows()", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryActivate(Window window, out object activation)", activationService, StringComparison.Ordinal);
+        Assert.Contains("Action<object, object> setWindowState", activationService, StringComparison.Ordinal);
+        Assert.Contains("internal static void SetWindowState(object activation, WindowState windowState)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryRun(Window window)", activationService, StringComparison.Ordinal);
         Assert.Contains("window.PortableWindowActivation", activationService, StringComparison.Ordinal);
         Assert.Contains(@"<Compile Include=""System\Windows\PortableWindowActivationService.cs"" />", project, StringComparison.Ordinal);
@@ -218,6 +220,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableWindowActivationService.TryActivate(this, out object activation)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.Show(_portableWindowActivation)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.Hide(_portableWindowActivation)", window, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.SetWindowState(_portableWindowActivation, windowState)", window, StringComparison.Ordinal);
         Assert.Contains("ClosePortableWindowActivation();", window, StringComparison.Ordinal);
         Assert.True(
             window.IndexOf("if (TryCreatePortableWindowDuringShow())", StringComparison.Ordinal)

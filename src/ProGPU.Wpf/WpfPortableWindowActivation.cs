@@ -54,6 +54,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 typeof(Func<object, object?>),
                 typeof(Action<object>),
                 typeof(Action<object>),
+                typeof(Action<object, object>),
                 typeof(Action<object>),
                 typeof(Action<object>),
                 typeof(Action<object>)
@@ -74,6 +75,8 @@ public sealed class WpfPortableWindowActivation : IDisposable
             ((WpfPortableWindowActivation)activation).Show();
         Action<object> hide = activation =>
             ((WpfPortableWindowActivation)activation).Hide();
+        Action<object, object> setWindowState = (activation, windowState) =>
+            ((WpfPortableWindowActivation)activation).SetWindowState(windowState);
         Action<object> close = activation =>
             ((WpfPortableWindowActivation)activation).Close();
         Action<object> run = activation =>
@@ -83,19 +86,30 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
         registerMethod.Invoke(
             obj: null,
-            parameters: new object[] { activate, show, hide, close, run, dispose });
+            parameters: new object[] { activate, show, hide, setWindowState, close, run, dispose });
         return true;
     }
 
     public void Show()
     {
         ThrowIfDisposed();
-        Host.Initialize();
+        Host.Show();
     }
 
     public void Hide()
     {
         ThrowIfDisposed();
+        Host.Hide();
+    }
+
+    public void SetWindowState(object? windowState)
+    {
+        ThrowIfDisposed();
+
+        if (TryMapWindowState(windowState, out ProGpuWpfWindowState mappedWindowState))
+        {
+            Host.SetWindowState(mappedWindowState);
+        }
     }
 
     public void Close()
@@ -197,7 +211,9 @@ public sealed class WpfPortableWindowActivation : IDisposable
             Title = fallback.Title,
             Width = fallback.Width,
             Height = fallback.Height,
-            VSync = fallback.VSync
+            VSync = fallback.VSync,
+            IsVisible = fallback.IsVisible,
+            WindowState = fallback.WindowState
         };
 
         if (TryReadStringProperty(window, "Title", out var title) &&
@@ -216,6 +232,12 @@ public sealed class WpfPortableWindowActivation : IDisposable
             TryReadPositiveDimension(window, "ActualHeight", out height))
         {
             options.Height = ToPixelDimension(height);
+        }
+
+        if (TryReadProperty(window, "WindowState", out object? windowState) &&
+            TryMapWindowState(windowState, out ProGpuWpfWindowState mappedWindowState))
+        {
+            options.WindowState = mappedWindowState;
         }
 
         return options;
@@ -259,6 +281,30 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
         closeMethod.Invoke(window, Array.Empty<object>());
         return true;
+    }
+
+    private static bool TryMapWindowState(object? windowState, out ProGpuWpfWindowState mappedWindowState)
+    {
+        mappedWindowState = ProGpuWpfWindowState.Normal;
+        if (windowState == null)
+        {
+            return false;
+        }
+
+        switch (windowState.ToString())
+        {
+            case "Minimized":
+                mappedWindowState = ProGpuWpfWindowState.Minimized;
+                return true;
+            case "Maximized":
+                mappedWindowState = ProGpuWpfWindowState.Maximized;
+                return true;
+            case "Normal":
+                mappedWindowState = ProGpuWpfWindowState.Normal;
+                return true;
+            default:
+                return false;
+        }
     }
 
     private void ThrowIfDisposed()
@@ -305,31 +351,20 @@ public sealed class WpfPortableWindowActivation : IDisposable
     private static bool TryReadStringProperty(object instance, string propertyName, out string? value)
     {
         value = null;
-        var property = instance.GetType().GetProperty(
-            propertyName,
-            BindingFlags.Instance | BindingFlags.Public);
-        if (property == null || property.GetIndexParameters().Length != 0)
+        if (!TryReadProperty(instance, propertyName, out object? rawValue))
         {
             return false;
         }
 
-        value = property.GetValue(instance) as string;
+        value = rawValue as string;
         return value != null;
     }
 
     private static bool TryReadPositiveDimension(object instance, string propertyName, out double value)
     {
         value = 0.0;
-        var property = instance.GetType().GetProperty(
-            propertyName,
-            BindingFlags.Instance | BindingFlags.Public);
-        if (property == null || property.GetIndexParameters().Length != 0)
-        {
-            return false;
-        }
-
-        var rawValue = property.GetValue(instance);
-        if (rawValue == null)
+        if (!TryReadProperty(instance, propertyName, out object? rawValue) ||
+            rawValue == null)
         {
             return false;
         }
@@ -348,6 +383,21 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
 
         return double.IsFinite(value) && value > 0.0;
+    }
+
+    private static bool TryReadProperty(object instance, string propertyName, out object? value)
+    {
+        value = null;
+        var property = instance.GetType().GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public);
+        if (property == null || property.GetIndexParameters().Length != 0)
+        {
+            return false;
+        }
+
+        value = property.GetValue(instance);
+        return true;
     }
 
     private static int ToPixelDimension(double value)

@@ -11,6 +11,7 @@ namespace System.Windows
         private static Func<object, object> _activate;
         private static Action<object> _show;
         private static Action<object> _hide;
+        private static Action<object, object> _setWindowState;
         private static Action<object> _close;
         private static Action<object> _run;
         private static Action<object> _dispose;
@@ -27,6 +28,7 @@ namespace System.Windows
             Func<object, object> activate,
             Action<object> show = null,
             Action<object> hide = null,
+            Action<object, object> setWindowState = null,
             Action<object> close = null,
             Action<object> run = null,
             Action<object> dispose = null)
@@ -36,6 +38,7 @@ namespace System.Windows
             Volatile.Write(ref _activate, activate);
             Volatile.Write(ref _show, show);
             Volatile.Write(ref _hide, hide);
+            Volatile.Write(ref _setWindowState, setWindowState);
             Volatile.Write(ref _close, close);
             Volatile.Write(ref _run, run);
             Volatile.Write(ref _dispose, dispose);
@@ -46,6 +49,7 @@ namespace System.Windows
             Volatile.Write(ref _activate, null);
             Volatile.Write(ref _show, null);
             Volatile.Write(ref _hide, null);
+            Volatile.Write(ref _setWindowState, null);
             Volatile.Write(ref _close, null);
             Volatile.Write(ref _run, null);
             Volatile.Write(ref _dispose, null);
@@ -78,6 +82,11 @@ namespace System.Windows
         internal static void Hide(object activation)
         {
             Volatile.Read(ref _hide)?.Invoke(activation);
+        }
+
+        internal static void SetWindowState(object activation, WindowState windowState)
+        {
+            Volatile.Read(ref _setWindowState)?.Invoke(activation, windowState);
         }
 
         internal static void Close(object activation)

@@ -9,4 +9,15 @@ public sealed class ProGpuWpfWindowOptions
     public int Height { get; set; } = 800;
 
     public bool VSync { get; set; }
+
+    public bool IsVisible { get; set; } = true;
+
+    public ProGpuWpfWindowState WindowState { get; set; } = ProGpuWpfWindowState.Normal;
+}
+
+public enum ProGpuWpfWindowState
+{
+    Normal,
+    Minimized,
+    Maximized
 }

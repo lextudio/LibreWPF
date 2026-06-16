@@ -5279,6 +5279,11 @@ namespace System.Windows
             {
                 _updateHwndLocation = true;
             }
+
+            if (_portableWindowActivation != null)
+            {
+                PortableWindowActivationService.SetWindowState(_portableWindowActivation, windowState);
+            }
         }
 
         private static bool _ValidateWindowStyleCallback(object value)

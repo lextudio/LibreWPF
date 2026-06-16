@@ -134,7 +134,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 11, "stack panel children");
+        AssertCollectionCount(children, expected: 12, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -161,6 +161,7 @@ internal static class Program
 
         ValidateBindingAndCommand(window);
         ValidateMergedResourceDictionary(window, application);
+        ValidateImplicitMergedStyle(window, application);
         ValidateXamlEventHandler(window);
         ValidateRoutedCommand(window);
         ValidateStyleAndDataTrigger(window, application);
@@ -209,6 +210,22 @@ internal static class Program
         AssertEqual(GetProperty(expectedMargin, "Top"), GetProperty(actualMargin, "Top"), "compiled merged-resource margin top");
         AssertEqual(GetProperty(expectedMargin, "Right"), GetProperty(actualMargin, "Right"), "compiled merged-resource margin right");
         AssertEqual(GetProperty(expectedMargin, "Bottom"), GetProperty(actualMargin, "Bottom"), "compiled merged-resource margin bottom");
+    }
+
+    private static void ValidateImplicitMergedStyle(object window, object application)
+    {
+        object implicitStyleCheckBox = GetField(window, "ImplicitStyleCheckBox");
+        AssertType(implicitStyleCheckBox, "System.Windows.Controls.CheckBox", "compiled implicit-style CheckBox");
+        AssertEqual(true, GetProperty(implicitStyleCheckBox, "IsChecked"), "compiled implicit-style CheckBox checked state");
+
+        object expectedStyle = Invoke(application, "TryFindResource", implicitStyleCheckBox.GetType());
+        AssertType(expectedStyle, "System.Windows.Style", "merged implicit CheckBox style");
+        AssertSame(expectedStyle, GetProperty(implicitStyleCheckBox, "Style"), "compiled implicit CheckBox style");
+        AssertEqual("implicit merged style", GetProperty(implicitStyleCheckBox, "Tag"), "compiled implicit CheckBox style tag");
+
+        object expectedMargin = Invoke(application, "TryFindResource", "MergedBlockMargin");
+        object actualMargin = GetProperty(implicitStyleCheckBox, "Margin");
+        AssertEqual(GetProperty(expectedMargin, "Top"), GetProperty(actualMargin, "Top"), "compiled implicit CheckBox style margin top");
     }
 
     private static void ValidateXamlEventHandler(object window)

@@ -144,9 +144,9 @@ internal static class Program
     {
         object content = GetProperty(window, "Content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expectedMinimum: 12, "themed stack panel children");
+        AssertCollectionCount(children, expectedMinimum: 13, "themed stack panel children");
 
-        object button = GetCollectionItem(children, 11);
+        object button = GetCollectionItem(children, 12);
         object richTextBox = GetCollectionItem(children, 2);
 
         AssertType(GetDictionaryValue(themeDictionary, "DefaultWindowStyle"), "System.Windows.Style", "DefaultWindowStyle");
@@ -181,6 +181,10 @@ internal static class Program
         const uint pixelHeight = 260;
 
         object content = GetProperty(window, "Content");
+        object children = GetProperty(content, "Children");
+        object implicitStyleCheckBox = GetCollectionItem(children, 5);
+        SetEnumProperty(implicitStyleCheckBox, "Visibility", "Collapsed");
+
         MeasureAndArrange(windowsBase, content, pixelWidth, pixelHeight);
 
         using var target = ProGpuWpfCompositionTarget.CreateHeadless();
@@ -329,6 +333,15 @@ internal static class Program
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
             ?? throw new MissingMemberException(instance.GetType().FullName, propertyName);
         property.SetValue(instance, value);
+    }
+
+    private static void SetEnumProperty(object instance, string propertyName, string value)
+    {
+        PropertyInfo property = instance.GetType().GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(instance.GetType().FullName, propertyName);
+        property.SetValue(instance, Enum.Parse(property.PropertyType, value));
     }
 
     private static void AddToCollection(object collection, object item)

@@ -255,6 +255,11 @@ namespace Microsoft.Internal.Interop
 
         internal static OperatingSystemVersion GetOsVersion()
         {
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return OperatingSystemVersion.WindowsXPSP2;
+            }
+
             if (IsOsWindows10RS5OrGreater)
             {
                 return OperatingSystemVersion.Windows10RS5;

@@ -3,4 +3,8 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <SolidColorBrush x:Key="MergedAccentBrush" Color="#547A48" />
     <Thickness x:Key="MergedBlockMargin">0,8,0,0</Thickness>
+    <Style TargetType="{x:Type CheckBox}">
+        <Setter Property="Margin" Value="{StaticResource MergedBlockMargin}" />
+        <Setter Property="Tag" Value="implicit merged style" />
+    </Style>
 </ResourceDictionary>

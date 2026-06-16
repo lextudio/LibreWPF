@@ -679,6 +679,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ResourceDictionary", smokeResourcesXaml, StringComparison.Ordinal);
         Assert.Contains("SolidColorBrush x:Key=\"MergedAccentBrush\"", smokeResourcesXaml, StringComparison.Ordinal);
         Assert.Contains("Thickness x:Key=\"MergedBlockMargin\"", smokeResourcesXaml, StringComparison.Ordinal);
+        Assert.Contains("Style TargetType=\"{x:Type CheckBox}\"", smokeResourcesXaml, StringComparison.Ordinal);
+        Assert.Contains("Setter Property=\"Tag\" Value=\"implicit merged style\"", smokeResourcesXaml, StringComparison.Ordinal);
 
         Assert.Contains("x:Class=\"ProGPU.Wpf.RealXamlCompilerHarness.MainWindow\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("TextBox", mainWindowXaml, StringComparison.Ordinal);
@@ -689,6 +691,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"MergedResourceBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Foreground=\"{StaticResource MergedAccentBrush}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Margin=\"{StaticResource MergedBlockMargin}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ImplicitStyleCheckBox\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("IsChecked=\"True\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"EventButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"OnXamlClick\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"CommandButton\"", mainWindowXaml, StringComparison.Ordinal);
@@ -787,6 +791,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Button command binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMergedResourceDictionary(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled merged-resource foreground", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateImplicitMergedStyle(window, application)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled implicit CheckBox style tag", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateXamlEventHandler(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled XAML Click handler count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetField(window, \"RoutedCommandButton\")", harnessProgram, StringComparison.Ordinal);
@@ -866,6 +872,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Button command binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMergedResourceDictionary(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled merged-resource margin top", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateImplicitMergedStyle(window, application)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled implicit CheckBox style margin top", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateXamlEventHandler(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled XAML Click routed event name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateRoutedCommand(window)", harnessProgram, StringComparison.Ordinal);
@@ -935,8 +943,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Invoke(button, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(richTextBox, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertType(GetProperty(richTextBox, \"Template\"), \"System.Windows.Controls.ControlTemplate\"", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("AssertCollectionCount(children, expectedMinimum: 12", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertCollectionCount(children, expectedMinimum: 13", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateThemedVisualReplay(windowsBase, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetCollectionItem(children, 5)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SetEnumProperty(implicitStyleCheckBox, \"Visibility\", \"Collapsed\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("MeasureAndArrange(windowsBase, content, pixelWidth, pixelHeight)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(element, \"Measure\", availableSize)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(element, \"Arrange\", finalRect)", harnessProgram, StringComparison.Ordinal);
@@ -1122,6 +1132,7 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(uxThemeWrapper, "_themeState = OperatingSystem.IsWindows()", "SafeNativeMethods.IsUxThemeActive()");
         AssertGuardBefore(dpiAwareness, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetWindowDpiAwarenessContext(hWnd)");
         AssertGuardBefore(osVersionHelper, "if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))", "IsWindows10RS5OrGreater()");
+        AssertGuardBefore(osVersionHelper, "return OperatingSystemVersion.WindowsXPSP2;", "throw new Exception(\"OSVersionHelper.GetOsVersion Could not detect OS!\")");
         AssertGuardBefore(uiaCoreTypesApi, "if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))", "RawUiaGetReservedNotSupportedValue(out notSupportedValue)");
         AssertGuardBefore(uiaCoreTypesApi, "if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))", "RawUiaGetReservedMixedAttributeValue(out mixedAttributeValue)");
         AssertGuardBefore(uiaCoreTypesApi, "if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))", "LoadLibraryHelper.SecureLoadLibraryEx(DllImport.UIAutomationCore");

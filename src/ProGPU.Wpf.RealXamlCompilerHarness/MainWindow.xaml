@@ -37,6 +37,9 @@
             Foreground="{StaticResource MergedAccentBrush}"
             Margin="{StaticResource MergedBlockMargin}"
             Text="compiled merged resource" />
+        <CheckBox
+            x:Name="ImplicitStyleCheckBox"
+            IsChecked="True" />
         <Button
             x:Name="EventButton"
             Margin="0,8,0,0"

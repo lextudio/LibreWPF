@@ -317,6 +317,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         if (_window != null)
         {
             _window.Load -= OnLoad;
+            _window.Update -= OnUpdate;
             _window.Render -= OnRender;
             _window.Resize -= OnResize;
             _window.Closing -= OnClosing;
@@ -355,6 +356,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         _window = Window.Create(windowOptions);
         _window.Load += OnLoad;
+        _window.Update += OnUpdate;
         _window.Render += OnRender;
         _window.Resize += OnResize;
         _window.Closing += OnClosing;
@@ -390,6 +392,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _target.SceneRootVisual.Invalidate();
         _target.RootVisual.Invalidate();
         WpfRenderScheduler.RequestRender();
+    }
+
+    private void OnUpdate(double deltaSeconds)
+    {
+        TryProcessDispatcherWorkWakeup();
     }
 
     private void OnRender(double deltaSeconds)

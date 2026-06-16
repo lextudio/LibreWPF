@@ -140,6 +140,10 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Platform",
             "IWpfRenderScheduler.cs");
+        var proGpuHostPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "ProGpuWpfWindowHost.cs");
 
         var mediaContext = File.ReadAllText(mediaContextPath);
         var renderService = File.ReadAllText(renderServicePath);
@@ -147,6 +151,7 @@ public sealed class WpfManagedProjectGraphTests
         var activationService = File.ReadAllText(activationServicePath);
         var proGpuActivation = File.ReadAllText(proGpuActivationPath);
         var proGpuScheduler = File.ReadAllText(proGpuSchedulerPath);
+        var proGpuHost = File.ReadAllText(proGpuHostPath);
 
         Assert.Contains(@"<Compile Include=""System\Windows\Media\PortableMediaContextRenderService.cs"" />", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains("internal static class PortableMediaContextRenderService", renderService, StringComparison.Ordinal);
@@ -170,6 +175,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("IWpfDelayedRenderScheduler delayedScheduler", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.RenderWakeupRequested += OnHostRenderWakeupRequested", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryFlushDispatcherOperations(Window, \"Render\")", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("_window.Update += OnUpdate", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_window.Update -= OnUpdate", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("private void OnUpdate(double deltaSeconds)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("TryProcessDispatcherWorkWakeup();", proGpuHost, StringComparison.Ordinal);
     }
 
     [Fact]

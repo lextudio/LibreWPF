@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Windows.Media.ProGPU;
@@ -298,6 +299,36 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void HostInputMapsPayloadToPresentationFrameworkPortableInputArgs()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakePresentationFrameworkPortableInputWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        var args = new WpfInputEventArgs(
+            WpfInputEventKind.MouseDown,
+            x: 12,
+            y: 24,
+            button: WpfMouseButton.XButton1,
+            modifiers: WpfInputModifiers.Shift | WpfInputModifiers.Alt);
+        RaiseHostInputEvent(host, args);
+
+        Assert.Equal(1, window.InputCount);
+        Assert.NotNull(window.LastInputArgs);
+        Assert.Equal(PortableInputEventKind.MouseDown, window.LastInputArgs.Kind);
+        Assert.Equal(12, window.LastInputArgs.X);
+        Assert.Equal(24, window.LastInputArgs.Y);
+        Assert.Equal(PortableMouseButton.XButton1, window.LastInputArgs.Button);
+        Assert.Equal(PortableInputModifiers.Shift | PortableInputModifiers.Alt, window.LastInputArgs.Modifiers);
+        Assert.True(args.Handled);
+    }
+
+    [Fact]
     public void DisposingActivationStopsInputForwarding()
     {
         using var host = new ProGpuWpfWindowHost
@@ -510,6 +541,101 @@ public sealed class WpfPortableWindowActivationTests
             InputCount++;
             LastInputArgs = e;
         }
+    }
+
+    private sealed class FakePresentationFrameworkPortableInputWindow
+    {
+        public int InputCount { get; private set; }
+
+        public PortableInputEventArgs? LastInputArgs { get; private set; }
+
+        internal void HandlePortableInput(PortableInputEventArgs e)
+        {
+            InputCount++;
+            LastInputArgs = e;
+            e.Handled = true;
+        }
+    }
+
+    private enum PortableInputEventKind
+    {
+        KeyDown,
+        KeyUp,
+        TextInput,
+        MouseMove,
+        MouseDown,
+        MouseUp,
+        MouseWheel
+    }
+
+    private enum PortableMouseButton
+    {
+        None,
+        Left,
+        Right,
+        Middle,
+        XButton1,
+        XButton2,
+        Other
+    }
+
+    [Flags]
+    private enum PortableInputModifiers
+    {
+        None = 0,
+        Shift = 1,
+        Control = 2,
+        Alt = 4,
+        Super = 8
+    }
+
+    private sealed class PortableInputEventArgs : EventArgs
+    {
+        public PortableInputEventArgs(
+            PortableInputEventKind kind,
+            string? key = null,
+            int scanCode = 0,
+            char? character = null,
+            double x = 0,
+            double y = 0,
+            double deltaX = 0,
+            double deltaY = 0,
+            PortableMouseButton button = PortableMouseButton.None,
+            PortableInputModifiers modifiers = PortableInputModifiers.None)
+        {
+            Kind = kind;
+            Key = key;
+            ScanCode = scanCode;
+            Character = character;
+            X = x;
+            Y = y;
+            DeltaX = deltaX;
+            DeltaY = deltaY;
+            Button = button;
+            Modifiers = modifiers;
+        }
+
+        public PortableInputEventKind Kind { get; }
+
+        public string? Key { get; }
+
+        public int ScanCode { get; }
+
+        public char? Character { get; }
+
+        public double X { get; }
+
+        public double Y { get; }
+
+        public double DeltaX { get; }
+
+        public double DeltaY { get; }
+
+        public PortableMouseButton Button { get; }
+
+        public PortableInputModifiers Modifiers { get; }
+
+        public bool Handled { get; set; }
     }
 
     private sealed class FakePortableDropWindow

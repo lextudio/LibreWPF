@@ -117,6 +117,17 @@ namespace System.Windows
             window.HandleActivate(isActive);
         }
 
+        internal static void ProcessInput(Window window, PortableInputEventArgs input)
+        {
+            if (OperatingSystem.IsWindows() || window == null || input == null)
+            {
+                return;
+            }
+
+            // Routed portable input is implemented in a later InputManager slice.
+            // This hook keeps host-normalized payloads inside PresentationFramework.
+        }
+
         internal static void Close(object activation)
         {
             Volatile.Read(ref _close)?.Invoke(activation);

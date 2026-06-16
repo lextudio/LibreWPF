@@ -191,6 +191,14 @@ public sealed class WpfManagedProjectGraphTests
             "System",
             "Windows",
             "PortableWindowActivationService.cs");
+        var portableInputPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "PortableInputEventArgs.cs");
         var projectPath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -201,7 +209,14 @@ public sealed class WpfManagedProjectGraphTests
         var window = File.ReadAllText(windowPath);
         var application = File.ReadAllText(applicationPath);
         var activationService = File.ReadAllText(activationServicePath);
+        var portableInput = File.ReadAllText(portableInputPath);
         var project = File.ReadAllText(projectPath);
+
+        Assert.Contains("internal sealed class PortableInputEventArgs", portableInput, StringComparison.Ordinal);
+        Assert.Contains("internal enum PortableInputEventKind", portableInput, StringComparison.Ordinal);
+        Assert.Contains("internal enum PortableMouseButton", portableInput, StringComparison.Ordinal);
+        Assert.Contains("internal enum PortableInputModifiers", portableInput, StringComparison.Ordinal);
+        Assert.Contains("public bool Handled { get; set; }", portableInput, StringComparison.Ordinal);
 
         Assert.Contains("internal static class PortableWindowActivationService", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void Register", activationService, StringComparison.Ordinal);
@@ -216,12 +231,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static void SetClientSize(object activation, double width, double height)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void SetActivationState(Window window, bool isActive)", activationService, StringComparison.Ordinal);
         Assert.Contains("window.HandleActivate(isActive)", activationService, StringComparison.Ordinal);
+        Assert.Contains("internal static void ProcessInput(Window window, PortableInputEventArgs input)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryRun(Window window)", activationService, StringComparison.Ordinal);
         Assert.Contains("window.PortableWindowActivation", activationService, StringComparison.Ordinal);
+        Assert.Contains(@"<Compile Include=""System\Windows\PortableInputEventArgs.cs"" />", project, StringComparison.Ordinal);
         Assert.Contains(@"<Compile Include=""System\Windows\PortableWindowActivationService.cs"" />", project, StringComparison.Ordinal);
 
         Assert.Contains("private object              _portableWindowActivation", window, StringComparison.Ordinal);
         Assert.Contains("internal object PortableWindowActivation", window, StringComparison.Ordinal);
+        Assert.Contains("internal void HandlePortableInput(PortableInputEventArgs input)", window, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.ProcessInput(this, input)", window, StringComparison.Ordinal);
         Assert.Contains("TryCreatePortableWindowDuringShow()", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.TryActivate(this, out object activation)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.Show(_portableWindowActivation)", window, StringComparison.Ordinal);

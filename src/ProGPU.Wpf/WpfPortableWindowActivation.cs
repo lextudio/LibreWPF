@@ -362,11 +362,45 @@ public sealed class WpfPortableWindowActivation : IDisposable
             FindInstanceMethod(windowType, "HandlePortableInput", typeof(WpfInputEventArgs));
         if (inputMethod == null)
         {
-            return false;
+            return TryForwardCompatibleInputToWindow(window, e);
         }
 
         inputMethod.Invoke(window, new object[] { e });
         return true;
+    }
+
+    private static bool TryForwardCompatibleInputToWindow(object window, WpfInputEventArgs e)
+    {
+        foreach (var methodName in new[] { "OnPortableInput", "HandlePortableInput" })
+        {
+            foreach (var method in FindInstanceMethods(window.GetType(), methodName))
+            {
+                var parameters = method.GetParameters();
+                if (parameters.Length != 1)
+                {
+                    continue;
+                }
+
+                var parameterType = parameters[0].ParameterType;
+                if (parameterType.IsAssignableFrom(e.GetType()))
+                {
+                    method.Invoke(window, new object[] { e });
+                    return true;
+                }
+
+                if (!TryCreateCompatibleInputEventArgs(parameterType, e, out object? mappedArgs) ||
+                    mappedArgs == null)
+                {
+                    continue;
+                }
+
+                method.Invoke(window, new[] { mappedArgs });
+                CopyHandledState(mappedArgs, e);
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void OnHostDragDropReceived(object? sender, WpfDragDropEventArgs e)
@@ -427,6 +461,104 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
 
         return null;
+    }
+
+    private static IEnumerable<MethodInfo> FindInstanceMethods(Type type, string methodName)
+    {
+        for (Type? currentType = type; currentType != null; currentType = currentType.BaseType)
+        {
+            foreach (var method in currentType.GetMethods(
+                BindingFlags.Instance |
+                BindingFlags.Public |
+                BindingFlags.NonPublic |
+                BindingFlags.DeclaredOnly))
+            {
+                if (string.Equals(method.Name, methodName, StringComparison.Ordinal))
+                {
+                    yield return method;
+                }
+            }
+        }
+    }
+
+    private static bool TryCreateCompatibleInputEventArgs(
+        Type targetType,
+        WpfInputEventArgs source,
+        out object? mappedArgs)
+    {
+        mappedArgs = null;
+
+        foreach (var constructor in targetType.GetConstructors(
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+        {
+            var parameters = constructor.GetParameters();
+            if (parameters.Length != 10 ||
+                !TryConvertEnumByName(parameters[0].ParameterType, source.Kind, out object? kind) ||
+                parameters[1].ParameterType != typeof(string) ||
+                parameters[2].ParameterType != typeof(int) ||
+                Nullable.GetUnderlyingType(parameters[3].ParameterType) != typeof(char) ||
+                parameters[4].ParameterType != typeof(double) ||
+                parameters[5].ParameterType != typeof(double) ||
+                parameters[6].ParameterType != typeof(double) ||
+                parameters[7].ParameterType != typeof(double) ||
+                !TryConvertEnumByName(parameters[8].ParameterType, source.Button, out object? button) ||
+                !TryConvertEnumByName(parameters[9].ParameterType, source.Modifiers, out object? modifiers))
+            {
+                continue;
+            }
+
+            mappedArgs = constructor.Invoke(new[]
+            {
+                kind,
+                source.Key,
+                source.ScanCode,
+                source.Character,
+                source.X,
+                source.Y,
+                source.DeltaX,
+                source.DeltaY,
+                button,
+                modifiers
+            });
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryConvertEnumByName(Type targetType, object sourceValue, out object? mappedValue)
+    {
+        mappedValue = null;
+        if (!targetType.IsEnum)
+        {
+            return false;
+        }
+
+        try
+        {
+            mappedValue = Enum.Parse(targetType, sourceValue.ToString()!, ignoreCase: false);
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+    }
+
+    private static void CopyHandledState(object mappedArgs, WpfInputEventArgs source)
+    {
+        var handledProperty = mappedArgs.GetType().GetProperty(
+            "Handled",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        if (handledProperty == null ||
+            handledProperty.GetIndexParameters().Length != 0 ||
+            handledProperty.PropertyType != typeof(bool) ||
+            !handledProperty.CanRead)
+        {
+            return;
+        }
+
+        source.Handled = (bool)handledProperty.GetValue(mappedArgs)!;
     }
 
     private static WpfWindowCloseResult TryInvokeWindowClose(object window)

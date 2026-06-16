@@ -3056,6 +3056,11 @@ namespace System.Windows
             }
         }
 
+        internal void HandlePortableInput(PortableInputEventArgs input)
+        {
+            PortableWindowActivationService.ProcessInput(this, input);
+        }
+
         internal virtual void UpdateHeight(double newHeight)
         {
             if (WindowState == WindowState.Normal)

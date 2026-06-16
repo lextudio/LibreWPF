@@ -57,6 +57,8 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 typeof(Action<object>),
                 typeof(Action<object>),
                 typeof(Action<object, object>),
+                typeof(Action<object, string>),
+                typeof(Action<object, double, double>),
                 typeof(Action<object>),
                 typeof(Action<object>),
                 typeof(Action<object>)
@@ -64,7 +66,25 @@ public sealed class WpfPortableWindowActivation : IDisposable
             modifiers: null);
         if (registerMethod == null)
         {
-            return false;
+            registerMethod = serviceType.GetMethod(
+                "Register",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: new[]
+                {
+                    typeof(Func<object, object?>),
+                    typeof(Action<object>),
+                    typeof(Action<object>),
+                    typeof(Action<object, object>),
+                    typeof(Action<object>),
+                    typeof(Action<object>),
+                    typeof(Action<object>)
+                },
+                modifiers: null);
+            if (registerMethod == null)
+            {
+                return false;
+            }
         }
 
         Func<object, object?> activate = window =>
@@ -79,6 +99,10 @@ public sealed class WpfPortableWindowActivation : IDisposable
             ((WpfPortableWindowActivation)activation).Hide();
         Action<object, object> setWindowState = (activation, windowState) =>
             ((WpfPortableWindowActivation)activation).SetWindowState(windowState);
+        Action<object, string> setTitle = (activation, title) =>
+            ((WpfPortableWindowActivation)activation).SetTitle(title);
+        Action<object, double, double> setClientSize = (activation, width, height) =>
+            ((WpfPortableWindowActivation)activation).SetClientSize(width, height);
         Action<object> close = activation =>
             ((WpfPortableWindowActivation)activation).Close();
         Action<object> run = activation =>
@@ -86,9 +110,12 @@ public sealed class WpfPortableWindowActivation : IDisposable
         Action<object> dispose = activation =>
             ((WpfPortableWindowActivation)activation).Dispose();
 
+        var parameters = registerMethod.GetParameters().Length == 9
+            ? new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, close, run, dispose }
+            : new object[] { activate, show, hide, setWindowState, close, run, dispose };
         registerMethod.Invoke(
             obj: null,
-            parameters: new object[] { activate, show, hide, setWindowState, close, run, dispose });
+            parameters: parameters);
         return true;
     }
 
@@ -112,6 +139,28 @@ public sealed class WpfPortableWindowActivation : IDisposable
         {
             Host.SetWindowState(mappedWindowState);
         }
+    }
+
+    public void SetTitle(string title)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(title);
+
+        Host.SetTitle(title);
+    }
+
+    public void SetClientSize(object? width, object? height)
+    {
+        ThrowIfDisposed();
+
+        var clientWidth = TryMapPositiveDimension(width, out double mappedWidth)
+            ? ToPixelDimension(mappedWidth)
+            : Host.Width;
+        var clientHeight = TryMapPositiveDimension(height, out double mappedHeight)
+            ? ToPixelDimension(mappedHeight)
+            : Host.Height;
+
+        Host.SetClientSize(clientWidth, clientHeight);
     }
 
     public void Close()
@@ -507,16 +556,27 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private static bool TryReadPositiveDimension(object instance, string propertyName, out double value)
     {
-        value = 0.0;
         if (!TryReadProperty(instance, propertyName, out object? rawValue) ||
             rawValue == null)
+        {
+            value = 0.0;
+            return false;
+        }
+
+        return TryMapPositiveDimension(rawValue, out value);
+    }
+
+    private static bool TryMapPositiveDimension(object? value, out double mappedValue)
+    {
+        mappedValue = 0.0;
+        if (value == null)
         {
             return false;
         }
 
         try
         {
-            value = Convert.ToDouble(rawValue, CultureInfo.InvariantCulture);
+            mappedValue = Convert.ToDouble(value, CultureInfo.InvariantCulture);
         }
         catch (FormatException)
         {
@@ -527,7 +587,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return false;
         }
 
-        return double.IsFinite(value) && value > 0.0;
+        return double.IsFinite(mappedValue) && mappedValue > 0.0;
     }
 
     private static bool TryReadProperty(object instance, string propertyName, out object? value)

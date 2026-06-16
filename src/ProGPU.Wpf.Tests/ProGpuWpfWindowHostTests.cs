@@ -13,6 +13,29 @@ namespace ProGPU.Wpf.Tests;
 public sealed class ProGpuWpfWindowHostTests
 {
     [Fact]
+    public void SetTitleAndClientSizeUpdateCachedWindowStateBeforeNativeWindowExists()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
+        {
+            Title = "Initial",
+            Width = 640,
+            Height = 480
+        })
+        {
+            WpfRenderScheduler = scheduler
+        };
+
+        host.SetTitle("Updated");
+        host.SetClientSize(321, 123);
+
+        Assert.Equal("Updated", host.Title);
+        Assert.Equal(321, host.Width);
+        Assert.Equal(123, host.Height);
+        Assert.Equal(2, scheduler.RequestCount);
+    }
+
+    [Fact]
     public void SettingWpfRootVisualRequestsRender()
     {
         var scheduler = new TestRenderScheduler();

@@ -5097,6 +5097,10 @@ namespace System.Windows
         private void OnTitleChanged()
         {
             UpdateTitle(Title);
+            if (_portableWindowActivation != null)
+            {
+                PortableWindowActivationService.SetTitle(_portableWindowActivation, Title);
+            }
         }
 
         private static void _OnShowInTaskbarChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -5735,6 +5739,11 @@ namespace System.Windows
             {
                 UpdateHeight(height);
             }
+
+            if (_portableWindowActivation != null && !double.IsNaN(height))
+            {
+                PortableWindowActivationService.SetClientSize(_portableWindowActivation, Width, height);
+            }
         }
 
         private static void _OnMinHeightChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -5832,6 +5841,11 @@ namespace System.Windows
             if (!IsSourceWindowNull && !IsCompositionTargetInvalid && !double.IsNaN(width))
             {
                 UpdateWidth(width);
+            }
+
+            if (_portableWindowActivation != null && !double.IsNaN(width))
+            {
+                PortableWindowActivationService.SetClientSize(_portableWindowActivation, width, Height);
             }
         }
 

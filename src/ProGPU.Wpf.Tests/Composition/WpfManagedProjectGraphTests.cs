@@ -210,6 +210,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static bool TryActivate(Window window, out object activation)", activationService, StringComparison.Ordinal);
         Assert.Contains("Action<object, object> setWindowState", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void SetWindowState(object activation, WindowState windowState)", activationService, StringComparison.Ordinal);
+        Assert.Contains("Action<object, string> setTitle", activationService, StringComparison.Ordinal);
+        Assert.Contains("internal static void SetTitle(object activation, string title)", activationService, StringComparison.Ordinal);
+        Assert.Contains("Action<object, double, double> setClientSize", activationService, StringComparison.Ordinal);
+        Assert.Contains("internal static void SetClientSize(object activation, double width, double height)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void SetActivationState(Window window, bool isActive)", activationService, StringComparison.Ordinal);
         Assert.Contains("window.HandleActivate(isActive)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryRun(Window window)", activationService, StringComparison.Ordinal);
@@ -223,6 +227,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableWindowActivationService.Show(_portableWindowActivation)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.Hide(_portableWindowActivation)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.SetWindowState(_portableWindowActivation, windowState)", window, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.SetTitle(_portableWindowActivation, Title)", window, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.SetClientSize(_portableWindowActivation, Width, height)", window, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.SetClientSize(_portableWindowActivation, width, Height)", window, StringComparison.Ordinal);
         Assert.Contains("ClosePortableWindowActivation();", window, StringComparison.Ordinal);
         Assert.True(
             window.IndexOf("if (TryCreatePortableWindowDuringShow())", StringComparison.Ordinal)

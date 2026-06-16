@@ -8,6 +8,37 @@ namespace ProGPU.Wpf.Tests;
 public sealed class WpfPortableWindowActivationTests
 {
     [Fact]
+    public void SetTitleAndClientSizeForwardWindowPropertyChangesToHost()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
+        {
+            Title = "Initial",
+            Width = 640,
+            Height = 480
+        })
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        activation.SetTitle("Updated");
+        activation.SetClientSize(320.2, double.NaN);
+        activation.SetClientSize(double.NaN, 240.1);
+
+        Assert.Equal("Updated", host.Title);
+        Assert.Equal(321, host.Width);
+        Assert.Equal(241, host.Height);
+        Assert.True(scheduler.RequestCount >= 4);
+    }
+
+    [Fact]
     public void TryAttachBindsExistingPortableSourceAndUsesWindowAsRootVisual()
     {
         var scheduler = new TestRenderScheduler();

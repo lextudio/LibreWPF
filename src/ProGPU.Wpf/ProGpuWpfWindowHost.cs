@@ -35,12 +35,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private bool _isProcessingRenderSchedulerWakeup;
     private bool _isHostVisible;
     private ProGpuWpfWindowState _windowState;
+    private string _windowTitle;
+    private int _clientWidth;
+    private int _clientHeight;
 
     public ProGpuWpfWindowHost(ProGpuWpfWindowOptions? options = null)
     {
         _options = options ?? new ProGpuWpfWindowOptions();
         _isHostVisible = _options.IsVisible;
         _windowState = _options.WindowState;
+        _windowTitle = _options.Title;
+        _clientWidth = Math.Max(1, _options.Width);
+        _clientHeight = Math.Max(1, _options.Height);
         _wpfRenderScheduler = CreateDefaultRenderScheduler(_platformServices, out _ownsRenderScheduler);
         AttachRenderScheduler(_wpfRenderScheduler);
     }
@@ -64,6 +70,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public bool IsVisible => _window?.IsVisible ?? _isHostVisible;
 
     public ProGpuWpfWindowState WindowState => _windowState;
+
+    public string Title => _window?.Title ?? _windowTitle;
+
+    public int Width => _window?.Size.X ?? _clientWidth;
+
+    public int Height => _window?.Size.Y ?? _clientHeight;
 
     public object? PortablePresentationSource => _portablePresentationSourceBridge?.Source;
 
@@ -184,6 +196,34 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         WpfRenderScheduler.RequestRender();
     }
 
+    public void SetTitle(string title)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(title);
+
+        _windowTitle = title;
+        if (_window != null)
+        {
+            _window.Title = _windowTitle;
+        }
+
+        WpfRenderScheduler.RequestRender();
+    }
+
+    public void SetClientSize(int width, int height)
+    {
+        ThrowIfDisposed();
+
+        _clientWidth = Math.Max(1, width);
+        _clientHeight = Math.Max(1, height);
+        if (_window != null)
+        {
+            _window.Size = new Vector2D<int>(_clientWidth, _clientHeight);
+        }
+
+        WpfRenderScheduler.RequestRender();
+    }
+
     public void DoEvents()
     {
         ThrowIfDisposed();
@@ -296,8 +336,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         var windowOptions = WindowOptions.Default;
         windowOptions.API = GraphicsAPI.None;
-        windowOptions.Size = new Vector2D<int>(_options.Width, _options.Height);
-        windowOptions.Title = _options.Title;
+        windowOptions.Size = new Vector2D<int>(_clientWidth, _clientHeight);
+        windowOptions.Title = _windowTitle;
         windowOptions.VSync = _options.VSync;
         windowOptions.IsVisible = _isHostVisible;
         windowOptions.WindowState = ToSilkWindowState(_windowState);

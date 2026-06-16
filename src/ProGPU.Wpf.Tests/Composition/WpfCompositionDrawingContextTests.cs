@@ -110,6 +110,81 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void GeneratedDrawingContextRegistersAppliedResourcesAsRetainedDependencies()
+    {
+        var sink = new RecordingSink();
+        using var context = new WpfCompositionDrawingContext(sink);
+        var pen = new MediaPen(Brushes.Black, 2);
+        var geometry = new RectangleGeometry(new Rect(1, 2, 30, 40));
+        var image = new FakeImageSource();
+        var transform = new MatrixTransform(new Matrix { M11 = 1, M22 = 1, OffsetX = 3, OffsetY = 4 });
+        var guidelines = new FakeGuidelineSet(Array.Empty<double>(), new[] { 2d });
+        var drawing = new FakeGeometryDrawing(
+            Brushes.Blue,
+            null,
+            new FakeRectangleGeometry(new FakeRect(5, 6, 7, 8)));
+
+        context.DrawRectangle(Brushes.Red, pen, new Rect(1, 2, 3, 4));
+        context.DrawGeometry(Brushes.Green, null, geometry);
+        context.DrawImage(image, new Rect(5, 6, 7, 8));
+        context.PushClip(geometry);
+        context.PushOpacityMask(Brushes.Yellow, new Rect(0, 0, 10, 10));
+        context.PushTransform(transform);
+        context.PushGuidelineSet(guidelines);
+        _ = context.DrawDrawing(drawing);
+
+        Assert.Contains(Brushes.Red, sink.VisualDependencies);
+        Assert.Contains(pen, sink.VisualDependencies);
+        Assert.Contains(Brushes.Green, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Contains(image, sink.VisualDependencies);
+        Assert.Contains(Brushes.Yellow, sink.VisualDependencies);
+        Assert.Contains(transform, sink.VisualDependencies);
+        Assert.Contains(guidelines, sink.VisualDependencies);
+        Assert.Contains(drawing, sink.VisualDependencies);
+        Assert.Contains(Brushes.Blue, sink.VisualDependencies);
+    }
+
+    [Fact]
+    public void ObjectRenderDataDrawingContextRegistersOriginalResourcesAsRetainedDependencies()
+    {
+        var sink = new RecordingSink();
+        var adapter = new FakeImageSourceAdapter();
+        using var context = new WpfObjectRenderDataDrawingContext(sink, adapter);
+        var brush = Brushes.Red;
+        var pen = new MediaPen(Brushes.Black, 2);
+        var geometry = new RectangleGeometry(new Rect(1, 2, 30, 40));
+        var imageSource = new FakeBitmapSource();
+        var transform = new MatrixTransform(new Matrix { M11 = 1, M22 = 1, OffsetX = 3, OffsetY = 4 });
+        var guidelines = new FakeGuidelineSet(Array.Empty<double>(), new[] { 2d });
+        var drawing = new FakeGeometryDrawing(
+            Brushes.Blue,
+            null,
+            new FakeRectangleGeometry(new FakeRect(5, 6, 7, 8)));
+
+        context.DrawRectangle(brush, pen, new FakeRect(1, 2, 3, 4));
+        context.DrawGeometry(Brushes.Green, null, geometry);
+        context.DrawImage(imageSource, new FakeRect(5, 6, 7, 8));
+        context.PushClip(geometry);
+        context.PushOpacityMask(Brushes.Yellow);
+        context.PushTransform(transform);
+        context.PushGuidelineSet(guidelines);
+        context.DrawDrawing(drawing);
+
+        Assert.Contains(brush, sink.VisualDependencies);
+        Assert.Contains(pen, sink.VisualDependencies);
+        Assert.Contains(Brushes.Green, sink.VisualDependencies);
+        Assert.Contains(geometry, sink.VisualDependencies);
+        Assert.Contains(imageSource, sink.VisualDependencies);
+        Assert.DoesNotContain(adapter.AdaptedImageSource, sink.VisualDependencies);
+        Assert.Contains(Brushes.Yellow, sink.VisualDependencies);
+        Assert.Contains(transform, sink.VisualDependencies);
+        Assert.Contains(guidelines, sink.VisualDependencies);
+        Assert.Contains(drawing, sink.VisualDependencies);
+        Assert.Contains(Brushes.Blue, sink.VisualDependencies);
+    }
+
+    [Fact]
     public void GeneratedNoOpDrawGuardsDoNotForwardOrCountOperations()
     {
         var sink = new RecordingSink();
@@ -624,7 +699,10 @@ public sealed class WpfCompositionDrawingContextTests
         public double this[int index] => _values[index];
     }
 
-    private sealed class RecordingSink : IWpfCompositionCommandSink, IWpfVisualEffectCommandSink
+    private sealed class RecordingSink :
+        IWpfCompositionCommandSink,
+        IWpfVisualEffectCommandSink,
+        IWpfRetainedVisualBranchSink
     {
         public List<string> Operations { get; } = new();
 
@@ -649,6 +727,10 @@ public sealed class WpfCompositionDrawingContextTests
         public List<(double LeadingCoordinate, double OffsetToDrivenCoordinate)> GuidelineY2Values { get; } = new();
 
         public List<ProGpuEffectBase> VisualEffects { get; } = new();
+
+        public List<object> VisualOwners { get; } = new();
+
+        public List<object> VisualDependencies { get; } = new();
 
         public bool AcceptVisualEffects { get; init; }
 
@@ -754,6 +836,26 @@ public sealed class WpfCompositionDrawingContextTests
             Operations.Add("PushVisualEffect");
             VisualEffects.Add(effect);
             return true;
+        }
+
+        public void RegisterVisualOwner(object sourceVisual)
+        {
+            VisualOwners.Add(sourceVisual);
+        }
+
+        public void RegisterVisualDependency(object dependency)
+        {
+            VisualDependencies.Add(dependency);
+        }
+
+        public bool PushVisualOwner(object sourceVisual)
+        {
+            VisualOwners.Add(sourceVisual);
+            return true;
+        }
+
+        public void PopVisualOwner()
+        {
         }
 
         public void Pop()

@@ -56,6 +56,7 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
             return;
         }
 
+        RegisterRetainedDependencies(pen);
         _sink.DrawLine(mediaPen, mediaPoint0, mediaPoint1);
         CountApplied();
     }
@@ -83,6 +84,7 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
             return;
         }
 
+        RegisterRetainedDependencies(brush, pen);
         _sink.DrawRectangle(mediaBrush, mediaPen, mediaRectangle);
         CountApplied();
     }
@@ -112,6 +114,7 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
             return;
         }
 
+        RegisterRetainedDependencies(brush, pen);
         _sink.DrawRoundedRectangle(mediaBrush, mediaPen, mediaRectangle, mediaRadiusX, mediaRadiusY);
         CountApplied();
     }
@@ -149,6 +152,7 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
             return;
         }
 
+        RegisterRetainedDependencies(brush, pen);
         _sink.DrawEllipse(mediaBrush, mediaPen, mediaCenter, mediaRadiusX, mediaRadiusY);
         CountApplied();
     }
@@ -179,6 +183,7 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
             return;
         }
 
+        RegisterRetainedDependencies(brush, pen, geometry);
         _sink.DrawGeometry(mediaBrush, mediaPen, mediaGeometry);
         CountApplied();
     }
@@ -199,6 +204,7 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
             return;
         }
 
+        RegisterRetainedDependencies(imageSource);
         _sink.DrawImage(mediaImageSource, mediaRectangle);
         CountApplied();
     }
@@ -220,6 +226,7 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
             return;
         }
 
+        RegisterRetainedDependencies(foregroundBrush, glyphRun);
         _sink.DrawGlyphRun(mediaBrush, mediaGlyphRun);
         CountApplied();
     }
@@ -227,7 +234,13 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
     public void DrawDrawing(object? drawing)
     {
         ThrowIfClosed();
-        CountDrawingReplayStatus(WpfReflectionDrawingReplay.Replay(drawing, _sink, _resources.AdaptImageSource));
+        var status = WpfReflectionDrawingReplay.Replay(drawing, _sink, _resources.AdaptImageSource);
+        if (status is WpfDrawingReplayStatus.Applied or WpfDrawingReplayStatus.PartiallyApplied)
+        {
+            RegisterRetainedDependencies(drawing);
+        }
+
+        CountDrawingReplayStatus(status);
     }
 
     public void DrawVideo(object? player, object? rectangle)
@@ -250,6 +263,7 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
         }
         else if (WpfReflectionResourceResolver.AdaptGeometry(clipGeometry) is { } mediaGeometry)
         {
+            RegisterRetainedDependencies(clipGeometry);
             _sink.PushClip(mediaGeometry);
         }
         else
@@ -271,6 +285,7 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
         }
         else if (WpfReflectionResourceResolver.AdaptBrush(opacityMask) is { } mediaOpacityMask)
         {
+            RegisterRetainedDependencies(opacityMask);
             _sink.PushOpacityMask(mediaOpacityMask, Rect.Empty);
         }
         else
@@ -315,6 +330,7 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
         }
         else if (WpfReflectionResourceResolver.AdaptTransform(transform) is { } mediaTransform)
         {
+            RegisterRetainedDependencies(transform);
             _sink.PushTransform(mediaTransform);
         }
         else
@@ -331,6 +347,7 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
     {
         ThrowIfClosed();
 
+        RegisterRetainedDependencies(guidelines);
         if (WpfGuidelineSetReflection.TryReadDynamicGuidelineYPair(guidelines, out var leadingCoordinate, out var drivenCoordinate))
         {
             _sink.PushGuidelineY2(leadingCoordinate, drivenCoordinate - leadingCoordinate);
@@ -395,6 +412,7 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
             && _sink is IWpfVisualEffectCommandSink effectSink
             && effectSink.PushVisualEffect(proGpuEffect))
         {
+            RegisterRetainedDependencies(effect, effectInput);
             _stackDepth++;
             CountApplied();
             return;
@@ -503,6 +521,11 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
                 _unsupportedCount++;
             }
         }
+    }
+
+    private void RegisterRetainedDependencies(params object?[] dependencies)
+    {
+        WpfRetainedVisualDependencyRegistrar.Register(_sink, dependencies);
     }
 
     private static bool TryReadPoint(object? pointValue, out Point point)

@@ -43,6 +43,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
             return;
         }
 
+        RegisterRetainedDependencies(pen);
         _sink.DrawLine(pen, point0, point1);
         CountApplied();
     }
@@ -60,6 +61,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
             return;
         }
 
+        RegisterRetainedDependencies(pen);
         _sink.DrawLine(pen, point0, point1);
         CountApplied();
         CountUnsupportedStateIfAny(point0Animations, point1Animations);
@@ -73,6 +75,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
             return;
         }
 
+        RegisterRetainedDependencies(brush, pen);
         _sink.DrawRectangle(brush, pen, rectangle);
         CountApplied();
     }
@@ -85,6 +88,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
             return;
         }
 
+        RegisterRetainedDependencies(brush, pen);
         _sink.DrawRectangle(brush, pen, rectangle);
         CountApplied();
         CountUnsupportedStateIfAny(rectangleAnimations);
@@ -98,6 +102,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
             return;
         }
 
+        RegisterRetainedDependencies(brush, pen);
         _sink.DrawRoundedRectangle(brush, pen, rectangle, radiusX, radiusY);
         CountApplied();
     }
@@ -118,6 +123,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
             return;
         }
 
+        RegisterRetainedDependencies(brush, pen);
         _sink.DrawRoundedRectangle(brush, pen, rectangle, radiusX, radiusY);
         CountApplied();
         CountUnsupportedStateIfAny(rectangleAnimations, radiusXAnimations, radiusYAnimations);
@@ -131,6 +137,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
             return;
         }
 
+        RegisterRetainedDependencies(brush, pen);
         _sink.DrawEllipse(brush, pen, center, radiusX, radiusY);
         CountApplied();
     }
@@ -151,6 +158,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
             return;
         }
 
+        RegisterRetainedDependencies(brush, pen);
         _sink.DrawEllipse(brush, pen, center, radiusX, radiusY);
         CountApplied();
         CountUnsupportedStateIfAny(centerAnimations, radiusXAnimations, radiusYAnimations);
@@ -164,6 +172,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
             return;
         }
 
+        RegisterRetainedDependencies(brush, pen, geometry);
         _sink.DrawGeometry(brush, pen, geometry);
         CountApplied();
     }
@@ -176,6 +185,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
             return;
         }
 
+        RegisterRetainedDependencies(imageSource);
         _sink.DrawImage(imageSource, rectangle);
         CountApplied();
     }
@@ -188,6 +198,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
             return;
         }
 
+        RegisterRetainedDependencies(imageSource);
         _sink.DrawImage(imageSource, rectangle);
         CountApplied();
         CountUnsupportedStateIfAny(rectangleAnimations);
@@ -197,6 +208,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
     {
         ThrowIfClosed();
         ArgumentNullException.ThrowIfNull(formattedText);
+        RegisterRetainedDependencies(formattedText);
         _sink.DrawText(formattedText, origin);
         CountApplied();
     }
@@ -209,6 +221,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
             return;
         }
 
+        RegisterRetainedDependencies(foregroundBrush, glyphRun);
         _sink.DrawGlyphRun(foregroundBrush, glyphRun);
         CountApplied();
     }
@@ -229,6 +242,11 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         ThrowIfClosed();
 
         var status = WpfReflectionDrawingReplay.Replay(drawing, _sink, imageSourceAdapter);
+        if (status is WpfDrawingReplayStatus.Applied or WpfDrawingReplayStatus.PartiallyApplied)
+        {
+            RegisterRetainedDependencies(drawing);
+        }
+
         CountDrawingReplayStatus(status);
         return status;
     }
@@ -269,6 +287,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         }
         else
         {
+            RegisterRetainedDependencies(clipGeometry);
             _sink.PushClip(clipGeometry);
         }
 
@@ -307,6 +326,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         }
         else
         {
+            RegisterRetainedDependencies(opacityMask);
             _sink.PushOpacityMask(opacityMask, bounds);
         }
 
@@ -323,6 +343,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         }
         else
         {
+            RegisterRetainedDependencies(transform);
             _sink.PushTransform(transform);
         }
 
@@ -339,6 +360,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
     {
         ThrowIfClosed();
 
+        RegisterRetainedDependencies(guidelines);
         if (WpfGuidelineSetReflection.TryReadDynamicGuidelineYPair(guidelines, out var leadingCoordinate, out var drivenCoordinate))
         {
             _sink.PushGuidelineY2(leadingCoordinate, drivenCoordinate - leadingCoordinate);
@@ -384,6 +406,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
             && _sink is IWpfVisualEffectCommandSink effectSink
             && effectSink.PushVisualEffect(proGpuEffect))
         {
+            RegisterRetainedDependencies(effect, effectInput);
             _stackDepth++;
             CountApplied();
             return;
@@ -480,6 +503,11 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
                 _unsupportedCount++;
             }
         }
+    }
+
+    private void RegisterRetainedDependencies(params object?[] dependencies)
+    {
+        WpfRetainedVisualDependencyRegistrar.Register(_sink, dependencies);
     }
 
 }

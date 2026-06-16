@@ -80,8 +80,11 @@ The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and
 - Skia-compatible opaque bitmap upload normalization in `SKImage.FromBitmap(...)`, forcing alpha bytes to 255 for `SKAlphaType.Opaque` inputs before the ProGPU texture upload.
 - native two-point conical/focal gradient support through `TwoPointConicalGradientBrush`, ProGPU brush packing, and WGSL moving-circle parameter solves for the vector and hatch shader paths, so Skia `CreateTwoPointConicalGradient(...)` no longer needs to reject valid conical parameters.
 - native bottom-left backend render-target origin handling for ProGPU-backed `SKSurface` wrappers by carrying `GRSurfaceOrigin` into the surface and applying a GPU-side root y-flip during flush.
+- native backend render-target format matching for ProGPU-backed `SKSurface` wrappers by caching offscreen compositors per context and texture format, so BGRA backend targets use BGRA render pipelines instead of reusing RGBA pipelines from earlier surfaces.
 - render-thread `WgpuContext.Current` scoping in `Compositor.RenderScene(...)` and `RenderOffscreen(...)`, plus owner-context tracking in `GpuSeriesBuffer`, so GPU line/scatter uploads and bind-group cleanup remain valid when Avalonia or WPF host rendering runs on a composition thread different from the context initialization thread.
 - Skia `SaveLayer` texture lifetime cleanup after `SKSurface.Flush()`, releasing layer textures once the parent draw commands have been consumed instead of retaining one full-canvas texture per saved layer until canvas disposal.
+- Skia `SKImage.ReadPixels(...)` destination stride validation for clipped source rectangles and shifted destination writes, preventing unsafe row overruns when callers provide too-small aligned strides.
+- GDI `Graphics.DrawString(...)` font-style forwarding into ProGPU text command metadata, preserving synthetic bold and italic rendering for WPF/GDI compatibility shims.
 
 ## Decisions
 

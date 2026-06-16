@@ -159,6 +159,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("new Win32MouseDevice(this)", inputManager, StringComparison.Ordinal);
         Assert.Contains("new PortableKeyboardDevice(this)", inputManager, StringComparison.Ordinal);
         Assert.Contains("new PortableMouseDevice(this)", inputManager, StringComparison.Ordinal);
+        Assert.Contains("if(OperatingSystem.IsWindows() && Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)", inputManager, StringComparison.Ordinal);
         Assert.Contains("if (OperatingSystem.IsWindows())", mouseDevice, StringComparison.Ordinal);
         Assert.Contains("_doubleClickDeltaTime = 500;", mouseDevice, StringComparison.Ordinal);
         Assert.True(
@@ -303,6 +304,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static void SetActivationState(Window window, bool isActive)", activationService, StringComparison.Ordinal);
         Assert.Contains("window.HandleActivate(isActive)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void ProcessInput(Window window, PortableInputEventArgs input)", activationService, StringComparison.Ordinal);
+        Assert.Contains("PresentationSource.CriticalFromVisual(window)", activationService, StringComparison.Ordinal);
+        Assert.Contains("input.Handled = ProcessInput(source, input)", activationService, StringComparison.Ordinal);
+        Assert.Contains("InputManager.UnsecureCurrent", activationService, StringComparison.Ordinal);
+        Assert.Contains("new RawKeyboardInputReport", activationService, StringComparison.Ordinal);
+        Assert.Contains("new RawTextInputReport", activationService, StringComparison.Ordinal);
+        Assert.Contains("new RawMouseInputReport", activationService, StringComparison.Ordinal);
+        Assert.Contains("InputManager.PreviewInputReportEvent", activationService, StringComparison.Ordinal);
+        Assert.Contains("PortableKeyboardDevice", activationService, StringComparison.Ordinal);
+        Assert.Contains("PortableMouseDevice", activationService, StringComparison.Ordinal);
+        Assert.Contains("Mouse.MouseWheelDeltaForOneLine", activationService, StringComparison.Ordinal);
+        Assert.DoesNotContain("Routed portable input is implemented in a later InputManager slice", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryRun(Window window)", activationService, StringComparison.Ordinal);
         Assert.Contains("window.PortableWindowActivation", activationService, StringComparison.Ordinal);
         Assert.Contains(@"<Compile Include=""System\Windows\PortableInputEventArgs.cs"" />", project, StringComparison.Ordinal);

@@ -51,6 +51,23 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeReadsUiElementDrawingContent()
+    {
+        var brush = Brushes.Green;
+        var visual = new FakeUiElementVisual(CreateRenderData(brush));
+        var sink = new TestSink();
+
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(visual, sink);
+
+        Assert.Equal(1, result.VisualCount);
+        Assert.Equal(1, result.ContentCount);
+        Assert.Equal(0, result.UnsupportedContentCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+        Assert.Single(sink.DrawRectangles);
+        Assert.Same(brush, sink.DrawRectangles[0].Brush);
+    }
+
+    [Fact]
     public void ReplaySubtreeRegistersSourceVisualOwnersWhenSinkSupportsBranchMap()
     {
         var parent = new FakeDrawingVisual(CreateRenderData(Brushes.Red));
@@ -1202,6 +1219,16 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public FakeDrawingVisual(object? content)
         {
             _content = content;
+        }
+    }
+
+    private sealed class FakeUiElementVisual : FakeVisual
+    {
+        private readonly object? _drawingContent;
+
+        public FakeUiElementVisual(object? drawingContent)
+        {
+            _drawingContent = drawingContent;
         }
     }
 

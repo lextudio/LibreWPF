@@ -771,9 +771,26 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Invoke(element, \"Arrange\", finalRect)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPositiveSize(GetProperty(element, \"DesiredSize\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("target.ReplayVisualSubtreeRetained(content, pixelWidth, pixelHeight)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("replayResult.ContentCount", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("replayResult.RenderData.AppliedCount", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("target.RetainedVisualBranchCount", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("target.RetainedWpfVisualRoot.Children.Count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CountRetainedCommands(target.RetainedWpfVisualRoot)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation", harnessProgram, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VisualContentReflectionBridgeReadsUiElementDrawingContent()
+    {
+        var bridgeSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfVisualContentReflectionBridge.cs"));
+
+        Assert.Contains("FindField(visualType, \"_content\")", bridgeSource, StringComparison.Ordinal);
+        Assert.Contains("FindField(visualType, \"_drawingContent\")", bridgeSource, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -185,9 +185,12 @@ internal static class Program
         var replayResult = target.ReplayVisualSubtreeRetained(content, pixelWidth, pixelHeight);
 
         AssertAtLeast(1, replayResult.VisualCount, "Fluent themed visual replay count");
+        AssertAtLeast(1, replayResult.ContentCount, "Fluent themed visual replay content count");
+        AssertAtLeast(1, replayResult.RenderData.AppliedCount, "Fluent themed render-data applied commands");
         AssertAtLeast(1, replayResult.ChildEdgeCount, "Fluent themed visual child edges");
         AssertAtLeast(1, target.RetainedVisualBranchCount, "retained Fluent themed visual branch map");
         AssertAtLeast(1, target.RetainedWpfVisualRoot.Children.Count, "retained Fluent themed visual root children");
+        AssertAtLeast(1, CountRetainedCommands(target.RetainedWpfVisualRoot), "retained Fluent themed ProGPU commands");
     }
 
     private static void MeasureAndArrange(Assembly windowsBase, object element, double width, double height)
@@ -414,6 +417,67 @@ internal static class Program
             throw new InvalidOperationException(
                 $"Expected {description} to be at least {expectedMinimum}, got {actual}.");
         }
+    }
+
+    private static int CountRetainedCommands(object visual)
+    {
+        return CountRetainedCommands(visual, new HashSet<object>(ReferenceEqualityComparer.Instance));
+    }
+
+    private static int CountRetainedCommands(object visual, ISet<object> visited)
+    {
+        if (!visited.Add(visual))
+        {
+            return 0;
+        }
+
+        int count = GetRetainedCommandCount(visual);
+        PropertyInfo? childrenProperty = visual.GetType().GetProperty(
+            "Children",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        if (childrenProperty?.GetValue(visual) is IEnumerable children)
+        {
+            foreach (object? child in children)
+            {
+                if (child != null)
+                {
+                    count += CountRetainedCommands(child, visited);
+                }
+            }
+        }
+
+        return count;
+    }
+
+    private static int GetRetainedCommandCount(object visual)
+    {
+        PropertyInfo? contextProperty = visual.GetType().GetProperty(
+            "Context",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        object? context = contextProperty?.GetValue(visual);
+        if (context == null)
+        {
+            return 0;
+        }
+
+        PropertyInfo? commandsProperty = context.GetType().GetProperty(
+            "Commands",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        object? commands = commandsProperty?.GetValue(context);
+        if (commands is ICollection nonGenericCollection)
+        {
+            return nonGenericCollection.Count;
+        }
+
+        object? count = commands == null ? null : GetOptionalProperty(commands, "Count");
+        return count == null ? 0 : Convert.ToInt32(count);
+    }
+
+    private static object? GetOptionalProperty(object instance, string propertyName)
+    {
+        return instance.GetType().GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(instance);
     }
 
     private static void AssertSame(object expected, object actual, string description)

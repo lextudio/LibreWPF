@@ -26,6 +26,15 @@ public sealed class WpfVisualContentReflectionBridgeTests
     }
 
     [Fact]
+    public void ExtractContentReadsUiElementDrawingContentField()
+    {
+        var content = new object();
+        var visual = new FakeUiElementVisual(content);
+
+        Assert.Same(content, WpfVisualContentReflectionBridge.ExtractContent(visual));
+    }
+
+    [Fact]
     public void ReplayContentReturnsEmptyResultWhenContentIsNull()
     {
         var result = new WpfVisualContentReflectionBridge().ReplayContent(new FakeDrawingVisual(null), new TestSink());
@@ -40,7 +49,7 @@ public sealed class WpfVisualContentReflectionBridgeTests
         var pen = new Pen(Brushes.Black, 2);
         var record = CreateRectangleRecord(1, 2);
         var renderData = new FakeRenderData(record, record.Length, new FakeDependentResources(brush, pen));
-        var visual = new FakeDrawingVisual(renderData);
+        var visual = new FakeUiElementVisual(renderData);
         var sink = new TestSink();
 
         var result = new WpfVisualContentReflectionBridge().ReplayContent(visual, sink);
@@ -111,6 +120,16 @@ public sealed class WpfVisualContentReflectionBridgeTests
         public FakeDrawingVisual(object? content)
         {
             _content = content;
+        }
+    }
+
+    private sealed class FakeUiElementVisual
+    {
+        private readonly object? _drawingContent;
+
+        public FakeUiElementVisual(object? drawingContent)
+        {
+            _drawingContent = drawingContent;
         }
     }
 

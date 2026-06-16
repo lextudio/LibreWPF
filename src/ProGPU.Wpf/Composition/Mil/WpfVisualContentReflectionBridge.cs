@@ -30,14 +30,16 @@ public sealed class WpfVisualContentReflectionBridge
         }
 
         throw new InvalidOperationException(
-            $"Type '{drawingVisual.GetType().FullName}' does not expose the expected WPF DrawingVisual field '_content'.");
+            $"Type '{drawingVisual.GetType().FullName}' does not expose the expected WPF visual content field '_content' or '_drawingContent'.");
     }
 
     public static bool TryExtractContent(object drawingVisual, out object? content)
     {
         ArgumentNullException.ThrowIfNull(drawingVisual);
 
-        var contentField = FindField(drawingVisual.GetType(), "_content");
+        Type visualType = drawingVisual.GetType();
+        var contentField = FindField(visualType, "_content")
+            ?? FindField(visualType, "_drawingContent");
         if (contentField == null)
         {
             content = null;

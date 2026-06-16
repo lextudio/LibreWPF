@@ -35,6 +35,8 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
 
     public WpfVisualInvalidationTracker WpfInvalidationTracker { get; } = new();
 
+    public WpfRetainedVisualBranchMap RetainedVisualBranchMap { get; } = new();
+
     public long SceneChangeVersion => SceneRootVisual.ChangeVersion;
 
     public long RetainedWpfChangeVersion => RetainedWpfVisualRoot.ChangeVersion;
@@ -44,6 +46,10 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
     public int DirtySourceCount => WpfInvalidationTracker.DirtySourceCount;
 
     public object? LastDirtySource => WpfInvalidationTracker.LastDirtySource;
+
+    public int RetainedVisualBranchSourceCount => RetainedVisualBranchMap.SourceCount;
+
+    public int RetainedVisualBranchCount => RetainedVisualBranchMap.VisualCount;
 
     internal WpfViewport3DTextureCache Viewport3DTextureCache { get; }
 
@@ -115,7 +121,8 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
             pixelHeight,
             Context,
             Viewport3DTextureCache,
-            clearRetainedWpfVisualRoot);
+            clearRetainedWpfVisualRoot,
+            RetainedVisualBranchMap);
     }
 
     public WpfCompositionDrawingContext OpenCompositionDrawingContext(uint pixelWidth, uint pixelHeight)
@@ -212,6 +219,7 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         ThrowIfDisposed();
         RootVisual.Context.Clear();
         RetainedWpfVisualRoot.ClearChildren();
+        RetainedVisualBranchMap.Clear();
         ResetSceneRoot();
         Viewport3DTextureCache.Clear();
         SceneRootVisual.Invalidate();

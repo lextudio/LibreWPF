@@ -22,7 +22,8 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
     IWpfViewport3DCommandSink,
     IWpfVisualEffectCommandSink,
     IWpfVisualCacheCommandSink,
-    IWpfDrawingCacheCommandSink
+    IWpfDrawingCacheCommandSink,
+    IWpfRetainedVisualBranchSink
 {
     private enum ScopeKind
     {
@@ -34,6 +35,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
 
     private readonly Stack<ScopeKind> _scopeStack = new();
     private readonly Stack<VisualScope> _visualScopes = new();
+    private readonly ProGpuWpfDrawingFrame _drawingFrame;
     private bool _isClosed;
 
     public ProGpuRetainedCompositionCommandSink(
@@ -42,6 +44,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         WpfViewport3DTextureCache? viewport3DTextureCache)
     {
         ArgumentNullException.ThrowIfNull(drawingFrame);
+        _drawingFrame = drawingFrame;
 
         var rootVisual = new ProGpuRetainedDrawingVisual
         {
@@ -57,6 +60,14 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
     }
 
     public MediaDrawingContext DrawingContext => Current.DrawingContext;
+
+    public void RegisterVisualOwner(object sourceVisual)
+    {
+        ThrowIfClosed();
+        ArgumentNullException.ThrowIfNull(sourceVisual);
+
+        _drawingFrame.RegisterRetainedWpfVisualOwner(sourceVisual, Current.Visual);
+    }
 
     private VisualScope Current
     {

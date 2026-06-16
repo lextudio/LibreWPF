@@ -54,6 +54,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         stats.VisualCount++;
 
         var popCount = PushVisualState(visual, sink, stats);
+        RegisterRetainedVisualOwner(visual, sink);
 
         if (!ReplayViewport3DVisual(visual, sink, stats))
         {
@@ -69,6 +70,14 @@ public sealed class WpfVisualTreeReflectionRenderer
         for (var i = 0; i < popCount; i++)
         {
             sink.Pop();
+        }
+    }
+
+    private static void RegisterRetainedVisualOwner(object visual, IWpfCompositionCommandSink sink)
+    {
+        if (sink is IWpfRetainedVisualBranchSink retainedVisualBranchSink)
+        {
+            retainedVisualBranchSink.RegisterVisualOwner(visual);
         }
     }
 

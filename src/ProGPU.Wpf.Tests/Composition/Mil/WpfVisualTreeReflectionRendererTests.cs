@@ -46,6 +46,19 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeRegistersSourceVisualOwnersWhenSinkSupportsBranchMap()
+    {
+        var parent = new FakeDrawingVisual(CreateRenderData(Brushes.Red));
+        var child = new FakeDrawingVisual(CreateRenderData(Brushes.Blue));
+        parent.Children.Add(child);
+        var sink = new TestSink();
+
+        _ = new WpfVisualTreeReflectionRenderer().ReplaySubtree(parent, sink);
+
+        Assert.Equal(new object[] { parent, child }, sink.VisualOwners);
+    }
+
+    [Fact]
     public void ReplaySubtreeAppliesOffsetAndOpacityAroundContentAndChildren()
     {
         var root = new FakeVisual
@@ -904,9 +917,15 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
     }
 
-    private sealed class TestSink : IWpfCompositionCommandSink, IWpfVisualEffectCommandSink, IWpfVisualCacheCommandSink
+    private sealed class TestSink :
+        IWpfCompositionCommandSink,
+        IWpfVisualEffectCommandSink,
+        IWpfVisualCacheCommandSink,
+        IWpfRetainedVisualBranchSink
     {
         public List<string> Operations { get; } = new();
+
+        public List<object> VisualOwners { get; } = new();
 
         public List<(MediaBrush? Brush, MediaPen? Pen, Rect Rectangle)> DrawRectangles { get; } = new();
 
@@ -937,6 +956,11 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public bool AcceptVisualCaches { get; init; }
 
         public MediaDrawingContext DrawingContext => null!;
+
+        public void RegisterVisualOwner(object sourceVisual)
+        {
+            VisualOwners.Add(sourceVisual);
+        }
 
         public void DrawLine(MediaPen? pen, Point point0, Point point1)
         {

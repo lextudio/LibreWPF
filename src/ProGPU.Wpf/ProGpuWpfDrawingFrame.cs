@@ -17,6 +17,7 @@ public sealed class ProGpuWpfDrawingFrame
     private readonly ProGpuDrawingVisual _rootVisual;
     private readonly ProGpuWgpuContext? _context;
     private readonly WpfViewport3DTextureCache? _viewport3DTextureCache;
+    private readonly WpfRetainedVisualBranchMap? _retainedVisualBranchMap;
 
     internal ProGpuWpfDrawingFrame(
         ProGpuDrawingVisual rootVisual,
@@ -43,13 +44,15 @@ public sealed class ProGpuWpfDrawingFrame
         uint pixelHeight,
         ProGpuWgpuContext? context = null,
         WpfViewport3DTextureCache? viewport3DTextureCache = null,
-        bool clearRetainedWpfVisualRoot = true)
+        bool clearRetainedWpfVisualRoot = true,
+        WpfRetainedVisualBranchMap? retainedVisualBranchMap = null)
     {
         _sceneRootVisual = sceneRootVisual;
         _retainedWpfVisualRoot = retainedWpfVisualRoot;
         _rootVisual = rootVisual ?? throw new ArgumentNullException(nameof(rootVisual));
         _context = context;
         _viewport3DTextureCache = viewport3DTextureCache;
+        _retainedVisualBranchMap = retainedVisualBranchMap;
 
         PixelWidth = Math.Max(1, pixelWidth);
         PixelHeight = Math.Max(1, pixelHeight);
@@ -62,6 +65,7 @@ public sealed class ProGpuWpfDrawingFrame
             if (clearRetainedWpfVisualRoot)
             {
                 _retainedWpfVisualRoot.ClearChildren();
+                _retainedVisualBranchMap?.Clear();
             }
 
             _retainedWpfVisualRoot.Size = new Vector2(PixelWidth, PixelHeight);
@@ -92,6 +96,8 @@ public sealed class ProGpuWpfDrawingFrame
 
     public object? LastOwnerVisual { get; private set; }
 
+    public WpfRetainedVisualBranchMap? RetainedVisualBranchMap => _retainedVisualBranchMap;
+
     internal bool AddRetainedWpfVisual(ProGpuVisual visual)
     {
         ArgumentNullException.ThrowIfNull(visual);
@@ -103,6 +109,14 @@ public sealed class ProGpuWpfDrawingFrame
 
         _retainedWpfVisualRoot.AddChild(visual);
         return true;
+    }
+
+    internal void RegisterRetainedWpfVisualOwner(object sourceVisual, ProGpuVisual visual)
+    {
+        ArgumentNullException.ThrowIfNull(sourceVisual);
+        ArgumentNullException.ThrowIfNull(visual);
+
+        _retainedVisualBranchMap?.Register(sourceVisual, visual);
     }
 
     public MediaDrawingContext OpenDrawingContext()

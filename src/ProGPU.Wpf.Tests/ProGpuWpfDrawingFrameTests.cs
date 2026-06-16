@@ -78,6 +78,54 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void ConstructorClearsRetainedVisualBranchMapWhenRetainedLayerIsCleared()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var source = new object();
+        branchMap.Register(source, new ProGpuDrawingVisual());
+
+        _ = new ProGpuWpfDrawingFrame(
+            new ProGpuContainerVisual(),
+            new ProGpuContainerVisual(),
+            new ProGpuDrawingVisual(),
+            200,
+            100,
+            retainedVisualBranchMap: branchMap);
+
+        Assert.Equal(0, branchMap.SourceCount);
+        Assert.Equal(0, branchMap.VisualCount);
+        Assert.False(branchMap.TryGetVisuals(source, out _));
+    }
+
+    [Fact]
+    public void RetainedSinkMapsSourceOwnerToCurrentNativeBranch()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var sceneRoot = new ProGpuContainerVisual();
+        var retainedRoot = new ProGpuContainerVisual();
+        var flatRoot = new ProGpuDrawingVisual();
+        var frame = new ProGpuWpfDrawingFrame(
+            sceneRoot,
+            retainedRoot,
+            flatRoot,
+            200,
+            100,
+            retainedVisualBranchMap: branchMap);
+        using var sink = new ProGpuRetainedCompositionCommandSink(frame, context: null, viewport3DTextureCache: null);
+        var source = new object();
+
+        ((IWpfRetainedVisualBranchSink)sink).RegisterVisualOwner(source);
+
+        var retainedRootVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
+        Assert.True(branchMap.TryGetVisuals(source, out var visuals));
+        Assert.Same(retainedRootVisual, Assert.Single(visuals));
+        Assert.Equal(1, branchMap.SourceCount);
+        Assert.Equal(1, branchMap.VisualCount);
+        Assert.Same(source, branchMap.LastSource);
+        Assert.Same(retainedRootVisual, branchMap.LastVisual);
+    }
+
+    [Fact]
     public void RetainedSinkCreatesBoundedNativeEffectVisual()
     {
         var sceneRoot = new ProGpuContainerVisual();
@@ -100,6 +148,32 @@ public sealed class ProGpuWpfDrawingFrameTests
         Assert.Equal(ProGpuRenderCommandType.DrawRect, command.Type);
         Assert.Equal(-10, command.Transform.M41);
         Assert.Equal(-20, command.Transform.M42);
+    }
+
+    [Fact]
+    public void RetainedSinkMapsOwnerToNestedEffectBranchAfterEffectPush()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var sceneRoot = new ProGpuContainerVisual();
+        var retainedRoot = new ProGpuContainerVisual();
+        var flatRoot = new ProGpuDrawingVisual();
+        var frame = new ProGpuWpfDrawingFrame(
+            sceneRoot,
+            retainedRoot,
+            flatRoot,
+            200,
+            100,
+            retainedVisualBranchMap: branchMap);
+        using var sink = new ProGpuRetainedCompositionCommandSink(frame, context: null, viewport3DTextureCache: null);
+        var source = new object();
+
+        Assert.True(sink.PushVisualEffect(new ProGpuBlurEffect(4), new Rect(1, 2, 30, 40)));
+        ((IWpfRetainedVisualBranchSink)sink).RegisterVisualOwner(source);
+
+        var retainedRootVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
+        var effectVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRootVisual.Children));
+        Assert.True(branchMap.TryGetVisuals(source, out var visuals));
+        Assert.Same(effectVisual, Assert.Single(visuals));
     }
 
     [Fact]

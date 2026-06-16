@@ -126,6 +126,32 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void RetainedSinkMapsDependencyToCurrentNativeBranch()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var retainedRoot = new ProGpuContainerVisual();
+        var frame = new ProGpuWpfDrawingFrame(
+            new ProGpuContainerVisual(),
+            retainedRoot,
+            new ProGpuDrawingVisual(),
+            200,
+            100,
+            retainedVisualBranchMap: branchMap);
+        using var sink = new ProGpuRetainedCompositionCommandSink(frame, context: null, viewport3DTextureCache: null);
+        var branchSink = (IWpfRetainedVisualBranchSink)sink;
+        var source = new object();
+        var dependency = new object();
+
+        branchSink.RegisterVisualOwner(source);
+        branchSink.RegisterVisualDependency(dependency);
+
+        var retainedRootVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
+        var target = Assert.Single(branchMap.GetReplayTargetsForSources(new[] { dependency }));
+        Assert.Same(source, target.Source);
+        Assert.Same(retainedRootVisual, target.Visual);
+    }
+
+    [Fact]
     public void RetainedSinkPushesSourceOwnerVisualScope()
     {
         var branchMap = new WpfRetainedVisualBranchMap();
@@ -168,6 +194,7 @@ public sealed class ProGpuWpfDrawingFrameTests
         Assert.Equal(0, result.UnmappedSourceCount);
         Assert.Equal(1, result.InvalidatedVisualCount);
         Assert.Equal(0, result.SharedWithCleanSourceVisualCount);
+        Assert.Equal(0, result.ReplayTargetConflictCount);
         Assert.True(result.CanTargetAllDirtySources);
     }
 
@@ -325,7 +352,8 @@ public sealed class ProGpuWpfDrawingFrameTests
         Assert.Equal(0, result.UnmappedSourceCount);
         Assert.Equal(1, result.InvalidatedVisualCount);
         Assert.Equal(0, result.SharedWithCleanSourceVisualCount);
-        Assert.True(result.CanTargetAllDirtySources);
+        Assert.Equal(1, result.ReplayTargetConflictCount);
+        Assert.False(result.CanTargetAllDirtySources);
     }
 
     [Fact]
@@ -408,6 +436,48 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void BranchMapReturnsSourceOwnerReplayTargetForDirtyDependency()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var source = new object();
+        var dependency = new object();
+        var visual = new ProGpuRetainedDrawingVisual();
+        branchMap.Register(source, visual);
+        branchMap.RegisterDependency(dependency, visual);
+
+        var result = branchMap.InvalidateVisualsForSources(new[] { dependency });
+        var targets = branchMap.GetReplayTargetsForSources(new[] { dependency });
+
+        Assert.Equal(1, result.DirtySourceCount);
+        Assert.Equal(1, result.MappedSourceCount);
+        Assert.Equal(0, result.SharedWithCleanSourceVisualCount);
+        Assert.Equal(0, result.ReplayTargetConflictCount);
+        Assert.True(result.CanTargetAllDirtySources);
+        var target = Assert.Single(targets);
+        Assert.Same(source, target.Source);
+        Assert.Same(visual, target.Visual);
+    }
+
+    [Fact]
+    public void BranchMapRejectsDirtyDependencyWhenBranchHasMultipleSourceOwners()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var firstSource = new object();
+        var secondSource = new object();
+        var dependency = new object();
+        var visual = new ProGpuRetainedDrawingVisual();
+        branchMap.Register(firstSource, visual);
+        branchMap.Register(secondSource, visual);
+        branchMap.RegisterDependency(dependency, visual);
+
+        var result = branchMap.InvalidateVisualsForSources(new[] { dependency });
+
+        Assert.Empty(branchMap.GetReplayTargetsForSources(new[] { dependency }));
+        Assert.Equal(1, result.ReplayTargetConflictCount);
+        Assert.False(result.CanTargetAllDirtySources);
+    }
+
+    [Fact]
     public void BranchMapUnregistersVisualTreeMappings()
     {
         var branchMap = new WpfRetainedVisualBranchMap();
@@ -418,6 +488,7 @@ public sealed class ProGpuWpfDrawingFrameTests
         parentVisual.AddChild(childVisual);
         branchMap.Register(parentSource, parentVisual);
         branchMap.Register(childSource, childVisual);
+        branchMap.RegisterDependency(new object(), childVisual);
 
         branchMap.UnregisterVisualTree(parentVisual);
 

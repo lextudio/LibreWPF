@@ -10,6 +10,8 @@ public sealed class WpfRetainedVisualBranchMap
 {
     private readonly Dictionary<object, List<ProGpuVisual>> _visualsBySource = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<ProGpuVisual, HashSet<object>> _sourcesByVisual = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<ProGpuVisual, HashSet<object>> _sourceOwnersByVisual = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<ProGpuVisual, HashSet<object>> _dependenciesByVisual = new(ReferenceEqualityComparer.Instance);
 
     public int SourceCount => _visualsBySource.Count;
 
@@ -25,12 +27,27 @@ public sealed class WpfRetainedVisualBranchMap
     {
         _visualsBySource.Clear();
         _sourcesByVisual.Clear();
+        _sourceOwnersByVisual.Clear();
+        _dependenciesByVisual.Clear();
         VisualCount = 0;
         LastSource = null;
         LastVisual = null;
     }
 
     public void Register(object? source, ProGpuVisual? visual)
+    {
+        RegisterCore(source, visual, WpfRetainedVisualBranchOwnerKind.SourceOwner);
+    }
+
+    public void RegisterDependency(object? dependency, ProGpuVisual? visual)
+    {
+        RegisterCore(dependency, visual, WpfRetainedVisualBranchOwnerKind.Dependency);
+    }
+
+    private void RegisterCore(
+        object? source,
+        ProGpuVisual? visual,
+        WpfRetainedVisualBranchOwnerKind ownerKind)
     {
         if (source == null || visual == null)
         {
@@ -47,6 +64,7 @@ public sealed class WpfRetainedVisualBranchMap
         {
             if (ReferenceEquals(existing, visual))
             {
+                RegisterOwnerKind(source, visual, ownerKind);
                 LastSource = source;
                 LastVisual = visual;
                 return;
@@ -61,6 +79,7 @@ public sealed class WpfRetainedVisualBranchMap
         }
 
         sources.Add(source);
+        RegisterOwnerKind(source, visual, ownerKind);
         VisualCount++;
         LastSource = source;
         LastVisual = visual;
@@ -128,22 +147,14 @@ public sealed class WpfRetainedVisualBranchMap
 
             foreach (var visual in visuals)
             {
-                if (!_sourcesByVisual.TryGetValue(visual, out var visualSources))
+                if (!TryGetReplaySourceForVisual(visual, out var replaySource))
                 {
                     return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
                 }
 
-                foreach (var visualSource in visualSources)
-                {
-                    if (!dirtySources.Contains(visualSource))
-                    {
-                        return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
-                    }
-                }
-
                 if (visitedVisuals.Add(visual))
                 {
-                    targets.Add(new WpfRetainedVisualBranchReplayTarget(source, visual));
+                    targets.Add(new WpfRetainedVisualBranchReplayTarget(replaySource, visual));
                 }
             }
         }
@@ -198,6 +209,7 @@ public sealed class WpfRetainedVisualBranchMap
         var dirtySourceCount = 0;
         var mappedSourceCount = 0;
         var sharedWithCleanSourceVisualCount = 0;
+        var replayTargetConflictCount = 0;
 
         foreach (var source in sources)
         {
@@ -226,14 +238,35 @@ public sealed class WpfRetainedVisualBranchMap
 
         foreach (var visual in invalidatedVisuals)
         {
-            if (!_sourcesByVisual.TryGetValue(visual, out var visualSources))
+            if (!_sourceOwnersByVisual.TryGetValue(visual, out var sourceOwners))
+            {
+                replayTargetConflictCount++;
+                continue;
+            }
+
+            if (sourceOwners.Count != 1)
+            {
+                replayTargetConflictCount++;
+            }
+
+            var hasDirtySourceOwner = false;
+            foreach (var sourceOwner in sourceOwners)
+            {
+                if (visitedSources.Contains(sourceOwner))
+                {
+                    hasDirtySourceOwner = true;
+                    break;
+                }
+            }
+
+            if (!hasDirtySourceOwner)
             {
                 continue;
             }
 
-            foreach (var visualSource in visualSources)
+            foreach (var sourceOwner in sourceOwners)
             {
-                if (!visitedSources.Contains(visualSource))
+                if (!visitedSources.Contains(sourceOwner))
                 {
                     sharedWithCleanSourceVisualCount++;
                     break;
@@ -245,7 +278,8 @@ public sealed class WpfRetainedVisualBranchMap
             dirtySourceCount,
             mappedSourceCount,
             invalidatedVisuals.Count,
-            sharedWithCleanSourceVisualCount);
+            sharedWithCleanSourceVisualCount,
+            replayTargetConflictCount);
     }
 
     private void UnregisterVisualTreeCore(ProGpuVisual visual)
@@ -266,6 +300,9 @@ public sealed class WpfRetainedVisualBranchMap
             }
         }
 
+        _sourceOwnersByVisual.Remove(visual);
+        _dependenciesByVisual.Remove(visual);
+
         if (visual is global::ProGPU.Scene.ContainerVisual containerVisual)
         {
             var children = containerVisual.Children;
@@ -274,6 +311,43 @@ public sealed class WpfRetainedVisualBranchMap
                 UnregisterVisualTreeCore(children[i]);
             }
         }
+    }
+
+    private void RegisterOwnerKind(
+        object source,
+        ProGpuVisual visual,
+        WpfRetainedVisualBranchOwnerKind ownerKind)
+    {
+        var ownersByVisual = ownerKind == WpfRetainedVisualBranchOwnerKind.SourceOwner
+            ? _sourceOwnersByVisual
+            : _dependenciesByVisual;
+        if (!ownersByVisual.TryGetValue(visual, out var owners))
+        {
+            owners = new HashSet<object>(ReferenceEqualityComparer.Instance);
+            ownersByVisual.Add(visual, owners);
+        }
+
+        owners.Add(source);
+    }
+
+    private bool TryGetReplaySourceForVisual(
+        ProGpuVisual visual,
+        out object replaySource)
+    {
+        replaySource = null!;
+        if (!_sourceOwnersByVisual.TryGetValue(visual, out var sourceOwners) ||
+            sourceOwners.Count != 1)
+        {
+            return false;
+        }
+
+        foreach (var sourceOwner in sourceOwners)
+        {
+            replaySource = sourceOwner;
+            return true;
+        }
+
+        return false;
     }
 
     private static bool IsAncestorOf(ProGpuVisual ancestor, ProGpuVisual visual)
@@ -294,18 +368,26 @@ public readonly record struct WpfRetainedVisualBranchReplayTarget(
     object Source,
     ProGpuVisual Visual);
 
+internal enum WpfRetainedVisualBranchOwnerKind
+{
+    SourceOwner,
+    Dependency
+}
+
 public readonly struct WpfRetainedVisualBranchInvalidationResult
 {
     public WpfRetainedVisualBranchInvalidationResult(
         int dirtySourceCount,
         int mappedSourceCount,
         int invalidatedVisualCount,
-        int sharedWithCleanSourceVisualCount = 0)
+        int sharedWithCleanSourceVisualCount = 0,
+        int replayTargetConflictCount = 0)
     {
         DirtySourceCount = dirtySourceCount;
         MappedSourceCount = mappedSourceCount;
         InvalidatedVisualCount = invalidatedVisualCount;
         SharedWithCleanSourceVisualCount = sharedWithCleanSourceVisualCount;
+        ReplayTargetConflictCount = replayTargetConflictCount;
     }
 
     public int DirtySourceCount { get; }
@@ -318,16 +400,21 @@ public readonly struct WpfRetainedVisualBranchInvalidationResult
 
     public int SharedWithCleanSourceVisualCount { get; }
 
+    public int ReplayTargetConflictCount { get; }
+
     public bool CanTargetAllDirtySources =>
         DirtySourceCount > 0 &&
         UnmappedSourceCount == 0 &&
         InvalidatedVisualCount > 0 &&
-        SharedWithCleanSourceVisualCount == 0;
+        SharedWithCleanSourceVisualCount == 0 &&
+        ReplayTargetConflictCount == 0;
 }
 
 internal interface IWpfRetainedVisualBranchSink
 {
     void RegisterVisualOwner(object sourceVisual);
+
+    void RegisterVisualDependency(object dependency);
 
     bool PushVisualOwner(object sourceVisual);
 

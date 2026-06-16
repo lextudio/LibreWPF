@@ -91,6 +91,14 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         _drawingFrame.RegisterRetainedWpfVisualOwner(sourceVisual, Current.Visual);
     }
 
+    public void RegisterVisualDependency(object dependency)
+    {
+        ThrowIfClosed();
+        ArgumentNullException.ThrowIfNull(dependency);
+
+        _drawingFrame.RegisterRetainedWpfVisualDependency(dependency, Current.Visual);
+    }
+
     public bool PushVisualOwner(object sourceVisual)
     {
         ThrowIfClosed();

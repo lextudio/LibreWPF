@@ -271,11 +271,13 @@ public sealed class ProGpuWpfWindowHostTests
             retainedBranchMappedSourceCount: 1,
             retainedBranchUnmappedSourceCount: 0,
             retainedBranchSharedWithCleanSourceVisualCount: 1,
+            retainedBranchReplayTargetConflictCount: 1,
             retainedBranchInvalidationUsedFallback: true);
 
         Assert.True(host.ShouldRenderFrame(changedFrameState));
         Assert.True(changedFrameState.RetainedBranchInvalidationUsedFallback);
         Assert.Equal(1, changedFrameState.RetainedBranchSharedWithCleanSourceVisualCount);
+        Assert.Equal(1, changedFrameState.RetainedBranchReplayTargetConflictCount);
     }
 
     [Fact]

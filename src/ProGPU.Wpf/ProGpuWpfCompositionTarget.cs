@@ -62,6 +62,8 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
 
     public int LastRetainedBranchSharedWithCleanSourceVisualCount { get; private set; }
 
+    public int LastRetainedBranchReplayTargetConflictCount { get; private set; }
+
     public bool LastRetainedBranchInvalidationUsedFallback { get; private set; }
 
     internal WpfViewport3DTextureCache Viewport3DTextureCache { get; }
@@ -356,6 +358,7 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         LastRetainedBranchMappedSourceCount = result.MappedSourceCount;
         LastRetainedBranchUnmappedSourceCount = result.UnmappedSourceCount;
         LastRetainedBranchSharedWithCleanSourceVisualCount = result.SharedWithCleanSourceVisualCount;
+        LastRetainedBranchReplayTargetConflictCount = result.ReplayTargetConflictCount;
         LastRetainedBranchInvalidationUsedFallback = !result.CanTargetAllDirtySources;
 
         if (LastRetainedBranchInvalidationUsedFallback)

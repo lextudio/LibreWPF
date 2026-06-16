@@ -90,6 +90,7 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         var popCount = PushVisualState(visual, sink, stats);
         RegisterRetainedVisualOwner(visual, sink);
+        RegisterRetainedVisualStateDependencies(visual, sink);
 
         if (!ReplayViewport3DVisual(visual, sink, stats))
         {
@@ -125,6 +126,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
 
         retainedVisualBranchSink.RegisterVisualOwner(visual);
+        RegisterRetainedVisualStateDependencies(visual, sink);
         retainedVisualStateSink.ApplyVisualState(visualState);
 
         if (!ReplayViewport3DVisual(visual, sink, stats))
@@ -163,6 +165,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         var replayed = false;
         try
         {
+            RegisterRetainedVisualStateDependencies(visual, sink);
             retainedVisualStateSink.ApplyVisualState(visualState);
 
             if (!ReplayViewport3DVisual(visual, sink, stats))
@@ -194,6 +197,51 @@ public sealed class WpfVisualTreeReflectionRenderer
         if (sink is IWpfRetainedVisualBranchSink retainedVisualBranchSink)
         {
             retainedVisualBranchSink.RegisterVisualOwner(visual);
+        }
+    }
+
+    private static void RegisterRetainedVisualStateDependencies(object visual, IWpfCompositionCommandSink sink)
+    {
+        RegisterRetainedVisualPropertyDependency(visual, "Transform", sink);
+        RegisterRetainedVisualPropertyDependency(visual, "Clip", sink);
+        RegisterRetainedVisualPropertyDependency(visual, "ScrollableAreaClip", sink);
+        RegisterRetainedVisualPropertyDependency(visual, "OpacityMask", sink);
+        RegisterRetainedVisualPropertyDependency(visual, "Effect", sink);
+        RegisterRetainedVisualPropertyDependency(visual, "BitmapEffect", sink);
+        RegisterRetainedVisualPropertyDependency(visual, "BitmapEffectInput", sink);
+        RegisterRetainedVisualPropertyDependency(visual, "CacheMode", sink);
+        RegisterRetainedVisualPropertyDependency(visual, "XSnappingGuidelines", sink);
+        RegisterRetainedVisualPropertyDependency(visual, "YSnappingGuidelines", sink);
+        RegisterRetainedVisualPropertyDependency(visual, "VisualXSnappingGuidelines", sink);
+        RegisterRetainedVisualPropertyDependency(visual, "VisualYSnappingGuidelines", sink);
+    }
+
+    private static void RegisterRetainedVisualPropertyDependency(
+        object visual,
+        string propertyName,
+        IWpfCompositionCommandSink sink)
+    {
+        if (TryGetPropertyValue(visual, propertyName, out var dependency))
+        {
+            RegisterRetainedVisualDependency(dependency, sink);
+        }
+    }
+
+    private static void RegisterRetainedVisualDependencies(
+        IEnumerable<object?> dependencies,
+        IWpfCompositionCommandSink sink)
+    {
+        foreach (var dependency in dependencies)
+        {
+            RegisterRetainedVisualDependency(dependency, sink);
+        }
+    }
+
+    private static void RegisterRetainedVisualDependency(object? dependency, IWpfCompositionCommandSink sink)
+    {
+        if (dependency != null && sink is IWpfRetainedVisualBranchSink retainedVisualBranchSink)
+        {
+            retainedVisualBranchSink.RegisterVisualDependency(dependency);
         }
     }
 
@@ -411,7 +459,9 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
 
         stats.ContentCount++;
-        stats.AddRenderData(_renderDataBridge.Replay(content, sink, resources, imageSourceAdapter));
+        var snapshot = WpfRenderDataReflectionBridge.Extract(content);
+        RegisterRetainedVisualDependencies(snapshot.DependentResources, sink);
+        stats.AddRenderData(_renderDataBridge.Replay(snapshot, sink, resources, imageSourceAdapter));
     }
 
     private static int PushVisualState(object visual, IWpfCompositionCommandSink sink, ReplayStats stats)

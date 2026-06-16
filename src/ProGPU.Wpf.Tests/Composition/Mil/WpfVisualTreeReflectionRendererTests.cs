@@ -153,6 +153,41 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeRegistersRenderDataResourcesAsRetainedDependencies()
+    {
+        var brush = Brushes.Green;
+        var root = new FakeDrawingVisual(CreateRenderData(brush));
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new object[] { root }, sink.VisualOwners);
+        Assert.Equal(new object[] { brush }, sink.VisualDependencies);
+        Assert.Equal(1, result.ContentCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void TryReplaySubtreeIntoCurrentRetainedVisualRegistersRenderDataResourcesAsRetainedDependencies()
+    {
+        var brush = Brushes.Green;
+        var root = new FakeDrawingVisual(CreateRenderData(brush));
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+
+        Assert.True(new WpfVisualTreeReflectionRenderer().TryReplaySubtreeIntoCurrentRetainedVisual(
+            root,
+            sink,
+            resources: null,
+            imageSourceAdapter: null,
+            out var result));
+
+        Assert.Equal(new object[] { root }, sink.VisualOwners);
+        Assert.Equal(new object[] { brush }, sink.VisualDependencies);
+        Assert.Equal(1, result.ContentCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
     public void ReplaySubtreeKeepsFallbackSubtreeInCommandScopeForNonNativeVisualState()
     {
         var root = new FakeVisual
@@ -1068,6 +1103,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         public List<object> VisualOwners { get; } = new();
 
+        public List<object> VisualDependencies { get; } = new();
+
         public List<WpfRetainedVisualState> RetainedVisualStates { get; } = new();
 
         public List<(MediaBrush? Brush, MediaPen? Pen, Rect Rectangle)> DrawRectangles { get; } = new();
@@ -1105,6 +1142,11 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public void RegisterVisualOwner(object sourceVisual)
         {
             VisualOwners.Add(sourceVisual);
+        }
+
+        public void RegisterVisualDependency(object dependency)
+        {
+            VisualDependencies.Add(dependency);
         }
 
         public bool PushVisualOwner(object sourceVisual)

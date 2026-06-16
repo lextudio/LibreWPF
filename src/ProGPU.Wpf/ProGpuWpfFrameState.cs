@@ -15,6 +15,7 @@ public readonly struct ProGpuWpfFrameState : IEquatable<ProGpuWpfFrameState>
         int retainedBranchMappedSourceCount = 0,
         int retainedBranchUnmappedSourceCount = 0,
         int retainedBranchSharedWithCleanSourceVisualCount = 0,
+        int retainedBranchReplayTargetConflictCount = 0,
         bool retainedBranchInvalidationUsedFallback = false)
     {
         PixelWidth = pixelWidth;
@@ -27,6 +28,7 @@ public readonly struct ProGpuWpfFrameState : IEquatable<ProGpuWpfFrameState>
         RetainedBranchMappedSourceCount = retainedBranchMappedSourceCount;
         RetainedBranchUnmappedSourceCount = retainedBranchUnmappedSourceCount;
         RetainedBranchSharedWithCleanSourceVisualCount = retainedBranchSharedWithCleanSourceVisualCount;
+        RetainedBranchReplayTargetConflictCount = retainedBranchReplayTargetConflictCount;
         RetainedBranchInvalidationUsedFallback = retainedBranchInvalidationUsedFallback;
     }
 
@@ -50,6 +52,8 @@ public readonly struct ProGpuWpfFrameState : IEquatable<ProGpuWpfFrameState>
 
     public int RetainedBranchSharedWithCleanSourceVisualCount { get; }
 
+    public int RetainedBranchReplayTargetConflictCount { get; }
+
     public bool RetainedBranchInvalidationUsedFallback { get; }
 
     public bool Equals(ProGpuWpfFrameState other)
@@ -64,6 +68,7 @@ public readonly struct ProGpuWpfFrameState : IEquatable<ProGpuWpfFrameState>
                RetainedBranchMappedSourceCount == other.RetainedBranchMappedSourceCount &&
                RetainedBranchUnmappedSourceCount == other.RetainedBranchUnmappedSourceCount &&
                RetainedBranchSharedWithCleanSourceVisualCount == other.RetainedBranchSharedWithCleanSourceVisualCount &&
+               RetainedBranchReplayTargetConflictCount == other.RetainedBranchReplayTargetConflictCount &&
                RetainedBranchInvalidationUsedFallback == other.RetainedBranchInvalidationUsedFallback;
     }
 
@@ -85,6 +90,7 @@ public readonly struct ProGpuWpfFrameState : IEquatable<ProGpuWpfFrameState>
         hashCode.Add(RetainedBranchMappedSourceCount);
         hashCode.Add(RetainedBranchUnmappedSourceCount);
         hashCode.Add(RetainedBranchSharedWithCleanSourceVisualCount);
+        hashCode.Add(RetainedBranchReplayTargetConflictCount);
         hashCode.Add(RetainedBranchInvalidationUsedFallback);
         return hashCode.ToHashCode();
     }

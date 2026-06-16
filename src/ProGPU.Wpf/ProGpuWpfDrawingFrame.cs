@@ -119,6 +119,14 @@ public sealed class ProGpuWpfDrawingFrame
         _retainedVisualBranchMap?.Register(sourceVisual, visual);
     }
 
+    internal void RegisterRetainedWpfVisualDependency(object dependency, ProGpuVisual visual)
+    {
+        ArgumentNullException.ThrowIfNull(dependency);
+        ArgumentNullException.ThrowIfNull(visual);
+
+        _retainedVisualBranchMap?.RegisterDependency(dependency, visual);
+    }
+
     public MediaDrawingContext OpenDrawingContext()
     {
         return OpenDrawingContext(null);

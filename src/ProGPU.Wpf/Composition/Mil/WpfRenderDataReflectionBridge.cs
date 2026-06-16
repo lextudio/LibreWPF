@@ -73,6 +73,21 @@ public sealed class WpfRenderDataReflectionBridge
         return _decoder.Decode(snapshot.RenderData, sink, resources);
     }
 
+    public WpfMilDecodeResult Replay(
+        WpfRenderDataSnapshot snapshot,
+        IWpfCompositionCommandSink sink,
+        IWpfMilResourceResolver? resources = null,
+        IWpfImageSourceAdapter? imageSourceAdapter = null)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        ArgumentNullException.ThrowIfNull(sink);
+
+        resources ??= WpfReflectionResourceResolver.FromDependentResources(
+            snapshot.DependentResources,
+            imageSourceAdapter);
+        return _decoder.Decode(snapshot.RenderData, sink, resources);
+    }
+
     private static T GetFieldValue<T>(Type declaringType, object instance, string fieldName)
     {
         var field = declaringType.GetField(fieldName, FieldFlags)

@@ -637,6 +637,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             target.LastRetainedBranchMappedSourceCount,
             target.LastRetainedBranchUnmappedSourceCount,
             target.LastRetainedBranchSharedWithCleanSourceVisualCount,
+            target.LastRetainedBranchReplayTargetConflictCount,
             target.LastRetainedBranchInvalidationUsedFallback);
     }
 

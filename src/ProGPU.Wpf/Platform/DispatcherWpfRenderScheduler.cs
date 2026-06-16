@@ -2,15 +2,20 @@ using System;
 
 namespace System.Windows.Media.ProGPU.Platform;
 
-public sealed class DispatcherWpfRenderScheduler : IWpfRenderScheduler, IDisposable
+public sealed class DispatcherWpfRenderScheduler : IWpfDelayedRenderScheduler, IDisposable
 {
     public static readonly TimeSpan DefaultRenderInterval = TimeSpan.FromMilliseconds(16);
+    private static readonly TimeSpan MinimumRenderDelay = TimeSpan.FromMilliseconds(1);
 
     private readonly object _gate = new();
     private readonly IWpfDispatcherService _dispatcher;
-    private readonly IWpfTimer _renderTimer;
+    private readonly IWpfTimerService _timers;
+    private IWpfTimer? _renderTimer;
     private IWpfDispatcherOperation? _renderOperation;
+    private DateTime _scheduledRenderDueUtc;
+    private bool _renderTimerIsFollowUp;
     private bool _hasPendingRenderRequest;
+    private bool _isRaisingRenderRequested;
     private bool _isDisposed;
 
     public DispatcherWpfRenderScheduler(
@@ -28,7 +33,7 @@ public sealed class DispatcherWpfRenderScheduler : IWpfRenderScheduler, IDisposa
         }
 
         _dispatcher = dispatcher;
-        _renderTimer = timers.CreateTimer(RenderInterval, OnRenderTimerTick, isRepeating: false);
+        _timers = timers;
     }
 
     public event EventHandler? RenderRequested;
@@ -48,16 +53,41 @@ public sealed class DispatcherWpfRenderScheduler : IWpfRenderScheduler, IDisposa
 
     public void RequestRender()
     {
+        RequestRender(RenderInterval);
+    }
+
+    public void RequestRender(TimeSpan delay)
+    {
         lock (_gate)
         {
             ThrowIfDisposed();
+            TimeSpan normalizedDelay = NormalizeDelay(delay);
+            DateTime dueUtc = DateTime.UtcNow + normalizedDelay;
+
             if (_hasPendingRenderRequest)
             {
+                if (_renderOperation != null)
+                {
+                    return;
+                }
+
+                bool scheduleFollowUp = _isRaisingRenderRequested || _renderTimerIsFollowUp;
+                if (!scheduleFollowUp && _renderTimer == null)
+                {
+                    return;
+                }
+
+                if (_renderTimer != null && dueUtc >= _scheduledRenderDueUtc)
+                {
+                    return;
+                }
+
+                ScheduleTimerLocked(normalizedDelay, dueUtc, scheduleFollowUp);
                 return;
             }
 
             _hasPendingRenderRequest = true;
-            _renderTimer.Start();
+            ScheduleTimerLocked(normalizedDelay, dueUtc, isFollowUp: false);
         }
     }
 
@@ -66,6 +96,14 @@ public sealed class DispatcherWpfRenderScheduler : IWpfRenderScheduler, IDisposa
         lock (_gate)
         {
             var hadPendingRequest = _hasPendingRenderRequest;
+            if (_renderTimerIsFollowUp)
+            {
+                _hasPendingRenderRequest = false;
+                _renderOperation?.Cancel();
+                _renderOperation = null;
+                return hadPendingRequest;
+            }
+
             _hasPendingRenderRequest = false;
             CancelRenderDispatchLocked();
             return hadPendingRequest;
@@ -92,7 +130,6 @@ public sealed class DispatcherWpfRenderScheduler : IWpfRenderScheduler, IDisposa
 
             _hasPendingRenderRequest = false;
             CancelRenderDispatchLocked();
-            _renderTimer.Dispose();
             _isDisposed = true;
         }
     }
@@ -101,6 +138,17 @@ public sealed class DispatcherWpfRenderScheduler : IWpfRenderScheduler, IDisposa
     {
         lock (_gate)
         {
+            bool isFollowUp = _renderTimerIsFollowUp;
+            _renderTimer?.Dispose();
+            _renderTimer = null;
+            _scheduledRenderDueUtc = default;
+            _renderTimerIsFollowUp = false;
+
+            if (isFollowUp)
+            {
+                _hasPendingRenderRequest = true;
+            }
+
             if (_isDisposed || !_hasPendingRenderRequest || _renderOperation != null)
             {
                 return;
@@ -122,19 +170,70 @@ public sealed class DispatcherWpfRenderScheduler : IWpfRenderScheduler, IDisposa
 
         if (shouldRaise)
         {
-            RenderRequested?.Invoke(this, EventArgs.Empty);
+            lock (_gate)
+            {
+                if (_isDisposed)
+                {
+                    return;
+                }
+
+                _isRaisingRenderRequested = true;
+            }
+
+            try
+            {
+                RenderRequested?.Invoke(this, EventArgs.Empty);
+            }
+            finally
+            {
+                lock (_gate)
+                {
+                    _isRaisingRenderRequested = false;
+                }
+            }
         }
     }
 
     private void CancelRenderDispatchLocked()
     {
-        if (_renderTimer.IsEnabled)
+        if (_renderTimer != null)
         {
-            _renderTimer.Stop();
+            if (_renderTimer.IsEnabled)
+            {
+                _renderTimer.Stop();
+            }
+
+            _renderTimer.Dispose();
+            _renderTimer = null;
         }
 
+        _scheduledRenderDueUtc = default;
+        _renderTimerIsFollowUp = false;
         _renderOperation?.Cancel();
         _renderOperation = null;
+    }
+
+    private void ScheduleTimerLocked(TimeSpan delay, DateTime dueUtc, bool isFollowUp)
+    {
+        if (_renderTimer != null)
+        {
+            if (_renderTimer.IsEnabled)
+            {
+                _renderTimer.Stop();
+            }
+
+            _renderTimer.Dispose();
+        }
+
+        _scheduledRenderDueUtc = dueUtc;
+        _renderTimerIsFollowUp = isFollowUp;
+        _renderTimer = _timers.CreateTimer(delay, OnRenderTimerTick, isRepeating: false);
+        _renderTimer.Start();
+    }
+
+    private static TimeSpan NormalizeDelay(TimeSpan delay)
+    {
+        return delay <= TimeSpan.Zero ? MinimumRenderDelay : delay;
     }
 
     private void ThrowIfDisposed()

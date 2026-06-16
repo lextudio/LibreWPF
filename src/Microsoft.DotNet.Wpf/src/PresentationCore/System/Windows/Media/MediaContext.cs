@@ -674,7 +674,7 @@ namespace System.Windows.Media
                 EventTrace.EasyTraceEvent(EventTrace.Keyword.KeywordGraphics, EventTrace.Event.WClientScheduleRender, nextTickNeeded.TotalMilliseconds);
                 if (scheduledPortableRenderWakeup)
                 {
-                    PortableMediaContextRenderService.RequestRender();
+                    PortableMediaContextRenderService.RequestRender(nextTickNeeded);
                 }
             }
         }
@@ -1800,6 +1800,11 @@ namespace System.Windows.Media
             // if the media system is disconnected bail.
             if (Channel == null)
             {
+                if (PortableMediaContextRenderService.IsEnabled)
+                {
+                    RenderDisconnectedMessageHandlerCore(resizedCompositionTarget);
+                }
+
                 return;
             }
 
@@ -1927,6 +1932,69 @@ namespace System.Windows.Media
                 // PostRender won't queue new render operation and the window gets stuck.
                 if (gotException
                     && _currentRenderOp != null)
+                {
+                    _currentRenderOp.Abort();
+                    _currentRenderOp = null;
+                }
+
+                _isRendering = false;
+            }
+        }
+
+        private void RenderDisconnectedMessageHandlerCore(
+            object resizedCompositionTarget /* can be null if we are not resizing*/
+            )
+        {
+            Debug.Assert(CheckAccess());
+            Debug.Assert(
+                (resizedCompositionTarget == null) ||
+                (resizedCompositionTarget is ICompositionTarget));
+
+            _isRendering = true;
+
+            _promoteRenderOpToInput.Stop();
+            _promoteRenderOpToRender.Stop();
+
+            bool gotException = true;
+
+            try
+            {
+                int tickLoopCount = 0;
+
+                do
+                {
+                    tickLoopCount++;
+                    if (tickLoopCount > 153)
+                    {
+                        throw new InvalidOperationException(SR.MediaContext_InfiniteTickLoop);
+                    }
+
+                    _timeManager.Tick();
+                    _timeManager.LockTickTime();
+                    FireInvokeOnRenderCallbacks();
+
+                    if (Rendering != null && tickLoopCount == 1)
+                    {
+                        Rendering?.Invoke(this.Dispatcher, new RenderingEventArgs(_timeManager.LastTickTime));
+                        FireInvokeOnRenderCallbacks();
+                    }
+                }
+                while (_timeManager.IsDirty);
+
+                _timeManager.UnlockTickTime();
+
+                InputManager.UnsecureCurrent.InvalidateInputDevices();
+
+                _currentRenderOp?.Abort();
+                _currentRenderOp = null;
+
+                ScheduleNextRenderOp(_timeDelay);
+
+                gotException = false;
+            }
+            finally
+            {
+                if (gotException && _currentRenderOp != null)
                 {
                     _currentRenderOp.Abort();
                     _currentRenderOp = null;

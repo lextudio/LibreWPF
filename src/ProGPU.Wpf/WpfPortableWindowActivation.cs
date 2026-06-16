@@ -663,9 +663,26 @@ public sealed class WpfPortableWindowActivation : IDisposable
             "Register",
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
             binder: null,
-            types: new[] { typeof(Action) },
+            types: new[] { typeof(Action<TimeSpan>) },
             modifiers: null);
+        var registerParameter = registerMethod == null
+            ? null
+            : (object)(Action<TimeSpan>)RequestRenderFromMediaContext;
+        if (registerMethod == null)
+        {
+            registerMethod = serviceType.GetMethod(
+                "Register",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: new[] { typeof(Action) },
+                modifiers: null);
+            registerParameter = registerMethod == null
+                ? null
+                : (Action)RequestRenderFromMediaContext;
+        }
+
         if (registerMethod == null ||
+            registerParameter == null ||
             !typeof(IDisposable).IsAssignableFrom(registerMethod.ReturnType))
         {
             return false;
@@ -674,11 +691,16 @@ public sealed class WpfPortableWindowActivation : IDisposable
         _mediaContextRenderRegistration?.Dispose();
         _mediaContextRenderRegistration = (IDisposable?)registerMethod.Invoke(
             obj: null,
-            parameters: new object[] { (Action)RequestRenderFromMediaContext });
+            parameters: new[] { registerParameter });
         return _mediaContextRenderRegistration != null;
     }
 
     private void RequestRenderFromMediaContext()
+    {
+        RequestRenderFromMediaContext(TimeSpan.Zero);
+    }
+
+    private void RequestRenderFromMediaContext(TimeSpan delay)
     {
         if (_isDisposed)
         {
@@ -687,7 +709,14 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
         try
         {
-            Host.WpfRenderScheduler.RequestRender();
+            if (Host.WpfRenderScheduler is IWpfDelayedRenderScheduler delayedScheduler)
+            {
+                delayedScheduler.RequestRender(delay);
+            }
+            else
+            {
+                Host.WpfRenderScheduler.RequestRender();
+            }
         }
         catch (ObjectDisposedException)
         {

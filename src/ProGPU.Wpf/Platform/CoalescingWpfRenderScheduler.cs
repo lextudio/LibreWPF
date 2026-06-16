@@ -2,7 +2,7 @@ using System;
 
 namespace System.Windows.Media.ProGPU.Platform;
 
-public sealed class CoalescingWpfRenderScheduler : IWpfRenderScheduler
+public sealed class CoalescingWpfRenderScheduler : IWpfDelayedRenderScheduler
 {
     private bool _hasPendingRenderRequest;
 
@@ -19,6 +19,11 @@ public sealed class CoalescingWpfRenderScheduler : IWpfRenderScheduler
 
         _hasPendingRenderRequest = true;
         RenderRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void RequestRender(TimeSpan delay)
+    {
+        RequestRender();
     }
 
     public bool ConsumeRenderRequest()

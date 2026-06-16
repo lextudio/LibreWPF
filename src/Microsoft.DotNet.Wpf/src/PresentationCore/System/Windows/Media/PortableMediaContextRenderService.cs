@@ -10,7 +10,7 @@ namespace System.Windows.Media
     internal static class PortableMediaContextRenderService
     {
         private static readonly object s_lock = new object();
-        private static readonly List<Action> s_renderRequests = new List<Action>();
+        private static readonly List<Action<TimeSpan>> s_renderRequests = new List<Action<TimeSpan>>();
         private static readonly bool s_isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
         internal static bool IsEnabled
@@ -32,6 +32,12 @@ namespace System.Windows.Media
         internal static IDisposable Register(Action requestRender)
         {
             ArgumentNullException.ThrowIfNull(requestRender);
+            return Register(_ => requestRender());
+        }
+
+        internal static IDisposable Register(Action<TimeSpan> requestRender)
+        {
+            ArgumentNullException.ThrowIfNull(requestRender);
 
             if (s_isWindows)
             {
@@ -48,12 +54,22 @@ namespace System.Windows.Media
 
         internal static void RequestRender()
         {
+            RequestRender(TimeSpan.Zero);
+        }
+
+        internal static void RequestRender(TimeSpan delay)
+        {
             if (s_isWindows)
             {
                 return;
             }
 
-            Action[] renderRequests;
+            if (delay < TimeSpan.Zero)
+            {
+                delay = TimeSpan.Zero;
+            }
+
+            Action<TimeSpan>[] renderRequests;
             lock (s_lock)
             {
                 if (s_renderRequests.Count == 0)
@@ -66,22 +82,22 @@ namespace System.Windows.Media
 
             for (int i = 0; i < renderRequests.Length; i++)
             {
-                renderRequests[i]();
+                renderRequests[i](delay);
             }
         }
 
         private sealed class Registration : IDisposable
         {
-            private Action _requestRender;
+            private Action<TimeSpan> _requestRender;
 
-            public Registration(Action requestRender)
+            public Registration(Action<TimeSpan> requestRender)
             {
                 _requestRender = requestRender;
             }
 
             public void Dispose()
             {
-                Action requestRender = _requestRender;
+                Action<TimeSpan> requestRender = _requestRender;
                 if (requestRender == null)
                 {
                     return;

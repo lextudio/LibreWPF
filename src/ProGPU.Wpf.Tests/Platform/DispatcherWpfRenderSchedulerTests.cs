@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Windows.Media.ProGPU.Platform;
 using Xunit;
 
@@ -32,6 +33,76 @@ public sealed class DispatcherWpfRenderSchedulerTests
     }
 
     [Fact]
+    public void RequestRenderWithDelayUsesRequestedTimerInterval()
+    {
+        var timers = new TestTimerService();
+        using var scheduler = new DispatcherWpfRenderScheduler(
+            new QueuedWpfDispatcherService(),
+            timers);
+
+        scheduler.RequestRender(TimeSpan.FromMilliseconds(125));
+
+        Assert.Equal(TimeSpan.FromMilliseconds(125), timers.LastTimer!.Interval);
+        Assert.True(timers.LastTimer.IsEnabled);
+    }
+
+    [Fact]
+    public void RequestRenderWithEarlierDelayReschedulesTimer()
+    {
+        var timers = new TestTimerService();
+        using var scheduler = new DispatcherWpfRenderScheduler(
+            new QueuedWpfDispatcherService(),
+            timers);
+
+        scheduler.RequestRender(TimeSpan.FromMilliseconds(500));
+        var firstTimer = timers.LastTimer!;
+        scheduler.RequestRender(TimeSpan.FromMilliseconds(25));
+
+        Assert.True(firstTimer.IsDisposed);
+        Assert.Equal(TimeSpan.FromMilliseconds(25), timers.LastTimer!.Interval);
+        Assert.Equal(2, timers.TotalStartCount);
+    }
+
+    [Fact]
+    public void RequestRenderDuringRenderRequestedSchedulesFollowUpAfterConsume()
+    {
+        var dispatcher = new QueuedWpfDispatcherService();
+        var timers = new TestTimerService();
+        using var scheduler = new DispatcherWpfRenderScheduler(
+            dispatcher,
+            timers,
+            TimeSpan.FromMilliseconds(10));
+        var requestCount = 0;
+        scheduler.RenderRequested += (_, _) =>
+        {
+            requestCount++;
+            if (requestCount == 1)
+            {
+                scheduler.RequestRender(TimeSpan.FromMilliseconds(40));
+            }
+        };
+
+        scheduler.RequestRender();
+        timers.LastTimer!.Tick();
+        dispatcher.ProcessPending();
+
+        Assert.Equal(1, requestCount);
+        Assert.True(scheduler.HasPendingRenderRequest);
+
+        Assert.True(scheduler.ConsumeRenderRequest());
+
+        Assert.False(scheduler.HasPendingRenderRequest);
+        Assert.Equal(TimeSpan.FromMilliseconds(40), timers.LastTimer!.Interval);
+        Assert.True(timers.LastTimer.IsEnabled);
+
+        timers.LastTimer.Tick();
+        dispatcher.ProcessPending();
+
+        Assert.Equal(2, requestCount);
+        Assert.True(scheduler.HasPendingRenderRequest);
+    }
+
+    [Fact]
     public void RequestRenderCoalescesUntilConsumed()
     {
         var dispatcher = new QueuedWpfDispatcherService();
@@ -44,12 +115,12 @@ public sealed class DispatcherWpfRenderSchedulerTests
         dispatcher.ProcessPending();
         scheduler.RequestRender();
 
-        Assert.Equal(1, timers.LastTimer.StartCount);
+        Assert.Equal(1, timers.TotalStartCount);
 
         Assert.True(scheduler.ConsumeRenderRequest());
         scheduler.RequestRender();
 
-        Assert.Equal(2, timers.LastTimer.StartCount);
+        Assert.Equal(2, timers.TotalStartCount);
     }
 
     [Fact]
@@ -94,6 +165,7 @@ public sealed class DispatcherWpfRenderSchedulerTests
         var scheduler = new DispatcherWpfRenderScheduler(
             new QueuedWpfDispatcherService(),
             timers);
+        scheduler.RequestRender();
 
         scheduler.Dispose();
 
@@ -103,11 +175,28 @@ public sealed class DispatcherWpfRenderSchedulerTests
 
     private sealed class TestTimerService : IWpfTimerService
     {
+        private readonly List<TestTimer> _timers = new();
+
         public TestTimer? LastTimer { get; private set; }
+
+        public int TotalStartCount
+        {
+            get
+            {
+                var count = 0;
+                foreach (var timer in _timers)
+                {
+                    count += timer.StartCount;
+                }
+
+                return count;
+            }
+        }
 
         public IWpfTimer CreateTimer(TimeSpan interval, Action callback, bool isRepeating = true)
         {
             LastTimer = new TestTimer(interval, callback, isRepeating);
+            _timers.Add(LastTimer);
             return LastTimer;
         }
     }

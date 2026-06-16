@@ -135,24 +135,39 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf",
             "WpfPortableWindowActivation.cs");
+        var proGpuSchedulerPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Platform",
+            "IWpfRenderScheduler.cs");
 
         var mediaContext = File.ReadAllText(mediaContextPath);
         var renderService = File.ReadAllText(renderServicePath);
         var presentationCoreProject = File.ReadAllText(presentationCoreProjectPath);
         var activationService = File.ReadAllText(activationServicePath);
         var proGpuActivation = File.ReadAllText(proGpuActivationPath);
+        var proGpuScheduler = File.ReadAllText(proGpuSchedulerPath);
 
         Assert.Contains(@"<Compile Include=""System\Windows\Media\PortableMediaContextRenderService.cs"" />", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains("internal static class PortableMediaContextRenderService", renderService, StringComparison.Ordinal);
         Assert.Contains("RuntimeInformation.IsOSPlatform(OSPlatform.Windows)", renderService, StringComparison.Ordinal);
         Assert.Contains("internal static IDisposable Register(Action requestRender)", renderService, StringComparison.Ordinal);
+        Assert.Contains("internal static IDisposable Register(Action<TimeSpan> requestRender)", renderService, StringComparison.Ordinal);
         Assert.Contains("internal static void RequestRender()", renderService, StringComparison.Ordinal);
-        Assert.Contains("PortableMediaContextRenderService.RequestRender();", mediaContext, StringComparison.Ordinal);
+        Assert.Contains("internal static void RequestRender(TimeSpan delay)", renderService, StringComparison.Ordinal);
+        Assert.Contains("PortableMediaContextRenderService.RequestRender(nextTickNeeded)", mediaContext, StringComparison.Ordinal);
+        Assert.Contains("RenderDisconnectedMessageHandlerCore(resizedCompositionTarget)", mediaContext, StringComparison.Ordinal);
+        Assert.Contains("private void RenderDisconnectedMessageHandlerCore", mediaContext, StringComparison.Ordinal);
+        Assert.Contains("ScheduleNextRenderOp(_timeDelay)", mediaContext, StringComparison.Ordinal);
 
         Assert.Contains("internal static void FlushDispatcherOperations(object window, DispatcherPriority markerPriority)", activationService, StringComparison.Ordinal);
         Assert.Contains("Dispatcher.PushFrame(frame)", activationService, StringComparison.Ordinal);
+        Assert.Contains("public interface IWpfDelayedRenderScheduler : IWpfRenderScheduler", proGpuScheduler, StringComparison.Ordinal);
+        Assert.Contains("void RequestRender(TimeSpan delay)", proGpuScheduler, StringComparison.Ordinal);
         Assert.Contains("PortableMediaContextRenderServiceTypeName", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryRegisterMediaContextRenderService(presentationCoreAssembly)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("typeof(Action<TimeSpan>)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("IWpfDelayedRenderScheduler delayedScheduler", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.RenderWakeupRequested += OnHostRenderWakeupRequested", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryFlushDispatcherOperations(Window, \"Render\")", proGpuActivation, StringComparison.Ordinal);
     }

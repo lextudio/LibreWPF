@@ -14,3 +14,8 @@ public interface IWpfRenderScheduler
 
     void Reset();
 }
+
+public interface IWpfDelayedRenderScheduler : IWpfRenderScheduler
+{
+    void RequestRender(TimeSpan delay);
+}

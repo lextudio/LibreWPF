@@ -2,6 +2,11 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using System.Windows.Media.ProGPU;
+using ProGpuContainerVisual = global::ProGPU.Scene.ContainerVisual;
+using ProGpuDrawingContext = global::ProGPU.Scene.DrawingContext;
+using ProGpuRenderCommand = global::ProGPU.Scene.RenderCommand;
+using ProGpuRenderCommandType = global::ProGPU.Scene.RenderCommandType;
+using ProGpuVisual = global::ProGPU.Scene.Visual;
 
 internal static class Program
 {
@@ -52,10 +57,10 @@ internal static class Program
             throw new InvalidOperationException("Failed to register ProGPU object sink factory against real PresentationCore.");
         }
 
+        object ownerVisual = RuntimeHelpers.GetUninitializedObject(drawingVisualType);
+
         using (registration)
         {
-            object ownerVisual = RuntimeHelpers.GetUninitializedObject(drawingVisualType);
-
             object sink = createSink.Invoke(null, new[] { ownerVisual })
                 ?? throw new InvalidOperationException("Real PresentationCore provider returned a null sink.");
 
@@ -83,16 +88,46 @@ internal static class Program
                 modifiers: null)
                 ?? throw new MissingMethodException(sinkInterfaceType.FullName, "Pop");
 
+            MethodInfo close = sinkInterfaceType.GetMethod(
+                "Close",
+                BindingFlags.Instance | BindingFlags.Public,
+                binder: null,
+                types: Type.EmptyTypes,
+                modifiers: null)
+                ?? throw new MissingMethodException(sinkInterfaceType.FullName, "Close");
+
             pushOpacity.Invoke(sink, new object[] { 0.5 });
             pop.Invoke(sink, Array.Empty<object>());
+            close.Invoke(sink, Array.Empty<object>());
         }
 
-        if (target.RootVisual.Context.Commands.Count != 2 ||
-            target.RootVisual.Context.Commands[0].Type != global::ProGPU.Scene.RenderCommandType.PushOpacity ||
-            target.RootVisual.Context.Commands[1].Type != global::ProGPU.Scene.RenderCommandType.PopOpacity)
+        if (target.RootVisual.Context.Commands.Count != 0)
         {
             throw new InvalidOperationException(
-                $"Expected ProGPU PushOpacity/PopOpacity commands after real sink dispatch, got {target.RootVisual.Context.Commands.Count} commands.");
+                $"Expected real provider RenderOpen commands to use the retained WPF owner branch, but the flat root received {target.RootVisual.Context.Commands.Count} commands.");
+        }
+
+        ProGpuContainerVisual retainedFrameRoot = GetSingleContainerChild(
+            target.RetainedWpfVisualRoot,
+            "retained WPF frame root");
+        ProGpuVisual ownerBranch = GetSingleChild(
+            retainedFrameRoot,
+            "real provider owner branch");
+
+        if (!target.RetainedVisualBranchMap.TryGetVisuals(ownerVisual, out IReadOnlyList<ProGpuVisual> ownerVisuals) ||
+            ownerVisuals.Count != 1 ||
+            !ReferenceEquals(ownerVisuals[0], ownerBranch))
+        {
+            throw new InvalidOperationException("Real PresentationCore owner visual was not mapped to the retained ProGPU owner branch.");
+        }
+
+        IReadOnlyList<ProGpuRenderCommand> commands = GetRetainedCommands(ownerBranch);
+        if (commands.Count != 2 ||
+            commands[0].Type != ProGpuRenderCommandType.PushOpacity ||
+            commands[1].Type != ProGpuRenderCommandType.PopOpacity)
+        {
+            throw new InvalidOperationException(
+                $"Expected retained owner branch PushOpacity/PopOpacity commands after real sink dispatch, got {commands.Count} commands.");
         }
 
         object restoredOwnerVisual = RuntimeHelpers.GetUninitializedObject(drawingVisualType);
@@ -103,6 +138,39 @@ internal static class Program
         }
 
         loadContext.Unload();
+    }
+
+    private static ProGpuContainerVisual GetSingleContainerChild(ProGpuContainerVisual parent, string description)
+    {
+        ProGpuVisual visual = GetSingleChild(parent, description);
+        return visual as ProGpuContainerVisual
+            ?? throw new InvalidOperationException($"Expected {description} to be a container visual, got {visual.GetType().FullName}.");
+    }
+
+    private static ProGpuVisual GetSingleChild(ProGpuContainerVisual parent, string description)
+    {
+        if (parent.Children.Count != 1)
+        {
+            throw new InvalidOperationException(
+                $"Expected exactly one {description}, got {parent.Children.Count} children.");
+        }
+
+        return parent.Children[0];
+    }
+
+    private static IReadOnlyList<ProGpuRenderCommand> GetRetainedCommands(ProGpuVisual visual)
+    {
+        PropertyInfo contextProperty = visual.GetType().GetProperty(
+            "Context",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException(
+                $"Retained owner branch type '{visual.GetType().FullName}' does not expose a drawing context.");
+
+        ProGpuDrawingContext context = contextProperty.GetValue(visual) as ProGpuDrawingContext
+            ?? throw new InvalidOperationException(
+                $"Retained owner branch type '{visual.GetType().FullName}' exposed an unexpected context value.");
+
+        return context.Commands;
     }
 
     private static Type GetRequiredType(Assembly assembly, string typeName)

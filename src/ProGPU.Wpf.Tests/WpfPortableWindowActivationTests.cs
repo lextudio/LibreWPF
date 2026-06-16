@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Reflection;
 using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Platform;
@@ -249,11 +250,89 @@ public sealed class WpfPortableWindowActivationTests
         Assert.Equal(0, window.ActivatedCount);
     }
 
+    [Fact]
+    public void HostDragDropForwardsPayloadToPortableWindowDropHandler()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakePortableDropWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        var args = new WpfDragDropEventArgs(
+            WpfDragDropEventKind.Drop,
+            new WpfDragDropData(new[] { "/tmp/a.txt", "/tmp/b.txt" }),
+            WpfDragDropEffects.Copy,
+            WpfDragDropEffects.None);
+        RaiseHostDragDropEvent(host, args);
+
+        Assert.Equal(1, window.DropCount);
+        Assert.Same(args, window.LastDropArgs);
+        Assert.Equal(WpfDragDropEffects.Move, args.AcceptedEffect);
+    }
+
+    [Fact]
+    public void HostDragDropForwardsFilesToPortableFileDropFallback()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakePortableFileDropWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        RaiseHostDragDropEvent(
+            host,
+            new WpfDragDropEventArgs(
+                WpfDragDropEventKind.Drop,
+                new WpfDragDropData(new[] { "/tmp/document.txt" })));
+
+        Assert.Equal(1, window.DropCount);
+        Assert.Equal(new[] { "/tmp/document.txt" }, window.LastFiles);
+    }
+
+    [Fact]
+    public void DisposingActivationStopsDragDropForwarding()
+    {
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = new TestRenderScheduler()
+        };
+        var window = new FakePortableDropWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        activation.Dispose();
+        RaiseHostDragDropEvent(
+            host,
+            new WpfDragDropEventArgs(
+                WpfDragDropEventKind.Drop,
+                new WpfDragDropData(new[] { "/tmp/ignored.txt" })));
+
+        Assert.Equal(0, window.DropCount);
+    }
+
     private static void RaiseHostWindowEvent(ProGpuWpfWindowHost host, WpfWindowEventKind kind)
     {
         typeof(ProGpuWpfWindowHost)
             .GetMethod("OnPlatformWindowEventReceived", BindingFlags.Instance | BindingFlags.NonPublic)!
             .Invoke(host, new object?[] { null, new WpfWindowEventArgs(kind) });
+    }
+
+    private static void RaiseHostDragDropEvent(ProGpuWpfWindowHost host, WpfDragDropEventArgs args)
+    {
+        typeof(ProGpuWpfWindowHost)
+            .GetMethod("OnPlatformDragDropReceived", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(host, new object?[] { null, args });
     }
 
     private sealed class FakeWindow
@@ -326,6 +405,33 @@ public sealed class WpfPortableWindowActivationTests
                 IsActive = false;
                 DeactivatedCount++;
             }
+        }
+    }
+
+    private sealed class FakePortableDropWindow
+    {
+        public int DropCount { get; private set; }
+
+        public WpfDragDropEventArgs? LastDropArgs { get; private set; }
+
+        private void OnPortableDrop(WpfDragDropEventArgs e)
+        {
+            DropCount++;
+            LastDropArgs = e;
+            e.AcceptedEffect = WpfDragDropEffects.Move;
+        }
+    }
+
+    private sealed class FakePortableFileDropWindow
+    {
+        public int DropCount { get; private set; }
+
+        public IReadOnlyList<string> LastFiles { get; private set; } = Array.Empty<string>();
+
+        internal void OnPortableFileDrop(IReadOnlyList<string> files)
+        {
+            DropCount++;
+            LastFiles = files;
         }
     }
 

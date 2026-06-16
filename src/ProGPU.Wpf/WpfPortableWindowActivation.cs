@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
 using System.Windows.Media.ProGPU.Platform;
@@ -23,6 +24,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         PortablePresentationSource = portablePresentationSource;
         Host.Closing += OnHostClosing;
         Host.WindowEventReceived += OnHostWindowEventReceived;
+        Host.DragDropReceived += OnHostDragDropReceived;
     }
 
     public ProGpuWpfWindowHost Host { get; }
@@ -196,6 +198,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
         Host.Closing -= OnHostClosing;
         Host.WindowEventReceived -= OnHostWindowEventReceived;
+        Host.DragDropReceived -= OnHostDragDropReceived;
         Host.Dispose();
         _isDisposed = true;
     }
@@ -337,6 +340,66 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 TrySetWindowActivationState(Window, isActive: false);
                 break;
         }
+    }
+
+    private void OnHostDragDropReceived(object? sender, WpfDragDropEventArgs e)
+    {
+        if (_isDisposed || e.Kind != WpfDragDropEventKind.Drop)
+        {
+            return;
+        }
+
+        TryForwardDropToWindow(Window, e);
+    }
+
+    private static bool TryForwardDropToWindow(object window, WpfDragDropEventArgs e)
+    {
+        var windowType = window.GetType();
+        var dropMethod = FindInstanceMethod(windowType, "OnPortableDrop", typeof(WpfDragDropEventArgs));
+        if (dropMethod != null)
+        {
+            dropMethod.Invoke(window, new object[] { e });
+            return true;
+        }
+
+        var filesMethod =
+            FindInstanceMethod(windowType, "OnPortableFileDrop", typeof(IReadOnlyList<string>)) ??
+            FindInstanceMethod(windowType, "DropFiles", typeof(IReadOnlyList<string>));
+        if (filesMethod != null)
+        {
+            filesMethod.Invoke(window, new object[] { e.Data.Files });
+            return true;
+        }
+
+        filesMethod =
+            FindInstanceMethod(windowType, "OnPortableFileDrop", typeof(string[])) ??
+            FindInstanceMethod(windowType, "DropFiles", typeof(string[]));
+        if (filesMethod != null)
+        {
+            filesMethod.Invoke(window, new object[] { e.Data.Files.ToArray() });
+            return true;
+        }
+
+        return false;
+    }
+
+    private static MethodInfo? FindInstanceMethod(Type type, string methodName, Type parameterType)
+    {
+        for (Type? currentType = type; currentType != null; currentType = currentType.BaseType)
+        {
+            var method = currentType.GetMethod(
+                methodName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: new[] { parameterType },
+                modifiers: null);
+            if (method != null)
+            {
+                return method;
+            }
+        }
+
+        return null;
     }
 
     private static WpfWindowCloseResult TryInvokeWindowClose(object window)

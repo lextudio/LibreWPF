@@ -6,10 +6,35 @@ namespace ProGPU.Wpf.RealXamlCompilerHarness;
 
 public partial class MainWindow : Window
 {
+    public static RoutedUICommand SmokeRoutedCommand { get; } = new(
+        "Smoke routed command",
+        "SmokeRoutedCommand",
+        typeof(MainWindow));
+
     public MainWindow()
     {
         DataContext = new SmokeViewModel();
         InitializeComponent();
+    }
+
+    public int RoutedCommandCanExecuteCount { get; private set; }
+
+    public int RoutedCommandExecutionCount { get; private set; }
+
+    public string? LastRoutedCommandParameter { get; private set; }
+
+    private void OnSmokeCommandCanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+        RoutedCommandCanExecuteCount++;
+        e.CanExecute = true;
+        e.Handled = true;
+    }
+
+    private void OnSmokeCommandExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        RoutedCommandExecutionCount++;
+        LastRoutedCommandParameter = e.Parameter?.ToString();
+        e.Handled = true;
     }
 
     public sealed class SmokeViewModel

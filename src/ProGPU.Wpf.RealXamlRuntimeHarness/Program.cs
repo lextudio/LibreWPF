@@ -110,7 +110,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 5, "stack panel children");
+        AssertCollectionCount(children, expected: 6, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -136,6 +136,7 @@ internal static class Program
         AssertCollectionCount(GetProperty(flowDocument, "Blocks"), expected: 1, "compiled FlowDocument blocks");
 
         ValidateBindingAndCommand(window);
+        ValidateRoutedCommand(window);
     }
 
     private static void ValidateBindingAndCommand(object window)
@@ -159,6 +160,31 @@ internal static class Program
         AssertEqual(0, GetProperty(viewModelCommand, "ExecutionCount"), "bound command initial execution count");
         Invoke(buttonCommand, "Execute", new object?[] { null });
         AssertEqual(1, GetProperty(viewModelCommand, "ExecutionCount"), "bound command execution count");
+    }
+
+    private static void ValidateRoutedCommand(object window)
+    {
+        object inputBox = GetField(window, "InputBox");
+        object routedCommandButton = GetField(window, "RoutedCommandButton");
+        AssertType(routedCommandButton, "System.Windows.Controls.Button", "compiled routed command Button");
+        AssertEqual("run routed command", GetProperty(routedCommandButton, "Content"), "compiled routed command Button content");
+        AssertSame(inputBox, GetProperty(routedCommandButton, "CommandTarget"), "compiled routed command target");
+
+        object commandParameter = GetProperty(routedCommandButton, "CommandParameter");
+        AssertEqual("routed command payload", commandParameter, "compiled routed command parameter");
+
+        object routedCommand = GetProperty(routedCommandButton, "Command");
+        AssertType(routedCommand, "System.Windows.Input.RoutedUICommand", "compiled routed command");
+        AssertEqual("SmokeRoutedCommand", GetProperty(routedCommand, "Name"), "compiled routed command name");
+        AssertEqual(0, GetProperty(window, "RoutedCommandExecutionCount"), "routed command initial execution count");
+
+        object canExecute = InvokeTwoArgumentCommand(routedCommand, "CanExecute", commandParameter, inputBox);
+        AssertEqual(true, canExecute, "routed command CanExecute result");
+        AssertAtLeast(1, GetProperty(window, "RoutedCommandCanExecuteCount"), "routed command CanExecute handler count");
+
+        InvokeTwoArgumentCommand(routedCommand, "Execute", commandParameter, inputBox);
+        AssertEqual(1, GetProperty(window, "RoutedCommandExecutionCount"), "routed command execution count");
+        AssertEqual("routed command payload", GetProperty(window, "LastRoutedCommandParameter"), "routed command executed parameter");
     }
 
     private static void RegisterPortableActivation(
@@ -293,6 +319,26 @@ internal static class Program
         return method.Invoke(instance, parameters) ?? new object();
     }
 
+    private static object InvokeTwoArgumentCommand(object command, string methodName, object? parameter, object target)
+    {
+        MethodInfo method = command.GetType().GetMethods(
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .FirstOrDefault(candidate =>
+            {
+                if (!string.Equals(candidate.Name, methodName, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                ParameterInfo[] candidateParameters = candidate.GetParameters();
+                return candidateParameters.Length == 2 &&
+                    candidateParameters[1].ParameterType.IsAssignableFrom(target.GetType());
+            })
+            ?? throw new MissingMethodException(command.GetType().FullName, methodName);
+
+        return method.Invoke(command, new[] { parameter, target }) ?? new object();
+    }
+
     private static void AssertCollectionCount(object collection, int expected, string description)
     {
         object count =
@@ -324,6 +370,15 @@ internal static class Program
         if (!Equals(expected, actual))
         {
             throw new InvalidOperationException($"Expected {description} to be '{expected}', got '{actual}'.");
+        }
+    }
+
+    private static void AssertAtLeast(int expectedMinimum, object actual, string description)
+    {
+        int actualValue = Convert.ToInt32(actual);
+        if (actualValue < expectedMinimum)
+        {
+            throw new InvalidOperationException($"Expected {description} to be at least {expectedMinimum}, got {actualValue}.");
         }
     }
 

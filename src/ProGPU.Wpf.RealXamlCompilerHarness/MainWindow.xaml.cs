@@ -1,4 +1,7 @@
 using System;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 
@@ -37,13 +40,56 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    public sealed class SmokeViewModel
+    public sealed class SmokeViewModel : INotifyPropertyChanged
     {
-        public string Greeting => "bound greeting from real WPF";
+        private string _greeting = "bound greeting from real WPF";
+        private SmokeItem? _selectedItem;
+
+        public SmokeViewModel()
+        {
+            Items.Add(new SmokeItem("item alpha"));
+            Items.Add(new SmokeItem("item beta"));
+            _selectedItem = Items[1];
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        public string Greeting
+        {
+            get => _greeting;
+            set
+            {
+                if (!string.Equals(_greeting, value, StringComparison.Ordinal))
+                {
+                    _greeting = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
 
         public string ButtonText => "run bound command";
 
+        public ObservableCollection<SmokeItem> Items { get; } = new();
+
+        public SmokeItem? SelectedItem
+        {
+            get => _selectedItem;
+            set
+            {
+                if (!ReferenceEquals(_selectedItem, value))
+                {
+                    _selectedItem = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public SmokeCommand SmokeCommand { get; } = new();
+
+        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
     }
 
     public sealed class SmokeCommand : ICommand
@@ -67,4 +113,14 @@ public partial class MainWindow : Window
             CanExecuteChanged?.Invoke(this, EventArgs.Empty);
         }
     }
+}
+
+public sealed class SmokeItem
+{
+    public SmokeItem(string name)
+    {
+        Name = name;
+    }
+
+    public string Name { get; }
 }

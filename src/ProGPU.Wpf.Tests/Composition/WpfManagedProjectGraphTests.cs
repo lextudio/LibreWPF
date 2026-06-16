@@ -669,6 +669,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Executed=\"OnSmokeCommandExecuted\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"RoutedCommandButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CommandTarget=\"{Binding ElementName=InputBox}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ItemsList\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding Items}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SelectedItem=\"{Binding SelectedItem, Mode=TwoWay}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ListBox.ItemsPanel", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemsPanelTemplate", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DataTemplate DataType=\"{x:Type local:SmokeItem}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding Name}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("StaticResource AccentBrush", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("InitializeComponent();", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DataContext = new SmokeViewModel();", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -676,7 +683,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void OnSmokeCommandCanExecute", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnSmokeCommandExecuted", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RoutedCommandExecutionCount++", mainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("public sealed class SmokeViewModel", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokeViewModel : INotifyPropertyChanged", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ObservableCollection<SmokeItem> Items", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public SmokeItem? SelectedItem", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("OnPropertyChanged();", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokeItem", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeCommand : ICommand", mainWindowCodeBehind, StringComparison.Ordinal);
     }
 
@@ -729,11 +740,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetField(window, \"BindingBlock\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetField(window, \"CommandButton\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateBindingAndCommand(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled TextBlock property-change binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button command binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetField(window, \"RoutedCommandButton\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateRoutedCommand(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled routed command target", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("InvokeTwoArgumentCommand(routedCommand, \"Execute\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetField(window, \"ItemsList\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateItemsBindingAndTemplate(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox ItemsSource binding", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplate text binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox collection-change items", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(window, \"FindName\", \"InputBox\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("new ProGpuWpfWindowHost(WpfPortableWindowActivation.CreateHostOptions(w))", harnessProgram, StringComparison.Ordinal);
@@ -792,9 +809,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("new Action<object>(recorder.Run)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMainWindow(window, _application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateBindingAndCommand(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled TextBlock property-change binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button command binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateRoutedCommand(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled routed command target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateItemsBindingAndTemplate(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox two-way selected item binding", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplate text binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("recorder.ValidateAfterRun()", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("if (RunCount != 1)", harnessProgram, StringComparison.Ordinal);
     }
@@ -851,7 +872,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Invoke(button, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(richTextBox, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertType(GetProperty(richTextBox, \"Template\"), \"System.Windows.Controls.ControlTemplate\"", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("AssertCollectionCount(children, expectedMinimum: 7", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertCollectionCount(children, expectedMinimum: 8", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateThemedVisualReplay(windowsBase, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("MeasureAndArrange(windowsBase, content, pixelWidth, pixelHeight)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(element, \"Measure\", availableSize)", harnessProgram, StringComparison.Ordinal);
@@ -992,6 +1013,25 @@ public sealed class WpfManagedProjectGraphTests
             "internal",
             "DpiUtil",
             "DpiUtil+DpiAwarenessContextHelper.cs"));
+        var osVersionHelper = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "Shared",
+            "System",
+            "Windows",
+            "Interop",
+            "OSVersionHelper.cs"));
+        var uiaCoreTypesApi = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "UIAutomation",
+            "UIAutomationTypes",
+            "MS",
+            "Internal",
+            "Automation",
+            "UiaCoreTypesApi.cs"));
 
         AssertGuardBefore(compositionExports, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.MilCoreApi.EnterCompositionEngineLock()");
         AssertGuardBefore(uiElement, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetDC(desktopWnd)");
@@ -1018,6 +1058,12 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(typeface, "if (!OperatingSystem.IsWindows())", "TypographyAvailabilities typography");
         AssertGuardBefore(uxThemeWrapper, "_themeState = OperatingSystem.IsWindows()", "SafeNativeMethods.IsUxThemeActive()");
         AssertGuardBefore(dpiAwareness, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetWindowDpiAwarenessContext(hWnd)");
+        AssertGuardBefore(osVersionHelper, "if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))", "IsWindows10RS5OrGreater()");
+        AssertGuardBefore(uiaCoreTypesApi, "if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))", "RawUiaGetReservedNotSupportedValue(out notSupportedValue)");
+        AssertGuardBefore(uiaCoreTypesApi, "if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))", "RawUiaGetReservedMixedAttributeValue(out mixedAttributeValue)");
+        AssertGuardBefore(uiaCoreTypesApi, "if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))", "LoadLibraryHelper.SecureLoadLibraryEx(DllImport.UIAutomationCore");
+        Assert.Contains("s_reservedNotSupportedValue", uiaCoreTypesApi, StringComparison.Ordinal);
+        Assert.Contains("s_reservedMixedAttributeValue", uiaCoreTypesApi, StringComparison.Ordinal);
         AssertGuardBefore(application, "if (!WindowsInternal.HasItem(wnd))", "wnd.Visibility = Visibility.Visible");
         AssertGuardBefore(application, "if (MainWindow == null)", "wnd.Visibility = Visibility.Visible");
         Assert.Contains("_useWin32MessagePump = OperatingSystem.IsWindows();", dispatcher, StringComparison.Ordinal);

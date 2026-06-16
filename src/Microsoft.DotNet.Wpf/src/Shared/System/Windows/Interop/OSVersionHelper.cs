@@ -78,6 +78,11 @@ namespace Microsoft.Internal.Interop
 
         static OSVersionHelper()
         {
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return;
+            }
+
             IsOsWindows10RS5OrGreater = IsWindows10RS5OrGreater();
 
             IsOsWindows10RS4OrGreater = IsWindows10RS4OrGreater();

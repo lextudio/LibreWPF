@@ -44,5 +44,21 @@
             CommandParameter="routed command payload"
             CommandTarget="{Binding ElementName=InputBox}"
             Content="run routed command" />
+        <ListBox
+            x:Name="ItemsList"
+            Margin="0,8,0,0"
+            ItemsSource="{Binding Items}"
+            SelectedItem="{Binding SelectedItem, Mode=TwoWay}">
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel />
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type local:SmokeItem}">
+                    <TextBlock Text="{Binding Name}" />
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
     </StackPanel>
 </Window>

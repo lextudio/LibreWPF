@@ -104,7 +104,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 6, "stack panel children");
+        AssertCollectionCount(children, expected: 7, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -131,6 +131,7 @@ internal static class Program
 
         ValidateBindingAndCommand(window);
         ValidateRoutedCommand(window);
+        ValidateItemsBindingAndTemplate(window);
     }
 
     private static void ValidateBindingAndCommand(object window)
@@ -143,6 +144,8 @@ internal static class Program
         object bindingBlock = GetField(window, "BindingBlock");
         AssertType(bindingBlock, "System.Windows.Controls.TextBlock", "compiled binding TextBlock");
         AssertEqual("bound greeting from real WPF", GetProperty(bindingBlock, "Text"), "compiled TextBlock binding");
+        SetProperty(dataContext, "Greeting", "updated greeting from property change");
+        AssertEqual("updated greeting from property change", GetProperty(bindingBlock, "Text"), "compiled TextBlock property-change binding");
 
         object commandButton = GetField(window, "CommandButton");
         AssertType(commandButton, "System.Windows.Controls.Button", "compiled command Button");
@@ -179,6 +182,33 @@ internal static class Program
         InvokeTwoArgumentCommand(routedCommand, "Execute", commandParameter, inputBox);
         AssertEqual(1, GetProperty(window, "RoutedCommandExecutionCount"), "routed command execution count");
         AssertEqual("routed command payload", GetProperty(window, "LastRoutedCommandParameter"), "routed command executed parameter");
+    }
+
+    private static void ValidateItemsBindingAndTemplate(object window)
+    {
+        object dataContext = GetProperty(window, "DataContext");
+        object sourceItems = GetProperty(dataContext, "Items");
+        AssertCollectionCount(sourceItems, expected: 2, "view-model items");
+
+        object itemsList = GetField(window, "ItemsList");
+        AssertType(itemsList, "System.Windows.Controls.ListBox", "compiled item ListBox");
+        AssertSame(sourceItems, GetProperty(itemsList, "ItemsSource"), "compiled ListBox ItemsSource binding");
+        AssertCollectionCount(GetProperty(itemsList, "Items"), expected: 2, "compiled ListBox generated items");
+        AssertSame(GetCollectionItem(sourceItems, 1), GetProperty(itemsList, "SelectedItem"), "compiled ListBox initial selected item");
+
+        object firstItem = GetCollectionItem(sourceItems, 0);
+        SetProperty(itemsList, "SelectedItem", firstItem);
+        AssertSame(firstItem, GetProperty(dataContext, "SelectedItem"), "compiled ListBox two-way selected item binding");
+
+        object itemTemplate = GetProperty(itemsList, "ItemTemplate");
+        AssertType(itemTemplate, "System.Windows.DataTemplate", "compiled ListBox item template");
+        object templateRoot = Invoke(itemTemplate, "LoadContent");
+        AssertType(templateRoot, "System.Windows.Controls.TextBlock", "compiled DataTemplate root");
+        AssertBindingPath(templateRoot, "TextProperty", "Name", "compiled DataTemplate text binding path");
+
+        object thirdItem = Create(window.GetType().Assembly, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeItem", "item gamma");
+        AddToCollection(sourceItems, thirdItem);
+        AssertCollectionCount(GetProperty(itemsList, "Items"), expected: 3, "compiled ListBox collection-change items");
     }
 
     private static ActivationRecorder RegisterPortableActivation(
@@ -299,6 +329,50 @@ internal static class Program
         }
 
         return Invoke(collection, "get_Item", index);
+    }
+
+    private static void AddToCollection(object collection, object item)
+    {
+        MethodInfo add = collection.GetType().GetMethod(
+            "Add",
+            BindingFlags.Instance | BindingFlags.Public,
+            binder: null,
+            types: new[] { item.GetType() },
+            modifiers: null)
+            ?? collection.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                .FirstOrDefault(method =>
+                    method.Name == "Add" &&
+                    method.GetParameters().Length == 1 &&
+                    method.GetParameters()[0].ParameterType.IsAssignableFrom(item.GetType()))
+            ?? throw new MissingMethodException(collection.GetType().FullName, "Add");
+        add.Invoke(collection, new[] { item });
+    }
+
+    private static void AssertBindingPath(
+        object dependencyObject,
+        string dependencyPropertyFieldName,
+        string expectedPath,
+        string description)
+    {
+        FieldInfo dependencyProperty = dependencyObject.GetType().GetField(
+            dependencyPropertyFieldName,
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.FlattenHierarchy)
+            ?? throw new MissingFieldException(dependencyObject.GetType().FullName, dependencyPropertyFieldName);
+        MethodInfo getBindingExpression = dependencyObject.GetType().GetMethod(
+            "GetBindingExpression",
+            BindingFlags.Instance | BindingFlags.Public)
+            ?? throw new MissingMethodException(dependencyObject.GetType().FullName, "GetBindingExpression");
+
+        object? bindingExpression = getBindingExpression.Invoke(dependencyObject, new[] { dependencyProperty.GetValue(null) });
+        if (bindingExpression == null)
+        {
+            throw new InvalidOperationException(
+                $"Expected '{dependencyObject.GetType().FullName}.{dependencyPropertyFieldName}' to have a binding expression.");
+        }
+
+        object parentBinding = GetProperty(bindingExpression, "ParentBinding");
+        object path = GetProperty(parentBinding, "Path");
+        AssertEqual(expectedPath, GetProperty(path, "Path"), description);
     }
 
     private static object Invoke(object instance, string methodName, params object?[] parameters)

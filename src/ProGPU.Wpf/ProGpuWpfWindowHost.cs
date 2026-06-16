@@ -146,6 +146,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     public long SkippedFrameCount { get; private set; }
 
+    public long RetainedWpfReplaySkipCount { get; private set; }
+
     internal long RenderSchedulerWakeupCount { get; private set; }
 
     internal long DispatcherWakeupCount { get; private set; }
@@ -433,7 +435,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
             _target.Context.ReconfigureIfNeeded(pixelWidth, pixelHeight);
 
-            var drawingFrame = _target.BeginDrawingFrame(pixelWidth, pixelHeight);
+            object? wpfRootVisual = _wpfRootVisual;
+            var shouldReplayWpfRootVisual = wpfRootVisual != null &&
+                _target.ShouldReplayVisualSubtree(wpfRootVisual);
+            var clearRetainedWpfVisualRoot = wpfRootVisual == null || shouldReplayWpfRootVisual;
+            var drawingFrame = _target.BeginDrawingFrame(
+                pixelWidth,
+                pixelHeight,
+                clearRetainedWpfVisualRoot);
 
             using (IDisposable? renderDataSinkProviderRegistration = RegisterRenderDataSinkProvider(drawingFrame))
             using (var drawingContext = drawingFrame.OpenDrawingContext())
@@ -446,17 +455,24 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                     dpiScale,
                     drawingFrame);
 
-                if (_wpfRootVisual != null)
+                if (wpfRootVisual != null)
                 {
-                    using var sink = new ProGpuRetainedCompositionCommandSink(
-                        drawingFrame,
-                        _target.Context,
-                        _target.Viewport3DTextureCache);
-                    LastVisualReplayResult = _target.ReplayVisualSubtree(
-                        _wpfRootVisual,
-                        sink,
-                        WpfResourceResolver,
-                        WpfImageSourceAdapter);
+                    if (shouldReplayWpfRootVisual)
+                    {
+                        using var sink = new ProGpuRetainedCompositionCommandSink(
+                            drawingFrame,
+                            _target.Context,
+                            _target.Viewport3DTextureCache);
+                        LastVisualReplayResult = _target.ReplayVisualSubtree(
+                            wpfRootVisual,
+                            sink,
+                            WpfResourceResolver,
+                            WpfImageSourceAdapter);
+                    }
+                    else
+                    {
+                        RetainedWpfReplaySkipCount++;
+                    }
                 }
                 else
                 {
@@ -840,6 +856,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         LastPresentedFrameState = default;
         _hasPresentedFrame = false;
         SkippedFrameCount = 0;
+        RetainedWpfReplaySkipCount = 0;
     }
 
     private void ReplaceRenderScheduler(IWpfRenderScheduler scheduler, bool ownsScheduler)

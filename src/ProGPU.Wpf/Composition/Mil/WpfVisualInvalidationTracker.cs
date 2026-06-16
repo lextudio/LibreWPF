@@ -52,7 +52,9 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
     private readonly List<Action> _unsubscribeActions = new();
     private readonly Dictionary<object, object> _versionSnapshots = new(ReferenceEqualityComparer.Instance);
+    private readonly HashSet<object> _dirtySources = new(ReferenceEqualityComparer.Instance);
     private object? _root;
+    private object? _lastDirtySource;
     private bool _isDirty;
     private bool _isRefreshing;
 
@@ -65,6 +67,12 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     public int SubscriptionCount => _unsubscribeActions.Count;
 
     public int VersionSnapshotCount => _versionSnapshots.Count;
+
+    public int DirtySourceCount => _dirtySources.Count;
+
+    public object? LastDirtySource => _lastDirtySource;
+
+    public IReadOnlyCollection<object> DirtySources => _dirtySources;
 
     public void AttachIfChanged(object? root)
     {
@@ -85,13 +93,15 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         SubscribeGraph(root);
-        MarkDirty();
+        MarkDirty(root);
     }
 
     public bool ConsumeDirty()
     {
         var wasDirty = _isDirty;
         _isDirty = false;
+        _dirtySources.Clear();
+        _lastDirtySource = null;
         return wasDirty;
     }
 
@@ -108,17 +118,29 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         var currentSnapshots = CaptureVersionSnapshots(_root);
-        if (VersionSnapshotsEqual(_versionSnapshots, currentSnapshots))
+        var changedSources = CollectVersionChanges(_versionSnapshots, currentSnapshots);
+        if (changedSources.Count == 0)
         {
             return false;
         }
 
-        MarkDirtyAndRefresh();
+        MarkDirtyAndRefresh(changedSources);
         return true;
     }
 
     public void MarkDirty()
     {
+        MarkDirty(null);
+    }
+
+    public void MarkDirty(object? source)
+    {
+        if (source != null)
+        {
+            _dirtySources.Add(source);
+            _lastDirtySource = source;
+        }
+
         if (_isDirty)
         {
             return;
@@ -132,7 +154,9 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     {
         ClearSubscriptions();
         _versionSnapshots.Clear();
+        _dirtySources.Clear();
         _root = null;
+        _lastDirtySource = null;
         _isDirty = false;
     }
 
@@ -141,9 +165,19 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         Detach();
     }
 
-    private void MarkDirtyAndRefresh()
+    private void MarkDirtyAndRefresh(object? source)
     {
-        MarkDirty();
+        MarkDirty(source);
+        RefreshSubscriptions();
+    }
+
+    private void MarkDirtyAndRefresh(IEnumerable<object> sources)
+    {
+        foreach (var source in sources)
+        {
+            MarkDirty(source);
+        }
+
         RefreshSubscriptions();
     }
 
@@ -185,7 +219,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         if (source is INotifyCollectionChanged collectionChanged)
         {
-            NotifyCollectionChangedEventHandler handler = (_, _) => MarkDirtyAndRefresh();
+            NotifyCollectionChangedEventHandler handler = (_, _) => MarkDirtyAndRefresh(source);
             collectionChanged.CollectionChanged += handler;
             _unsubscribeActions.Add(() => collectionChanged.CollectionChanged -= handler);
         }
@@ -265,25 +299,30 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
     }
 
-    private static bool VersionSnapshotsEqual(
+    private static IReadOnlyList<object> CollectVersionChanges(
         IReadOnlyDictionary<object, object> previous,
         IReadOnlyDictionary<object, object> current)
     {
-        if (previous.Count != current.Count)
-        {
-            return false;
-        }
+        var changedSources = new List<object>();
 
         foreach (var snapshot in current)
         {
             if (!previous.TryGetValue(snapshot.Key, out var previousVersion) ||
                 !Equals(previousVersion, snapshot.Value))
             {
-                return false;
+                changedSources.Add(snapshot.Key);
             }
         }
 
-        return true;
+        foreach (var snapshot in previous)
+        {
+            if (!current.ContainsKey(snapshot.Key))
+            {
+                changedSources.Add(snapshot.Key);
+            }
+        }
+
+        return changedSources;
     }
 
     private static bool TryReadVersionValue(object source, out object version)
@@ -371,7 +410,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     {
         if (source is INotifyPropertyChanged propertyChanged)
         {
-            PropertyChangedEventHandler handler = (_, _) => MarkDirtyAndRefresh();
+            PropertyChangedEventHandler handler = (_, _) => MarkDirtyAndRefresh(source);
             propertyChanged.PropertyChanged += handler;
             _unsubscribeActions.Add(() => propertyChanged.PropertyChanged -= handler);
         }
@@ -384,7 +423,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 continue;
             }
 
-            EventHandler handler = (_, _) => MarkDirtyAndRefresh();
+            EventHandler handler = (_, _) => MarkDirtyAndRefresh(source);
             eventInfo.AddEventHandler(source, handler);
             _unsubscribeActions.Add(() => eventInfo.RemoveEventHandler(source, handler));
         }

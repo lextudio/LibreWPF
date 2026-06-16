@@ -41,6 +41,10 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
 
     public long FlatDrawingChangeVersion => RootVisual.ChangeVersion;
 
+    public int DirtySourceCount => WpfInvalidationTracker.DirtySourceCount;
+
+    public object? LastDirtySource => WpfInvalidationTracker.LastDirtySource;
+
     internal WpfViewport3DTextureCache Viewport3DTextureCache { get; }
 
     public ProGpuWpfCompositionTarget(
@@ -93,6 +97,14 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
 
     public ProGpuWpfDrawingFrame BeginDrawingFrame(uint pixelWidth, uint pixelHeight)
     {
+        return BeginDrawingFrame(pixelWidth, pixelHeight, clearRetainedWpfVisualRoot: true);
+    }
+
+    internal ProGpuWpfDrawingFrame BeginDrawingFrame(
+        uint pixelWidth,
+        uint pixelHeight,
+        bool clearRetainedWpfVisualRoot)
+    {
         ThrowIfDisposed();
 
         return new ProGpuWpfDrawingFrame(
@@ -102,7 +114,8 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
             pixelWidth,
             pixelHeight,
             Context,
-            Viewport3DTextureCache);
+            Viewport3DTextureCache,
+            clearRetainedWpfVisualRoot);
     }
 
     public WpfCompositionDrawingContext OpenCompositionDrawingContext(uint pixelWidth, uint pixelHeight)
@@ -185,6 +198,15 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         return WpfInvalidationTracker.DetectVersionChanges();
     }
 
+    public bool ShouldReplayVisualSubtree(object rootVisual)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(rootVisual);
+
+        return !ReferenceEquals(WpfInvalidationTracker.Root, rootVisual) ||
+               WpfInvalidationTracker.IsDirty;
+    }
+
     public void Clear()
     {
         ThrowIfDisposed();
@@ -194,6 +216,7 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         Viewport3DTextureCache.Clear();
         SceneRootVisual.Invalidate();
         RootVisual.Invalidate();
+        WpfInvalidationTracker.MarkDirty();
     }
 
     public void Dispose()

@@ -165,6 +165,8 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("public long SceneChangeVersion => SceneRootVisual.ChangeVersion;", source, StringComparison.Ordinal);
         Assert.Contains("public long RetainedWpfChangeVersion => RetainedWpfVisualRoot.ChangeVersion;", source, StringComparison.Ordinal);
         Assert.Contains("public long FlatDrawingChangeVersion => RootVisual.ChangeVersion;", source, StringComparison.Ordinal);
+        Assert.Contains("public int DirtySourceCount => WpfInvalidationTracker.DirtySourceCount;", source, StringComparison.Ordinal);
+        Assert.Contains("public object? LastDirtySource => WpfInvalidationTracker.LastDirtySource;", source, StringComparison.Ordinal);
         Assert.Contains("RetainedWpfVisualRoot.Invalidate();", source, StringComparison.Ordinal);
     }
 
@@ -182,7 +184,12 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
 
         Assert.Contains("public bool DetectWpfSourceChanges()", targetSource, StringComparison.Ordinal);
         Assert.Contains("return WpfInvalidationTracker.DetectVersionChanges();", targetSource, StringComparison.Ordinal);
+        Assert.Contains("public bool ShouldReplayVisualSubtree(object rootVisual)", targetSource, StringComparison.Ordinal);
+        Assert.Contains("WpfInvalidationTracker.IsDirty", targetSource, StringComparison.Ordinal);
         Assert.Contains("_target.DetectWpfSourceChanges();", hostSource, StringComparison.Ordinal);
+        Assert.Contains("_target.ShouldReplayVisualSubtree(wpfRootVisual)", hostSource, StringComparison.Ordinal);
+        Assert.Contains("clearRetainedWpfVisualRoot", hostSource, StringComparison.Ordinal);
+        Assert.Contains("RetainedWpfReplaySkipCount++;", hostSource, StringComparison.Ordinal);
         Assert.True(
             hostSource.IndexOf("_target.DetectWpfSourceChanges();", StringComparison.Ordinal) <
             hostSource.IndexOf("var frameState = CaptureFrameState(_target, pixelWidth, pixelHeight);", StringComparison.Ordinal));

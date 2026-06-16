@@ -42,7 +42,8 @@ public sealed class ProGpuWpfDrawingFrame
         uint pixelWidth,
         uint pixelHeight,
         ProGpuWgpuContext? context = null,
-        WpfViewport3DTextureCache? viewport3DTextureCache = null)
+        WpfViewport3DTextureCache? viewport3DTextureCache = null,
+        bool clearRetainedWpfVisualRoot = true)
     {
         _sceneRootVisual = sceneRootVisual;
         _retainedWpfVisualRoot = retainedWpfVisualRoot;
@@ -58,7 +59,11 @@ public sealed class ProGpuWpfDrawingFrame
 
         if (_retainedWpfVisualRoot != null)
         {
-            _retainedWpfVisualRoot.ClearChildren();
+            if (clearRetainedWpfVisualRoot)
+            {
+                _retainedWpfVisualRoot.ClearChildren();
+            }
+
             _retainedWpfVisualRoot.Size = new Vector2(PixelWidth, PixelHeight);
         }
 

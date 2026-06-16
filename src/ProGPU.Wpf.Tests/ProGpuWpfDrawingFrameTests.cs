@@ -50,6 +50,34 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void ConstructorCanPreserveRetainedWpfLayerWhenReplayIsSkipped()
+    {
+        var sceneRoot = new ProGpuContainerVisual();
+        var retainedRoot = new ProGpuContainerVisual();
+        var flatRoot = new ProGpuDrawingVisual();
+        var retainedChild = new ProGpuDrawingVisual();
+        retainedRoot.AddChild(retainedChild);
+        flatRoot.Context.DrawRectangle(null, null, new ProGPU.Scene.Rect(1, 2, 3, 4));
+
+        var frame = new ProGpuWpfDrawingFrame(
+            sceneRoot,
+            retainedRoot,
+            flatRoot,
+            300,
+            150,
+            clearRetainedWpfVisualRoot: false);
+
+        Assert.Equal(300u, frame.PixelWidth);
+        Assert.Equal(150u, frame.PixelHeight);
+        Assert.Same(retainedChild, Assert.Single(retainedRoot.Children));
+        Assert.Empty(flatRoot.Context.Commands);
+        Assert.Equal(new Vector2(300, 150), sceneRoot.Size);
+        Assert.Equal(new Vector2(300, 150), retainedRoot.Size);
+        Assert.Equal(new Vector2(300, 150), flatRoot.Size);
+        Assert.Equal(new ProGPU.Scene.Visual[] { retainedRoot, flatRoot }, sceneRoot.Children.ToArray());
+    }
+
+    [Fact]
     public void RetainedSinkCreatesBoundedNativeEffectVisual()
     {
         var sceneRoot = new ProGpuContainerVisual();

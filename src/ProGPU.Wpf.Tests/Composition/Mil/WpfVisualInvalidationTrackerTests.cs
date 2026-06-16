@@ -20,9 +20,14 @@ public sealed class WpfVisualInvalidationTrackerTests
         Assert.Same(root, tracker.Root);
         Assert.True(tracker.IsDirty);
         Assert.True(tracker.SubscriptionCount > 0);
+        Assert.Same(root, tracker.LastDirtySource);
+        Assert.Equal(1, tracker.DirtySourceCount);
+        Assert.Contains(root, tracker.DirtySources);
         Assert.Equal(1, invalidationCount);
         Assert.True(tracker.ConsumeDirty());
         Assert.False(tracker.IsDirty);
+        Assert.Null(tracker.LastDirtySource);
+        Assert.Equal(0, tracker.DirtySourceCount);
     }
 
     [Fact]
@@ -36,6 +41,8 @@ public sealed class WpfVisualInvalidationTrackerTests
         root.RaiseChanged();
 
         Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+        Assert.Contains(root, tracker.DirtySources);
     }
 
     [Fact]
@@ -49,6 +56,7 @@ public sealed class WpfVisualInvalidationTrackerTests
         root.RaisePropertyChanged(nameof(FakeVisual.Opacity));
 
         Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
     }
 
     [Fact]
@@ -96,6 +104,8 @@ public sealed class WpfVisualInvalidationTrackerTests
 
         Assert.True(tracker.DetectVersionChanges());
         Assert.True(tracker.IsDirty);
+        Assert.Same(brush, tracker.LastDirtySource);
+        Assert.Contains(brush, tracker.DirtySources);
     }
 
     [Fact]
@@ -114,6 +124,7 @@ public sealed class WpfVisualInvalidationTrackerTests
 
         Assert.True(tracker.DetectVersionChanges());
         Assert.True(tracker.IsDirty);
+        Assert.Same(brush, tracker.LastDirtySource);
     }
 
     [Fact]
@@ -128,6 +139,7 @@ public sealed class WpfVisualInvalidationTrackerTests
         root.Children.Add(child);
 
         Assert.True(tracker.IsDirty);
+        Assert.Same(root.Children, tracker.LastDirtySource);
         tracker.ConsumeDirty();
 
         child.RaiseChanged();

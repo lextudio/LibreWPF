@@ -47,9 +47,14 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
         ThrowIfDisposed();
         sampler = null!;
 
+        MediaImageSource? AdaptImageSource(object? imageSource)
+        {
+            return imageSourceAdapter?.AdaptImageSource(imageSource);
+        }
+
         if (brush == null
             || (!TypeNameEndsWith(brush, "DrawingBrush") && !TypeNameEndsWith(brush, "VisualBrush"))
-            || !TryGetBrushSourceBounds(brush, out var sourceBounds)
+            || !TryGetBrushSourceBounds(brush, AdaptImageSource, out var sourceBounds)
             || !TryCreateTextureBounds(sourceBounds, out var textureBounds, out var pixelWidth, out var pixelHeight))
         {
             return false;
@@ -155,6 +160,14 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
 
     internal static bool TryGetBrushSourceBounds(object brush, out Rect bounds)
     {
+        return TryGetBrushSourceBounds(brush, null, out bounds);
+    }
+
+    private static bool TryGetBrushSourceBounds(
+        object brush,
+        Func<object?, MediaImageSource?>? imageSourceAdapter,
+        out Rect bounds)
+    {
         if (TryGetAbsoluteViewbox(brush, out bounds))
         {
             return true;
@@ -163,7 +176,7 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
         if (TypeNameEndsWith(brush, "DrawingBrush")
             && TryGetPropertyValue(brush, "Drawing", out var drawing)
             && drawing != null
-            && TryReadFiniteRectProperty(drawing, "Bounds", out var drawingBounds))
+            && WpfReflectionDrawingReplay.TryGetDrawingBounds(drawing, imageSourceAdapter, out var drawingBounds))
         {
             if (TryGetRelativeViewbox(brush, drawingBounds, out bounds))
             {
@@ -177,7 +190,7 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
         if (TypeNameEndsWith(brush, "VisualBrush")
             && TryGetPropertyValue(brush, "Visual", out var visual)
             && visual != null
-            && TryGetVisualBounds(visual, out var visualBounds))
+            && TryGetSamplerVisualBounds(visual, out var visualBounds))
         {
             if (TryGetRelativeViewbox(brush, visualBounds, out bounds))
             {
@@ -230,24 +243,20 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
         return IsUsableBounds(viewbox);
     }
 
-    private static bool TryGetVisualBounds(object visual, out Rect bounds)
+    private static bool TryGetSamplerVisualBounds(object visual, out Rect bounds)
     {
-        if (TryReadFiniteRectProperty(visual, "ContentBounds", out bounds)
-            || TryReadFiniteRectProperty(visual, "Bounds", out bounds))
+        if (WpfReflectionDrawingReplay.TryGetVisualBounds(visual, out bounds))
         {
             return true;
         }
 
-        if (TryReadSizeProperty(visual, "RenderSize", out bounds)
-            || TryReadSizeProperty(visual, "DesiredSize", out bounds))
+        if (TryReadSizeProperty(visual, "DesiredSize", out bounds))
         {
             return true;
         }
 
-        if ((TryReadDoubleProperty(visual, "ActualWidth", out var width)
-             || TryReadDoubleProperty(visual, "Width", out width))
-            && (TryReadDoubleProperty(visual, "ActualHeight", out var height)
-                || TryReadDoubleProperty(visual, "Height", out height))
+        if (TryReadDoubleProperty(visual, "Width", out var width)
+            && TryReadDoubleProperty(visual, "Height", out var height)
             && width > 0
             && height > 0
             && double.IsFinite(width)
@@ -285,15 +294,6 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
     private static uint ClampTextureDimension(double value)
     {
         return (uint)Math.Clamp((int)Math.Ceiling(value), 1, MaxSamplerTextureDimension);
-    }
-
-    private static bool TryReadFiniteRectProperty(object source, string propertyName, out Rect rect)
-    {
-        rect = default;
-        return TryGetPropertyValue(source, propertyName, out var rectValue)
-            && rectValue != null
-            && TryReadRect(rectValue, out rect)
-            && IsUsableBounds(rect);
     }
 
     private static bool TryReadSizeProperty(object source, string propertyName, out Rect rect)

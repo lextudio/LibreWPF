@@ -1491,7 +1491,7 @@ internal static class WpfReflectionDrawingReplay
             || TryInferDrawingGroupContentBounds(drawingGroup, imageSourceAdapter, out bounds);
     }
 
-    private static bool TryGetDrawingBounds(
+    internal static bool TryGetDrawingBounds(
         object drawing,
         Func<object?, MediaImageSource?>? imageSourceAdapter,
         out Rect bounds)
@@ -1544,7 +1544,7 @@ internal static class WpfReflectionDrawingReplay
         return false;
     }
 
-    private static bool TryGetVisualBounds(object visual, out Rect bounds)
+    internal static bool TryGetVisualBounds(object visual, out Rect bounds)
     {
         foreach (var propertyName in new[] { "Bounds", "DescendantBounds", "VisualContentBounds", "ContentBounds" })
         {

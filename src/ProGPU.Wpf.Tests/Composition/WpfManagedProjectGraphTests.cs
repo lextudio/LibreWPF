@@ -762,8 +762,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetDictionaryValue(themeDictionary, \"WindowTemplateKey\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(window, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(button, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("AssertStyleHasSetter(GetProperty(richTextBox, \"Style\"), \"Template\"", harnessProgram, StringComparison.Ordinal);
-        Assert.DoesNotContain("Invoke(richTextBox, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Invoke(richTextBox, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertType(GetProperty(richTextBox, \"Template\"), \"System.Windows.Controls.ControlTemplate\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation", harnessProgram, StringComparison.Ordinal);
     }
 
@@ -801,6 +801,15 @@ public sealed class WpfManagedProjectGraphTests
             "System",
             "Windows",
             "SystemParameters.cs"));
+        var flowDocumentView = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "MS",
+            "Internal",
+            "Documents",
+            "FlowDocumentView.cs"));
         var uxThemeWrapper = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -832,6 +841,15 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(uiElement, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetDC(desktopWnd)");
         AssertGuardBefore(systemResources, "if (!OperatingSystem.IsWindows())", "new HwndWrapper(");
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETHIGHCONTRAST");
+        Assert.Contains("private static bool IsNativePtsFormatterAvailable", flowDocumentView, StringComparison.Ordinal);
+        Assert.Contains("global::System.OperatingSystem.IsWindows()", flowDocumentView, StringComparison.Ordinal);
+        Assert.Contains("if (!IsNativePtsFormatterAvailable)", flowDocumentView, StringComparison.Ordinal);
+        Assert.Contains("return null;", flowDocumentView, StringComparison.Ordinal);
+        Assert.Contains("new DocumentPageTextView(this, _document.StructuralCache.TextContainer)", flowDocumentView, StringComparison.Ordinal);
+        Assert.True(
+            flowDocumentView.IndexOf("if (!IsNativePtsFormatterAvailable)", StringComparison.Ordinal)
+                < flowDocumentView.IndexOf("new DocumentPageTextView(this, _document.StructuralCache.TextContainer)", StringComparison.Ordinal),
+            "FlowDocumentView must skip native PTS text-view creation before constructing DocumentPageTextView on non-Windows.");
         AssertGuardBefore(uxThemeWrapper, "_themeState = OperatingSystem.IsWindows()", "SafeNativeMethods.IsUxThemeActive()");
         AssertGuardBefore(dpiAwareness, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetWindowDpiAwarenessContext(hWnd)");
         Assert.Contains("_useWin32MessagePump = OperatingSystem.IsWindows();", dispatcher, StringComparison.Ordinal);

@@ -159,10 +159,11 @@ internal static class Program
 
         Invoke(window, "ApplyTemplate");
         Invoke(button, "ApplyTemplate");
+        Invoke(richTextBox, "ApplyTemplate");
 
         AssertType(GetProperty(window, "Template"), "System.Windows.Controls.ControlTemplate", "Window template");
         AssertType(GetProperty(button, "Template"), "System.Windows.Controls.ControlTemplate", "Button template");
-        AssertStyleHasSetter(GetProperty(richTextBox, "Style"), "Template", "RichTextBox Fluent template setter");
+        AssertType(GetProperty(richTextBox, "Template"), "System.Windows.Controls.ControlTemplate", "RichTextBox template");
         AssertStyleHasSetter(GetProperty(richTextBox, "Style"), "ContextMenu", "RichTextBox Fluent context-menu setter");
         AssertEqual("themed button smoke", GetProperty(button, "Content"), "themed button content");
 

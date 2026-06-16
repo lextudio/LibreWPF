@@ -68,6 +68,12 @@ namespace MS.Internal.Documents
             }
             else if (Document != null)
             {
+                if (!IsNativePtsFormatterAvailable)
+                {
+                    ResetScrollData(new Size(), new Size(), new Vector());
+                    return desiredSize;
+                }
+
                 // Create bottomless formatter, if necessary.
                 EnsureFormatter();
 
@@ -108,6 +114,35 @@ namespace MS.Internal.Documents
 
                 if (Document != null)
                 {
+                    if (!IsNativePtsFormatterAvailable)
+                    {
+                        DisconnectPageVisual();
+                        if (_scrollData != null)
+                        {
+                            if (!DoubleUtil.AreClose(_scrollData.Viewport, safeArrangeSize))
+                            {
+                                _scrollData.Viewport = safeArrangeSize;
+                                invalidateScrollInfo = true;
+                            }
+                            if (!DoubleUtil.AreClose(_scrollData.Extent, new Size()))
+                            {
+                                _scrollData.Extent = new Size();
+                                invalidateScrollInfo = true;
+                            }
+                            if (!DoubleUtil.AreClose(_scrollData.Offset, new Vector()))
+                            {
+                                _scrollData.Offset = new Vector();
+                                invalidateScrollInfo = true;
+                            }
+                            if (invalidateScrollInfo && _scrollData.ScrollOwner != null)
+                            {
+                                _scrollData.ScrollOwner.InvalidateScrollInfo();
+                            }
+                        }
+
+                        return arrangeSize;
+                    }
+
                     // Create bottomless formatter, if necessary.
                     EnsureFormatter();
 
@@ -178,12 +213,7 @@ namespace MS.Internal.Documents
                 }
                 else
                 {
-                    if (_pageVisual != null)
-                    {
-                        _textView?.OnPageDisconnected();
-                        RemoveVisualChild(_pageVisual);
-                        _pageVisual = null;
-                    }
+                    DisconnectPageVisual();
                     // Arrange bottomless content.
                     if (_scrollData != null)
                     {
@@ -316,6 +346,11 @@ namespace MS.Internal.Documents
             {
                 if (_document != null)
                 {
+                    if (!IsNativePtsFormatterAvailable)
+                    {
+                        return null;
+                    }
+
                     EnsureFormatter();
                     return _formatter.DocumentPage;
                 }
@@ -678,7 +713,7 @@ namespace MS.Internal.Documents
 
             if (serviceType == typeof(ITextView))
             {
-                if (_textView == null && _document != null)
+                if (IsNativePtsFormatterAvailable && _textView == null && _document != null)
                 {
                     _textView = new DocumentPageTextView(this, _document.StructuralCache.TextContainer);
                 }
@@ -696,5 +731,52 @@ namespace MS.Internal.Documents
         }
 
         #endregion IServiceProvider Members
+
+        private static bool IsNativePtsFormatterAvailable
+        {
+            get
+            {
+                return global::System.OperatingSystem.IsWindows();
+            }
+        }
+
+        private void DisconnectPageVisual()
+        {
+            if (_pageVisual != null)
+            {
+                _textView?.OnPageDisconnected();
+                RemoveVisualChild(_pageVisual);
+                _pageVisual = null;
+            }
+        }
+
+        private void ResetScrollData(Size viewport, Size extent, Vector offset)
+        {
+            if (_scrollData == null)
+            {
+                return;
+            }
+
+            bool invalidateScrollInfo = false;
+            if (!DoubleUtil.AreClose(_scrollData.Viewport, viewport))
+            {
+                _scrollData.Viewport = viewport;
+                invalidateScrollInfo = true;
+            }
+            if (!DoubleUtil.AreClose(_scrollData.Extent, extent))
+            {
+                _scrollData.Extent = extent;
+                invalidateScrollInfo = true;
+            }
+            if (!DoubleUtil.AreClose(_scrollData.Offset, offset))
+            {
+                _scrollData.Offset = offset;
+                invalidateScrollInfo = true;
+            }
+            if (invalidateScrollInfo && _scrollData.ScrollOwner != null)
+            {
+                _scrollData.ScrollOwner.InvalidateScrollInfo();
+            }
+        }
     }
 }

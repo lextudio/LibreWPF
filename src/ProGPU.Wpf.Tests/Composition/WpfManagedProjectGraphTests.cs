@@ -97,6 +97,47 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void MediaSystemSkipsMilCoreStartupOnNonWindows()
+    {
+        var sourcePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "MediaSystem.cs");
+        var source = File.ReadAllText(sourcePath);
+
+        Assert.Contains("RuntimeInformation.IsOSPlatform(OSPlatform.Windows)", source, StringComparison.Ordinal);
+        Assert.Contains("if (!s_isWindows)", source, StringComparison.Ordinal);
+        Assert.Contains("return false;", source, StringComparison.Ordinal);
+        Assert.Contains("UnsafeNativeMethods.MilVersionCheck", source, StringComparison.Ordinal);
+        Assert.Contains("SafeNativeMethods.MilCompositionEngine_InitializePartitionManager", source, StringComparison.Ordinal);
+        Assert.Contains("UnsafeNativeMethods.RenderOptions_EnableHardwareAccelerationInRdp", source, StringComparison.Ordinal);
+        Assert.Contains("SafeNativeMethods.MilCompositionEngine_DeinitializePartitionManager", source, StringComparison.Ordinal);
+        Assert.True(
+            source.IndexOf("return false;", StringComparison.Ordinal)
+                < source.IndexOf("UnsafeNativeMethods.MilVersionCheck", StringComparison.Ordinal),
+            "The non-Windows startup path must return disconnected before any MILCore version check or partition startup.");
+
+        var connectChannelsIndex = source.IndexOf("internal static bool ConnectChannels", StringComparison.Ordinal);
+        var connectGuardIndex = source.IndexOf("if (!s_isWindows)", connectChannelsIndex, StringComparison.Ordinal);
+        var createChannelsIndex = source.IndexOf("mc.CreateChannels()", StringComparison.Ordinal);
+        Assert.True(
+            connectGuardIndex > connectChannelsIndex && connectGuardIndex < createChannelsIndex,
+            "The non-Windows channel path must return before creating DUCE channels.");
+
+        var shutdownIndex = source.IndexOf("internal static void Shutdown", StringComparison.Ordinal);
+        var shutdownGuardIndex = source.IndexOf("if (!s_isWindows)", shutdownIndex, StringComparison.Ordinal);
+        var deinitializeIndex = source.IndexOf("SafeNativeMethods.MilCompositionEngine_DeinitializePartitionManager", StringComparison.Ordinal);
+        Assert.True(
+            shutdownGuardIndex > shutdownIndex && shutdownGuardIndex < deinitializeIndex,
+            "The non-Windows shutdown path must return before MILCore partition deinitialization.");
+    }
+
+    [Fact]
     public void HwndTargetDoesNotRegisterWin32MessagesOnNonWindows()
     {
         var sourcePath = FindRepoPath(

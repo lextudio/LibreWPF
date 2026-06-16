@@ -6,6 +6,7 @@
 //     domain and the underlying transport system.
 
 using System.Collections;
+using System.Runtime.InteropServices;
 using System.Windows.Media.Composition;
 using System.Windows.Threading;
 using System.Threading;
@@ -25,6 +26,8 @@ namespace System.Windows.Media
     /// </remarks>
     internal static class MediaSystem
     {
+        private static readonly bool s_isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
         /// <summary>
         /// This function initializes the MediaSystem. It must be called before any functions in the Media namespace
         /// can be used.
@@ -32,6 +35,17 @@ namespace System.Windows.Media
         /// <seealso cref="Shutdown"/>
         public static bool Startup(MediaContext mc)
         {
+            if (!s_isWindows)
+            {
+                using (CompositionEngineLock.Acquire())
+                {
+                    _mediaContexts.Add(mc);
+                    s_refCount++;
+                }
+
+                return false;
+            }
+
             //
             // Note to stress triagers:
             //
@@ -78,6 +92,11 @@ namespace System.Windows.Media
 
         internal static bool ConnectChannels(MediaContext mc)
         {
+            if (!s_isWindows)
+            {
+                return false;
+            }
+
             bool fCreated = false;
 
             using (CompositionEngineLock.Acquire())
@@ -118,6 +137,18 @@ namespace System.Windows.Media
         /// </summary>
         internal static void Shutdown(MediaContext mc)
         {
+            if (!s_isWindows)
+            {
+                using (CompositionEngineLock.Acquire())
+                {
+                    Debug.Assert(s_refCount > 0);
+                    _mediaContexts.Remove(mc);
+                    s_refCount--;
+                }
+
+                return;
+            }
+
             using (CompositionEngineLock.Acquire())
             {
                 Debug.Assert(s_refCount > 0);
@@ -166,6 +197,11 @@ namespace System.Windows.Media
         /// </summary>
         internal static void NotifyRedirectionEnvironmentChanged()
         {
+            if (!s_isWindows)
+            {
+                return;
+            }
+
             using (CompositionEngineLock.Acquire())
             {
                 // Check to see if we need to force software for the Vista Magnifier
@@ -298,6 +334,11 @@ namespace System.Windows.Media
         {
             get
             {
+                if (!s_isWindows)
+                {
+                    return false;
+                }
+
                 using (CompositionEngineLock.Acquire())
                 {
                     return s_forceSoftareForGraphicsStreamMagnifier;
@@ -361,4 +402,3 @@ namespace System.Windows.Media
         private static bool s_disableDirtyRectangles = false;
      }
 }
-

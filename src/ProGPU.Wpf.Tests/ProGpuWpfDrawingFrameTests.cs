@@ -494,6 +494,46 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void BranchMapReturnsSourceOwnerReplayTargetForDirtyChildrenCollectionDependency()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var source = new object();
+        var children = new object();
+        var visual = new ProGpuRetainedDrawingVisual();
+        branchMap.Register(source, visual);
+        branchMap.RegisterDependency(children, visual);
+
+        var result = branchMap.InvalidateVisualsForSources(new[] { children });
+        var targets = branchMap.GetReplayTargetsForSources(new[] { children });
+
+        Assert.True(result.CanTargetAllDirtySources);
+        var target = Assert.Single(targets);
+        Assert.Same(source, target.Source);
+        Assert.Same(visual, target.Visual);
+    }
+
+    [Fact]
+    public void BranchMapKeepsChildSourceReplayTargetWhenParentChildrenCollectionIsTracked()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var parentSource = new object();
+        var childSource = new object();
+        var parentChildren = new object();
+        var parentVisual = new ProGpuRetainedDrawingVisual();
+        var childVisual = new ProGpuRetainedDrawingVisual();
+        parentVisual.AddChild(childVisual);
+        branchMap.Register(parentSource, parentVisual);
+        branchMap.RegisterDependency(parentChildren, parentVisual);
+        branchMap.Register(childSource, childVisual);
+
+        var targets = branchMap.GetReplayTargetsForSources(new[] { childSource });
+
+        var target = Assert.Single(targets);
+        Assert.Same(childSource, target.Source);
+        Assert.Same(childVisual, target.Visual);
+    }
+
+    [Fact]
     public void BranchMapRejectsDirtyDependencyWhenBranchHasMultipleSourceOwners()
     {
         var branchMap = new WpfRetainedVisualBranchMap();

@@ -220,6 +220,7 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static void RegisterRetainedVisualStateDependencies(object visual, IWpfCompositionCommandSink sink)
     {
+        RegisterRetainedVisualPropertyDirectDependency(visual, "Children", sink);
         RegisterRetainedVisualPropertyDependency(visual, "Transform", sink);
         RegisterRetainedVisualPropertyDependency(visual, "Clip", sink);
         RegisterRetainedVisualPropertyDependency(visual, "ScrollableAreaClip", sink);
@@ -270,6 +271,19 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
 
         if (!registered)
+        {
+            retainedVisualBranchSink.RegisterVisualDependency(dependency);
+        }
+    }
+
+    private static void RegisterRetainedVisualPropertyDirectDependency(
+        object visual,
+        string propertyName,
+        IWpfCompositionCommandSink sink)
+    {
+        if (TryGetPropertyValue(visual, propertyName, out var dependency)
+            && dependency != null
+            && sink is IWpfRetainedVisualBranchSink retainedVisualBranchSink)
         {
             retainedVisualBranchSink.RegisterVisualDependency(dependency);
         }

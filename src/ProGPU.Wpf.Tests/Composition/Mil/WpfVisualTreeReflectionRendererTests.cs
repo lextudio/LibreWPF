@@ -307,7 +307,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new object[] { root }, sink.VisualOwners);
-        Assert.Equal(new object[] { brush }, sink.VisualDependencies);
+        Assert.Contains(root.Children, sink.VisualDependencies);
+        Assert.Contains(brush, sink.VisualDependencies);
         Assert.Equal(1, result.ContentCount);
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
     }
@@ -351,6 +352,24 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeRegistersVisualChildrenCollectionAsShallowRetainedDependency()
+    {
+        var root = new FakeVisual();
+        var child = new FakeDrawingVisual(CreateRenderData(Brushes.Green));
+        root.Children.Add(child);
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new object[] { root, child }, sink.VisualOwners);
+        Assert.Contains(root.Children, sink.VisualDependencies);
+        Assert.DoesNotContain(child, sink.VisualDependencies);
+        Assert.Equal(2, result.VisualCount);
+        Assert.Equal(1, result.ChildEdgeCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
     public void TryReplaySubtreeIntoCurrentRetainedVisualRegistersRenderDataResourcesAsRetainedDependencies()
     {
         var brush = Brushes.Green;
@@ -365,7 +384,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
             out var result));
 
         Assert.Equal(new object[] { root }, sink.VisualOwners);
-        Assert.Equal(new object[] { brush }, sink.VisualDependencies);
+        Assert.Contains(root.Children, sink.VisualDependencies);
+        Assert.Contains(brush, sink.VisualDependencies);
         Assert.Equal(1, result.ContentCount);
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
     }

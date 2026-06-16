@@ -3,7 +3,10 @@ using System.Windows.Media;
 using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Composition;
 using Xunit;
+using ProGpuContainerVisual = ProGPU.Scene.ContainerVisual;
 using ProGpuDrawingVisual = ProGPU.Scene.DrawingVisual;
+using ProGpuRenderCommandType = ProGPU.Scene.RenderCommandType;
+using ProGpuRetainedDrawingVisual = System.Windows.Media.ProGPU.Composition.ProGpuRetainedDrawingVisual;
 
 namespace ProGPU.Wpf.Tests;
 
@@ -114,6 +117,55 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Equal(1, frame.ObjectRenderDataSinkContextCount);
         Assert.Equal(1, frame.DrawingContextCount);
         Assert.Single(root.Context.Commands);
+    }
+
+    [Fact]
+    public void TryRegisterRenderDataSinkProviderRoutesObjectSinkOwnersToRetainedBranches()
+    {
+        FakeCombinedRenderDataDrawingContextSinkProvider.Reset();
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var retainedRoot = new ProGpuContainerVisual();
+        var flatRoot = new ProGpuDrawingVisual();
+        var frame = new ProGpuWpfDrawingFrame(
+            new ProGpuContainerVisual(),
+            retainedRoot,
+            flatRoot,
+            100,
+            50,
+            retainedVisualBranchMap: branchMap);
+        var ownerVisual = new FakeVisual();
+        var brush = Brushes.Red;
+
+        var registered = WpfRenderDataSinkProviderBridge.TryRegisterRenderDataSinkProvider(
+            typeof(FakeCombinedRenderDataDrawingContextSinkProvider),
+            frame,
+            imageSourceAdapter: null,
+            out var registration);
+
+        Assert.True(registered);
+        Assert.NotNull(registration);
+        Assert.NotNull(FakeCombinedRenderDataDrawingContextSinkProvider.LastObjectFactory);
+
+        using (var context = Assert.IsType<WpfObjectRenderDataDrawingContext>(
+                   FakeCombinedRenderDataDrawingContextSinkProvider.LastObjectFactory!(ownerVisual)))
+        {
+            context.DrawRectangle(brush, null, new Rect(1, 2, 3, 4));
+        }
+
+        Assert.Equal(1, frame.ObjectRenderDataSinkContextCount);
+        Assert.Equal(1, frame.DrawingContextCount);
+        Assert.Empty(flatRoot.Context.Commands);
+        var retainedFrameRoot = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
+        var ownerBranch = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedFrameRoot.Children));
+        Assert.Equal(ProGpuRenderCommandType.DrawRect, Assert.Single(ownerBranch.Context.Commands).Type);
+        Assert.True(branchMap.TryGetVisuals(ownerVisual, out var ownerVisuals));
+        Assert.Same(ownerBranch, Assert.Single(ownerVisuals));
+
+        var dependencyTarget = Assert.Single(branchMap.GetReplayTargetsForSources(new object[] { brush }));
+        Assert.Same(ownerVisual, dependencyTarget.Source);
+        Assert.Same(ownerBranch, dependencyTarget.Visual);
+
+        registration.Dispose();
     }
 
     [Fact]

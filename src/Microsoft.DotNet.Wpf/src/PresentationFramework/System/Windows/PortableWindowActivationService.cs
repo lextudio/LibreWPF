@@ -12,6 +12,7 @@ namespace System.Windows
         private static Action<object> _show;
         private static Action<object> _hide;
         private static Action<object> _close;
+        private static Action<object> _run;
         private static Action<object> _dispose;
 
         internal static bool IsEnabled
@@ -27,6 +28,7 @@ namespace System.Windows
             Action<object> show = null,
             Action<object> hide = null,
             Action<object> close = null,
+            Action<object> run = null,
             Action<object> dispose = null)
         {
             ArgumentNullException.ThrowIfNull(activate);
@@ -35,6 +37,7 @@ namespace System.Windows
             Volatile.Write(ref _show, show);
             Volatile.Write(ref _hide, hide);
             Volatile.Write(ref _close, close);
+            Volatile.Write(ref _run, run);
             Volatile.Write(ref _dispose, dispose);
         }
 
@@ -44,6 +47,7 @@ namespace System.Windows
             Volatile.Write(ref _show, null);
             Volatile.Write(ref _hide, null);
             Volatile.Write(ref _close, null);
+            Volatile.Write(ref _run, null);
             Volatile.Write(ref _dispose, null);
         }
 
@@ -79,6 +83,29 @@ namespace System.Windows
         internal static void Close(object activation)
         {
             Volatile.Read(ref _close)?.Invoke(activation);
+        }
+
+        internal static bool TryRun(Window window)
+        {
+            if (OperatingSystem.IsWindows() || window == null)
+            {
+                return false;
+            }
+
+            object activation = window.PortableWindowActivation;
+            if (activation == null)
+            {
+                return false;
+            }
+
+            Action<object> run = Volatile.Read(ref _run);
+            if (run == null)
+            {
+                return false;
+            }
+
+            run(activation);
+            return true;
         }
 
         internal static void Dispose(object activation)

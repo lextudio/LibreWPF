@@ -6950,6 +6950,14 @@ namespace System.Windows
             PortableWindowActivationService.Dispose(activation);
         }
 
+        internal object PortableWindowActivation
+        {
+            get
+            {
+                return _portableWindowActivation;
+            }
+        }
+
         private void ClearHiddenWindowIfAny()
         {
             // If there is a hiddenWindow and it's the owner of the current one as the result of setting ShowInTaskbar,

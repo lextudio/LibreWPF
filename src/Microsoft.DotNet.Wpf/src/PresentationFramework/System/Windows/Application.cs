@@ -1699,26 +1699,45 @@ namespace System.Windows
 
                 if (window.Visibility != Visibility.Visible)
                 {
-                    Dispatcher.BeginInvoke(
-                        DispatcherPriority.Send,
-                        (DispatcherOperationCallback) delegate(object obj)
-                        {
-                            Window win = obj as Window;
-                            win.Show();
-                            return null;
-                        },
-                        window);
+                    if (PortableWindowActivationService.IsEnabled)
+                    {
+                        window.Show();
+                    }
+                    else
+                    {
+                        Dispatcher.BeginInvoke(
+                            DispatcherPriority.Send,
+                            (DispatcherOperationCallback) delegate(object obj)
+                            {
+                                Window win = obj as Window;
+                                win.Show();
+                                return null;
+                            },
+                            window);
+                    }
                 }
             }
 
             EnsureHwndSource();
 
-            //Even if the subclass app cancels the event we still want to create and run the dispatcher
-            //so that when the app explicitly calls Shutdown, we have a dispatcher to service the posted
-            //Shutdown DispatcherOperationCallback
+            if (PortableWindowActivationService.TryRun(MainWindow))
+            {
+                if (!IsShuttingDown)
+                {
+                    CriticalShutdown(0);
+                }
 
-            // Invoke the Dispatcher synchronously if we are not in the browser
-            RunDispatcher(null);
+                ShutdownImpl();
+            }
+            else
+            {
+                //Even if the subclass app cancels the event we still want to create and run the dispatcher
+                //so that when the app explicitly calls Shutdown, we have a dispatcher to service the posted
+                //Shutdown DispatcherOperationCallback
+
+                // Invoke the Dispatcher synchronously if we are not in the browser
+                RunDispatcher(null);
+            }
 
             return _exitCode;
         }

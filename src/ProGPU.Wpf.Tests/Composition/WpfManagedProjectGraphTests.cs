@@ -208,9 +208,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Func<object, object> activate", activationService, StringComparison.Ordinal);
         Assert.Contains("!OperatingSystem.IsWindows()", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryActivate(Window window, out object activation)", activationService, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TryRun(Window window)", activationService, StringComparison.Ordinal);
+        Assert.Contains("window.PortableWindowActivation", activationService, StringComparison.Ordinal);
         Assert.Contains(@"<Compile Include=""System\Windows\PortableWindowActivationService.cs"" />", project, StringComparison.Ordinal);
 
         Assert.Contains("private object              _portableWindowActivation", window, StringComparison.Ordinal);
+        Assert.Contains("internal object PortableWindowActivation", window, StringComparison.Ordinal);
         Assert.Contains("TryCreatePortableWindowDuringShow()", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.TryActivate(this, out object activation)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.Show(_portableWindowActivation)", window, StringComparison.Ordinal);
@@ -222,10 +225,21 @@ public sealed class WpfManagedProjectGraphTests
             "Window.Show must try the portable activation service before falling back to HWND creation.");
 
         Assert.Contains("if (!OperatingSystem.IsWindows())", application, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.IsEnabled", application, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.TryRun(MainWindow)", application, StringComparison.Ordinal);
+        Assert.Contains("ShutdownImpl();", application, StringComparison.Ordinal);
         Assert.True(
             application.IndexOf("if (!OperatingSystem.IsWindows())", StringComparison.Ordinal)
                 < application.IndexOf("new HwndWrapper", StringComparison.Ordinal),
             "Application.Run must skip the parking HWND before any HwndWrapper is created on non-Windows.");
+        Assert.True(
+            application.IndexOf("window.Show();", StringComparison.Ordinal)
+                < application.IndexOf("PortableWindowActivationService.TryRun(MainWindow)", StringComparison.Ordinal),
+            "Application.Run must synchronously show the startup window before handing ownership to the portable native run loop.");
+        Assert.True(
+            application.IndexOf("PortableWindowActivationService.TryRun(MainWindow)", StringComparison.Ordinal)
+                < application.IndexOf("RunDispatcher(null);", StringComparison.Ordinal),
+            "Application.Run must use the portable native run loop before falling back to WPF Dispatcher.Run.");
     }
 
     [Fact]

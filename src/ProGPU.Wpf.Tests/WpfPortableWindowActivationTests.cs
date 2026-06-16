@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Platform;
 using Xunit;
@@ -48,6 +49,25 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void NativeHostClosingInvokesWindowClose()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        typeof(ProGpuWpfWindowHost)
+            .GetMethod("OnClosing", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(host, Array.Empty<object>());
+
+        Assert.Equal(1, window.CloseCount);
+    }
+
+    [Fact]
     public void CreateHostOptionsReadsFiniteWindowShape()
     {
         var fallback = new ProGpuWpfWindowOptions
@@ -84,6 +104,13 @@ public sealed class WpfPortableWindowActivationTests
         public double ActualWidth { get; set; }
 
         public double ActualHeight { get; set; }
+
+        public int CloseCount { get; private set; }
+
+        public void Close()
+        {
+            CloseCount++;
+        }
     }
 
     private sealed class FakePortablePresentationSource : IDisposable

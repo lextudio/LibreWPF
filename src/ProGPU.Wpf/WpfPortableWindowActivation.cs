@@ -3,9 +3,12 @@ using System.Reflection;
 
 namespace System.Windows.Media.ProGPU;
 
-public sealed class WpfPortableWindowActivation
+public sealed class WpfPortableWindowActivation : IDisposable
 {
     private const string PortableWindowActivationServiceTypeName = "System.Windows.PortableWindowActivationService";
+    private bool _isDisposed;
+    private bool _isClosingFromNative;
+    private bool _isClosingFromWpf;
 
     private WpfPortableWindowActivation(
         ProGpuWpfWindowHost host,
@@ -17,6 +20,7 @@ public sealed class WpfPortableWindowActivation
         Window = window;
         RootVisual = rootVisual;
         PortablePresentationSource = portablePresentationSource;
+        Host.Closing += OnHostClosing;
     }
 
     public ProGpuWpfWindowHost Host { get; }
@@ -51,6 +55,7 @@ public sealed class WpfPortableWindowActivation
                 typeof(Action<object>),
                 typeof(Action<object>),
                 typeof(Action<object>),
+                typeof(Action<object>),
                 typeof(Action<object>)
             },
             modifiers: null);
@@ -66,19 +71,67 @@ public sealed class WpfPortableWindowActivation
                 : null;
         };
         Action<object> show = activation =>
-            ((WpfPortableWindowActivation)activation).Host.Initialize();
-        Action<object> hide = _ =>
-        {
-        };
+            ((WpfPortableWindowActivation)activation).Show();
+        Action<object> hide = activation =>
+            ((WpfPortableWindowActivation)activation).Hide();
         Action<object> close = activation =>
-            ((WpfPortableWindowActivation)activation).Host.Close();
+            ((WpfPortableWindowActivation)activation).Close();
+        Action<object> run = activation =>
+            ((WpfPortableWindowActivation)activation).Run();
         Action<object> dispose = activation =>
-            ((WpfPortableWindowActivation)activation).Host.Dispose();
+            ((WpfPortableWindowActivation)activation).Dispose();
 
         registerMethod.Invoke(
             obj: null,
-            parameters: new object[] { activate, show, hide, close, dispose });
+            parameters: new object[] { activate, show, hide, close, run, dispose });
         return true;
+    }
+
+    public void Show()
+    {
+        ThrowIfDisposed();
+        Host.Initialize();
+    }
+
+    public void Hide()
+    {
+        ThrowIfDisposed();
+    }
+
+    public void Close()
+    {
+        if (_isDisposed || _isClosingFromNative)
+        {
+            return;
+        }
+
+        _isClosingFromWpf = true;
+        try
+        {
+            Host.Close();
+        }
+        finally
+        {
+            _isClosingFromWpf = false;
+        }
+    }
+
+    public void Run()
+    {
+        ThrowIfDisposed();
+        Host.Run();
+    }
+
+    public void Dispose()
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        Host.Closing -= OnHostClosing;
+        Host.Dispose();
+        _isDisposed = true;
     }
 
     public static bool TryAttach(
@@ -171,6 +224,46 @@ public sealed class WpfPortableWindowActivation
     private static object ResolveRootVisual(object window)
     {
         return window;
+    }
+
+    private void OnHostClosing(object? sender, EventArgs e)
+    {
+        if (_isDisposed || _isClosingFromWpf)
+        {
+            return;
+        }
+
+        _isClosingFromNative = true;
+        try
+        {
+            TryInvokeWindowClose(Window);
+        }
+        finally
+        {
+            _isClosingFromNative = false;
+        }
+    }
+
+    private static bool TryInvokeWindowClose(object window)
+    {
+        var closeMethod = window.GetType().GetMethod(
+            "Close",
+            BindingFlags.Instance | BindingFlags.Public,
+            binder: null,
+            types: Type.EmptyTypes,
+            modifiers: null);
+        if (closeMethod == null)
+        {
+            return false;
+        }
+
+        closeMethod.Invoke(window, Array.Empty<object>());
+        return true;
+    }
+
+    private void ThrowIfDisposed()
+    {
+        ObjectDisposedException.ThrowIf(_isDisposed, this);
     }
 
     private static bool TryCreateActivation(

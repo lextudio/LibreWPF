@@ -50,6 +50,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     public event EventHandler<WpfWindowEventArgs>? WindowEventReceived;
 
+    public event EventHandler? Closing;
+
     public IWindow? SilkWindow => _window;
 
     public ProGpuWpfCompositionTarget? CompositionTarget => _target;
@@ -430,6 +432,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void OnClosing()
     {
+        Closing?.Invoke(this, EventArgs.Empty);
         DisposeTarget();
     }
 

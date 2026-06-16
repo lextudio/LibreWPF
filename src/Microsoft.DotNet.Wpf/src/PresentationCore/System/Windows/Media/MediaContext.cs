@@ -1,6 +1,8 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Threading;
 using System.Windows.Input;
@@ -30,11 +32,11 @@ namespace System.Windows.Media
         {
             long qpcCurrentTime;
 
-            SafeNativeMethods.QueryPerformanceFrequency(out _perfCounterFreq);
+            GetPerformanceFrequency(out _perfCounterFreq);
 
             if (IsClockSupported)
             {
-                SafeNativeMethods.QueryPerformanceCounter(out qpcCurrentTime);
+                GetPerformanceCounter(out qpcCurrentTime);
             }
             else
             {
@@ -78,6 +80,30 @@ namespace System.Windows.Media
         private static long TicksToCounts(long ticks)
         {
             return (long)(_perfCounterFreq * (ticks / TimeSpan.TicksPerSecond) + (_perfCounterFreq * (ticks % TimeSpan.TicksPerSecond)) / TimeSpan.TicksPerSecond);
+        }
+
+        private static void GetPerformanceFrequency(out long frequency)
+        {
+            if (s_isWindows)
+            {
+                SafeNativeMethods.QueryPerformanceFrequency(out frequency);
+            }
+            else
+            {
+                frequency = Stopwatch.Frequency;
+            }
+        }
+
+        private static void GetPerformanceCounter(out long performanceCount)
+        {
+            if (s_isWindows)
+            {
+                SafeNativeMethods.QueryPerformanceCounter(out performanceCount);
+            }
+            else
+            {
+                performanceCount = Stopwatch.GetTimestamp();
+            }
         }
 
         /// <summary>
@@ -190,7 +216,7 @@ namespace System.Windows.Media
             // Initialize frame time information
             if (IsClockSupported)
             {
-                SafeNativeMethods.QueryPerformanceCounter(out _lastPresentationTime);
+                GetPerformanceCounter(out _lastPresentationTime);
                 _estimatedNextPresentationTime = TimeSpan.FromTicks(CountsToTicks(_lastPresentationTime));
             }
 
@@ -883,7 +909,7 @@ namespace System.Windows.Media
             get
             {
                 long counts;
-                SafeNativeMethods.QueryPerformanceCounter(out counts);
+                GetPerformanceCounter(out counts);
                 return CountsToTicks(counts);
             }
         }
@@ -1077,7 +1103,7 @@ namespace System.Windows.Media
                 Debug.Assert(IsClockSupported, "MediaContext.CurrentTime called when QueryPerformaceCounter is not supported");
 
                 long counts;
-                SafeNativeMethods.QueryPerformanceCounter(out counts);
+                GetPerformanceCounter(out counts);
 
                 long countsTicks = CountsToTicks(counts);
 
@@ -2884,6 +2910,7 @@ namespace System.Windows.Media
         /// </summary>
         private MIL_PRESENTATION_RESULTS _lastPresentationResults = MIL_PRESENTATION_RESULTS.MIL_PRESENTATION_VSYNC_UNSUPPORTED;
 
+        private static readonly bool s_isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
         private static long _perfCounterFreq;
 
         private const long MaxTicksWithoutInput = TimeSpan.TicksPerSecond / 2;

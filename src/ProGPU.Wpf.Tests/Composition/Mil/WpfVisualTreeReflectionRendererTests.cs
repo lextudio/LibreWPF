@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Linq;
+using System.Numerics;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.ProGPU.Composition;
@@ -56,6 +57,83 @@ public sealed class WpfVisualTreeReflectionRendererTests
         _ = new WpfVisualTreeReflectionRenderer().ReplaySubtree(parent, sink);
 
         Assert.Equal(new object[] { parent, child }, sink.VisualOwners);
+    }
+
+    [Fact]
+    public void ReplaySubtreeLowersNativeVisualStateIntoRetainedOwnerScopes()
+    {
+        var root = new FakeVisual
+        {
+            Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 3, 4)),
+            Offset = new WpfVector(10, 20),
+            Opacity = 0.5,
+            Clip = new FakeRectangleGeometry(new FakeRect(0, 0, 100, 50))
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushVisualOwner", "ApplyVisualState", "PushVisualOwner", "ApplyVisualState", "DrawRectangle", "PopVisualOwner", "PopVisualOwner" }, sink.Operations);
+        Assert.Equal(new object[] { root, root.Children[0] }, sink.VisualOwners);
+        Assert.Equal(2, sink.RetainedVisualStates.Count);
+        var rootState = sink.RetainedVisualStates[0];
+        Assert.Equal(new Vector2(10, 20), rootState.Offset);
+        Assert.Equal(0.5f, rootState.Opacity);
+        Assert.Equal(3, rootState.Transform.M41);
+        Assert.Equal(4, rootState.Transform.M42);
+        Assert.Equal(new Rect(0, 0, 100, 50), rootState.ClipBounds);
+        var childState = sink.RetainedVisualStates[1];
+        Assert.Equal(Vector2.Zero, childState.Offset);
+        Assert.Equal(1f, childState.Opacity);
+        Assert.Equal(Matrix4x4.Identity, childState.Transform);
+        Assert.Null(childState.ClipBounds);
+        Assert.Equal(2, result.VisualCount);
+        Assert.Equal(1, result.ContentCount);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeKeepsFallbackSubtreeInCommandScopeForNonNativeVisualState()
+    {
+        var root = new FakeVisual
+        {
+            Bounds = new FakeRect(1, 2, 100, 50),
+            OpacityMask = Brushes.White
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushOpacityMask", "DrawRectangle", "Pop" }, sink.Operations);
+        Assert.Equal(new object[] { root, root.Children[0] }, sink.VisualOwners);
+        Assert.Empty(sink.RetainedVisualStates);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeKeepsRoundedClipInCommandScopeForNativeOwnerSink()
+    {
+        var root = new FakeVisual
+        {
+            Clip = new FakeRectangleGeometry(new FakeRect(0, 0, 100, 50))
+            {
+                RadiusX = 4,
+                RadiusY = 4
+            }
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushClip", "DrawRectangle", "Pop" }, sink.Operations);
+        Assert.Empty(sink.RetainedVisualStates);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
     }
 
     [Fact]
@@ -892,6 +970,10 @@ public sealed class WpfVisualTreeReflectionRendererTests
         }
 
         public FakeRect Rect { get; }
+
+        public double RadiusX { get; init; }
+
+        public double RadiusY { get; init; }
     }
 
     private readonly record struct FakeRect(double X, double Y, double Width, double Height);
@@ -921,11 +1003,14 @@ public sealed class WpfVisualTreeReflectionRendererTests
         IWpfCompositionCommandSink,
         IWpfVisualEffectCommandSink,
         IWpfVisualCacheCommandSink,
-        IWpfRetainedVisualBranchSink
+        IWpfRetainedVisualBranchSink,
+        IWpfRetainedVisualStateSink
     {
         public List<string> Operations { get; } = new();
 
         public List<object> VisualOwners { get; } = new();
+
+        public List<WpfRetainedVisualState> RetainedVisualStates { get; } = new();
 
         public List<(MediaBrush? Brush, MediaPen? Pen, Rect Rectangle)> DrawRectangles { get; } = new();
 
@@ -955,6 +1040,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         public bool AcceptVisualCaches { get; init; }
 
+        public bool AcceptRetainedVisualOwners { get; init; }
+
         public MediaDrawingContext DrawingContext => null!;
 
         public void RegisterVisualOwner(object sourceVisual)
@@ -964,12 +1051,25 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         public bool PushVisualOwner(object sourceVisual)
         {
+            if (!AcceptRetainedVisualOwners)
+            {
+                return false;
+            }
+
+            Operations.Add("PushVisualOwner");
             VisualOwners.Add(sourceVisual);
-            return false;
+            return true;
         }
 
         public void PopVisualOwner()
         {
+            Operations.Add("PopVisualOwner");
+        }
+
+        public void ApplyVisualState(in WpfRetainedVisualState state)
+        {
+            Operations.Add("ApplyVisualState");
+            RetainedVisualStates.Add(state);
         }
 
         public void DrawLine(MediaPen? pen, Point point0, Point point1)

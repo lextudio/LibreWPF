@@ -23,7 +23,8 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
     IWpfVisualEffectCommandSink,
     IWpfVisualCacheCommandSink,
     IWpfDrawingCacheCommandSink,
-    IWpfRetainedVisualBranchSink
+    IWpfRetainedVisualBranchSink,
+    IWpfRetainedVisualStateSink
 {
     private enum ScopeKind
     {
@@ -119,6 +120,23 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         }
 
         PopVisualScope();
+    }
+
+    public void ApplyVisualState(in WpfRetainedVisualState state)
+    {
+        ThrowIfClosed();
+
+        var visual = Current.Visual;
+        visual.Offset = state.Offset;
+        visual.Transform = state.Transform;
+        visual.Opacity = state.Opacity;
+        visual.ClipBounds = state.ClipBounds.HasValue
+            ? new global::ProGPU.Scene.Rect(
+                (float)state.ClipBounds.Value.X,
+                (float)state.ClipBounds.Value.Y,
+                (float)state.ClipBounds.Value.Width,
+                (float)state.ClipBounds.Value.Height)
+            : null;
     }
 
     private VisualScope Current

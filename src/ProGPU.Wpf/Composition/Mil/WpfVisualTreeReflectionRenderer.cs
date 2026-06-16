@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition;
@@ -40,7 +41,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         ArgumentNullException.ThrowIfNull(sink);
 
         var stats = new ReplayStats();
-        ReplaySubtreeCore(rootVisual, sink, resources, imageSourceAdapter, stats);
+        ReplaySubtreeCore(rootVisual, sink, resources, imageSourceAdapter, stats, allowRetainedVisualOwnerScopes: true);
         return stats.ToResult();
     }
 
@@ -49,9 +50,16 @@ public sealed class WpfVisualTreeReflectionRenderer
         IWpfCompositionCommandSink sink,
         IWpfMilResourceResolver? resources,
         IWpfImageSourceAdapter? imageSourceAdapter,
-        ReplayStats stats)
+        ReplayStats stats,
+        bool allowRetainedVisualOwnerScopes)
     {
         stats.VisualCount++;
+
+        if (allowRetainedVisualOwnerScopes
+            && TryReplaySubtreeWithRetainedVisualOwner(visual, sink, resources, imageSourceAdapter, stats))
+        {
+            return;
+        }
 
         var popCount = PushVisualState(visual, sink, stats);
         RegisterRetainedVisualOwner(visual, sink);
@@ -63,7 +71,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             foreach (var child in ExtractChildren(visual))
             {
                 stats.ChildEdgeCount++;
-                ReplaySubtreeCore(child, sink, resources, imageSourceAdapter, stats);
+                ReplaySubtreeCore(child, sink, resources, imageSourceAdapter, stats, allowRetainedVisualOwnerScopes: false);
             }
         }
 
@@ -73,12 +81,232 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
     }
 
+    private bool TryReplaySubtreeWithRetainedVisualOwner(
+        object visual,
+        IWpfCompositionCommandSink sink,
+        IWpfMilResourceResolver? resources,
+        IWpfImageSourceAdapter? imageSourceAdapter,
+        ReplayStats stats)
+    {
+        if (sink is not IWpfRetainedVisualBranchSink retainedVisualBranchSink
+            || sink is not IWpfRetainedVisualStateSink retainedVisualStateSink
+            || !TryCreateRetainedVisualState(visual, out var visualState))
+        {
+            return false;
+        }
+
+        if (!retainedVisualBranchSink.PushVisualOwner(visual))
+        {
+            return false;
+        }
+
+        var replayed = false;
+        try
+        {
+            retainedVisualStateSink.ApplyVisualState(visualState);
+
+            if (!ReplayViewport3DVisual(visual, sink, stats))
+            {
+                ReplayVisualContent(visual, sink, resources, imageSourceAdapter, stats);
+
+                foreach (var child in ExtractChildren(visual))
+                {
+                    stats.ChildEdgeCount++;
+                    ReplaySubtreeCore(child, sink, resources, imageSourceAdapter, stats, allowRetainedVisualOwnerScopes: true);
+                }
+            }
+
+            replayed = true;
+            return true;
+        }
+        finally
+        {
+            retainedVisualBranchSink.PopVisualOwner();
+            if (!replayed)
+            {
+                stats.UnsupportedVisualStateCount++;
+            }
+        }
+    }
+
     private static void RegisterRetainedVisualOwner(object visual, IWpfCompositionCommandSink sink)
     {
         if (sink is IWpfRetainedVisualBranchSink retainedVisualBranchSink)
         {
             retainedVisualBranchSink.RegisterVisualOwner(visual);
         }
+    }
+
+    private static bool TryCreateRetainedVisualState(object visual, out WpfRetainedVisualState state)
+    {
+        state = default;
+        var offset = Vector2.Zero;
+        var transform = Matrix4x4.Identity;
+        var opacity = 1f;
+        Rect? clipBounds = null;
+
+        if (TryGetPropertyValue(visual, "Transform", out var transformValue) && transformValue != null)
+        {
+            var mediaTransform = WpfReflectionResourceResolver.AdaptTransform(transformValue);
+            if (mediaTransform == null)
+            {
+                return false;
+            }
+
+            transform = ToMatrix4x4(mediaTransform);
+        }
+
+        if (TryReadOffset(visual, out var offsetX, out var offsetY))
+        {
+            offset = new Vector2((float)offsetX, (float)offsetY);
+        }
+
+        if (TryGetPropertyValue(visual, "Clip", out var clip) && clip != null)
+        {
+            if (!TryReadRectangleClipBounds(clip, out var rectangleClipBounds))
+            {
+                return false;
+            }
+
+            var combinedClipBounds = CombineClipBounds(clipBounds, rectangleClipBounds);
+            if (!IsUsableBounds(combinedClipBounds))
+            {
+                return false;
+            }
+
+            clipBounds = combinedClipBounds;
+        }
+
+        if (TryGetPropertyValue(visual, "ScrollableAreaClip", out var scrollableAreaClip) && scrollableAreaClip != null)
+        {
+            if (!TryReadRect(scrollableAreaClip, out var scrollableClipBounds) || !IsUsableBounds(scrollableClipBounds))
+            {
+                return false;
+            }
+
+            var combinedClipBounds = CombineClipBounds(clipBounds, scrollableClipBounds);
+            if (!IsUsableBounds(combinedClipBounds))
+            {
+                return false;
+            }
+
+            clipBounds = combinedClipBounds;
+        }
+
+        if (TryGetPropertyValue(visual, "Opacity", out var opacityValue))
+        {
+            if (!TryConvertToDouble(opacityValue, out var opacityDouble))
+            {
+                return false;
+            }
+
+            opacity = (float)opacityDouble;
+        }
+
+        if (HasNonNativeRetainedVisualState(visual))
+        {
+            return false;
+        }
+
+        state = new WpfRetainedVisualState(offset, transform, opacity, clipBounds);
+        return true;
+    }
+
+    private static bool HasNonNativeRetainedVisualState(object visual)
+    {
+        if (HasNonNullProperty(visual, "OpacityMask")
+            || HasNonNullProperty(visual, "Effect")
+            || HasNonNullProperty(visual, "BitmapEffect")
+            || HasNonNullProperty(visual, "BitmapEffectInput")
+            || HasNonNullProperty(visual, "CacheMode")
+            || HasVisualGuidelines(visual))
+        {
+            return true;
+        }
+
+        if (TryGetPropertyValue(visual, "BitmapScalingMode", out var bitmapScalingMode)
+            && WpfBitmapScalingModeReflection.HasExplicitValue(bitmapScalingMode))
+        {
+            return true;
+        }
+
+        if (TryGetPropertyValue(visual, "EdgeMode", out var edgeMode)
+            && WpfEdgeModeReflection.HasExplicitValue(edgeMode))
+        {
+            return true;
+        }
+
+        if (TryGetPropertyValue(visual, "TextRenderingMode", out var textRenderingMode)
+            && WpfTextRenderingModeReflection.HasExplicitValue(textRenderingMode))
+        {
+            return true;
+        }
+
+        if (TryGetPropertyValue(visual, "ClearTypeHint", out var clearTypeHint)
+            && WpfTextRenderingModeReflection.HasExplicitClearTypeHint(clearTypeHint))
+        {
+            return true;
+        }
+
+        return TryGetPropertyValue(visual, "TextHintingMode", out var textHintingMode)
+            && WpfTextRenderingModeReflection.HasExplicitTextHintingMode(textHintingMode);
+    }
+
+    private static bool TryReadRectangleClipBounds(object clip, out Rect bounds)
+    {
+        if (TryReadRect(clip, out bounds) && IsUsableBounds(bounds))
+        {
+            return true;
+        }
+
+        if (!TryGetPropertyValue(clip, "Rect", out var rectValue)
+            || rectValue == null
+            || !TryReadRect(rectValue, out bounds)
+            || !IsUsableBounds(bounds))
+        {
+            bounds = default;
+            return false;
+        }
+
+        if ((TryReadDoubleProperty(clip, "RadiusX", out var radiusX) && radiusX != 0)
+            || (TryReadDoubleProperty(clip, "RadiusY", out var radiusY) && radiusY != 0))
+        {
+            bounds = default;
+            return false;
+        }
+
+        if (TryGetPropertyValue(clip, "Transform", out var transformValue) && transformValue != null)
+        {
+            var mediaTransform = WpfReflectionResourceResolver.AdaptTransform(transformValue);
+            if (mediaTransform == null || !mediaTransform.Value.IsIdentity)
+            {
+                bounds = default;
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static Rect CombineClipBounds(Rect? current, Rect next)
+    {
+        if (!current.HasValue)
+        {
+            return next;
+        }
+
+        var x1 = Math.Max(current.Value.X, next.X);
+        var y1 = Math.Max(current.Value.Y, next.Y);
+        var x2 = Math.Min(current.Value.X + current.Value.Width, next.X + next.Width);
+        var y2 = Math.Min(current.Value.Y + current.Value.Height, next.Y + next.Height);
+        return x2 <= x1 || y2 <= y1
+            ? Rect.Empty
+            : new Rect(x1, y1, x2 - x1, y2 - y1);
+    }
+
+    private static Matrix4x4 ToMatrix4x4(MediaTransform transform)
+    {
+        return transform.Value;
     }
 
     private static bool ReplayViewport3DVisual(

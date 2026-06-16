@@ -193,6 +193,46 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void RetainedSinkAppliesNativeVisualStateToCurrentOwnerScope()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var retainedRoot = new ProGpuContainerVisual();
+        var frame = new ProGpuWpfDrawingFrame(
+            new ProGpuContainerVisual(),
+            retainedRoot,
+            new ProGpuDrawingVisual(),
+            200,
+            100,
+            retainedVisualBranchMap: branchMap);
+        using var sink = new ProGpuRetainedCompositionCommandSink(frame, context: null, viewport3DTextureCache: null);
+        var branchSink = (IWpfRetainedVisualBranchSink)sink;
+        var stateSink = (IWpfRetainedVisualStateSink)sink;
+        var source = new object();
+        var transform = Matrix4x4.CreateTranslation(3, 4, 0);
+
+        Assert.True(branchSink.PushVisualOwner(source));
+        stateSink.ApplyVisualState(new WpfRetainedVisualState(
+            new Vector2(10, 20),
+            transform,
+            0.5f,
+            new Rect(1, 2, 30, 40)));
+        branchSink.PopVisualOwner();
+
+        var retainedRootVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
+        var ownerVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRootVisual.Children));
+        Assert.Equal(new Vector2(10, 20), ownerVisual.Offset);
+        Assert.Equal(transform, ownerVisual.Transform);
+        Assert.Equal(0.5f, ownerVisual.Opacity);
+        var clipBounds = Assert.NotNull(ownerVisual.ClipBounds);
+        Assert.Equal(1, clipBounds.X);
+        Assert.Equal(2, clipBounds.Y);
+        Assert.Equal(30, clipBounds.Width);
+        Assert.Equal(40, clipBounds.Height);
+        Assert.True(branchMap.TryGetVisuals(source, out var visuals));
+        Assert.Same(ownerVisual, Assert.Single(visuals));
+    }
+
+    [Fact]
     public void RetainedSinkCreatesBoundedNativeEffectVisual()
     {
         var sceneRoot = new ProGpuContainerVisual();

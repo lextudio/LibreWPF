@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Numerics;
+using System.Windows;
 using ProGpuVisual = global::ProGPU.Scene.Visual;
 
 namespace System.Windows.Media.ProGPU.Composition;
@@ -198,4 +200,28 @@ internal interface IWpfRetainedVisualBranchSink
     bool PushVisualOwner(object sourceVisual);
 
     void PopVisualOwner();
+}
+
+internal readonly struct WpfRetainedVisualState
+{
+    public WpfRetainedVisualState(Vector2 offset, Matrix4x4 transform, float opacity, Rect? clipBounds)
+    {
+        Offset = offset;
+        Transform = transform;
+        Opacity = opacity;
+        ClipBounds = clipBounds;
+    }
+
+    public Vector2 Offset { get; }
+
+    public Matrix4x4 Transform { get; }
+
+    public float Opacity { get; }
+
+    public Rect? ClipBounds { get; }
+}
+
+internal interface IWpfRetainedVisualStateSink
+{
+    void ApplyVisualState(in WpfRetainedVisualState state);
 }

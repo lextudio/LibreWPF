@@ -449,8 +449,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 pixelWidth,
                 pixelHeight,
                 clearRetainedWpfVisualRoot);
+            var activeWpfImageSourceAdapter = _target.CreateFrameImageSourceAdapter(WpfImageSourceAdapter);
 
-            using (IDisposable? renderDataSinkProviderRegistration = RegisterRenderDataSinkProvider(drawingFrame))
+            using (IDisposable? renderDataSinkProviderRegistration = RegisterRenderDataSinkProvider(drawingFrame, activeWpfImageSourceAdapter))
             using (var drawingContext = drawingFrame.OpenDrawingContext())
             {
                 var args = new ProGpuWpfFrameEventArgs(
@@ -470,7 +471,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                                 wpfRootVisual,
                                 drawingFrame,
                                 WpfResourceResolver,
-                                WpfImageSourceAdapter,
+                                activeWpfImageSourceAdapter,
                                 out var branchReplayResult))
                         {
                             LastVisualReplayResult = branchReplayResult;
@@ -486,7 +487,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                                 wpfRootVisual,
                                 sink,
                                 WpfResourceResolver,
-                                WpfImageSourceAdapter);
+                                activeWpfImageSourceAdapter);
                         }
                     }
                     else
@@ -643,9 +644,16 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     internal IDisposable? RegisterRenderDataSinkProvider(ProGpuWpfDrawingFrame drawingFrame)
     {
+        return RegisterRenderDataSinkProvider(drawingFrame, WpfImageSourceAdapter);
+    }
+
+    internal IDisposable? RegisterRenderDataSinkProvider(
+        ProGpuWpfDrawingFrame drawingFrame,
+        IWpfImageSourceAdapter? imageSourceAdapter)
+    {
         ArgumentNullException.ThrowIfNull(drawingFrame);
 
-        return RenderDataSinkProviderRegistrationFactory(drawingFrame, WpfImageSourceAdapter);
+        return RenderDataSinkProviderRegistrationFactory(drawingFrame, imageSourceAdapter);
     }
 
     internal void InvokeSourceDraw(

@@ -377,17 +377,28 @@ internal static class WpfEffectReflection
         out WpfShaderEffectSampler sampler)
     {
         sampler = null!;
-        if (!TypeNameEndsWith(brush, "ImageBrush")
-            || !TryGetPropertyValue(brush, "ImageSource", out var imageSource)
-            || ResolveImageSource(imageSource, imageSourceAdapter) is not MediaBitmapSource bitmapSource
-            || bitmapSource.PixelWidth <= 0
-            || bitmapSource.PixelHeight <= 0)
+        if (TypeNameEndsWith(brush, "ImageBrush")
+            && TryGetPropertyValue(brush, "ImageSource", out var imageSource)
+            && ResolveImageSource(imageSource, imageSourceAdapter) is MediaBitmapSource bitmapSource
+            && bitmapSource.PixelWidth > 0
+            && bitmapSource.PixelHeight > 0)
         {
-            return false;
+            sampler = new WpfShaderEffectSampler(registerIndex, bitmapSource.GpuTexture, samplingMode);
+            return true;
         }
 
-        sampler = new WpfShaderEffectSampler(registerIndex, bitmapSource.GpuTexture, samplingMode);
-        return true;
+        if (imageSourceAdapter is IWpfShaderEffectSamplerBrushAdapter samplerBrushAdapter
+            && samplerBrushAdapter.TryAdaptShaderEffectSamplerBrush(
+                brush,
+                registerIndex,
+                samplingMode,
+                out sampler))
+        {
+            return true;
+        }
+
+        sampler = null!;
+        return false;
     }
 
     private static MediaImageSource? ResolveImageSource(

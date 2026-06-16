@@ -149,7 +149,7 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
             "ProGpuWpfCompositionTarget.cs"));
 
         Assert.Contains("ProGpuWpfDrawingFrame drawingFrame = BeginDrawingFrame(pixelWidth, pixelHeight);", source, StringComparison.Ordinal);
-        Assert.Contains("IWpfImageSourceAdapter? activeImageSourceAdapter = imageSourceAdapter ?? WpfImageSourceAdapter;", source, StringComparison.Ordinal);
+        Assert.Contains("IWpfImageSourceAdapter? activeImageSourceAdapter = CreateFrameImageSourceAdapter(", source, StringComparison.Ordinal);
         Assert.Contains("drawingFrame.TryRegisterRenderDataSinkProvider(activeImageSourceAdapter, out IDisposable? registration)", source, StringComparison.Ordinal);
         Assert.Contains("using var drawingContext = drawingFrame.OpenDrawingContext();", source, StringComparison.Ordinal);
     }

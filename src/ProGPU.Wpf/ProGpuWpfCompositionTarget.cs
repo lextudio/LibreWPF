@@ -18,6 +18,7 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
     private readonly WpfVisualTreeReflectionRenderer _visualTreeRenderer = new();
     private readonly bool _ownsContext;
     private readonly bool _ownsCompositor;
+    private readonly WpfShaderEffectSamplerTextureCache _shaderEffectSamplerTextureCache;
     private bool _isDisposed;
 
     public ProGpuWgpuContext Context { get; }
@@ -79,6 +80,10 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         _ownsContext = ownsContext;
         _ownsCompositor = ownsCompositor;
         Viewport3DTextureCache = new WpfViewport3DTextureCache(Context);
+        _shaderEffectSamplerTextureCache = new WpfShaderEffectSamplerTextureCache(
+            Context,
+            Compositor,
+            Viewport3DTextureCache);
         WpfInvalidationTracker.Invalidated += OnWpfSourceInvalidated;
         ResetSceneRoot();
     }
@@ -127,6 +132,10 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         bool clearRetainedWpfVisualRoot)
     {
         ThrowIfDisposed();
+        if (clearRetainedWpfVisualRoot)
+        {
+            _shaderEffectSamplerTextureCache.Clear();
+        }
 
         return new ProGpuWpfDrawingFrame(
             SceneRootVisual,
@@ -166,7 +175,8 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
 
         WpfInvalidationTracker.AttachIfChanged(rootVisual);
         ProGpuWpfDrawingFrame drawingFrame = BeginDrawingFrame(pixelWidth, pixelHeight);
-        IWpfImageSourceAdapter? activeImageSourceAdapter = imageSourceAdapter ?? WpfImageSourceAdapter;
+        IWpfImageSourceAdapter? activeImageSourceAdapter = CreateFrameImageSourceAdapter(
+            imageSourceAdapter ?? WpfImageSourceAdapter);
         using IDisposable? renderDataSinkProviderRegistration = drawingFrame.TryRegisterRenderDataSinkProvider(activeImageSourceAdapter, out IDisposable? registration)
             ? registration
             : null;
@@ -193,7 +203,7 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
             rootVisual,
             sink,
             resources,
-            imageSourceAdapter ?? WpfImageSourceAdapter);
+            CreateFrameImageSourceAdapter(imageSourceAdapter ?? WpfImageSourceAdapter));
     }
 
     public void Render(uint pixelWidth, uint pixelHeight, TextureView* targetView)
@@ -262,7 +272,8 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
             return false;
         }
 
-        IWpfImageSourceAdapter? activeImageSourceAdapter = imageSourceAdapter ?? WpfImageSourceAdapter;
+        IWpfImageSourceAdapter? activeImageSourceAdapter = CreateFrameImageSourceAdapter(
+            imageSourceAdapter ?? WpfImageSourceAdapter);
         var replayResult = default(WpfVisualReplayResult);
         Viewport3DTextureCache.BeginFrame();
 
@@ -313,6 +324,7 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         RetainedVisualBranchMap.Clear();
         ResetSceneRoot();
         Viewport3DTextureCache.Clear();
+        _shaderEffectSamplerTextureCache.Clear();
         SceneRootVisual.Invalidate();
         RootVisual.Invalidate();
         WpfInvalidationTracker.MarkDirty();
@@ -326,6 +338,7 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         }
 
         Viewport3DTextureCache.Dispose();
+        _shaderEffectSamplerTextureCache.Dispose();
 
         if (_ownsCompositor)
         {
@@ -405,7 +418,9 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         foreach (var target in targets)
         {
             if (target.Visual is not ProGpuRetainedDrawingVisual branchVisual ||
-                !_visualTreeRenderer.CanReplaySubtreeIntoCurrentRetainedVisual(target.Source, WpfImageSourceAdapter))
+                !_visualTreeRenderer.CanReplaySubtreeIntoCurrentRetainedVisual(
+                    target.Source,
+                    CreateFrameImageSourceAdapter(WpfImageSourceAdapter)))
             {
                 targets = Array.Empty<WpfRetainedVisualBranchReplayTarget>();
                 return false;
@@ -434,6 +449,14 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         visual.RenderTransformOrigin = new Vector2(0.5f, 0.5f);
         visual.ClipBounds = null;
         visual.Effect = null;
+    }
+
+    internal IWpfImageSourceAdapter? CreateFrameImageSourceAdapter(IWpfImageSourceAdapter? imageSourceAdapter)
+    {
+        ThrowIfDisposed();
+        return new WpfShaderEffectSamplerImageSourceAdapter(
+            imageSourceAdapter,
+            _shaderEffectSamplerTextureCache);
     }
 
     private static WpfVisualReplayResult AddReplayResults(

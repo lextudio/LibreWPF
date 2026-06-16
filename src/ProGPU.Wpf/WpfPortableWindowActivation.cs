@@ -1,0 +1,172 @@
+using System.Globalization;
+using System.Reflection;
+
+namespace System.Windows.Media.ProGPU;
+
+public sealed class WpfPortableWindowActivation
+{
+    private WpfPortableWindowActivation(
+        ProGpuWpfWindowHost host,
+        object window,
+        object rootVisual,
+        object portablePresentationSource)
+    {
+        Host = host;
+        Window = window;
+        RootVisual = rootVisual;
+        PortablePresentationSource = portablePresentationSource;
+    }
+
+    public ProGpuWpfWindowHost Host { get; }
+
+    public object Window { get; }
+
+    public object RootVisual { get; }
+
+    public object PortablePresentationSource { get; }
+
+    public static bool TryAttach(
+        ProGpuWpfWindowHost host,
+        object window,
+        Assembly presentationCoreAssembly,
+        out WpfPortableWindowActivation? activation,
+        double dpiScaleX = 1.0,
+        double dpiScaleY = 1.0)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentNullException.ThrowIfNull(window);
+        ArgumentNullException.ThrowIfNull(presentationCoreAssembly);
+
+        activation = null;
+        var rootVisual = ResolveRootVisual(window);
+        if (!host.TryCreatePortablePresentationSource(
+                presentationCoreAssembly,
+                rootVisual,
+                dpiScaleX,
+                dpiScaleY) ||
+            host.PortablePresentationSource is not { } portablePresentationSource)
+        {
+            return false;
+        }
+
+        activation = new WpfPortableWindowActivation(host, window, rootVisual, portablePresentationSource);
+        return true;
+    }
+
+    public static bool TryAttach(
+        ProGpuWpfWindowHost host,
+        object window,
+        object portablePresentationSource,
+        out WpfPortableWindowActivation? activation)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentNullException.ThrowIfNull(window);
+        ArgumentNullException.ThrowIfNull(portablePresentationSource);
+
+        activation = null;
+        if (!host.TryBindPortablePresentationSource(portablePresentationSource) ||
+            host.PortablePresentationSourceBridge is not { } bridge)
+        {
+            return false;
+        }
+
+        var rootVisual = ResolveRootVisual(window);
+        bridge.RootVisual = rootVisual;
+        activation = new WpfPortableWindowActivation(host, window, rootVisual, portablePresentationSource);
+        return true;
+    }
+
+    public static ProGpuWpfWindowOptions CreateHostOptions(
+        object window,
+        ProGpuWpfWindowOptions? fallback = null)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+
+        fallback ??= new ProGpuWpfWindowOptions();
+        var options = new ProGpuWpfWindowOptions
+        {
+            Title = fallback.Title,
+            Width = fallback.Width,
+            Height = fallback.Height,
+            VSync = fallback.VSync
+        };
+
+        if (TryReadStringProperty(window, "Title", out var title) &&
+            !string.IsNullOrWhiteSpace(title))
+        {
+            options.Title = title;
+        }
+
+        if (TryReadPositiveDimension(window, "Width", out var width) ||
+            TryReadPositiveDimension(window, "ActualWidth", out width))
+        {
+            options.Width = ToPixelDimension(width);
+        }
+
+        if (TryReadPositiveDimension(window, "Height", out var height) ||
+            TryReadPositiveDimension(window, "ActualHeight", out height))
+        {
+            options.Height = ToPixelDimension(height);
+        }
+
+        return options;
+    }
+
+    private static object ResolveRootVisual(object window)
+    {
+        return window;
+    }
+
+    private static bool TryReadStringProperty(object instance, string propertyName, out string? value)
+    {
+        value = null;
+        var property = instance.GetType().GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public);
+        if (property == null || property.GetIndexParameters().Length != 0)
+        {
+            return false;
+        }
+
+        value = property.GetValue(instance) as string;
+        return value != null;
+    }
+
+    private static bool TryReadPositiveDimension(object instance, string propertyName, out double value)
+    {
+        value = 0.0;
+        var property = instance.GetType().GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public);
+        if (property == null || property.GetIndexParameters().Length != 0)
+        {
+            return false;
+        }
+
+        var rawValue = property.GetValue(instance);
+        if (rawValue == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            value = Convert.ToDouble(rawValue, CultureInfo.InvariantCulture);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+        catch (InvalidCastException)
+        {
+            return false;
+        }
+
+        return double.IsFinite(value) && value > 0.0;
+    }
+
+    private static int ToPixelDimension(double value)
+    {
+        return Math.Max(1, (int)Math.Ceiling(value));
+    }
+}

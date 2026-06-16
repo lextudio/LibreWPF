@@ -47,6 +47,30 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Equal(linkPath, compileItem.Attribute("Link")?.Value);
     }
 
+    [Fact]
+    public void MediaContextNotificationWindowSkipsWin32WindowCreationOnNonWindows()
+    {
+        var sourcePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "MediaContextNotificationWindow.cs");
+        var source = File.ReadAllText(sourcePath);
+
+        Assert.Contains("RuntimeInformation.IsOSPlatform(OSPlatform.Windows)", source, StringComparison.Ordinal);
+        Assert.Contains("if (!s_isWindows)", source, StringComparison.Ordinal);
+        Assert.Contains("new HwndWrapper", source, StringComparison.Ordinal);
+        Assert.True(
+            source.IndexOf("if (!s_isWindows)", StringComparison.Ordinal)
+                < source.IndexOf("new HwndWrapper", StringComparison.Ordinal),
+            "The non-Windows guard must run before creating the hidden HWND notification window.");
+        Assert.Contains("_ownerMediaContext.Channel.SetNotificationWindow", source, StringComparison.Ordinal);
+    }
+
     private static string FindRepoPath(params string[] pathSegments)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

@@ -89,6 +89,7 @@ The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and
 - Skia `SaveLayer` texture lifetime cleanup after `SKSurface.Flush()`, releasing layer textures once the parent draw commands have been consumed instead of retaining one full-canvas texture per saved layer until canvas disposal.
 - Skia `SKImage.ReadPixels(...)` destination stride validation for clipped source rectangles and shifted destination writes, preventing unsafe row overruns when callers provide too-small aligned strides.
 - GDI `Graphics.DrawString(...)` font-style forwarding into ProGPU text command metadata, preserving synthetic bold and italic rendering for WPF/GDI compatibility shims.
+- WPF shim `FormattedText` now uses WPF-compatible `System.Windows` font weight/style/stretch value types and forwards `Typeface` bold/slanted intent into ProGPU text command metadata, preserving synthetic style rendering for reused WPF-shaped managed text calls.
 
 ## Decisions
 

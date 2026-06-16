@@ -864,6 +864,13 @@
 - Advanced the ProGPU submodule to `e598257` (`skia: Validate CPU surface row bytes`) and replied to ProGPU PR #17 review thread `discussion_r3424590799`. CPU-backed `SKSurface.Create(info, pixels, rowBytes, properties)` now rejects positive row strides smaller than `width * 4` before context/texture allocation, keeps zero/negative stride on the existing default-row-stride behavior, and uses the resolved stride for both initial upload and `Flush()` writeback.
 - Verified the ProGPU rowBytes review slice with `git diff --check` and focused `dotnet test src/ProGPU.Tests/ProGPU.Tests.csproj --no-restore --verbosity minimal --filter FullyQualifiedName~SkSurfaceBackendRenderTargetTests`; 8 focused Skia surface tests passed with existing warnings only.
 
+## 2026-06-17
+
+- Advanced the ProGPU submodule to `262eabe` (`wpf: Propagate FormattedText style flags`) and replied to ProGPU PR #17 review thread `discussion_r3424634739`.
+- Moved the ProGPU shim `FontWeight`, `FontStyle`, and `FontStretch` value types into WPF-compatible `System.Windows` ownership with `FontWeights`, `FontStyles`, and `FontStretches` facades, while preserving the existing static convenience properties used by current shim samples.
+- Updated shim `FormattedText` so styled `Typeface` instances cache bold/slanted intent and record native ProGPU `DrawText` commands with synthetic bold/italic flags, keeping WPF-shaped managed text calls reusable instead of compensating in the WPF bridge.
+- Verified the ProGPU formatted-text style slice with `git diff --check` and focused `dotnet test src/ProGPU.Tests/ProGPU.Tests.csproj --no-restore --verbosity minimal --filter FullyQualifiedName~WpfFormattedTextTests`; 2 focused tests passed with existing warnings only.
+
 ## Open Porting Items
 
 - Replace the source-shared portable `MS.Internal.Text.TextInterface` one-scalar-to-one-glyph fallback, the temporary managed Unicode-classification and simple nominal-glyph layout fallback, remaining compact/CFF subsetting gaps, and LineServices `LoCreateContext`/paragraph-layout dependencies with a full ProGPU-backed or cross-platform shaping/subsetting/line-formatting abstraction.

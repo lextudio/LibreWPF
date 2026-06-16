@@ -21,5 +21,16 @@
             <Setter Property="MinWidth" Value="180" />
             <Setter Property="Margin" Value="0,8,0,0" />
         </Style>
+        <Style x:Key="TriggeredButtonStyle" TargetType="{x:Type Button}">
+            <Setter Property="Margin" Value="0,8,0,0" />
+            <Setter Property="Tag" Value="trigger inactive" />
+            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                    <Setter Property="Tag" Value="trigger active" />
+                    <Setter Property="Background" Value="{StaticResource ReplacementAccentBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </Application.Resources>
 </Application>

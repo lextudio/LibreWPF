@@ -43,6 +43,7 @@ public partial class MainWindow : Window
     public sealed class SmokeViewModel : INotifyPropertyChanged
     {
         private string _greeting = "bound greeting from real WPF";
+        private bool _isWarning;
         private SmokeItem? _selectedItem;
 
         public SmokeViewModel()
@@ -68,6 +69,21 @@ public partial class MainWindow : Window
         }
 
         public string ButtonText => "run bound command";
+
+        public string TriggerButtonText => "style trigger target";
+
+        public bool IsWarning
+        {
+            get => _isWarning;
+            set
+            {
+                if (_isWarning != value)
+                {
+                    _isWarning = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
 
         public ObservableCollection<SmokeItem> Items { get; } = new();
 

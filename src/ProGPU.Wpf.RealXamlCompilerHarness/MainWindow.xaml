@@ -49,6 +49,10 @@
             Margin="0,8,0,0"
             Content="templated button"
             Template="{StaticResource SmokeButtonTemplate}" />
+        <Button
+            x:Name="TriggeredButton"
+            Content="{Binding TriggerButtonText}"
+            Style="{StaticResource TriggeredButtonStyle}" />
         <ListBox
             x:Name="ItemsList"
             Margin="0,8,0,0"

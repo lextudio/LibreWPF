@@ -89,7 +89,7 @@ internal static class Program
         AssertEqual("MainWindow.xaml", GetProperty(application, "StartupUri").ToString(), "startup URI");
 
         object resources = GetProperty(application, "Resources");
-        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 4, "application resource keys");
+        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 5, "application resource keys");
 
         object accentBrush = GetDictionaryValue(resources, "AccentBrush");
         AssertType(accentBrush, "System.Windows.Media.SolidColorBrush", "accent brush");
@@ -105,6 +105,10 @@ internal static class Program
         object textBoxStyle = GetDictionaryValue(resources, "SmokeTextBoxStyle");
         AssertType(textBoxStyle, "System.Windows.Style", "TextBox style");
         AssertEqual("System.Windows.Controls.TextBox", GetProperty(textBoxStyle, "TargetType").ToString(), "TextBox style target");
+
+        object triggeredButtonStyle = GetDictionaryValue(resources, "TriggeredButtonStyle");
+        AssertType(triggeredButtonStyle, "System.Windows.Style", "triggered Button style");
+        AssertEqual("System.Windows.Controls.Button", GetProperty(triggeredButtonStyle, "TargetType").ToString(), "triggered Button style target");
     }
 
     private static void ValidateMainWindow(object window, object application)
@@ -117,7 +121,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 8, "stack panel children");
+        AssertCollectionCount(children, expected: 9, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -144,6 +148,7 @@ internal static class Program
 
         ValidateBindingAndCommand(window);
         ValidateRoutedCommand(window);
+        ValidateStyleAndDataTrigger(window, application);
         ValidateTemplateAndDynamicResource(window, application);
         ValidateItemsBindingAndTemplate(window);
     }
@@ -154,6 +159,7 @@ internal static class Program
         AssertType(dataContext, "ProGPU.Wpf.RealXamlCompilerHarness.MainWindow+SmokeViewModel", "compiled binding DataContext");
         AssertEqual("bound greeting from real WPF", GetProperty(dataContext, "Greeting"), "bound view-model greeting");
         AssertEqual("run bound command", GetProperty(dataContext, "ButtonText"), "bound view-model button text");
+        AssertEqual("style trigger target", GetProperty(dataContext, "TriggerButtonText"), "bound view-model trigger button text");
 
         object bindingBlock = GetField(window, "BindingBlock");
         AssertType(bindingBlock, "System.Windows.Controls.TextBlock", "compiled binding TextBlock");
@@ -171,6 +177,28 @@ internal static class Program
         AssertEqual(0, GetProperty(viewModelCommand, "ExecutionCount"), "bound command initial execution count");
         Invoke(buttonCommand, "Execute", new object?[] { null });
         AssertEqual(1, GetProperty(viewModelCommand, "ExecutionCount"), "bound command execution count");
+    }
+
+    private static void ValidateStyleAndDataTrigger(object window, object application)
+    {
+        object resources = GetProperty(application, "Resources");
+        object accentBrush = GetDictionaryValue(resources, "AccentBrush");
+        object replacementAccentBrush = GetDictionaryValue(resources, "ReplacementAccentBrush");
+        object expectedStyle = GetDictionaryValue(resources, "TriggeredButtonStyle");
+        object dataContext = GetProperty(window, "DataContext");
+
+        object triggeredButton = GetField(window, "TriggeredButton");
+        AssertType(triggeredButton, "System.Windows.Controls.Button", "compiled triggered Button");
+        AssertSame(expectedStyle, GetProperty(triggeredButton, "Style"), "compiled Button triggered style");
+        AssertEqual("style trigger target", GetProperty(triggeredButton, "Content"), "compiled Button trigger content binding");
+        AssertEqual(false, GetProperty(dataContext, "IsWarning"), "style trigger initial view-model state");
+        AssertEqual("trigger inactive", GetProperty(triggeredButton, "Tag"), "compiled DataTrigger inactive value");
+        AssertSame(accentBrush, GetProperty(triggeredButton, "Background"), "compiled DataTrigger inactive brush");
+
+        SetProperty(dataContext, "IsWarning", true);
+        AssertEqual(true, GetProperty(dataContext, "IsWarning"), "style trigger updated view-model state");
+        AssertEqual("trigger active", GetProperty(triggeredButton, "Tag"), "compiled DataTrigger active value");
+        AssertSame(replacementAccentBrush, GetProperty(triggeredButton, "Background"), "compiled DataTrigger active brush");
     }
 
     private static void ValidateRoutedCommand(object window)

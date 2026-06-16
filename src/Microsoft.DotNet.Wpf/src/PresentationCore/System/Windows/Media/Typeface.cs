@@ -519,6 +519,15 @@ namespace System.Windows.Media
             }
 
             stringLengthFit = i;
+
+            if (!OperatingSystem.IsWindows())
+            {
+                // The full WPF LineServices path is still native. Keep the simple
+                // managed nominal-glyph path alive for non-Windows basic text after
+                // excluding complex characters above.
+                return true;
+            }
+
             TypographyAvailabilities typography = glyphTypeface.FontFaceLayoutInfo.TypographyAvailabilities;
 
             if ((charFastTextCheck & (byte) CharacterAttributeFlags.CharacterFastText) != 0)

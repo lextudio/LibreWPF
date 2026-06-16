@@ -765,7 +765,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Invoke(button, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(richTextBox, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertType(GetProperty(richTextBox, \"Template\"), \"System.Windows.Controls.ControlTemplate\"", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("ValidateThemedVisualReplay(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateThemedVisualReplay(windowsBase, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("MeasureAndArrange(windowsBase, content, pixelWidth, pixelHeight)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Invoke(element, \"Measure\", availableSize)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Invoke(element, \"Arrange\", finalRect)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertPositiveSize(GetProperty(element, \"DesiredSize\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("target.ReplayVisualSubtreeRetained(content, pixelWidth, pixelHeight)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("target.RetainedVisualBranchCount", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("target.RetainedWpfVisualRoot.Children.Count", harnessProgram, StringComparison.Ordinal);
@@ -841,6 +845,15 @@ public sealed class WpfManagedProjectGraphTests
             "Internal",
             "TextFormatting",
             "LineServices.cs"));
+        var typeface = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Typeface.cs"));
         var uxThemeWrapper = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -889,6 +902,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ManagedCharAttributeOf", classification, StringComparison.Ordinal);
         AssertGuardBefore(lineServices, "if (OperatingSystem.IsWindows())", "LoGetEscStringImpl(ref escStringInfo)");
         Assert.Contains("s_managedObjectReplacement", lineServices, StringComparison.Ordinal);
+        Assert.Contains("The full WPF LineServices path is still native.", typeface, StringComparison.Ordinal);
+        AssertGuardBefore(typeface, "if (!OperatingSystem.IsWindows())", "TypographyAvailabilities typography");
         AssertGuardBefore(uxThemeWrapper, "_themeState = OperatingSystem.IsWindows()", "SafeNativeMethods.IsUxThemeActive()");
         AssertGuardBefore(dpiAwareness, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetWindowDpiAwarenessContext(hWnd)");
         Assert.Contains("_useWin32MessagePump = OperatingSystem.IsWindows();", dispatcher, StringComparison.Ordinal);

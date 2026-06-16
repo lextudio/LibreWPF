@@ -48,6 +48,7 @@ internal static class Program
             compilerHarnessPath,
             fluentThemePath);
         Assembly presentationFramework = loadContext.LoadFromAssemblyPath(presentationFrameworkPath);
+        Assembly windowsBase = loadContext.LoadFromAssemblyName(new AssemblyName("WindowsBase"));
         loadContext.LoadFromAssemblyPath(fluentThemePath);
         Assembly compilerHarness = loadContext.LoadFromAssemblyPath(compilerHarnessPath);
 
@@ -65,7 +66,7 @@ internal static class Program
             MergeThemeDictionary(application, themeDictionary);
             ApplyRepresentativeFluentStyles(presentationFramework, application, window, themeDictionary);
             ValidateThemedRuntimeState(window, application, themeDictionary);
-            ValidateThemedVisualReplay(window);
+            ValidateThemedVisualReplay(windowsBase, window);
 
             RegisterPortableActivation(
                 presentationFramework,
@@ -172,12 +173,13 @@ internal static class Program
         AssertSame(themeDictionary, GetCollectionItem(GetProperty(appResources, "MergedDictionaries"), 0), "merged Fluent dictionary");
     }
 
-    private static void ValidateThemedVisualReplay(object window)
+    private static void ValidateThemedVisualReplay(Assembly windowsBase, object window)
     {
         const uint pixelWidth = 420;
         const uint pixelHeight = 260;
 
         object content = GetProperty(window, "Content");
+        MeasureAndArrange(windowsBase, content, pixelWidth, pixelHeight);
 
         using var target = ProGpuWpfCompositionTarget.CreateHeadless();
         var replayResult = target.ReplayVisualSubtreeRetained(content, pixelWidth, pixelHeight);
@@ -186,6 +188,19 @@ internal static class Program
         AssertAtLeast(1, replayResult.ChildEdgeCount, "Fluent themed visual child edges");
         AssertAtLeast(1, target.RetainedVisualBranchCount, "retained Fluent themed visual branch map");
         AssertAtLeast(1, target.RetainedWpfVisualRoot.Children.Count, "retained Fluent themed visual root children");
+    }
+
+    private static void MeasureAndArrange(Assembly windowsBase, object element, double width, double height)
+    {
+        object availableSize = Create(windowsBase, "System.Windows.Size", width, height);
+        object finalRect = Create(windowsBase, "System.Windows.Rect", 0.0, 0.0, width, height);
+
+        Invoke(element, "Measure", availableSize);
+        Invoke(element, "Arrange", finalRect);
+        Invoke(element, "UpdateLayout");
+
+        AssertPositiveSize(GetProperty(element, "DesiredSize"), "themed content desired size");
+        AssertPositiveSize(GetProperty(element, "RenderSize"), "themed content render size");
     }
 
     private static void RegisterPortableActivation(
@@ -378,6 +393,17 @@ internal static class Program
         {
             throw new InvalidOperationException(
                 $"Expected {description} to be '{expectedFullName}', got '{instance.GetType().FullName}'.");
+        }
+    }
+
+    private static void AssertPositiveSize(object size, string description)
+    {
+        double width = Convert.ToDouble(GetProperty(size, "Width"));
+        double height = Convert.ToDouble(GetProperty(size, "Height"));
+        if (width <= 0 || height <= 0)
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to be positive, got {width}x{height}.");
         }
     }
 

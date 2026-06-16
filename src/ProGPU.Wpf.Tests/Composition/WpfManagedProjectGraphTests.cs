@@ -595,6 +595,74 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void RealXamlCompilerHarnessUsesWpfApplicationDefinitionAndPagePipeline()
+    {
+        var harnessProjectPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealXamlCompilerHarness",
+            "ProGPU.Wpf.RealXamlCompilerHarness.csproj");
+        var appXamlPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealXamlCompilerHarness",
+            "App.xaml");
+        var mainWindowXamlPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealXamlCompilerHarness",
+            "MainWindow.xaml");
+        var appCodeBehindPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealXamlCompilerHarness",
+            "App.xaml.cs");
+        var mainWindowCodeBehindPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealXamlCompilerHarness",
+            "MainWindow.xaml.cs");
+
+        var harnessProject = XDocument.Load(harnessProjectPath);
+        var appXaml = File.ReadAllText(appXamlPath);
+        var mainWindowXaml = File.ReadAllText(mainWindowXamlPath);
+        var appCodeBehind = File.ReadAllText(appCodeBehindPath);
+        var mainWindowCodeBehind = File.ReadAllText(mainWindowCodeBehindPath);
+
+        Assert.Equal("true", Assert.Single(harnessProject.Descendants("InternalMarkupCompilation")).Value);
+
+        var applicationDefinition = Assert.Single(harnessProject.Descendants("ApplicationDefinition"));
+        Assert.Equal("App.xaml", applicationDefinition.Attribute("Include")?.Value);
+        Assert.Equal("MSBuild:Compile", applicationDefinition.Element("Generator")?.Value);
+
+        var page = Assert.Single(harnessProject.Descendants("Page"));
+        Assert.Equal("MainWindow.xaml", page.Attribute("Include")?.Value);
+        Assert.Equal("MSBuild:Compile", page.Element("Generator")?.Value);
+
+        AssertCompileInclude(harnessProject, "App.xaml.cs");
+        AssertCompileInclude(harnessProject, "MainWindow.xaml.cs");
+        AssertProjectReference(harnessProject, @"Microsoft.DotNet.Wpf\src\System.Xaml\System.Xaml.csproj");
+        AssertProjectReference(harnessProject, @"Microsoft.DotNet.Wpf\src\WindowsBase\WindowsBase.csproj");
+        AssertProjectReference(harnessProject, @"Microsoft.DotNet.Wpf\src\PresentationCore\PresentationCore.csproj");
+        AssertProjectReference(harnessProject, @"Microsoft.DotNet.Wpf\src\PresentationFramework\PresentationFramework.csproj");
+
+        Assert.DoesNotContain(
+            harnessProject.Descendants("ProjectReference"),
+            item => IncludeEndsWith(item, "Include", @"ProGPU.Wpf\ProGPU.Wpf.csproj"));
+        Assert.DoesNotContain(
+            harnessProject.Descendants("ProjectReference"),
+            item => IncludeEndsWith(item, "Include", @"external\ProGPU\src\ProGPU.Scene\ProGPU.Scene.csproj"));
+
+        Assert.Contains("x:Class=\"ProGPU.Wpf.RealXamlCompilerHarness.App\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("StartupUri=\"MainWindow.xaml\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("SolidColorBrush x:Key=\"AccentBrush\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("Style x:Key=\"SmokeTextBoxStyle\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("public partial class App : Application", appCodeBehind, StringComparison.Ordinal);
+
+        Assert.Contains("x:Class=\"ProGPU.Wpf.RealXamlCompilerHarness.MainWindow\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("TextBox", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("RichTextBox", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("FlowDocument", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("StaticResource AccentBrush", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("InitializeComponent();", mainWindowCodeBehind, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RealPresentationFrameworkSmokeGuardsNativePlatformEntrypoints()
     {
         var compositionExports = File.ReadAllText(FindRepoPath(

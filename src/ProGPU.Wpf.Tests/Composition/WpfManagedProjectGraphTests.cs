@@ -663,6 +663,57 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void RealXamlRuntimeHarnessLoadsCompiledBamlThroughRealPresentationFramework()
+    {
+        var harnessProjectPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealXamlRuntimeHarness",
+            "ProGPU.Wpf.RealXamlRuntimeHarness.csproj");
+        var harnessProgramPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealXamlRuntimeHarness",
+            "Program.cs");
+
+        var harnessProject = XDocument.Load(harnessProjectPath);
+        var harnessProgram = File.ReadAllText(harnessProgramPath);
+
+        AssertPackageReference(harnessProject, "System.Configuration.ConfigurationManager");
+        AssertPackageReference(harnessProject, "System.Formats.Nrbf");
+        AssertPackageReference(harnessProject, "$(SystemIOPackagingPackage)");
+        AssertPackageReference(harnessProject, "System.Windows.Extensions");
+        AssertProjectReference(harnessProject, @"ProGPU.Wpf\ProGPU.Wpf.csproj");
+
+        var compilerHarnessReference = AssertProjectReference(
+            harnessProject,
+            @"ProGPU.Wpf.RealXamlCompilerHarness\ProGPU.Wpf.RealXamlCompilerHarness.csproj");
+        Assert.Equal("false", GetItemMetadata(compilerHarnessReference, "ReferenceOutputAssembly"));
+        Assert.Equal("all", GetItemMetadata(compilerHarnessReference, "PrivateAssets"));
+
+        var presentationCoreReference = AssertProjectReference(
+            harnessProject,
+            @"Microsoft.DotNet.Wpf\src\PresentationCore\PresentationCore.csproj");
+        Assert.Equal("false", GetItemMetadata(presentationCoreReference, "ReferenceOutputAssembly"));
+        Assert.Equal("all", GetItemMetadata(presentationCoreReference, "PrivateAssets"));
+
+        var presentationFrameworkReference = AssertProjectReference(
+            harnessProject,
+            @"Microsoft.DotNet.Wpf\src\PresentationFramework\PresentationFramework.csproj");
+        Assert.Equal("false", GetItemMetadata(presentationFrameworkReference, "ReferenceOutputAssembly"));
+        Assert.Equal("all", GetItemMetadata(presentationFrameworkReference, "PrivateAssets"));
+
+        Assert.Contains("CompilerHarnessAssemblyName = \"ProGPU.Wpf.RealXamlCompilerHarness\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loadContext.LoadFromAssemblyPath(compilerHarnessPath)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Invoke(application, \"InitializeComponent\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Create(compilerHarness, MainWindowTypeName)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetDictionaryValue(resources, \"AccentBrush\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetDictionaryValue(resources, \"SmokeTextBoxStyle\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetField(window, \"InputBox\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Invoke(window, \"FindName\", \"InputBox\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new ProGpuWpfWindowHost(WpfPortableWindowActivation.CreateHostOptions(w))", harnessProgram, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RealPresentationFrameworkSmokeGuardsNativePlatformEntrypoints()
     {
         var compositionExports = File.ReadAllText(FindRepoPath(

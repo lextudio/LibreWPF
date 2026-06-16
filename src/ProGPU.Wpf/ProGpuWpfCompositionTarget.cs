@@ -51,6 +51,10 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
 
     public int RetainedVisualBranchCount => RetainedVisualBranchMap.VisualCount;
 
+    public int LastRetainedBranchInvalidationCount { get; private set; }
+
+    public bool LastRetainedBranchInvalidationUsedFallback { get; private set; }
+
     internal WpfViewport3DTextureCache Viewport3DTextureCache { get; }
 
     public ProGpuWpfCompositionTarget(
@@ -254,10 +258,20 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
 
     private void OnWpfSourceInvalidated(object? sender, EventArgs e)
     {
-        SceneRootVisual.Invalidate();
-        RetainedWpfVisualRoot.Invalidate();
+        InvalidateRetainedWpfBranchesForDirtySources();
         RootVisual.Invalidate();
         RenderInvalidated?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void InvalidateRetainedWpfBranchesForDirtySources()
+    {
+        LastRetainedBranchInvalidationCount = RetainedVisualBranchMap.InvalidateVisuals(WpfInvalidationTracker.DirtySources);
+        LastRetainedBranchInvalidationUsedFallback = LastRetainedBranchInvalidationCount == 0;
+
+        if (LastRetainedBranchInvalidationUsedFallback)
+        {
+            RetainedWpfVisualRoot.Invalidate();
+        }
     }
 
     private WpfVisualReplayResult ReplayVisualSubtreeCore(

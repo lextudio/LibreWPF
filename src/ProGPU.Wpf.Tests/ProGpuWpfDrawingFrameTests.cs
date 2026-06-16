@@ -177,6 +177,43 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void BranchMapInvalidatesMappedNativeBranch()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var source = new object();
+        var parent = new ProGpuContainerVisual();
+        var visual = new ProGpuDrawingVisual();
+        parent.AddChild(visual);
+        parent.IsDirty = false;
+        visual.IsDirty = false;
+
+        branchMap.Register(source, visual);
+
+        Assert.Equal(1, branchMap.InvalidateVisuals(source));
+        Assert.True(visual.IsDirty);
+        Assert.True(parent.IsDirty);
+    }
+
+    [Fact]
+    public void BranchMapInvalidatesUniqueNativeBranchesForDirtySources()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var firstSource = new object();
+        var secondSource = new object();
+        var visual = new ProGpuDrawingVisual
+        {
+            IsDirty = false
+        };
+        branchMap.Register(firstSource, visual);
+        branchMap.Register(secondSource, visual);
+        var cleanVersion = visual.ChangeVersion;
+
+        Assert.Equal(1, branchMap.InvalidateVisuals(new[] { firstSource, secondSource }));
+        Assert.True(visual.IsDirty);
+        Assert.Equal(cleanVersion + 1, visual.ChangeVersion);
+    }
+
+    [Fact]
     public void RetainedSinkCreatesBoundedNativeCacheVisual()
     {
         var sceneRoot = new ProGpuContainerVisual();

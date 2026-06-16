@@ -68,6 +68,47 @@ public sealed class WpfRetainedVisualBranchMap
         visuals = Array.Empty<ProGpuVisual>();
         return false;
     }
+
+    public int InvalidateVisuals(object source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        if (!_visualsBySource.TryGetValue(source, out var visuals))
+        {
+            return 0;
+        }
+
+        foreach (var visual in visuals)
+        {
+            visual.Invalidate();
+        }
+
+        return visuals.Count;
+    }
+
+    public int InvalidateVisuals(IEnumerable<object> sources)
+    {
+        ArgumentNullException.ThrowIfNull(sources);
+
+        var invalidatedVisuals = new HashSet<ProGpuVisual>(ReferenceEqualityComparer.Instance);
+        foreach (var source in sources)
+        {
+            if (!_visualsBySource.TryGetValue(source, out var visuals))
+            {
+                continue;
+            }
+
+            foreach (var visual in visuals)
+            {
+                if (invalidatedVisuals.Add(visual))
+                {
+                    visual.Invalidate();
+                }
+            }
+        }
+
+        return invalidatedVisuals.Count;
+    }
 }
 
 internal interface IWpfRetainedVisualBranchSink

@@ -541,6 +541,8 @@
     <Compile Include="System\Windows\Input\MouseWheelEventArgs.cs" />
     <Compile Include="System\Windows\Input\MouseWheelEventHandler.cs" />
     <Compile Include="System\Windows\Input\NotifyInputEventArgs.cs" />
+    <Compile Include="System\Windows\Input\PortableKeyboardDevice.cs" />
+    <Compile Include="System\Windows\Input\PortableMouseDevice.cs" />
     <Compile Include="System\Windows\Input\PreProcessInputEventArgs.cs" />
     <Compile Include="System\Windows\Input\ProcessInputEventArgs.cs" />
     <Compile Include="System\Windows\Input\QueryCursorEventArgs.cs" />

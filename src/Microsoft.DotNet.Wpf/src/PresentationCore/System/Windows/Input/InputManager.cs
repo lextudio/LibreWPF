@@ -146,8 +146,17 @@ namespace System.Windows.Input
 
             _stagingArea = new Stack();
 
-            _primaryKeyboardDevice = new Win32KeyboardDevice(this);
-            _primaryMouseDevice = new Win32MouseDevice(this);
+            if (OperatingSystem.IsWindows())
+            {
+                _primaryKeyboardDevice = new Win32KeyboardDevice(this);
+                _primaryMouseDevice = new Win32MouseDevice(this);
+            }
+            else
+            {
+                _primaryKeyboardDevice = new PortableKeyboardDevice(this);
+                _primaryMouseDevice = new PortableMouseDevice(this);
+            }
+
             _primaryCommandDevice = new CommandDevice(this);
 
             _continueProcessingStagingAreaCallback = new DispatcherOperationCallback(ContinueProcessingStagingArea);
@@ -973,4 +982,3 @@ namespace System.Windows.Input
         private static readonly object _synchronizedInputLock = new object();
 }
 }
-

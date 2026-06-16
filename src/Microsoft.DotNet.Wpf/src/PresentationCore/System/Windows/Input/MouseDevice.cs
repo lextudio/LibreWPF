@@ -35,9 +35,18 @@ namespace System.Windows.Input
             //
             // The call here goes into the safe helper calls, more of a consistency in approach
             //
-            _doubleClickDeltaX = SafeSystemMetrics.DoubleClickDeltaX;
-            _doubleClickDeltaY = SafeSystemMetrics.DoubleClickDeltaY;
-            _doubleClickDeltaTime = SafeNativeMethods.GetDoubleClickTime();
+            if (OperatingSystem.IsWindows())
+            {
+                _doubleClickDeltaX = SafeSystemMetrics.DoubleClickDeltaX;
+                _doubleClickDeltaY = SafeSystemMetrics.DoubleClickDeltaY;
+                _doubleClickDeltaTime = SafeNativeMethods.GetDoubleClickTime();
+            }
+            else
+            {
+                _doubleClickDeltaX = 4;
+                _doubleClickDeltaY = 4;
+                _doubleClickDeltaTime = 500;
+            }
 
             _overIsEnabledChangedEventHandler = new DependencyPropertyChangedEventHandler(OnOverIsEnabledChanged);
             _overIsVisibleChangedEventHandler = new DependencyPropertyChangedEventHandler(OnOverIsVisibleChanged);

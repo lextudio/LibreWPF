@@ -97,6 +97,77 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void InputManagerUsesPortableDevicesOutsideWindows()
+    {
+        var projectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "PresentationCore.csproj");
+        var inputManagerPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Input",
+            "InputManager.cs");
+        var mouseDevicePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Input",
+            "MouseDevice.cs");
+        var portableKeyboardPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Input",
+            "PortableKeyboardDevice.cs");
+        var portableMousePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Input",
+            "PortableMouseDevice.cs");
+
+        var project = File.ReadAllText(projectPath);
+        var inputManager = File.ReadAllText(inputManagerPath);
+        var mouseDevice = File.ReadAllText(mouseDevicePath);
+        var portableKeyboard = File.ReadAllText(portableKeyboardPath);
+        var portableMouse = File.ReadAllText(portableMousePath);
+
+        Assert.Contains(@"<Compile Include=""System\Windows\Input\PortableKeyboardDevice.cs"" />", project, StringComparison.Ordinal);
+        Assert.Contains(@"<Compile Include=""System\Windows\Input\PortableMouseDevice.cs"" />", project, StringComparison.Ordinal);
+        Assert.Contains("internal sealed class PortableKeyboardDevice : KeyboardDevice", portableKeyboard, StringComparison.Ordinal);
+        Assert.Contains("protected override KeyStates GetKeyStatesFromSystem(Key key)", portableKeyboard, StringComparison.Ordinal);
+        Assert.Contains("internal sealed class PortableMouseDevice : MouseDevice", portableMouse, StringComparison.Ordinal);
+        Assert.Contains("internal override MouseButtonState GetButtonStateFromSystem(MouseButton mouseButton)", portableMouse, StringComparison.Ordinal);
+        Assert.Contains("if (OperatingSystem.IsWindows())", inputManager, StringComparison.Ordinal);
+        Assert.Contains("new Win32KeyboardDevice(this)", inputManager, StringComparison.Ordinal);
+        Assert.Contains("new Win32MouseDevice(this)", inputManager, StringComparison.Ordinal);
+        Assert.Contains("new PortableKeyboardDevice(this)", inputManager, StringComparison.Ordinal);
+        Assert.Contains("new PortableMouseDevice(this)", inputManager, StringComparison.Ordinal);
+        Assert.Contains("if (OperatingSystem.IsWindows())", mouseDevice, StringComparison.Ordinal);
+        Assert.Contains("_doubleClickDeltaTime = 500;", mouseDevice, StringComparison.Ordinal);
+        Assert.True(
+            inputManager.IndexOf("if (OperatingSystem.IsWindows())", StringComparison.Ordinal)
+                < inputManager.IndexOf("new Win32KeyboardDevice(this)", StringComparison.Ordinal),
+            "InputManager must branch before constructing Win32 input devices.");
+    }
+
+    [Fact]
     public void MediaSystemSkipsMilCoreStartupOnNonWindows()
     {
         var sourcePath = FindRepoPath(

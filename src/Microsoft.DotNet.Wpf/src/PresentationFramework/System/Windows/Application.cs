@@ -2050,6 +2050,11 @@ namespace System.Windows
         /// </summary>
         private void EnsureHwndSource()
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
             if (_parkingHwnd == null)
             {
                 // _appFilterHook needs to be member variable otherwise
@@ -2595,4 +2600,3 @@ namespace System.Windows
     }
     #endregion enum ReasonSessionEnding
 }
-

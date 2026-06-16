@@ -5,6 +5,8 @@ namespace System.Windows.Media.ProGPU;
 
 public sealed class WpfPortableWindowActivation
 {
+    private const string PortableWindowActivationServiceTypeName = "System.Windows.PortableWindowActivationService";
+
     private WpfPortableWindowActivation(
         ProGpuWpfWindowHost host,
         object window,
@@ -24,6 +26,60 @@ public sealed class WpfPortableWindowActivation
     public object RootVisual { get; }
 
     public object PortablePresentationSource { get; }
+
+    public static bool TryRegisterPresentationFrameworkActivation(
+        Assembly presentationFrameworkAssembly,
+        Func<object, ProGpuWpfWindowHost>? hostFactory = null)
+    {
+        ArgumentNullException.ThrowIfNull(presentationFrameworkAssembly);
+
+        var serviceType = presentationFrameworkAssembly.GetType(
+            PortableWindowActivationServiceTypeName,
+            throwOnError: false);
+        if (serviceType == null)
+        {
+            return false;
+        }
+
+        var registerMethod = serviceType.GetMethod(
+            "Register",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            types: new[]
+            {
+                typeof(Func<object, object?>),
+                typeof(Action<object>),
+                typeof(Action<object>),
+                typeof(Action<object>),
+                typeof(Action<object>)
+            },
+            modifiers: null);
+        if (registerMethod == null)
+        {
+            return false;
+        }
+
+        Func<object, object?> activate = window =>
+        {
+            return TryCreateActivation(window, hostFactory, out var activation)
+                ? activation
+                : null;
+        };
+        Action<object> show = activation =>
+            ((WpfPortableWindowActivation)activation).Host.Initialize();
+        Action<object> hide = _ =>
+        {
+        };
+        Action<object> close = activation =>
+            ((WpfPortableWindowActivation)activation).Host.Close();
+        Action<object> dispose = activation =>
+            ((WpfPortableWindowActivation)activation).Host.Dispose();
+
+        registerMethod.Invoke(
+            obj: null,
+            parameters: new object[] { activate, show, hide, close, dispose });
+        return true;
+    }
 
     public static bool TryAttach(
         ProGpuWpfWindowHost host,
@@ -115,6 +171,42 @@ public sealed class WpfPortableWindowActivation
     private static object ResolveRootVisual(object window)
     {
         return window;
+    }
+
+    private static bool TryCreateActivation(
+        object window,
+        Func<object, ProGpuWpfWindowHost>? hostFactory,
+        out WpfPortableWindowActivation? activation)
+    {
+        activation = null;
+        Assembly? presentationCoreAssembly = ResolvePresentationCoreAssembly(window);
+        if (presentationCoreAssembly == null)
+        {
+            return false;
+        }
+
+        ProGpuWpfWindowHost host = hostFactory?.Invoke(window) ??
+            new ProGpuWpfWindowHost(CreateHostOptions(window));
+        if (TryAttach(host, window, presentationCoreAssembly, out activation))
+        {
+            return true;
+        }
+
+        host.Dispose();
+        return false;
+    }
+
+    private static Assembly? ResolvePresentationCoreAssembly(object window)
+    {
+        for (Type? type = window.GetType(); type != null; type = type.BaseType)
+        {
+            if (string.Equals(type.FullName, "System.Windows.Media.Visual", StringComparison.Ordinal))
+            {
+                return type.Assembly;
+            }
+        }
+
+        return null;
     }
 
     private static bool TryReadStringProperty(object instance, string propertyName, out string? value)

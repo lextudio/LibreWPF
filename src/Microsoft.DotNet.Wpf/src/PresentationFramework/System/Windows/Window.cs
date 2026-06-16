@@ -2359,6 +2359,7 @@ namespace System.Windows
 
             try
             {
+                ClosePortableWindowActivation();
                 ClearSourceWindow();
 
                 Utilities.SafeDispose(ref _hiddenWindow);
@@ -2430,6 +2431,11 @@ namespace System.Windows
         /// </summary>
         internal virtual void CreateSourceWindowDuringShow()
         {
+            if (TryCreatePortableWindowDuringShow())
+            {
+                return;
+            }
+
             CreateSourceWindow(true);
         }
 
@@ -5555,6 +5561,17 @@ namespace System.Windows
                 //set the style
                 SafeStyleSetter();
             }
+            else if (_portableWindowActivation != null)
+            {
+                if (value)
+                {
+                    PortableWindowActivationService.Show(_portableWindowActivation);
+                }
+                else
+                {
+                    PortableWindowActivationService.Hide(_portableWindowActivation);
+                }
+            }
 
 
             // dialog functionality; start dispatcher loop to block the call
@@ -6902,6 +6919,37 @@ namespace System.Windows
             }
         }
 
+        private bool TryCreatePortableWindowDuringShow()
+        {
+            if (_portableWindowActivation != null)
+            {
+                return true;
+            }
+
+            if (!PortableWindowActivationService.TryActivate(this, out object activation))
+            {
+                return false;
+            }
+
+            _portableWindowActivation = activation;
+            SetIWindowService();
+            OnSourceInitialized(EventArgs.Empty);
+            return true;
+        }
+
+        private void ClosePortableWindowActivation()
+        {
+            object activation = _portableWindowActivation;
+            if (activation == null)
+            {
+                return;
+            }
+
+            _portableWindowActivation = null;
+            PortableWindowActivationService.Close(activation);
+            PortableWindowActivationService.Dispose(activation);
+        }
+
         private void ClearHiddenWindowIfAny()
         {
             // If there is a hiddenWindow and it's the owner of the current one as the result of setting ShowInTaskbar,
@@ -7210,6 +7258,7 @@ namespace System.Windows
         #region Private Fields
 
         private SourceWindowHelper  _swh;                               // object that will hold the window
+        private object              _portableWindowActivation;          // object that will hold the non-Windows window
         private Window              _ownerWindow;                       // owner window
         private bool _reloadFluentDictionary = false;
         private bool _resourcesInitialized = false;
@@ -8074,6 +8123,3 @@ namespace System.Windows
         private object _child;
     }
 }
-
-
-

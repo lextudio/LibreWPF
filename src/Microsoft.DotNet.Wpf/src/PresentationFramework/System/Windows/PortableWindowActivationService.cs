@@ -1,0 +1,97 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System;
+using System.Threading;
+
+namespace System.Windows
+{
+    internal static class PortableWindowActivationService
+    {
+        private static Func<object, object> _activate;
+        private static Action<object> _show;
+        private static Action<object> _hide;
+        private static Action<object> _close;
+        private static Action<object> _dispose;
+
+        internal static bool IsEnabled
+        {
+            get
+            {
+                return !OperatingSystem.IsWindows() && Volatile.Read(ref _activate) != null;
+            }
+        }
+
+        internal static void Register(
+            Func<object, object> activate,
+            Action<object> show = null,
+            Action<object> hide = null,
+            Action<object> close = null,
+            Action<object> dispose = null)
+        {
+            ArgumentNullException.ThrowIfNull(activate);
+
+            Volatile.Write(ref _activate, activate);
+            Volatile.Write(ref _show, show);
+            Volatile.Write(ref _hide, hide);
+            Volatile.Write(ref _close, close);
+            Volatile.Write(ref _dispose, dispose);
+        }
+
+        internal static void Clear()
+        {
+            Volatile.Write(ref _activate, null);
+            Volatile.Write(ref _show, null);
+            Volatile.Write(ref _hide, null);
+            Volatile.Write(ref _close, null);
+            Volatile.Write(ref _dispose, null);
+        }
+
+        internal static bool TryActivate(Window window, out object activation)
+        {
+            activation = null;
+
+            if (OperatingSystem.IsWindows())
+            {
+                return false;
+            }
+
+            Func<object, object> activate = Volatile.Read(ref _activate);
+            if (activate == null)
+            {
+                return false;
+            }
+
+            activation = activate(window);
+            return activation != null;
+        }
+
+        internal static void Show(object activation)
+        {
+            Volatile.Read(ref _show)?.Invoke(activation);
+        }
+
+        internal static void Hide(object activation)
+        {
+            Volatile.Read(ref _hide)?.Invoke(activation);
+        }
+
+        internal static void Close(object activation)
+        {
+            Volatile.Read(ref _close)?.Invoke(activation);
+        }
+
+        internal static void Dispose(object activation)
+        {
+            Action<object> dispose = Volatile.Read(ref _dispose);
+            if (dispose != null)
+            {
+                dispose(activation);
+            }
+            else if (activation is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+        }
+    }
+}

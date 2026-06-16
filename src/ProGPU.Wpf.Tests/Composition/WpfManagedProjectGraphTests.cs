@@ -165,6 +165,70 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void PresentationFrameworkHasPortableWindowActivationBoundary()
+    {
+        var windowPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Window.cs");
+        var applicationPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Application.cs");
+        var activationServicePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "PortableWindowActivationService.cs");
+        var projectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "PresentationFramework.csproj");
+
+        var window = File.ReadAllText(windowPath);
+        var application = File.ReadAllText(applicationPath);
+        var activationService = File.ReadAllText(activationServicePath);
+        var project = File.ReadAllText(projectPath);
+
+        Assert.Contains("internal static class PortableWindowActivationService", activationService, StringComparison.Ordinal);
+        Assert.Contains("internal static void Register", activationService, StringComparison.Ordinal);
+        Assert.Contains("Func<object, object> activate", activationService, StringComparison.Ordinal);
+        Assert.Contains("!OperatingSystem.IsWindows()", activationService, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TryActivate(Window window, out object activation)", activationService, StringComparison.Ordinal);
+        Assert.Contains(@"<Compile Include=""System\Windows\PortableWindowActivationService.cs"" />", project, StringComparison.Ordinal);
+
+        Assert.Contains("private object              _portableWindowActivation", window, StringComparison.Ordinal);
+        Assert.Contains("TryCreatePortableWindowDuringShow()", window, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.TryActivate(this, out object activation)", window, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.Show(_portableWindowActivation)", window, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.Hide(_portableWindowActivation)", window, StringComparison.Ordinal);
+        Assert.Contains("ClosePortableWindowActivation();", window, StringComparison.Ordinal);
+        Assert.True(
+            window.IndexOf("if (TryCreatePortableWindowDuringShow())", StringComparison.Ordinal)
+                < window.IndexOf("CreateSourceWindow(true);", StringComparison.Ordinal),
+            "Window.Show must try the portable activation service before falling back to HWND creation.");
+
+        Assert.Contains("if (!OperatingSystem.IsWindows())", application, StringComparison.Ordinal);
+        Assert.True(
+            application.IndexOf("if (!OperatingSystem.IsWindows())", StringComparison.Ordinal)
+                < application.IndexOf("new HwndWrapper", StringComparison.Ordinal),
+            "Application.Run must skip the parking HWND before any HwndWrapper is created on non-Windows.");
+    }
+
+    [Fact]
     public void CompositionTargetSupportsPortableNonDuceRootOwnership()
     {
         var compositionTargetPath = FindRepoPath(

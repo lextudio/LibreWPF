@@ -88,6 +88,14 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void DefaultWindowOptionsUseEventDrivenNativeLoop()
+    {
+        var options = new ProGpuWpfWindowOptions();
+
+        Assert.True(options.IsEventDriven);
+    }
+
+    [Fact]
     public void SetCursorReturnsFalseBeforeWindowIsCreated()
     {
         using var host = new ProGpuWpfWindowHost();
@@ -136,6 +144,29 @@ public sealed class ProGpuWpfWindowHostTests
 
         Assert.Equal(1, host.RenderSchedulerWakeupCount);
         Assert.Equal(1, wakeupCount);
+    }
+
+    [Fact]
+    public void NativeLoopWakeupInvokesContinueEventsAndCountsSuccessfulRequests()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var continueEventsCount = 0;
+
+        Assert.True(host.TryRequestNativeLoopWakeup(() => continueEventsCount++));
+        Assert.True(host.TryRequestNativeLoopWakeup(() => continueEventsCount++));
+
+        Assert.Equal(2, continueEventsCount);
+        Assert.Equal(2, host.NativeLoopWakeupCount);
+    }
+
+    [Fact]
+    public void NativeLoopWakeupReturnsFalseWhenContinueEventsFails()
+    {
+        using var host = new ProGpuWpfWindowHost();
+
+        Assert.False(host.TryRequestNativeLoopWakeup(() => throw new InvalidOperationException()));
+
+        Assert.Equal(0, host.NativeLoopWakeupCount);
     }
 
     [Fact]
@@ -317,6 +348,7 @@ public sealed class ProGpuWpfWindowHostTests
 
         Assert.False(ran);
         Assert.Equal(1, host.DispatcherWakeupCount);
+        Assert.Equal(0, host.NativeLoopWakeupCount);
         Assert.True(host.ProcessDispatcherQueue());
         Assert.True(ran);
     }

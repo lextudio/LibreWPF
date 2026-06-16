@@ -10,6 +10,8 @@ public sealed class ProGpuWpfWindowOptions
 
     public bool VSync { get; set; }
 
+    public bool IsEventDriven { get; set; } = true;
+
     public bool IsVisible { get; set; } = true;
 
     public ProGpuWpfWindowState WindowState { get; set; } = ProGpuWpfWindowState.Normal;

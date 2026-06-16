@@ -150,6 +150,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     internal long DispatcherWakeupCount { get; private set; }
 
+    internal long NativeLoopWakeupCount { get; private set; }
+
     public Action<MediaDrawingContext, ProGpuWpfFrameEventArgs>? Draw { get; set; }
 
     public Action<WpfCompositionDrawingContext, ProGpuWpfFrameEventArgs>? WpfDraw { get; set; }
@@ -347,6 +349,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         windowOptions.Size = new Vector2D<int>(_clientWidth, _clientHeight);
         windowOptions.Title = _windowTitle;
         windowOptions.VSync = _options.VSync;
+        windowOptions.IsEventDriven = _options.IsEventDriven;
         windowOptions.IsVisible = _isHostVisible;
         windowOptions.WindowState = ToSilkWindowState(_windowState);
 
@@ -776,7 +779,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private void OnDispatcherWorkAvailable(object? sender, EventArgs e)
     {
         DispatcherWakeupCount++;
-        TryProcessDispatcherWorkWakeup();
+        if (!TryProcessDispatcherWorkWakeup())
+        {
+            TryRequestNativeLoopWakeup();
+        }
     }
 
     internal bool TryProcessDispatcherWorkWakeup()
@@ -858,7 +864,40 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     {
         RenderSchedulerWakeupCount++;
         RenderWakeupRequested?.Invoke(this, EventArgs.Empty);
-        TryProcessRenderSchedulerWakeup();
+        if (!TryProcessRenderSchedulerWakeup())
+        {
+            TryRequestNativeLoopWakeup();
+        }
+    }
+
+    private bool TryRequestNativeLoopWakeup()
+    {
+        var window = _window;
+        return window != null && TryRequestNativeLoopWakeup(window.ContinueEvents);
+    }
+
+    internal bool TryRequestNativeLoopWakeup(Action continueEvents)
+    {
+        ArgumentNullException.ThrowIfNull(continueEvents);
+
+        try
+        {
+            continueEvents();
+            NativeLoopWakeupCount++;
+            return true;
+        }
+        catch (PlatformNotSupportedException)
+        {
+            return false;
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     internal bool TryProcessRenderSchedulerWakeup()

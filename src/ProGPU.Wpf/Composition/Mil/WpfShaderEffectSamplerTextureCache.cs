@@ -153,7 +153,7 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
         return true;
     }
 
-    private static bool TryGetBrushSourceBounds(object brush, out Rect bounds)
+    internal static bool TryGetBrushSourceBounds(object brush, out Rect bounds)
     {
         if (TryGetAbsoluteViewbox(brush, out bounds))
         {
@@ -163,16 +163,28 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
         if (TypeNameEndsWith(brush, "DrawingBrush")
             && TryGetPropertyValue(brush, "Drawing", out var drawing)
             && drawing != null
-            && TryReadFiniteRectProperty(drawing, "Bounds", out bounds))
+            && TryReadFiniteRectProperty(drawing, "Bounds", out var drawingBounds))
         {
+            if (TryGetRelativeViewbox(brush, drawingBounds, out bounds))
+            {
+                return true;
+            }
+
+            bounds = drawingBounds;
             return true;
         }
 
         if (TypeNameEndsWith(brush, "VisualBrush")
             && TryGetPropertyValue(brush, "Visual", out var visual)
             && visual != null
-            && TryGetVisualBounds(visual, out bounds))
+            && TryGetVisualBounds(visual, out var visualBounds))
         {
+            if (TryGetRelativeViewbox(brush, visualBounds, out bounds))
+            {
+                return true;
+            }
+
+            bounds = visualBounds;
             return true;
         }
 
@@ -194,6 +206,28 @@ internal sealed class WpfShaderEffectSamplerTextureCache : IDisposable
         }
 
         return true;
+    }
+
+    private static bool TryGetRelativeViewbox(object brush, Rect sourceBounds, out Rect viewbox)
+    {
+        viewbox = default;
+        if (!TryGetPropertyValue(brush, "Viewbox", out var viewboxValue)
+            || viewboxValue == null
+            || !TryReadRect(viewboxValue, out var relativeViewbox)
+            || !IsUsableBounds(relativeViewbox)
+            || !TryGetPropertyValue(brush, "ViewboxUnits", out var units)
+            || units?.ToString()?.Contains("RelativeToBoundingBox", StringComparison.OrdinalIgnoreCase) != true
+            || !IsUsableBounds(sourceBounds))
+        {
+            return false;
+        }
+
+        viewbox = new Rect(
+            sourceBounds.X + relativeViewbox.X * sourceBounds.Width,
+            sourceBounds.Y + relativeViewbox.Y * sourceBounds.Height,
+            relativeViewbox.Width * sourceBounds.Width,
+            relativeViewbox.Height * sourceBounds.Height);
+        return IsUsableBounds(viewbox);
     }
 
     private static bool TryGetVisualBounds(object visual, out Rect bounds)

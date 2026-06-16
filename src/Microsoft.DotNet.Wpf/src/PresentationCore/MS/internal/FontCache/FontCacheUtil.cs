@@ -299,9 +299,11 @@ namespace MS.Internal.FontCache
 
         static Util()
         {
-            string s = Environment.GetEnvironmentVariable(WinDir) + @"\Fonts\";
+            string fontsLocalPath = GetSystemFontsLocalPath();
 
-            _windowsFontsLocalPath = s.ToUpperInvariant();
+            _windowsFontsLocalPath = OperatingSystem.IsWindows()
+                ? fontsLocalPath.ToUpperInvariant()
+                : fontsLocalPath;
 
             _windowsFontsUriObject = new Uri(_windowsFontsLocalPath, UriKind.Absolute);
 
@@ -346,6 +348,13 @@ namespace MS.Internal.FontCache
                     {
                         if (!_dpiInitialized)
                         {
+                            if (!OperatingSystem.IsWindows())
+                            {
+                                _dpi = 96;
+                                _dpiInitialized = true;
+                                return _dpi;
+                            }
+
                             HandleRef desktopWnd = new HandleRef(null, IntPtr.Zero);
 
                             // Win32Exception will get the Win32 error code so we don't have to
@@ -371,6 +380,33 @@ namespace MS.Internal.FontCache
                 }
                 return _dpi;
             }
+        }
+
+        private static string GetSystemFontsLocalPath()
+        {
+            string path;
+            if (OperatingSystem.IsWindows())
+            {
+                string windowsDirectory = Environment.GetEnvironmentVariable(WinDir);
+                path = Path.Combine(
+                    string.IsNullOrEmpty(windowsDirectory) ? @"C:\Windows" : windowsDirectory,
+                    "Fonts");
+            }
+            else if (OperatingSystem.IsMacOS())
+            {
+                path = Directory.Exists("/System/Library/Fonts")
+                    ? "/System/Library/Fonts"
+                    : "/Library/Fonts";
+            }
+            else
+            {
+                path = Directory.Exists("/usr/share/fonts")
+                    ? "/usr/share/fonts"
+                    : AppContext.BaseDirectory;
+            }
+
+            return Path.GetFullPath(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+                + Path.DirectorySeparatorChar;
         }
 
         /// <summary>
@@ -952,4 +988,3 @@ namespace MS.Internal.FontCache
         private static LanguageComparerClass _languageComparer = new LanguageComparerClass();
     }
 }
-

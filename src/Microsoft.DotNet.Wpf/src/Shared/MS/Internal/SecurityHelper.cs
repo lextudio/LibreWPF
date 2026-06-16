@@ -212,6 +212,11 @@ namespace MS.Internal.Drt
        {
             object value = null;
 
+            if (!OperatingSystem.IsWindows() || baseRegistryKey == null)
+            {
+                return value;
+            }
+
             RegistryKey key = baseRegistryKey.OpenSubKey(keyName);
             if (key != null)
             {
@@ -226,4 +231,3 @@ namespace MS.Internal.Drt
 #endif // WINDOWS_BASE
 }
 }
-

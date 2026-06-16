@@ -185,6 +185,11 @@ namespace MS.Internal
 
         private static bool TIPsWantToRun()
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return false;
+            }
+
             object obj;
             RegistryKey key;
             bool tipsWantToRun = false;
@@ -279,6 +284,9 @@ namespace MS.Internal
             RegistryKey key;
             string[] subKeyNames;
             EnableState state;
+
+            if (keyBase == null)
+                return EnableState.Error;
 
             key = keyBase.OpenSubKey(subKey, false);
 

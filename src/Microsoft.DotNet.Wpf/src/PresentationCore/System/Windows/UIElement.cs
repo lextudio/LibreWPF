@@ -1130,6 +1130,23 @@ namespace System.Windows
             if (_setDpi)
             {
                 _setDpi = false;
+
+                if (!OperatingSystem.IsWindows())
+                {
+                    _dpiScaleX = 1.0;
+                    _dpiScaleY = 1.0;
+                    lock (DpiLock)
+                    {
+                        if (DpiScaleXValues.Count == 0)
+                        {
+                            DpiScaleXValues.Add(_dpiScaleX);
+                            DpiScaleYValues.Add(_dpiScaleY);
+                        }
+                    }
+
+                    return new DpiScale(_dpiScaleX, _dpiScaleY);
+                }
+
                 int dpiX, dpiY;
                 HandleRef desktopWnd = new HandleRef(null, IntPtr.Zero);
 
@@ -4816,5 +4833,4 @@ namespace System.Windows
         TouchEnterCache                 = 0x80000000,
     }
 }
-
 

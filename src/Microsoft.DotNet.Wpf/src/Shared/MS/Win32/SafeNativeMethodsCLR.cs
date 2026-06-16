@@ -11,22 +11,38 @@ namespace MS.Win32
     {
         public static int GetMessagePos()
         {
-            return SafeNativeMethodsPrivate.GetMessagePos();
+            return System.OperatingSystem.IsWindows()
+                ? SafeNativeMethodsPrivate.GetMessagePos()
+                : 0;
         }
 
         public static IntPtr GetKeyboardLayout(int dwLayout)
         {
-            return SafeNativeMethodsPrivate.GetKeyboardLayout(dwLayout);
+            return System.OperatingSystem.IsWindows()
+                ? SafeNativeMethodsPrivate.GetKeyboardLayout(dwLayout)
+                : new IntPtr(System.Globalization.CultureInfo.CurrentCulture.KeyboardLayoutId);
         }
 
         public static IntPtr ActivateKeyboardLayout(HandleRef hkl, int uFlags)
         {
-            return SafeNativeMethodsPrivate.ActivateKeyboardLayout(hkl, uFlags);
+            return System.OperatingSystem.IsWindows()
+                ? SafeNativeMethodsPrivate.ActivateKeyboardLayout(hkl, uFlags)
+                : hkl.Handle;
         }
 
 #if BASE_NATIVEMETHODS
         public static int GetKeyboardLayoutList(int size, [Out, MarshalAs(UnmanagedType.LPArray)] IntPtr[] hkls)
         {
+            if (!System.OperatingSystem.IsWindows())
+            {
+                if (size > 0 && hkls != null && hkls.Length > 0)
+                {
+                    hkls[0] = new IntPtr(System.Globalization.CultureInfo.CurrentCulture.KeyboardLayoutId);
+                }
+
+                return 1;
+            }
+
             int result = NativeMethodsSetLastError.GetKeyboardLayoutList(size, hkls);
             if (result == 0)
             {
@@ -238,7 +254,9 @@ namespace MS.Win32
 
         public static int GetCurrentThreadId()
         {
-            return SafeNativeMethodsPrivate.GetCurrentThreadId();
+            return System.OperatingSystem.IsWindows()
+                ? SafeNativeMethodsPrivate.GetCurrentThreadId()
+                : Environment.CurrentManagedThreadId;
         }
 
         /// <summary>
@@ -722,4 +740,3 @@ namespace MS.Win32
         }
     }
 }
-

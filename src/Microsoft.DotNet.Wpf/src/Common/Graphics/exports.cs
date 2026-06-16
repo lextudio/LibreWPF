@@ -54,14 +54,26 @@ namespace System.Windows.Media.Composition
     /// </remark>
     internal struct CompositionEngineLock : IDisposable
     {
+        private readonly bool _acquired;
+
+        private CompositionEngineLock(bool acquired)
+        {
+            _acquired = acquired;
+        }
+
         /// <summary>
         /// Aquires the composition engine lock.
         /// </summary>
         internal static CompositionEngineLock Acquire()
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return new CompositionEngineLock(false);
+            }
+
             UnsafeNativeMethods.MilCoreApi.EnterCompositionEngineLock();
 
-            return new CompositionEngineLock();
+            return new CompositionEngineLock(true);
         }
 
         /// <summary>
@@ -69,6 +81,11 @@ namespace System.Windows.Media.Composition
         /// </summary>
         public void Dispose()
         {
+            if (!_acquired)
+            {
+                return;
+            }
+
             UnsafeNativeMethods.MilCoreApi.ExitCompositionEngineLock();
         }
     }

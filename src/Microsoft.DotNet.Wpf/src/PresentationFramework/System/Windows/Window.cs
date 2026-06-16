@@ -73,9 +73,13 @@ namespace System.Windows
             ClipToBoundsProperty.OverrideMetadata(typeof(Window), new FrameworkPropertyMetadata(BooleanBoxes.FalseBox, new PropertyChangedCallback(_OnClipToBoundsChanged), new CoerceValueCallback(CoerceClipToBounds)));
 
             // Note that this event only gets raised in Windows 7 and later.
-            WM_TASKBARBUTTONCREATED = UnsafeNativeMethods.RegisterWindowMessage("TaskbarButtonCreated");
+            WM_TASKBARBUTTONCREATED = OperatingSystem.IsWindows()
+                ? UnsafeNativeMethods.RegisterWindowMessage("TaskbarButtonCreated")
+                : default;
 
-            WM_APPLYTASKBARITEMINFO = UnsafeNativeMethods.RegisterWindowMessage("WPF_ApplyTaskbarItemInfo");
+            WM_APPLYTASKBARITEMINFO = OperatingSystem.IsWindows()
+                ? UnsafeNativeMethods.RegisterWindowMessage("WPF_ApplyTaskbarItemInfo")
+                : default;
 
             EventManager.RegisterClassHandler(typeof(Window),
                 UIElement.ManipulationCompletedEvent,

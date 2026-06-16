@@ -303,7 +303,7 @@ namespace System.Windows.Input
 
         private void LoadCursorHelper(CursorType cursorType)
         {
-            if (cursorType != CursorType.None)
+            if (cursorType != CursorType.None && OperatingSystem.IsWindows())
             {
                 // Load a Standard Cursor
                 _cursorHandle = SafeNativeMethods.LoadCursor(new HandleRef(this,IntPtr.Zero), (IntPtr)(CursorTypes[(int)cursorType]));

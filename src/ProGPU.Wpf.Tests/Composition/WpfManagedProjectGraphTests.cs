@@ -548,6 +548,124 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Equal("all", GetItemMetadata(realPresentationCoreReference, "PrivateAssets"));
     }
 
+    [Fact]
+    public void RealPresentationFrameworkHarnessExercisesManagedFrameworkAndProGpuBridge()
+    {
+        var harnessProjectPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealPresentationFrameworkHarness",
+            "ProGPU.Wpf.RealPresentationFrameworkHarness.csproj");
+        var harnessProgramPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealPresentationFrameworkHarness",
+            "Program.cs");
+
+        var harnessProject = XDocument.Load(harnessProjectPath);
+        var harnessProgram = File.ReadAllText(harnessProgramPath);
+
+        AssertPackageReference(harnessProject, "System.Configuration.ConfigurationManager");
+        AssertPackageReference(harnessProject, "System.Formats.Nrbf");
+        AssertPackageReference(harnessProject, "$(SystemIOPackagingPackage)");
+        AssertPackageReference(harnessProject, "System.Windows.Extensions");
+
+        AssertProjectReference(harnessProject, @"ProGPU.Wpf\ProGPU.Wpf.csproj");
+        AssertProjectReference(harnessProject, @"external\ProGPU\src\ProGPU.Scene\ProGPU.Scene.csproj");
+
+        var presentationCoreReference = AssertProjectReference(
+            harnessProject,
+            @"Microsoft.DotNet.Wpf\src\PresentationCore\PresentationCore.csproj");
+        Assert.Equal("false", GetItemMetadata(presentationCoreReference, "ReferenceOutputAssembly"));
+        Assert.Equal("all", GetItemMetadata(presentationCoreReference, "PrivateAssets"));
+
+        var presentationFrameworkReference = AssertProjectReference(
+            harnessProject,
+            @"Microsoft.DotNet.Wpf\src\PresentationFramework\PresentationFramework.csproj");
+        Assert.Equal("false", GetItemMetadata(presentationFrameworkReference, "ReferenceOutputAssembly"));
+        Assert.Equal("all", GetItemMetadata(presentationFrameworkReference, "PrivateAssets"));
+
+        Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("WpfRenderDataSinkProviderBridge.TryRegisterRenderDataSinkProvider", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfCompositionTarget.CreateHeadless()", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Controls.TextBox", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Controls.RichTextBox", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Documents.FlowDocument", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Controls.ControlTemplate", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Media.DrawingVisual", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("VerifyRetainedDrawingVisualBranch(target)", harnessProgram, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RealPresentationFrameworkSmokeGuardsNativePlatformEntrypoints()
+    {
+        var compositionExports = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "Common",
+            "Graphics",
+            "exports.cs"));
+        var uiElement = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "UIElement.cs"));
+        var systemResources = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "SystemResources.cs"));
+        var systemParameters = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "SystemParameters.cs"));
+        var uxThemeWrapper = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "MS",
+            "Win32",
+            "UxThemeWrapper.cs"));
+        var dispatcher = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "WindowsBase",
+            "System",
+            "Windows",
+            "Threading",
+            "Dispatcher.cs"));
+        var dpiAwareness = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "MS",
+            "internal",
+            "DpiUtil",
+            "DpiUtil+DpiAwarenessContextHelper.cs"));
+
+        AssertGuardBefore(compositionExports, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.MilCoreApi.EnterCompositionEngineLock()");
+        AssertGuardBefore(uiElement, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetDC(desktopWnd)");
+        AssertGuardBefore(systemResources, "if (!OperatingSystem.IsWindows())", "new HwndWrapper(");
+        AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETHIGHCONTRAST");
+        AssertGuardBefore(uxThemeWrapper, "_themeState = OperatingSystem.IsWindows()", "SafeNativeMethods.IsUxThemeActive()");
+        AssertGuardBefore(dpiAwareness, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetWindowDpiAwarenessContext(hWnd)");
+        Assert.Contains("_useWin32MessagePump = OperatingSystem.IsWindows();", dispatcher, StringComparison.Ordinal);
+        AssertGuardBefore(dispatcher, "if (_useWin32MessagePump)", "new MessageOnlyHwndWrapper()");
+        Assert.Contains("return !_useWin32MessagePump;", dispatcher, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("src/Microsoft.DotNet.Wpf/src/System.Xaml/System.Xaml.csproj")]
     [InlineData("src/Microsoft.DotNet.Wpf/src/PresentationBuildTasks/PresentationBuildTasks.csproj")]
@@ -680,6 +798,25 @@ public sealed class WpfManagedProjectGraphTests
         return Assert.Single(
             project.Descendants("ProjectReference"),
             item => IncludeEndsWith(item, "Include", includeSuffix));
+    }
+
+    private static XElement AssertPackageReference(XDocument project, string include)
+    {
+        return Assert.Single(
+            project.Descendants("PackageReference"),
+            item => string.Equals(item.Attribute("Include")?.Value, include, StringComparison.Ordinal));
+    }
+
+    private static void AssertGuardBefore(string source, string guard, string guardedCall)
+    {
+        var guardIndex = source.IndexOf(guard, StringComparison.Ordinal);
+        var guardedCallIndex = source.IndexOf(guardedCall, StringComparison.Ordinal);
+
+        Assert.True(guardIndex >= 0, $"Expected guard '{guard}' to exist.");
+        Assert.True(guardedCallIndex >= 0, $"Expected guarded call '{guardedCall}' to exist.");
+        Assert.True(
+            guardIndex < guardedCallIndex,
+            $"Expected guard '{guard}' to appear before '{guardedCall}'.");
     }
 
     private static void AssertCompileInclude(XDocument project, string includeSuffix, bool link = false)

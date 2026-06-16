@@ -165,6 +165,12 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.HighContrast] = true;
 
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _highContrast = false;
+                            continue;
+                        }
+
                         NativeMethods.HIGHCONTRAST_I highContrast = new NativeMethods.HIGHCONTRAST_I
                         {
                             cbSize = Marshal.SizeOf(typeof(NativeMethods.HIGHCONTRAST_I))
@@ -453,14 +459,21 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.IconMetrics] = true;
 
-                        _iconMetrics = new NativeMethods.ICONMETRICS();
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETICONMETRICS, _iconMetrics.cbSize, _iconMetrics, 0))
+                        if (!OperatingSystem.IsWindows())
                         {
+                            _iconMetrics = CreateDefaultIconMetrics();
                         }
                         else
                         {
-                            _cacheValid[(int)CacheSlot.IconMetrics] = false;
-                            throw new Win32Exception();
+                            _iconMetrics = new NativeMethods.ICONMETRICS();
+                            if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETICONMETRICS, _iconMetrics.cbSize, _iconMetrics, 0))
+                            {
+                            }
+                            else
+                            {
+                                _cacheValid[(int)CacheSlot.IconMetrics] = false;
+                                throw new Win32Exception();
+                            }
                         }
                     }
                 }
@@ -572,7 +585,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.KeyboardCues] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETKEYBOARDCUES, 0, ref _keyboardCues, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _keyboardCues = false;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETKEYBOARDCUES, 0, ref _keyboardCues, 0))
                         {
                         }
                         else
@@ -600,7 +617,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.KeyboardDelay] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETKEYBOARDDELAY, 0, ref _keyboardDelay, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _keyboardDelay = 1;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETKEYBOARDDELAY, 0, ref _keyboardDelay, 0))
                         {
                         }
                         else
@@ -628,7 +649,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.KeyboardPreference] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETKEYBOARDPREF, 0, ref _keyboardPref, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _keyboardPref = false;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETKEYBOARDPREF, 0, ref _keyboardPref, 0))
                         {
                         }
                         else
@@ -656,7 +681,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.KeyboardSpeed] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETKEYBOARDSPEED, 0, ref _keyboardSpeed, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _keyboardSpeed = 31;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETKEYBOARDSPEED, 0, ref _keyboardSpeed, 0))
                         {
                         }
                         else
@@ -684,7 +713,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.SnapToDefaultButton] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETSNAPTODEFBUTTON, 0, ref _snapToDefButton, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _snapToDefButton = false;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETSNAPTODEFBUTTON, 0, ref _snapToDefButton, 0))
                         {
                         }
                         else
@@ -712,7 +745,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.WheelScrollLines] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETWHEELSCROLLLINES, 0, ref _wheelScrollLines, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _wheelScrollLines = 3;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETWHEELSCROLLLINES, 0, ref _wheelScrollLines, 0))
                         {
                         }
                         else
@@ -748,7 +785,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.MouseHoverTime] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETMOUSEHOVERTIME, 0, ref _mouseHoverTime, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _mouseHoverTime = 400;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETMOUSEHOVERTIME, 0, ref _mouseHoverTime, 0))
                         {
                         }
                         else
@@ -778,7 +819,11 @@ namespace System.Windows
 
                         int mouseHoverHeight = 0;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETMOUSEHOVERHEIGHT, 0, ref mouseHoverHeight, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _mouseHoverHeight = ConvertPixel(4);
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETMOUSEHOVERHEIGHT, 0, ref mouseHoverHeight, 0))
                         {
                             _mouseHoverHeight = ConvertPixel(mouseHoverHeight);
                         }
@@ -810,7 +855,11 @@ namespace System.Windows
 
                         int mouseHoverWidth = 0;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETMOUSEHOVERWIDTH, 0, ref mouseHoverWidth, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _mouseHoverWidth = ConvertPixel(4);
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETMOUSEHOVERWIDTH, 0, ref mouseHoverWidth, 0))
                         {
                             _mouseHoverWidth = ConvertPixel(mouseHoverWidth);
                         }
@@ -1951,14 +2000,21 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.NonClientMetrics] = true;
 
-                        _ncm = new NativeMethods.NONCLIENTMETRICS();
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETNONCLIENTMETRICS, _ncm.cbSize, _ncm, 0))
+                        if (!OperatingSystem.IsWindows())
                         {
+                            _ncm = CreateDefaultNonClientMetrics();
                         }
                         else
                         {
-                            _cacheValid[(int)CacheSlot.NonClientMetrics] = false;
-                            throw new Win32Exception();
+                            _ncm = new NativeMethods.NONCLIENTMETRICS();
+                            if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETNONCLIENTMETRICS, _ncm.cbSize, _ncm, 0))
+                            {
+                            }
+                            else
+                            {
+                                _cacheValid[(int)CacheSlot.NonClientMetrics] = false;
+                                throw new Win32Exception();
+                            }
                         }
                     }
                 }
@@ -5496,6 +5552,12 @@ namespace System.Windows
                     while (!_cacheValid[(int)CacheSlot.IsGlassEnabled])
                     {
                         _cacheValid[(int)CacheSlot.IsGlassEnabled] = true;
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _isGlassEnabled = false;
+                            continue;
+                        }
+
                         _isGlassEnabled = Standard.NativeMethods.DwmIsCompositionEnabled();
                     }
                 }
@@ -5519,7 +5581,7 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.UxThemeName] = true;
 
-                        if (!Standard.NativeMethods.IsThemeActive())
+                        if (!OperatingSystem.IsWindows() || !Standard.NativeMethods.IsThemeActive())
                         {
                             _uxThemeName = "Classic";
                         }
@@ -5554,7 +5616,7 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.UxThemeColor] = true;
 
-                        if (!Standard.NativeMethods.IsThemeActive())
+                        if (!OperatingSystem.IsWindows() || !Standard.NativeMethods.IsThemeActive())
                         {
                             _uxThemeColor = "";
                         }
@@ -5792,6 +5854,48 @@ namespace System.Windows
             }
 
             return pixel;
+        }
+
+        private static NativeMethods.ICONMETRICS CreateDefaultIconMetrics()
+        {
+            return new NativeMethods.ICONMETRICS
+            {
+                iHorzSpacing = 75,
+                iVertSpacing = 75,
+                iTitleWrap = 1,
+                lfFont = CreateDefaultLogFont()
+            };
+        }
+
+        private static NativeMethods.NONCLIENTMETRICS CreateDefaultNonClientMetrics()
+        {
+            return new NativeMethods.NONCLIENTMETRICS
+            {
+                iBorderWidth = 1,
+                iScrollWidth = 17,
+                iScrollHeight = 17,
+                iCaptionWidth = 18,
+                iCaptionHeight = 23,
+                lfCaptionFont = CreateDefaultLogFont(),
+                iSmCaptionWidth = 13,
+                iSmCaptionHeight = 15,
+                lfSmCaptionFont = CreateDefaultLogFont(),
+                iMenuWidth = 18,
+                iMenuHeight = 18,
+                lfMenuFont = CreateDefaultLogFont(),
+                lfStatusFont = CreateDefaultLogFont(),
+                lfMessageFont = CreateDefaultLogFont()
+            };
+        }
+
+        private static NativeMethods.LOGFONT CreateDefaultLogFont()
+        {
+            return new NativeMethods.LOGFONT
+            {
+                lfHeight = -12,
+                lfWeight = 400,
+                lfFaceName = "Arial"
+            };
         }
 
         private enum CacheSlot : int
@@ -6188,4 +6292,3 @@ namespace System.Windows
         #endregion
     }
 }
-

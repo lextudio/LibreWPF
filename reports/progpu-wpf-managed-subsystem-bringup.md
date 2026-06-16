@@ -53,11 +53,23 @@ The current architecture keeps this boundary:
 - real Fluent theme XAML remains marked for internal markup compilation;
 - the real `PresentationCore` compatibility harness references WPF as an external subsystem while `ProGPU.Wpf` stays outside the managed WPF projects.
 
+`WpfManagedProjectGraphTests.RealPresentationFrameworkHarnessExercisesManagedFrameworkAndProGpuBridge` now locks down the first real `PresentationFramework` code-only smoke harness. `src/ProGPU.Wpf.RealPresentationFrameworkHarness` loads the built `PresentationFramework.dll` and `PresentationCore.dll` in an isolated assembly load context, constructs real `Application`, `Window`, `StackPanel`, `TextBox`, `RichTextBox`, `FlowDocument`, `ResourceDictionary`, `Style`, and `ControlTemplate` instances, registers portable window activation, and verifies a real `DrawingVisual.RenderOpen()` draw routes through `WpfRenderDataSinkProviderBridge` into a retained ProGPU owner branch.
+
 The companion `ManagedWpfSubsystemProjectsDoNotReferenceProGpuBridge` test guards the reuse boundary by keeping `ProGPU.Wpf`, `ProGPU.Scene`, and direct `external/ProGPU` references out of `System.Xaml`, `PresentationBuildTasks`, `PresentationFramework`, `PresentationUI`, and Fluent theme projects. `PresentationUiUsesManagedPrintingReferenceForNonWindowsBringup` locks down the current non-Windows build edge: native `System.Printing.vcxproj` is Windows-only, and non-Windows managed bring-up references `System.Printing-ref`.
+
+The new real-framework harness intentionally references `ProGPU.Wpf` and `ProGPU.Scene` only in the harness process, not in the managed WPF framework projects. It also references the real `PresentationCore` and `PresentationFramework` projects with `ReferenceOutputAssembly=false` and `PrivateAssets=all` so the harness builds the real assemblies but loads them explicitly. That keeps type identity honest while the bridge still adapts real WPF objects through reflection/object-sink registration.
+
+## Portability Decisions Opened By The Harness
+
+- Registry reads, ETW, Win32 system metrics/colors, keyboard-layout queries, cursors, font directories, DPI discovery, high-contrast/theme metadata, and hidden theme-notification HWNDs are now guarded with conservative non-Windows defaults only where the real framework smoke proved they were needed.
+- The non-Windows dispatcher path no longer creates the Win32 message-only HWND; this is a bring-up gate, not the final loop. The final implementation should replace that with the existing Silk.NET/ProGPU native-loop wake and dispatcher drain services.
+- `CompositionEngineLock` skips `wpfgfx_cor3.dll` on non-Windows so managed `MediaContext` startup can run disconnected while ProGPU owns render-data execution. Windows still uses the original MILCore lock and startup path.
+- The default non-Windows DPI path is 96 DPI until a platform metrics service supplies real monitor/window DPI through the Silk.NET host.
 
 ## Current Verification
 
 - Built `System.Xaml`, `PresentationBuildTasks` (`net11.0`), `PresentationCore`, and `PresentationFramework` directly.
 - Built `PresentationFramework.Fluent` with internal markup compilation; this exercises the real theme XAML and `PresentationUI` graph.
 - Built and ran `ProGPU.Wpf.RealPresentationCoreHarness`; the harness registered the real `PresentationCore` render-data provider successfully.
-- Built `ProGPU.Wpf.Tests` and ran `WpfManagedProjectGraphTests`; 21 focused tests passed.
+- Built and ran `ProGPU.Wpf.RealPresentationFrameworkHarness`; the harness constructed the real framework code-only app surface and verified retained ProGPU owner-branch `DrawingVisual.RenderOpen()` routing.
+- Built `ProGPU.Wpf.Tests` and ran `WpfManagedProjectGraphTests`; 23 focused graph tests passed and include the real `PresentationFramework` harness plus native-entrypoint guard coverage.

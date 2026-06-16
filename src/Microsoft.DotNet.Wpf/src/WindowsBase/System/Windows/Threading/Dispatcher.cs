@@ -21,7 +21,10 @@ namespace System.Windows.Threading
     {
         static Dispatcher()
         {
-            _msgProcessQueue = UnsafeNativeMethods.RegisterWindowMessage("DispatcherProcessQueue");
+            _useWin32MessagePump = OperatingSystem.IsWindows();
+            _msgProcessQueue = _useWin32MessagePump
+                ? UnsafeNativeMethods.RegisterWindowMessage("DispatcherProcessQueue")
+                : default;
             _globalLock = new object();
             _dispatchers = new List<WeakReference>();
             _possibleDispatcher = new WeakReference(null);
@@ -1732,12 +1735,15 @@ namespace System.Windows.Threading
 
             _defaultDispatcherSynchronizationContext = new DispatcherSynchronizationContext(this);
 
-            // Create the message-only window we use to receive messages
-            // that tell us to process the queue.
-            _window = new MessageOnlyHwndWrapper();
+            if (_useWin32MessagePump)
+            {
+                // Create the message-only window we use to receive messages
+                // that tell us to process the queue.
+                _window = new MessageOnlyHwndWrapper();
 
-            _hook = new HwndWrapperHook(WndProcHook);
-            _window.AddHook(_hook);
+                _hook = new HwndWrapperHook(WndProcHook);
+                _window.AddHook(_hook);
+            }
 
             // Verify that the accessibility switches are set prior to any major UI code running.
             AccessibilitySwitches.VerifySwitches(this);
@@ -2328,7 +2334,7 @@ namespace System.Windows.Threading
             // can reliably check the _window field without worrying about
             // it being changed out from underneath us during shutdown.
             if (IsWindowNull())
-                return false;
+                return !_useWin32MessagePump;
 
             DispatcherPriority priority = _queue.MaxPriority;
 
@@ -2826,6 +2832,7 @@ namespace System.Windows.Threading
 
         private int _postedProcessingType;
         private static WindowMessage _msgProcessQueue;
+        private static bool _useWin32MessagePump;
 
         private static ExceptionWrapper _exceptionWrapper;
         private static readonly object ExceptionDataKey = new object();
@@ -2873,4 +2880,3 @@ namespace System.Windows.Threading
         private DispatcherHooks _hooks;
     }
 }
-

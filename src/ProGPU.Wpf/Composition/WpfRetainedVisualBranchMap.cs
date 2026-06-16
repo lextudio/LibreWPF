@@ -7,6 +7,7 @@ namespace System.Windows.Media.ProGPU.Composition;
 public sealed class WpfRetainedVisualBranchMap
 {
     private readonly Dictionary<object, List<ProGpuVisual>> _visualsBySource = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<ProGpuVisual, HashSet<object>> _sourcesByVisual = new(ReferenceEqualityComparer.Instance);
 
     public int SourceCount => _visualsBySource.Count;
 
@@ -21,6 +22,7 @@ public sealed class WpfRetainedVisualBranchMap
     public void Clear()
     {
         _visualsBySource.Clear();
+        _sourcesByVisual.Clear();
         VisualCount = 0;
         LastSource = null;
         LastVisual = null;
@@ -50,6 +52,13 @@ public sealed class WpfRetainedVisualBranchMap
         }
 
         visuals.Add(visual);
+        if (!_sourcesByVisual.TryGetValue(visual, out var sources))
+        {
+            sources = new HashSet<object>(ReferenceEqualityComparer.Instance);
+            _sourcesByVisual.Add(visual, sources);
+        }
+
+        sources.Add(source);
         VisualCount++;
         LastSource = source;
         LastVisual = visual;
@@ -99,6 +108,7 @@ public sealed class WpfRetainedVisualBranchMap
         var invalidatedVisuals = new HashSet<ProGpuVisual>(ReferenceEqualityComparer.Instance);
         var dirtySourceCount = 0;
         var mappedSourceCount = 0;
+        var sharedWithCleanSourceVisualCount = 0;
 
         foreach (var source in sources)
         {
@@ -125,10 +135,28 @@ public sealed class WpfRetainedVisualBranchMap
             }
         }
 
+        foreach (var visual in invalidatedVisuals)
+        {
+            if (!_sourcesByVisual.TryGetValue(visual, out var visualSources))
+            {
+                continue;
+            }
+
+            foreach (var visualSource in visualSources)
+            {
+                if (!visitedSources.Contains(visualSource))
+                {
+                    sharedWithCleanSourceVisualCount++;
+                    break;
+                }
+            }
+        }
+
         return new WpfRetainedVisualBranchInvalidationResult(
             dirtySourceCount,
             mappedSourceCount,
-            invalidatedVisuals.Count);
+            invalidatedVisuals.Count,
+            sharedWithCleanSourceVisualCount);
     }
 }
 
@@ -137,11 +165,13 @@ public readonly struct WpfRetainedVisualBranchInvalidationResult
     public WpfRetainedVisualBranchInvalidationResult(
         int dirtySourceCount,
         int mappedSourceCount,
-        int invalidatedVisualCount)
+        int invalidatedVisualCount,
+        int sharedWithCleanSourceVisualCount = 0)
     {
         DirtySourceCount = dirtySourceCount;
         MappedSourceCount = mappedSourceCount;
         InvalidatedVisualCount = invalidatedVisualCount;
+        SharedWithCleanSourceVisualCount = sharedWithCleanSourceVisualCount;
     }
 
     public int DirtySourceCount { get; }
@@ -152,10 +182,13 @@ public readonly struct WpfRetainedVisualBranchInvalidationResult
 
     public int InvalidatedVisualCount { get; }
 
+    public int SharedWithCleanSourceVisualCount { get; }
+
     public bool CanTargetAllDirtySources =>
         DirtySourceCount > 0 &&
         UnmappedSourceCount == 0 &&
-        InvalidatedVisualCount > 0;
+        InvalidatedVisualCount > 0 &&
+        SharedWithCleanSourceVisualCount == 0;
 }
 
 internal interface IWpfRetainedVisualBranchSink

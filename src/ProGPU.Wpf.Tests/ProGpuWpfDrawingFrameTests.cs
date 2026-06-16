@@ -217,6 +217,7 @@ public sealed class ProGpuWpfDrawingFrameTests
         Assert.Equal(2, result.MappedSourceCount);
         Assert.Equal(0, result.UnmappedSourceCount);
         Assert.Equal(1, result.InvalidatedVisualCount);
+        Assert.Equal(0, result.SharedWithCleanSourceVisualCount);
         Assert.True(result.CanTargetAllDirtySources);
     }
 
@@ -238,6 +239,31 @@ public sealed class ProGpuWpfDrawingFrameTests
         Assert.Equal(1, result.MappedSourceCount);
         Assert.Equal(1, result.UnmappedSourceCount);
         Assert.Equal(1, result.InvalidatedVisualCount);
+        Assert.Equal(0, result.SharedWithCleanSourceVisualCount);
+        Assert.False(result.CanTargetAllDirtySources);
+        Assert.True(visual.IsDirty);
+    }
+
+    [Fact]
+    public void BranchMapReportsSharedCleanOwnersForCoarseNativeBranches()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var parentSource = new object();
+        var childSource = new object();
+        var visual = new ProGpuDrawingVisual
+        {
+            IsDirty = false
+        };
+        branchMap.Register(parentSource, visual);
+        branchMap.Register(childSource, visual);
+
+        var result = branchMap.InvalidateVisualsForSources(new[] { childSource });
+
+        Assert.Equal(1, result.DirtySourceCount);
+        Assert.Equal(1, result.MappedSourceCount);
+        Assert.Equal(0, result.UnmappedSourceCount);
+        Assert.Equal(1, result.InvalidatedVisualCount);
+        Assert.Equal(1, result.SharedWithCleanSourceVisualCount);
         Assert.False(result.CanTargetAllDirtySources);
         Assert.True(visual.IsDirty);
     }

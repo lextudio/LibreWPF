@@ -188,6 +188,24 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeRegistersNestedVisualStateResourcesAsRetainedDependencies()
+    {
+        var shaderEffect = new FakeShaderEffect(new byte[] { 0, 3, 0, 0, 1, 2, 3, 4 });
+        var root = new FakeVisual
+        {
+            Effect = shaderEffect
+        };
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Contains(shaderEffect, sink.VisualDependencies);
+        Assert.Contains(shaderEffect.PixelShader, sink.VisualDependencies);
+        Assert.Equal(1, result.VisualCount);
+        Assert.Equal(1, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
     public void TryReplaySubtreeIntoCurrentRetainedVisualRegistersRenderDataResourcesAsRetainedDependencies()
     {
         var brush = Brushes.Green;

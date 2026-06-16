@@ -20,6 +20,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         "Content",
         "Drawing",
         "Drawings",
+        "Visual",
         "Brush",
         "ForegroundBrush",
         "Pen",
@@ -32,10 +33,21 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         "ImageSource",
         "GlyphRun",
         "Transform",
+        "RelativeTransform",
         "Clip",
         "ClipGeometry",
         "OpacityMask",
+        "Effect",
+        "BitmapEffect",
+        "BitmapEffectInput",
+        "CacheMode",
+        "Input",
+        "PixelShader",
         "GuidelineSet",
+        "XSnappingGuidelines",
+        "YSnappingGuidelines",
+        "VisualXSnappingGuidelines",
+        "VisualYSnappingGuidelines",
         "GradientStops",
         "Camera",
         "Model",
@@ -48,7 +60,15 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         "Normals",
         "TextureCoordinates"
     };
-    private static readonly string[] s_fieldNames = { "_content" };
+    private static readonly string[] s_fieldNames =
+    {
+        "_content",
+        "_floatRegisters",
+        "_samplerData",
+        "_brush",
+        "_samplingMode",
+        "_shaderBytecode"
+    };
 
     private readonly List<Action> _unsubscribeActions = new();
     private readonly Dictionary<object, object> _versionSnapshots = new(ReferenceEqualityComparer.Instance);

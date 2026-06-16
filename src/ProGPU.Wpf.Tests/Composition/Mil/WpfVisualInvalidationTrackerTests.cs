@@ -168,6 +168,47 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
+    public void VisualBrushVisualChangeMarksTrackerDirty()
+    {
+        var brushVisual = new FakeVisual();
+        var root = new FakeVisual
+        {
+            Brush = new FakeVisualBrush
+            {
+                Visual = brushVisual
+            }
+        };
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        brushVisual.RaiseChanged();
+
+        Assert.True(tracker.IsDirty);
+        Assert.Same(brushVisual, tracker.LastDirtySource);
+        Assert.Contains(brushVisual, tracker.DirtySources);
+    }
+
+    [Fact]
+    public void VisualEffectChangeMarksTrackerDirty()
+    {
+        var effect = new FakeResource();
+        var root = new FakeVisual
+        {
+            Effect = effect
+        };
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        effect.RaiseChanged();
+
+        Assert.True(tracker.IsDirty);
+        Assert.Same(effect, tracker.LastDirtySource);
+        Assert.Contains(effect, tracker.DirtySources);
+    }
+
+    [Fact]
     public void EnumerateTrackedDependenciesIncludesNestedResourceGraph()
     {
         var brush = new FakeResource();
@@ -240,6 +281,8 @@ public sealed class WpfVisualInvalidationTrackerTests
 
         public object? Clip { get; init; }
 
+        public object? Effect { get; init; }
+
         public double Opacity { get; set; } = 1;
 
         public void RaiseChanged()
@@ -256,6 +299,11 @@ public sealed class WpfVisualInvalidationTrackerTests
     private sealed class FakeGlyphRunDrawing
     {
         public object? ForegroundBrush { get; init; }
+    }
+
+    private sealed class FakeVisualBrush
+    {
+        public object? Visual { get; init; }
     }
 
     private sealed class FakePathGeometry

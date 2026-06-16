@@ -447,11 +447,6 @@ public sealed class WpfVisualTreeReflectionRenderer
     {
         state = default;
 
-        if (!CanApplyNativeScopeWithOuterState(offset, transform, clipBounds))
-        {
-            return false;
-        }
-
         var scopedStateCount = 0;
         global::ProGPU.Scene.EffectBase? effect = null;
         var cacheAsLayer = false;
@@ -494,37 +489,38 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         Vector2? size = null;
         Rect? contentBounds = null;
+        var retainedOffset = offset;
+        var retainedTransform = transform;
+        var retainedClipBounds = clipBounds;
         if (TryReadOpacityMaskBounds(visual, out var bounds))
         {
             size = new Vector2((float)bounds.Width, (float)bounds.Height);
-            offset = new Vector2((float)bounds.X, (float)bounds.Y);
             contentBounds = bounds;
-        }
-        else
-        {
-            offset = Vector2.Zero;
+            retainedClipBounds = clipBounds.HasValue
+                ? OffsetBounds(clipBounds.Value, -bounds.X, -bounds.Y)
+                : null;
+
+            var boundsOffset = new Vector2((float)bounds.X, (float)bounds.Y);
+            if (transform == Matrix4x4.Identity)
+            {
+                retainedOffset = offset + boundsOffset;
+            }
+            else
+            {
+                retainedTransform = Matrix4x4.CreateTranslation((float)bounds.X, (float)bounds.Y, 0f) * transform;
+            }
         }
 
         state = new WpfRetainedVisualState(
-            offset,
-            Matrix4x4.Identity,
+            retainedOffset,
+            retainedTransform,
             opacity,
-            clipBounds: null,
+            retainedClipBounds,
             size,
             effect,
             cacheAsLayer,
             contentBounds);
         return true;
-    }
-
-    private static bool CanApplyNativeScopeWithOuterState(
-        Vector2 offset,
-        Matrix4x4 transform,
-        Rect? clipBounds)
-    {
-        return offset == Vector2.Zero
-            && transform == Matrix4x4.Identity
-            && !clipBounds.HasValue;
     }
 
     private static bool TryReadRectangleClipBounds(object clip, out Rect bounds)
@@ -577,6 +573,11 @@ public sealed class WpfVisualTreeReflectionRenderer
         return x2 <= x1 || y2 <= y1
             ? Rect.Empty
             : new Rect(x1, y1, x2 - x1, y2 - y1);
+    }
+
+    private static Rect OffsetBounds(Rect bounds, double offsetX, double offsetY)
+    {
+        return new Rect(bounds.X + offsetX, bounds.Y + offsetY, bounds.Width, bounds.Height);
     }
 
     private static Matrix4x4 ToMatrix4x4(MediaTransform transform)

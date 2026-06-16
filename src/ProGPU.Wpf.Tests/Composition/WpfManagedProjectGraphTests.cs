@@ -343,16 +343,27 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("if (!OperatingSystem.IsWindows())", application, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.IsEnabled", application, StringComparison.Ordinal);
+        Assert.Contains("FlushPortableDispatcherOperations(DispatcherPriority.Send)", application, StringComparison.Ordinal);
+        Assert.Contains("FlushPortableDispatcherOperations(DispatcherPriority.ApplicationIdle)", application, StringComparison.Ordinal);
+        Assert.Contains("Dispatcher.PushFrame(frame)", application, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.TryRun(MainWindow)", application, StringComparison.Ordinal);
-        Assert.Contains("ShutdownImpl();", application, StringComparison.Ordinal);
+        Assert.Contains("if (!_appIsShutdown)", application, StringComparison.Ordinal);
         Assert.True(
             application.IndexOf("if (!OperatingSystem.IsWindows())", StringComparison.Ordinal)
                 < application.IndexOf("new HwndWrapper", StringComparison.Ordinal),
             "Application.Run must skip the parking HWND before any HwndWrapper is created on non-Windows.");
         Assert.True(
+            application.IndexOf("FlushPortableDispatcherOperations(DispatcherPriority.Send)", StringComparison.Ordinal)
+                < application.IndexOf("window.Show();", StringComparison.Ordinal),
+            "Application.Run must service queued startup work before synchronously showing the portable startup window.");
+        Assert.True(
             application.IndexOf("window.Show();", StringComparison.Ordinal)
                 < application.IndexOf("PortableWindowActivationService.TryRun(MainWindow)", StringComparison.Ordinal),
             "Application.Run must synchronously show the startup window before handing ownership to the portable native run loop.");
+        Assert.True(
+            application.IndexOf("PortableWindowActivationService.TryRun(MainWindow)", StringComparison.Ordinal)
+                < application.IndexOf("FlushPortableDispatcherOperations(DispatcherPriority.ApplicationIdle)", StringComparison.Ordinal),
+            "Application.Run must service queued shutdown work after the portable native run loop exits.");
         Assert.True(
             application.IndexOf("PortableWindowActivationService.TryRun(MainWindow)", StringComparison.Ordinal)
                 < application.IndexOf("RunDispatcher(null);", StringComparison.Ordinal),

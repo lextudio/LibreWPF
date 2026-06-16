@@ -1680,6 +1680,8 @@ namespace System.Windows
                 throw new InvalidOperationException(SR.Format(SR.CannotCallRunMultipleTimes, this.GetType().FullName));
             }
 
+            bool usePortableRunLoop = PortableWindowActivationService.IsEnabled;
+
             if (window != null)
             {
                 if (!window.CheckAccess())
@@ -1696,10 +1698,18 @@ namespace System.Windows
                 {
                     MainWindow = window;
                 }
+            }
 
+            if (usePortableRunLoop)
+            {
+                FlushPortableDispatcherOperations(DispatcherPriority.Send);
+            }
+
+            if (window != null)
+            {
                 if (window.Visibility != Visibility.Visible)
                 {
-                    if (PortableWindowActivationService.IsEnabled)
+                    if (usePortableRunLoop)
                     {
                         window.Show();
                     }
@@ -1727,7 +1737,11 @@ namespace System.Windows
                     CriticalShutdown(0);
                 }
 
-                ShutdownImpl();
+                FlushPortableDispatcherOperations(DispatcherPriority.ApplicationIdle);
+                if (!_appIsShutdown)
+                {
+                    ShutdownImpl();
+                }
             }
             else
             {
@@ -2219,6 +2233,26 @@ namespace System.Windows
             ShutdownImpl();
             return null;
         }
+
+        private void FlushPortableDispatcherOperations(DispatcherPriority markerPriority)
+        {
+            if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+            {
+                return;
+            }
+
+            DispatcherFrame frame = new DispatcherFrame();
+            Dispatcher.BeginInvoke(
+                markerPriority,
+                (DispatcherOperationCallback) delegate(object state)
+                {
+                    ((DispatcherFrame)state).Continue = false;
+                    return null;
+                },
+                frame);
+            Dispatcher.PushFrame(frame);
+        }
+
         /// <summary>
         /// This method gets called on dispatch of the Shutdown DispatcherOperationCallback
         /// </summary>

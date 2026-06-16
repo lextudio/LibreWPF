@@ -456,6 +456,138 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void ManagedSubsystemBringupReusesRealWpfXamlFrameworkAndThemeProjects()
+    {
+        var systemXamlProjectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "System.Xaml",
+            "System.Xaml.csproj");
+        var presentationBuildTasksProjectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationBuildTasks",
+            "PresentationBuildTasks.csproj");
+        var presentationFrameworkProjectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "PresentationFramework.csproj");
+        var fluentThemeProjectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "Themes",
+            "PresentationFramework.Fluent",
+            "PresentationFramework.Fluent.csproj");
+        var realPresentationCoreHarnessProjectPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealPresentationCoreHarness",
+            "ProGPU.Wpf.RealPresentationCoreHarness.csproj");
+
+        var systemXamlProject = XDocument.Load(systemXamlProjectPath);
+        var presentationBuildTasksProject = XDocument.Load(presentationBuildTasksProjectPath);
+        var presentationFrameworkProject = XDocument.Load(presentationFrameworkProjectPath);
+        var fluentThemeProject = XDocument.Load(fluentThemeProjectPath);
+        var realPresentationCoreHarnessProject = XDocument.Load(realPresentationCoreHarnessProjectPath);
+
+        Assert.Equal("System.Xaml", Assert.Single(systemXamlProject.Descendants("AssemblyName")).Value);
+        AssertSourceFileExists("src", "Microsoft.DotNet.Wpf", "src", "System.Xaml", "System", "Xaml", "XamlReader.cs");
+        AssertSourceFileExists("src", "Microsoft.DotNet.Wpf", "src", "System.Xaml", "System", "Xaml", "InfosetObjects", "XamlXmlReader.cs");
+        AssertSourceFileExists("src", "Microsoft.DotNet.Wpf", "src", "System.Xaml", "System", "Xaml", "InfosetObjects", "XamlObjectWriter.cs");
+        AssertSourceFileExists("src", "Microsoft.DotNet.Wpf", "src", "System.Xaml", "System", "Windows", "Markup", "MarkupExtension.cs");
+        AssertProjectReference(systemXamlProject, @"System.Xaml\ref\System.Xaml-ref.csproj");
+
+        var targetFrameworks = Assert.Single(presentationBuildTasksProject.Descendants("TargetFrameworks")).Value;
+        Assert.Contains("$(BundledNETCoreAppTargetFramework)", targetFrameworks, StringComparison.Ordinal);
+        Assert.Contains("$(NetFrameworkToolCurrent)", targetFrameworks, StringComparison.Ordinal);
+        AssertCompileInclude(presentationBuildTasksProject, @"MS\Internal\MarkupCompiler\MarkupCompiler.cs");
+        AssertCompileInclude(presentationBuildTasksProject, @"MS\Internal\MarkupCompiler\ParserExtension.cs");
+        AssertCompileInclude(presentationBuildTasksProject, @"Microsoft\Build\Tasks\Windows\MarkupCompilePass1.cs");
+        AssertCompileInclude(presentationBuildTasksProject, @"Microsoft\Build\Tasks\Windows\MarkupCompilePass2.cs");
+        AssertCompileInclude(presentationBuildTasksProject, @"PresentationFramework\System\Windows\Markup\BamlBinaryWriter.cs", link: true);
+        AssertCompileInclude(presentationBuildTasksProject, @"PresentationFramework\System\Windows\Markup\BamlRecords.cs", link: true);
+
+        AssertCompileInclude(presentationFrameworkProject, @"System\Windows\Application.cs");
+        AssertCompileInclude(presentationFrameworkProject, @"System\Windows\Window.cs");
+        AssertCompileInclude(presentationFrameworkProject, @"System\Windows\ResourceDictionary.cs");
+        AssertCompileInclude(presentationFrameworkProject, @"System\Windows\Style.cs");
+        AssertCompileInclude(presentationFrameworkProject, @"System\Windows\ControlTemplate.cs");
+        AssertCompileInclude(presentationFrameworkProject, @"System\Windows\Controls\RichTextBox.cs");
+        AssertCompileInclude(presentationFrameworkProject, @"System\Windows\Documents\FlowDocument.cs");
+        AssertCompileInclude(presentationFrameworkProject, @"System\Windows\Markup\Baml2006\Baml2006Reader.cs");
+        AssertCompileInclude(presentationFrameworkProject, @"System\Windows\Markup\XamlReader.cs");
+        AssertProjectReference(presentationFrameworkProject, @"System.Xaml\System.Xaml.csproj");
+        AssertProjectReference(presentationFrameworkProject, @"PresentationCore\PresentationCore.csproj");
+        AssertProjectReference(presentationFrameworkProject, @"WindowsBase\WindowsBase.csproj");
+        AssertProjectReference(presentationFrameworkProject, @"ReachFramework\ReachFramework.csproj");
+
+        Assert.Equal("true", Assert.Single(fluentThemeProject.Descendants("InternalMarkupCompilation")).Value);
+        var pageItem = Assert.Single(
+            fluentThemeProject.Descendants("Page"),
+            item => string.Equals(item.Attribute("Include")?.Value, @"**\*.xaml", StringComparison.Ordinal));
+        Assert.Equal("MSBuild:Compile", pageItem.Element("Generator")?.Value);
+        AssertProjectReference(fluentThemeProject, @"System.Xaml\System.Xaml.csproj");
+        AssertProjectReference(fluentThemeProject, @"PresentationCore\PresentationCore.csproj");
+        AssertProjectReference(fluentThemeProject, @"PresentationFramework\PresentationFramework.csproj");
+        AssertProjectReference(fluentThemeProject, @"Themes\PresentationFramework.Fluent\ref\PresentationFramework.Fluent-ref.csproj");
+        AssertSourceFileExists("src", "Microsoft.DotNet.Wpf", "src", "Themes", "PresentationFramework.Fluent", "Themes", "Fluent.xaml");
+        AssertSourceFileExists("src", "Microsoft.DotNet.Wpf", "src", "Themes", "PresentationFramework.Fluent", "Themes", "Fluent.Light.xaml");
+        AssertSourceFileExists("src", "Microsoft.DotNet.Wpf", "src", "Themes", "PresentationFramework.Fluent", "Styles", "Button.xaml");
+        AssertSourceFileExists("src", "Microsoft.DotNet.Wpf", "src", "Themes", "PresentationFramework.Fluent", "Styles", "RichTextBox.xaml");
+        AssertSourceFileExists("src", "Microsoft.DotNet.Wpf", "src", "Themes", "PresentationFramework.Fluent", "Styles", "Window.xaml");
+
+        AssertProjectReference(realPresentationCoreHarnessProject, @"ProGPU.Wpf\ProGPU.Wpf.csproj");
+        var realPresentationCoreReference = AssertProjectReference(
+            realPresentationCoreHarnessProject,
+            @"Microsoft.DotNet.Wpf\src\PresentationCore\PresentationCore.csproj");
+        Assert.Equal("false", GetItemMetadata(realPresentationCoreReference, "ReferenceOutputAssembly"));
+        Assert.Equal("all", GetItemMetadata(realPresentationCoreReference, "PrivateAssets"));
+    }
+
+    [Theory]
+    [InlineData("src/Microsoft.DotNet.Wpf/src/System.Xaml/System.Xaml.csproj")]
+    [InlineData("src/Microsoft.DotNet.Wpf/src/PresentationBuildTasks/PresentationBuildTasks.csproj")]
+    [InlineData("src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj")]
+    [InlineData("src/Microsoft.DotNet.Wpf/src/PresentationUI/PresentationUI.csproj")]
+    [InlineData("src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Fluent/PresentationFramework.Fluent.csproj")]
+    public void ManagedWpfSubsystemProjectsDoNotReferenceProGpuBridge(string relativeProjectPath)
+    {
+        var projectPath = FindRepoPath(relativeProjectPath.Split('/'));
+        var project = File.ReadAllText(projectPath);
+
+        Assert.DoesNotContain("ProGPU.Wpf", project, StringComparison.Ordinal);
+        Assert.DoesNotContain(@"external\ProGPU", project, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProGPU.Scene", project, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PresentationUiUsesManagedPrintingReferenceForNonWindowsBringup()
+    {
+        var presentationUiProjectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationUI",
+            "PresentationUI.csproj");
+        var presentationUiProject = XDocument.Load(presentationUiProjectPath);
+
+        var nativePrintingReference = AssertProjectReference(
+            presentationUiProject,
+            @"System.Printing\System.Printing.vcxproj");
+        Assert.Equal("'$(OS)' == 'Windows_NT'", nativePrintingReference.Attribute("Condition")?.Value);
+        Assert.Equal("TargetFramework;TargetFrameworks", nativePrintingReference.Element("UndefineProperties")?.Value);
+
+        var managedPrintingReference = AssertProjectReference(
+            presentationUiProject,
+            @"System.Printing\ref\System.Printing-ref.csproj");
+        Assert.Equal("'$(OS)' != 'Windows_NT'", managedPrintingReference.Attribute("Condition")?.Value);
+    }
+
+    [Fact]
     public void CompositionTargetSupportsPortableNonDuceRootOwnership()
     {
         var compositionTargetPath = FindRepoPath(
@@ -541,6 +673,38 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RawMouseActions.Activate | RawMouseActions.CancelCapture", portableSource, StringComparison.Ordinal);
         Assert.Contains("_site.ReportInput(report)", portableSource, StringComparison.Ordinal);
         Assert.Contains(@"<Compile Include=""System\Windows\PortablePresentationSource.cs"" />", project, StringComparison.Ordinal);
+    }
+
+    private static XElement AssertProjectReference(XDocument project, string includeSuffix)
+    {
+        return Assert.Single(
+            project.Descendants("ProjectReference"),
+            item => IncludeEndsWith(item, "Include", includeSuffix));
+    }
+
+    private static void AssertCompileInclude(XDocument project, string includeSuffix, bool link = false)
+    {
+        Assert.Contains(
+            project.Descendants("Compile"),
+            item => IncludeEndsWith(item, link ? "Link" : "Include", includeSuffix));
+    }
+
+    private static bool IncludeEndsWith(XElement element, string attributeName, string includeSuffix)
+    {
+        var include = attributeName == "Link"
+            ? element.Element("Link")?.Value.Replace('/', '\\')
+            : element.Attribute(attributeName)?.Value.Replace('/', '\\');
+        return include?.EndsWith(includeSuffix, StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    private static string? GetItemMetadata(XElement element, string metadataName)
+    {
+        return element.Attribute(metadataName)?.Value ?? element.Element(metadataName)?.Value;
+    }
+
+    private static void AssertSourceFileExists(params string[] pathSegments)
+    {
+        Assert.True(File.Exists(FindRepoPath(pathSegments)), $"Expected source file '{Path.Combine(pathSegments)}' to exist.");
     }
 
     private static string FindRepoPath(params string[] pathSegments)

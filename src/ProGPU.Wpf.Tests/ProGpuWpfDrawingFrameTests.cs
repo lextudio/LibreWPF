@@ -513,6 +513,25 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void BranchMapReturnsSourceOwnerReplayTargetForDirtyRenderDataDependency()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var source = new object();
+        var renderData = new object();
+        var visual = new ProGpuRetainedDrawingVisual();
+        branchMap.Register(source, visual);
+        branchMap.RegisterDependency(renderData, visual);
+
+        var result = branchMap.InvalidateVisualsForSources(new[] { renderData });
+        var targets = branchMap.GetReplayTargetsForSources(new[] { renderData });
+
+        Assert.True(result.CanTargetAllDirtySources);
+        var target = Assert.Single(targets);
+        Assert.Same(source, target.Source);
+        Assert.Same(visual, target.Visual);
+    }
+
+    [Fact]
     public void BranchMapKeepsChildSourceReplayTargetWhenParentChildrenCollectionIsTracked()
     {
         var branchMap = new WpfRetainedVisualBranchMap();

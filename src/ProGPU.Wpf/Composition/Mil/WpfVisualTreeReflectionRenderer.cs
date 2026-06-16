@@ -281,9 +281,15 @@ public sealed class WpfVisualTreeReflectionRenderer
         string propertyName,
         IWpfCompositionCommandSink sink)
     {
-        if (TryGetPropertyValue(visual, propertyName, out var dependency)
-            && dependency != null
-            && sink is IWpfRetainedVisualBranchSink retainedVisualBranchSink)
+        if (TryGetPropertyValue(visual, propertyName, out var dependency))
+        {
+            RegisterRetainedVisualDirectDependency(dependency, sink);
+        }
+    }
+
+    private static void RegisterRetainedVisualDirectDependency(object? dependency, IWpfCompositionCommandSink sink)
+    {
+        if (dependency != null && sink is IWpfRetainedVisualBranchSink retainedVisualBranchSink)
         {
             retainedVisualBranchSink.RegisterVisualDependency(dependency);
         }
@@ -653,6 +659,7 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         stats.ContentCount++;
         var snapshot = WpfRenderDataReflectionBridge.Extract(content);
+        RegisterRetainedVisualDirectDependency(content, sink);
         RegisterRetainedVisualDependencies(snapshot.DependentResources, sink);
         stats.AddRenderData(_renderDataBridge.Replay(snapshot, sink, resources, imageSourceAdapter));
     }

@@ -301,13 +301,15 @@ public sealed class WpfVisualTreeReflectionRendererTests
     public void ReplaySubtreeRegistersRenderDataResourcesAsRetainedDependencies()
     {
         var brush = Brushes.Green;
-        var root = new FakeDrawingVisual(CreateRenderData(brush));
+        var renderData = CreateRenderData(brush);
+        var root = new FakeDrawingVisual(renderData);
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new object[] { root }, sink.VisualOwners);
         Assert.Contains(root.Children, sink.VisualDependencies);
+        Assert.Contains(renderData, sink.VisualDependencies);
         Assert.Contains(brush, sink.VisualDependencies);
         Assert.Equal(1, result.ContentCount);
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
@@ -322,11 +324,13 @@ public sealed class WpfVisualTreeReflectionRendererTests
         {
             Brush = nestedBrush
         };
-        var root = new FakeDrawingVisual(CreateRenderData(brush, nestedDrawing));
+        var renderData = CreateRenderData(brush, nestedDrawing);
+        var root = new FakeDrawingVisual(renderData);
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
+        Assert.Contains(renderData, sink.VisualDependencies);
         Assert.Contains(nestedDrawing, sink.VisualDependencies);
         Assert.Contains(nestedBrush, sink.VisualDependencies);
         Assert.Equal(1, result.ContentCount);
@@ -373,7 +377,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
     public void TryReplaySubtreeIntoCurrentRetainedVisualRegistersRenderDataResourcesAsRetainedDependencies()
     {
         var brush = Brushes.Green;
-        var root = new FakeDrawingVisual(CreateRenderData(brush));
+        var renderData = CreateRenderData(brush);
+        var root = new FakeDrawingVisual(renderData);
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
         Assert.True(new WpfVisualTreeReflectionRenderer().TryReplaySubtreeIntoCurrentRetainedVisual(
@@ -385,6 +390,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         Assert.Equal(new object[] { root }, sink.VisualOwners);
         Assert.Contains(root.Children, sink.VisualDependencies);
+        Assert.Contains(renderData, sink.VisualDependencies);
         Assert.Contains(brush, sink.VisualDependencies);
         Assert.Equal(1, result.ContentCount);
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);

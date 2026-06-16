@@ -42,6 +42,8 @@ public interface IWpfCursorService
 
 public interface IWpfDispatcherService
 {
+    event EventHandler? WorkAvailable;
+
     bool CheckAccess();
 
     IWpfDispatcherOperation Post(Action callback, WpfDispatcherPriority priority = WpfDispatcherPriority.Normal);

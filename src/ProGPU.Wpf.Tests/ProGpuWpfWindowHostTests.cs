@@ -271,9 +271,10 @@ public sealed class ProGpuWpfWindowHostTests
     [Fact]
     public void ProcessDispatcherQueueRunsQueuedPlatformCallbacks()
     {
+        var dispatcher = new TestDispatcherService(raiseWorkAvailableOnPost: false);
         using var host = new ProGpuWpfWindowHost
         {
-            PlatformServices = new CrossPlatformWpfPlatformServices()
+            PlatformServices = CreatePlatformServices(dispatcher)
         };
         var ran = false;
 
@@ -281,6 +282,64 @@ public sealed class ProGpuWpfWindowHostTests
 
         Assert.True(host.ProcessDispatcherQueue());
         Assert.True(ran);
+    }
+
+    [Fact]
+    public void DispatcherWorkAvailableProcessesQueuedPlatformCallbacksOnOwnerThread()
+    {
+        var dispatcher = new TestDispatcherService(raiseWorkAvailableOnPost: true);
+        using var host = new ProGpuWpfWindowHost
+        {
+            PlatformServices = CreatePlatformServices(dispatcher)
+        };
+        var ran = false;
+
+        dispatcher.Post(() => ran = true, WpfDispatcherPriority.Render);
+
+        Assert.True(ran);
+        Assert.Equal(1, host.DispatcherWakeupCount);
+        Assert.False(host.ProcessDispatcherQueue());
+    }
+
+    [Fact]
+    public void DispatcherWorkAvailableFromWorkerThreadWaitsForOwnerThreadPump()
+    {
+        using var host = new ProGpuWpfWindowHost
+        {
+            PlatformServices = new CrossPlatformWpfPlatformServices()
+        };
+        var dispatcher = Assert.IsType<QueuedWpfDispatcherService>(host.PlatformServices.Dispatcher);
+        var ran = false;
+        var worker = new Thread(() => dispatcher.Post(() => ran = true));
+
+        worker.Start();
+        worker.Join();
+
+        Assert.False(ran);
+        Assert.Equal(1, host.DispatcherWakeupCount);
+        Assert.True(host.ProcessDispatcherQueue());
+        Assert.True(ran);
+    }
+
+    [Fact]
+    public void ReplacingPlatformServicesDisconnectsPreviousDispatcherWakeupSource()
+    {
+        var firstDispatcher = new TestDispatcherService(raiseWorkAvailableOnPost: true);
+        var secondDispatcher = new TestDispatcherService(raiseWorkAvailableOnPost: true);
+        using var host = new ProGpuWpfWindowHost
+        {
+            PlatformServices = CreatePlatformServices(firstDispatcher)
+        };
+        host.PlatformServices = CreatePlatformServices(secondDispatcher);
+        var firstRan = false;
+        var secondRan = false;
+
+        firstDispatcher.Post(() => firstRan = true);
+        secondDispatcher.Post(() => secondRan = true);
+
+        Assert.False(firstRan);
+        Assert.True(secondRan);
+        Assert.Equal(1, host.DispatcherWakeupCount);
     }
 
     [Fact]
@@ -465,6 +524,110 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Null(host.WpfRootVisual);
         Assert.Equal(requestCountAfterDispose, scheduler.RequestCount);
         Assert.False(source.IsDisposed);
+    }
+
+    private static CrossPlatformWpfPlatformServices CreatePlatformServices(IWpfDispatcherService dispatcher)
+    {
+        return new CrossPlatformWpfPlatformServices(
+            new ProcessWpfLauncher(),
+            new SilkNetWpfMonitorService(),
+            new ProcessWpfClipboard(),
+            new SilkNetWpfCursorService(),
+            dispatcher,
+            new ProcessWpfFileDialogService());
+    }
+
+    private sealed class TestDispatcherService : IWpfDispatcherService
+    {
+        private readonly Queue<TestDispatcherOperation> _operations = new();
+        private readonly bool _raiseWorkAvailableOnPost;
+
+        public TestDispatcherService(bool raiseWorkAvailableOnPost)
+        {
+            _raiseWorkAvailableOnPost = raiseWorkAvailableOnPost;
+        }
+
+        public event EventHandler? WorkAvailable;
+
+        public bool CheckAccess()
+        {
+            return true;
+        }
+
+        public IWpfDispatcherOperation Post(Action callback, WpfDispatcherPriority priority = WpfDispatcherPriority.Normal)
+        {
+            ArgumentNullException.ThrowIfNull(callback);
+            var operation = new TestDispatcherOperation(callback, priority);
+            _operations.Enqueue(operation);
+            if (_raiseWorkAvailableOnPost)
+            {
+                WorkAvailable?.Invoke(this, EventArgs.Empty);
+            }
+
+            return operation;
+        }
+
+        public bool ProcessPending()
+        {
+            var processed = false;
+            while (_operations.Count > 0)
+            {
+                var operation = _operations.Dequeue();
+                if (operation.IsCanceled)
+                {
+                    continue;
+                }
+
+                operation.Invoke();
+                operation.MarkCompleted();
+                processed = true;
+            }
+
+            return processed;
+        }
+    }
+
+    private sealed class TestDispatcherOperation : IWpfDispatcherOperation
+    {
+        private readonly Action _callback;
+
+        public TestDispatcherOperation(Action callback, WpfDispatcherPriority priority)
+        {
+            _callback = callback;
+            Priority = priority;
+        }
+
+        public WpfDispatcherPriority Priority { get; }
+
+        public bool IsCanceled { get; private set; }
+
+        public bool IsCompleted { get; private set; }
+
+        public bool Cancel()
+        {
+            if (IsCanceled || IsCompleted)
+            {
+                return false;
+            }
+
+            IsCanceled = true;
+            return true;
+        }
+
+        public void Dispose()
+        {
+            Cancel();
+        }
+
+        public void Invoke()
+        {
+            _callback();
+        }
+
+        public void MarkCompleted()
+        {
+            IsCompleted = true;
+        }
     }
 
     private sealed class TestRenderScheduler : IWpfRenderScheduler

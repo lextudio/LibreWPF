@@ -26,6 +26,8 @@ public sealed class QueuedWpfDispatcherService : IWpfDispatcherService
         _dispatcherThreadId = dispatcherThreadId;
     }
 
+    public event EventHandler? WorkAvailable;
+
     public bool CheckAccess()
     {
         return Environment.CurrentManagedThreadId == _dispatcherThreadId;
@@ -40,12 +42,15 @@ public sealed class QueuedWpfDispatcherService : IWpfDispatcherService
             throw new ArgumentOutOfRangeException(nameof(priority), priority, "Unsupported dispatcher priority.");
         }
 
+        QueuedOperation operation;
         lock (_gate)
         {
-            var operation = new QueuedOperation(callback, priority, _nextSequence++);
+            operation = new QueuedOperation(callback, priority, _nextSequence++);
             _queue.Add(operation);
-            return operation;
         }
+
+        WorkAvailable?.Invoke(this, EventArgs.Empty);
+        return operation;
     }
 
     public bool ProcessPending()

@@ -22,6 +22,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private IWpfDragDropService? _attachedDragDropService;
     private IDisposable? _windowEventSubscription;
     private IWpfWindowEventService? _attachedWindowEventService;
+    private IWpfDispatcherService? _attachedDispatcherService;
     private IWpfPlatformServices _platformServices = CrossPlatformWpfPlatformServices.Instance;
     private IWpfRenderScheduler _wpfRenderScheduler;
     private WpfPortablePresentationSourceBridge? _portablePresentationSourceBridge;
@@ -33,6 +34,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private bool _ownsRenderScheduler;
     private bool _isRendering;
     private bool _isProcessingRenderSchedulerWakeup;
+    private bool _isProcessingDispatcherWorkWakeup;
     private bool _isHostVisible;
     private ProGpuWpfWindowState _windowState;
     private string _windowTitle;
@@ -48,6 +50,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _clientWidth = Math.Max(1, _options.Width);
         _clientHeight = Math.Max(1, _options.Height);
         _wpfRenderScheduler = CreateDefaultRenderScheduler(_platformServices, out _ownsRenderScheduler);
+        AttachDispatcherService(_platformServices.Dispatcher);
         AttachRenderScheduler(_wpfRenderScheduler);
     }
 
@@ -88,7 +91,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         {
             ArgumentNullException.ThrowIfNull(value);
 
+            DetachDispatcherService();
             _platformServices = value;
+            AttachDispatcherService(_platformServices.Dispatcher);
             if (_ownsRenderScheduler)
             {
                 ReplaceRenderScheduler(
@@ -142,6 +147,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public long SkippedFrameCount { get; private set; }
 
     internal long RenderSchedulerWakeupCount { get; private set; }
+
+    internal long DispatcherWakeupCount { get; private set; }
 
     public Action<MediaDrawingContext, ProGpuWpfFrameEventArgs>? Draw { get; set; }
 
@@ -316,6 +323,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         DetachInputService();
         DetachDragDropService();
         DetachWindowEventService();
+        DetachDispatcherService();
         DisposePortablePresentationSourceBridge();
         DisposeTarget();
         _window?.Dispose();
@@ -746,6 +754,58 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         catch (PlatformNotSupportedException)
         {
             return false;
+        }
+    }
+
+    private void AttachDispatcherService(IWpfDispatcherService dispatcher)
+    {
+        DetachDispatcherService();
+        dispatcher.WorkAvailable += OnDispatcherWorkAvailable;
+        _attachedDispatcherService = dispatcher;
+    }
+
+    private void DetachDispatcherService()
+    {
+        if (_attachedDispatcherService != null)
+        {
+            _attachedDispatcherService.WorkAvailable -= OnDispatcherWorkAvailable;
+            _attachedDispatcherService = null;
+        }
+    }
+
+    private void OnDispatcherWorkAvailable(object? sender, EventArgs e)
+    {
+        DispatcherWakeupCount++;
+        TryProcessDispatcherWorkWakeup();
+    }
+
+    internal bool TryProcessDispatcherWorkWakeup()
+    {
+        if (_isRendering || _isProcessingDispatcherWorkWakeup)
+        {
+            return false;
+        }
+
+        try
+        {
+            if (!PlatformServices.Dispatcher.CheckAccess())
+            {
+                return false;
+            }
+        }
+        catch (PlatformNotSupportedException)
+        {
+            return false;
+        }
+
+        _isProcessingDispatcherWorkWakeup = true;
+        try
+        {
+            return ProcessDispatcherQueueCore();
+        }
+        finally
+        {
+            _isProcessingDispatcherWorkWakeup = false;
         }
     }
 

@@ -23,6 +23,27 @@ public sealed class QueuedWpfDispatcherServiceTests
     }
 
     [Fact]
+    public void PostRaisesWorkAvailableAfterCallbackIsQueued()
+    {
+        var dispatcher = new QueuedWpfDispatcherService();
+        var ran = false;
+        var workAvailableCount = 0;
+        var processedFromEvent = false;
+        dispatcher.WorkAvailable += (_, _) =>
+        {
+            workAvailableCount++;
+            processedFromEvent = dispatcher.ProcessPending();
+        };
+
+        var operation = dispatcher.Post(() => ran = true, WpfDispatcherPriority.Render);
+
+        Assert.Equal(1, workAvailableCount);
+        Assert.True(processedFromEvent);
+        Assert.True(ran);
+        Assert.True(operation.IsCompleted);
+    }
+
+    [Fact]
     public void ProcessPendingRunsCallbacksByPriorityAndFifoOrder()
     {
         var dispatcher = new QueuedWpfDispatcherService();

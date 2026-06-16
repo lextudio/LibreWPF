@@ -70,6 +70,12 @@ public sealed class UnsupportedWpfPlatformServices : IWpfPlatformServices
 
     private sealed class UnsupportedDispatcherService : IWpfDispatcherService
     {
+        public event EventHandler? WorkAvailable
+        {
+            add { }
+            remove { }
+        }
+
         public bool CheckAccess()
         {
             throw new PlatformNotSupportedException("Dispatcher services are not configured for this WPF ProGPU host.");

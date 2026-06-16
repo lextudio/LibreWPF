@@ -185,6 +185,14 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Media",
             "PortableCompositionTarget.cs");
+        var portableSourcePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "PortablePresentationSource.cs");
         var projectPath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -194,6 +202,7 @@ public sealed class WpfManagedProjectGraphTests
 
         var compositionTarget = File.ReadAllText(compositionTargetPath);
         var portableTarget = File.ReadAllText(portableTargetPath);
+        var portableSource = File.ReadAllText(portableSourcePath);
         var project = File.ReadAllText(projectPath);
 
         Assert.Contains("internal virtual bool UsesDuceComposition", compositionTarget, StringComparison.Ordinal);
@@ -217,6 +226,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public override Matrix TransformToDevice", portableTarget, StringComparison.Ordinal);
         Assert.Contains("private void SetDeviceScaleCore", portableTarget, StringComparison.Ordinal);
         Assert.Contains(@"<Compile Include=""System\Windows\Media\PortableCompositionTarget.cs"" />", project, StringComparison.Ordinal);
+
+        Assert.Contains("internal sealed class PortablePresentationSource : PresentationSource, IDisposable", portableSource, StringComparison.Ordinal);
+        Assert.Contains("private readonly PortableCompositionTarget _compositionTarget", portableSource, StringComparison.Ordinal);
+        Assert.Contains("AddSource();", portableSource, StringComparison.Ordinal);
+        Assert.Contains("RemoveSource();", portableSource, StringComparison.Ordinal);
+        Assert.Contains("RootChanged(oldRootVisual, _rootVisual)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("internal event EventHandler RenderRequested", portableSource, StringComparison.Ordinal);
+        Assert.Contains("internal void SetDeviceScale(double dpiScaleX, double dpiScaleY)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("protected override CompositionTarget GetCompositionTargetCore()", portableSource, StringComparison.Ordinal);
+        Assert.Contains("return _isDisposed ? null : _compositionTarget;", portableSource, StringComparison.Ordinal);
+        Assert.Contains(@"<Compile Include=""System\Windows\PortablePresentationSource.cs"" />", project, StringComparison.Ordinal);
     }
 
     private static string FindRepoPath(params string[] pathSegments)

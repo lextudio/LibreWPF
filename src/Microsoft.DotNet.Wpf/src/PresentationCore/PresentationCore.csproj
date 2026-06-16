@@ -400,6 +400,7 @@
     <Compile Include="System\Windows\Ole\DataObjectAdapter.cs" />
     <Compile Include="System\Windows\Ole\WpfOleServices.cs" />
     <Compile Include="System\Windows\PresentationSource.cs" />
+    <Compile Include="System\Windows\PortablePresentationSource.cs" />
     <Compile Include="System\Windows\QueryContinueDragEventArgs.cs" />
     <Compile Include="System\Windows\QueryContinueDragEventHandler.cs" />
     <Compile Include="System\Windows\Readability.cs" />

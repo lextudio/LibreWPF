@@ -97,6 +97,67 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void MediaContextHasPortableRenderWakeupBoundary()
+    {
+        var mediaContextPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "MediaContext.cs");
+        var renderServicePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "PortableMediaContextRenderService.cs");
+        var presentationCoreProjectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "PresentationCore.csproj");
+        var activationServicePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "PortableWindowActivationService.cs");
+        var proGpuActivationPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "WpfPortableWindowActivation.cs");
+
+        var mediaContext = File.ReadAllText(mediaContextPath);
+        var renderService = File.ReadAllText(renderServicePath);
+        var presentationCoreProject = File.ReadAllText(presentationCoreProjectPath);
+        var activationService = File.ReadAllText(activationServicePath);
+        var proGpuActivation = File.ReadAllText(proGpuActivationPath);
+
+        Assert.Contains(@"<Compile Include=""System\Windows\Media\PortableMediaContextRenderService.cs"" />", presentationCoreProject, StringComparison.Ordinal);
+        Assert.Contains("internal static class PortableMediaContextRenderService", renderService, StringComparison.Ordinal);
+        Assert.Contains("RuntimeInformation.IsOSPlatform(OSPlatform.Windows)", renderService, StringComparison.Ordinal);
+        Assert.Contains("internal static IDisposable Register(Action requestRender)", renderService, StringComparison.Ordinal);
+        Assert.Contains("internal static void RequestRender()", renderService, StringComparison.Ordinal);
+        Assert.Contains("PortableMediaContextRenderService.RequestRender();", mediaContext, StringComparison.Ordinal);
+
+        Assert.Contains("internal static void FlushDispatcherOperations(object window, DispatcherPriority markerPriority)", activationService, StringComparison.Ordinal);
+        Assert.Contains("Dispatcher.PushFrame(frame)", activationService, StringComparison.Ordinal);
+        Assert.Contains("PortableMediaContextRenderServiceTypeName", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("TryRegisterMediaContextRenderService(presentationCoreAssembly)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("Host.RenderWakeupRequested += OnHostRenderWakeupRequested", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("TryFlushDispatcherOperations(Window, \"Render\")", proGpuActivation, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void InputManagerUsesPortableDevicesOutsideWindows()
     {
         var projectPath = FindRepoPath(

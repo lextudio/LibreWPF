@@ -4,6 +4,7 @@
 using System;
 using System.Threading;
 using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace System.Windows
 {
@@ -504,6 +505,29 @@ namespace System.Windows
 
             run(activation);
             return true;
+        }
+
+        internal static void FlushDispatcherOperations(object window, DispatcherPriority markerPriority)
+        {
+            if (OperatingSystem.IsWindows() ||
+                window is not Window typedWindow ||
+                typedWindow.Dispatcher == null ||
+                typedWindow.Dispatcher.HasShutdownStarted ||
+                typedWindow.Dispatcher.HasShutdownFinished)
+            {
+                return;
+            }
+
+            DispatcherFrame frame = new DispatcherFrame();
+            typedWindow.Dispatcher.BeginInvoke(
+                markerPriority,
+                (DispatcherOperationCallback)delegate(object state)
+                {
+                    ((DispatcherFrame)state).Continue = false;
+                    return null;
+                },
+                frame);
+            Dispatcher.PushFrame(frame);
         }
 
         internal static void Dispose(object activation)

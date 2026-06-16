@@ -8,9 +8,12 @@ namespace System.Windows.Media.ProGPU;
 public sealed class WpfPortableWindowActivation : IDisposable
 {
     private const string PortableWindowActivationServiceTypeName = "System.Windows.PortableWindowActivationService";
+    private const string PortableMediaContextRenderServiceTypeName = "System.Windows.Media.PortableMediaContextRenderService";
     private bool _isDisposed;
     private bool _isClosingFromNative;
     private bool _isClosingFromWpf;
+    private bool _isFlushingWpfDispatcher;
+    private IDisposable? _mediaContextRenderRegistration;
 
     private WpfPortableWindowActivation(
         ProGpuWpfWindowHost host,
@@ -26,6 +29,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         Host.InputReceived += OnHostInputReceived;
         Host.WindowEventReceived += OnHostWindowEventReceived;
         Host.DragDropReceived += OnHostDragDropReceived;
+        Host.RenderWakeupRequested += OnHostRenderWakeupRequested;
     }
 
     public ProGpuWpfWindowHost Host { get; }
@@ -201,6 +205,9 @@ public sealed class WpfPortableWindowActivation : IDisposable
         Host.InputReceived -= OnHostInputReceived;
         Host.WindowEventReceived -= OnHostWindowEventReceived;
         Host.DragDropReceived -= OnHostDragDropReceived;
+        Host.RenderWakeupRequested -= OnHostRenderWakeupRequested;
+        _mediaContextRenderRegistration?.Dispose();
+        _mediaContextRenderRegistration = null;
         Host.Dispose();
         _isDisposed = true;
     }
@@ -230,6 +237,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
 
         activation = new WpfPortableWindowActivation(host, window, rootVisual, portablePresentationSource);
+        activation.TryRegisterMediaContextRenderService(presentationCoreAssembly);
         return true;
     }
 
@@ -253,6 +261,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         var rootVisual = ResolveRootVisual(window);
         bridge.RootVisual = rootVisual;
         activation = new WpfPortableWindowActivation(host, window, rootVisual, portablePresentationSource);
+        activation.TryRegisterMediaContextRenderService(portablePresentationSource.GetType().Assembly);
         return true;
     }
 
@@ -341,6 +350,24 @@ public sealed class WpfPortableWindowActivation : IDisposable
             case WpfWindowEventKind.Deactivated:
                 TrySetWindowActivationState(Window, isActive: false);
                 break;
+        }
+    }
+
+    private void OnHostRenderWakeupRequested(object? sender, EventArgs e)
+    {
+        if (_isDisposed || _isFlushingWpfDispatcher)
+        {
+            return;
+        }
+
+        _isFlushingWpfDispatcher = true;
+        try
+        {
+            TryFlushDispatcherOperations(Window, "Render");
+        }
+        finally
+        {
+            _isFlushingWpfDispatcher = false;
         }
     }
 
@@ -620,6 +647,89 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
         handleActivateMethod.Invoke(window, new object[] { isActive });
         return true;
+    }
+
+    private bool TryRegisterMediaContextRenderService(Assembly presentationCoreAssembly)
+    {
+        var serviceType = presentationCoreAssembly.GetType(
+            PortableMediaContextRenderServiceTypeName,
+            throwOnError: false);
+        if (serviceType == null)
+        {
+            return false;
+        }
+
+        var registerMethod = serviceType.GetMethod(
+            "Register",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            types: new[] { typeof(Action) },
+            modifiers: null);
+        if (registerMethod == null ||
+            !typeof(IDisposable).IsAssignableFrom(registerMethod.ReturnType))
+        {
+            return false;
+        }
+
+        _mediaContextRenderRegistration?.Dispose();
+        _mediaContextRenderRegistration = (IDisposable?)registerMethod.Invoke(
+            obj: null,
+            parameters: new object[] { (Action)RequestRenderFromMediaContext });
+        return _mediaContextRenderRegistration != null;
+    }
+
+    private void RequestRenderFromMediaContext()
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            Host.WpfRenderScheduler.RequestRender();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Host-first disposal can leave one stale MediaContext callback until activation cleanup.
+        }
+    }
+
+    private static bool TryFlushDispatcherOperations(object window, string markerPriorityName)
+    {
+        var serviceType = window.GetType().Assembly.GetType(
+            PortableWindowActivationServiceTypeName,
+            throwOnError: false);
+        if (serviceType == null)
+        {
+            return false;
+        }
+
+        foreach (var method in serviceType.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+        {
+            if (!string.Equals(method.Name, "FlushDispatcherOperations", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var parameters = method.GetParameters();
+            if (parameters.Length != 2 ||
+                !parameters[0].ParameterType.IsAssignableFrom(window.GetType()) ||
+                !parameters[1].ParameterType.IsEnum)
+            {
+                continue;
+            }
+
+            if (!Enum.TryParse(parameters[1].ParameterType, markerPriorityName, ignoreCase: false, out object? markerPriority))
+            {
+                continue;
+            }
+
+            method.Invoke(null, new[] { window, markerPriority });
+            return true;
+        }
+
+        return false;
     }
 
     private static bool TryInvokePortableWindowActivationService(object window, bool isActive)

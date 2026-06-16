@@ -597,6 +597,8 @@ namespace System.Windows.Media
                     LeaveInterlockedPresentation();
                 }
 
+                bool scheduledPortableRenderWakeup = false;
+
                 // We need to tick in the distant future, schedule a far way message
                 if (nextTickNeeded > TimeSpan.FromSeconds(1))
                 {
@@ -606,6 +608,7 @@ namespace System.Windows.Media
 
                         _promoteRenderOpToRender.Interval = nextTickNeeded;
                         _promoteRenderOpToRender.Start();
+                        scheduledPortableRenderWakeup = true;
                     }
                 }
                 // We need to tick soon (< 1 second)
@@ -622,6 +625,7 @@ namespace System.Windows.Media
 
                         _promoteRenderOpToRender.Interval = TimeSpan.FromSeconds(1);
                         _promoteRenderOpToRender.Start();
+                        scheduledPortableRenderWakeup = true;
                     }
                 }
                 else if (nextTickNeeded == TimeSpan.Zero)
@@ -652,10 +656,12 @@ namespace System.Windows.Media
                     if (_currentRenderOp == null)
                     {
                         _currentRenderOp = Dispatcher.BeginInvoke(priority, _animRenderMessage, null);
+                        scheduledPortableRenderWakeup = true;
                     }
                     else
                     {
                         _currentRenderOp.Priority = priority;
+                        scheduledPortableRenderWakeup = true;
                     }
 
                     _promoteRenderOpToInput.Stop();
@@ -666,6 +672,10 @@ namespace System.Windows.Media
                 // Trace the scheduling of the render
                 //
                 EventTrace.EasyTraceEvent(EventTrace.Keyword.KeywordGraphics, EventTrace.Event.WClientScheduleRender, nextTickNeeded.TotalMilliseconds);
+                if (scheduledPortableRenderWakeup)
+                {
+                    PortableMediaContextRenderService.RequestRender();
+                }
             }
         }
 
@@ -1694,6 +1704,7 @@ namespace System.Windows.Media
                 // We don't need to keep our promotion timers around.
                 _promoteRenderOpToInput.Stop();
                 _promoteRenderOpToRender.Stop();
+                PortableMediaContextRenderService.RequestRender();
             }
         }
 

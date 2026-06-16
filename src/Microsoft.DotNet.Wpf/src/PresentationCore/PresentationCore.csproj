@@ -827,6 +827,7 @@
     <Compile Include="System\Windows\Media\PolyBezierSegment.cs" />
     <Compile Include="System\Windows\Media\PolyLineSegment.cs" />
     <Compile Include="System\Windows\Media\PolyQuadraticBezierSegment.cs" />
+    <Compile Include="System\Windows\Media\PortableCompositionTarget.cs" />
     <!--Compile Include="System\Windows\Media\printcontext.cs" /-->
     <Compile Include="System\Windows\Media\QuadraticBezierSegment.cs" />
     <Compile Include="System\Windows\Media\RadialGradientBrush.cs" />

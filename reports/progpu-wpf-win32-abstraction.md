@@ -36,12 +36,13 @@ The default host implementation uses `CrossPlatformWpfPlatformServices`. Shell l
 
 Real WPF `MediaContextNotificationWindow` now keeps its hidden HWND and DUCE window-message notification setup Windows-only. On non-Windows it preserves construction/disposal shape but skips `RegisterWindowMessage`, hidden `HwndWrapper` creation, MILCore DWM content attach/detach, and channel `SetNotificationWindow(...)`. Real WPF `MediaContext` also routes performance-counter access through a local clock boundary: Windows keeps QPC, while non-Windows uses `Stopwatch` counts and frequency. Real WPF `MediaSystem` keeps media-context lifetime bookkeeping on non-Windows but returns disconnected before MILCore version checks, partition-manager startup, DUCE transport/channel creation, RDP hardware toggle setup, redirection notifications, and partition-manager shutdown. This is a transition boundary: ProGPU/Silk.NET scheduling uses `DispatcherWpfRenderScheduler` and host render wakeups today, while full in-assembly `MediaContext` integration still needs a portable channel notification source instead of DUCE HWND messages.
 
-Real WPF `HwndTarget` remains the Win32 composition target, but its static window-message registration is now Windows-only and non-Windows construction fails before session, HWND, or MIL initialization. This keeps the public type loadable while making the remaining replacement boundary explicit: non-Windows window ownership must come from a ProGPU/Silk.NET composition target rather than an HWND-backed target.
+Real WPF `HwndTarget` remains the Win32 composition target, but its static window-message registration is now Windows-only and non-Windows construction fails before session, HWND, or MIL initialization. This keeps the public type loadable while making the remaining replacement boundary explicit: non-Windows window ownership must come from a ProGPU/Silk.NET composition target rather than an HWND-backed target. Real WPF `PortableCompositionTarget` is the first in-assembly non-HWND boundary for that replacement: it owns a root visual and device transforms without DUCE resource creation, and `CompositionTarget` now gates DUCE root cleanup behind `UsesDuceComposition`.
 
 ## Mapping
 
 - HWND creation, render target ownership, resize, frame coalescing, and present: Silk.NET + `ProGpuWpfWindowHost`.
 - Real WPF `HwndTarget`: Windows-only HWND composition target; non-Windows type loading is safe, but construction fails fast until a Silk.NET-backed `CompositionTarget` replaces it.
+- Real WPF `PortableCompositionTarget`: non-HWND managed root/device-transform target; no DUCE resource creation; intended base for the Silk.NET/ProGPU-backed presentation source.
 - D3D device/swapchain: ProGPU `WgpuContext`.
 - MIL composition target: `ProGpuWpfCompositionTarget`.
 - Drawing commands: `IWpfCompositionCommandSink`, backed by `ProGpuCompositionCommandSink`.
@@ -63,7 +64,7 @@ Real WPF `HwndTarget` remains the Win32 composition target, but its static windo
 ## Next Steps
 
 1. Harden the process-backed clipboard and file dialog services or replace them with native per-OS implementations behind the same interfaces.
-2. Add a Silk.NET-backed real WPF `CompositionTarget`/presentation source that owns a ProGPU surface instead of an HWND.
+2. Wire `PortableCompositionTarget` into a Silk.NET-backed real WPF presentation source that owns a ProGPU surface instead of an HWND.
 3. Add WPF input manager routing, IME/stylus handling, full routed drag/drop over `IWpfDragDropService`, map real WPF `Dispatcher`/`DispatcherTimer`/`MediaContext` channel notifications and animation ticks onto the queued dispatcher and timer boundaries, deepen native event-loop wakeups beyond the current guarded host `DoRender()` bridge, and deepen activation integration behind local interfaces.
 4. Replace `MS.Win32` usages in rendering-adjacent code with the service interfaces.
 5. Keep Windows-specific compatibility behavior isolated in the Windows implementation.

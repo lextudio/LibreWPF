@@ -164,6 +164,61 @@ public sealed class WpfManagedProjectGraphTests
             "The non-Windows constructor failure must run before Win32 session or HWND initialization.");
     }
 
+    [Fact]
+    public void CompositionTargetSupportsPortableNonDuceRootOwnership()
+    {
+        var compositionTargetPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "CompositionTarget.cs");
+        var portableTargetPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "PortableCompositionTarget.cs");
+        var projectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "PresentationCore.csproj");
+
+        var compositionTarget = File.ReadAllText(compositionTargetPath);
+        var portableTarget = File.ReadAllText(portableTargetPath);
+        var project = File.ReadAllText(projectPath);
+
+        Assert.Contains("internal virtual bool UsesDuceComposition", compositionTarget, StringComparison.Ordinal);
+        Assert.Contains("internal virtual void OnRootVisualChanged", compositionTarget, StringComparison.Ordinal);
+        Assert.Contains("if (UsesDuceComposition)", compositionTarget, StringComparison.Ordinal);
+        Assert.Contains("DUCE.Channel channel = mediaContext.Channel", compositionTarget, StringComparison.Ordinal);
+        Assert.Contains("channel != null", compositionTarget, StringComparison.Ordinal);
+        Assert.Contains("OnRootVisualChanged(oldRootVisual, _rootVisual)", compositionTarget, StringComparison.Ordinal);
+        Assert.DoesNotContain("MediaContext.From(Dispatcher).GetChannels()", compositionTarget, StringComparison.Ordinal);
+        var setRootVisualIndex = compositionTarget.IndexOf("private void SetRootVisual", StringComparison.Ordinal);
+        Assert.True(
+            compositionTarget.IndexOf("if (UsesDuceComposition)", setRootVisualIndex, StringComparison.Ordinal)
+                < compositionTarget.IndexOf("_contentRoot.IsOnChannel(channel)", setRootVisualIndex, StringComparison.Ordinal),
+            "DUCE content-root checks must stay behind the DUCE-composition branch.");
+
+        Assert.Contains("internal sealed class PortableCompositionTarget : CompositionTarget", portableTarget, StringComparison.Ordinal);
+        Assert.Contains("internal override bool UsesDuceComposition", portableTarget, StringComparison.Ordinal);
+        Assert.Contains("get { return false; }", portableTarget, StringComparison.Ordinal);
+        Assert.Contains("internal override void CreateUCEResources", portableTarget, StringComparison.Ordinal);
+        Assert.Contains("internal override void ReleaseUCEResources", portableTarget, StringComparison.Ordinal);
+        Assert.Contains("public override Matrix TransformToDevice", portableTarget, StringComparison.Ordinal);
+        Assert.Contains("private void SetDeviceScaleCore", portableTarget, StringComparison.Ordinal);
+        Assert.Contains(@"<Compile Include=""System\Windows\Media\PortableCompositionTarget.cs"" />", project, StringComparison.Ordinal);
+    }
+
     private static string FindRepoPath(params string[] pathSegments)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

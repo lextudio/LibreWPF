@@ -144,9 +144,9 @@ internal static class Program
     {
         object content = GetProperty(window, "Content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expectedMinimum: 4, "themed stack panel children");
+        AssertCollectionCount(children, expectedMinimum: 6, "themed stack panel children");
 
-        object button = GetCollectionItem(children, 3);
+        object button = GetCollectionItem(children, 5);
         object richTextBox = GetCollectionItem(children, 2);
 
         AssertType(GetDictionaryValue(themeDictionary, "DefaultWindowStyle"), "System.Windows.Style", "DefaultWindowStyle");

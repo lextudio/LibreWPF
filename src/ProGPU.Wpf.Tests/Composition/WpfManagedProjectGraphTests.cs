@@ -658,8 +658,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TextBox", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("RichTextBox", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("FlowDocument", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"BindingBlock\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding Greeting}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"CommandButton\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{Binding SmokeCommand}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("StaticResource AccentBrush", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("InitializeComponent();", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DataContext = new SmokeViewModel();", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokeViewModel", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokeCommand : ICommand", mainWindowCodeBehind, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -708,6 +715,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetDictionaryValue(resources, \"AccentBrush\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(resources, \"SmokeTextBoxStyle\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetField(window, \"InputBox\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetField(window, \"BindingBlock\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetField(window, \"CommandButton\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateBindingAndCommand(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Button command binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(window, \"FindName\", \"InputBox\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("new ProGpuWpfWindowHost(WpfPortableWindowActivation.CreateHostOptions(w))", harnessProgram, StringComparison.Ordinal);
@@ -765,6 +776,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("new Func<object, object>(recorder.Activate)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("new Action<object>(recorder.Run)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMainWindow(window, _application)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateBindingAndCommand(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Button command binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("recorder.ValidateAfterRun()", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("if (RunCount != 1)", harnessProgram, StringComparison.Ordinal);
     }
@@ -821,6 +834,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Invoke(button, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(richTextBox, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertType(GetProperty(richTextBox, \"Template\"), \"System.Windows.Controls.ControlTemplate\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertCollectionCount(children, expectedMinimum: 6", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateThemedVisualReplay(windowsBase, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("MeasureAndArrange(windowsBase, content, pixelWidth, pixelHeight)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(element, \"Measure\", availableSize)", harnessProgram, StringComparison.Ordinal);

@@ -21,5 +21,14 @@
                 </Paragraph>
             </FlowDocument>
         </RichTextBox>
+        <TextBlock
+            x:Name="BindingBlock"
+            Margin="0,8,0,0"
+            Text="{Binding Greeting}" />
+        <Button
+            x:Name="CommandButton"
+            Margin="0,8,0,0"
+            Command="{Binding SmokeCommand}"
+            Content="{Binding ButtonText}" />
     </StackPanel>
 </Window>

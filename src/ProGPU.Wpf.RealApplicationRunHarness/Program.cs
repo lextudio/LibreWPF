@@ -104,7 +104,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 3, "stack panel children");
+        AssertCollectionCount(children, expected: 5, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -128,6 +128,31 @@ internal static class Program
         object flowDocument = GetProperty(richTextBox, "Document");
         AssertType(flowDocument, "System.Windows.Documents.FlowDocument", "compiled FlowDocument");
         AssertCollectionCount(GetProperty(flowDocument, "Blocks"), expected: 1, "compiled FlowDocument blocks");
+
+        ValidateBindingAndCommand(window);
+    }
+
+    private static void ValidateBindingAndCommand(object window)
+    {
+        object dataContext = GetProperty(window, "DataContext");
+        AssertType(dataContext, "ProGPU.Wpf.RealXamlCompilerHarness.MainWindow+SmokeViewModel", "compiled binding DataContext");
+        AssertEqual("bound greeting from real WPF", GetProperty(dataContext, "Greeting"), "bound view-model greeting");
+        AssertEqual("run bound command", GetProperty(dataContext, "ButtonText"), "bound view-model button text");
+
+        object bindingBlock = GetField(window, "BindingBlock");
+        AssertType(bindingBlock, "System.Windows.Controls.TextBlock", "compiled binding TextBlock");
+        AssertEqual("bound greeting from real WPF", GetProperty(bindingBlock, "Text"), "compiled TextBlock binding");
+
+        object commandButton = GetField(window, "CommandButton");
+        AssertType(commandButton, "System.Windows.Controls.Button", "compiled command Button");
+        AssertEqual("run bound command", GetProperty(commandButton, "Content"), "compiled Button content binding");
+
+        object viewModelCommand = GetProperty(dataContext, "SmokeCommand");
+        object buttonCommand = GetProperty(commandButton, "Command");
+        AssertSame(viewModelCommand, buttonCommand, "compiled Button command binding");
+        AssertEqual(0, GetProperty(viewModelCommand, "ExecutionCount"), "bound command initial execution count");
+        Invoke(buttonCommand, "Execute", new object?[] { null });
+        AssertEqual(1, GetProperty(viewModelCommand, "ExecutionCount"), "bound command execution count");
     }
 
     private static ActivationRecorder RegisterPortableActivation(

@@ -194,4 +194,8 @@ public readonly struct WpfRetainedVisualBranchInvalidationResult
 internal interface IWpfRetainedVisualBranchSink
 {
     void RegisterVisualOwner(object sourceVisual);
+
+    bool PushVisualOwner(object sourceVisual);
+
+    void PopVisualOwner();
 }

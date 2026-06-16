@@ -33,6 +33,14 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         DrawingCache
     }
 
+    private enum VisualScopeKind
+    {
+        Root,
+        SourceOwner,
+        Effect,
+        Cache
+    }
+
     private readonly Stack<ScopeKind> _scopeStack = new();
     private readonly Stack<VisualScope> _visualScopes = new();
     private readonly ProGpuWpfDrawingFrame _drawingFrame;
@@ -56,7 +64,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
             throw new InvalidOperationException("The drawing frame does not expose a retained WPF visual root.");
         }
 
-        _visualScopes.Push(new VisualScope(rootVisual, context, viewport3DTextureCache));
+        _visualScopes.Push(new VisualScope(rootVisual, context, viewport3DTextureCache, VisualScopeKind.Root, 0));
     }
 
     public MediaDrawingContext DrawingContext => Current.DrawingContext;
@@ -67,6 +75,50 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         ArgumentNullException.ThrowIfNull(sourceVisual);
 
         _drawingFrame.RegisterRetainedWpfVisualOwner(sourceVisual, Current.Visual);
+    }
+
+    public bool PushVisualOwner(object sourceVisual)
+    {
+        ThrowIfClosed();
+        ArgumentNullException.ThrowIfNull(sourceVisual);
+
+        var ownerVisual = new ProGpuRetainedDrawingVisual
+        {
+            Size = Current.Visual.Size
+        };
+
+        Current.Visual.AddChild(ownerVisual);
+        _visualScopes.Push(new VisualScope(
+            ownerVisual,
+            Current.Context,
+            Current.Viewport3DTextureCache,
+            VisualScopeKind.SourceOwner,
+            _scopeStack.Count));
+        _drawingFrame.RegisterRetainedWpfVisualOwner(sourceVisual, ownerVisual);
+        return true;
+    }
+
+    public void PopVisualOwner()
+    {
+        ThrowIfClosed();
+
+        if (_visualScopes.Count <= 1)
+        {
+            throw new InvalidOperationException("There is no retained source owner visual scope to pop.");
+        }
+
+        var current = Current;
+        if (current.ScopeKind != VisualScopeKind.SourceOwner)
+        {
+            throw new InvalidOperationException("The current retained visual scope is not a source owner scope.");
+        }
+
+        if (_scopeStack.Count != current.ScopeStackDepth)
+        {
+            throw new InvalidOperationException("Cannot pop a retained source owner visual scope while drawing scopes are still open.");
+        }
+
+        PopVisualScope();
     }
 
     private VisualScope Current
@@ -322,7 +374,8 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
     {
         Current.Visual.AddChild(visual);
 
-        var scope = new VisualScope(visual, Current.Context, Current.Viewport3DTextureCache);
+        var visualScopeKind = scopeKind == ScopeKind.VisualEffect ? VisualScopeKind.Effect : VisualScopeKind.Cache;
+        var scope = new VisualScope(visual, Current.Context, Current.Viewport3DTextureCache, visualScopeKind, _scopeStack.Count);
         if (bounds.X != 0 || bounds.Y != 0)
         {
             var matrix = Matrix.Identity;
@@ -364,11 +417,15 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         public VisualScope(
             ProGpuRetainedDrawingVisual visual,
             global::ProGPU.Backend.WgpuContext? context,
-            WpfViewport3DTextureCache? viewport3DTextureCache)
+            WpfViewport3DTextureCache? viewport3DTextureCache,
+            VisualScopeKind scopeKind,
+            int scopeStackDepth)
         {
             Visual = visual;
             Context = context;
             Viewport3DTextureCache = viewport3DTextureCache;
+            ScopeKind = scopeKind;
+            ScopeStackDepth = scopeStackDepth;
             DrawingContext = new MediaDrawingContext(visual.Context);
             Sink = new ProGpuCompositionCommandSink(DrawingContext, context, viewport3DTextureCache);
         }
@@ -378,6 +435,10 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         public global::ProGPU.Backend.WgpuContext? Context { get; }
 
         public WpfViewport3DTextureCache? Viewport3DTextureCache { get; }
+
+        public VisualScopeKind ScopeKind { get; }
+
+        public int ScopeStackDepth { get; }
 
         public MediaDrawingContext DrawingContext { get; }
 

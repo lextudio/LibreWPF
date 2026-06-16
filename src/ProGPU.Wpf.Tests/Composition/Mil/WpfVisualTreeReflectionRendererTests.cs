@@ -962,6 +962,16 @@ public sealed class WpfVisualTreeReflectionRendererTests
             VisualOwners.Add(sourceVisual);
         }
 
+        public bool PushVisualOwner(object sourceVisual)
+        {
+            VisualOwners.Add(sourceVisual);
+            return false;
+        }
+
+        public void PopVisualOwner()
+        {
+        }
+
         public void DrawLine(MediaPen? pen, Point point0, Point point1)
         {
         }

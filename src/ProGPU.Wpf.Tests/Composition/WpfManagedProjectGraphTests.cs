@@ -714,6 +714,62 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void RealApplicationRunHarnessExercisesStartupUriThroughPortableActivation()
+    {
+        var harnessProjectPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealApplicationRunHarness",
+            "ProGPU.Wpf.RealApplicationRunHarness.csproj");
+        var harnessProgramPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealApplicationRunHarness",
+            "Program.cs");
+
+        var harnessProject = XDocument.Load(harnessProjectPath);
+        var harnessProgram = File.ReadAllText(harnessProgramPath);
+
+        AssertPackageReference(harnessProject, "System.Configuration.ConfigurationManager");
+        AssertPackageReference(harnessProject, "System.Formats.Nrbf");
+        AssertPackageReference(harnessProject, "$(SystemIOPackagingPackage)");
+        AssertPackageReference(harnessProject, "System.Windows.Extensions");
+
+        var compilerHarnessReference = AssertProjectReference(
+            harnessProject,
+            @"ProGPU.Wpf.RealXamlCompilerHarness\ProGPU.Wpf.RealXamlCompilerHarness.csproj");
+        Assert.Equal("false", GetItemMetadata(compilerHarnessReference, "ReferenceOutputAssembly"));
+        Assert.Equal("all", GetItemMetadata(compilerHarnessReference, "PrivateAssets"));
+
+        var presentationCoreReference = AssertProjectReference(
+            harnessProject,
+            @"Microsoft.DotNet.Wpf\src\PresentationCore\PresentationCore.csproj");
+        Assert.Equal("false", GetItemMetadata(presentationCoreReference, "ReferenceOutputAssembly"));
+        Assert.Equal("all", GetItemMetadata(presentationCoreReference, "PrivateAssets"));
+
+        var presentationFrameworkReference = AssertProjectReference(
+            harnessProject,
+            @"Microsoft.DotNet.Wpf\src\PresentationFramework\PresentationFramework.csproj");
+        Assert.Equal("false", GetItemMetadata(presentationFrameworkReference, "ReferenceOutputAssembly"));
+        Assert.Equal("all", GetItemMetadata(presentationFrameworkReference, "PrivateAssets"));
+
+        Assert.DoesNotContain(
+            harnessProject.Descendants("ProjectReference"),
+            item => IncludeEndsWith(item, "Include", @"ProGPU.Wpf\ProGPU.Wpf.csproj"));
+        Assert.DoesNotContain(
+            harnessProject.Descendants("ProjectReference"),
+            item => IncludeEndsWith(item, "Include", @"external\ProGPU\src\ProGPU.Scene\ProGPU.Scene.csproj"));
+
+        Assert.Contains("CompilerHarnessAssemblyName = \"ProGPU.Wpf.RealXamlCompilerHarness\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Invoke(application, \"InitializeComponent\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Invoke(application, \"Run\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationServiceTypeName = \"System.Windows.PortableWindowActivationService\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new Func<object, object>(recorder.Activate)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new Action<object>(recorder.Run)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateMainWindow(window, _application)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("recorder.ValidateAfterRun()", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("if (RunCount != 1)", harnessProgram, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RealThemeRuntimeHarnessLoadsFluentThemeBamlThroughRealPresentationFramework()
     {
         var harnessProjectPath = FindRepoPath(
@@ -879,6 +935,14 @@ public sealed class WpfManagedProjectGraphTests
             "MS",
             "Win32",
             "UxThemeWrapper.cs"));
+        var application = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Application.cs"));
         var dispatcher = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -923,8 +987,15 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(typeface, "if (!OperatingSystem.IsWindows())", "TypographyAvailabilities typography");
         AssertGuardBefore(uxThemeWrapper, "_themeState = OperatingSystem.IsWindows()", "SafeNativeMethods.IsUxThemeActive()");
         AssertGuardBefore(dpiAwareness, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetWindowDpiAwarenessContext(hWnd)");
+        AssertGuardBefore(application, "if (!WindowsInternal.HasItem(wnd))", "wnd.Visibility = Visibility.Visible");
+        AssertGuardBefore(application, "if (MainWindow == null)", "wnd.Visibility = Visibility.Visible");
         Assert.Contains("_useWin32MessagePump = OperatingSystem.IsWindows();", dispatcher, StringComparison.Ordinal);
         AssertGuardBefore(dispatcher, "if (_useWin32MessagePump)", "new MessageOnlyHwndWrapper()");
+        AssertGuardBefore(dispatcher, "if (!_useWin32MessagePump)", "MSG msg = new MSG()");
+        Assert.Contains("PushManagedFrameImpl(frame)", dispatcher, StringComparison.Ordinal);
+        Assert.Contains("while(frame.Continue || HasPendingManagedOperation())", dispatcher, StringComparison.Ordinal);
+        Assert.Contains("HasPendingManagedOperation()", dispatcher, StringComparison.Ordinal);
+        AssertGuardBefore(dispatcher, "if (!_useWin32MessagePump)", "UnsafeNativeMethods.MsgWaitForMultipleObjectsEx");
         Assert.Contains("return !_useWin32MessagePump;", dispatcher, StringComparison.Ordinal);
     }
 

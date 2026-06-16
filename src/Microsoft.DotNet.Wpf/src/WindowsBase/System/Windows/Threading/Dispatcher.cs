@@ -2051,6 +2051,12 @@ namespace System.Windows.Threading
 
         private void PushFrameImpl(DispatcherFrame frame)
         {
+            if (!_useWin32MessagePump)
+            {
+                PushManagedFrameImpl(frame);
+                return;
+            }
+
             SynchronizationContext oldSyncContext = null;
             SynchronizationContext newSyncContext = null;
             MSG msg = new MSG();
@@ -2100,6 +2106,66 @@ namespace System.Windows.Threading
             }
         }
 
+        private void PushManagedFrameImpl(DispatcherFrame frame)
+        {
+            SynchronizationContext oldSyncContext = null;
+            SynchronizationContext newSyncContext = null;
+
+            _frameDepth++;
+            try
+            {
+                oldSyncContext = SynchronizationContext.Current;
+                newSyncContext = new DispatcherSynchronizationContext(this);
+                SynchronizationContext.SetSynchronizationContext(newSyncContext);
+
+                try
+                {
+                    while(frame.Continue || HasPendingManagedOperation())
+                    {
+                        PromoteTimers(Environment.TickCount);
+
+                        if (HasPendingManagedOperation())
+                        {
+                            ProcessQueue();
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+
+                    if(_frameDepth == 1)
+                    {
+                        if(_hasShutdownStarted)
+                        {
+                            ShutdownImpl();
+                        }
+                    }
+                }
+                finally
+                {
+                    SynchronizationContext.SetSynchronizationContext(oldSyncContext);
+                }
+            }
+            finally
+            {
+                _frameDepth--;
+                if(_frameDepth == 0)
+                {
+                    _exitAllFrames = false;
+                }
+            }
+        }
+
+        private bool HasPendingManagedOperation()
+        {
+            lock(_instanceLock)
+            {
+                DispatcherPriority priority = _queue.MaxPriority;
+                return priority != DispatcherPriority.Invalid &&
+                    priority != DispatcherPriority.Inactive;
+            }
+        }
 
         private bool GetMessage(ref MSG msg, IntPtr hwnd, int minMessage, int maxMessage)
         {
@@ -2276,6 +2342,11 @@ namespace System.Windows.Threading
 
         private bool IsInputPending()
         {
+            if (!_useWin32MessagePump)
+            {
+                return false;
+            }
+
             int retVal = 0;
 
             // We need to know if there is any pending input in the Win32

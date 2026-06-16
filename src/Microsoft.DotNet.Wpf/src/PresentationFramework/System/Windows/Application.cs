@@ -2316,6 +2316,16 @@ namespace System.Windows
             }
             else
             {
+                if (!WindowsInternal.HasItem(wnd))
+                {
+                    WindowsInternal.Add(wnd);
+                }
+
+                if (MainWindow == null)
+                {
+                    MainWindow = wnd;
+                }
+
                 // if Visibility has not been set, we set it to true
                 // Also check whether the window is already closed when we get here - applications could close the window
                 // in its constructor.

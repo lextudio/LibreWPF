@@ -423,21 +423,41 @@ internal interface IWpfRetainedVisualBranchSink
 
 internal readonly struct WpfRetainedVisualState
 {
-    public WpfRetainedVisualState(Vector2 offset, Matrix4x4 transform, float opacity, Rect? clipBounds)
+    public WpfRetainedVisualState(
+        Vector2 offset,
+        Matrix4x4 transform,
+        float opacity,
+        Rect? clipBounds,
+        Vector2? size = null,
+        global::ProGPU.Scene.EffectBase? effect = null,
+        bool cacheAsLayer = false,
+        Rect? contentBounds = null)
     {
         Offset = offset;
         Transform = transform;
         Opacity = opacity;
         ClipBounds = clipBounds;
+        Size = size;
+        Effect = effect;
+        CacheAsLayer = cacheAsLayer;
+        ContentBounds = contentBounds;
     }
 
     public Vector2 Offset { get; }
+
+    public Vector2? Size { get; }
 
     public Matrix4x4 Transform { get; }
 
     public float Opacity { get; }
 
     public Rect? ClipBounds { get; }
+
+    public global::ProGPU.Scene.EffectBase? Effect { get; }
+
+    public bool CacheAsLayer { get; }
+
+    public Rect? ContentBounds { get; }
 }
 
 internal interface IWpfRetainedVisualStateSink

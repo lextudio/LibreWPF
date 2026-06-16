@@ -260,6 +260,41 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void RetainedSinkAppliesNativeEffectAndCacheStateToCurrentOwnerScope()
+    {
+        var retainedRoot = new ProGpuContainerVisual();
+        var frame = new ProGpuWpfDrawingFrame(
+            new ProGpuContainerVisual(),
+            retainedRoot,
+            new ProGpuDrawingVisual(),
+            200,
+            100);
+        using var sink = new ProGpuRetainedCompositionCommandSink(frame, context: null, viewport3DTextureCache: null);
+        var branchSink = (IWpfRetainedVisualBranchSink)sink;
+        var stateSink = (IWpfRetainedVisualStateSink)sink;
+        var blur = new ProGpuBlurEffect(4);
+
+        Assert.True(branchSink.PushVisualOwner(new object()));
+        stateSink.ApplyVisualState(new WpfRetainedVisualState(
+            new Vector2(5, 6),
+            Matrix4x4.Identity,
+            1f,
+            clipBounds: null,
+            new Vector2(70, 80),
+            blur,
+            cacheAsLayer: true,
+            contentBounds: new Rect(5, 6, 70, 80)));
+        branchSink.PopVisualOwner();
+
+        var retainedRootVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
+        var ownerVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRootVisual.Children));
+        Assert.Equal(new Vector2(5, 6), ownerVisual.Offset);
+        Assert.Equal(new Vector2(70, 80), ownerVisual.Size);
+        Assert.Same(blur, ownerVisual.Effect);
+        Assert.True(ownerVisual.CacheAsLayer);
+    }
+
+    [Fact]
     public void RetainedSinkCreatesBoundedNativeEffectVisual()
     {
         var sceneRoot = new ProGpuContainerVisual();

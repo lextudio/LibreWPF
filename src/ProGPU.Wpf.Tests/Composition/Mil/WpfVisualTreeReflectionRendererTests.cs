@@ -128,6 +128,71 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeLowersNativeEffectIntoRetainedOwnerScope()
+    {
+        var effect = new FakeBlurEffect(4);
+        var root = new FakeDrawingVisual(CreateRenderData(Brushes.Green))
+        {
+            Bounds = new FakeRect(10, 20, 30, 40),
+            Effect = effect
+        };
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushVisualOwner", "ApplyVisualState", "PushTransform", "DrawRectangle", "Pop", "PopVisualOwner" }, sink.Operations);
+        Assert.Equal(new object[] { root }, sink.VisualOwners);
+        var state = Assert.Single(sink.RetainedVisualStates);
+        var blur = Assert.IsType<ProGpuBlurEffect>(state.Effect);
+        Assert.Equal(4, blur.BlurRadius);
+        Assert.False(state.CacheAsLayer);
+        Assert.Equal(new Vector2(10, 20), state.Offset);
+        Assert.Equal(new Vector2(30, 40), state.Size);
+        Assert.Equal(new Rect(10, 20, 30, 40), state.ContentBounds);
+        var transform = Assert.IsType<MatrixTransform>(Assert.Single(sink.Transforms));
+        Assert.Equal(-10, transform.Matrix.OffsetX);
+        Assert.Equal(-20, transform.Matrix.OffsetY);
+        Assert.Equal(1, result.VisualCount);
+        Assert.Equal(1, result.ContentCount);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
+    public void TryReplaySubtreeIntoCurrentRetainedVisualReappliesNativeCacheState()
+    {
+        var root = new FakeDrawingVisual(CreateRenderData(Brushes.Green))
+        {
+            Bounds = new FakeRect(5, 6, 70, 80),
+            CacheMode = new object()
+        };
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+        var renderer = new WpfVisualTreeReflectionRenderer();
+
+        Assert.True(renderer.CanReplaySubtreeIntoCurrentRetainedVisual(root));
+        Assert.True(renderer.TryReplaySubtreeIntoCurrentRetainedVisual(
+            root,
+            sink,
+            resources: null,
+            imageSourceAdapter: null,
+            out var result));
+
+        Assert.Equal(new[] { "ApplyVisualState", "PushTransform", "DrawRectangle", "Pop" }, sink.Operations);
+        Assert.Equal(new object[] { root }, sink.VisualOwners);
+        var state = Assert.Single(sink.RetainedVisualStates);
+        Assert.Null(state.Effect);
+        Assert.True(state.CacheAsLayer);
+        Assert.Equal(new Vector2(5, 6), state.Offset);
+        Assert.Equal(new Vector2(70, 80), state.Size);
+        Assert.Equal(new Rect(5, 6, 70, 80), state.ContentBounds);
+        var transform = Assert.IsType<MatrixTransform>(Assert.Single(sink.Transforms));
+        Assert.Equal(-5, transform.Matrix.OffsetX);
+        Assert.Equal(-6, transform.Matrix.OffsetY);
+        Assert.Equal(1, result.VisualCount);
+        Assert.Equal(1, result.ContentCount);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
     public void TryReplaySubtreeIntoCurrentRetainedVisualRejectsNonNativeRootState()
     {
         var root = new FakeVisual

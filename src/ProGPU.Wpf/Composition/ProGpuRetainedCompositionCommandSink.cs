@@ -149,6 +149,11 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
 
         var visual = Current.Visual;
         visual.Offset = state.Offset;
+        if (state.Size.HasValue)
+        {
+            visual.Size = state.Size.Value;
+        }
+
         visual.Transform = state.Transform;
         visual.Opacity = state.Opacity;
         visual.ClipBounds = state.ClipBounds.HasValue
@@ -158,6 +163,8 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
                 (float)state.ClipBounds.Value.Width,
                 (float)state.ClipBounds.Value.Height)
             : null;
+        visual.Effect = state.Effect;
+        visual.CacheAsLayer = state.CacheAsLayer;
     }
 
     private VisualScope Current

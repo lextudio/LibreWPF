@@ -876,6 +876,9 @@
 - Advanced the ProGPU submodule to `6108c63` (`scene: Invalidate visuals when effects mutate`) and replied to ProGPU PR #17 review thread `discussion_r3424663066`.
 - ProGPU `EffectBase` now tracks weak owning visuals and invalidates them when mutable effect properties change, so cached/effected retained visuals and cached ancestors re-render through native scene dirty propagation instead of requiring WPF bridge-side effect polling or managed replay workarounds.
 - Verified the ProGPU effect-owner invalidation slice with `git diff --check`, focused `VisualChangeVersionTests`, and adjacent `VisualChangeVersionTests|VisualEffectRenderTests|LayerRenderTests|WpfShaderEffectRenderTests`; 27 adjacent tests passed with existing warnings only.
+- Advanced the ProGPU submodule to `52b9b9a` (`wpf: Apply StreamGeometry transforms to bounds`) and replied to ProGPU PR #17 review thread `discussion_r3424663070`.
+- ProGPU's WPF `StreamGeometry` shim now computes `Bounds` through the same transform-aware path helper used by `PathGeometry` and `CombinedGeometry`, so layout, hit-testing, clipping, and retained cache bounds can query transformed geometry before any draw call.
+- Verified the ProGPU StreamGeometry bounds slice with `git diff --check` and focused `WpfPathGeometryDrawTests|WpfDrawingContextClipTests`; 14 focused tests passed with existing warnings only.
 
 ## Open Porting Items
 

@@ -568,6 +568,9 @@
 - Replied to and resolved the four matching ProGPU PR #17 review threads. A fresh paginated GraphQL refresh reported 157 review threads, 0 unresolved.
 - Updated the WPF ProGPU submodule pointer from `48c1b66` to `9ea19ea` so `progpu-rendering-port` tracks the latest reviewed ProGPU branch head.
 - Verified the WPF bridge against ProGPU submodule head `9ea19ea` with `git diff --check`, `dotnet build src/Microsoft.DotNet.Wpf/src/PresentationCore/PresentationCore.csproj --no-restore --verbosity minimal -m:1` with 0 warnings and 0 errors, `dotnet build src/ProGPU.Wpf/ProGPU.Wpf.csproj --no-restore --verbosity minimal -m:1`, and `/Users/wieslawsoltes/.dotnet/dotnet test /Users/wieslawsoltes/GitHub/wpf/src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj --no-restore --verbosity minimal --filter "FullyQualifiedName~WpfManagedProjectGraphTests"` from `/tmp`; 8 focused tests passed. Existing ProGPU submodule warning noise remains outside this WPF clock/review-fix slice.
+- Guarded real WPF `HwndTarget` so non-Windows type loading no longer registers Win32 window messages. Construction now fails before Win32 session, HWND, notification-window, or MIL initialization, keeping the remaining replacement boundary explicit until a Silk.NET-backed real WPF `CompositionTarget` is introduced.
+- Added source-level guard coverage to keep `HwndTarget` Win32 message registration Windows-only and to ensure non-Windows construction fails before session/HWND initialization.
+- Verified the HwndTarget guard slice with `git diff --check`, `dotnet build src/Microsoft.DotNet.Wpf/src/PresentationCore/PresentationCore.csproj --no-restore --verbosity minimal -m:1` with 0 warnings and 0 errors, and `/Users/wieslawsoltes/.dotnet/dotnet test /Users/wieslawsoltes/GitHub/wpf/src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj --no-restore --verbosity minimal --filter "FullyQualifiedName~WpfManagedProjectGraphTests"` from `/tmp`; 9 focused tests passed.
 
 ## Open Porting Items
 

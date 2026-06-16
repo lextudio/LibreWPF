@@ -66,6 +66,8 @@ namespace System.Windows.Interop
     /// </remarks>
     public class HwndTarget : CompositionTarget
     {
+        private static readonly bool s_isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
         /// <summary>
         /// Lock object used to ensure that initialization of other statics
         /// happens race-free
@@ -205,6 +207,11 @@ namespace System.Windows.Interop
         /// </summary>
         static HwndTarget()
         {
+            if (!s_isWindows)
+            {
+                return;
+            }
+
             s_updateWindowSettings = UnsafeNativeMethods.RegisterWindowMessage("UpdateWindowSettings");
             s_needsRePresentOnWake = UnsafeNativeMethods.RegisterWindowMessage("NeedsRePresentOnWake");
             s_DisplayDevicesAvailabilityChanged =
@@ -223,6 +230,11 @@ namespace System.Windows.Interop
         /// </remarks>
         public HwndTarget(IntPtr hwnd)
         {
+            if (!s_isWindows)
+            {
+                throw new PlatformNotSupportedException("HwndTarget requires a Win32 HWND. Use a ProGPU/Silk.NET composition target on non-Windows platforms.");
+            }
+
             bool exceptionThrown = true;
 
             _sessionId = SafeNativeMethods.GetCurrentSessionId();

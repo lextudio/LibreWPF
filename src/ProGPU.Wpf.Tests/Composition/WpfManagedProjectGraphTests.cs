@@ -96,6 +96,33 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("SafeNativeMethods.QueryPerformanceCounter(out counts)", source, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void HwndTargetDoesNotRegisterWin32MessagesOnNonWindows()
+    {
+        var sourcePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "InterOp",
+            "HwndTarget.cs");
+        var source = File.ReadAllText(sourcePath);
+
+        Assert.Contains("RuntimeInformation.IsOSPlatform(OSPlatform.Windows)", source, StringComparison.Ordinal);
+        Assert.Contains("if (!s_isWindows)", source, StringComparison.Ordinal);
+        Assert.Contains("UnsafeNativeMethods.RegisterWindowMessage(\"UpdateWindowSettings\")", source, StringComparison.Ordinal);
+        Assert.True(
+            source.IndexOf("if (!s_isWindows)", StringComparison.Ordinal)
+                < source.IndexOf("UnsafeNativeMethods.RegisterWindowMessage(\"UpdateWindowSettings\")", StringComparison.Ordinal),
+            "The non-Windows guard must run before registering HwndTarget Win32 window messages.");
+        Assert.True(
+            source.IndexOf("throw new PlatformNotSupportedException", StringComparison.Ordinal)
+                < source.IndexOf("SafeNativeMethods.GetCurrentSessionId()", StringComparison.Ordinal),
+            "The non-Windows constructor failure must run before Win32 session or HWND initialization.");
+    }
+
     private static string FindRepoPath(params string[] pathSegments)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

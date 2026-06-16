@@ -714,6 +714,60 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void RealThemeRuntimeHarnessLoadsFluentThemeBamlThroughRealPresentationFramework()
+    {
+        var harnessProjectPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealThemeRuntimeHarness",
+            "ProGPU.Wpf.RealThemeRuntimeHarness.csproj");
+        var harnessProgramPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealThemeRuntimeHarness",
+            "Program.cs");
+
+        var harnessProject = XDocument.Load(harnessProjectPath);
+        var harnessProgram = File.ReadAllText(harnessProgramPath);
+
+        AssertProjectReference(harnessProject, @"ProGPU.Wpf\ProGPU.Wpf.csproj");
+
+        var compilerHarnessReference = AssertProjectReference(
+            harnessProject,
+            @"ProGPU.Wpf.RealXamlCompilerHarness\ProGPU.Wpf.RealXamlCompilerHarness.csproj");
+        Assert.Equal("false", GetItemMetadata(compilerHarnessReference, "ReferenceOutputAssembly"));
+        Assert.Equal("all", GetItemMetadata(compilerHarnessReference, "PrivateAssets"));
+
+        var fluentReference = AssertProjectReference(
+            harnessProject,
+            @"Microsoft.DotNet.Wpf\src\Themes\PresentationFramework.Fluent\PresentationFramework.Fluent.csproj");
+        Assert.Equal("false", GetItemMetadata(fluentReference, "ReferenceOutputAssembly"));
+        Assert.Equal("all", GetItemMetadata(fluentReference, "PrivateAssets"));
+
+        var presentationCoreReference = AssertProjectReference(
+            harnessProject,
+            @"Microsoft.DotNet.Wpf\src\PresentationCore\PresentationCore.csproj");
+        Assert.Equal("false", GetItemMetadata(presentationCoreReference, "ReferenceOutputAssembly"));
+        Assert.Equal("all", GetItemMetadata(presentationCoreReference, "PrivateAssets"));
+
+        var presentationFrameworkReference = AssertProjectReference(
+            harnessProject,
+            @"Microsoft.DotNet.Wpf\src\PresentationFramework\PresentationFramework.csproj");
+        Assert.Equal("false", GetItemMetadata(presentationFrameworkReference, "ReferenceOutputAssembly"));
+        Assert.Equal("all", GetItemMetadata(presentationFrameworkReference, "PrivateAssets"));
+
+        Assert.Contains("FluentDictionaryUri = \"/PresentationFramework.Fluent;component/Themes/Fluent.xaml\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SetProperty(themeDictionary, \"Source\", new Uri(FluentDictionaryUri, UriKind.Relative))", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetDictionaryValue(themeDictionary, \"DefaultWindowStyle\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetDictionaryValue(themeDictionary, \"AccentButtonStyle\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetDictionaryValue(themeDictionary, \"DefaultRichTextBoxStyle\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetDictionaryValue(themeDictionary, \"WindowTemplateKey\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Invoke(window, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Invoke(button, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertStyleHasSetter(GetProperty(richTextBox, \"Style\"), \"Template\"", harnessProgram, StringComparison.Ordinal);
+        Assert.DoesNotContain("Invoke(richTextBox, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation", harnessProgram, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RealPresentationFrameworkSmokeGuardsNativePlatformEntrypoints()
     {
         var compositionExports = File.ReadAllText(FindRepoPath(

@@ -128,13 +128,14 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
-    public void ReplaySubtreeLowersNativeEffectIntoRetainedOwnerScope()
+    public void ReplaySubtreeLowersNativeEffectAndOpacityIntoRetainedOwnerScope()
     {
         var effect = new FakeBlurEffect(4);
         var root = new FakeDrawingVisual(CreateRenderData(Brushes.Green))
         {
             Bounds = new FakeRect(10, 20, 30, 40),
-            Effect = effect
+            Effect = effect,
+            Opacity = 0.6
         };
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
 
@@ -148,6 +149,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.False(state.CacheAsLayer);
         Assert.Equal(new Vector2(10, 20), state.Offset);
         Assert.Equal(new Vector2(30, 40), state.Size);
+        Assert.Equal(0.6f, state.Opacity);
         Assert.Equal(new Rect(10, 20, 30, 40), state.ContentBounds);
         var transform = Assert.IsType<MatrixTransform>(Assert.Single(sink.Transforms));
         Assert.Equal(-10, transform.Matrix.OffsetX);
@@ -163,7 +165,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var root = new FakeDrawingVisual(CreateRenderData(Brushes.Green))
         {
             Bounds = new FakeRect(5, 6, 70, 80),
-            CacheMode = new object()
+            CacheMode = new object(),
+            Opacity = 0.35
         };
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
         var renderer = new WpfVisualTreeReflectionRenderer();
@@ -183,6 +186,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.True(state.CacheAsLayer);
         Assert.Equal(new Vector2(5, 6), state.Offset);
         Assert.Equal(new Vector2(70, 80), state.Size);
+        Assert.Equal(0.35f, state.Opacity);
         Assert.Equal(new Rect(5, 6, 70, 80), state.ContentBounds);
         var transform = Assert.IsType<MatrixTransform>(Assert.Single(sink.Transforms));
         Assert.Equal(-5, transform.Matrix.OffsetX);
@@ -190,6 +194,31 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.Equal(1, result.VisualCount);
         Assert.Equal(1, result.ContentCount);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
+    public void TryReplaySubtreeIntoCurrentRetainedVisualRejectsNativeEffectWithOuterTransform()
+    {
+        var root = new FakeDrawingVisual(CreateRenderData(Brushes.Green))
+        {
+            Bounds = new FakeRect(5, 6, 70, 80),
+            Effect = new FakeBlurEffect(4),
+            Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 3, 4))
+        };
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+        var renderer = new WpfVisualTreeReflectionRenderer();
+
+        Assert.False(renderer.CanReplaySubtreeIntoCurrentRetainedVisual(root));
+        Assert.False(renderer.TryReplaySubtreeIntoCurrentRetainedVisual(
+            root,
+            sink,
+            resources: null,
+            imageSourceAdapter: null,
+            out var result));
+
+        Assert.Equal(default, result);
+        Assert.Empty(sink.Operations);
+        Assert.Empty(sink.VisualOwners);
     }
 
     [Fact]

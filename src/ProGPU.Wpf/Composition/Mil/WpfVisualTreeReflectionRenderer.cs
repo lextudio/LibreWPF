@@ -447,7 +447,7 @@ public sealed class WpfVisualTreeReflectionRenderer
     {
         state = default;
 
-        if (!IsDefaultOuterNativeState(offset, transform, opacity, clipBounds))
+        if (!CanApplyNativeScopeWithOuterState(offset, transform, clipBounds))
         {
             return false;
         }
@@ -508,7 +508,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         state = new WpfRetainedVisualState(
             offset,
             Matrix4x4.Identity,
-            1f,
+            opacity,
             clipBounds: null,
             size,
             effect,
@@ -517,15 +517,13 @@ public sealed class WpfVisualTreeReflectionRenderer
         return true;
     }
 
-    private static bool IsDefaultOuterNativeState(
+    private static bool CanApplyNativeScopeWithOuterState(
         Vector2 offset,
         Matrix4x4 transform,
-        float opacity,
         Rect? clipBounds)
     {
         return offset == Vector2.Zero
             && transform == Matrix4x4.Identity
-            && opacity == 1f
             && !clipBounds.HasValue;
     }
 

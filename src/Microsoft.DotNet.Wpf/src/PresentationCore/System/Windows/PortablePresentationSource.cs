@@ -286,6 +286,7 @@ namespace System.Windows
 
             void IInputProvider.NotifyDeactivate()
             {
+                ReleaseMouseCapture(reportInput: true);
             }
 
             bool IMouseInputProvider.SetCursor(Cursor cursor)

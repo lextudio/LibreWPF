@@ -115,7 +115,24 @@ namespace System.Windows
                 return;
             }
 
+            if (!isActive)
+            {
+                NotifyPortableInputProvidersDeactivated(window);
+            }
+
             window.HandleActivate(isActive);
+        }
+
+        private static void NotifyPortableInputProvidersDeactivated(Window window)
+        {
+            PresentationSource source = PresentationSource.CriticalFromVisual(window);
+            if (source == null)
+            {
+                return;
+            }
+
+            source.GetInputProvider(typeof(KeyboardDevice))?.NotifyDeactivate();
+            source.GetInputProvider(typeof(MouseDevice))?.NotifyDeactivate();
         }
 
         internal static void ProcessInput(Window window, PortableInputEventArgs input)

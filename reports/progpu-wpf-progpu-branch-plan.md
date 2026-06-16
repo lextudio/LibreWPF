@@ -74,6 +74,8 @@ The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and
 - Skia-compatible opaque bitmap upload normalization in `SKImage.FromBitmap(...)`, forcing alpha bytes to 255 for `SKAlphaType.Opaque` inputs before the ProGPU texture upload.
 - native two-point conical/focal gradient support through `TwoPointConicalGradientBrush`, ProGPU brush packing, and WGSL moving-circle parameter solves for the vector and hatch shader paths, so Skia `CreateTwoPointConicalGradient(...)` no longer needs to reject valid conical parameters.
 - native bottom-left backend render-target origin handling for ProGPU-backed `SKSurface` wrappers by carrying `GRSurfaceOrigin` into the surface and applying a GPU-side root y-flip during flush.
+- render-thread `WgpuContext.Current` scoping in `Compositor.RenderScene(...)` and `RenderOffscreen(...)`, plus owner-context tracking in `GpuSeriesBuffer`, so GPU line/scatter uploads and bind-group cleanup remain valid when Avalonia or WPF host rendering runs on a composition thread different from the context initialization thread.
+- Skia `SaveLayer` texture lifetime cleanup after `SKSurface.Flush()`, releasing layer textures once the parent draw commands have been consumed instead of retaining one full-canvas texture per saved layer until canvas disposal.
 
 ## Decisions
 
@@ -97,6 +99,7 @@ The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and
 - Treat unsupported Skia gradient and backend-origin cases as backend capability gaps. Two-point conical gradients and bottom-left ProGPU backend render targets now have native support; future unsupported cases should either fail closed or gain native shader/render-target support in ProGPU, not bridge-side CPU compensation.
 - Keep WPF-specific type adaptation in `src/ProGPU.Wpf` until the real WPF `PresentationCore` and ProGPU shim type identities are unified.
 - Prefer adding reusable ProGPU primitives for WPF concepts that also benefit other frontends: exact path stroking, gradient tables, texture sampling modes, text flags, mesh extensions, image effects, and retained resource lifetime helpers.
+- Treat render-thread WebGPU context availability as a backend/compositor invariant. Host integrations should not compensate for thread-static context state; compositor render entry points should publish their active context while backend resources should remember their owning context for cleanup and cache reuse.
 - Use signed ProGPU assemblies for direct references from strong-named WPF assemblies when the TFM/project graph is compatible. Until then, source-share small ProGPU-owned helpers only when they remain internal to WPF and avoid exposing ProGPU namespaces as WPF public API.
 
 ## ProGPU Features to Implement Next

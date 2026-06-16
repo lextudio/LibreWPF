@@ -870,6 +870,9 @@
 - Moved the ProGPU shim `FontWeight`, `FontStyle`, and `FontStretch` value types into WPF-compatible `System.Windows` ownership with `FontWeights`, `FontStyles`, and `FontStretches` facades, while preserving the existing static convenience properties used by current shim samples.
 - Updated shim `FormattedText` so styled `Typeface` instances cache bold/slanted intent and record native ProGPU `DrawText` commands with synthetic bold/italic flags, keeping WPF-shaped managed text calls reusable instead of compensating in the WPF bridge.
 - Verified the ProGPU formatted-text style slice with `git diff --check` and focused `dotnet test src/ProGPU.Tests/ProGPU.Tests.csproj --no-restore --verbosity minimal --filter FullyQualifiedName~WpfFormattedTextTests`; 2 focused tests passed with existing warnings only.
+- Advanced the ProGPU submodule to `56d1c7f` (`backend: Preserve straight alpha texture uploads`) and replied to ProGPU PR #17 review thread `discussion_r3424679624`.
+- Restored `GpuTexture` constructor defaults so existing generic `WritePixels(...)` callers keep straight-alpha RGBA upload semantics, while Skia surfaces, GDI bitmaps, WPF `WriteableBitmap`, host offscreen targets, retained layers, and effect textures now opt into premultiplied render-target semantics explicitly.
+- Verified the ProGPU straight-alpha upload slice with `git diff --check`, focused `TextureBlendRenderTests`, and adjacent `TextureBlendRenderTests|SkSurfaceBackendRenderTargetTests|SkImageBitmapTests|GdiShimTests|ImageEffectRenderTests`; 31 adjacent tests passed with existing warnings only.
 
 ## Open Porting Items
 

@@ -23,6 +23,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         RootVisual = rootVisual;
         PortablePresentationSource = portablePresentationSource;
         Host.Closing += OnHostClosing;
+        Host.InputReceived += OnHostInputReceived;
         Host.WindowEventReceived += OnHostWindowEventReceived;
         Host.DragDropReceived += OnHostDragDropReceived;
     }
@@ -197,6 +198,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
 
         Host.Closing -= OnHostClosing;
+        Host.InputReceived -= OnHostInputReceived;
         Host.WindowEventReceived -= OnHostWindowEventReceived;
         Host.DragDropReceived -= OnHostDragDropReceived;
         Host.Dispose();
@@ -340,6 +342,31 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 TrySetWindowActivationState(Window, isActive: false);
                 break;
         }
+    }
+
+    private void OnHostInputReceived(object? sender, WpfInputEventArgs e)
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        TryForwardInputToWindow(Window, e);
+    }
+
+    private static bool TryForwardInputToWindow(object window, WpfInputEventArgs e)
+    {
+        var windowType = window.GetType();
+        var inputMethod =
+            FindInstanceMethod(windowType, "OnPortableInput", typeof(WpfInputEventArgs)) ??
+            FindInstanceMethod(windowType, "HandlePortableInput", typeof(WpfInputEventArgs));
+        if (inputMethod == null)
+        {
+            return false;
+        }
+
+        inputMethod.Invoke(window, new object[] { e });
+        return true;
     }
 
     private void OnHostDragDropReceived(object? sender, WpfDragDropEventArgs e)

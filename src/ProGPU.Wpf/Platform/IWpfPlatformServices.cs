@@ -329,4 +329,6 @@ public sealed class WpfInputEventArgs : EventArgs
     public WpfMouseButton Button { get; }
 
     public WpfInputModifiers Modifiers { get; }
+
+    public bool Handled { get; set; }
 }

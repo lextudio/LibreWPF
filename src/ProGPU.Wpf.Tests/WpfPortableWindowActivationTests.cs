@@ -251,6 +251,76 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void HostInputForwardsPayloadToPortableWindowInputHandler()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakePortableInputWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        var args = new WpfInputEventArgs(
+            WpfInputEventKind.KeyDown,
+            key: "A",
+            scanCode: 42,
+            modifiers: WpfInputModifiers.Control);
+        RaiseHostInputEvent(host, args);
+
+        Assert.Equal(1, window.InputCount);
+        Assert.Same(args, window.LastInputArgs);
+        Assert.True(args.Handled);
+    }
+
+    [Fact]
+    public void HostInputForwardsPayloadToPortableInputFallbackHandler()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakePortableInputFallbackWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        var args = new WpfInputEventArgs(
+            WpfInputEventKind.MouseWheel,
+            x: 12,
+            y: 24,
+            deltaY: -1);
+        RaiseHostInputEvent(host, args);
+
+        Assert.Equal(1, window.InputCount);
+        Assert.Same(args, window.LastInputArgs);
+    }
+
+    [Fact]
+    public void DisposingActivationStopsInputForwarding()
+    {
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = new TestRenderScheduler()
+        };
+        var window = new FakePortableInputWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        activation.Dispose();
+        RaiseHostInputEvent(
+            host,
+            new WpfInputEventArgs(WpfInputEventKind.TextInput, character: 'x'));
+
+        Assert.Equal(0, window.InputCount);
+    }
+
+    [Fact]
     public void HostDragDropForwardsPayloadToPortableWindowDropHandler()
     {
         using var host = new ProGpuWpfWindowHost();
@@ -326,6 +396,13 @@ public sealed class WpfPortableWindowActivationTests
         typeof(ProGpuWpfWindowHost)
             .GetMethod("OnPlatformWindowEventReceived", BindingFlags.Instance | BindingFlags.NonPublic)!
             .Invoke(host, new object?[] { null, new WpfWindowEventArgs(kind) });
+    }
+
+    private static void RaiseHostInputEvent(ProGpuWpfWindowHost host, WpfInputEventArgs args)
+    {
+        typeof(ProGpuWpfWindowHost)
+            .GetMethod("OnPlatformInputReceived", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(host, new object?[] { null, args });
     }
 
     private static void RaiseHostDragDropEvent(ProGpuWpfWindowHost host, WpfDragDropEventArgs args)
@@ -405,6 +482,33 @@ public sealed class WpfPortableWindowActivationTests
                 IsActive = false;
                 DeactivatedCount++;
             }
+        }
+    }
+
+    private sealed class FakePortableInputWindow
+    {
+        public int InputCount { get; private set; }
+
+        public WpfInputEventArgs? LastInputArgs { get; private set; }
+
+        private void OnPortableInput(WpfInputEventArgs e)
+        {
+            InputCount++;
+            LastInputArgs = e;
+            e.Handled = true;
+        }
+    }
+
+    private sealed class FakePortableInputFallbackWindow
+    {
+        public int InputCount { get; private set; }
+
+        public WpfInputEventArgs? LastInputArgs { get; private set; }
+
+        internal void HandlePortableInput(WpfInputEventArgs e)
+        {
+            InputCount++;
+            LastInputArgs = e;
         }
     }
 

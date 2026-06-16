@@ -248,7 +248,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return window;
     }
 
-    private void OnHostClosing(object? sender, EventArgs e)
+    private void OnHostClosing(object? sender, ProGpuWpfWindowClosingEventArgs e)
     {
         if (_isDisposed || _isClosingFromWpf)
         {
@@ -258,7 +258,10 @@ public sealed class WpfPortableWindowActivation : IDisposable
         _isClosingFromNative = true;
         try
         {
-            TryInvokeWindowClose(Window);
+            if (TryInvokeWindowClose(Window) == WpfWindowCloseResult.Canceled)
+            {
+                e.Cancel = true;
+            }
         }
         finally
         {
@@ -266,7 +269,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
     }
 
-    private static bool TryInvokeWindowClose(object window)
+    private static WpfWindowCloseResult TryInvokeWindowClose(object window)
     {
         var closeMethod = window.GetType().GetMethod(
             "Close",
@@ -276,11 +279,70 @@ public sealed class WpfPortableWindowActivation : IDisposable
             modifiers: null);
         if (closeMethod == null)
         {
-            return false;
+            return WpfWindowCloseResult.NotInvoked;
         }
 
         closeMethod.Invoke(window, Array.Empty<object>());
+        return TryReadWindowClosedState(window, out bool isClosed) && !isClosed
+            ? WpfWindowCloseResult.Canceled
+            : WpfWindowCloseResult.Closed;
+    }
+
+    private enum WpfWindowCloseResult
+    {
+        NotInvoked,
+        Closed,
+        Canceled
+    }
+
+    private static bool TryReadWindowClosedState(object window, out bool isClosed)
+    {
+        if (TryReadBooleanProperty(window, "IsClosed", out isClosed) ||
+            TryReadBooleanProperty(window, "IsDisposed", out isClosed) ||
+            TryReadBooleanField(window, "_disposed", out isClosed))
+        {
+            return true;
+        }
+
+        isClosed = false;
+        return false;
+    }
+
+    private static bool TryReadBooleanProperty(object instance, string propertyName, out bool value)
+    {
+        value = false;
+        var property = instance.GetType().GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        if (property == null ||
+            property.GetIndexParameters().Length != 0 ||
+            property.PropertyType != typeof(bool))
+        {
+            return false;
+        }
+
+        value = (bool)property.GetValue(instance)!;
         return true;
+    }
+
+    private static bool TryReadBooleanField(object instance, string fieldName, out bool value)
+    {
+        value = false;
+        for (Type? type = instance.GetType(); type != null; type = type.BaseType)
+        {
+            var field = type.GetField(
+                fieldName,
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            if (field == null || field.FieldType != typeof(bool))
+            {
+                continue;
+            }
+
+            value = (bool)field.GetValue(instance)!;
+            return true;
+        }
+
+        return false;
     }
 
     private static bool TryMapWindowState(object? windowState, out ProGpuWpfWindowState mappedWindowState)

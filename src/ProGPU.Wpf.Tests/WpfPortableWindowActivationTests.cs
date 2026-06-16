@@ -68,6 +68,60 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void NativeHostClosingCancelsWhenWindowCloseIsCanceled()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeWindow
+        {
+            CancelClose = true
+        };
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        bool? canceled = null;
+        host.Closing += (_, args) => canceled = args.Cancel;
+
+        typeof(ProGpuWpfWindowHost)
+            .GetMethod("OnClosing", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(host, Array.Empty<object>());
+
+        Assert.Equal(1, window.CloseCount);
+        Assert.False(window.IsClosed);
+        Assert.True(canceled);
+    }
+
+    [Fact]
+    public void NativeHostClosingInfersCancellationFromWpfDisposedField()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeDisposedWindow
+        {
+            CancelClose = true
+        };
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        bool? canceled = null;
+        host.Closing += (_, args) => canceled = args.Cancel;
+
+        typeof(ProGpuWpfWindowHost)
+            .GetMethod("OnClosing", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(host, Array.Empty<object>());
+
+        Assert.Equal(1, window.CloseCount);
+        Assert.False(window.DisposedStateForTest);
+        Assert.True(canceled);
+    }
+
+    [Fact]
     public void CreateHostOptionsReadsFiniteWindowShape()
     {
         var fallback = new ProGpuWpfWindowOptions
@@ -133,11 +187,39 @@ public sealed class WpfPortableWindowActivationTests
 
         public FakeWindowState WindowState { get; set; } = FakeWindowState.Normal;
 
+        public bool CancelClose { get; set; }
+
+        public bool IsClosed { get; private set; }
+
         public int CloseCount { get; private set; }
 
         public void Close()
         {
             CloseCount++;
+            if (!CancelClose)
+            {
+                IsClosed = true;
+            }
+        }
+    }
+
+    private sealed class FakeDisposedWindow
+    {
+        private bool _disposed;
+
+        public bool CancelClose { get; set; }
+
+        public bool DisposedStateForTest => _disposed;
+
+        public int CloseCount { get; private set; }
+
+        public void Close()
+        {
+            CloseCount++;
+            if (!CancelClose)
+            {
+                _disposed = true;
+            }
         }
     }
 

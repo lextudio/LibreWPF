@@ -611,7 +611,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             pixelHeight,
             target.SceneChangeVersion,
             target.RetainedWpfChangeVersion,
-            target.FlatDrawingChangeVersion);
+            target.FlatDrawingChangeVersion,
+            target.LastRetainedBranchInvalidationCount,
+            target.LastRetainedBranchDirtySourceCount,
+            target.LastRetainedBranchMappedSourceCount,
+            target.LastRetainedBranchUnmappedSourceCount,
+            target.LastRetainedBranchSharedWithCleanSourceVisualCount,
+            target.LastRetainedBranchInvalidationUsedFallback);
     }
 
     internal IDisposable? RegisterRenderDataSinkProvider(ProGpuWpfDrawingFrame drawingFrame)

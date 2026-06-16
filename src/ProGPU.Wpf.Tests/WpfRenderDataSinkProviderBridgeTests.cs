@@ -173,6 +173,13 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("RetainedVisualBranchMap.InvalidateVisualsForSources(WpfInvalidationTracker.DirtySources)", source, StringComparison.Ordinal);
         Assert.Contains("LastRetainedBranchInvalidationUsedFallback = !result.CanTargetAllDirtySources;", source, StringComparison.Ordinal);
         Assert.Contains("RetainedWpfVisualRoot.Invalidate();", source, StringComparison.Ordinal);
+        Assert.Contains(
+            "target.LastRetainedBranchSharedWithCleanSourceVisualCount",
+            File.ReadAllText(FindRepoPath(
+                "src",
+                "ProGPU.Wpf",
+                "ProGpuWpfWindowHost.cs")),
+            StringComparison.Ordinal);
     }
 
     [Fact]

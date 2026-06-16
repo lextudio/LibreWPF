@@ -254,6 +254,31 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void ShouldRenderFrameReturnsTrueWhenRetainedBranchTargetabilityChanges()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var frameState = new ProGpuWpfFrameState(100, 50, 1, 2, 3);
+        host.RecordPresentedFrame(frameState);
+
+        var changedFrameState = new ProGpuWpfFrameState(
+            100,
+            50,
+            1,
+            2,
+            3,
+            retainedBranchInvalidationCount: 1,
+            retainedBranchDirtySourceCount: 1,
+            retainedBranchMappedSourceCount: 1,
+            retainedBranchUnmappedSourceCount: 0,
+            retainedBranchSharedWithCleanSourceVisualCount: 1,
+            retainedBranchInvalidationUsedFallback: true);
+
+        Assert.True(host.ShouldRenderFrame(changedFrameState));
+        Assert.True(changedFrameState.RetainedBranchInvalidationUsedFallback);
+        Assert.Equal(1, changedFrameState.RetainedBranchSharedWithCleanSourceVisualCount);
+    }
+
+    [Fact]
     public void ShouldRenderFrameReturnsTrueWhenPixelSizeChanges()
     {
         using var host = new ProGpuWpfWindowHost();

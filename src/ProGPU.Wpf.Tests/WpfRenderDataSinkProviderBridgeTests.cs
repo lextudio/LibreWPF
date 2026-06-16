@@ -229,6 +229,8 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("internal bool TryReplayDirtyRetainedVisualBranches(", source, StringComparison.Ordinal);
         Assert.Contains("RetainedVisualBranchMap.GetReplayTargetsForSources(WpfInvalidationTracker.DirtySources)", source, StringComparison.Ordinal);
         Assert.Contains("RetainedWpfVisualRoot.Invalidate();", source, StringComparison.Ordinal);
+        Assert.Contains("public WpfVisualReplayResult ReplayVisualSubtreeRetained(", source, StringComparison.Ordinal);
+        Assert.Contains("new ProGpuRetainedCompositionCommandSink(", source, StringComparison.Ordinal);
         var hostSource = File.ReadAllText(FindRepoPath(
             "src",
             "ProGPU.Wpf",

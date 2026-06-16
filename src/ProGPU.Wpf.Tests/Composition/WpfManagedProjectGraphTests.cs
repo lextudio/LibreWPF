@@ -729,6 +729,7 @@ public sealed class WpfManagedProjectGraphTests
         var harnessProgram = File.ReadAllText(harnessProgramPath);
 
         AssertProjectReference(harnessProject, @"ProGPU.Wpf\ProGPU.Wpf.csproj");
+        AssertProjectReference(harnessProject, @"external\ProGPU\src\ProGPU.Scene\ProGPU.Scene.csproj");
 
         var compilerHarnessReference = AssertProjectReference(
             harnessProject,
@@ -764,6 +765,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Invoke(button, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(richTextBox, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertType(GetProperty(richTextBox, \"Template\"), \"System.Windows.Controls.ControlTemplate\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateThemedVisualReplay(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("target.ReplayVisualSubtreeRetained(content, pixelWidth, pixelHeight)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("target.RetainedVisualBranchCount", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("target.RetainedWpfVisualRoot.Children.Count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation", harnessProgram, StringComparison.Ordinal);
     }
 
@@ -810,6 +815,32 @@ public sealed class WpfManagedProjectGraphTests
             "Internal",
             "Documents",
             "FlowDocumentView.cs"));
+        var fontCacheUtil = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "MS",
+            "Internal",
+            "FontCache",
+            "FontCacheUtil.cs"));
+        var classification = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "MS",
+            "Internal",
+            "Classification.cs"));
+        var lineServices = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "MS",
+            "Internal",
+            "TextFormatting",
+            "LineServices.cs"));
         var uxThemeWrapper = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -850,6 +881,14 @@ public sealed class WpfManagedProjectGraphTests
             flowDocumentView.IndexOf("if (!IsNativePtsFormatterAvailable)", StringComparison.Ordinal)
                 < flowDocumentView.IndexOf("new DocumentPageTextView(this, _document.StructuralCache.TextContainer)", StringComparison.Ordinal),
             "FlowDocumentView must skip native PTS text-view creation before constructing DocumentPageTextView on non-Windows.");
+        AssertGuardBefore(fontCacheUtil, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.CreateFile(");
+        Assert.Contains("OpenManagedFile(fileName)", fontCacheUtil, StringComparison.Ordinal);
+        Assert.Contains("File.ReadAllBytes(fileName)", fontCacheUtil, StringComparison.Ordinal);
+        AssertGuardBefore(classification, "if (OperatingSystem.IsWindows())", "MILGetClassificationTables(out ct)");
+        Assert.Contains("GetManagedUnicodeClass", classification, StringComparison.Ordinal);
+        Assert.Contains("ManagedCharAttributeOf", classification, StringComparison.Ordinal);
+        AssertGuardBefore(lineServices, "if (OperatingSystem.IsWindows())", "LoGetEscStringImpl(ref escStringInfo)");
+        Assert.Contains("s_managedObjectReplacement", lineServices, StringComparison.Ordinal);
         AssertGuardBefore(uxThemeWrapper, "_themeState = OperatingSystem.IsWindows()", "SafeNativeMethods.IsUxThemeActive()");
         AssertGuardBefore(dpiAwareness, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetWindowDpiAwarenessContext(hWnd)");
         Assert.Contains("_useWin32MessagePump = OperatingSystem.IsWindows();", dispatcher, StringComparison.Ordinal);

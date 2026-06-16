@@ -834,6 +834,12 @@ namespace MS.Internal.FontCache
                     _mappingHandle?.Dispose();
                 }
 
+                if (_managedBufferHandle.IsAllocated)
+                {
+                    _managedBufferHandle.Free();
+                    _managedBuffer = null;
+                }
+
                 // We only handle flat disk files read only, should never be writeable.
                 Invariant.Assert(!CanWrite);
             }
@@ -842,6 +848,12 @@ namespace MS.Internal.FontCache
 
         internal void OpenFile(string fileName)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                OpenManagedFile(fileName);
+                return;
+            }
+
             NativeMethods.SECURITY_ATTRIBUTES sa = new NativeMethods.SECURITY_ATTRIBUTES();
             try
             {
@@ -898,8 +910,26 @@ namespace MS.Internal.FontCache
             }
         }
 
+        private void OpenManagedFile(string fileName)
+        {
+            byte[] buffer = File.ReadAllBytes(fileName);
+            if (buffer.Length == 0)
+            {
+                throw new FileFormatException(new Uri(fileName));
+            }
+
+            _managedBuffer = buffer;
+            _managedBufferHandle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+            unsafe
+            {
+                Initialize((byte*)_managedBufferHandle.AddrOfPinnedObject(), buffer.Length, buffer.Length, FileAccess.Read);
+            }
+        }
+
         private UnsafeNativeMethods.SafeViewOfFileHandle _viewHandle;
         private UnsafeNativeMethods.SafeFileMappingHandle _mappingHandle;
+        private byte[] _managedBuffer;
+        private GCHandle _managedBufferHandle;
 
         private bool _disposed = false;
     }

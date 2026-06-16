@@ -65,6 +65,7 @@ internal static class Program
             MergeThemeDictionary(application, themeDictionary);
             ApplyRepresentativeFluentStyles(presentationFramework, application, window, themeDictionary);
             ValidateThemedRuntimeState(window, application, themeDictionary);
+            ValidateThemedVisualReplay(window);
 
             RegisterPortableActivation(
                 presentationFramework,
@@ -169,6 +170,22 @@ internal static class Program
 
         object appResources = GetProperty(application, "Resources");
         AssertSame(themeDictionary, GetCollectionItem(GetProperty(appResources, "MergedDictionaries"), 0), "merged Fluent dictionary");
+    }
+
+    private static void ValidateThemedVisualReplay(object window)
+    {
+        const uint pixelWidth = 420;
+        const uint pixelHeight = 260;
+
+        object content = GetProperty(window, "Content");
+
+        using var target = ProGpuWpfCompositionTarget.CreateHeadless();
+        var replayResult = target.ReplayVisualSubtreeRetained(content, pixelWidth, pixelHeight);
+
+        AssertAtLeast(1, replayResult.VisualCount, "Fluent themed visual replay count");
+        AssertAtLeast(1, replayResult.ChildEdgeCount, "Fluent themed visual child edges");
+        AssertAtLeast(1, target.RetainedVisualBranchCount, "retained Fluent themed visual branch map");
+        AssertAtLeast(1, target.RetainedWpfVisualRoot.Children.Count, "retained Fluent themed visual root children");
     }
 
     private static void RegisterPortableActivation(
@@ -361,6 +378,15 @@ internal static class Program
         {
             throw new InvalidOperationException(
                 $"Expected {description} to be '{expectedFullName}', got '{instance.GetType().FullName}'.");
+        }
+    }
+
+    private static void AssertAtLeast(int expectedMinimum, int actual, string description)
+    {
+        if (actual < expectedMinimum)
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to be at least {expectedMinimum}, got {actual}.");
         }
     }
 

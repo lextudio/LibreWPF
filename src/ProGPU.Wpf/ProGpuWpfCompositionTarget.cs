@@ -189,6 +189,33 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
             activeImageSourceAdapter);
     }
 
+    public WpfVisualReplayResult ReplayVisualSubtreeRetained(
+        object rootVisual,
+        uint pixelWidth,
+        uint pixelHeight,
+        IWpfMilResourceResolver? resources = null,
+        IWpfImageSourceAdapter? imageSourceAdapter = null)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(rootVisual);
+
+        ProGpuWpfDrawingFrame drawingFrame = BeginDrawingFrame(pixelWidth, pixelHeight);
+        IWpfImageSourceAdapter? activeImageSourceAdapter = CreateFrameImageSourceAdapter(
+            imageSourceAdapter ?? WpfImageSourceAdapter);
+        using IDisposable? renderDataSinkProviderRegistration = drawingFrame.TryRegisterRenderDataSinkProvider(activeImageSourceAdapter, out IDisposable? registration)
+            ? registration
+            : null;
+        using var sink = new ProGpuRetainedCompositionCommandSink(
+            drawingFrame,
+            Context,
+            Viewport3DTextureCache);
+        return ReplayVisualSubtreeCore(
+            rootVisual,
+            sink,
+            resources,
+            activeImageSourceAdapter);
+    }
+
     public WpfVisualReplayResult ReplayVisualSubtree(
         object rootVisual,
         IWpfCompositionCommandSink sink,

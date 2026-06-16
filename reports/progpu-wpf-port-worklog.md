@@ -861,6 +861,8 @@
 - Extended the compiled XAML app smoke to exercise real WPF read-only collection and attached-property lowering. `MainWindow.xaml` now declares a named `Grid` with `RowDefinitions`, `ColumnDefinitions`, and child `Grid.Row`/`Grid.Column` values, while the runtime and `Application.Run()` harnesses verify the generated fields, collection contents, and dependency-property values through WPF's own loaded BAML objects.
 - Hardened the Fluent theme harness so it finds the collapsed implicit-style `CheckBox` through WPF namescope lookup and treats the dynamically appended themed button as the last child instead of relying on fixed stack-panel indexes.
 - Verified the read-only collection/attached-property XAML slice with `git diff --check`, clean serial build/run of `ProGPU.Wpf.RealXamlRuntimeHarness`, clean serial build/run of `ProGPU.Wpf.RealApplicationRunHarness`, and clean serial build/run of `ProGPU.Wpf.RealThemeRuntimeHarness`; the three harnesses printed their success messages.
+- Advanced the ProGPU submodule to `e598257` (`skia: Validate CPU surface row bytes`) and replied to ProGPU PR #17 review thread `discussion_r3424590799`. CPU-backed `SKSurface.Create(info, pixels, rowBytes, properties)` now rejects positive row strides smaller than `width * 4` before context/texture allocation, keeps zero/negative stride on the existing default-row-stride behavior, and uses the resolved stride for both initial upload and `Flush()` writeback.
+- Verified the ProGPU rowBytes review slice with `git diff --check` and focused `dotnet test src/ProGPU.Tests/ProGPU.Tests.csproj --no-restore --verbosity minimal --filter FullyQualifiedName~SkSurfaceBackendRenderTargetTests`; 8 focused Skia surface tests passed with existing warnings only.
 
 ## Open Porting Items
 

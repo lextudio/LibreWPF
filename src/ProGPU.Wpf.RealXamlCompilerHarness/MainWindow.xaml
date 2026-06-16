@@ -37,6 +37,29 @@
             Foreground="{StaticResource MergedAccentBrush}"
             Margin="{StaticResource MergedBlockMargin}"
             Text="compiled merged resource" />
+        <Grid
+            x:Name="AttachedLayoutGrid"
+            Margin="0,8,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock
+                x:Name="GridFirstCell"
+                Grid.Row="0"
+                Grid.Column="0"
+                Text="grid alpha" />
+            <TextBlock
+                x:Name="GridSecondCell"
+                Grid.Row="1"
+                Grid.Column="1"
+                Margin="4,0,0,0"
+                Text="grid beta" />
+        </Grid>
         <CheckBox
             x:Name="ImplicitStyleCheckBox"
             IsChecked="True" />

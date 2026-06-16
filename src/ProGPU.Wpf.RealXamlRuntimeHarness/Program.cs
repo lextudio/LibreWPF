@@ -134,7 +134,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 12, "stack panel children");
+        AssertCollectionCount(children, expected: 13, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -161,6 +161,7 @@ internal static class Program
 
         ValidateBindingAndCommand(window);
         ValidateMergedResourceDictionary(window, application);
+        ValidateReadOnlyGridCollectionsAndAttachedProperties(window);
         ValidateImplicitMergedStyle(window, application);
         ValidateXamlEventHandler(window);
         ValidateRoutedCommand(window);
@@ -210,6 +211,27 @@ internal static class Program
         AssertEqual(GetProperty(expectedMargin, "Top"), GetProperty(actualMargin, "Top"), "compiled merged-resource margin top");
         AssertEqual(GetProperty(expectedMargin, "Right"), GetProperty(actualMargin, "Right"), "compiled merged-resource margin right");
         AssertEqual(GetProperty(expectedMargin, "Bottom"), GetProperty(actualMargin, "Bottom"), "compiled merged-resource margin bottom");
+    }
+
+    private static void ValidateReadOnlyGridCollectionsAndAttachedProperties(object window)
+    {
+        object layoutGrid = GetField(window, "AttachedLayoutGrid");
+        AssertType(layoutGrid, "System.Windows.Controls.Grid", "compiled attached-layout Grid");
+        AssertCollectionCount(GetProperty(layoutGrid, "RowDefinitions"), expected: 2, "compiled Grid row definitions");
+        AssertCollectionCount(GetProperty(layoutGrid, "ColumnDefinitions"), expected: 2, "compiled Grid column definitions");
+        AssertCollectionCount(GetProperty(layoutGrid, "Children"), expected: 2, "compiled Grid children");
+
+        object firstCell = GetField(window, "GridFirstCell");
+        AssertType(firstCell, "System.Windows.Controls.TextBlock", "compiled Grid first cell");
+        AssertEqual("grid alpha", GetProperty(firstCell, "Text"), "compiled Grid first-cell text");
+        AssertEqual(0, GetDependencyPropertyValue(firstCell, layoutGrid.GetType(), "RowProperty"), "compiled Grid first-cell row");
+        AssertEqual(0, GetDependencyPropertyValue(firstCell, layoutGrid.GetType(), "ColumnProperty"), "compiled Grid first-cell column");
+
+        object secondCell = GetField(window, "GridSecondCell");
+        AssertType(secondCell, "System.Windows.Controls.TextBlock", "compiled Grid second cell");
+        AssertEqual("grid beta", GetProperty(secondCell, "Text"), "compiled Grid second-cell text");
+        AssertEqual(1, GetDependencyPropertyValue(secondCell, layoutGrid.GetType(), "RowProperty"), "compiled Grid second-cell row");
+        AssertEqual(1, GetDependencyPropertyValue(secondCell, layoutGrid.GetType(), "ColumnProperty"), "compiled Grid second-cell column");
     }
 
     private static void ValidateImplicitMergedStyle(object window, object application)
@@ -468,6 +490,15 @@ internal static class Program
         }
 
         return Invoke(collection, "get_Item", index);
+    }
+
+    private static object GetDependencyPropertyValue(object dependencyObject, Type ownerType, string dependencyPropertyFieldName)
+    {
+        FieldInfo dependencyProperty = ownerType.GetField(
+            dependencyPropertyFieldName,
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.FlattenHierarchy)
+            ?? throw new MissingFieldException(ownerType.FullName, dependencyPropertyFieldName);
+        return Invoke(dependencyObject, "GetValue", dependencyProperty.GetValue(null));
     }
 
     private static void AddToCollection(object collection, object item)

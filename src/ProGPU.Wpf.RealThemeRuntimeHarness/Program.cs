@@ -144,9 +144,9 @@ internal static class Program
     {
         object content = GetProperty(window, "Content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expectedMinimum: 13, "themed stack panel children");
+        AssertCollectionCount(children, expectedMinimum: 14, "themed stack panel children");
 
-        object button = GetCollectionItem(children, 12);
+        object button = GetCollectionItem(children, GetCollectionCount(children) - 1);
         object richTextBox = GetCollectionItem(children, 2);
 
         AssertType(GetDictionaryValue(themeDictionary, "DefaultWindowStyle"), "System.Windows.Style", "DefaultWindowStyle");
@@ -181,8 +181,7 @@ internal static class Program
         const uint pixelHeight = 260;
 
         object content = GetProperty(window, "Content");
-        object children = GetProperty(content, "Children");
-        object implicitStyleCheckBox = GetCollectionItem(children, 5);
+        object implicitStyleCheckBox = Invoke(window, "FindName", "ImplicitStyleCheckBox");
         SetEnumProperty(implicitStyleCheckBox, "Visibility", "Collapsed");
 
         MeasureAndArrange(windowsBase, content, pixelWidth, pixelHeight);
@@ -363,15 +362,21 @@ internal static class Program
 
     private static void AssertCollectionCount(object collection, int expectedMinimum, string description)
     {
-        object countValue =
-            collection is Array array ? array.Length :
-            collection is ICollection nonGenericCollection ? nonGenericCollection.Count :
-            GetProperty(collection, "Count");
-        int count = Convert.ToInt32(countValue);
+        int count = GetCollectionCount(collection);
         if (count < expectedMinimum)
         {
             throw new InvalidOperationException($"Expected {description} to contain at least {expectedMinimum} items, got {count}.");
         }
+    }
+
+    private static int GetCollectionCount(object collection)
+    {
+        object countValue =
+            collection is Array array ? array.Length :
+            collection is ICollection nonGenericCollection ? nonGenericCollection.Count :
+            GetProperty(collection, "Count");
+
+        return Convert.ToInt32(countValue);
     }
 
     private static void AssertStyleTarget(object style, string expectedTargetTypeName, string description)

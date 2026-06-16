@@ -102,6 +102,93 @@ public sealed class WpfRetainedVisualBranchMap
         return InvalidateVisualsForSources(sources).InvalidatedVisualCount;
     }
 
+    public IReadOnlyList<WpfRetainedVisualBranchReplayTarget> GetReplayTargetsForSources(IEnumerable<object> sources)
+    {
+        ArgumentNullException.ThrowIfNull(sources);
+
+        var dirtySources = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        foreach (var source in sources)
+        {
+            dirtySources.Add(source);
+        }
+
+        if (dirtySources.Count == 0)
+        {
+            return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
+        }
+
+        var targets = new List<WpfRetainedVisualBranchReplayTarget>();
+        var visitedVisuals = new HashSet<ProGpuVisual>(ReferenceEqualityComparer.Instance);
+        foreach (var source in dirtySources)
+        {
+            if (!_visualsBySource.TryGetValue(source, out var visuals))
+            {
+                return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
+            }
+
+            foreach (var visual in visuals)
+            {
+                if (!_sourcesByVisual.TryGetValue(visual, out var visualSources))
+                {
+                    return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
+                }
+
+                foreach (var visualSource in visualSources)
+                {
+                    if (!dirtySources.Contains(visualSource))
+                    {
+                        return Array.Empty<WpfRetainedVisualBranchReplayTarget>();
+                    }
+                }
+
+                if (visitedVisuals.Add(visual))
+                {
+                    targets.Add(new WpfRetainedVisualBranchReplayTarget(source, visual));
+                }
+            }
+        }
+
+        if (targets.Count <= 1)
+        {
+            return targets;
+        }
+
+        var topLevelTargets = new List<WpfRetainedVisualBranchReplayTarget>(targets.Count);
+        foreach (var target in targets)
+        {
+            var isCoveredByAncestor = false;
+            foreach (var candidateAncestor in targets)
+            {
+                if (ReferenceEquals(candidateAncestor.Visual, target.Visual))
+                {
+                    continue;
+                }
+
+                if (IsAncestorOf(candidateAncestor.Visual, target.Visual))
+                {
+                    isCoveredByAncestor = true;
+                    break;
+                }
+            }
+
+            if (!isCoveredByAncestor)
+            {
+                topLevelTargets.Add(target);
+            }
+        }
+
+        return topLevelTargets;
+    }
+
+    public void UnregisterVisualTree(ProGpuVisual visual)
+    {
+        ArgumentNullException.ThrowIfNull(visual);
+
+        UnregisterVisualTreeCore(visual);
+        LastSource = null;
+        LastVisual = null;
+    }
+
     public WpfRetainedVisualBranchInvalidationResult InvalidateVisualsForSources(IEnumerable<object> sources)
     {
         ArgumentNullException.ThrowIfNull(sources);
@@ -160,7 +247,52 @@ public sealed class WpfRetainedVisualBranchMap
             invalidatedVisuals.Count,
             sharedWithCleanSourceVisualCount);
     }
+
+    private void UnregisterVisualTreeCore(ProGpuVisual visual)
+    {
+        if (_sourcesByVisual.Remove(visual, out var sources))
+        {
+            foreach (var source in sources)
+            {
+                if (_visualsBySource.TryGetValue(source, out var visuals)
+                    && visuals.Remove(visual))
+                {
+                    VisualCount--;
+                    if (visuals.Count == 0)
+                    {
+                        _visualsBySource.Remove(source);
+                    }
+                }
+            }
+        }
+
+        if (visual is global::ProGPU.Scene.ContainerVisual containerVisual)
+        {
+            var children = containerVisual.Children;
+            for (var i = 0; i < children.Count; i++)
+            {
+                UnregisterVisualTreeCore(children[i]);
+            }
+        }
+    }
+
+    private static bool IsAncestorOf(ProGpuVisual ancestor, ProGpuVisual visual)
+    {
+        for (var current = visual.Parent; current != null; current = current.Parent)
+        {
+            if (ReferenceEquals(current, ancestor))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
+
+public readonly record struct WpfRetainedVisualBranchReplayTarget(
+    object Source,
+    ProGpuVisual Visual);
 
 public readonly struct WpfRetainedVisualBranchInvalidationResult
 {

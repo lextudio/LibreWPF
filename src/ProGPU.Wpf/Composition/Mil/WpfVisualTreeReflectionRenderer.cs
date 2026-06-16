@@ -45,6 +45,33 @@ public sealed class WpfVisualTreeReflectionRenderer
         return stats.ToResult();
     }
 
+    internal bool CanReplaySubtreeIntoCurrentRetainedVisual(object rootVisual)
+    {
+        ArgumentNullException.ThrowIfNull(rootVisual);
+        return TryCreateRetainedVisualState(rootVisual, out _);
+    }
+
+    internal bool TryReplaySubtreeIntoCurrentRetainedVisual(
+        object rootVisual,
+        IWpfCompositionCommandSink sink,
+        IWpfMilResourceResolver? resources,
+        IWpfImageSourceAdapter? imageSourceAdapter,
+        out WpfVisualReplayResult result)
+    {
+        ArgumentNullException.ThrowIfNull(rootVisual);
+        ArgumentNullException.ThrowIfNull(sink);
+
+        var stats = new ReplayStats();
+        if (!TryReplaySubtreeIntoCurrentRetainedVisualCore(rootVisual, sink, resources, imageSourceAdapter, stats))
+        {
+            result = default;
+            return false;
+        }
+
+        result = stats.ToResult();
+        return true;
+    }
+
     private void ReplaySubtreeCore(
         object visual,
         IWpfCompositionCommandSink sink,
@@ -79,6 +106,39 @@ public sealed class WpfVisualTreeReflectionRenderer
         {
             sink.Pop();
         }
+    }
+
+    private bool TryReplaySubtreeIntoCurrentRetainedVisualCore(
+        object visual,
+        IWpfCompositionCommandSink sink,
+        IWpfMilResourceResolver? resources,
+        IWpfImageSourceAdapter? imageSourceAdapter,
+        ReplayStats stats)
+    {
+        stats.VisualCount++;
+
+        if (sink is not IWpfRetainedVisualBranchSink retainedVisualBranchSink
+            || sink is not IWpfRetainedVisualStateSink retainedVisualStateSink
+            || !TryCreateRetainedVisualState(visual, out var visualState))
+        {
+            return false;
+        }
+
+        retainedVisualBranchSink.RegisterVisualOwner(visual);
+        retainedVisualStateSink.ApplyVisualState(visualState);
+
+        if (!ReplayViewport3DVisual(visual, sink, stats))
+        {
+            ReplayVisualContent(visual, sink, resources, imageSourceAdapter, stats);
+
+            foreach (var child in ExtractChildren(visual))
+            {
+                stats.ChildEdgeCount++;
+                ReplaySubtreeCore(child, sink, resources, imageSourceAdapter, stats, allowRetainedVisualOwnerScopes: true);
+            }
+        }
+
+        return true;
     }
 
     private bool TryReplaySubtreeWithRetainedVisualOwner(

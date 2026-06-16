@@ -376,6 +376,60 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void BranchMapReturnsTopLevelReplayTargetsForDirtySources()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var parentSource = new object();
+        var childSource = new object();
+        var parentVisual = new ProGpuRetainedDrawingVisual();
+        var childVisual = new ProGpuRetainedDrawingVisual();
+        parentVisual.AddChild(childVisual);
+        branchMap.Register(parentSource, parentVisual);
+        branchMap.Register(childSource, childVisual);
+
+        var targets = branchMap.GetReplayTargetsForSources(new[] { parentSource, childSource });
+
+        var target = Assert.Single(targets);
+        Assert.Same(parentSource, target.Source);
+        Assert.Same(parentVisual, target.Visual);
+    }
+
+    [Fact]
+    public void BranchMapRejectsReplayTargetsWhenDirtySourceSharesBranchWithCleanOwner()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var dirtySource = new object();
+        var cleanSource = new object();
+        var visual = new ProGpuRetainedDrawingVisual();
+        branchMap.Register(dirtySource, visual);
+        branchMap.Register(cleanSource, visual);
+
+        Assert.Empty(branchMap.GetReplayTargetsForSources(new[] { dirtySource }));
+    }
+
+    [Fact]
+    public void BranchMapUnregistersVisualTreeMappings()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var parentSource = new object();
+        var childSource = new object();
+        var parentVisual = new ProGpuRetainedDrawingVisual();
+        var childVisual = new ProGpuRetainedDrawingVisual();
+        parentVisual.AddChild(childVisual);
+        branchMap.Register(parentSource, parentVisual);
+        branchMap.Register(childSource, childVisual);
+
+        branchMap.UnregisterVisualTree(parentVisual);
+
+        Assert.Equal(0, branchMap.SourceCount);
+        Assert.Equal(0, branchMap.VisualCount);
+        Assert.Null(branchMap.LastSource);
+        Assert.Null(branchMap.LastVisual);
+        Assert.False(branchMap.TryGetVisuals(parentSource, out _));
+        Assert.False(branchMap.TryGetVisuals(childSource, out _));
+    }
+
+    [Fact]
     public void RetainedSinkCreatesBoundedNativeCacheVisual()
     {
         var sceneRoot = new ProGpuContainerVisual();

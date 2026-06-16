@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using Silk.NET.WebGPU;
 using Silk.NET.Windowing;
@@ -226,6 +227,82 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
                WpfInvalidationTracker.IsDirty;
     }
 
+    internal bool CanReplayDirtyRetainedVisualBranches(object rootVisual)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(rootVisual);
+
+        return ReferenceEquals(WpfInvalidationTracker.Root, rootVisual) &&
+               WpfInvalidationTracker.IsDirty &&
+               LastRetainedBranchDirtySourceCount > 0 &&
+               !LastRetainedBranchInvalidationUsedFallback &&
+               TryGetDirtyRetainedVisualBranchReplayTargets(out _);
+    }
+
+    internal bool TryReplayDirtyRetainedVisualBranches(
+        object rootVisual,
+        ProGpuWpfDrawingFrame drawingFrame,
+        IWpfMilResourceResolver? resources,
+        IWpfImageSourceAdapter? imageSourceAdapter,
+        out WpfVisualReplayResult result)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(rootVisual);
+        ArgumentNullException.ThrowIfNull(drawingFrame);
+
+        result = default;
+        if (!ReferenceEquals(WpfInvalidationTracker.Root, rootVisual) ||
+            !WpfInvalidationTracker.IsDirty ||
+            LastRetainedBranchDirtySourceCount == 0 ||
+            LastRetainedBranchInvalidationUsedFallback ||
+            !TryGetDirtyRetainedVisualBranchReplayTargets(out var targets))
+        {
+            return false;
+        }
+
+        IWpfImageSourceAdapter? activeImageSourceAdapter = imageSourceAdapter ?? WpfImageSourceAdapter;
+        var replayResult = default(WpfVisualReplayResult);
+        Viewport3DTextureCache.BeginFrame();
+
+        try
+        {
+            foreach (var target in targets)
+            {
+                var branchVisual = (ProGpuRetainedDrawingVisual)target.Visual;
+                RetainedVisualBranchMap.UnregisterVisualTree(branchVisual);
+                ResetRetainedDrawingVisualBranch(branchVisual, drawingFrame.PixelWidth, drawingFrame.PixelHeight);
+
+                using var sink = new ProGpuRetainedCompositionCommandSink(
+                    drawingFrame,
+                    branchVisual,
+                    Context,
+                    Viewport3DTextureCache);
+                if (!_visualTreeRenderer.TryReplaySubtreeIntoCurrentRetainedVisual(
+                    target.Source,
+                    sink,
+                    resources,
+                    activeImageSourceAdapter,
+                    out var branchReplayResult))
+                {
+                    RetainedWpfVisualRoot.ClearChildren();
+                    RetainedVisualBranchMap.Clear();
+                    return false;
+                }
+
+                replayResult = AddReplayResults(replayResult, branchReplayResult);
+            }
+
+            WpfInvalidationTracker.ConsumeDirty();
+            RootVisual.Invalidate();
+            result = replayResult;
+            return true;
+        }
+        finally
+        {
+            Viewport3DTextureCache.EndFrame();
+        }
+    }
+
     public void Clear()
     {
         ThrowIfDisposed();
@@ -311,6 +388,68 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         {
             Viewport3DTextureCache.EndFrame();
         }
+    }
+
+    private bool TryGetDirtyRetainedVisualBranchReplayTargets(
+        out IReadOnlyList<WpfRetainedVisualBranchReplayTarget> targets)
+    {
+        targets = RetainedVisualBranchMap.GetReplayTargetsForSources(WpfInvalidationTracker.DirtySources);
+        if (targets.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (var target in targets)
+        {
+            if (target.Visual is not ProGpuRetainedDrawingVisual branchVisual ||
+                branchVisual.Effect != null ||
+                branchVisual.CacheAsLayer ||
+                !_visualTreeRenderer.CanReplaySubtreeIntoCurrentRetainedVisual(target.Source))
+            {
+                targets = Array.Empty<WpfRetainedVisualBranchReplayTarget>();
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static void ResetRetainedDrawingVisualBranch(
+        ProGpuRetainedDrawingVisual visual,
+        uint pixelWidth,
+        uint pixelHeight)
+    {
+        visual.Context.Clear();
+        visual.ClearChildren();
+        visual.Offset = Vector2.Zero;
+        visual.Size = new Vector2(pixelWidth, pixelHeight);
+        visual.IsVisible = true;
+        visual.Opacity = 1f;
+        visual.Transform = Matrix4x4.Identity;
+        visual.CacheAsLayer = false;
+        visual.Scale = Vector3.One;
+        visual.Rotation = 0f;
+        visual.CenterPoint = Vector3.Zero;
+        visual.RenderTransformOrigin = new Vector2(0.5f, 0.5f);
+        visual.ClipBounds = null;
+        visual.Effect = null;
+    }
+
+    private static WpfVisualReplayResult AddReplayResults(
+        WpfVisualReplayResult left,
+        WpfVisualReplayResult right)
+    {
+        return new WpfVisualReplayResult(
+            left.VisualCount + right.VisualCount,
+            left.ContentCount + right.ContentCount,
+            left.ChildEdgeCount + right.ChildEdgeCount,
+            left.UnsupportedContentCount + right.UnsupportedContentCount,
+            left.UnsupportedVisualStateCount + right.UnsupportedVisualStateCount,
+            new WpfMilDecodeResult(
+                left.RenderData.RecordCount + right.RenderData.RecordCount,
+                left.RenderData.AppliedCount + right.RenderData.AppliedCount,
+                left.RenderData.SkippedCount + right.RenderData.SkippedCount,
+                left.RenderData.UnsupportedCount + right.RenderData.UnsupportedCount));
     }
 
     private void ThrowIfDisposed()

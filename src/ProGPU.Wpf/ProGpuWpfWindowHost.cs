@@ -148,6 +148,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     public long RetainedWpfReplaySkipCount { get; private set; }
 
+    public long RetainedWpfBranchReplayCount { get; private set; }
+
     internal long RenderSchedulerWakeupCount { get; private set; }
 
     internal long DispatcherWakeupCount { get; private set; }
@@ -438,7 +440,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             object? wpfRootVisual = _wpfRootVisual;
             var shouldReplayWpfRootVisual = wpfRootVisual != null &&
                 _target.ShouldReplayVisualSubtree(wpfRootVisual);
-            var clearRetainedWpfVisualRoot = wpfRootVisual == null || shouldReplayWpfRootVisual;
+            var canReplayDirtyWpfBranches = wpfRootVisual != null &&
+                shouldReplayWpfRootVisual &&
+                _target.CanReplayDirtyRetainedVisualBranches(wpfRootVisual);
+            var clearRetainedWpfVisualRoot = wpfRootVisual == null ||
+                (shouldReplayWpfRootVisual && !canReplayDirtyWpfBranches);
             var drawingFrame = _target.BeginDrawingFrame(
                 pixelWidth,
                 pixelHeight,
@@ -459,15 +465,29 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 {
                     if (shouldReplayWpfRootVisual)
                     {
-                        using var sink = new ProGpuRetainedCompositionCommandSink(
-                            drawingFrame,
-                            _target.Context,
-                            _target.Viewport3DTextureCache);
-                        LastVisualReplayResult = _target.ReplayVisualSubtree(
-                            wpfRootVisual,
-                            sink,
-                            WpfResourceResolver,
-                            WpfImageSourceAdapter);
+                        if (canReplayDirtyWpfBranches &&
+                            _target.TryReplayDirtyRetainedVisualBranches(
+                                wpfRootVisual,
+                                drawingFrame,
+                                WpfResourceResolver,
+                                WpfImageSourceAdapter,
+                                out var branchReplayResult))
+                        {
+                            LastVisualReplayResult = branchReplayResult;
+                            RetainedWpfBranchReplayCount++;
+                        }
+                        else
+                        {
+                            using var sink = new ProGpuRetainedCompositionCommandSink(
+                                drawingFrame,
+                                _target.Context,
+                                _target.Viewport3DTextureCache);
+                            LastVisualReplayResult = _target.ReplayVisualSubtree(
+                                wpfRootVisual,
+                                sink,
+                                WpfResourceResolver,
+                                WpfImageSourceAdapter);
+                        }
                     }
                     else
                     {
@@ -863,6 +883,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _hasPresentedFrame = false;
         SkippedFrameCount = 0;
         RetainedWpfReplaySkipCount = 0;
+        RetainedWpfBranchReplayCount = 0;
     }
 
     private void ReplaceRenderScheduler(IWpfRenderScheduler scheduler, bool ownsScheduler)

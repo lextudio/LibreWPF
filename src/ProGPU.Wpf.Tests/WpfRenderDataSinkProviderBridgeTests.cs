@@ -172,14 +172,19 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("public int LastRetainedBranchSharedWithCleanSourceVisualCount { get; private set; }", source, StringComparison.Ordinal);
         Assert.Contains("RetainedVisualBranchMap.InvalidateVisualsForSources(WpfInvalidationTracker.DirtySources)", source, StringComparison.Ordinal);
         Assert.Contains("LastRetainedBranchInvalidationUsedFallback = !result.CanTargetAllDirtySources;", source, StringComparison.Ordinal);
+        Assert.Contains("internal bool CanReplayDirtyRetainedVisualBranches(object rootVisual)", source, StringComparison.Ordinal);
+        Assert.Contains("internal bool TryReplayDirtyRetainedVisualBranches(", source, StringComparison.Ordinal);
+        Assert.Contains("RetainedVisualBranchMap.GetReplayTargetsForSources(WpfInvalidationTracker.DirtySources)", source, StringComparison.Ordinal);
         Assert.Contains("RetainedWpfVisualRoot.Invalidate();", source, StringComparison.Ordinal);
-        Assert.Contains(
-            "target.LastRetainedBranchSharedWithCleanSourceVisualCount",
-            File.ReadAllText(FindRepoPath(
-                "src",
-                "ProGPU.Wpf",
-                "ProGpuWpfWindowHost.cs")),
-            StringComparison.Ordinal);
+        var hostSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "ProGpuWpfWindowHost.cs"));
+        Assert.Contains("target.LastRetainedBranchSharedWithCleanSourceVisualCount", hostSource, StringComparison.Ordinal);
+        Assert.Contains("public long RetainedWpfBranchReplayCount { get; private set; }", hostSource, StringComparison.Ordinal);
+        Assert.Contains("_target.CanReplayDirtyRetainedVisualBranches(wpfRootVisual)", hostSource, StringComparison.Ordinal);
+        Assert.Contains("_target.TryReplayDirtyRetainedVisualBranches(", hostSource, StringComparison.Ordinal);
+        Assert.Contains("RetainedWpfBranchReplayCount++;", hostSource, StringComparison.Ordinal);
     }
 
     [Fact]

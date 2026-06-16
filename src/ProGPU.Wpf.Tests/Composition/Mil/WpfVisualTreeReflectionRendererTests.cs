@@ -95,6 +95,64 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void TryReplaySubtreeIntoCurrentRetainedVisualUsesCurrentOwnerBranch()
+    {
+        var root = new FakeVisual
+        {
+            Offset = new WpfVector(10, 20),
+            Opacity = 0.75
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+        var renderer = new WpfVisualTreeReflectionRenderer();
+
+        Assert.True(renderer.CanReplaySubtreeIntoCurrentRetainedVisual(root));
+        Assert.True(renderer.TryReplaySubtreeIntoCurrentRetainedVisual(
+            root,
+            sink,
+            resources: null,
+            imageSourceAdapter: null,
+            out var result));
+
+        Assert.Equal(new[] { "ApplyVisualState", "PushVisualOwner", "ApplyVisualState", "DrawRectangle", "PopVisualOwner" }, sink.Operations);
+        Assert.Equal(new object[] { root, root.Children[0] }, sink.VisualOwners);
+        Assert.Equal(2, sink.RetainedVisualStates.Count);
+        Assert.Equal(new Vector2(10, 20), sink.RetainedVisualStates[0].Offset);
+        Assert.Equal(0.75f, sink.RetainedVisualStates[0].Opacity);
+        Assert.Equal(2, result.VisualCount);
+        Assert.Equal(1, result.ContentCount);
+        Assert.Equal(1, result.ChildEdgeCount);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void TryReplaySubtreeIntoCurrentRetainedVisualRejectsNonNativeRootState()
+    {
+        var root = new FakeVisual
+        {
+            Bounds = new FakeRect(1, 2, 100, 50),
+            OpacityMask = Brushes.White
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+        var renderer = new WpfVisualTreeReflectionRenderer();
+
+        Assert.False(renderer.CanReplaySubtreeIntoCurrentRetainedVisual(root));
+        Assert.False(renderer.TryReplaySubtreeIntoCurrentRetainedVisual(
+            root,
+            sink,
+            resources: null,
+            imageSourceAdapter: null,
+            out var result));
+
+        Assert.Equal(default, result);
+        Assert.Empty(sink.Operations);
+        Assert.Empty(sink.VisualOwners);
+    }
+
+    [Fact]
     public void ReplaySubtreeKeepsFallbackSubtreeInCommandScopeForNonNativeVisualState()
     {
         var root = new FakeVisual

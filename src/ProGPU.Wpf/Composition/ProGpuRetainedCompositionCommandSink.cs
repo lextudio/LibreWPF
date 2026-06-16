@@ -68,6 +68,19 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         _visualScopes.Push(new VisualScope(rootVisual, context, viewport3DTextureCache, VisualScopeKind.Root, 0));
     }
 
+    internal ProGpuRetainedCompositionCommandSink(
+        ProGpuWpfDrawingFrame drawingFrame,
+        ProGpuRetainedDrawingVisual rootVisual,
+        global::ProGPU.Backend.WgpuContext? context,
+        WpfViewport3DTextureCache? viewport3DTextureCache)
+    {
+        ArgumentNullException.ThrowIfNull(drawingFrame);
+        ArgumentNullException.ThrowIfNull(rootVisual);
+
+        _drawingFrame = drawingFrame;
+        _visualScopes.Push(new VisualScope(rootVisual, context, viewport3DTextureCache, VisualScopeKind.Root, 0));
+    }
+
     public MediaDrawingContext DrawingContext => Current.DrawingContext;
 
     public void RegisterVisualOwner(object sourceVisual)

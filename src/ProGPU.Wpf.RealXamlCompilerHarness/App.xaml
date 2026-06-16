@@ -4,33 +4,38 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     StartupUri="MainWindow.xaml">
     <Application.Resources>
-        <SolidColorBrush x:Key="AccentBrush" Color="#356D9E" />
-        <SolidColorBrush x:Key="ReplacementAccentBrush" Color="#9C4A2F" />
-        <ControlTemplate x:Key="SmokeButtonTemplate" TargetType="{x:Type Button}">
-            <Border
-                x:Name="TemplateBorder"
-                Background="{DynamicResource AccentBrush}"
-                Padding="4">
-                <ContentPresenter
-                    Content="{TemplateBinding Content}"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center" />
-            </Border>
-        </ControlTemplate>
-        <Style x:Key="SmokeTextBoxStyle" TargetType="{x:Type TextBox}">
-            <Setter Property="MinWidth" Value="180" />
-            <Setter Property="Margin" Value="0,8,0,0" />
-        </Style>
-        <Style x:Key="TriggeredButtonStyle" TargetType="{x:Type Button}">
-            <Setter Property="Margin" Value="0,8,0,0" />
-            <Setter Property="Tag" Value="trigger inactive" />
-            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsWarning}" Value="True">
-                    <Setter Property="Tag" Value="trigger active" />
-                    <Setter Property="Background" Value="{StaticResource ReplacementAccentBrush}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="SmokeResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <SolidColorBrush x:Key="AccentBrush" Color="#356D9E" />
+            <SolidColorBrush x:Key="ReplacementAccentBrush" Color="#9C4A2F" />
+            <ControlTemplate x:Key="SmokeButtonTemplate" TargetType="{x:Type Button}">
+                <Border
+                    x:Name="TemplateBorder"
+                    Background="{DynamicResource AccentBrush}"
+                    Padding="4">
+                    <ContentPresenter
+                        Content="{TemplateBinding Content}"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center" />
+                </Border>
+            </ControlTemplate>
+            <Style x:Key="SmokeTextBoxStyle" TargetType="{x:Type TextBox}">
+                <Setter Property="MinWidth" Value="180" />
+                <Setter Property="Margin" Value="0,8,0,0" />
+            </Style>
+            <Style x:Key="TriggeredButtonStyle" TargetType="{x:Type Button}">
+                <Setter Property="Margin" Value="0,8,0,0" />
+                <Setter Property="Tag" Value="trigger inactive" />
+                <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                        <Setter Property="Tag" Value="trigger active" />
+                        <Setter Property="Background" Value="{StaticResource ReplacementAccentBrush}" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

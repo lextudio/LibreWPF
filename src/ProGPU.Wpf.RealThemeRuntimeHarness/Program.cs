@@ -144,9 +144,9 @@ internal static class Program
     {
         object content = GetProperty(window, "Content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expectedMinimum: 10, "themed stack panel children");
+        AssertCollectionCount(children, expectedMinimum: 11, "themed stack panel children");
 
-        object button = GetCollectionItem(children, 9);
+        object button = GetCollectionItem(children, 10);
         object richTextBox = GetCollectionItem(children, 2);
 
         AssertType(GetDictionaryValue(themeDictionary, "DefaultWindowStyle"), "System.Windows.Style", "DefaultWindowStyle");
@@ -170,7 +170,9 @@ internal static class Program
         AssertEqual("themed button smoke", GetProperty(button, "Content"), "themed button content");
 
         object appResources = GetProperty(application, "Resources");
-        AssertSame(themeDictionary, GetCollectionItem(GetProperty(appResources, "MergedDictionaries"), 0), "merged Fluent dictionary");
+        object mergedDictionaries = GetProperty(appResources, "MergedDictionaries");
+        AssertCollectionCount(mergedDictionaries, expectedMinimum: 2, "application merged dictionaries after Fluent merge");
+        AssertCollectionContainsSame(mergedDictionaries, themeDictionary, "merged Fluent dictionary");
     }
 
     private static void ValidateThemedVisualReplay(Assembly windowsBase, object window)
@@ -486,6 +488,22 @@ internal static class Program
         {
             throw new InvalidOperationException($"Expected {description} to reference the same object.");
         }
+    }
+
+    private static void AssertCollectionContainsSame(object collection, object expected, string description)
+    {
+        if (collection is IEnumerable items)
+        {
+            foreach (object? item in items)
+            {
+                if (ReferenceEquals(expected, item))
+                {
+                    return;
+                }
+            }
+        }
+
+        throw new InvalidOperationException($"Expected {description} to be present in the collection.");
     }
 
     private static void AssertEqual(object? expected, object? actual, string description)

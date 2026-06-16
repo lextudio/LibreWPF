@@ -84,6 +84,11 @@ internal static class Program
 
         object resources = GetProperty(application, "Resources");
         AssertCollectionCount(GetProperty(resources, "Keys"), expected: 5, "application resource keys");
+        object mergedDictionaries = GetProperty(resources, "MergedDictionaries");
+        AssertCollectionCount(mergedDictionaries, expected: 1, "application merged dictionaries");
+        object smokeResources = GetCollectionItem(mergedDictionaries, 0);
+        AssertType(smokeResources, "System.Windows.ResourceDictionary", "compiled merged resource dictionary");
+        AssertEqual("SmokeResources.xaml", GetProperty(smokeResources, "Source").ToString(), "compiled merged resource dictionary source");
 
         object accentBrush = GetDictionaryValue(resources, "AccentBrush");
         AssertType(accentBrush, "System.Windows.Media.SolidColorBrush", "accent brush");
@@ -103,6 +108,14 @@ internal static class Program
         object triggeredButtonStyle = GetDictionaryValue(resources, "TriggeredButtonStyle");
         AssertType(triggeredButtonStyle, "System.Windows.Style", "triggered Button style");
         AssertEqual("System.Windows.Controls.Button", GetProperty(triggeredButtonStyle, "TargetType").ToString(), "triggered Button style target");
+
+        object mergedAccentBrush = Invoke(application, "TryFindResource", "MergedAccentBrush");
+        AssertType(mergedAccentBrush, "System.Windows.Media.SolidColorBrush", "merged accent brush");
+        AssertEqual("#FF547A48", GetProperty(mergedAccentBrush, "Color").ToString(), "merged accent brush color");
+
+        object mergedBlockMargin = Invoke(application, "TryFindResource", "MergedBlockMargin");
+        AssertType(mergedBlockMargin, "System.Windows.Thickness", "merged block margin");
+        AssertEqual(8.0, GetProperty(mergedBlockMargin, "Top"), "merged block margin top");
     }
 
     private static void ValidateMainWindow(object window, object application)
@@ -115,7 +128,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 9, "stack panel children");
+        AssertCollectionCount(children, expected: 10, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -141,6 +154,7 @@ internal static class Program
         AssertCollectionCount(GetProperty(flowDocument, "Blocks"), expected: 1, "compiled FlowDocument blocks");
 
         ValidateBindingAndCommand(window);
+        ValidateMergedResourceDictionary(window, application);
         ValidateRoutedCommand(window);
         ValidateStyleAndDataTrigger(window, application);
         ValidateTemplateAndDynamicResource(window, application);
@@ -171,6 +185,23 @@ internal static class Program
         AssertEqual(0, GetProperty(viewModelCommand, "ExecutionCount"), "bound command initial execution count");
         Invoke(buttonCommand, "Execute", new object?[] { null });
         AssertEqual(1, GetProperty(viewModelCommand, "ExecutionCount"), "bound command execution count");
+    }
+
+    private static void ValidateMergedResourceDictionary(object window, object application)
+    {
+        object expectedBrush = Invoke(application, "TryFindResource", "MergedAccentBrush");
+        object expectedMargin = Invoke(application, "TryFindResource", "MergedBlockMargin");
+
+        object mergedResourceBlock = GetField(window, "MergedResourceBlock");
+        AssertType(mergedResourceBlock, "System.Windows.Controls.TextBlock", "compiled merged-resource TextBlock");
+        AssertEqual("compiled merged resource", GetProperty(mergedResourceBlock, "Text"), "compiled merged-resource TextBlock text");
+        AssertSame(expectedBrush, GetProperty(mergedResourceBlock, "Foreground"), "compiled merged-resource foreground");
+
+        object actualMargin = GetProperty(mergedResourceBlock, "Margin");
+        AssertEqual(GetProperty(expectedMargin, "Left"), GetProperty(actualMargin, "Left"), "compiled merged-resource margin left");
+        AssertEqual(GetProperty(expectedMargin, "Top"), GetProperty(actualMargin, "Top"), "compiled merged-resource margin top");
+        AssertEqual(GetProperty(expectedMargin, "Right"), GetProperty(actualMargin, "Right"), "compiled merged-resource margin right");
+        AssertEqual(GetProperty(expectedMargin, "Bottom"), GetProperty(actualMargin, "Bottom"), "compiled merged-resource margin bottom");
     }
 
     private static void ValidateStyleAndDataTrigger(object window, object application)

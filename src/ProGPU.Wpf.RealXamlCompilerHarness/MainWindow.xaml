@@ -32,6 +32,11 @@
             x:Name="BindingBlock"
             Margin="0,8,0,0"
             Text="{Binding Greeting}" />
+        <TextBlock
+            x:Name="MergedResourceBlock"
+            Foreground="{StaticResource MergedAccentBrush}"
+            Margin="{StaticResource MergedBlockMargin}"
+            Text="compiled merged resource" />
         <Button
             x:Name="CommandButton"
             Margin="0,8,0,0"

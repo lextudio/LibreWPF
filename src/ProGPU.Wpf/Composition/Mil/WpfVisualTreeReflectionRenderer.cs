@@ -447,7 +447,7 @@ public sealed class WpfVisualTreeReflectionRenderer
     {
         state = default;
 
-        var scopedStateCount = 0;
+        var effectStateCount = 0;
         global::ProGPU.Scene.EffectBase? effect = null;
         var cacheAsLayer = false;
 
@@ -458,18 +458,23 @@ public sealed class WpfVisualTreeReflectionRenderer
                 return false;
             }
 
-            scopedStateCount++;
+            effectStateCount++;
         }
 
         if (TryGetPropertyValue(visual, "BitmapEffect", out var bitmapEffect) && bitmapEffect != null)
         {
+            if (effectStateCount != 0)
+            {
+                return false;
+            }
+
             TryGetPropertyValue(visual, "BitmapEffectInput", out var bitmapEffectInput);
             if (!WpfEffectReflection.TryCreateProGpuPushEffect(bitmapEffect, bitmapEffectInput, out effect))
             {
                 return false;
             }
 
-            scopedStateCount++;
+            effectStateCount++;
         }
         else if (HasNonNullProperty(visual, "BitmapEffectInput"))
         {
@@ -479,10 +484,9 @@ public sealed class WpfVisualTreeReflectionRenderer
         if (HasNonNullProperty(visual, "CacheMode"))
         {
             cacheAsLayer = true;
-            scopedStateCount++;
         }
 
-        if (scopedStateCount != 1)
+        if (effectStateCount == 0 && !cacheAsLayer)
         {
             return false;
         }

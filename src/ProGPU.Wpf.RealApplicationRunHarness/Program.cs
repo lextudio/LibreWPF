@@ -128,7 +128,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 10, "stack panel children");
+        AssertCollectionCount(children, expected: 11, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -155,6 +155,7 @@ internal static class Program
 
         ValidateBindingAndCommand(window);
         ValidateMergedResourceDictionary(window, application);
+        ValidateXamlEventHandler(window);
         ValidateRoutedCommand(window);
         ValidateStyleAndDataTrigger(window, application);
         ValidateTemplateAndDynamicResource(window, application);
@@ -202,6 +203,20 @@ internal static class Program
         AssertEqual(GetProperty(expectedMargin, "Top"), GetProperty(actualMargin, "Top"), "compiled merged-resource margin top");
         AssertEqual(GetProperty(expectedMargin, "Right"), GetProperty(actualMargin, "Right"), "compiled merged-resource margin right");
         AssertEqual(GetProperty(expectedMargin, "Bottom"), GetProperty(actualMargin, "Bottom"), "compiled merged-resource margin bottom");
+    }
+
+    private static void ValidateXamlEventHandler(object window)
+    {
+        object eventButton = GetField(window, "EventButton");
+        AssertType(eventButton, "System.Windows.Controls.Button", "compiled event Button");
+        AssertEqual("run xaml event", GetProperty(eventButton, "Content"), "compiled event Button content");
+        AssertEqual(0, GetProperty(window, "XamlClickCount"), "XAML event initial click count");
+
+        Invoke(eventButton, "OnClick");
+
+        AssertEqual(1, GetProperty(window, "XamlClickCount"), "compiled XAML Click handler count");
+        AssertEqual("EventButton", GetProperty(window, "LastXamlClickSenderName"), "compiled XAML Click sender name");
+        AssertEqual("Click", GetProperty(window, "LastXamlClickRoutedEventName"), "compiled XAML Click routed event name");
     }
 
     private static void ValidateStyleAndDataTrigger(object window, object application)

@@ -38,6 +38,11 @@
             Margin="{StaticResource MergedBlockMargin}"
             Text="compiled merged resource" />
         <Button
+            x:Name="EventButton"
+            Margin="0,8,0,0"
+            Click="OnXamlClick"
+            Content="run xaml event" />
+        <Button
             x:Name="CommandButton"
             Margin="0,8,0,0"
             Command="{Binding SmokeCommand}"

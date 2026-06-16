@@ -689,6 +689,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"MergedResourceBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Foreground=\"{StaticResource MergedAccentBrush}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Margin=\"{StaticResource MergedBlockMargin}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"EventButton\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Click=\"OnXamlClick\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"CommandButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{Binding SmokeCommand}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:local=\"clr-namespace:ProGPU.Wpf.RealXamlCompilerHarness\"", mainWindowXaml, StringComparison.Ordinal);
@@ -717,6 +719,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void OnSmokeCommandCanExecute", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnSmokeCommandExecuted", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RoutedCommandExecutionCount++", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int XamlClickCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnXamlClick", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastXamlClickRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeViewModel : INotifyPropertyChanged", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ObservableCollection<SmokeItem> Items", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string TriggerButtonText", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -782,6 +787,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Button command binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMergedResourceDictionary(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled merged-resource foreground", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateXamlEventHandler(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled XAML Click handler count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetField(window, \"RoutedCommandButton\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateRoutedCommand(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled routed command target", harnessProgram, StringComparison.Ordinal);
@@ -859,6 +866,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Button command binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMergedResourceDictionary(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled merged-resource margin top", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateXamlEventHandler(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled XAML Click routed event name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateRoutedCommand(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled routed command target", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTemplateAndDynamicResource(window, application)", harnessProgram, StringComparison.Ordinal);
@@ -926,7 +935,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Invoke(button, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(richTextBox, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertType(GetProperty(richTextBox, \"Template\"), \"System.Windows.Controls.ControlTemplate\"", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("AssertCollectionCount(children, expectedMinimum: 11", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertCollectionCount(children, expectedMinimum: 12", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateThemedVisualReplay(windowsBase, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("MeasureAndArrange(windowsBase, content, pixelWidth, pixelHeight)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(element, \"Measure\", availableSize)", harnessProgram, StringComparison.Ordinal);

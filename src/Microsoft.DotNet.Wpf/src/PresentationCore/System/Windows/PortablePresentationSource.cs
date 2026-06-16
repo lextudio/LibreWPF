@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Windows.Media;
+using System.Windows.Input;
 using System.Windows.Threading;
 
 namespace System.Windows
@@ -12,6 +13,8 @@ namespace System.Windows
     internal sealed class PortablePresentationSource : PresentationSource, IDisposable
     {
         private readonly PortableCompositionTarget _compositionTarget;
+        private readonly PortableKeyboardInputProvider _keyboardInputProvider;
+        private readonly PortableMouseInputProvider _mouseInputProvider;
         private Visual _rootVisual;
         private bool _contentRenderedQueued;
         private bool _isDisposed;
@@ -24,6 +27,8 @@ namespace System.Windows
         internal PortablePresentationSource(double dpiScaleX, double dpiScaleY)
         {
             _compositionTarget = new PortableCompositionTarget(dpiScaleX, dpiScaleY);
+            _keyboardInputProvider = new PortableKeyboardInputProvider(this);
+            _mouseInputProvider = new PortableMouseInputProvider(this);
             AddSource();
         }
 
@@ -78,6 +83,8 @@ namespace System.Windows
                 VerifyAccess();
                 SetRootVisual(null);
                 RemoveSource();
+                _mouseInputProvider.Dispose();
+                _keyboardInputProvider.Dispose();
                 _compositionTarget.Dispose();
                 ClearContentRenderedListeners();
                 Disposed?.Invoke(this, EventArgs.Empty);
@@ -94,6 +101,21 @@ namespace System.Windows
         protected override CompositionTarget GetCompositionTargetCore()
         {
             return _isDisposed ? null : _compositionTarget;
+        }
+
+        internal override IInputProvider GetInputProvider(Type inputDevice)
+        {
+            if (inputDevice == typeof(MouseDevice))
+            {
+                return _mouseInputProvider;
+            }
+
+            if (inputDevice == typeof(KeyboardDevice))
+            {
+                return _keyboardInputProvider;
+            }
+
+            return null;
         }
 
         private void SetRootVisual(Visual rootVisual)
@@ -132,6 +154,7 @@ namespace System.Windows
             }
 
             RootChanged(oldRootVisual, _rootVisual);
+            _keyboardInputProvider.OnRootChanged(oldRootVisual, _rootVisual);
             QueueContentRendered();
             RequestRender();
         }
@@ -176,6 +199,145 @@ namespace System.Windows
         {
             ObjectDisposedException.ThrowIf(_isDisposed, this);
             VerifyAccess();
+        }
+
+        private bool HasRootVisual
+        {
+            get { return !_isDisposed && _rootVisual != null; }
+        }
+
+        private bool ProvidesInputForRootVisual(Visual visual)
+        {
+            return !_isDisposed && _rootVisual == visual;
+        }
+
+        private sealed class PortableKeyboardInputProvider : IKeyboardInputProvider, IDisposable
+        {
+            private readonly PortablePresentationSource _source;
+            private InputProviderSite _site;
+            private bool _active;
+
+            internal PortableKeyboardInputProvider(PortablePresentationSource source)
+            {
+                _source = source;
+                _site = InputManager.Current.RegisterInputProvider(this);
+            }
+
+            public void Dispose()
+            {
+                _active = false;
+                _site?.Dispose();
+                _site = null;
+            }
+
+            internal void OnRootChanged(Visual oldRoot, Visual newRoot)
+            {
+                if (_active && newRoot != null)
+                {
+                    Keyboard.Focus(null);
+                }
+            }
+
+            bool IInputProvider.ProvidesInputForRootVisual(Visual v)
+            {
+                return _source.ProvidesInputForRootVisual(v);
+            }
+
+            void IInputProvider.NotifyDeactivate()
+            {
+                _active = false;
+            }
+
+            bool IKeyboardInputProvider.AcquireFocus(bool checkOnly)
+            {
+                bool acquired = _source.HasRootVisual;
+                if (acquired && !checkOnly)
+                {
+                    _active = true;
+                }
+
+                return acquired;
+            }
+        }
+
+        private sealed class PortableMouseInputProvider : IMouseInputProvider, IDisposable
+        {
+            private readonly PortablePresentationSource _source;
+            private InputProviderSite _site;
+            private bool _haveCapture;
+
+            internal PortableMouseInputProvider(PortablePresentationSource source)
+            {
+                _source = source;
+                _site = InputManager.Current.RegisterInputProvider(this);
+            }
+
+            public void Dispose()
+            {
+                ReleaseMouseCapture(reportInput: true);
+                _site?.Dispose();
+                _site = null;
+            }
+
+            bool IInputProvider.ProvidesInputForRootVisual(Visual v)
+            {
+                return _source.ProvidesInputForRootVisual(v);
+            }
+
+            void IInputProvider.NotifyDeactivate()
+            {
+            }
+
+            bool IMouseInputProvider.SetCursor(Cursor cursor)
+            {
+                return _source.HasRootVisual;
+            }
+
+            bool IMouseInputProvider.CaptureMouse()
+            {
+                if (!_source.HasRootVisual)
+                {
+                    return false;
+                }
+
+                _haveCapture = true;
+                return true;
+            }
+
+            void IMouseInputProvider.ReleaseMouseCapture()
+            {
+                ReleaseMouseCapture(reportInput: true);
+            }
+
+            int IMouseInputProvider.GetIntermediatePoints(IInputElement relativeTo, Point[] points)
+            {
+                return -1;
+            }
+
+            private void ReleaseMouseCapture(bool reportInput)
+            {
+                if (!_haveCapture)
+                {
+                    return;
+                }
+
+                _haveCapture = false;
+
+                if (reportInput && _site != null && !_site.IsDisposed)
+                {
+                    RawMouseInputReport report = new RawMouseInputReport(
+                        InputMode.Foreground,
+                        Environment.TickCount,
+                        _source,
+                        RawMouseActions.Activate | RawMouseActions.CancelCapture,
+                        0,
+                        0,
+                        0,
+                        IntPtr.Zero);
+
+                    _site.ReportInput(report);
+                }
+            }
         }
     }
 }

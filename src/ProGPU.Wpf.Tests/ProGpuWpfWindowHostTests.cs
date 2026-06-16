@@ -349,6 +349,101 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.True(registration.IsDisposed);
     }
 
+    [Fact]
+    public void TryBindPortablePresentationSourceMirrorsRootIntoHost()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var source = new FakePortablePresentationSource
+        {
+            RootVisual = new object()
+        };
+
+        var bound = host.TryBindPortablePresentationSource(source);
+
+        Assert.True(bound);
+        Assert.Same(source, host.PortablePresentationSource);
+        Assert.NotNull(host.PortablePresentationSourceBridge);
+        Assert.Same(source.RootVisual, host.WpfRootVisual);
+        Assert.Equal(1, scheduler.RequestCount);
+    }
+
+    [Fact]
+    public void ReplacingPortablePresentationSourceUnsubscribesPreviousSource()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var first = new FakePortablePresentationSource
+        {
+            RootVisual = new object()
+        };
+        var second = new FakePortablePresentationSource
+        {
+            RootVisual = new object()
+        };
+
+        Assert.True(host.TryBindPortablePresentationSource(first));
+        Assert.True(host.TryBindPortablePresentationSource(second));
+        var requestCountAfterReplacement = scheduler.RequestCount;
+
+        first.RootVisual = new object();
+
+        Assert.Same(second, host.PortablePresentationSource);
+        Assert.Same(second.RootVisual, host.WpfRootVisual);
+        Assert.Equal(requestCountAfterReplacement, scheduler.RequestCount);
+    }
+
+    [Fact]
+    public void UpdatePortablePresentationSourceDpiScaleCoalescesUnchangedScale()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var source = new FakePortablePresentationSource();
+
+        Assert.True(host.TryBindPortablePresentationSource(source));
+
+        Assert.True(host.UpdatePortablePresentationSourceDpiScale(2.0, 2.0));
+        Assert.False(host.UpdatePortablePresentationSourceDpiScale(2.0, 2.0));
+        Assert.True(host.UpdatePortablePresentationSourceDpiScale(2.5, 2.0));
+
+        Assert.Equal(2.5, source.DpiScaleX);
+        Assert.Equal(2.0, source.DpiScaleY);
+        Assert.Equal(2, source.DeviceScaleChangeCount);
+        Assert.Equal(2, scheduler.RequestCount);
+    }
+
+    [Fact]
+    public void DisposingHostDetachesPortablePresentationSource()
+    {
+        var scheduler = new TestRenderScheduler();
+        var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var source = new FakePortablePresentationSource
+        {
+            RootVisual = new object()
+        };
+        Assert.True(host.TryBindPortablePresentationSource(source));
+
+        host.Dispose();
+        var requestCountAfterDispose = scheduler.RequestCount;
+        source.RootVisual = new object();
+
+        Assert.Null(host.WpfRootVisual);
+        Assert.Equal(requestCountAfterDispose, scheduler.RequestCount);
+        Assert.False(source.IsDisposed);
+    }
+
     private sealed class TestRenderScheduler : IWpfRenderScheduler
     {
         public event EventHandler? RenderRequested;
@@ -380,6 +475,46 @@ public sealed class ProGpuWpfWindowHostTests
     private sealed class TestRegistration : IDisposable
     {
         public bool IsDisposed { get; private set; }
+
+        public void Dispose()
+        {
+            IsDisposed = true;
+        }
+    }
+
+    private sealed class FakePortablePresentationSource : IDisposable
+    {
+        private object? _rootVisual;
+
+        internal event EventHandler? RenderRequested;
+
+        public object CompositionTarget { get; } = new();
+
+        public object? RootVisual
+        {
+            get => _rootVisual;
+            set
+            {
+                _rootVisual = value;
+                RenderRequested?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public double DpiScaleX { get; private set; } = 1.0;
+
+        public double DpiScaleY { get; private set; } = 1.0;
+
+        public int DeviceScaleChangeCount { get; private set; }
+
+        public bool IsDisposed { get; private set; }
+
+        internal void SetDeviceScale(double dpiScaleX, double dpiScaleY)
+        {
+            DpiScaleX = dpiScaleX;
+            DpiScaleY = dpiScaleY;
+            DeviceScaleChangeCount++;
+            RenderRequested?.Invoke(this, EventArgs.Empty);
+        }
 
         public void Dispose()
         {

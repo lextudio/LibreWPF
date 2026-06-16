@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using Silk.NET.Maths;
 using Silk.NET.WebGPU;
 using Silk.NET.Windowing;
@@ -22,7 +23,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private IWpfWindowEventService? _attachedWindowEventService;
     private IWpfPlatformServices _platformServices = CrossPlatformWpfPlatformServices.Instance;
     private IWpfRenderScheduler _wpfRenderScheduler;
+    private WpfPortablePresentationSourceBridge? _portablePresentationSourceBridge;
     private object? _wpfRootVisual;
+    private double _portablePresentationSourceDpiScaleX = double.NaN;
+    private double _portablePresentationSourceDpiScaleY = double.NaN;
     private bool _isDisposed;
     private bool _hasPresentedFrame;
     private bool _ownsRenderScheduler;
@@ -49,6 +53,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public IWindow? SilkWindow => _window;
 
     public ProGpuWpfCompositionTarget? CompositionTarget => _target;
+
+    public object? PortablePresentationSource => _portablePresentationSourceBridge?.Source;
+
+    public WpfPortablePresentationSourceBridge? PortablePresentationSourceBridge => _portablePresentationSourceBridge;
 
     public IWpfPlatformServices PlatformServices
     {
@@ -161,6 +169,51 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return ProcessDispatcherQueueCore();
     }
 
+    public bool TryCreatePortablePresentationSource(
+        Assembly presentationCoreAssembly,
+        object? rootVisual = null,
+        double dpiScaleX = 1.0,
+        double dpiScaleY = 1.0)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(presentationCoreAssembly);
+
+        if (!WpfPortablePresentationSourceBridge.TryCreate(
+                this,
+                presentationCoreAssembly,
+                dpiScaleX,
+                dpiScaleY,
+                out WpfPortablePresentationSourceBridge? bridge))
+        {
+            return false;
+        }
+
+        AttachPortablePresentationSourceBridge(bridge!, dpiScaleX, dpiScaleY);
+        if (rootVisual != null)
+        {
+            bridge!.RootVisual = rootVisual;
+        }
+
+        return true;
+    }
+
+    public bool TryBindPortablePresentationSource(object presentationSource)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(presentationSource);
+
+        if (!WpfPortablePresentationSourceBridge.TryBind(
+                this,
+                presentationSource,
+                out WpfPortablePresentationSourceBridge? bridge))
+        {
+            return false;
+        }
+
+        AttachPortablePresentationSourceBridge(bridge!, double.NaN, double.NaN);
+        return true;
+    }
+
     public void Dispose()
     {
         if (_isDisposed)
@@ -179,6 +232,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         DetachInputService();
         DetachDragDropService();
         DetachWindowEventService();
+        DisposePortablePresentationSourceBridge();
         DisposeTarget();
         _window?.Dispose();
         DetachRenderScheduler(_wpfRenderScheduler);
@@ -263,6 +317,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             var pixelHeight = (uint)Math.Max(1, framebufferSize.Y);
             var logicalWidth = Math.Max(1, _window.Size.X);
             var dpiScale = pixelWidth / (double)logicalWidth;
+            UpdatePortablePresentationSourceDpiScale(dpiScale, dpiScale);
             _target.DetectWpfSourceChanges();
             var frameState = CaptureFrameState(_target, pixelWidth, pixelHeight);
 
@@ -674,6 +729,51 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         {
             _isProcessingRenderSchedulerWakeup = false;
         }
+    }
+
+    internal bool UpdatePortablePresentationSourceDpiScale(double dpiScaleX, double dpiScaleY)
+    {
+        if (_portablePresentationSourceBridge == null)
+        {
+            return false;
+        }
+
+        if (double.IsFinite(_portablePresentationSourceDpiScaleX) &&
+            double.IsFinite(_portablePresentationSourceDpiScaleY) &&
+            Math.Abs(_portablePresentationSourceDpiScaleX - dpiScaleX) < double.Epsilon &&
+            Math.Abs(_portablePresentationSourceDpiScaleY - dpiScaleY) < double.Epsilon)
+        {
+            return false;
+        }
+
+        if (!_portablePresentationSourceBridge.TrySetDeviceScale(dpiScaleX, dpiScaleY))
+        {
+            return false;
+        }
+
+        _portablePresentationSourceDpiScaleX = dpiScaleX;
+        _portablePresentationSourceDpiScaleY = dpiScaleY;
+        return true;
+    }
+
+    private void AttachPortablePresentationSourceBridge(
+        WpfPortablePresentationSourceBridge bridge,
+        double dpiScaleX,
+        double dpiScaleY)
+    {
+        DisposePortablePresentationSourceBridge();
+        _portablePresentationSourceBridge = bridge;
+        _portablePresentationSourceDpiScaleX = dpiScaleX;
+        _portablePresentationSourceDpiScaleY = dpiScaleY;
+        bridge.SyncHostRootVisual();
+    }
+
+    private void DisposePortablePresentationSourceBridge()
+    {
+        _portablePresentationSourceBridge?.Dispose();
+        _portablePresentationSourceBridge = null;
+        _portablePresentationSourceDpiScaleX = double.NaN;
+        _portablePresentationSourceDpiScaleY = double.NaN;
     }
 
     private void DisposeOwnedRenderScheduler()

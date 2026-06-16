@@ -73,7 +73,7 @@ The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and
 - System.Drawing-compatible stroke scaling under world transforms for GDI shim lines, rectangles, ellipses, and paths, keeping transformed pen widths in ProGPU command data instead of asking WPF bridge code to pre-expand stroked geometry.
 - Skia-compatible opaque bitmap upload normalization in `SKImage.FromBitmap(...)`, forcing alpha bytes to 255 for `SKAlphaType.Opaque` inputs before the ProGPU texture upload.
 - native two-point conical/focal gradient support through `TwoPointConicalGradientBrush`, ProGPU brush packing, and WGSL moving-circle parameter solves for the vector and hatch shader paths, so Skia `CreateTwoPointConicalGradient(...)` no longer needs to reject valid conical parameters.
-- explicit fail-closed behavior for bottom-left backend render-target origins, preserving correctness until ProGPU has a native backend-origin flip path.
+- native bottom-left backend render-target origin handling for ProGPU-backed `SKSurface` wrappers by carrying `GRSurfaceOrigin` into the surface and applying a GPU-side root y-flip during flush.
 
 ## Decisions
 
@@ -94,7 +94,7 @@ The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and
 - Treat SKPaint blend modes, save-layer paint application, and encoded-image alpha conversion as Skia shim/backend responsibilities. The WPF bridge should issue WPF/Skia drawing intent and let ProGPU map supported blend modes and alpha conventions into native command state and texture metadata.
 - Treat Skia/WPF dash, gradient spread, and image-effect color-space semantics as backend responsibilities. Dash spans, tile/spread mode mapping, and straight/premultiplied image-effect color math should stay in ProGPU vector/shader code rather than in WPF bridge adapters.
 - Treat GDI world-transform stroke thickness as shim/backend state. WPF and GDI callers should pass source geometry and pen intent through; ProGPU should convert that into native command thickness or transformed command state rather than bridge-side outline inflation.
-- Treat unsupported Skia gradient and backend-origin cases as explicit backend capability gaps. Failing closed is preferable to silently rendering a wrong radial gradient or wrong surface orientation, and the follow-up should be native shader/render-target support in ProGPU.
+- Treat unsupported Skia gradient and backend-origin cases as backend capability gaps. Two-point conical gradients and bottom-left ProGPU backend render targets now have native support; future unsupported cases should either fail closed or gain native shader/render-target support in ProGPU, not bridge-side CPU compensation.
 - Keep WPF-specific type adaptation in `src/ProGPU.Wpf` until the real WPF `PresentationCore` and ProGPU shim type identities are unified.
 - Prefer adding reusable ProGPU primitives for WPF concepts that also benefit other frontends: exact path stroking, gradient tables, texture sampling modes, text flags, mesh extensions, image effects, and retained resource lifetime helpers.
 - Use signed ProGPU assemblies for direct references from strong-named WPF assemblies when the TFM/project graph is compatible. Until then, source-share small ProGPU-owned helpers only when they remain internal to WPF and avoid exposing ProGPU namespaces as WPF public API.

@@ -2035,6 +2035,60 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
+    public void DecodeDrawDrawingPassesSupportedDrawingGroupTextHintingModeToSink()
+    {
+        var group = new FakeDrawingGroup(
+            new FakeGeometryDrawing(
+                new FakeSolidColorBrush(new FakeColor(255, 10, 20, 30)),
+                null,
+                new FakeRectangleGeometry(new FakeRect(0, 0, 10, 20))))
+        {
+            TextHintingMode = "Animated"
+        };
+        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var sink = new TestSink();
+
+        var payload = new byte[8];
+        WriteUInt32(payload, 0, 1);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawDrawing, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        Assert.Equal(new[] { "PushTextHintingMode", "DrawGeometry", "Pop" }, sink.Operations);
+        Assert.Equal(new[] { "Animated" }, sink.TextHintingModes.Select(mode => mode?.ToString()));
+    }
+
+    [Fact]
+    public void DecodeDrawDrawingCountsUnknownDrawingGroupTextHintingModeAsPartial()
+    {
+        var group = new FakeDrawingGroup(
+            new FakeGeometryDrawing(
+                new FakeSolidColorBrush(new FakeColor(255, 10, 20, 30)),
+                null,
+                new FakeRectangleGeometry(new FakeRect(0, 0, 10, 20))))
+        {
+            TextHintingMode = "Display"
+        };
+        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { group });
+        var sink = new TestSink();
+
+        var payload = new byte[8];
+        WriteUInt32(payload, 0, 1);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawDrawing, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 1), result);
+        Assert.Equal(new[] { "DrawGeometry" }, sink.Operations);
+        Assert.Empty(sink.TextHintingModes);
+    }
+
+    [Fact]
     public void DecodeDrawDrawingSkipsDrawingGroupWhenTransformCannotBeAdapted()
     {
         var group = new FakeDrawingGroup(
@@ -3276,6 +3330,8 @@ public sealed class WpfReflectionResourceResolverTests
 
         public object? TextRenderingMode { get; init; }
 
+        public object? TextHintingMode { get; init; }
+
         public object? BitmapEffect { get; init; }
 
         public object? BitmapEffectInput { get; init; }
@@ -3590,6 +3646,8 @@ public sealed class WpfReflectionResourceResolverTests
 
         public List<object?> TextRenderingModes { get; } = new();
 
+        public List<object?> TextHintingModes { get; } = new();
+
         public List<ProGpuEffectBase> VisualEffects { get; } = new();
 
         public List<Rect?> VisualEffectBounds { get; } = new();
@@ -3699,6 +3757,12 @@ public sealed class WpfReflectionResourceResolverTests
         {
             Operations.Add("PushTextRenderingMode");
             TextRenderingModes.Add(textRenderingMode);
+        }
+
+        public void PushTextHintingMode(object? textHintingMode)
+        {
+            Operations.Add("PushTextHintingMode");
+            TextHintingModes.Add(textHintingMode);
         }
 
         public void Pop()

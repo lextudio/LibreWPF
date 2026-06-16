@@ -307,6 +307,20 @@ public sealed class WpfVisualTreeReflectionRenderer
             popCount++;
         }
 
+        if (TryGetPropertyValue(visual, "TextHintingMode", out var textHintingMode)
+            && WpfTextRenderingModeReflection.HasExplicitTextHintingMode(textHintingMode))
+        {
+            if (WpfTextRenderingModeReflection.IsSupportedTextHintingMode(textHintingMode))
+            {
+                sink.PushTextHintingMode(textHintingMode);
+                popCount++;
+            }
+            else
+            {
+                stats.UnsupportedVisualStateCount++;
+            }
+        }
+
         stats.UnsupportedVisualStateCount += CountUnsupportedVisualState(visual);
 
         return popCount;
@@ -323,34 +337,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             count++;
         }
 
-        foreach (var propertyName in new[] { "TextHintingMode" })
-        {
-            if (HasExplicitRenderingHint(visual, propertyName))
-            {
-                count++;
-            }
-        }
-
         return count;
-    }
-
-    private static bool HasExplicitRenderingHint(object visual, string propertyName)
-    {
-        if (!TryGetPropertyValue(visual, propertyName, out var value) || value == null)
-        {
-            return false;
-        }
-
-        return HasExplicitRenderingHintValue(value);
-    }
-
-    private static bool HasExplicitRenderingHintValue(object? value)
-    {
-        var text = value?.ToString();
-        return !string.IsNullOrEmpty(text)
-            && !string.Equals(text, "Unspecified", StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(text, "Default", StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(text, "Auto", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool HasVisualGuidelines(object visual)

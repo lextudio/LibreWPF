@@ -80,6 +80,11 @@ public interface IWpfCompositionCommandSink : IDisposable
         PushNoOpScope();
     }
 
+    void PushTextHintingMode(object? textHintingMode)
+    {
+        PushNoOpScope();
+    }
+
     void Pop();
 
     void Close();

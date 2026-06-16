@@ -2156,6 +2156,43 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
+    public void DrawTextWithAnimatedTextHintingModeThroughProGpuSinkStoresAndRestoresMode()
+    {
+        var nativeContext = new ProGpuDrawingContext();
+        using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
+        var formattedText = new FormattedText(
+            "ProGPU",
+            CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight,
+            new Typeface(new FontFamily("Arial")),
+            14,
+            Brushes.Black);
+        var glyphRun = new GlyphRun(
+            null!,
+            16,
+            new ushort[] { 7 },
+            new[] { Vector2.Zero });
+
+        sink.PushTextHintingMode("Animated");
+        sink.DrawText(formattedText, new Point(2, 3));
+        sink.Pop();
+        sink.DrawGlyphRun(Brushes.Black, glyphRun);
+
+        Assert.Collection(
+            nativeContext.Commands,
+            first =>
+            {
+                Assert.Equal(RenderCommandType.DrawText, first.Type);
+                Assert.Equal(global::ProGPU.Scene.TextHintingMode.Animated, first.TextHintingMode);
+            },
+            second =>
+            {
+                Assert.Equal(RenderCommandType.DrawGlyphRun, second.Type);
+                Assert.Equal(global::ProGPU.Scene.TextHintingMode.Auto, second.TextHintingMode);
+            });
+    }
+
+    [Fact]
     public void DecodeGuidelineScopeThroughProGpuSinkDoesNotEmitRenderCommands()
     {
         var nativeContext = new ProGpuDrawingContext();

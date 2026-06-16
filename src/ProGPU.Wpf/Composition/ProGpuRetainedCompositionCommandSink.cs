@@ -189,6 +189,12 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         _scopeStack.Push(ScopeKind.Delegate);
     }
 
+    public void PushTextHintingMode(object? textHintingMode)
+    {
+        Current.Sink.PushTextHintingMode(textHintingMode);
+        _scopeStack.Push(ScopeKind.Delegate);
+    }
+
     public bool PushVisualEffect(ProGpuEffectBase effect)
     {
         return PushVisualEffect(effect, bounds: null);

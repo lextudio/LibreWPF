@@ -49,7 +49,8 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         Transform,
         BitmapScalingMode,
         EdgeMode,
-        TextRenderingMode
+        TextRenderingMode,
+        TextHintingMode
     }
 
     private readonly Stack<PushKind> _pushStack = new();
@@ -58,6 +59,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
     private readonly Stack<global::ProGPU.Scene.TextureSamplingMode> _bitmapScalingModeStack = new();
     private readonly Stack<bool> _edgeModeStack = new();
     private readonly Stack<global::ProGPU.Scene.TextRenderingMode> _textRenderingModeStack = new();
+    private readonly Stack<global::ProGPU.Scene.TextHintingMode> _textHintingModeStack = new();
     private readonly global::ProGPU.Backend.WgpuContext? _context;
     private readonly WpfViewport3DTextureCache? _viewport3DTextureCache;
     private readonly Func<VectorPathGeometry, VectorPathGeometry?>? _pathOperationResolver;
@@ -82,6 +84,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         _bitmapScalingModeStack.Push(global::ProGPU.Scene.TextureSamplingMode.Linear);
         _edgeModeStack.Push(false);
         _textRenderingModeStack.Push(global::ProGPU.Scene.TextRenderingMode.Grayscale);
+        _textHintingModeStack.Push(global::ProGPU.Scene.TextHintingMode.Auto);
     }
 
     public MediaDrawingContext DrawingContext { get; }
@@ -511,7 +514,8 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             Brush = nativeBrush,
             Position = position,
             Transform = _transformStack.Peek(),
-            TextRenderingMode = _textRenderingModeStack.Peek()
+            TextRenderingMode = _textRenderingModeStack.Peek(),
+            TextHintingMode = _textHintingModeStack.Peek()
         });
     }
 
@@ -536,7 +540,8 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             Transform = glyphRun.Transform * _transformStack.Peek(),
             IsBold = glyphRun.IsBold,
             IsItalic = glyphRun.IsItalic,
-            TextRenderingMode = _textRenderingModeStack.Peek()
+            TextRenderingMode = _textRenderingModeStack.Peek(),
+            TextHintingMode = _textHintingModeStack.Peek()
         });
     }
 
@@ -692,6 +697,25 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         PushNoOpScope();
     }
 
+    public void PushTextHintingMode(object? textHintingMode)
+    {
+        ThrowIfClosed();
+
+        if (WpfTextRenderingModeReflection.TryMapToTextHintingMode(textHintingMode, out var mode))
+        {
+            _textHintingModeStack.Push(mode);
+            _pushStack.Push(PushKind.TextHintingMode);
+            return;
+        }
+
+        if (textHintingMode != null)
+        {
+            UnsupportedStateCount++;
+        }
+
+        PushNoOpScope();
+    }
+
     public void Pop()
     {
         ThrowIfClosed();
@@ -761,6 +785,16 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             if (_textRenderingModeStack.Count > 1)
             {
                 _textRenderingModeStack.Pop();
+            }
+
+            return;
+        }
+
+        if (pushKind == PushKind.TextHintingMode)
+        {
+            if (_textHintingModeStack.Count > 1)
+            {
+                _textHintingModeStack.Pop();
             }
 
             return;

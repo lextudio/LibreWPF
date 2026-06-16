@@ -242,11 +242,12 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var sink = new TestSink();
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
-        Assert.Equal(new[] { "PushBitmapScalingMode", "PushEdgeMode", "PushTextRenderingMode", "DrawRectangle", "Pop", "Pop", "Pop" }, sink.Operations);
+        Assert.Equal(new[] { "PushBitmapScalingMode", "PushEdgeMode", "PushTextRenderingMode", "PushTextHintingMode", "DrawRectangle", "Pop", "Pop", "Pop", "Pop" }, sink.Operations);
         Assert.Equal(new[] { "NearestNeighbor" }, sink.BitmapScalingModes.Select(mode => mode?.ToString()));
         Assert.Equal(new[] { "Aliased" }, sink.EdgeModes.Select(mode => mode?.ToString()));
         Assert.Equal(new[] { "Aliased" }, sink.TextRenderingModes.Select(mode => mode?.ToString()));
-        Assert.Equal(4, result.UnsupportedVisualStateCount);
+        Assert.Equal(new[] { "Fixed" }, sink.TextHintingModes.Select(mode => mode?.ToString()));
+        Assert.Equal(3, result.UnsupportedVisualStateCount);
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
     }
 
@@ -515,6 +516,24 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         Assert.Equal(new[] { "PushTextRenderingMode", "DrawRectangle", "Pop" }, sink.Operations);
         Assert.Equal(new[] { "ClearType" }, sink.TextRenderingModes.Select(mode => mode?.ToString()));
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeAppliesAnimatedTextHintingMode()
+    {
+        var root = new FakeVisual
+        {
+            TextHintingMode = new FakeRenderingHint("Animated")
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushTextHintingMode", "DrawRectangle", "Pop" }, sink.Operations);
+        Assert.Equal(new[] { "Animated" }, sink.TextHintingModes.Select(mode => mode?.ToString()));
         Assert.Equal(0, result.UnsupportedVisualStateCount);
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
     }
@@ -907,6 +926,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         public List<object?> TextRenderingModes { get; } = new();
 
+        public List<object?> TextHintingModes { get; } = new();
+
         public List<ProGpuEffectBase> VisualEffects { get; } = new();
 
         public List<Rect?> VisualCacheBounds { get; } = new();
@@ -1004,6 +1025,12 @@ public sealed class WpfVisualTreeReflectionRendererTests
         {
             Operations.Add("PushTextRenderingMode");
             TextRenderingModes.Add(textRenderingMode);
+        }
+
+        public void PushTextHintingMode(object? textHintingMode)
+        {
+            Operations.Add("PushTextHintingMode");
+            TextHintingModes.Add(textHintingMode);
         }
 
         public bool PushVisualEffect(ProGpuEffectBase effect)

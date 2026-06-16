@@ -636,6 +636,20 @@ internal static class WpfReflectionDrawingReplay
             popCount++;
         }
 
+        if (TryGetPropertyValue(drawingGroup, "TextHintingMode", out var textHintingMode)
+            && WpfTextRenderingModeReflection.HasExplicitTextHintingMode(textHintingMode))
+        {
+            if (WpfTextRenderingModeReflection.IsSupportedTextHintingMode(textHintingMode))
+            {
+                sink.PushTextHintingMode(textHintingMode);
+                popCount++;
+            }
+            else
+            {
+                unsupportedRenderOptions = true;
+            }
+        }
+
         var appliedAny = false;
         var unsupportedAny = unsupportedGroupState || unsupportedRenderOptions;
         foreach (var child in ExtractChildren(drawingGroup))
@@ -1355,9 +1369,16 @@ internal static class WpfReflectionDrawingReplay
 
     private static bool HasUnsupportedRenderOptionState(object drawingGroup)
     {
-        return TryGetPropertyValue(drawingGroup, "ClearTypeHint", out var clearTypeHint)
+        if (TryGetPropertyValue(drawingGroup, "ClearTypeHint", out var clearTypeHint)
             && WpfTextRenderingModeReflection.HasExplicitClearTypeHint(clearTypeHint)
-            && !WpfTextRenderingModeReflection.IsSupportedClearTypeHint(clearTypeHint);
+            && !WpfTextRenderingModeReflection.IsSupportedClearTypeHint(clearTypeHint))
+        {
+            return true;
+        }
+
+        return TryGetPropertyValue(drawingGroup, "TextHintingMode", out var textHintingMode)
+            && WpfTextRenderingModeReflection.HasExplicitTextHintingMode(textHintingMode)
+            && !WpfTextRenderingModeReflection.IsSupportedTextHintingMode(textHintingMode);
     }
 
     private static bool TryResolveDrawingGroupEffect(

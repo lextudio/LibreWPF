@@ -239,7 +239,19 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static void RegisterRetainedVisualDependency(object? dependency, IWpfCompositionCommandSink sink)
     {
-        if (dependency != null && sink is IWpfRetainedVisualBranchSink retainedVisualBranchSink)
+        if (dependency == null || sink is not IWpfRetainedVisualBranchSink retainedVisualBranchSink)
+        {
+            return;
+        }
+
+        var registered = false;
+        foreach (var trackedDependency in WpfVisualInvalidationTracker.EnumerateTrackedDependencies(dependency))
+        {
+            retainedVisualBranchSink.RegisterVisualDependency(trackedDependency);
+            registered = true;
+        }
+
+        if (!registered)
         {
             retainedVisualBranchSink.RegisterVisualDependency(dependency);
         }

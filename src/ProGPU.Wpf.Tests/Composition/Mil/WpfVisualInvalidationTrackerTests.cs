@@ -168,6 +168,20 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
+    public void EnumerateTrackedDependenciesIncludesNestedResourceGraph()
+    {
+        var brush = new FakeResource();
+        var drawing = new FakeGlyphRunDrawing
+        {
+            ForegroundBrush = brush
+        };
+
+        var dependencies = WpfVisualInvalidationTracker.EnumerateTrackedDependencies(drawing);
+
+        Assert.Equal(new object[] { drawing, brush }, dependencies);
+    }
+
+    [Fact]
     public void PathGeometryCollectionChangesRefreshNestedSegmentSubscriptions()
     {
         var geometry = new FakePathGeometry();

@@ -168,6 +168,26 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeRegistersNestedRenderDataResourcesAsRetainedDependencies()
+    {
+        var brush = Brushes.Green;
+        var nestedBrush = new FakeResource();
+        var nestedDrawing = new FakeDrawingResource
+        {
+            Brush = nestedBrush
+        };
+        var root = new FakeDrawingVisual(CreateRenderData(brush, nestedDrawing));
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Contains(nestedDrawing, sink.VisualDependencies);
+        Assert.Contains(nestedBrush, sink.VisualDependencies);
+        Assert.Equal(1, result.ContentCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
     public void TryReplaySubtreeIntoCurrentRetainedVisualRegistersRenderDataResourcesAsRetainedDependencies()
     {
         var brush = Brushes.Green;
@@ -750,6 +770,12 @@ public sealed class WpfVisualTreeReflectionRendererTests
         return new FakeRenderData(record, record.Length, new FakeDependentResources(brush));
     }
 
+    private static FakeRenderData CreateRenderData(MediaBrush brush, object extraResource)
+    {
+        var record = CreateRectangleRecord(1, 0);
+        return new FakeRenderData(record, record.Length, new FakeDependentResources(brush, extraResource));
+    }
+
     private static FakeRenderData CreateImageRenderData(object imageSource)
     {
         var record = CreateImageRecord(1);
@@ -895,6 +921,15 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public int Count => _values.Length;
 
         public double this[int index] => _values[index];
+    }
+
+    private sealed class FakeDrawingResource
+    {
+        public object? Brush { get; init; }
+    }
+
+    private sealed class FakeResource
+    {
     }
 
     private sealed class FakeRenderingHint

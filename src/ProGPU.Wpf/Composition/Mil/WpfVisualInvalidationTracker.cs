@@ -74,6 +74,19 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
     public IReadOnlyCollection<object> DirtySources => _dirtySources;
 
+    internal static IReadOnlyList<object> EnumerateTrackedDependencies(object? source)
+    {
+        if (source == null)
+        {
+            return Array.Empty<object>();
+        }
+
+        var dependencies = new List<object>();
+        var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        CollectTrackedDependencies(source, dependencies, visited);
+        return dependencies;
+    }
+
     public void AttachIfChanged(object? root)
     {
         if (!ReferenceEquals(_root, root))
@@ -295,6 +308,40 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             if (TryGetFieldValue(source, fieldName, out var value))
             {
                 CaptureObjectVersions(value, snapshots, visited);
+            }
+        }
+    }
+
+    private static void CollectTrackedDependencies(
+        object? source,
+        List<object> dependencies,
+        HashSet<object> visited)
+    {
+        if (source == null || IsTerminalValue(source) || !visited.Add(source))
+        {
+            return;
+        }
+
+        dependencies.Add(source);
+
+        foreach (var item in EnumerateCollection(source))
+        {
+            CollectTrackedDependencies(item, dependencies, visited);
+        }
+
+        foreach (var propertyName in s_referencePropertyNames)
+        {
+            if (TryGetPropertyValue(source, propertyName, out var value))
+            {
+                CollectTrackedDependencies(value, dependencies, visited);
+            }
+        }
+
+        foreach (var fieldName in s_fieldNames)
+        {
+            if (TryGetFieldValue(source, fieldName, out var value))
+            {
+                CollectTrackedDependencies(value, dependencies, visited);
             }
         }
     }

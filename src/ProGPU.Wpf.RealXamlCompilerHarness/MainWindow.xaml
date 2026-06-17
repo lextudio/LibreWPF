@@ -480,6 +480,12 @@
                 Text="{Binding RelativeSource={RelativeSource AncestorType={x:Type Border}}, Path=Tag}" />
         </Border>
         <TextBox
+            x:Name="BindingTransferBox"
+            Margin="0,8,0,0"
+            SourceUpdated="OnBindingTransferSourceUpdated"
+            TargetUpdated="OnBindingTransferTargetUpdated"
+            Text="{Binding BindingTransferText, Mode=TwoWay, UpdateSourceTrigger=Explicit, NotifyOnSourceUpdated=True, NotifyOnTargetUpdated=True}" />
+        <TextBox
             x:Name="ValidatedBox"
             Margin="0,8,0,0"
             Text="{Binding ValidatedText, UpdateSourceTrigger=Explicit, ValidatesOnDataErrors=True, NotifyOnValidationError=True}" />

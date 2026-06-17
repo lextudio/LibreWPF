@@ -924,6 +924,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Tag=\"ancestor binding source\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"RelativeSourceBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("RelativeSource={RelativeSource AncestorType={x:Type Border}}, Path=Tag", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"BindingTransferBox\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SourceUpdated=\"OnBindingTransferSourceUpdated\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("TargetUpdated=\"OnBindingTransferTargetUpdated\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("BindingTransferText, Mode=TwoWay, UpdateSourceTrigger=Explicit, NotifyOnSourceUpdated=True, NotifyOnTargetUpdated=True", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ValidatedBox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ValidatedText, UpdateSourceTrigger=Explicit, ValidatesOnDataErrors=True, NotifyOnValidationError=True", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"RuleValidatedBox\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1294,6 +1298,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public int ComboBoxSelectionChangedCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnSelectionEventComboBoxChanged", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private static string? DescribeSelectionItem(IList items)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int BindingTransferTargetUpdatedCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnBindingTransferTargetUpdated", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int BindingTransferSourceUpdatedCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnBindingTransferSourceUpdated", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private static string? DescribeElementName", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int StoryboardTargetLoadedCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnStoryboardTargetLoaded", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastStoryboardTargetLoadedRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1309,6 +1318,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public string TriggerButtonText", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string ValidatedText", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string RuleValidatedText", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public string BindingTransferText", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string BindingGroupFirstName", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string BindingGroupLastName", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidatedText is required", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1481,6 +1491,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled custom ValidationRule parameter", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ValidationRule rejected source value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ValidationRule restored error state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateBindingTransferEvents(window, dataContext)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled binding transfer NotifyOnSourceUpdated", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Binding SourceUpdated routed event", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Binding TargetUpdated target value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateBindingGroup(window, dataContext, validationType)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled BindingGroup custom ValidationRule", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled BindingGroup rejected commit", harnessProgram, StringComparison.Ordinal);
@@ -1858,6 +1872,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled custom ValidationRule parameter", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ValidationRule rejected source value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ValidationRule restored error state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateBindingTransferEvents(window, dataContext)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled binding transfer NotifyOnTargetUpdated", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Binding SourceUpdated property", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Binding TargetUpdated routed event", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateBindingGroup(window, dataContext, validationType)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled BindingGroup custom ValidationRule", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled BindingGroup rejected commit", harnessProgram, StringComparison.Ordinal);

@@ -159,6 +159,26 @@ public partial class MainWindow : Window
 
     public string? LastComboBoxSelectionRemovedItem { get; private set; }
 
+    public int BindingTransferTargetUpdatedCount { get; private set; }
+
+    public string? LastBindingTransferTargetSenderName { get; private set; }
+
+    public string? LastBindingTransferTargetRoutedEventName { get; private set; }
+
+    public string? LastBindingTransferTargetPropertyName { get; private set; }
+
+    public string? LastBindingTransferTargetObjectName { get; private set; }
+
+    public int BindingTransferSourceUpdatedCount { get; private set; }
+
+    public string? LastBindingTransferSourceSenderName { get; private set; }
+
+    public string? LastBindingTransferSourceRoutedEventName { get; private set; }
+
+    public string? LastBindingTransferSourcePropertyName { get; private set; }
+
+    public string? LastBindingTransferSourceObjectName { get; private set; }
+
     public int StoryboardTargetLoadedCount { get; private set; }
 
     public string? LastStoryboardTargetLoadedSenderName { get; private set; }
@@ -334,6 +354,29 @@ public partial class MainWindow : Window
             : item?.ToString();
     }
 
+    private void OnBindingTransferTargetUpdated(object sender, DataTransferEventArgs e)
+    {
+        BindingTransferTargetUpdatedCount++;
+        LastBindingTransferTargetSenderName = DescribeElementName(sender);
+        LastBindingTransferTargetRoutedEventName = e.RoutedEvent?.Name;
+        LastBindingTransferTargetPropertyName = e.Property.Name;
+        LastBindingTransferTargetObjectName = DescribeElementName(e.TargetObject);
+    }
+
+    private void OnBindingTransferSourceUpdated(object sender, DataTransferEventArgs e)
+    {
+        BindingTransferSourceUpdatedCount++;
+        LastBindingTransferSourceSenderName = DescribeElementName(sender);
+        LastBindingTransferSourceRoutedEventName = e.RoutedEvent?.Name;
+        LastBindingTransferSourcePropertyName = e.Property.Name;
+        LastBindingTransferSourceObjectName = DescribeElementName(e.TargetObject);
+    }
+
+    private static string? DescribeElementName(object? value)
+    {
+        return value is FrameworkElement element ? element.Name : null;
+    }
+
     private void OnStoryboardTargetLoaded(object sender, RoutedEventArgs e)
     {
         StoryboardTargetLoadedCount++;
@@ -359,6 +402,7 @@ public partial class MainWindow : Window
         private double _rangeValue = 42.0;
         private string _validatedText = "valid binding text";
         private string _ruleValidatedText = "rule: valid binding text";
+        private string _bindingTransferText = "binding transfer initial";
         private string _bindingGroupFirstName = "group: Ada";
         private string _bindingGroupLastName = "group: Lovelace";
 
@@ -421,6 +465,19 @@ public partial class MainWindow : Window
                 if (!string.Equals(_ruleValidatedText, value, StringComparison.Ordinal))
                 {
                     _ruleValidatedText = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string BindingTransferText
+        {
+            get => _bindingTransferText;
+            set
+            {
+                if (!string.Equals(_bindingTransferText, value, StringComparison.Ordinal))
+                {
+                    _bindingTransferText = value;
                     OnPropertyChanged();
                 }
             }

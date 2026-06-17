@@ -185,7 +185,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 62, "stack panel children");
+        AssertCollectionCount(children, expected: 63, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -788,7 +788,41 @@ internal static class Program
         AssertEqual("rule: restored binding text", GetProperty(dataContext, "RuleValidatedText"), "compiled ValidationRule restored source value");
         AssertEqual(false, GetDependencyPropertyValue(ruleValidatedBox, validationType, "HasErrorProperty"), "compiled ValidationRule restored error state");
 
+        ValidateBindingTransferEvents(window, dataContext);
         ValidateBindingGroup(window, dataContext, validationType);
+    }
+
+    private static void ValidateBindingTransferEvents(object window, object dataContext)
+    {
+        object transferBox = GetField(window, "BindingTransferBox");
+        AssertType(transferBox, "System.Windows.Controls.TextBox", "compiled binding transfer TextBox");
+        AssertEqual("binding transfer initial", GetProperty(transferBox, "Text"), "compiled binding transfer initial target");
+        AssertEqual("binding transfer initial", GetProperty(dataContext, "BindingTransferText"), "compiled binding transfer initial source");
+
+        object bindingExpression = GetBindingExpression(transferBox, "TextProperty");
+        object binding = GetProperty(bindingExpression, "ParentBinding");
+        AssertBindingObjectPath(binding, "BindingTransferText", "compiled binding transfer binding path");
+        AssertEqual(true, GetProperty(binding, "NotifyOnSourceUpdated"), "compiled binding transfer NotifyOnSourceUpdated");
+        AssertEqual(true, GetProperty(binding, "NotifyOnTargetUpdated"), "compiled binding transfer NotifyOnTargetUpdated");
+
+        int initialSourceUpdatedCount = Convert.ToInt32(GetProperty(window, "BindingTransferSourceUpdatedCount"));
+        SetProperty(transferBox, "Text", "binding transfer source update");
+        Invoke(bindingExpression, "UpdateSource");
+        AssertEqual("binding transfer source update", GetProperty(dataContext, "BindingTransferText"), "compiled Binding SourceUpdated source value");
+        AssertEqual(initialSourceUpdatedCount + 1, GetProperty(window, "BindingTransferSourceUpdatedCount"), "compiled Binding SourceUpdated count");
+        AssertEqual("BindingTransferBox", GetProperty(window, "LastBindingTransferSourceSenderName"), "compiled Binding SourceUpdated sender");
+        AssertEqual("SourceUpdated", GetProperty(window, "LastBindingTransferSourceRoutedEventName"), "compiled Binding SourceUpdated routed event");
+        AssertEqual("Text", GetProperty(window, "LastBindingTransferSourcePropertyName"), "compiled Binding SourceUpdated property");
+        AssertEqual("BindingTransferBox", GetProperty(window, "LastBindingTransferSourceObjectName"), "compiled Binding SourceUpdated target object");
+
+        int initialTargetUpdatedCount = Convert.ToInt32(GetProperty(window, "BindingTransferTargetUpdatedCount"));
+        SetProperty(dataContext, "BindingTransferText", "binding transfer target update");
+        AssertEqual("binding transfer target update", GetProperty(transferBox, "Text"), "compiled Binding TargetUpdated target value");
+        AssertEqual(initialTargetUpdatedCount + 1, GetProperty(window, "BindingTransferTargetUpdatedCount"), "compiled Binding TargetUpdated count");
+        AssertEqual("BindingTransferBox", GetProperty(window, "LastBindingTransferTargetSenderName"), "compiled Binding TargetUpdated sender");
+        AssertEqual("TargetUpdated", GetProperty(window, "LastBindingTransferTargetRoutedEventName"), "compiled Binding TargetUpdated routed event");
+        AssertEqual("Text", GetProperty(window, "LastBindingTransferTargetPropertyName"), "compiled Binding TargetUpdated property");
+        AssertEqual("BindingTransferBox", GetProperty(window, "LastBindingTransferTargetObjectName"), "compiled Binding TargetUpdated target object");
     }
 
     private static void ValidateBindingGroup(object window, object dataContext, Type validationType)

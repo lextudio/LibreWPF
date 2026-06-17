@@ -35,6 +35,15 @@
                 Tag="implicit data template"
                 Text="{Binding Title}" />
         </DataTemplate>
+        <HierarchicalDataTemplate
+            x:Key="SmokeNodeTemplate"
+            DataType="{x:Type local:SmokeNode}"
+            ItemsSource="{Binding Children}">
+            <TextBlock
+                x:Name="NodeTextBlock"
+                Tag="hierarchical template"
+                Text="{Binding Name}" />
+        </HierarchicalDataTemplate>
         <DataTemplate x:Key="AlphaItemTemplate" DataType="{x:Type local:SmokeItem}">
             <TextBlock
                 x:Name="SelectorTemplateTextBlock"
@@ -274,6 +283,11 @@
             x:Name="GroupedItemsList"
             Margin="0,8,0,0"
             ItemsSource="{Binding Source={StaticResource GroupedItemsView}}" />
+        <TreeView
+            x:Name="NodeTree"
+            Margin="0,8,0,0"
+            ItemTemplate="{StaticResource SmokeNodeTemplate}"
+            ItemsSource="{Binding Nodes}" />
         <ListBox
             x:Name="SelectorItemsList"
             Margin="0,8,0,0"

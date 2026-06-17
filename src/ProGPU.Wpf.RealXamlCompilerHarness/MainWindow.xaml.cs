@@ -92,6 +92,10 @@ public partial class MainWindow : Window
         {
             Items.Add(new SmokeItem("item alpha"));
             Items.Add(new SmokeItem("item beta"));
+            Nodes.Add(new SmokeNode(
+                "root node",
+                new SmokeNode("child alpha"),
+                new SmokeNode("child beta")));
             _selectedItem = Items[1];
         }
 
@@ -162,6 +166,8 @@ public partial class MainWindow : Window
         }
 
         public ObservableCollection<SmokeItem> Items { get; } = new();
+
+        public ObservableCollection<SmokeNode> Nodes { get; } = new();
 
         public SmokeDetail Detail { get; } = new("detail from implicit template");
 
@@ -252,6 +258,22 @@ public sealed class SmokeDetail
     }
 
     public string Title { get; }
+}
+
+public sealed class SmokeNode
+{
+    public SmokeNode(string name, params SmokeNode[] children)
+    {
+        Name = name;
+        foreach (SmokeNode child in children)
+        {
+            Children.Add(child);
+        }
+    }
+
+    public string Name { get; }
+
+    public ObservableCollection<SmokeNode> Children { get; } = new();
 }
 
 public sealed class SmokeItemTemplateSelector : DataTemplateSelector

@@ -139,7 +139,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 28, "stack panel children");
+        AssertCollectionCount(children, expected: 29, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -187,6 +187,7 @@ internal static class Program
         ValidateTemplateAndDynamicResource(window, application);
         ValidateItemsBindingAndTemplate(window);
         ValidateImplicitDataTemplate(window);
+        ValidateHierarchicalDataTemplate(window);
     }
 
     private static void ValidateTextBoxSelection(object inputBox)
@@ -468,6 +469,41 @@ internal static class Program
         AssertType(detailTextBlock, "System.Windows.Controls.TextBlock", "compiled implicit DataTemplate generated TextBlock");
         AssertEqual("detail from implicit template", GetProperty(detailTextBlock, "Text"), "compiled implicit DataTemplate generated TextBlock binding");
         AssertEqual("implicit data template", GetProperty(detailTextBlock, "Tag"), "compiled implicit DataTemplate generated value");
+    }
+
+    private static void ValidatePostShowHierarchicalDataTemplate(Assembly presentationCore, object window)
+    {
+        object nodeTree = GetField(window, "NodeTree");
+        object sourceNodes = GetProperty(GetProperty(window, "DataContext"), "Nodes");
+        object rootNode = GetCollectionItem(sourceNodes, 0);
+        Invoke(nodeTree, "UpdateLayout");
+
+        object rootContainer = Invoke(GetProperty(nodeTree, "ItemContainerGenerator"), "ContainerFromItem", rootNode);
+        AssertType(rootContainer, "System.Windows.Controls.TreeViewItem", "compiled HierarchicalDataTemplate root container");
+        Invoke(rootContainer, "ApplyTemplate");
+        SetProperty(rootContainer, "IsExpanded", true);
+        Invoke(rootContainer, "UpdateLayout");
+        Invoke(nodeTree, "UpdateLayout");
+
+        object rootTextBlock = FindVisualDescendantByName(presentationCore, rootContainer, "NodeTextBlock")
+            ?? throw new InvalidOperationException("Expected generated root TreeViewItem to contain NodeTextBlock.");
+        AssertType(rootTextBlock, "System.Windows.Controls.TextBlock", "compiled HierarchicalDataTemplate root generated TextBlock");
+        AssertEqual("root node", GetProperty(rootTextBlock, "Text"), "compiled HierarchicalDataTemplate root generated TextBlock binding");
+        AssertEqual("hierarchical template", GetProperty(rootTextBlock, "Tag"), "compiled HierarchicalDataTemplate root generated value");
+
+        object rootChildren = GetProperty(rootNode, "Children");
+        AssertCollectionCount(GetProperty(rootContainer, "Items"), expected: 2, "compiled HierarchicalDataTemplate generated child items");
+        object childNode = GetCollectionItem(rootChildren, 0);
+        object childContainer = Invoke(GetProperty(rootContainer, "ItemContainerGenerator"), "ContainerFromItem", childNode);
+        AssertType(childContainer, "System.Windows.Controls.TreeViewItem", "compiled HierarchicalDataTemplate child container");
+        Invoke(childContainer, "ApplyTemplate");
+        Invoke(childContainer, "UpdateLayout");
+
+        object childTextBlock = FindVisualDescendantByName(presentationCore, childContainer, "NodeTextBlock")
+            ?? throw new InvalidOperationException("Expected generated child TreeViewItem to contain NodeTextBlock.");
+        AssertType(childTextBlock, "System.Windows.Controls.TextBlock", "compiled HierarchicalDataTemplate child generated TextBlock");
+        AssertEqual("child alpha", GetProperty(childTextBlock, "Text"), "compiled HierarchicalDataTemplate child generated TextBlock binding");
+        AssertEqual("hierarchical template", GetProperty(childTextBlock, "Tag"), "compiled HierarchicalDataTemplate child generated value");
     }
 
     private static void ValidateObjectDataProvider(object window)
@@ -878,6 +914,34 @@ internal static class Program
         object implicitTemplateHost = GetField(window, "ImplicitTemplateHost");
         AssertType(implicitTemplateHost, "System.Windows.Controls.ContentControl", "compiled implicit DataTemplate host");
         AssertSame(detail, GetProperty(implicitTemplateHost, "Content"), "compiled implicit DataTemplate host content binding");
+    }
+
+    private static void ValidateHierarchicalDataTemplate(object window)
+    {
+        object dataContext = GetProperty(window, "DataContext");
+        object sourceNodes = GetProperty(dataContext, "Nodes");
+        AssertCollectionCount(sourceNodes, expected: 1, "view-model hierarchical nodes");
+        object rootNode = GetCollectionItem(sourceNodes, 0);
+        AssertType(rootNode, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeNode", "compiled hierarchical root model");
+        AssertEqual("root node", GetProperty(rootNode, "Name"), "compiled hierarchical root model name");
+        object rootChildren = GetProperty(rootNode, "Children");
+        AssertCollectionCount(rootChildren, expected: 2, "compiled hierarchical root child models");
+        AssertEqual("child alpha", GetProperty(GetCollectionItem(rootChildren, 0), "Name"), "compiled hierarchical first child model name");
+
+        object nodeTemplate = Invoke(window, "TryFindResource", "SmokeNodeTemplate");
+        AssertType(nodeTemplate, "System.Windows.HierarchicalDataTemplate", "compiled HierarchicalDataTemplate resource");
+        AssertBindingObjectPath(GetProperty(nodeTemplate, "ItemsSource"), "Children", "compiled HierarchicalDataTemplate child ItemsSource path");
+        object nodeTemplateRoot = Invoke(nodeTemplate, "LoadContent");
+        AssertType(nodeTemplateRoot, "System.Windows.Controls.TextBlock", "compiled HierarchicalDataTemplate root");
+        AssertEqual("NodeTextBlock", GetProperty(nodeTemplateRoot, "Name"), "compiled HierarchicalDataTemplate named root");
+        AssertEqual("hierarchical template", GetProperty(nodeTemplateRoot, "Tag"), "compiled HierarchicalDataTemplate root tag");
+        AssertBindingPath(nodeTemplateRoot, "TextProperty", "Name", "compiled HierarchicalDataTemplate text binding path");
+
+        object nodeTree = GetField(window, "NodeTree");
+        AssertType(nodeTree, "System.Windows.Controls.TreeView", "compiled hierarchical TreeView");
+        AssertSame(sourceNodes, GetProperty(nodeTree, "ItemsSource"), "compiled TreeView ItemsSource binding");
+        AssertSame(nodeTemplate, GetProperty(nodeTree, "ItemTemplate"), "compiled TreeView item template");
+        AssertCollectionCount(GetProperty(nodeTree, "Items"), expected: 1, "compiled TreeView generated root items");
     }
 
     private static ActivationRecorder RegisterPortableActivation(
@@ -1442,6 +1506,7 @@ internal static class Program
             ValidatePostShowItemTemplateTriggerActivation(_presentationCore, typedActivation.Window);
             ValidatePostShowItemTemplateSelector(_presentationCore, typedActivation.Window);
             ValidatePostShowImplicitDataTemplate(_presentationCore, typedActivation.Window);
+            ValidatePostShowHierarchicalDataTemplate(_presentationCore, typedActivation.Window);
         }
 
         public void Dispose(object activation)
@@ -1475,6 +1540,7 @@ internal static class Program
             ValidatePostShowItemTemplateTriggerActivation(_presentationCore, activation.Window);
             ValidatePostShowItemTemplateSelector(_presentationCore, activation.Window);
             ValidatePostShowImplicitDataTemplate(_presentationCore, activation.Window);
+            ValidatePostShowHierarchicalDataTemplate(_presentationCore, activation.Window);
         }
 
         private void AssertSameActivation(object activation)

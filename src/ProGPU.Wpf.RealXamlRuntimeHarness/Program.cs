@@ -107,7 +107,7 @@ internal static class Program
         AssertEqual("MainWindow.xaml", GetProperty(application, "StartupUri").ToString(), "startup URI");
 
         object resources = GetProperty(application, "Resources");
-        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 7, "application resource keys");
+        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 8, "application resource keys");
         object mergedDictionaries = GetProperty(resources, "MergedDictionaries");
         AssertCollectionCount(mergedDictionaries, expected: 1, "application merged dictionaries");
         object smokeResources = GetCollectionItem(mergedDictionaries, 0);
@@ -121,6 +121,12 @@ internal static class Program
         object replacementAccentBrush = GetDictionaryValue(resources, "ReplacementAccentBrush");
         AssertType(replacementAccentBrush, "System.Windows.Media.SolidColorBrush", "replacement accent brush");
         AssertEqual("#FF9C4A2F", GetProperty(replacementAccentBrush, "Color").ToString(), "replacement accent brush color");
+
+        object unsharedAccentBrush = GetDictionaryValue(resources, "UnsharedAccentBrush");
+        object secondUnsharedAccentBrush = GetDictionaryValue(resources, "UnsharedAccentBrush");
+        AssertType(unsharedAccentBrush, "System.Windows.Media.SolidColorBrush", "unshared accent brush");
+        AssertEqual("#FF4D6F8E", GetProperty(unsharedAccentBrush, "Color").ToString(), "unshared accent brush color");
+        AssertNotSame(unsharedAccentBrush, secondUnsharedAccentBrush, "compiled x:Shared=false resource lookup");
 
         object smokeButtonTemplate = GetDictionaryValue(resources, "SmokeButtonTemplate");
         AssertType(smokeButtonTemplate, "System.Windows.Controls.ControlTemplate", "button control template");
@@ -161,7 +167,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 35, "stack panel children");
+        AssertCollectionCount(children, expected: 37, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -201,6 +207,7 @@ internal static class Program
         ValidateStoryboardEventTrigger(window);
         ValidateMarkupExtension(window);
         ValidateMergedResourceDictionary(window, application);
+        ValidateUnsharedResource(window, application);
         ValidateNestedUserControl(window);
         ValidateReadOnlyGridCollectionsAndAttachedProperties(window);
         ValidateImplicitMergedStyle(window, application);
@@ -237,7 +244,7 @@ internal static class Program
         AssertType(flowDocument, "System.Windows.Documents.FlowDocument", "compiled FlowDocument");
 
         object blocks = GetProperty(flowDocument, "Blocks");
-        AssertCollectionCount(blocks, expected: 4, "compiled FlowDocument blocks");
+        AssertCollectionCount(blocks, expected: 5, "compiled FlowDocument blocks");
 
         object introParagraph = GetCollectionItem(blocks, 0);
         AssertType(introParagraph, "System.Windows.Documents.Paragraph", "compiled FlowDocument intro paragraph");
@@ -268,7 +275,13 @@ internal static class Program
         AssertCollectionCount(sectionBlocks, expected: 1, "compiled FlowDocument section blocks");
         AssertFlowDocumentParagraphText(GetCollectionItem(sectionBlocks, 0), "section block text", "section");
 
-        object table = GetCollectionItem(blocks, 2);
+        object blockContainer = GetCollectionItem(blocks, 2);
+        AssertType(blockContainer, "System.Windows.Documents.BlockUIContainer", "compiled FlowDocument block UI container");
+        object blockButton = GetProperty(blockContainer, "Child");
+        AssertType(blockButton, "System.Windows.Controls.Button", "compiled FlowDocument block Button");
+        AssertEqual("block document button", GetProperty(blockButton, "Content"), "compiled FlowDocument block Button content");
+
+        object table = GetCollectionItem(blocks, 3);
         AssertType(table, "System.Windows.Documents.Table", "compiled FlowDocument table");
         AssertCollectionCount(GetProperty(table, "Columns"), expected: 2, "compiled FlowDocument table columns");
         object rowGroups = GetProperty(table, "RowGroups");
@@ -280,7 +293,7 @@ internal static class Program
         AssertFlowDocumentTableCellText(GetCollectionItem(cells, 0), "table alpha", "first");
         AssertFlowDocumentTableCellText(GetCollectionItem(cells, 1), "table beta", "second");
 
-        object list = GetCollectionItem(blocks, 3);
+        object list = GetCollectionItem(blocks, 4);
         AssertType(list, "System.Windows.Documents.List", "compiled FlowDocument list");
         AssertEqual("Decimal", GetProperty(list, "MarkerStyle").ToString(), "compiled FlowDocument marker style");
         object listItems = GetProperty(list, "ListItems");
@@ -829,6 +842,28 @@ internal static class Program
         AssertEqual(GetProperty(expectedMargin, "Top"), GetProperty(actualMargin, "Top"), "compiled merged-resource margin top");
         AssertEqual(GetProperty(expectedMargin, "Right"), GetProperty(actualMargin, "Right"), "compiled merged-resource margin right");
         AssertEqual(GetProperty(expectedMargin, "Bottom"), GetProperty(actualMargin, "Bottom"), "compiled merged-resource margin bottom");
+    }
+
+    private static void ValidateUnsharedResource(object window, object application)
+    {
+        object resources = GetProperty(application, "Resources");
+        object dictionaryBrush = GetDictionaryValue(resources, "UnsharedAccentBrush");
+        object secondDictionaryBrush = GetDictionaryValue(resources, "UnsharedAccentBrush");
+        AssertNotSame(dictionaryBrush, secondDictionaryBrush, "compiled x:Shared=false dictionary lookup");
+
+        object borderA = GetField(window, "UnsharedResourceBorderA");
+        object borderB = GetField(window, "UnsharedResourceBorderB");
+        AssertType(borderA, "System.Windows.Controls.Border", "compiled unshared-resource first Border");
+        AssertType(borderB, "System.Windows.Controls.Border", "compiled unshared-resource second Border");
+
+        object backgroundA = GetProperty(borderA, "Background");
+        object backgroundB = GetProperty(borderB, "Background");
+        AssertType(backgroundA, "System.Windows.Media.SolidColorBrush", "compiled unshared-resource first brush");
+        AssertType(backgroundB, "System.Windows.Media.SolidColorBrush", "compiled unshared-resource second brush");
+        AssertEqual("#FF4D6F8E", GetProperty(backgroundA, "Color").ToString(), "compiled unshared-resource first color");
+        AssertEqual("#FF4D6F8E", GetProperty(backgroundB, "Color").ToString(), "compiled unshared-resource second color");
+        AssertNotSame(backgroundA, backgroundB, "compiled x:Shared=false StaticResource consumers");
+        AssertNotSame(dictionaryBrush, backgroundA, "compiled x:Shared=false dictionary and first consumer");
     }
 
     private static void ValidateNestedUserControl(object window)
@@ -1720,6 +1755,14 @@ internal static class Program
         if (!ReferenceEquals(expected, actual))
         {
             throw new InvalidOperationException($"Expected {description} to reference the same object.");
+        }
+    }
+
+    private static void AssertNotSame(object expectedDifferent, object actual, string description)
+    {
+        if (ReferenceEquals(expectedDifferent, actual))
+        {
+            throw new InvalidOperationException($"Expected {description} to reference different objects.");
         }
     }
 

@@ -132,6 +132,11 @@
                         <Run Text="section block text" />
                     </Paragraph>
                 </Section>
+                <BlockUIContainer x:Name="DocumentBlockContainer">
+                    <Button
+                        x:Name="DocumentBlockButton"
+                        Content="block document button" />
+                </BlockUIContainer>
                 <Table
                     x:Name="DocumentTable"
                     CellSpacing="2">
@@ -291,6 +296,18 @@
             Foreground="{StaticResource MergedAccentBrush}"
             Margin="{StaticResource MergedBlockMargin}"
             Text="compiled merged resource" />
+        <Border
+            x:Name="UnsharedResourceBorderA"
+            Background="{StaticResource UnsharedAccentBrush}"
+            Margin="0,8,0,0">
+            <TextBlock Text="compiled unshared resource A" />
+        </Border>
+        <Border
+            x:Name="UnsharedResourceBorderB"
+            Background="{StaticResource UnsharedAccentBrush}"
+            Margin="0,8,0,0">
+            <TextBlock Text="compiled unshared resource B" />
+        </Border>
         <local:SmokeUserControl
             x:Name="NestedControl"
             Margin="0,8,0,0" />

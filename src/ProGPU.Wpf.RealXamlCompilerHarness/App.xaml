@@ -10,6 +10,7 @@
             </ResourceDictionary.MergedDictionaries>
             <SolidColorBrush x:Key="AccentBrush" Color="#356D9E" />
             <SolidColorBrush x:Key="ReplacementAccentBrush" Color="#9C4A2F" />
+            <SolidColorBrush x:Key="UnsharedAccentBrush" x:Shared="False" Color="#4D6F8E" />
             <ControlTemplate x:Key="SmokeButtonTemplate" TargetType="{x:Type Button}">
                 <Border
                     x:Name="TemplateBorder"

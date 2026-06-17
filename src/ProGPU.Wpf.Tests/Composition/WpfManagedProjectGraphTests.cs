@@ -756,6 +756,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ResourceDictionary Source=\"SmokeResources.xaml\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("SolidColorBrush x:Key=\"AccentBrush\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("SolidColorBrush x:Key=\"ReplacementAccentBrush\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("SolidColorBrush x:Key=\"UnsharedAccentBrush\" x:Shared=\"False\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("ControlTemplate x:Key=\"SmokeButtonTemplate\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("Background=\"{DynamicResource AccentBrush}\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"{TemplateBinding Content}\"", appXaml, StringComparison.Ordinal);
@@ -801,6 +802,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Content=\"inline document button\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Section x:Name=\"DocumentSection\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("section block text", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("BlockUIContainer x:Name=\"DocumentBlockContainer\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"DocumentBlockButton\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"block document button\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Table", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"DocumentTable\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Table.Columns", mainWindowXaml, StringComparison.Ordinal);
@@ -863,6 +867,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"MergedResourceBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Foreground=\"{StaticResource MergedAccentBrush}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Margin=\"{StaticResource MergedBlockMargin}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"UnsharedResourceBorderA\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"UnsharedResourceBorderB\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Background=\"{StaticResource UnsharedAccentBrush}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("local:SmokeUserControl", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"NestedControl\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"AttachedLayoutGrid\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1117,6 +1124,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled FlowDocument list items", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Documents.InlineUIContainer", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument inline Button content", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Documents.BlockUIContainer", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled FlowDocument block Button content", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox selection text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument section blocks", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument table columns", harnessProgram, StringComparison.Ordinal);
@@ -1183,6 +1192,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled MarkupExtension provided text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMergedResourceDictionary(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled merged-resource foreground", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateUnsharedResource(window, application)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled x:Shared=false StaticResource consumers", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled x:Shared=false dictionary lookup", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateNestedUserControl(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Wpf.RealXamlCompilerHarness.SmokeUserControl", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetField(nestedControl, \"ControlTitle\")", harnessProgram, StringComparison.Ordinal);
@@ -1357,6 +1369,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled FlowDocument list items", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Documents.InlineUIContainer", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument inline Button content", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Documents.BlockUIContainer", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled FlowDocument block Button content", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox selection text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument section blocks", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument table columns", harnessProgram, StringComparison.Ordinal);
@@ -1429,6 +1443,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled MarkupExtension provided text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMergedResourceDictionary(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled merged-resource margin top", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateUnsharedResource(window, application)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled x:Shared=false StaticResource consumers", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled x:Shared=false dictionary lookup", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateNestedUserControl(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled UserControl ElementName binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled UserControl click routed event name", harnessProgram, StringComparison.Ordinal);

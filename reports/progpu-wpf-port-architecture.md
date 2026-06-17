@@ -4,6 +4,8 @@
 
 Porting means reusing as much WPF managed code as possible wherever it can reasonably compile and execute: dependency properties, dispatcher/app lifetime, controls, layout, resource lookup, styles/templates, routed input/commands, text objects, XAML/BAML compilation, and theme dictionaries remain WPF-owned. ProGPU and Silk.NET replace the Windows-native rendering, composition, windowing, input, and local OS service boundaries. New work should first try to keep the original WPF managed subsystem on the active path, then add native ProGPU APIs only where the old MIL/DWrite/WIC/Win32/D3D boundary cannot be made portable or where performance-critical GPU execution belongs in ProGPU. Bridge-local compatibility code is temporary unless it preserves a source-level WPF manager path or isolates a native seam for later ProGPU ownership.
 
+The compiled-XAML smoke harness now explicitly treats `ResourceDictionary` instance semantics such as `x:Shared="False"` and rich document containers such as `InlineUIContainer`/`BlockUIContainer` as WPF-owned behavior. ProGPU should receive the resulting visuals, brushes, text, and native rendering work, not reimplement those XAML/resource/document managers.
+
 ## Current WPF Rendering Boundary
 
 WPF managed rendering persists content in `RenderData`, `Drawing`, `DrawingVisual`, and `Visual` objects. Those objects are marshalled into `DUCE.Channel` command streams and consumed by MIL/native rendering. The Windows-only seams include:

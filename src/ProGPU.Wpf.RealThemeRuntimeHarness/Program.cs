@@ -120,6 +120,7 @@ internal static class Program
     {
         object windowStyle = GetDictionaryValue(themeDictionary, "DefaultWindowStyle");
         object buttonStyle = GetDictionaryValue(themeDictionary, "AccentButtonStyle");
+        object textBoxStyle = GetDictionaryValue(themeDictionary, "DefaultTextBoxStyle");
         object richTextBoxStyle = GetDictionaryValue(themeDictionary, "DefaultRichTextBoxStyle");
 
         SetProperty(window, "Style", windowStyle);
@@ -135,41 +136,58 @@ internal static class Program
         SetProperty(button, "Style", buttonStyle);
         AddToCollection(children, button);
 
+        object textBox = Create(presentationFramework, "System.Windows.Controls.TextBox");
+        SetProperty(textBox, "Text", "themed text box smoke");
+        SetProperty(textBox, "Style", textBoxStyle);
+        AddToCollection(children, textBox);
+
         AssertSame(windowStyle, GetProperty(window, "Style"), "Window Fluent style");
         AssertSame(buttonStyle, GetProperty(button, "Style"), "Button Fluent style");
+        AssertSame(textBoxStyle, GetProperty(textBox, "Style"), "TextBox Fluent style");
         AssertSame(richTextBoxStyle, GetProperty(richTextBox, "Style"), "RichTextBox Fluent style");
         AssertSame(buttonStyle, Invoke(application, "TryFindResource", "AccentButtonStyle"), "application Fluent resource lookup");
+        AssertSame(textBoxStyle, Invoke(application, "TryFindResource", "DefaultTextBoxStyle"), "application Fluent TextBox resource lookup");
     }
 
     private static void ValidateThemedRuntimeState(object window, object application, object themeDictionary)
     {
         object content = GetProperty(window, "Content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expectedMinimum: 14, "themed stack panel children");
+        AssertCollectionCount(children, expectedMinimum: 15, "themed stack panel children");
 
-        object button = GetCollectionItem(children, GetCollectionCount(children) - 1);
+        int childCount = GetCollectionCount(children);
+        object button = GetCollectionItem(children, childCount - 2);
+        object textBox = GetCollectionItem(children, childCount - 1);
         object richTextBox = Invoke(window, "FindName", "DocumentBox");
         AssertType(richTextBox, "System.Windows.Controls.RichTextBox", "compiled themed RichTextBox");
+        AssertType(textBox, "System.Windows.Controls.TextBox", "created themed TextBox");
 
         AssertType(GetDictionaryValue(themeDictionary, "DefaultWindowStyle"), "System.Windows.Style", "DefaultWindowStyle");
         AssertType(GetDictionaryValue(themeDictionary, "AccentButtonStyle"), "System.Windows.Style", "AccentButtonStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultTextBoxStyle"), "System.Windows.Style", "DefaultTextBoxStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultTextBoxControlTemplate"), "System.Windows.Controls.ControlTemplate", "DefaultTextBoxControlTemplate");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultRichTextBoxStyle"), "System.Windows.Style", "DefaultRichTextBoxStyle");
         AssertType(GetDictionaryValue(themeDictionary, "WindowTemplateKey"), "System.Windows.Controls.ControlTemplate", "WindowTemplateKey");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultControlContextMenu"), "System.Windows.Controls.ContextMenu", "DefaultControlContextMenu");
 
         AssertStyleTarget(GetProperty(window, "Style"), "System.Windows.Window", "Window Fluent style target");
         AssertStyleTarget(GetProperty(button, "Style"), "System.Windows.Controls.Button", "Button Fluent style target");
+        AssertStyleTarget(GetProperty(textBox, "Style"), "System.Windows.Controls.TextBox", "TextBox Fluent style target");
         AssertStyleTarget(GetProperty(richTextBox, "Style"), "System.Windows.Controls.RichTextBox", "RichTextBox Fluent style target");
 
         Invoke(window, "ApplyTemplate");
         Invoke(button, "ApplyTemplate");
+        Invoke(textBox, "ApplyTemplate");
         Invoke(richTextBox, "ApplyTemplate");
 
         AssertType(GetProperty(window, "Template"), "System.Windows.Controls.ControlTemplate", "Window template");
         AssertType(GetProperty(button, "Template"), "System.Windows.Controls.ControlTemplate", "Button template");
+        AssertType(GetProperty(textBox, "Template"), "System.Windows.Controls.ControlTemplate", "TextBox template");
         AssertType(GetProperty(richTextBox, "Template"), "System.Windows.Controls.ControlTemplate", "RichTextBox template");
+        AssertStyleHasSetter(GetProperty(textBox, "Style"), "Template", "TextBox Fluent template setter");
         AssertStyleHasSetter(GetProperty(richTextBox, "Style"), "ContextMenu", "RichTextBox Fluent context-menu setter");
         AssertEqual("themed button smoke", GetProperty(button, "Content"), "themed button content");
+        AssertEqual("themed text box smoke", GetProperty(textBox, "Text"), "themed TextBox text");
 
         object appResources = GetProperty(application, "Resources");
         object mergedDictionaries = GetProperty(appResources, "MergedDictionaries");

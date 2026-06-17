@@ -207,7 +207,15 @@
             </ListBox.ItemsPanel>
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="{x:Type local:SmokeItem}">
-                    <TextBlock Text="{Binding Name}" />
+                    <TextBlock
+                        x:Name="ItemTextBlock"
+                        Tag="template trigger inactive"
+                        Text="{Binding Name}" />
+                    <DataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding Name}" Value="item beta">
+                            <Setter TargetName="ItemTextBlock" Property="Tag" Value="template trigger active" />
+                        </DataTrigger>
+                    </DataTemplate.Triggers>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>

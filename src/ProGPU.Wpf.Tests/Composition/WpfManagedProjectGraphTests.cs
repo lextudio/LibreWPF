@@ -873,7 +873,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ListBox.ItemsPanel", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsPanelTemplate", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DataTemplate DataType=\"{x:Type local:SmokeItem}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ItemTextBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding Name}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DataTemplate.Triggers", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DataTrigger Binding=\"{Binding Name}\" Value=\"item beta\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Setter TargetName=\"ItemTextBlock\" Property=\"Tag\" Value=\"template trigger active\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("StaticResource AccentBrush", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("InitializeComponent();", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DataContext = new SmokeViewModel();", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1046,6 +1050,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateItemsBindingAndTemplate(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox ItemsSource binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate text binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplate DataTrigger binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplate DataTrigger setter target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplate DataTrigger setter value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox collection-change items", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource resource", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource sort direction", harnessProgram, StringComparison.Ordinal);
@@ -1176,6 +1183,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateItemsBindingAndTemplate(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox two-way selected item binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate text binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplate DataTrigger value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplate DataTrigger setter property", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplate DataTrigger setter value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource resource", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource sort property", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled sorted ListBox generated items", harnessProgram, StringComparison.Ordinal);

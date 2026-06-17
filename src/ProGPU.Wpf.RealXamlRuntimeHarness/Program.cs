@@ -660,7 +660,22 @@ internal static class Program
         AssertType(itemTemplate, "System.Windows.DataTemplate", "compiled ListBox item template");
         object templateRoot = Invoke(itemTemplate, "LoadContent");
         AssertType(templateRoot, "System.Windows.Controls.TextBlock", "compiled DataTemplate root");
+        AssertEqual("ItemTextBlock", GetProperty(templateRoot, "Name"), "compiled DataTemplate named root");
+        AssertEqual("template trigger inactive", GetProperty(templateRoot, "Tag"), "compiled DataTemplate root default tag");
         AssertBindingPath(templateRoot, "TextProperty", "Name", "compiled DataTemplate text binding path");
+        object dataTemplateTriggers = GetProperty(itemTemplate, "Triggers");
+        AssertCollectionCount(dataTemplateTriggers, expected: 1, "compiled DataTemplate triggers");
+        object dataTemplateTrigger = GetCollectionItem(dataTemplateTriggers, 0);
+        AssertType(dataTemplateTrigger, "System.Windows.DataTrigger", "compiled DataTemplate DataTrigger");
+        AssertBindingObjectPath(GetProperty(dataTemplateTrigger, "Binding"), "Name", "compiled DataTemplate DataTrigger binding path");
+        AssertEqual("item beta", GetProperty(dataTemplateTrigger, "Value"), "compiled DataTemplate DataTrigger value");
+        object dataTemplateTriggerSetters = GetProperty(dataTemplateTrigger, "Setters");
+        AssertCollectionCount(dataTemplateTriggerSetters, expected: 1, "compiled DataTemplate DataTrigger setters");
+        object dataTemplateTriggerSetter = GetCollectionItem(dataTemplateTriggerSetters, 0);
+        AssertType(dataTemplateTriggerSetter, "System.Windows.Setter", "compiled DataTemplate DataTrigger setter");
+        AssertEqual("ItemTextBlock", GetProperty(dataTemplateTriggerSetter, "TargetName"), "compiled DataTemplate DataTrigger setter target");
+        AssertEqual("Tag", GetProperty(GetProperty(dataTemplateTriggerSetter, "Property"), "Name"), "compiled DataTemplate DataTrigger setter property");
+        AssertEqual("template trigger active", GetProperty(dataTemplateTriggerSetter, "Value"), "compiled DataTemplate DataTrigger setter value");
 
         object sortedItemsViewSource = Invoke(window, "TryFindResource", "SortedItemsView");
         AssertType(sortedItemsViewSource, "System.Windows.Data.CollectionViewSource", "compiled CollectionViewSource resource");

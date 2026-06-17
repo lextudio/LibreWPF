@@ -630,6 +630,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("System.Windows.Media.DrawingBrush", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Media.DrawingVisual", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Media.GeometryDrawing", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Media.LinearGradientBrush", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Media.RadialGradientBrush", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Media.FormattedText", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Media.GlyphRun", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Media.ImageBrush", harnessProgram, StringComparison.Ordinal);
@@ -667,6 +669,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("real DrawingVisual retained bitmap image", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("real DrawingVisual retained image brush", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("real DrawingVisual retained drawing brush", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("real DrawingVisual retained linear gradient brush", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("real DrawingVisual retained radial gradient brush", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("real DrawingVisual retained linear gradient start X", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("real DrawingVisual retained radial gradient origin X", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("real DrawingVisual transformed line X offset", harnessProgram, StringComparison.Ordinal);
     }
 

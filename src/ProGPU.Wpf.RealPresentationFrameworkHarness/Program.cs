@@ -6,6 +6,9 @@ using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using ProGpuContainerVisual = global::ProGPU.Scene.ContainerVisual;
 using ProGpuDrawingContext = global::ProGPU.Scene.DrawingContext;
+using ProGpuGradientSpreadMethod = global::ProGPU.Vector.GradientSpreadMethod;
+using ProGpuLinearGradientBrush = global::ProGPU.Vector.LinearGradientBrush;
+using ProGpuRadialGradientBrush = global::ProGPU.Vector.RadialGradientBrush;
 using ProGpuRenderCommand = global::ProGPU.Scene.RenderCommand;
 using ProGpuRenderCommandType = global::ProGPU.Scene.RenderCommandType;
 using ProGpuVisual = global::ProGPU.Scene.Visual;
@@ -264,6 +267,12 @@ public static class Program
             ?? throw new InvalidOperationException("Failed to create System.Windows.Media.DrawingBrush.");
         object drawingBrushRect = Activator.CreateInstance(rectType, 102.0, 8.0, 16.0, 12.0)
             ?? throw new InvalidOperationException("Failed to create System.Windows.Rect.");
+        object linearGradientBrush = CreateRealLinearGradientBrush(presentationCore, windowsBase, colorsType);
+        object linearGradientRect = Activator.CreateInstance(rectType, 122.0, 8.0, 16.0, 12.0)
+            ?? throw new InvalidOperationException("Failed to create System.Windows.Rect.");
+        object radialGradientBrush = CreateRealRadialGradientBrush(presentationCore, windowsBase, colorsType);
+        object radialGradientCenter = Activator.CreateInstance(pointType, 150.0, 18.0)
+            ?? throw new InvalidOperationException("Failed to create System.Windows.Point.");
 
         InvokeDrawing(
             drawingContext,
@@ -421,6 +430,22 @@ public static class Program
             drawingBrush,
             null,
             drawingBrushRect);
+        InvokeDrawing(
+            drawingContext,
+            "DrawRectangle",
+            new[] { brushType, penType, rectType },
+            linearGradientBrush,
+            null,
+            linearGradientRect);
+        InvokeDrawing(
+            drawingContext,
+            "DrawEllipse",
+            new[] { brushType, penType, pointType, typeof(double), typeof(double) },
+            radialGradientBrush,
+            null,
+            radialGradientCenter,
+            8.0,
+            6.0);
         Invoke(drawingContext, "Close");
     }
 
@@ -466,7 +491,9 @@ public static class Program
             ProGpuRenderCommandType.PopGeometryClip,
             ProGpuRenderCommandType.PushGeometryClip,
             ProGpuRenderCommandType.DrawPath,
-            ProGpuRenderCommandType.PopGeometryClip
+            ProGpuRenderCommandType.PopGeometryClip,
+            ProGpuRenderCommandType.DrawRect,
+            ProGpuRenderCommandType.DrawEllipse
         };
         if (commands.Count != expectedCommandTypes.Length)
         {
@@ -553,6 +580,55 @@ public static class Program
         {
             throw new InvalidOperationException("Expected real DrawingVisual retained drawing brush fill to replay its nested drawing as a native path.");
         }
+
+        AssertLinearGradientCommand(commands[26]);
+        AssertRadialGradientCommand(commands[27]);
+    }
+
+    private static void AssertLinearGradientCommand(ProGpuRenderCommand command)
+    {
+        var brush = command.Brush as ProGpuLinearGradientBrush
+            ?? throw new InvalidOperationException($"Expected real DrawingVisual retained linear gradient brush, got {command.Brush?.GetType().FullName ?? "null"}.");
+
+        AssertEqual(122f, command.Rect.X, "real DrawingVisual retained linear gradient rect X");
+        AssertEqual(8f, command.Rect.Y, "real DrawingVisual retained linear gradient rect Y");
+        AssertEqual(16f, command.Rect.Width, "real DrawingVisual retained linear gradient rect width");
+        AssertEqual(12f, command.Rect.Height, "real DrawingVisual retained linear gradient rect height");
+        AssertEqual(122f, brush.StartPoint.X, "real DrawingVisual retained linear gradient start X");
+        AssertEqual(8f, brush.StartPoint.Y, "real DrawingVisual retained linear gradient start Y");
+        AssertEqual(138f, brush.EndPoint.X, "real DrawingVisual retained linear gradient end X");
+        AssertEqual(20f, brush.EndPoint.Y, "real DrawingVisual retained linear gradient end Y");
+        AssertEqual(0.8f, brush.Opacity, "real DrawingVisual retained linear gradient opacity");
+        AssertEqual(ProGpuGradientSpreadMethod.Reflect, brush.SpreadMethod, "real DrawingVisual retained linear gradient spread method");
+        AssertEqual(2, brush.Stops.Length, "real DrawingVisual retained linear gradient stop count");
+        AssertEqual(0f, brush.Stops[0].Offset, "real DrawingVisual retained linear gradient first stop offset");
+        AssertEqual(1f, brush.Stops[0].Color.X, "real DrawingVisual retained linear gradient first stop red");
+        AssertEqual(1f, brush.Stops[1].Offset, "real DrawingVisual retained linear gradient second stop offset");
+        AssertEqual(1f, brush.Stops[1].Color.Z, "real DrawingVisual retained linear gradient second stop blue");
+    }
+
+    private static void AssertRadialGradientCommand(ProGpuRenderCommand command)
+    {
+        var brush = command.Brush as ProGpuRadialGradientBrush
+            ?? throw new InvalidOperationException($"Expected real DrawingVisual retained radial gradient brush, got {command.Brush?.GetType().FullName ?? "null"}.");
+
+        AssertEqual(150f, command.Position2.X, "real DrawingVisual retained radial gradient ellipse center X");
+        AssertEqual(18f, command.Position2.Y, "real DrawingVisual retained radial gradient ellipse center Y");
+        AssertEqual(8f, command.RadiusX, "real DrawingVisual retained radial gradient ellipse radius X");
+        AssertEqual(6f, command.RadiusY, "real DrawingVisual retained radial gradient ellipse radius Y");
+        AssertEqual(150f, brush.Center.X, "real DrawingVisual retained radial gradient center X");
+        AssertEqual(18f, brush.Center.Y, "real DrawingVisual retained radial gradient center Y");
+        AssertEqual(146f, brush.GradientOrigin.X, "real DrawingVisual retained radial gradient origin X");
+        AssertEqual(21f, brush.GradientOrigin.Y, "real DrawingVisual retained radial gradient origin Y");
+        AssertEqual(8f, brush.RadiusX, "real DrawingVisual retained radial gradient radius X");
+        AssertEqual(9f, brush.RadiusY, "real DrawingVisual retained radial gradient radius Y");
+        AssertEqual(0.6f, brush.Opacity, "real DrawingVisual retained radial gradient opacity");
+        AssertEqual(ProGpuGradientSpreadMethod.Repeat, brush.SpreadMethod, "real DrawingVisual retained radial gradient spread method");
+        AssertEqual(2, brush.Stops.Length, "real DrawingVisual retained radial gradient stop count");
+        AssertEqual(0f, brush.Stops[0].Offset, "real DrawingVisual retained radial gradient first stop offset");
+        AssertEqual(128f / 255f, brush.Stops[0].Color.Y, "real DrawingVisual retained radial gradient first stop green");
+        AssertEqual(1f, brush.Stops[1].Offset, "real DrawingVisual retained radial gradient second stop offset");
+        AssertEqual(0f, brush.Stops[1].Color.W, "real DrawingVisual retained radial gradient second stop alpha");
     }
 
     private static ProGpuContainerVisual GetSingleContainerChild(ProGpuContainerVisual parent, string description)
@@ -608,6 +684,52 @@ public static class Program
         object guidelineSet = constructor.Invoke(new object[] { guidelinesX, guidelinesY, true });
         Invoke(guidelineSet, "Freeze");
         return guidelineSet;
+    }
+
+    private static object CreateRealLinearGradientBrush(Assembly presentationCore, Assembly windowsBase, Type colorsType)
+    {
+        object brush = Create(presentationCore, "System.Windows.Media.LinearGradientBrush");
+        SetProperty(brush, "StartPoint", CreatePoint(windowsBase, 0.0, 0.0));
+        SetProperty(brush, "EndPoint", CreatePoint(windowsBase, 1.0, 1.0));
+        SetProperty(brush, "Opacity", 0.8);
+        SetEnumProperty(brush, "SpreadMethod", "Reflect");
+        AddToCollection(
+            GetProperty(brush, "GradientStops"),
+            CreateGradientStop(presentationCore, GetStaticProperty(colorsType, "Red"), 0.0));
+        AddToCollection(
+            GetProperty(brush, "GradientStops"),
+            CreateGradientStop(presentationCore, GetStaticProperty(colorsType, "Blue"), 1.0));
+        return brush;
+    }
+
+    private static object CreateRealRadialGradientBrush(Assembly presentationCore, Assembly windowsBase, Type colorsType)
+    {
+        object brush = Create(presentationCore, "System.Windows.Media.RadialGradientBrush");
+        SetProperty(brush, "Center", CreatePoint(windowsBase, 0.5, 0.5));
+        SetProperty(brush, "GradientOrigin", CreatePoint(windowsBase, 0.25, 0.75));
+        SetProperty(brush, "RadiusX", 0.5);
+        SetProperty(brush, "RadiusY", 0.75);
+        SetProperty(brush, "Opacity", 0.6);
+        SetEnumProperty(brush, "SpreadMethod", "Repeat");
+        AddToCollection(
+            GetProperty(brush, "GradientStops"),
+            CreateGradientStop(presentationCore, GetStaticProperty(colorsType, "Green"), 0.0));
+        AddToCollection(
+            GetProperty(brush, "GradientStops"),
+            CreateGradientStop(presentationCore, GetStaticProperty(colorsType, "Transparent"), 1.0));
+        return brush;
+    }
+
+    private static object CreateGradientStop(Assembly presentationCore, object color, double offset)
+    {
+        return Create(presentationCore, "System.Windows.Media.GradientStop", color, offset);
+    }
+
+    private static object CreatePoint(Assembly windowsBase, double x, double y)
+    {
+        Type pointType = GetRequiredType(windowsBase, "System.Windows.Point");
+        return Activator.CreateInstance(pointType, x, y)
+            ?? throw new InvalidOperationException("Failed to create System.Windows.Point.");
     }
 
     private static object CreateRealGlyphRun(Assembly presentationCore, Assembly windowsBase, Type pointType)
@@ -1065,6 +1187,15 @@ public static class Program
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
             ?? throw new MissingMemberException(instance.GetType().FullName, propertyName);
         property.SetValue(instance, value);
+    }
+
+    private static void SetEnumProperty(object instance, string propertyName, string value)
+    {
+        PropertyInfo property = instance.GetType().GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(instance.GetType().FullName, propertyName);
+        property.SetValue(instance, Enum.Parse(property.PropertyType, value));
     }
 
     private static object Invoke(object instance, string methodName)

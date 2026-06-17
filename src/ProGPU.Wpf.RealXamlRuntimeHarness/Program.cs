@@ -1576,7 +1576,7 @@ internal static class Program
     {
         object layoutPanel = GetField(window, "LayoutPanelSmoke");
         AssertType(layoutPanel, "System.Windows.Controls.StackPanel", "compiled layout panel host");
-        AssertCollectionCount(GetProperty(layoutPanel, "Children"), expected: 4, "compiled layout panel host children");
+        AssertCollectionCount(GetProperty(layoutPanel, "Children"), expected: 5, "compiled layout panel host children");
 
         object dockPanel = GetField(window, "DockPanelSmoke");
         AssertType(dockPanel, "System.Windows.Controls.DockPanel", "compiled DockPanel");
@@ -1619,6 +1619,25 @@ internal static class Program
         object wrapSecond = GetField(window, "WrapSecondChild");
         AssertType(wrapSecond, "System.Windows.Controls.TextBlock", "compiled WrapPanel second child");
         AssertEqual("wrap two", GetProperty(wrapSecond, "Text"), "compiled WrapPanel second child text");
+
+        object uniformGrid = GetField(window, "UniformGridSmoke");
+        AssertType(uniformGrid, "System.Windows.Controls.Primitives.UniformGrid", "compiled UniformGrid");
+        AssertEqual(2, GetProperty(uniformGrid, "Rows"), "compiled UniformGrid rows");
+        AssertEqual(2, GetProperty(uniformGrid, "Columns"), "compiled UniformGrid columns");
+        AssertEqual(1, GetProperty(uniformGrid, "FirstColumn"), "compiled UniformGrid first column");
+        AssertCollectionCount(GetProperty(uniformGrid, "Children"), expected: 3, "compiled UniformGrid children");
+
+        object uniformFirst = GetField(window, "UniformFirstChild");
+        AssertType(uniformFirst, "System.Windows.Controls.TextBlock", "compiled UniformGrid first child");
+        AssertEqual("uniform one", GetProperty(uniformFirst, "Text"), "compiled UniformGrid first child text");
+
+        object uniformSecond = GetField(window, "UniformSecondChild");
+        AssertType(uniformSecond, "System.Windows.Controls.TextBlock", "compiled UniformGrid second child");
+        AssertEqual("uniform two", GetProperty(uniformSecond, "Text"), "compiled UniformGrid second child text");
+
+        object uniformThird = GetField(window, "UniformThirdChild");
+        AssertType(uniformThird, "System.Windows.Controls.TextBlock", "compiled UniformGrid third child");
+        AssertEqual("uniform three", GetProperty(uniformThird, "Text"), "compiled UniformGrid third child text");
 
         object splitterGrid = GetField(window, "GridSplitterGrid");
         AssertType(splitterGrid, "System.Windows.Controls.Grid", "compiled GridSplitter grid");

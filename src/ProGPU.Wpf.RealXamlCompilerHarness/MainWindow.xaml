@@ -265,6 +265,21 @@
                     x:Name="WrapSecondChild"
                     Text="wrap two" />
             </WrapPanel>
+            <UniformGrid
+                x:Name="UniformGridSmoke"
+                Columns="2"
+                FirstColumn="1"
+                Rows="2">
+                <TextBlock
+                    x:Name="UniformFirstChild"
+                    Text="uniform one" />
+                <TextBlock
+                    x:Name="UniformSecondChild"
+                    Text="uniform two" />
+                <TextBlock
+                    x:Name="UniformThirdChild"
+                    Text="uniform three" />
+            </UniformGrid>
             <Grid
                 x:Name="GridSplitterGrid"
                 Width="180"

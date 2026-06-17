@@ -511,5 +511,22 @@
             Margin="0,8,0,0"
             Content="{Binding Detail}"
             ContentTemplateSelector="{StaticResource SmokeDetailTemplateSelector}" />
+        <TabControl
+            x:Name="SmokeTabControl"
+            Margin="0,8,0,0"
+            SelectedIndex="1">
+            <TabItem Header="alpha tab">
+                <TextBlock
+                    x:Name="AlphaTabContent"
+                    Tag="tab alpha content"
+                    Text="alpha tab content" />
+            </TabItem>
+            <TabItem Header="beta tab">
+                <TextBlock
+                    x:Name="BetaTabContent"
+                    Tag="tab beta content"
+                    Text="beta tab content" />
+            </TabItem>
+        </TabControl>
     </StackPanel>
 </Window>

@@ -1008,6 +1008,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Content=\"{Binding Detail}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SelectorTemplateHost\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ContentTemplateSelector=\"{StaticResource SmokeDetailTemplateSelector}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SmokeTabControl\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SelectedIndex=\"1\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<TabItem Header=\"alpha tab\">", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"AlphaTabContent\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Tag=\"tab alpha content\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"alpha tab content\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<TabItem Header=\"beta tab\">", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"BetaTabContent\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Tag=\"tab beta content\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"beta tab content\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ListBox.ItemContainerStyle", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style TargetType=\"{x:Type ListBoxItem}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Setter Property=\"Tag\" Value=\"container trigger inactive\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1309,6 +1319,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateImplicitDataTemplate(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateContentTemplateSelector(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateHierarchicalDataTemplate(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateTabControl(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled implicit DataTemplate detail model", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled implicit DataTemplate host content binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ContentTemplateSelector selected template resource", harnessProgram, StringComparison.Ordinal);
@@ -1316,6 +1327,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled HierarchicalDataTemplate child ItemsSource path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TreeView ItemsSource binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TreeView item template", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled TabControl selected index", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled TabControl selected content", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox ItemsSource binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox item container style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ItemContainerStyle setter property", harnessProgram, StringComparison.Ordinal);
@@ -1341,8 +1354,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ListBox SelectedValue binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox two-way selected value source update", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowItemTemplateTriggerActivation(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowTabControl(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateGeneratedItemTemplateTextBlock(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate inactive generated item container", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled TabControl beta generated content text", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled TabControl selected index after change", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ItemContainerStyle trigger inactive generated value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate inactive generated TextBlock binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate trigger inactive generated value", harnessProgram, StringComparison.Ordinal);
@@ -1599,6 +1615,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateImplicitDataTemplate(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateContentTemplateSelector(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateHierarchicalDataTemplate(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateTabControl(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled implicit DataTemplate detail title", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled implicit DataTemplate host content binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ContentTemplateSelector selected template resource", harnessProgram, StringComparison.Ordinal);
@@ -1606,6 +1623,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled HierarchicalDataTemplate text binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TreeView ItemsSource binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TreeView generated root items", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled TabControl selected index", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled TabControl selected content", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox two-way selected item binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox item container style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ItemContainerStyle setter property", harnessProgram, StringComparison.Ordinal);
@@ -1631,8 +1650,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ListBox SelectedValue binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox two-way selected value source update", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowItemTemplateTriggerActivation(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowTabControl(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateGeneratedItemTemplateTextBlock(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate inactive generated item container", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled TabControl beta generated content text", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled TabControl selected index after change", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ItemContainerStyle trigger inactive generated value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate inactive generated TextBlock binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate trigger inactive generated value", harnessProgram, StringComparison.Ordinal);
@@ -1643,6 +1665,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePostShowItemTemplateSelector(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowImplicitDataTemplate(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowContentTemplateSelector(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateTabControl(activation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowHierarchicalDataTemplate(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled implicit DataTemplate generated TextBlock binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled implicit DataTemplate generated value", harnessProgram, StringComparison.Ordinal);
@@ -1794,6 +1817,15 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Media",
             "PathGeometry.cs"));
+        var geometry = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Geometry.cs"));
         var rectangleGeometry = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -1956,6 +1988,9 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(compositionExports, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.MilCoreApi.EnterCompositionEngineLock()");
         AssertGuardBefore(uiElement, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetDC(desktopWnd)");
         AssertGuardBefore(pathGeometry, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.MilCoreApi.MilUtility_PathGeometryBounds");
+        AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())", "MilCoreApi.MilUtility_PolygonBounds");
+        Assert.Contains("return GetManagedPolygonBounds(", geometry, StringComparison.Ordinal);
+        Assert.Contains("private static unsafe Rect GetManagedPolygonBounds", geometry, StringComparison.Ordinal);
         Assert.Contains("private static MilRectD GetManagedPathBoundsAsRB", pathGeometry, StringComparison.Ordinal);
         Assert.Contains("ParsePathGeometryData(pathData, context)", pathGeometry, StringComparison.Ordinal);
         Assert.Contains("PathStreamGeometryContext", pathGeometry, StringComparison.Ordinal);

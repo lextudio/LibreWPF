@@ -81,6 +81,7 @@ internal static class Program
             ValidatePostShowImplicitDataTemplate(presentationCore, window);
             ValidatePostShowContentTemplateSelector(presentationCore, window);
             ValidatePostShowHierarchicalDataTemplate(presentationCore, window);
+            ValidatePostShowTabControl(presentationCore, window);
             ValidatePortableKeyboardFocus(presentationCore, window);
             ValidatePortableInputBindingActivation(presentationCore, activation, window);
             ValidatePortableTextInputActivation(presentationCore, activation, window);
@@ -177,7 +178,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 40, "stack panel children");
+        AssertCollectionCount(children, expected: 41, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -231,6 +232,7 @@ internal static class Program
         ValidateImplicitDataTemplate(window);
         ValidateContentTemplateSelector(window);
         ValidateHierarchicalDataTemplate(window);
+        ValidateTabControl(window);
     }
 
     private static void ValidateTextBoxSelection(object inputBox)
@@ -1001,6 +1003,42 @@ internal static class Program
         AssertEqual("hierarchical template", GetProperty(childTextBlock, "Tag"), "compiled HierarchicalDataTemplate child generated value");
     }
 
+    private static void ValidatePostShowTabControl(Assembly presentationCore, object window)
+    {
+        object tabControl = GetField(window, "SmokeTabControl");
+        Invoke(tabControl, "ApplyTemplate");
+        Invoke(tabControl, "UpdateLayout");
+
+        object items = GetProperty(tabControl, "Items");
+        object betaTab = GetCollectionItem(items, 1);
+        AssertSame(betaTab, GetProperty(tabControl, "SelectedItem"), "compiled TabControl post-show selected item");
+        AssertEqual(1, GetProperty(tabControl, "SelectedIndex"), "compiled TabControl post-show selected index");
+        AssertSame(GetProperty(betaTab, "Content"), GetProperty(tabControl, "SelectedContent"), "compiled TabControl post-show selected content");
+
+        object betaContent = FindVisualDescendantByName(presentationCore, tabControl, "BetaTabContent")
+            ?? throw new InvalidOperationException("Expected selected TabControl content to contain BetaTabContent.");
+        AssertType(betaContent, "System.Windows.Controls.TextBlock", "compiled TabControl beta generated content");
+        AssertEqual("beta tab content", GetProperty(betaContent, "Text"), "compiled TabControl beta generated content text");
+        AssertEqual("tab beta content", GetProperty(betaContent, "Tag"), "compiled TabControl beta generated content tag");
+
+        SetProperty(tabControl, "SelectedIndex", 0);
+        Invoke(tabControl, "UpdateLayout");
+
+        object alphaTab = GetCollectionItem(items, 0);
+        AssertSame(alphaTab, GetProperty(tabControl, "SelectedItem"), "compiled TabControl selected item after index change");
+        AssertEqual(0, GetProperty(tabControl, "SelectedIndex"), "compiled TabControl selected index after change");
+        AssertSame(GetProperty(alphaTab, "Content"), GetProperty(tabControl, "SelectedContent"), "compiled TabControl selected content after change");
+
+        object alphaContent = FindVisualDescendantByName(presentationCore, tabControl, "AlphaTabContent")
+            ?? throw new InvalidOperationException("Expected selected TabControl content to contain AlphaTabContent.");
+        AssertType(alphaContent, "System.Windows.Controls.TextBlock", "compiled TabControl alpha generated content");
+        AssertEqual("alpha tab content", GetProperty(alphaContent, "Text"), "compiled TabControl alpha generated content text");
+        AssertEqual("tab alpha content", GetProperty(alphaContent, "Tag"), "compiled TabControl alpha generated content tag");
+
+        SetProperty(tabControl, "SelectedIndex", 1);
+        Invoke(tabControl, "UpdateLayout");
+    }
+
     private static void ValidateObjectDataProvider(object window)
     {
         object provider = Invoke(window, "TryFindResource", "ProviderGreeting");
@@ -1695,6 +1733,37 @@ internal static class Program
         AssertSame(sourceNodes, GetProperty(nodeTree, "ItemsSource"), "compiled TreeView ItemsSource binding");
         AssertSame(nodeTemplate, GetProperty(nodeTree, "ItemTemplate"), "compiled TreeView item template");
         AssertCollectionCount(GetProperty(nodeTree, "Items"), expected: 1, "compiled TreeView generated root items");
+    }
+
+    private static void ValidateTabControl(object window)
+    {
+        object tabControl = GetField(window, "SmokeTabControl");
+        AssertType(tabControl, "System.Windows.Controls.TabControl", "compiled TabControl");
+        AssertEqual(1, GetProperty(tabControl, "SelectedIndex"), "compiled TabControl selected index");
+
+        object items = GetProperty(tabControl, "Items");
+        AssertCollectionCount(items, expected: 2, "compiled TabControl items");
+
+        object alphaTab = GetCollectionItem(items, 0);
+        AssertType(alphaTab, "System.Windows.Controls.TabItem", "compiled TabControl alpha tab");
+        AssertEqual("alpha tab", GetProperty(alphaTab, "Header"), "compiled TabControl alpha header");
+        object alphaContent = GetProperty(alphaTab, "Content");
+        AssertType(alphaContent, "System.Windows.Controls.TextBlock", "compiled TabControl alpha content");
+        AssertEqual("AlphaTabContent", GetProperty(alphaContent, "Name"), "compiled TabControl alpha content name");
+        AssertEqual("alpha tab content", GetProperty(alphaContent, "Text"), "compiled TabControl alpha content text");
+        AssertEqual("tab alpha content", GetProperty(alphaContent, "Tag"), "compiled TabControl alpha content tag");
+
+        object betaTab = GetCollectionItem(items, 1);
+        AssertType(betaTab, "System.Windows.Controls.TabItem", "compiled TabControl beta tab");
+        AssertEqual("beta tab", GetProperty(betaTab, "Header"), "compiled TabControl beta header");
+        object betaContent = GetProperty(betaTab, "Content");
+        AssertType(betaContent, "System.Windows.Controls.TextBlock", "compiled TabControl beta content");
+        AssertEqual("BetaTabContent", GetProperty(betaContent, "Name"), "compiled TabControl beta content name");
+        AssertEqual("beta tab content", GetProperty(betaContent, "Text"), "compiled TabControl beta content text");
+        AssertEqual("tab beta content", GetProperty(betaContent, "Tag"), "compiled TabControl beta content tag");
+
+        AssertSame(betaTab, GetProperty(tabControl, "SelectedItem"), "compiled TabControl selected item");
+        AssertSame(betaContent, GetProperty(tabControl, "SelectedContent"), "compiled TabControl selected content");
     }
 
     private static void ShowPortableActivation(

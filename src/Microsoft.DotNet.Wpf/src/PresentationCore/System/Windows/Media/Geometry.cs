@@ -160,11 +160,22 @@ namespace System.Windows.Media
             ToleranceType type,
             bool fSkipHollows)
         {
-            MIL_PEN_DATA penData;
-            double[] dashArray = null;
-
             // If the pen contributes to the bounds, populate the CMD struct
             bool fPenContributesToBounds = Pen.ContributesToBounds(pen);
+
+            if (!OperatingSystem.IsWindows())
+            {
+                return GetManagedPolygonBounds(
+                    pen,
+                    fPenContributesToBounds,
+                    pWorldMatrix,
+                    pPoints,
+                    pointCount,
+                    pGeometryMatrix);
+            }
+
+            MIL_PEN_DATA penData;
+            double[] dashArray = null;
 
             if (fPenContributesToBounds)
             {
@@ -213,6 +224,89 @@ namespace System.Windows.Media
             }
 
             return bounds;
+        }
+
+        private static unsafe Rect GetManagedPolygonBounds(
+            Pen pen,
+            bool penContributesToBounds,
+            Matrix* pWorldMatrix,
+            Point* pPoints,
+            uint pointCount,
+            Matrix* pGeometryMatrix)
+        {
+            if (pointCount == 0)
+            {
+                return Rect.Empty;
+            }
+
+            Matrix geometryMatrix = pGeometryMatrix == null ? Matrix.Identity : *pGeometryMatrix;
+            Matrix worldMatrix = pWorldMatrix == null ? Matrix.Identity : *pWorldMatrix;
+
+            Point firstPoint = TransformManagedPoint(pPoints[0], geometryMatrix, worldMatrix);
+            if (!IsFinite(firstPoint.X) || !IsFinite(firstPoint.Y))
+            {
+                return Rect.Empty;
+            }
+
+            Rect bounds = new Rect(firstPoint, firstPoint);
+            for (uint i = 1; i < pointCount; i++)
+            {
+                Point point = TransformManagedPoint(pPoints[i], geometryMatrix, worldMatrix);
+                if (!IsFinite(point.X) || !IsFinite(point.Y))
+                {
+                    return Rect.Empty;
+                }
+
+                bounds.Union(point);
+            }
+
+            if (penContributesToBounds)
+            {
+                double strokeThickness = Math.Abs(pen.Thickness)
+                    * GetManagedStrokeScale(geometryMatrix)
+                    * GetManagedStrokeScale(worldMatrix);
+
+                if (!IsFinite(strokeThickness))
+                {
+                    return Rect.Empty;
+                }
+
+                bounds.Inflate(strokeThickness * 0.5, strokeThickness * 0.5);
+            }
+
+            return bounds;
+        }
+
+        private static Point TransformManagedPoint(Point point, Matrix geometryMatrix, Matrix worldMatrix)
+        {
+            if (!geometryMatrix.IsIdentity)
+            {
+                point = geometryMatrix.Transform(point);
+            }
+
+            if (!worldMatrix.IsIdentity)
+            {
+                point = worldMatrix.Transform(point);
+            }
+
+            return point;
+        }
+
+        private static double GetManagedStrokeScale(Matrix matrix)
+        {
+            if (matrix.IsIdentity)
+            {
+                return 1.0;
+            }
+
+            double firstColumnScale = Math.Sqrt((matrix.M11 * matrix.M11) + (matrix.M12 * matrix.M12));
+            double secondColumnScale = Math.Sqrt((matrix.M21 * matrix.M21) + (matrix.M22 * matrix.M22));
+            return Math.Max(firstColumnScale, secondColumnScale);
+        }
+
+        private static bool IsFinite(double value)
+        {
+            return !double.IsNaN(value) && !double.IsInfinity(value);
         }
 
         internal virtual void TransformPropertyChangedHook(DependencyPropertyChangedEventArgs e)

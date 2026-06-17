@@ -90,7 +90,7 @@ internal static class Program
         AssertEqual("MainWindow.xaml", GetProperty(application, "StartupUri").ToString(), "startup URI");
 
         object resources = GetProperty(application, "Resources");
-        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 9, "application resource keys");
+        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 10, "application resource keys");
         object mergedDictionaries = GetProperty(resources, "MergedDictionaries");
         AssertCollectionCount(mergedDictionaries, expected: 1, "application merged dictionaries");
         object smokeResources = GetCollectionItem(mergedDictionaries, 0);
@@ -112,6 +112,7 @@ internal static class Program
         AssertNotSame(unsharedAccentBrush, secondUnsharedAccentBrush, "compiled x:Shared=false resource lookup");
 
         ValidateFreezableBrushResource(resources);
+        ValidateFreezableGradientBrushResource(resources);
 
         object smokeButtonTemplate = GetDictionaryValue(resources, "SmokeButtonTemplate");
         AssertType(smokeButtonTemplate, "System.Windows.Controls.ControlTemplate", "button control template");
@@ -1170,6 +1171,65 @@ internal static class Program
         AssertNotSame(clone, currentValueClone, "compiled Freezable current-value clone instance");
         AssertEqual(false, GetProperty(currentValueClone, "IsFrozen"), "compiled Freezable current-value clone mutable state");
         AssertEqual(0.5, GetProperty(currentValueClone, "Opacity"), "compiled Freezable current-value clone opacity");
+    }
+
+    private static void ValidateFreezableGradientBrushResource(object resources)
+    {
+        object gradientBrush = GetDictionaryValue(resources, "FreezableGradientBrush");
+        AssertType(gradientBrush, "System.Windows.Media.LinearGradientBrush", "compiled Freezable gradient brush");
+        AssertEqual("Reflect", GetProperty(gradientBrush, "SpreadMethod").ToString(), "compiled Freezable gradient brush spread method");
+        AssertEqual("RelativeToBoundingBox", GetProperty(gradientBrush, "MappingMode").ToString(), "compiled Freezable gradient brush mapping mode");
+        AssertPoint(GetProperty(gradientBrush, "StartPoint"), 0.0, 0.0, "compiled Freezable gradient brush start point");
+        AssertPoint(GetProperty(gradientBrush, "EndPoint"), 1.0, 1.0, "compiled Freezable gradient brush end point");
+        AssertEqual(true, GetProperty(gradientBrush, "CanFreeze"), "compiled Freezable gradient brush can freeze");
+        AssertEqual(true, GetProperty(gradientBrush, "IsFrozen"), "compiled Freezable gradient brush initial BAML frozen state");
+
+        object stops = GetProperty(gradientBrush, "GradientStops");
+        AssertType(stops, "System.Windows.Media.GradientStopCollection", "compiled Freezable gradient stop collection");
+        AssertCollectionCount(stops, expected: 3, "compiled Freezable gradient stop count");
+        AssertEqual(true, GetProperty(stops, "IsFrozen"), "compiled Freezable gradient stop collection frozen state");
+        ValidateGradientStop(GetCollectionItem(stops, 0), "#FF2F6B54", 0.0, expectedFrozen: true, "first");
+        object middleStop = GetCollectionItem(stops, 1);
+        ValidateGradientStop(middleStop, "#FFB15E3B", 0.5, expectedFrozen: true, "middle");
+        ValidateGradientStop(GetCollectionItem(stops, 2), "#FF356D9E", 1.0, expectedFrozen: true, "last");
+
+        Invoke(gradientBrush, "Freeze");
+        AssertEqual(true, GetProperty(gradientBrush, "IsFrozen"), "compiled Freezable gradient brush idempotent frozen state");
+
+        object clone = Invoke(gradientBrush, "Clone");
+        AssertType(clone, "System.Windows.Media.LinearGradientBrush", "compiled Freezable gradient brush clone");
+        AssertNotSame(gradientBrush, clone, "compiled Freezable gradient brush clone instance");
+        AssertEqual(false, GetProperty(clone, "IsFrozen"), "compiled Freezable gradient brush clone mutable state");
+
+        object cloneStops = GetProperty(clone, "GradientStops");
+        AssertNotSame(stops, cloneStops, "compiled Freezable gradient brush clone stop collection");
+        AssertEqual(false, GetProperty(cloneStops, "IsFrozen"), "compiled Freezable gradient brush clone stop collection mutable state");
+        object cloneMiddleStop = GetCollectionItem(cloneStops, 1);
+        AssertNotSame(middleStop, cloneMiddleStop, "compiled Freezable gradient brush clone stop instance");
+        AssertEqual(false, GetProperty(cloneMiddleStop, "IsFrozen"), "compiled Freezable gradient brush clone stop mutable state");
+
+        SetProperty(cloneMiddleStop, "Offset", 0.65);
+        SetProperty(clone, "Opacity", 0.75);
+        AssertEqual(0.65, GetProperty(cloneMiddleStop, "Offset"), "compiled Freezable gradient brush clone mutable stop offset");
+        AssertEqual(0.75, GetProperty(clone, "Opacity"), "compiled Freezable gradient brush clone mutable opacity");
+
+        object currentValueClone = Invoke(clone, "CloneCurrentValue");
+        AssertType(currentValueClone, "System.Windows.Media.LinearGradientBrush", "compiled Freezable gradient current-value clone");
+        AssertNotSame(clone, currentValueClone, "compiled Freezable gradient current-value clone instance");
+        AssertEqual(false, GetProperty(currentValueClone, "IsFrozen"), "compiled Freezable gradient current-value clone mutable state");
+        AssertEqual(0.75, GetProperty(currentValueClone, "Opacity"), "compiled Freezable gradient current-value clone opacity");
+
+        object currentValueStops = GetProperty(currentValueClone, "GradientStops");
+        AssertNotSame(cloneStops, currentValueStops, "compiled Freezable gradient current-value clone stop collection");
+        ValidateGradientStop(GetCollectionItem(currentValueStops, 1), "#FFB15E3B", 0.65, expectedFrozen: false, "current-value middle");
+    }
+
+    private static void ValidateGradientStop(object stop, string expectedColor, double expectedOffset, bool expectedFrozen, string description)
+    {
+        AssertType(stop, "System.Windows.Media.GradientStop", $"compiled Freezable gradient {description} stop");
+        AssertEqual(expectedColor, GetProperty(stop, "Color").ToString(), $"compiled Freezable gradient {description} stop color");
+        AssertEqual(expectedOffset, GetProperty(stop, "Offset"), $"compiled Freezable gradient {description} stop offset");
+        AssertEqual(expectedFrozen, GetProperty(stop, "IsFrozen"), $"compiled Freezable gradient {description} stop frozen state");
     }
 
     private static void ValidateNestedUserControl(object window)
@@ -3030,6 +3090,17 @@ internal static class Program
         {
             throw new InvalidOperationException($"Expected {description} to be '{expected}', got '{actual}'.");
         }
+    }
+
+    private static void AssertPoint(object? actual, double expectedX, double expectedY, string description)
+    {
+        if (actual == null)
+        {
+            throw new InvalidOperationException($"Expected {description} to be a point, got null.");
+        }
+
+        AssertEqual(expectedX, GetProperty(actual, "X"), $"{description} X");
+        AssertEqual(expectedY, GetProperty(actual, "Y"), $"{description} Y");
     }
 
     private static void AssertDate(object? actual, int expectedYear, int expectedMonth, int expectedDay, string description)

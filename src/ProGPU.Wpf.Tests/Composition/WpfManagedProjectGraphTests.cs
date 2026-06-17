@@ -793,6 +793,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SolidColorBrush x:Key=\"UnsharedAccentBrush\" x:Shared=\"False\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("SolidColorBrush x:Key=\"FreezableAccentBrush\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("Color=\"#B15E3B\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("LinearGradientBrush", appXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"FreezableGradientBrush\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("SpreadMethod=\"Reflect\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("GradientStop Color=\"#FF2F6B54\" Offset=\"0\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("GradientStop Color=\"#FFB15E3B\" Offset=\"0.5\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("ControlTemplate x:Key=\"SmokeButtonTemplate\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("Background=\"{DynamicResource AccentBrush}\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"{TemplateBinding Content}\"", appXaml, StringComparison.Ordinal);
@@ -1441,7 +1446,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Create(compilerHarness, MainWindowTypeName)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(resources, \"AccentBrush\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateFreezableBrushResource(resources)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateFreezableGradientBrushResource(resources)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Freezable brush clone mutable opacity", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Freezable gradient brush clone mutable stop offset", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Freezable gradient current-value clone stop collection", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Freezable current-value clone opacity", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetProperty(resources, \"MergedDictionaries\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindResource\", \"MergedAccentBrush\"", harnessProgram, StringComparison.Ordinal);
@@ -1847,7 +1855,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("new Action<object>(recorder.Run)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMainWindow(_presentationCore, window, _application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateFreezableBrushResource(resources)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateFreezableGradientBrushResource(resources)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Freezable brush clone mutable opacity", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Freezable gradient brush clone mutable stop offset", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Freezable gradient current-value clone stop collection", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Freezable current-value clone opacity", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(resources, \"BasedOnTextBoxStyle\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TextBox BasedOn style", harnessProgram, StringComparison.Ordinal);

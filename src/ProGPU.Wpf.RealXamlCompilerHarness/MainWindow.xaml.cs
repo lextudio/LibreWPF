@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Markup;
 
@@ -40,6 +41,8 @@ public partial class MainWindow : Window
 
     public string? LastStyledClickRoutedEventName { get; private set; }
 
+    public int FilteredItemsFilterCount { get; private set; }
+
     private void OnSmokeCommandCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
         RoutedCommandCanExecuteCount++;
@@ -68,6 +71,13 @@ public partial class MainWindow : Window
         LastStyledClickSenderName = sender is FrameworkElement element ? element.Name : null;
         LastStyledClickRoutedEventName = e.RoutedEvent?.Name;
         e.Handled = true;
+    }
+
+    private void OnFilteredItemsViewFilter(object sender, FilterEventArgs e)
+    {
+        FilteredItemsFilterCount++;
+        e.Accepted = e.Item is SmokeItem smokeItem &&
+            string.Equals(smokeItem.Name, "item beta", StringComparison.Ordinal);
     }
 
     public sealed class SmokeViewModel : INotifyPropertyChanged, IDataErrorInfo

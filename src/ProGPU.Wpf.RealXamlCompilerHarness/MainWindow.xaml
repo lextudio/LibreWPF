@@ -18,6 +18,10 @@
                     PropertyName="Name" />
             </CollectionViewSource.SortDescriptions>
         </CollectionViewSource>
+        <CollectionViewSource
+            x:Key="FilteredItemsView"
+            Filter="OnFilteredItemsViewFilter"
+            Source="{Binding Items}" />
         <DataTemplate x:Key="AlphaItemTemplate" DataType="{x:Type local:SmokeItem}">
             <TextBlock
                 x:Name="SelectorTemplateTextBlock"
@@ -249,6 +253,10 @@
             x:Name="SortedItemsList"
             Margin="0,8,0,0"
             ItemsSource="{Binding Source={StaticResource SortedItemsView}}" />
+        <ListBox
+            x:Name="FilteredItemsList"
+            Margin="0,8,0,0"
+            ItemsSource="{Binding Source={StaticResource FilteredItemsView}}" />
         <ListBox
             x:Name="SelectorItemsList"
             Margin="0,8,0,0"

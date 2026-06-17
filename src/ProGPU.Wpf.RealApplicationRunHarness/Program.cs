@@ -139,7 +139,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 25, "stack panel children");
+        AssertCollectionCount(children, expected: 26, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -800,11 +800,26 @@ internal static class Program
         AssertEqual("item beta", GetProperty(GetCollectionItem(sortedItems, 0), "Name"), "compiled CollectionViewSource initial first item");
         AssertEqual("item alpha", GetProperty(GetCollectionItem(sortedItems, 1), "Name"), "compiled CollectionViewSource initial second item");
 
+        object filteredItemsViewSource = Invoke(window, "TryFindResource", "FilteredItemsView");
+        AssertType(filteredItemsViewSource, "System.Windows.Data.CollectionViewSource", "compiled filtered CollectionViewSource resource");
+        object filteredItemsList = GetField(window, "FilteredItemsList");
+        AssertType(filteredItemsList, "System.Windows.Controls.ListBox", "compiled filtered ListBox");
+        AssertSame(GetProperty(filteredItemsViewSource, "View"), GetProperty(filteredItemsList, "ItemsSource"), "compiled ListBox filtered CollectionViewSource binding");
+        object filteredItems = GetProperty(filteredItemsList, "Items");
+        AssertCollectionCount(filteredItems, expected: 1, "compiled filtered ListBox generated items");
+        AssertEqual("item beta", GetProperty(GetCollectionItem(filteredItems, 0), "Name"), "compiled CollectionViewSource filtered item");
+        if (Convert.ToInt32(GetProperty(window, "FilteredItemsFilterCount")) <= 0)
+        {
+            throw new InvalidOperationException("Expected compiled CollectionViewSource Filter handler to run.");
+        }
+
         object thirdItem = Create(window.GetType().Assembly, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeItem", "item gamma");
         AddToCollection(sourceItems, thirdItem);
         AssertCollectionCount(GetProperty(itemsList, "Items"), expected: 3, "compiled ListBox collection-change items");
         AssertCollectionCount(sortedItems, expected: 3, "compiled sorted ListBox collection-change items");
         AssertEqual("item gamma", GetProperty(GetCollectionItem(sortedItems, 0), "Name"), "compiled CollectionViewSource collection-change first item");
+        AssertCollectionCount(filteredItems, expected: 1, "compiled filtered CollectionViewSource collection-change items");
+        AssertEqual("item beta", GetProperty(GetCollectionItem(filteredItems, 0), "Name"), "compiled filtered CollectionViewSource collection-change item");
     }
 
     private static ActivationRecorder RegisterPortableActivation(

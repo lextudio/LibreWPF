@@ -342,22 +342,56 @@ internal static class Program
     {
         object itemsList = GetField(window, "ItemsList");
         object sourceItems = GetProperty(GetProperty(window, "DataContext"), "Items");
-        object betaItem = GetCollectionItem(sourceItems, 1);
+        object alphaItem = GetCollectionItem(sourceItems, 0);
+        ValidateGeneratedItemTemplateTextBlock(
+            presentationCore,
+            itemsList,
+            alphaItem,
+            "item alpha",
+            "template trigger inactive",
+            "compiled DataTemplate inactive generated item container",
+            "compiled DataTemplate inactive generated TextBlock",
+            "compiled DataTemplate inactive generated TextBlock binding",
+            "compiled DataTemplate trigger inactive generated value");
 
-        Invoke(itemsList, "ScrollIntoView", betaItem);
+        object betaItem = GetCollectionItem(sourceItems, 1);
+        ValidateGeneratedItemTemplateTextBlock(
+            presentationCore,
+            itemsList,
+            betaItem,
+            "item beta",
+            "template trigger active",
+            "compiled DataTemplate active generated item container",
+            "compiled DataTemplate active generated TextBlock",
+            "compiled DataTemplate active generated TextBlock binding",
+            "compiled DataTemplate trigger active generated value");
+    }
+
+    private static void ValidateGeneratedItemTemplateTextBlock(
+        Assembly presentationCore,
+        object itemsList,
+        object item,
+        string expectedText,
+        string expectedTag,
+        string itemContainerDescription,
+        string textBlockDescription,
+        string bindingDescription,
+        string tagDescription)
+    {
+        Invoke(itemsList, "ScrollIntoView", item);
         Invoke(itemsList, "UpdateLayout");
 
         object itemContainerGenerator = GetProperty(itemsList, "ItemContainerGenerator");
-        object betaContainer = Invoke(itemContainerGenerator, "ContainerFromItem", betaItem);
-        AssertType(betaContainer, "System.Windows.Controls.ListBoxItem", "compiled DataTemplate generated item container");
-        Invoke(betaContainer, "ApplyTemplate");
-        Invoke(betaContainer, "UpdateLayout");
+        object itemContainer = Invoke(itemContainerGenerator, "ContainerFromItem", item);
+        AssertType(itemContainer, "System.Windows.Controls.ListBoxItem", itemContainerDescription);
+        Invoke(itemContainer, "ApplyTemplate");
+        Invoke(itemContainer, "UpdateLayout");
 
-        object betaTextBlock = FindVisualDescendantByName(presentationCore, betaContainer, "ItemTextBlock")
+        object itemTextBlock = FindVisualDescendantByName(presentationCore, itemContainer, "ItemTextBlock")
             ?? throw new InvalidOperationException("Expected generated item container to contain ItemTextBlock.");
-        AssertType(betaTextBlock, "System.Windows.Controls.TextBlock", "compiled DataTemplate generated TextBlock");
-        AssertEqual("item beta", GetProperty(betaTextBlock, "Text"), "compiled DataTemplate generated TextBlock binding");
-        AssertEqual("template trigger active", GetProperty(betaTextBlock, "Tag"), "compiled DataTemplate trigger active generated value");
+        AssertType(itemTextBlock, "System.Windows.Controls.TextBlock", textBlockDescription);
+        AssertEqual(expectedText, GetProperty(itemTextBlock, "Text"), bindingDescription);
+        AssertEqual(expectedTag, GetProperty(itemTextBlock, "Tag"), tagDescription);
     }
 
     private static void ValidateObjectDataProvider(object window)

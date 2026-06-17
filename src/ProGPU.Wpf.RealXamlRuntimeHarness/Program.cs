@@ -217,6 +217,7 @@ internal static class Program
         ValidateXamlEventHandler(window);
         ValidateStyleEventSetter(window);
         ValidateRoutedCommand(window);
+        ValidateInputBinding(window);
         ValidateStyleAndDataTrigger(window, application);
         ValidateTemplateAndDynamicResource(window, application);
         ValidateItemsBindingAndTemplate(window);
@@ -1033,6 +1034,36 @@ internal static class Program
         InvokeTwoArgumentCommand(routedCommand, "Execute", commandParameter, inputBox);
         AssertEqual(1, GetProperty(window, "RoutedCommandExecutionCount"), "routed command execution count");
         AssertEqual("routed command payload", GetProperty(window, "LastRoutedCommandParameter"), "routed command executed parameter");
+    }
+
+    private static void ValidateInputBinding(object window)
+    {
+        object inputBindings = GetProperty(window, "InputBindings");
+        AssertCollectionCount(inputBindings, expected: 1, "compiled Window input bindings");
+
+        object keyBinding = GetCollectionItem(inputBindings, 0);
+        AssertType(keyBinding, "System.Windows.Input.KeyBinding", "compiled KeyBinding");
+        AssertEqual("F6", GetProperty(keyBinding, "Key").ToString(), "compiled KeyBinding key");
+        AssertEqual("Control", GetProperty(keyBinding, "Modifiers").ToString(), "compiled KeyBinding modifiers");
+        AssertEqual("input binding payload", GetProperty(keyBinding, "CommandParameter"), "compiled KeyBinding command parameter");
+
+        object keyGesture = GetProperty(keyBinding, "Gesture");
+        AssertType(keyGesture, "System.Windows.Input.KeyGesture", "compiled KeyGesture");
+        AssertEqual("F6", GetProperty(keyGesture, "Key").ToString(), "compiled KeyGesture key");
+        AssertEqual("Control", GetProperty(keyGesture, "Modifiers").ToString(), "compiled KeyGesture modifiers");
+
+        object inputBox = GetField(window, "InputBox");
+        object command = GetProperty(keyBinding, "Command");
+        AssertType(command, "System.Windows.Input.RoutedUICommand", "compiled KeyBinding routed command");
+        AssertEqual("SmokeRoutedCommand", GetProperty(command, "Name"), "compiled KeyBinding routed command name");
+        AssertEqual(1, GetProperty(window, "RoutedCommandExecutionCount"), "input binding routed command initial execution count");
+
+        object canExecute = InvokeTwoArgumentCommand(command, "CanExecute", GetProperty(keyBinding, "CommandParameter"), inputBox);
+        AssertEqual(true, canExecute, "compiled KeyBinding command CanExecute result");
+        InvokeTwoArgumentCommand(command, "Execute", GetProperty(keyBinding, "CommandParameter"), inputBox);
+
+        AssertEqual(2, GetProperty(window, "RoutedCommandExecutionCount"), "compiled KeyBinding command execution count");
+        AssertEqual("input binding payload", GetProperty(window, "LastRoutedCommandParameter"), "compiled KeyBinding command executed parameter");
     }
 
     private static void ValidateTemplateAndDynamicResource(object window, object application)

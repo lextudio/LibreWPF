@@ -944,6 +944,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Command=\"{x:Static local:MainWindow.SmokeRoutedCommand}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CanExecute=\"OnSmokeCommandCanExecute\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Executed=\"OnSmokeCommandExecuted\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Window.InputBindings", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<KeyBinding", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CommandParameter=\"input binding payload\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Key=\"F6\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Modifiers=\"Control\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"RoutedCommandButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CommandTarget=\"{Binding ElementName=InputBox}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"TemplatedButton\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1217,6 +1222,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateRoutedCommand(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled routed command target", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("InvokeTwoArgumentCommand(routedCommand, \"Execute\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateInputBinding(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Window input bindings", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled KeyGesture", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled KeyBinding command executed parameter", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTemplateAndDynamicResource(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button control template", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled VisualStateManager group collection", harnessProgram, StringComparison.Ordinal);
@@ -1467,6 +1476,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled EventSetter Click routed event name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateRoutedCommand(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled routed command target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateInputBinding(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Window input bindings", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled KeyGesture", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled KeyBinding command executed parameter", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTemplateAndDynamicResource(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ControlTemplate named part", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled VisualStateManager group collection", harnessProgram, StringComparison.Ordinal);

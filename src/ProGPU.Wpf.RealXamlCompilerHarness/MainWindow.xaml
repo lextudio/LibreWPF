@@ -93,6 +93,13 @@
             Command="{x:Static local:MainWindow.SmokeRoutedCommand}"
             Executed="OnSmokeCommandExecuted" />
     </Window.CommandBindings>
+    <Window.InputBindings>
+        <KeyBinding
+            Command="{x:Static local:MainWindow.SmokeRoutedCommand}"
+            CommandParameter="input binding payload"
+            Key="F6"
+            Modifiers="Control" />
+    </Window.InputBindings>
     <StackPanel Margin="16">
         <TextBlock
             FontSize="18"

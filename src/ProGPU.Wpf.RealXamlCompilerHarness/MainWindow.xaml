@@ -18,6 +18,22 @@
                     PropertyName="Name" />
             </CollectionViewSource.SortDescriptions>
         </CollectionViewSource>
+        <DataTemplate x:Key="AlphaItemTemplate" DataType="{x:Type local:SmokeItem}">
+            <TextBlock
+                x:Name="SelectorTemplateTextBlock"
+                Tag="selector alpha template"
+                Text="{Binding Name}" />
+        </DataTemplate>
+        <DataTemplate x:Key="DefaultItemTemplate" DataType="{x:Type local:SmokeItem}">
+            <TextBlock
+                x:Name="SelectorTemplateTextBlock"
+                Tag="selector default template"
+                Text="{Binding Name}" />
+        </DataTemplate>
+        <local:SmokeItemTemplateSelector
+            x:Key="SmokeItemTemplateSelector"
+            AlphaTemplate="{StaticResource AlphaItemTemplate}"
+            DefaultTemplate="{StaticResource DefaultItemTemplate}" />
         <ObjectDataProvider
             x:Key="ProviderGreeting"
             IsAsynchronous="False"
@@ -233,5 +249,10 @@
             x:Name="SortedItemsList"
             Margin="0,8,0,0"
             ItemsSource="{Binding Source={StaticResource SortedItemsView}}" />
+        <ListBox
+            x:Name="SelectorItemsList"
+            Margin="0,8,0,0"
+            ItemTemplateSelector="{StaticResource SmokeItemTemplateSelector}"
+            ItemsSource="{Binding Items}" />
     </StackPanel>
 </Window>

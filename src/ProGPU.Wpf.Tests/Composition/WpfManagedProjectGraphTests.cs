@@ -841,6 +841,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("componentModel:SortDescription", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Direction=\"Descending\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("PropertyName=\"Name\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"AlphaItemTemplate\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"DefaultItemTemplate\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SelectorTemplateTextBlock\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Tag=\"selector alpha template\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Tag=\"selector default template\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("local:SmokeItemTemplateSelector", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"SmokeItemTemplateSelector\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("AlphaTemplate=\"{StaticResource AlphaItemTemplate}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DefaultTemplate=\"{StaticResource DefaultItemTemplate}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ObjectDataProvider", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"ProviderGreeting\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("IsAsynchronous=\"False\"", mainWindowXaml, StringComparison.Ordinal);
@@ -870,6 +879,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SelectedItem=\"{Binding SelectedItem, Mode=TwoWay}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SortedItemsList\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Source={StaticResource SortedItemsView}}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SelectorItemsList\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemTemplateSelector=\"{StaticResource SmokeItemTemplateSelector}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ListBox.ItemContainerStyle", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style TargetType=\"{x:Type ListBoxItem}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Setter Property=\"Tag\" Value=\"container trigger inactive\"", mainWindowXaml, StringComparison.Ordinal);
@@ -912,6 +923,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public SmokeItem? SelectedItem", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnPropertyChanged();", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeItem", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokeItemTemplateSelector : DataTemplateSelector", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public DataTemplate? AlphaTemplate", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public DataTemplate? DefaultTemplate", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public override DataTemplate? SelectTemplate", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("string.Equals(smokeItem.Name, \"item alpha\", StringComparison.Ordinal)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeCommand : ICommand", mainWindowCodeBehind, StringComparison.Ordinal);
 
         Assert.Contains("x:Class=\"ProGPU.Wpf.RealXamlCompilerHarness.SmokeUserControl\"", smokeUserControlXaml, StringComparison.Ordinal);
@@ -1062,6 +1078,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled DataTemplate DataTrigger binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate DataTrigger setter target", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate DataTrigger setter value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplateSelector alpha template resource", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplateSelector alpha binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplateSelector default template tag", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplateSelector resource", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplateSelector alpha template property", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox ItemTemplateSelector binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowItemTemplateTriggerActivation(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateGeneratedItemTemplateTextBlock(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate inactive generated item container", harnessProgram, StringComparison.Ordinal);
@@ -1072,6 +1094,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ItemContainerStyle trigger active generated value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate active generated TextBlock binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate trigger active generated value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowItemTemplateSelector(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateGeneratedSelectedTemplateTextBlock(", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplateSelector alpha generated TextBlock binding", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplateSelector alpha generated value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplateSelector default generated TextBlock binding", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplateSelector default generated value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox collection-change items", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource resource", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource sort direction", harnessProgram, StringComparison.Ordinal);
@@ -1210,6 +1238,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled DataTemplate DataTrigger value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate DataTrigger setter property", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate DataTrigger setter value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplateSelector alpha template resource", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplateSelector alpha binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplateSelector default template tag", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplateSelector resource", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplateSelector default template property", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox ItemTemplateSelector binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowItemTemplateTriggerActivation(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateGeneratedItemTemplateTextBlock(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate inactive generated item container", harnessProgram, StringComparison.Ordinal);
@@ -1220,6 +1254,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ItemContainerStyle trigger active generated value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate active generated TextBlock binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate trigger active generated value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowItemTemplateSelector(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateGeneratedSelectedTemplateTextBlock(", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplateSelector alpha generated TextBlock binding", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplateSelector alpha generated value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplateSelector default generated TextBlock binding", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTemplateSelector default generated value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource resource", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource sort property", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled sorted ListBox generated items", harnessProgram, StringComparison.Ordinal);

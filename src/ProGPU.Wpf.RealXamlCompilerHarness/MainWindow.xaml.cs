@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Markup;
 
@@ -224,4 +225,23 @@ public sealed class SmokeItem
     }
 
     public string Name { get; }
+}
+
+public sealed class SmokeItemTemplateSelector : DataTemplateSelector
+{
+    public DataTemplate? AlphaTemplate { get; set; }
+
+    public DataTemplate? DefaultTemplate { get; set; }
+
+    public override DataTemplate? SelectTemplate(object item, DependencyObject container)
+    {
+        if (item is SmokeItem smokeItem &&
+            string.Equals(smokeItem.Name, "item alpha", StringComparison.Ordinal) &&
+            AlphaTemplate != null)
+        {
+            return AlphaTemplate;
+        }
+
+        return DefaultTemplate ?? base.SelectTemplate(item, container);
+    }
 }

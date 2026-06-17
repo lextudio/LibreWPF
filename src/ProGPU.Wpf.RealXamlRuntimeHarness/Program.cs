@@ -67,6 +67,7 @@ internal static class Program
                 out activation);
             ValidatePostShowBindingFeatures(window);
             ValidatePostShowItemTemplateTriggerActivation(presentationCore, window);
+            ValidatePostShowItemTemplateSelector(presentationCore, window);
             ValidatePortableKeyboardFocus(presentationCore, window);
         }
         finally
@@ -153,7 +154,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 24, "stack panel children");
+        AssertCollectionCount(children, expected: 25, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -462,6 +463,61 @@ internal static class Program
         AssertEqual(expectedTag, GetProperty(itemTextBlock, "Tag"), tagDescription);
     }
 
+    private static void ValidatePostShowItemTemplateSelector(Assembly presentationCore, object window)
+    {
+        object selectorItemsList = GetField(window, "SelectorItemsList");
+        object sourceItems = GetProperty(GetProperty(window, "DataContext"), "Items");
+
+        ValidateGeneratedSelectedTemplateTextBlock(
+            presentationCore,
+            selectorItemsList,
+            GetCollectionItem(sourceItems, 0),
+            "item alpha",
+            "selector alpha template",
+            "compiled DataTemplateSelector alpha generated item container",
+            "compiled DataTemplateSelector alpha generated TextBlock",
+            "compiled DataTemplateSelector alpha generated TextBlock binding",
+            "compiled DataTemplateSelector alpha generated value");
+
+        ValidateGeneratedSelectedTemplateTextBlock(
+            presentationCore,
+            selectorItemsList,
+            GetCollectionItem(sourceItems, 1),
+            "item beta",
+            "selector default template",
+            "compiled DataTemplateSelector default generated item container",
+            "compiled DataTemplateSelector default generated TextBlock",
+            "compiled DataTemplateSelector default generated TextBlock binding",
+            "compiled DataTemplateSelector default generated value");
+    }
+
+    private static void ValidateGeneratedSelectedTemplateTextBlock(
+        Assembly presentationCore,
+        object selectorItemsList,
+        object item,
+        string expectedText,
+        string expectedTag,
+        string itemContainerDescription,
+        string textBlockDescription,
+        string bindingDescription,
+        string tagDescription)
+    {
+        Invoke(selectorItemsList, "ScrollIntoView", item);
+        Invoke(selectorItemsList, "UpdateLayout");
+
+        object itemContainerGenerator = GetProperty(selectorItemsList, "ItemContainerGenerator");
+        object itemContainer = Invoke(itemContainerGenerator, "ContainerFromItem", item);
+        AssertType(itemContainer, "System.Windows.Controls.ListBoxItem", itemContainerDescription);
+        Invoke(itemContainer, "ApplyTemplate");
+        Invoke(itemContainer, "UpdateLayout");
+
+        object itemTextBlock = FindVisualDescendantByName(presentationCore, itemContainer, "SelectorTemplateTextBlock")
+            ?? throw new InvalidOperationException("Expected selector-generated item container to contain SelectorTemplateTextBlock.");
+        AssertType(itemTextBlock, "System.Windows.Controls.TextBlock", textBlockDescription);
+        AssertEqual(expectedText, GetProperty(itemTextBlock, "Text"), bindingDescription);
+        AssertEqual(expectedTag, GetProperty(itemTextBlock, "Tag"), tagDescription);
+    }
+
     private static void ValidateObjectDataProvider(object window)
     {
         object provider = Invoke(window, "TryFindResource", "ProviderGreeting");
@@ -762,6 +818,33 @@ internal static class Program
         AssertEqual("ItemTextBlock", GetProperty(dataTemplateTriggerSetter, "TargetName"), "compiled DataTemplate DataTrigger setter target");
         AssertEqual("Tag", GetProperty(GetProperty(dataTemplateTriggerSetter, "Property"), "Name"), "compiled DataTemplate DataTrigger setter property");
         AssertEqual("template trigger active", GetProperty(dataTemplateTriggerSetter, "Value"), "compiled DataTemplate DataTrigger setter value");
+
+        object alphaTemplate = Invoke(window, "TryFindResource", "AlphaItemTemplate");
+        AssertType(alphaTemplate, "System.Windows.DataTemplate", "compiled DataTemplateSelector alpha template resource");
+        object alphaTemplateRoot = Invoke(alphaTemplate, "LoadContent");
+        AssertType(alphaTemplateRoot, "System.Windows.Controls.TextBlock", "compiled DataTemplateSelector alpha template root");
+        AssertEqual("SelectorTemplateTextBlock", GetProperty(alphaTemplateRoot, "Name"), "compiled DataTemplateSelector alpha template named root");
+        AssertEqual("selector alpha template", GetProperty(alphaTemplateRoot, "Tag"), "compiled DataTemplateSelector alpha template tag");
+        AssertBindingPath(alphaTemplateRoot, "TextProperty", "Name", "compiled DataTemplateSelector alpha binding path");
+
+        object defaultTemplate = Invoke(window, "TryFindResource", "DefaultItemTemplate");
+        AssertType(defaultTemplate, "System.Windows.DataTemplate", "compiled DataTemplateSelector default template resource");
+        object defaultTemplateRoot = Invoke(defaultTemplate, "LoadContent");
+        AssertType(defaultTemplateRoot, "System.Windows.Controls.TextBlock", "compiled DataTemplateSelector default template root");
+        AssertEqual("SelectorTemplateTextBlock", GetProperty(defaultTemplateRoot, "Name"), "compiled DataTemplateSelector default template named root");
+        AssertEqual("selector default template", GetProperty(defaultTemplateRoot, "Tag"), "compiled DataTemplateSelector default template tag");
+        AssertBindingPath(defaultTemplateRoot, "TextProperty", "Name", "compiled DataTemplateSelector default binding path");
+
+        object selector = Invoke(window, "TryFindResource", "SmokeItemTemplateSelector");
+        AssertType(selector, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeItemTemplateSelector", "compiled DataTemplateSelector resource");
+        AssertSame(alphaTemplate, GetProperty(selector, "AlphaTemplate"), "compiled DataTemplateSelector alpha template property");
+        AssertSame(defaultTemplate, GetProperty(selector, "DefaultTemplate"), "compiled DataTemplateSelector default template property");
+
+        object selectorItemsList = GetField(window, "SelectorItemsList");
+        AssertType(selectorItemsList, "System.Windows.Controls.ListBox", "compiled selector ListBox");
+        AssertSame(sourceItems, GetProperty(selectorItemsList, "ItemsSource"), "compiled DataTemplateSelector ListBox ItemsSource binding");
+        AssertSame(selector, GetProperty(selectorItemsList, "ItemTemplateSelector"), "compiled ListBox ItemTemplateSelector binding");
+        AssertCollectionCount(GetProperty(selectorItemsList, "Items"), expected: 2, "compiled DataTemplateSelector generated items");
 
         object sortedItemsViewSource = Invoke(window, "TryFindResource", "SortedItemsView");
         AssertType(sortedItemsViewSource, "System.Windows.Data.CollectionViewSource", "compiled CollectionViewSource resource");

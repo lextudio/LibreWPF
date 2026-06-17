@@ -937,6 +937,8 @@
 - Added an explicit `ProGPU.Backend` reference to the harness only, so it can assert the native texture payload without leaking ProGPU references into the real managed WPF subsystem projects.
 - Reused the reflected `ImageBrush` geometry-fill replay from the source-level `WpfObjectRenderDataDrawingContext`, so real WPF `DrawingContext.DrawRectangle(ImageBrush, ...)` and `DrawGeometry(ImageBrush, ...)` calls can emit native ProGPU clips/textures without duplicating a managed fallback path.
 - Extended the real `DrawingVisual.RenderOpen()` bridge smoke to cover a real WPF `ImageBrush` backed by the managed `BitmapSource` test shape, verifying retained native `PushGeometryClip`/`DrawTexture`/`PopGeometryClip` commands while keeping ProGPU references confined to bridge and harness assertions.
+- Promoted the reflected `ImageBrush`/`DrawingBrush`/`VisualBrush` fill paths behind a shared `TryReplayTileBrushFill(...)` helper and switched source-level object-sink rectangle/geometry fills to use it, preserving partial replay diagnostics for unsupported nested drawing or visual content.
+- Extended the real `DrawingVisual.RenderOpen()` bridge smoke to cover a real WPF `DrawingBrush` backed by a managed `GeometryDrawing`, verifying retained native `PushGeometryClip`/`DrawPath`/`PopGeometryClip` commands through the same tile-brush replay path.
 
 ## Open Porting Items
 

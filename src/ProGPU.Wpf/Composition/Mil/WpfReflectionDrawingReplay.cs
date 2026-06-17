@@ -148,27 +148,10 @@ internal static class WpfReflectionDrawingReplay
             sink.DrawGeometry(brush, pen, geometry);
             appliedAny = true;
         }
-        else if (TryReplayImageBrushFill(brushValue!, geometry, sink, imageSourceAdapter))
+        else if (TryReplayTileBrushFill(brushValue!, geometry, sink, imageSourceAdapter, out var tileBrushStatus))
         {
             appliedAny = true;
-            if (pen != null)
-            {
-                sink.DrawGeometry(null, pen, geometry);
-            }
-        }
-        else if (TryReplayDrawingBrushFill(brushValue!, geometry, sink, imageSourceAdapter, out var drawingBrushStatus))
-        {
-            appliedAny = true;
-            unsupportedAny |= drawingBrushStatus == WpfDrawingReplayStatus.PartiallyApplied;
-            if (pen != null)
-            {
-                sink.DrawGeometry(null, pen, geometry);
-            }
-        }
-        else if (TryReplayVisualBrushFill(brushValue!, geometry, sink, imageSourceAdapter, out var visualBrushStatus))
-        {
-            appliedAny = true;
-            unsupportedAny |= visualBrushStatus == WpfDrawingReplayStatus.PartiallyApplied;
+            unsupportedAny |= tileBrushStatus == WpfDrawingReplayStatus.PartiallyApplied;
             if (pen != null)
             {
                 sink.DrawGeometry(null, pen, geometry);
@@ -187,6 +170,33 @@ internal static class WpfReflectionDrawingReplay
         return appliedAny
             ? unsupportedAny ? WpfDrawingReplayStatus.PartiallyApplied : WpfDrawingReplayStatus.Applied
             : unsupportedAny ? WpfDrawingReplayStatus.Unsupported : WpfDrawingReplayStatus.Skipped;
+    }
+
+    internal static bool TryReplayTileBrushFill(
+        object brush,
+        MediaGeometry geometry,
+        IWpfCompositionCommandSink sink,
+        Func<object?, MediaImageSource?>? imageSourceAdapter,
+        out WpfDrawingReplayStatus status)
+    {
+        if (TryReplayImageBrushFill(brush, geometry, sink, imageSourceAdapter))
+        {
+            status = WpfDrawingReplayStatus.Applied;
+            return true;
+        }
+
+        if (TryReplayDrawingBrushFill(brush, geometry, sink, imageSourceAdapter, out status))
+        {
+            return true;
+        }
+
+        if (TryReplayVisualBrushFill(brush, geometry, sink, imageSourceAdapter, out status))
+        {
+            return true;
+        }
+
+        status = WpfDrawingReplayStatus.Skipped;
+        return false;
     }
 
     internal static bool TryReplayImageBrushFill(

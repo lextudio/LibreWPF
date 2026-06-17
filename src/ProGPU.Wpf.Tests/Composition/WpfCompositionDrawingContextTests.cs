@@ -130,6 +130,47 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void ObjectRenderDataDrawingContextReplaysDrawingBrushRectangleThroughSharedTileBrushReplay()
+    {
+        var sink = new RecordingSink();
+        var nestedDrawing = new FakeGeometryDrawing(
+            Brushes.Red,
+            null,
+            new FakeRectangleGeometry(new FakeRect(0, 0, 10, 10)));
+        var drawingBrush = new FakeDrawingBrush(nestedDrawing);
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+
+        context.DrawRectangle(drawingBrush, null, new FakeRect(1, 2, 30, 40));
+
+        Assert.Equal(new[] { "PushClip", "PushTransform", "DrawGeometry", "Pop", "Pop" }, sink.Operations);
+        var replayed = Assert.Single(sink.Geometries);
+        Assert.Same(Brushes.Red, replayed.Brush);
+        Assert.IsType<PathGeometry>(replayed.Geometry);
+        Assert.Contains(drawingBrush, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void ObjectRenderDataDrawingContextCountsPartialDrawingBrushReplayAsUnsupported()
+    {
+        var sink = new RecordingSink();
+        var nestedGroup = new FakeDrawingGroup(
+            new FakeGeometryDrawing(
+                Brushes.Red,
+                null,
+                new FakeRectangleGeometry(new FakeRect(0, 0, 10, 10))),
+            new object());
+        var drawingBrush = new FakeDrawingBrush(nestedGroup);
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+
+        context.DrawRectangle(drawingBrush, null, new FakeRect(1, 2, 30, 40));
+
+        Assert.Equal(new[] { "PushClip", "PushTransform", "DrawGeometry", "Pop", "Pop" }, sink.Operations);
+        Assert.Single(sink.Geometries);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 1), context.Result);
+    }
+
+    [Fact]
     public void GeneratedDrawingContextRegistersAppliedResourcesAsRetainedDependencies()
     {
         var sink = new RecordingSink();
@@ -633,6 +674,16 @@ public sealed class WpfCompositionDrawingContextTests
         }
 
         public object? ImageSource { get; }
+    }
+
+    private sealed class FakeDrawingBrush
+    {
+        public FakeDrawingBrush(object? drawing)
+        {
+            Drawing = drawing;
+        }
+
+        public object? Drawing { get; }
     }
 
     private sealed class FakeBlurBitmapEffect

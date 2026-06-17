@@ -87,11 +87,12 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
         }
 
         if (brush != null
-            && WpfReflectionDrawingReplay.TryReplayImageBrushFill(
+            && WpfReflectionDrawingReplay.TryReplayTileBrushFill(
                 brush,
                 WpfReflectionResourceResolver.CreateRectanglePath(mediaRectangle),
                 _sink,
-                _resources.AdaptImageSource))
+                _resources.AdaptImageSource,
+                out var brushReplayStatus))
         {
             RegisterRetainedDependencies(brush, pen);
             if (mediaPen != null)
@@ -99,7 +100,7 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
                 _sink.DrawRectangle(null, mediaPen, mediaRectangle);
             }
 
-            CountApplied();
+            CountDrawingReplayStatus(brushReplayStatus);
             return;
         }
 
@@ -217,11 +218,12 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
         }
 
         if (brush != null
-            && WpfReflectionDrawingReplay.TryReplayImageBrushFill(
+            && WpfReflectionDrawingReplay.TryReplayTileBrushFill(
                 brush,
                 mediaGeometry,
                 _sink,
-                _resources.AdaptImageSource))
+                _resources.AdaptImageSource,
+                out var brushReplayStatus))
         {
             RegisterRetainedDependencies(brush, pen, geometry);
             if (mediaPen != null)
@@ -229,7 +231,7 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
                 _sink.DrawGeometry(null, mediaPen, mediaGeometry);
             }
 
-            CountApplied();
+            CountDrawingReplayStatus(brushReplayStatus);
             return;
         }
 

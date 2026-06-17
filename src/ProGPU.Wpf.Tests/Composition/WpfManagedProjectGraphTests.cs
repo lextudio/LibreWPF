@@ -620,6 +620,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("System.Windows.Controls.RichTextBox", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Documents.FlowDocument", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Controls.ControlTemplate", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Media.DrawingBrush", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Media.DrawingVisual", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Media.GeometryDrawing", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Media.FormattedText", harnessProgram, StringComparison.Ordinal);
@@ -658,6 +659,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("real DrawingVisual retained formatted text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("real DrawingVisual retained bitmap image", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("real DrawingVisual retained image brush", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("real DrawingVisual retained drawing brush", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("real DrawingVisual transformed line X offset", harnessProgram, StringComparison.Ordinal);
     }
 

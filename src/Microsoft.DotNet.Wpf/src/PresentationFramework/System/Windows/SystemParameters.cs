@@ -1208,7 +1208,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.ComboBoxAnimation] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETCOMBOBOXANIMATION, 0, ref _comboBoxAnimation, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _comboBoxAnimation = false;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETCOMBOBOXANIMATION, 0, ref _comboBoxAnimation, 0))
                         {
                         }
                         else

@@ -179,7 +179,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 46, "stack panel children");
+        AssertCollectionCount(children, expected: 48, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -229,6 +229,7 @@ internal static class Program
         ValidateInputBinding(window);
         ValidateMenuItems(window);
         ValidateContextMenuAndToolTip(window);
+        ValidateToolBarAndStatusBar(window);
         ValidateStyleAndDataTrigger(window, application);
         ValidateTemplateAndDynamicResource(window, application);
         ValidateItemsBindingAndTemplate(window);
@@ -1600,6 +1601,75 @@ internal static class Program
         AssertEqual("ContextButtonToolTipText", GetProperty(toolTipContent, "Name"), "compiled ToolTip content name");
         AssertEqual("compiled tooltip text", GetProperty(toolTipContent, "Tag"), "compiled ToolTip content tag");
         AssertEqual("compiled ToolTip content", GetProperty(toolTipContent, "Text"), "compiled ToolTip content text");
+    }
+
+    private static void ValidateToolBarAndStatusBar(object window)
+    {
+        object toolBarTray = GetField(window, "SmokeToolBarTray");
+        AssertType(toolBarTray, "System.Windows.Controls.ToolBarTray", "compiled ToolBarTray");
+        object toolBars = GetProperty(toolBarTray, "ToolBars");
+        AssertCollectionCount(toolBars, expected: 1, "compiled ToolBarTray toolbars");
+
+        object toolBar = GetField(window, "SmokeToolBar");
+        AssertType(toolBar, "System.Windows.Controls.ToolBar", "compiled ToolBar");
+        AssertSame(toolBar, GetCollectionItem(toolBars, 0), "compiled ToolBarTray child toolbar");
+        AssertEqual("Smoke tools", GetProperty(toolBar, "Header"), "compiled ToolBar header");
+        object toolBarItems = GetProperty(toolBar, "Items");
+        AssertCollectionCount(toolBarItems, expected: 3, "compiled ToolBar items");
+
+        object commandButton = GetField(window, "ToolBarCommandButton");
+        AssertType(commandButton, "System.Windows.Controls.Button", "compiled ToolBar command Button");
+        AssertSame(commandButton, GetCollectionItem(toolBarItems, 0), "compiled ToolBar command item");
+        AssertEqual("Run toolbar", GetProperty(commandButton, "Content"), "compiled ToolBar command Button content");
+        AssertEqual("toolbar command payload", GetProperty(commandButton, "CommandParameter"), "compiled ToolBar command parameter");
+        object command = GetProperty(commandButton, "Command");
+        AssertType(command, "System.Windows.Input.RoutedUICommand", "compiled ToolBar routed command");
+        AssertEqual("SmokeRoutedCommand", GetProperty(command, "Name"), "compiled ToolBar routed command name");
+        AssertEqual(4, GetProperty(window, "RoutedCommandExecutionCount"), "compiled ToolBar initial routed command count");
+
+        object commandCanExecute = InvokeTwoArgumentCommand(
+            command,
+            "CanExecute",
+            GetProperty(commandButton, "CommandParameter"),
+            toolBar);
+        AssertEqual(true, commandCanExecute, "compiled ToolBar CanExecute result");
+        InvokeTwoArgumentCommand(
+            command,
+            "Execute",
+            GetProperty(commandButton, "CommandParameter"),
+            toolBar);
+
+        AssertEqual(5, GetProperty(window, "RoutedCommandExecutionCount"), "compiled ToolBar routed command count");
+        AssertEqual("toolbar command payload", GetProperty(window, "LastRoutedCommandParameter"), "compiled ToolBar routed command parameter");
+
+        object toolBarSeparator = GetField(window, "ToolBarSeparator");
+        AssertType(toolBarSeparator, "System.Windows.Controls.Separator", "compiled ToolBar separator");
+        AssertSame(toolBarSeparator, GetCollectionItem(toolBarItems, 1), "compiled ToolBar separator item");
+
+        object toolBarToggle = GetField(window, "ToolBarToggle");
+        AssertType(toolBarToggle, "System.Windows.Controls.Primitives.ToggleButton", "compiled ToolBar ToggleButton");
+        AssertSame(toolBarToggle, GetCollectionItem(toolBarItems, 2), "compiled ToolBar toggle item");
+        AssertEqual("Toggle toolbar", GetProperty(toolBarToggle, "Content"), "compiled ToolBar ToggleButton content");
+        AssertEqual(true, GetProperty(toolBarToggle, "IsChecked"), "compiled ToolBar ToggleButton checked state");
+
+        object statusBar = GetField(window, "SmokeStatusBar");
+        AssertType(statusBar, "System.Windows.Controls.Primitives.StatusBar", "compiled StatusBar");
+        object statusItems = GetProperty(statusBar, "Items");
+        AssertCollectionCount(statusItems, expected: 3, "compiled StatusBar items");
+
+        object readyItem = GetField(window, "StatusReadyItem");
+        AssertType(readyItem, "System.Windows.Controls.Primitives.StatusBarItem", "compiled StatusBarItem");
+        AssertSame(readyItem, GetCollectionItem(statusItems, 0), "compiled StatusBar ready item");
+        AssertEqual("Ready", GetProperty(readyItem, "Content"), "compiled StatusBarItem content");
+
+        object statusSeparator = GetCollectionItem(statusItems, 1);
+        AssertType(statusSeparator, "System.Windows.Controls.Separator", "compiled StatusBar separator");
+
+        object statusText = GetField(window, "StatusTextBlock");
+        AssertType(statusText, "System.Windows.Controls.TextBlock", "compiled StatusBar TextBlock");
+        AssertSame(statusText, GetCollectionItem(statusItems, 2), "compiled StatusBar TextBlock item");
+        AssertEqual("status text", GetProperty(statusText, "Tag"), "compiled StatusBar TextBlock tag");
+        AssertEqual("detail from implicit template", GetProperty(statusText, "Text"), "compiled StatusBar TextBlock binding");
     }
 
     private static void RaiseMenuItemClick(object menuItem)

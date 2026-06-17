@@ -164,6 +164,34 @@
                     Header="_Click" />
             </MenuItem>
         </Menu>
+        <ToolBarTray
+            x:Name="SmokeToolBarTray"
+            Margin="0,8,0,0">
+            <ToolBar x:Name="SmokeToolBar" Header="Smoke tools">
+                <Button
+                    x:Name="ToolBarCommandButton"
+                    Command="{x:Static local:MainWindow.SmokeRoutedCommand}"
+                    CommandParameter="toolbar command payload"
+                    Content="Run toolbar" />
+                <Separator x:Name="ToolBarSeparator" />
+                <ToggleButton
+                    x:Name="ToolBarToggle"
+                    Content="Toggle toolbar"
+                    IsChecked="True" />
+            </ToolBar>
+        </ToolBarTray>
+        <StatusBar
+            x:Name="SmokeStatusBar"
+            Margin="0,8,0,0">
+            <StatusBarItem
+                x:Name="StatusReadyItem"
+                Content="Ready" />
+            <Separator />
+            <TextBlock
+                x:Name="StatusTextBlock"
+                Tag="status text"
+                Text="{Binding Detail.Title}" />
+        </StatusBar>
         <TextBox
             x:Name="InputBox"
             Style="{StaticResource SmokeTextBoxStyle}"

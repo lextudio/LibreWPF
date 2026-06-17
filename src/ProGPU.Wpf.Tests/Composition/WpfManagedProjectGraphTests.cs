@@ -597,6 +597,7 @@ public sealed class WpfManagedProjectGraphTests
         AssertPackageReference(harnessProject, "System.Windows.Extensions");
 
         AssertProjectReference(harnessProject, @"ProGPU.Wpf\ProGPU.Wpf.csproj");
+        AssertProjectReference(harnessProject, @"external\ProGPU\src\ProGPU.Backend\ProGPU.Backend.csproj");
         AssertProjectReference(harnessProject, @"external\ProGPU\src\ProGPU.Scene\ProGPU.Scene.csproj");
         AssertProjectReference(harnessProject, @"external\ProGPU\src\ProGPU.Vector\ProGPU.Vector.csproj");
 
@@ -623,6 +624,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("System.Windows.Media.GeometryDrawing", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Media.FormattedText", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Media.GlyphRun", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Media.Imaging.BitmapSource", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("WpfBitmapSourceImageAdapter", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"DrawLine\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"DrawRoundedRectangle\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"DrawEllipse\"", harnessProgram, StringComparison.Ordinal);
@@ -630,6 +633,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"DrawDrawing\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"DrawGlyphRun\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"DrawText\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"DrawImage\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"PushOpacity\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"PushClip\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"PushTransform\"", harnessProgram, StringComparison.Ordinal);
@@ -641,6 +645,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGpuRenderCommandType.DrawEllipse", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.DrawPath", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.DrawGlyphRun", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGpuRenderCommandType.DrawTexture", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.PushOpacity", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.PushGeometryClip", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.PushOpacityMask", harnessProgram, StringComparison.Ordinal);
@@ -650,6 +655,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("real DrawingVisual retained drawing resource path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("real DrawingVisual retained glyph run", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("real DrawingVisual retained formatted text", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("real DrawingVisual retained bitmap image", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("real DrawingVisual transformed line X offset", harnessProgram, StringComparison.Ordinal);
     }
 

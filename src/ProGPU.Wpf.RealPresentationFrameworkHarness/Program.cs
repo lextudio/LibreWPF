@@ -1,14 +1,16 @@
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.Loader;
 using System.Collections;
 using System.Windows.Media.ProGPU;
+using System.Windows.Media.ProGPU.Composition.Mil;
 using ProGpuContainerVisual = global::ProGPU.Scene.ContainerVisual;
 using ProGpuDrawingContext = global::ProGPU.Scene.DrawingContext;
 using ProGpuRenderCommand = global::ProGPU.Scene.RenderCommand;
 using ProGpuRenderCommandType = global::ProGPU.Scene.RenderCommandType;
 using ProGpuVisual = global::ProGPU.Scene.Visual;
 
-internal static class Program
+public static class Program
 {
     private const string PortableWindowActivationServiceTypeName = "System.Windows.PortableWindowActivationService";
 
@@ -83,7 +85,7 @@ internal static class Program
             if (!WpfRenderDataSinkProviderBridge.TryRegisterRenderDataSinkProvider(
                     presentationCore,
                     frame,
-                    imageSourceAdapter: null,
+                    imageSourceAdapter: new WpfBitmapSourceImageAdapter(),
                     out IDisposable? registration) ||
                 registration == null)
             {
@@ -203,6 +205,7 @@ internal static class Program
         Type formattedTextType = GetRequiredType(presentationCore, "System.Windows.Media.FormattedText");
         Type glyphRunType = GetRequiredType(presentationCore, "System.Windows.Media.GlyphRun");
         Type geometryType = GetRequiredType(presentationCore, "System.Windows.Media.Geometry");
+        Type imageSourceType = GetRequiredType(presentationCore, "System.Windows.Media.ImageSource");
         Type transformType = GetRequiredType(presentationCore, "System.Windows.Media.Transform");
         Type pointType = GetRequiredType(windowsBase, "System.Windows.Point");
         Type rectType = GetRequiredType(windowsBase, "System.Windows.Rect");
@@ -248,6 +251,9 @@ internal static class Program
         object formattedText = CreateRealFormattedText(presentationCore, greenBrush);
         object textOrigin = Activator.CreateInstance(pointType, 18.0, 82.0)
             ?? throw new InvalidOperationException("Failed to create System.Windows.Point.");
+        object imageSource = CreateRealManagedBitmapSource(presentationCore, windowsBase);
+        object imageRect = Activator.CreateInstance(rectType, 62.0, 8.0, 16.0, 12.0)
+            ?? throw new InvalidOperationException("Failed to create System.Windows.Rect.");
 
         InvokeDrawing(
             drawingContext,
@@ -385,6 +391,12 @@ internal static class Program
             new[] { formattedTextType, pointType },
             formattedText,
             textOrigin);
+        InvokeDrawing(
+            drawingContext,
+            "DrawImage",
+            new[] { imageSourceType, rectType },
+            imageSource,
+            imageRect);
         Invoke(drawingContext, "Close");
     }
 
@@ -423,7 +435,8 @@ internal static class Program
             ProGpuRenderCommandType.DrawRect,
             ProGpuRenderCommandType.DrawPath,
             ProGpuRenderCommandType.DrawGlyphRun,
-            ProGpuRenderCommandType.DrawGlyphRun
+            ProGpuRenderCommandType.DrawGlyphRun,
+            ProGpuRenderCommandType.DrawTexture
         };
         if (commands.Count != expectedCommandTypes.Length)
         {
@@ -477,6 +490,16 @@ internal static class Program
 
         AssertEqual(13f, commands[18].FontSize, "real DrawingVisual retained formatted text font size");
         AssertEqual(18f, commands[18].Position.X, "real DrawingVisual retained formatted text position X");
+
+        if (commands[19].Texture == null)
+        {
+            throw new InvalidOperationException("Expected real DrawingVisual retained bitmap source to upload a native ProGPU texture.");
+        }
+
+        AssertEqual(62f, commands[19].Rect.X, "real DrawingVisual retained bitmap image rect X");
+        AssertEqual(8f, commands[19].Rect.Y, "real DrawingVisual retained bitmap image rect Y");
+        AssertEqual(16f, commands[19].Rect.Width, "real DrawingVisual retained bitmap image rect width");
+        AssertEqual(12f, commands[19].Rect.Height, "real DrawingVisual retained bitmap image rect height");
     }
 
     private static ProGpuContainerVisual GetSingleContainerChild(ProGpuContainerVisual parent, string description)
@@ -640,6 +663,245 @@ internal static class Program
             foregroundBrush,
             1.0
         });
+    }
+
+    private static object CreateRealManagedBitmapSource(Assembly presentationCore, Assembly windowsBase)
+    {
+        Type bitmapSourceType = GetRequiredType(presentationCore, "System.Windows.Media.Imaging.BitmapSource");
+        Type bitmapPaletteType = GetRequiredType(presentationCore, "System.Windows.Media.Imaging.BitmapPalette");
+        Type pixelFormatType = GetRequiredType(presentationCore, "System.Windows.Media.PixelFormat");
+        Type pixelFormatsType = GetRequiredType(presentationCore, "System.Windows.Media.PixelFormats");
+        Type int32RectType = GetRequiredType(windowsBase, "System.Windows.Int32Rect");
+        Type freezableType = GetRequiredType(windowsBase, "System.Windows.Freezable");
+        var assemblyName = new AssemblyName("ProGpuWpfRealManagedBitmapSourceSmoke");
+        AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.RunAndCollect);
+        ModuleBuilder moduleBuilder = assemblyBuilder.DefineDynamicModule(assemblyName.Name!);
+        TypeBuilder typeBuilder = moduleBuilder.DefineType(
+            "ProGpuWpfRealManagedBitmapSource",
+            TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.Class,
+            bitmapSourceType);
+        FieldBuilder pixelsField = typeBuilder.DefineField(
+            "_pixels",
+            typeof(byte[]),
+            FieldAttributes.Private | FieldAttributes.InitOnly);
+        ConstructorInfo baseConstructor = bitmapSourceType.GetConstructor(
+            BindingFlags.Instance | BindingFlags.NonPublic,
+            binder: null,
+            types: Type.EmptyTypes,
+            modifiers: null)
+            ?? throw new MissingMethodException(bitmapSourceType.FullName, ".ctor()");
+        ConstructorBuilder constructor = typeBuilder.DefineConstructor(
+            MethodAttributes.Public,
+            CallingConventions.Standard,
+            new[] { typeof(byte[]) });
+        ILGenerator constructorIl = constructor.GetILGenerator();
+        constructorIl.Emit(OpCodes.Ldarg_0);
+        constructorIl.Emit(OpCodes.Call, baseConstructor);
+        constructorIl.Emit(OpCodes.Ldarg_0);
+        constructorIl.Emit(OpCodes.Ldarg_1);
+        constructorIl.Emit(OpCodes.Stfld, pixelsField);
+        constructorIl.Emit(OpCodes.Ret);
+
+        DefineIntPropertyOverride(typeBuilder, bitmapSourceType, "PixelWidth", 2);
+        DefineIntPropertyOverride(typeBuilder, bitmapSourceType, "PixelHeight", 2);
+        DefineDoublePropertyOverride(typeBuilder, bitmapSourceType, "DpiX", 96.0);
+        DefineDoublePropertyOverride(typeBuilder, bitmapSourceType, "DpiY", 96.0);
+        DefineNullPropertyOverride(typeBuilder, bitmapSourceType, "Palette", bitmapPaletteType);
+        DefinePixelFormatOverride(typeBuilder, bitmapSourceType, pixelFormatsType, pixelFormatType);
+        DefineCopyPixelsOverride(typeBuilder, bitmapSourceType, pixelsField, new[] { typeof(Array), typeof(int), typeof(int) });
+        DefineCopyPixelsOverride(typeBuilder, bitmapSourceType, pixelsField, new[] { int32RectType, typeof(Array), typeof(int), typeof(int) });
+        DefineCreateInstanceCoreOverride(typeBuilder, freezableType, pixelsField, constructor);
+
+        Type bitmapType = typeBuilder.CreateType()
+            ?? throw new InvalidOperationException("Failed to create real managed BitmapSource smoke type.");
+        byte[] pixels =
+        {
+            0, 0, 255, 255,
+            0, 255, 0, 255,
+            255, 0, 0, 255,
+            255, 255, 255, 128
+        };
+        return Activator.CreateInstance(bitmapType, pixels)
+            ?? throw new InvalidOperationException("Failed to create real managed BitmapSource smoke instance.");
+    }
+
+    public static void CopyManagedBitmapPixels(
+        byte[] source,
+        Array pixels,
+        int stride,
+        int offset,
+        int pixelWidth,
+        int pixelHeight)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(pixels);
+        if (pixels is not byte[] destination)
+        {
+            throw new ArgumentException("The managed bitmap smoke source only supports byte[] pixel copies.", nameof(pixels));
+        }
+
+        ArgumentOutOfRangeException.ThrowIfNegative(offset);
+        int sourceStride = checked(pixelWidth * 4);
+        ArgumentOutOfRangeException.ThrowIfLessThan(stride, sourceStride);
+        int requiredLength = checked(offset + ((pixelHeight - 1) * stride) + sourceStride);
+        if (requiredLength > destination.Length)
+        {
+            throw new ArgumentException("The destination pixel buffer is too small for the requested copy.", nameof(pixels));
+        }
+
+        for (var row = 0; row < pixelHeight; row++)
+        {
+            Buffer.BlockCopy(source, row * sourceStride, destination, offset + (row * stride), sourceStride);
+        }
+    }
+
+    private static void DefineIntPropertyOverride(
+        TypeBuilder typeBuilder,
+        Type baseType,
+        string propertyName,
+        int value)
+    {
+        MethodBuilder getter = DefineGetter(typeBuilder, propertyName, typeof(int));
+        ILGenerator il = getter.GetILGenerator();
+        il.Emit(OpCodes.Ldc_I4, value);
+        il.Emit(OpCodes.Ret);
+        DefinePropertyOverride(typeBuilder, baseType, propertyName, typeof(int), getter);
+    }
+
+    private static void DefineDoublePropertyOverride(
+        TypeBuilder typeBuilder,
+        Type baseType,
+        string propertyName,
+        double value)
+    {
+        MethodBuilder getter = DefineGetter(typeBuilder, propertyName, typeof(double));
+        ILGenerator il = getter.GetILGenerator();
+        il.Emit(OpCodes.Ldc_R8, value);
+        il.Emit(OpCodes.Ret);
+        DefinePropertyOverride(typeBuilder, baseType, propertyName, typeof(double), getter);
+    }
+
+    private static void DefineNullPropertyOverride(
+        TypeBuilder typeBuilder,
+        Type baseType,
+        string propertyName,
+        Type returnType)
+    {
+        MethodBuilder getter = DefineGetter(typeBuilder, propertyName, returnType);
+        ILGenerator il = getter.GetILGenerator();
+        il.Emit(OpCodes.Ldnull);
+        il.Emit(OpCodes.Ret);
+        DefinePropertyOverride(typeBuilder, baseType, propertyName, returnType, getter);
+    }
+
+    private static void DefinePixelFormatOverride(
+        TypeBuilder typeBuilder,
+        Type baseType,
+        Type pixelFormatsType,
+        Type pixelFormatType)
+    {
+        MethodInfo getterMethod = pixelFormatsType.GetProperty(
+            "Pbgra32",
+            BindingFlags.Static | BindingFlags.Public)?.GetMethod
+            ?? throw new MissingMemberException(pixelFormatsType.FullName, "Pbgra32");
+        MethodBuilder getter = DefineGetter(typeBuilder, "Format", pixelFormatType);
+        ILGenerator il = getter.GetILGenerator();
+        il.Emit(OpCodes.Call, getterMethod);
+        il.Emit(OpCodes.Ret);
+        DefinePropertyOverride(typeBuilder, baseType, "Format", pixelFormatType, getter);
+    }
+
+    private static void DefinePropertyOverride(
+        TypeBuilder typeBuilder,
+        Type baseType,
+        string propertyName,
+        Type returnType,
+        MethodBuilder getter)
+    {
+        PropertyBuilder property = typeBuilder.DefineProperty(
+            propertyName,
+            PropertyAttributes.None,
+            returnType,
+            Type.EmptyTypes);
+        property.SetGetMethod(getter);
+        MethodInfo baseGetter = baseType.GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetMethod
+            ?? throw new MissingMemberException(baseType.FullName, propertyName);
+        typeBuilder.DefineMethodOverride(getter, baseGetter);
+    }
+
+    private static MethodBuilder DefineGetter(TypeBuilder typeBuilder, string propertyName, Type returnType)
+    {
+        return typeBuilder.DefineMethod(
+            $"get_{propertyName}",
+            MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.HideBySig | MethodAttributes.SpecialName,
+            returnType,
+            Type.EmptyTypes);
+    }
+
+    private static void DefineCopyPixelsOverride(
+        TypeBuilder typeBuilder,
+        Type bitmapSourceType,
+        FieldInfo pixelsField,
+        Type[] parameterTypes)
+    {
+        MethodInfo baseMethod = bitmapSourceType.GetMethod(
+            "CopyPixels",
+            BindingFlags.Instance | BindingFlags.Public,
+            binder: null,
+            types: parameterTypes,
+            modifiers: null)
+            ?? throw new MissingMethodException(bitmapSourceType.FullName, "CopyPixels");
+        MethodBuilder method = typeBuilder.DefineMethod(
+            "CopyPixels",
+            MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.HideBySig,
+            typeof(void),
+            parameterTypes);
+        ILGenerator il = method.GetILGenerator();
+        il.Emit(OpCodes.Ldarg_0);
+        il.Emit(OpCodes.Ldfld, pixelsField);
+        il.Emit(OpCodes.Ldarg, parameterTypes.Length == 3 ? 1 : 2);
+        il.Emit(OpCodes.Ldarg, parameterTypes.Length == 3 ? 2 : 3);
+        il.Emit(OpCodes.Ldarg, parameterTypes.Length == 3 ? 3 : 4);
+        il.Emit(OpCodes.Ldc_I4_2);
+        il.Emit(OpCodes.Ldc_I4_2);
+        il.Emit(
+            OpCodes.Call,
+            typeof(Program).GetMethod(
+                nameof(CopyManagedBitmapPixels),
+                BindingFlags.Static | BindingFlags.Public)
+                ?? throw new MissingMethodException(typeof(Program).FullName, nameof(CopyManagedBitmapPixels)));
+        il.Emit(OpCodes.Ret);
+        typeBuilder.DefineMethodOverride(method, baseMethod);
+    }
+
+    private static void DefineCreateInstanceCoreOverride(
+        TypeBuilder typeBuilder,
+        Type freezableType,
+        FieldInfo pixelsField,
+        ConstructorInfo constructor)
+    {
+        MethodInfo baseMethod = freezableType.GetMethod(
+            "CreateInstanceCore",
+            BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new MissingMethodException(freezableType.FullName, "CreateInstanceCore");
+        MethodBuilder method = typeBuilder.DefineMethod(
+            "CreateInstanceCore",
+            MethodAttributes.Family | MethodAttributes.Virtual | MethodAttributes.HideBySig,
+            freezableType,
+            Type.EmptyTypes);
+        ILGenerator il = method.GetILGenerator();
+        il.Emit(OpCodes.Ldarg_0);
+        il.Emit(OpCodes.Ldfld, pixelsField);
+        il.Emit(
+            OpCodes.Callvirt,
+            typeof(Array).GetMethod(nameof(Array.Clone), Type.EmptyTypes)
+                ?? throw new MissingMethodException(typeof(Array).FullName, nameof(Array.Clone)));
+        il.Emit(OpCodes.Castclass, typeof(byte[]));
+        il.Emit(OpCodes.Newobj, constructor);
+        il.Emit(OpCodes.Ret);
+        typeBuilder.DefineMethodOverride(method, baseMethod);
     }
 
     private static object CreateRealGlyphTypeface(Type glyphTypefaceType)

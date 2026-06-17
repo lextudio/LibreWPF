@@ -933,6 +933,8 @@
 - Extended the compiled XAML app smoke to exercise WPF's real `Style.BasedOn` inheritance from BAML. `App.xaml` now defines `BasedOnTextBoxStyle` derived from `SmokeTextBoxStyle`, `MainWindow.xaml` applies it to a named `TextBox`, and the runtime plus `Application.Run()` harnesses verify the `BasedOn` relationship, derived setter, and inherited `MinWidth`/`Margin` setters through real WPF style sealing/application.
 - Hardened `ProGPU.Wpf.RealThemeRuntimeHarness` to locate the compiled `DocumentBox` rich-text control through WPF namescope lookup before applying the Fluent `DefaultRichTextBoxStyle`, instead of depending on a fragile stack-panel child index that changes as the compiled app grows.
 - Verified the style-inheritance managed-XAML slice with clean build/run of `ProGPU.Wpf.RealXamlRuntimeHarness`, clean build/run of `ProGPU.Wpf.RealApplicationRunHarness`, clean build/run of `ProGPU.Wpf.RealThemeRuntimeHarness`, a clean `ProGPU.Wpf.Tests` build, focused `WpfManagedProjectGraphTests` through `vstest` with 28 tests passed, and `git diff --check`.
+- Extended the real `DrawingVisual.RenderOpen()` bridge smoke to cover WPF `DrawingContext.DrawImage(...)` with a real managed `BitmapSource` subclass. The harness avoids WPF's `BitmapSource.Create(...)` WIC path, keeps the image object on the WPF-managed API surface, adapts it through `WpfBitmapSourceImageAdapter`, and verifies a retained ProGPU owner-branch native `DrawTexture` command with the destination rectangle.
+- Added an explicit `ProGPU.Backend` reference to the harness only, so it can assert the native texture payload without leaking ProGPU references into the real managed WPF subsystem projects.
 
 ## Open Porting Items
 

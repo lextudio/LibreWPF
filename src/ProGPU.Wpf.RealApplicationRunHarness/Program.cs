@@ -150,7 +150,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 60, "stack panel children");
+        AssertCollectionCount(children, expected: 61, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -215,6 +215,7 @@ internal static class Program
         ValidateImplicitDataTemplate(window);
         ValidateContentTemplateSelector(window);
         ValidateHierarchicalDataTemplate(window);
+        ValidateExplicitTreeViewItems(window);
         ValidateTabControl(window);
         ValidateSectionControls(window);
         ValidateAdornerDecorator(window);
@@ -2078,6 +2079,59 @@ internal static class Program
         AssertSame(sourceNodes, GetProperty(nodeTree, "ItemsSource"), "compiled TreeView ItemsSource binding");
         AssertSame(nodeTemplate, GetProperty(nodeTree, "ItemTemplate"), "compiled TreeView item template");
         AssertCollectionCount(GetProperty(nodeTree, "Items"), expected: 1, "compiled TreeView generated root items");
+    }
+
+    private static void ValidateExplicitTreeViewItems(object window)
+    {
+        object tree = GetField(window, "ExplicitTree");
+        AssertType(tree, "System.Windows.Controls.TreeView", "compiled explicit TreeView");
+        object treeItems = GetProperty(tree, "Items");
+        AssertCollectionCount(treeItems, expected: 2, "compiled explicit TreeView items");
+
+        object alpha = GetField(window, "ExplicitTreeAlpha");
+        object alphaChild = GetField(window, "ExplicitTreeAlphaChild");
+        object beta = GetField(window, "ExplicitTreeBeta");
+        AssertType(alpha, "System.Windows.Controls.TreeViewItem", "compiled explicit alpha TreeViewItem");
+        AssertType(alphaChild, "System.Windows.Controls.TreeViewItem", "compiled explicit alpha child TreeViewItem");
+        AssertType(beta, "System.Windows.Controls.TreeViewItem", "compiled explicit beta TreeViewItem");
+        AssertEqual("explicit alpha", GetProperty(alpha, "Header"), "compiled explicit alpha TreeViewItem header");
+        AssertEqual("explicit alpha child", GetProperty(alphaChild, "Header"), "compiled explicit alpha child TreeViewItem header");
+        AssertEqual("explicit beta", GetProperty(beta, "Header"), "compiled explicit beta TreeViewItem header");
+        AssertCollectionCount(GetProperty(alpha, "Items"), expected: 1, "compiled explicit alpha TreeViewItem children");
+        AssertSame(alphaChild, GetCollectionItem(GetProperty(alpha, "Items"), 0), "compiled explicit alpha child item");
+        AssertEqual(false, GetProperty(alpha, "IsExpanded"), "compiled explicit alpha initial expanded state");
+        AssertEqual(false, GetProperty(alpha, "IsSelected"), "compiled explicit alpha initial selected state");
+        AssertEqual(false, GetProperty(beta, "IsSelected"), "compiled explicit beta initial selected state");
+
+        SetProperty(alpha, "IsExpanded", true);
+        AssertEqual(true, GetProperty(alpha, "IsExpanded"), "compiled explicit alpha expanded state");
+        AssertEqual(1, GetProperty(window, "ExplicitTreeExpandedCount"), "compiled TreeViewItem Expanded count");
+        AssertEqual("ExplicitTreeAlpha", GetProperty(window, "LastExplicitTreeExpandedSenderName"), "compiled TreeViewItem Expanded sender");
+        AssertEqual("Expanded", GetProperty(window, "LastExplicitTreeExpandedRoutedEventName"), "compiled TreeViewItem Expanded routed event");
+
+        SetProperty(alpha, "IsExpanded", false);
+        AssertEqual(false, GetProperty(alpha, "IsExpanded"), "compiled explicit alpha collapsed state");
+        AssertEqual(1, GetProperty(window, "ExplicitTreeCollapsedCount"), "compiled TreeViewItem Collapsed count");
+        AssertEqual("ExplicitTreeAlpha", GetProperty(window, "LastExplicitTreeCollapsedSenderName"), "compiled TreeViewItem Collapsed sender");
+        AssertEqual("Collapsed", GetProperty(window, "LastExplicitTreeCollapsedRoutedEventName"), "compiled TreeViewItem Collapsed routed event");
+
+        SetProperty(alpha, "IsSelected", true);
+        AssertEqual(true, GetProperty(alpha, "IsSelected"), "compiled explicit alpha selected state");
+        AssertEqual(false, GetProperty(beta, "IsSelected"), "compiled explicit beta unselected after alpha selection");
+        AssertSame(alpha, GetProperty(tree, "SelectedItem"), "compiled explicit TreeView selected alpha item");
+        AssertEqual(1, GetProperty(window, "ExplicitTreeSelectedCount"), "compiled TreeViewItem alpha Selected count");
+        AssertEqual("ExplicitTreeAlpha", GetProperty(window, "LastExplicitTreeSelectedSenderName"), "compiled TreeViewItem alpha Selected sender");
+        AssertEqual("Selected", GetProperty(window, "LastExplicitTreeSelectedRoutedEventName"), "compiled TreeViewItem alpha Selected routed event");
+
+        SetProperty(beta, "IsSelected", true);
+        AssertEqual(false, GetProperty(alpha, "IsSelected"), "compiled explicit alpha unselected by TreeView manager");
+        AssertEqual(true, GetProperty(beta, "IsSelected"), "compiled explicit beta selected state");
+        AssertSame(beta, GetProperty(tree, "SelectedItem"), "compiled explicit TreeView selected beta item");
+        AssertEqual(2, GetProperty(window, "ExplicitTreeSelectedCount"), "compiled TreeViewItem beta Selected count");
+        AssertEqual(1, GetProperty(window, "ExplicitTreeUnselectedCount"), "compiled TreeViewItem alpha Unselected count");
+        AssertEqual("ExplicitTreeBeta", GetProperty(window, "LastExplicitTreeSelectedSenderName"), "compiled TreeViewItem beta Selected sender");
+        AssertEqual("ExplicitTreeAlpha", GetProperty(window, "LastExplicitTreeUnselectedSenderName"), "compiled TreeViewItem alpha Unselected sender");
+        AssertEqual("Unselected", GetProperty(window, "LastExplicitTreeUnselectedRoutedEventName"), "compiled TreeViewItem alpha Unselected routed event");
     }
 
     private static void ValidateTabControl(object window)

@@ -106,6 +106,30 @@ public partial class MainWindow : Window
 
     public string? LastChoiceRadioUncheckedRoutedEventName { get; private set; }
 
+    public int ExplicitTreeExpandedCount { get; private set; }
+
+    public int ExplicitTreeCollapsedCount { get; private set; }
+
+    public string? LastExplicitTreeExpandedSenderName { get; private set; }
+
+    public string? LastExplicitTreeExpandedRoutedEventName { get; private set; }
+
+    public string? LastExplicitTreeCollapsedSenderName { get; private set; }
+
+    public string? LastExplicitTreeCollapsedRoutedEventName { get; private set; }
+
+    public int ExplicitTreeSelectedCount { get; private set; }
+
+    public int ExplicitTreeUnselectedCount { get; private set; }
+
+    public string? LastExplicitTreeSelectedSenderName { get; private set; }
+
+    public string? LastExplicitTreeSelectedRoutedEventName { get; private set; }
+
+    public string? LastExplicitTreeUnselectedSenderName { get; private set; }
+
+    public string? LastExplicitTreeUnselectedRoutedEventName { get; private set; }
+
     public int StoryboardTargetLoadedCount { get; private set; }
 
     public string? LastStoryboardTargetLoadedSenderName { get; private set; }
@@ -217,6 +241,34 @@ public partial class MainWindow : Window
         ChoiceRadioUncheckedCount++;
         LastChoiceRadioUncheckedSenderName = sender is FrameworkElement element ? element.Name : null;
         LastChoiceRadioUncheckedRoutedEventName = e.RoutedEvent?.Name;
+    }
+
+    private void OnExplicitTreeExpanded(object sender, RoutedEventArgs e)
+    {
+        ExplicitTreeExpandedCount++;
+        LastExplicitTreeExpandedSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastExplicitTreeExpandedRoutedEventName = e.RoutedEvent?.Name;
+    }
+
+    private void OnExplicitTreeCollapsed(object sender, RoutedEventArgs e)
+    {
+        ExplicitTreeCollapsedCount++;
+        LastExplicitTreeCollapsedSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastExplicitTreeCollapsedRoutedEventName = e.RoutedEvent?.Name;
+    }
+
+    private void OnExplicitTreeSelected(object sender, RoutedEventArgs e)
+    {
+        ExplicitTreeSelectedCount++;
+        LastExplicitTreeSelectedSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastExplicitTreeSelectedRoutedEventName = e.RoutedEvent?.Name;
+    }
+
+    private void OnExplicitTreeUnselected(object sender, RoutedEventArgs e)
+    {
+        ExplicitTreeUnselectedCount++;
+        LastExplicitTreeUnselectedSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastExplicitTreeUnselectedRoutedEventName = e.RoutedEvent?.Name;
     }
 
     private void OnStoryboardTargetLoaded(object sender, RoutedEventArgs e)

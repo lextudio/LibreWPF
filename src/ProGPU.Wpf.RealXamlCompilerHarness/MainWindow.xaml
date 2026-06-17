@@ -757,6 +757,26 @@
             Margin="0,8,0,0"
             ItemTemplate="{StaticResource SmokeNodeTemplate}"
             ItemsSource="{Binding Nodes}" />
+        <TreeView
+            x:Name="ExplicitTree"
+            Margin="0,8,0,0">
+            <TreeViewItem
+                x:Name="ExplicitTreeAlpha"
+                Collapsed="OnExplicitTreeCollapsed"
+                Expanded="OnExplicitTreeExpanded"
+                Header="explicit alpha"
+                Selected="OnExplicitTreeSelected"
+                Unselected="OnExplicitTreeUnselected">
+                <TreeViewItem
+                    x:Name="ExplicitTreeAlphaChild"
+                    Header="explicit alpha child" />
+            </TreeViewItem>
+            <TreeViewItem
+                x:Name="ExplicitTreeBeta"
+                Header="explicit beta"
+                Selected="OnExplicitTreeSelected"
+                Unselected="OnExplicitTreeUnselected" />
+        </TreeView>
         <ListBox
             x:Name="SelectorItemsList"
             Margin="0,8,0,0"

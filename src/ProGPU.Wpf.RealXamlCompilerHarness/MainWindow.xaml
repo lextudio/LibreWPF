@@ -56,6 +56,28 @@
             Margin="0,8,0,0"
             Text="{Binding Greeting}" />
         <TextBlock
+            x:Name="MultiBindingBlock"
+            Margin="0,8,0,0">
+            <TextBlock.Text>
+                <MultiBinding StringFormat="{}{0} / {1}">
+                    <Binding Path="Greeting" />
+                    <Binding Path="ButtonText" />
+                </MultiBinding>
+            </TextBlock.Text>
+        </TextBlock>
+        <Border
+            x:Name="AncestorBindingBorder"
+            Margin="0,8,0,0"
+            Tag="ancestor binding source">
+            <TextBlock
+                x:Name="RelativeSourceBlock"
+                Text="{Binding RelativeSource={RelativeSource AncestorType={x:Type Border}}, Path=Tag}" />
+        </Border>
+        <TextBox
+            x:Name="ValidatedBox"
+            Margin="0,8,0,0"
+            Text="{Binding ValidatedText, UpdateSourceTrigger=Explicit, ValidatesOnDataErrors=True, NotifyOnValidationError=True}" />
+        <TextBlock
             x:Name="MergedResourceBlock"
             Foreground="{StaticResource MergedAccentBrush}"
             Margin="{StaticResource MergedBlockMargin}"

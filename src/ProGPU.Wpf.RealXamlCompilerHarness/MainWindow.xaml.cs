@@ -54,11 +54,12 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    public sealed class SmokeViewModel : INotifyPropertyChanged
+    public sealed class SmokeViewModel : INotifyPropertyChanged, IDataErrorInfo
     {
         private string _greeting = "bound greeting from real WPF";
         private bool _isWarning;
         private SmokeItem? _selectedItem;
+        private string _validatedText = "valid binding text";
 
         public SmokeViewModel()
         {
@@ -85,6 +86,27 @@ public partial class MainWindow : Window
         public string ButtonText => "run bound command";
 
         public string TriggerButtonText => "style trigger target";
+
+        public string Error => string.Empty;
+
+        public string this[string columnName] =>
+            string.Equals(columnName, nameof(ValidatedText), StringComparison.Ordinal) &&
+            string.IsNullOrWhiteSpace(_validatedText)
+                ? "ValidatedText is required"
+                : string.Empty;
+
+        public string ValidatedText
+        {
+            get => _validatedText;
+            set
+            {
+                if (!string.Equals(_validatedText, value, StringComparison.Ordinal))
+                {
+                    _validatedText = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
 
         public bool IsWarning
         {

@@ -3134,7 +3134,7 @@ namespace System.Windows
                     while (!_cacheValid[(int)CacheSlot.PrimaryScreenWidth])
                     {
                         _cacheValid[(int)CacheSlot.PrimaryScreenWidth] = true;
-                        _primaryScreenWidth = SystemParameters.ConvertPixel(UnsafeNativeMethods.GetSystemMetrics(SM.CXSCREEN));
+                        _primaryScreenWidth = GetSystemMetricPixel(SM.CXSCREEN, DefaultPrimaryScreenWidth);
                     }
                 }
 
@@ -3155,7 +3155,7 @@ namespace System.Windows
                     while(!_cacheValid[(int)CacheSlot.PrimaryScreenHeight])
                     {
                         _cacheValid[(int)CacheSlot.PrimaryScreenHeight] = true;
-                        _primaryScreenHeight = SystemParameters.ConvertPixel(UnsafeNativeMethods.GetSystemMetrics(SM.CYSCREEN));
+                        _primaryScreenHeight = GetSystemMetricPixel(SM.CYSCREEN, DefaultPrimaryScreenHeight);
                     }
                 }
 
@@ -5863,6 +5863,8 @@ namespace System.Windows
         }
 
         private const int DefaultScrollBarMetric = 17;
+        private const int DefaultPrimaryScreenWidth = 1024;
+        private const int DefaultPrimaryScreenHeight = 768;
 
         private static double GetSystemMetricPixel(SM metric, int fallbackPixel)
         {

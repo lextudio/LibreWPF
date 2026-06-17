@@ -65,6 +65,7 @@ internal static class Program
                 window,
                 out activationServiceType,
                 out activation);
+            ValidatePostShowBindingFeatures(window);
             ValidatePortableKeyboardFocus(presentationCore, window);
         }
         finally
@@ -142,7 +143,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 14, "stack panel children");
+        AssertCollectionCount(children, expected: 17, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -165,6 +166,7 @@ internal static class Program
         ValidateRichFlowDocument(window);
 
         ValidateBindingAndCommand(window);
+        ValidateAdvancedBindingFeatures(window);
         ValidateMergedResourceDictionary(window, application);
         ValidateNestedUserControl(window);
         ValidateReadOnlyGridCollectionsAndAttachedProperties(window);
@@ -317,6 +319,47 @@ internal static class Program
         AssertEqual(0, GetProperty(viewModelCommand, "ExecutionCount"), "bound command initial execution count");
         Invoke(buttonCommand, "Execute", new object?[] { null });
         AssertEqual(1, GetProperty(viewModelCommand, "ExecutionCount"), "bound command execution count");
+    }
+
+    private static void ValidateAdvancedBindingFeatures(object window)
+    {
+        object dataContext = GetProperty(window, "DataContext");
+
+        object multiBindingBlock = GetField(window, "MultiBindingBlock");
+        AssertType(multiBindingBlock, "System.Windows.Controls.TextBlock", "compiled MultiBinding TextBlock");
+        AssertEqual(
+            "updated greeting from property change / run bound command",
+            GetProperty(multiBindingBlock, "Text"),
+            "compiled MultiBinding string-format value");
+
+        object validatedBox = GetField(window, "ValidatedBox");
+        AssertType(validatedBox, "System.Windows.Controls.TextBox", "compiled validation TextBox");
+        AssertEqual("valid binding text", GetProperty(validatedBox, "Text"), "compiled validation TextBox initial text");
+        AssertEqual("valid binding text", GetProperty(dataContext, "ValidatedText"), "compiled validation source initial value");
+        AssertBindingPath(validatedBox, "TextProperty", "ValidatedText", "compiled validation binding path");
+
+        Type validationType = validatedBox.GetType().Assembly.GetType("System.Windows.Controls.Validation", throwOnError: true)
+            ?? throw new TypeLoadException("System.Windows.Controls.Validation");
+        AssertEqual(false, GetDependencyPropertyValue(validatedBox, validationType, "HasErrorProperty"), "compiled validation initial error state");
+
+        SetProperty(validatedBox, "Text", string.Empty);
+        object bindingExpression = GetBindingExpression(validatedBox, "TextProperty");
+        Invoke(bindingExpression, "UpdateSource");
+        AssertEqual(string.Empty, GetProperty(dataContext, "ValidatedText"), "compiled validation invalid source value");
+        AssertEqual(true, GetDependencyPropertyValue(validatedBox, validationType, "HasErrorProperty"), "compiled validation error state");
+
+        SetProperty(validatedBox, "Text", "valid binding text restored");
+        Invoke(bindingExpression, "UpdateSource");
+        AssertEqual("valid binding text restored", GetProperty(dataContext, "ValidatedText"), "compiled validation restored source value");
+        AssertEqual(false, GetDependencyPropertyValue(validatedBox, validationType, "HasErrorProperty"), "compiled validation restored error state");
+    }
+
+    private static void ValidatePostShowBindingFeatures(object window)
+    {
+        object relativeSourceBlock = GetField(window, "RelativeSourceBlock");
+        AssertType(relativeSourceBlock, "System.Windows.Controls.TextBlock", "compiled RelativeSource TextBlock");
+        AssertEqual("ancestor binding source", GetProperty(relativeSourceBlock, "Text"), "compiled RelativeSource ancestor binding value");
+        AssertBindingPath(relativeSourceBlock, "TextProperty", "Tag", "compiled RelativeSource binding path");
     }
 
     private static void ValidateMergedResourceDictionary(object window, object application)
@@ -780,6 +823,14 @@ internal static class Program
         string expectedPath,
         string description)
     {
+        object bindingExpression = GetBindingExpression(dependencyObject, dependencyPropertyFieldName);
+        object parentBinding = GetProperty(bindingExpression, "ParentBinding");
+        object path = GetProperty(parentBinding, "Path");
+        AssertEqual(expectedPath, GetProperty(path, "Path"), description);
+    }
+
+    private static object GetBindingExpression(object dependencyObject, string dependencyPropertyFieldName)
+    {
         FieldInfo dependencyProperty = dependencyObject.GetType().GetField(
             dependencyPropertyFieldName,
             BindingFlags.Static | BindingFlags.Public | BindingFlags.FlattenHierarchy)
@@ -796,9 +847,7 @@ internal static class Program
                 $"Expected '{dependencyObject.GetType().FullName}.{dependencyPropertyFieldName}' to have a binding expression.");
         }
 
-        object parentBinding = GetProperty(bindingExpression, "ParentBinding");
-        object path = GetProperty(parentBinding, "Path");
-        AssertEqual(expectedPath, GetProperty(path, "Path"), description);
+        return bindingExpression;
     }
 
     private static object Invoke(object instance, string methodName, params object?[] parameters)

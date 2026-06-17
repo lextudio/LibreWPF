@@ -146,6 +146,8 @@ public partial class MainWindow : Window
         private string _selectedCategory = "secondary group";
         private string _validatedText = "valid binding text";
         private string _ruleValidatedText = "rule: valid binding text";
+        private string _bindingGroupFirstName = "group: Ada";
+        private string _bindingGroupLastName = "group: Lovelace";
 
         public SmokeViewModel()
         {
@@ -206,6 +208,32 @@ public partial class MainWindow : Window
                 if (!string.Equals(_ruleValidatedText, value, StringComparison.Ordinal))
                 {
                     _ruleValidatedText = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string BindingGroupFirstName
+        {
+            get => _bindingGroupFirstName;
+            set
+            {
+                if (!string.Equals(_bindingGroupFirstName, value, StringComparison.Ordinal))
+                {
+                    _bindingGroupFirstName = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string BindingGroupLastName
+        {
+            get => _bindingGroupLastName;
+            set
+            {
+                if (!string.Equals(_bindingGroupLastName, value, StringComparison.Ordinal))
+                {
+                    _bindingGroupLastName = value;
                     OnPropertyChanged();
                 }
             }
@@ -367,6 +395,41 @@ public sealed class SmokePrefixValidationRule : ValidationRule
         return text.StartsWith(RequiredPrefix, StringComparison.Ordinal)
             ? ValidationResult.ValidResult
             : new ValidationResult(false, $"Value must start with '{RequiredPrefix}'.");
+    }
+}
+
+public sealed class SmokeBindingGroupValidationRule : ValidationRule
+{
+    public string FirstProperty { get; set; } = string.Empty;
+
+    public string SecondProperty { get; set; } = string.Empty;
+
+    public string RequiredPrefix { get; set; } = string.Empty;
+
+    public override ValidationResult Validate(object value, CultureInfo cultureInfo)
+    {
+        if (value is not BindingGroup bindingGroup)
+        {
+            return new ValidationResult(false, "Expected a BindingGroup value.");
+        }
+
+        foreach (object item in bindingGroup.Items)
+        {
+            if (!HasRequiredPrefix(bindingGroup, item, FirstProperty) ||
+                !HasRequiredPrefix(bindingGroup, item, SecondProperty))
+            {
+                return new ValidationResult(false, $"BindingGroup values must start with '{RequiredPrefix}'.");
+            }
+        }
+
+        return ValidationResult.ValidResult;
+    }
+
+    private bool HasRequiredPrefix(BindingGroup bindingGroup, object item, string propertyName)
+    {
+        object value = bindingGroup.GetValue(item, propertyName);
+        string text = value?.ToString() ?? string.Empty;
+        return text.StartsWith(RequiredPrefix, StringComparison.Ordinal);
     }
 }
 

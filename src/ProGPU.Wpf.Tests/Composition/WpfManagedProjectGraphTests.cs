@@ -848,6 +848,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Path=\"RuleValidatedText\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Binding.ValidationRules", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("local:SmokePrefixValidationRule RequiredPrefix=\"rule:\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"BindingGroupPanel\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("StackPanel.BindingGroup", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("BindingGroup Name=\"SmokeBindingGroup\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("BindingGroup.ValidationRules", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("local:SmokeBindingGroupValidationRule", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("FirstProperty=\"BindingGroupFirstName\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("RequiredPrefix=\"group:\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SecondProperty=\"BindingGroupLastName\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"BindingGroupFirstBox\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding BindingGroupFirstName, UpdateSourceTrigger=Explicit}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"BindingGroupLastBox\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding BindingGroupLastName, UpdateSourceTrigger=Explicit}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ProviderGreetingBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding Source={StaticResource ProviderGreeting}}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"XmlProviderBlock\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1092,6 +1104,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public string TriggerButtonText", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string ValidatedText", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string RuleValidatedText", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public string BindingGroupFirstName", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public string BindingGroupLastName", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidatedText is required", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public bool IsWarning", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public bool IsCritical", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1122,6 +1136,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public sealed class SmokePrefixValidationRule : ValidationRule", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string RequiredPrefix", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidationResult.ValidResult", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokeBindingGroupValidationRule : ValidationRule", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("value is not BindingGroup bindingGroup", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("bindingGroup.GetValue(item, propertyName)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeCommand : ICommand", mainWindowCodeBehind, StringComparison.Ordinal);
 
         Assert.Contains("x:Class=\"ProGPU.Wpf.RealXamlCompilerHarness.SmokeUserControl\"", smokeUserControlXaml, StringComparison.Ordinal);
@@ -1244,6 +1261,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled custom ValidationRule parameter", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ValidationRule rejected source value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ValidationRule restored error state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateBindingGroup(window, dataContext, validationType)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled BindingGroup custom ValidationRule", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled BindingGroup rejected commit", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled BindingGroup accepted commit", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled BindingGroup accepted first source", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateObjectDataProvider(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ObjectDataProvider resource", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ObjectDataProvider method parameters", harnessProgram, StringComparison.Ordinal);
@@ -1542,6 +1564,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled custom ValidationRule parameter", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ValidationRule rejected source value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ValidationRule restored error state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateBindingGroup(window, dataContext, validationType)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled BindingGroup custom ValidationRule", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled BindingGroup rejected commit", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled BindingGroup accepted commit", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled BindingGroup accepted first source", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateObjectDataProvider(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ObjectDataProvider synchronous flag", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ObjectDataProvider object type", harnessProgram, StringComparison.Ordinal);

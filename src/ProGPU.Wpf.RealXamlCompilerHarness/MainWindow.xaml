@@ -301,6 +301,26 @@
                 </Binding>
             </TextBox.Text>
         </TextBox>
+        <StackPanel
+            x:Name="BindingGroupPanel"
+            Margin="0,8,0,0">
+            <StackPanel.BindingGroup>
+                <BindingGroup Name="SmokeBindingGroup">
+                    <BindingGroup.ValidationRules>
+                        <local:SmokeBindingGroupValidationRule
+                            FirstProperty="BindingGroupFirstName"
+                            RequiredPrefix="group:"
+                            SecondProperty="BindingGroupLastName" />
+                    </BindingGroup.ValidationRules>
+                </BindingGroup>
+            </StackPanel.BindingGroup>
+            <TextBox
+                x:Name="BindingGroupFirstBox"
+                Text="{Binding BindingGroupFirstName, UpdateSourceTrigger=Explicit}" />
+            <TextBox
+                x:Name="BindingGroupLastBox"
+                Text="{Binding BindingGroupLastName, UpdateSourceTrigger=Explicit}" />
+        </StackPanel>
         <TextBlock
             x:Name="ProviderGreetingBlock"
             Margin="0,8,0,0"

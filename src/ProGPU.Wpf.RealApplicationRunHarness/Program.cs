@@ -150,7 +150,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 43, "stack panel children");
+        AssertCollectionCount(children, expected: 44, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -451,6 +451,55 @@ internal static class Program
         Invoke(ruleBindingExpression, "UpdateSource");
         AssertEqual("rule: restored binding text", GetProperty(dataContext, "RuleValidatedText"), "compiled ValidationRule restored source value");
         AssertEqual(false, GetDependencyPropertyValue(ruleValidatedBox, validationType, "HasErrorProperty"), "compiled ValidationRule restored error state");
+
+        ValidateBindingGroup(window, dataContext, validationType);
+    }
+
+    private static void ValidateBindingGroup(object window, object dataContext, Type validationType)
+    {
+        object panel = GetField(window, "BindingGroupPanel");
+        AssertType(panel, "System.Windows.Controls.StackPanel", "compiled BindingGroup panel");
+
+        object bindingGroup = GetProperty(panel, "BindingGroup");
+        AssertType(bindingGroup, "System.Windows.Data.BindingGroup", "compiled BindingGroup");
+        AssertEqual("SmokeBindingGroup", GetProperty(bindingGroup, "Name"), "compiled BindingGroup name");
+        AssertCollectionCount(GetProperty(bindingGroup, "Items"), expected: 1, "compiled BindingGroup items");
+
+        object validationRules = GetProperty(bindingGroup, "ValidationRules");
+        AssertCollectionCount(validationRules, expected: 1, "compiled BindingGroup ValidationRules");
+        object validationRule = GetCollectionItem(validationRules, 0);
+        AssertType(validationRule, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeBindingGroupValidationRule", "compiled BindingGroup custom ValidationRule");
+        AssertEqual("BindingGroupFirstName", GetProperty(validationRule, "FirstProperty"), "compiled BindingGroup first property");
+        AssertEqual("BindingGroupLastName", GetProperty(validationRule, "SecondProperty"), "compiled BindingGroup second property");
+        AssertEqual("group:", GetProperty(validationRule, "RequiredPrefix"), "compiled BindingGroup required prefix");
+
+        object firstBox = GetField(window, "BindingGroupFirstBox");
+        object lastBox = GetField(window, "BindingGroupLastBox");
+        AssertType(firstBox, "System.Windows.Controls.TextBox", "compiled BindingGroup first TextBox");
+        AssertType(lastBox, "System.Windows.Controls.TextBox", "compiled BindingGroup last TextBox");
+        AssertEqual("group: Ada", GetProperty(firstBox, "Text"), "compiled BindingGroup first initial text");
+        AssertEqual("group: Lovelace", GetProperty(lastBox, "Text"), "compiled BindingGroup last initial text");
+        AssertEqual("group: Ada", GetProperty(dataContext, "BindingGroupFirstName"), "compiled BindingGroup first initial source");
+        AssertEqual("group: Lovelace", GetProperty(dataContext, "BindingGroupLastName"), "compiled BindingGroup last initial source");
+        AssertBindingPath(firstBox, "TextProperty", "BindingGroupFirstName", "compiled BindingGroup first binding path");
+        AssertBindingPath(lastBox, "TextProperty", "BindingGroupLastName", "compiled BindingGroup last binding path");
+
+        AssertEqual(false, GetDependencyPropertyValue(panel, validationType, "HasErrorProperty"), "compiled BindingGroup initial error state");
+        AssertEqual(true, Invoke(bindingGroup, "ValidateWithoutUpdate"), "compiled BindingGroup initial validation");
+
+        SetProperty(firstBox, "Text", "invalid Ada");
+        SetProperty(lastBox, "Text", "group: Hopper");
+        AssertEqual(false, Invoke(bindingGroup, "CommitEdit"), "compiled BindingGroup rejected commit");
+        AssertEqual("group: Ada", GetProperty(dataContext, "BindingGroupFirstName"), "compiled BindingGroup rejected first source");
+        AssertEqual("group: Lovelace", GetProperty(dataContext, "BindingGroupLastName"), "compiled BindingGroup rejected last source");
+        AssertEqual(true, GetDependencyPropertyValue(panel, validationType, "HasErrorProperty"), "compiled BindingGroup rejected error state");
+
+        SetProperty(firstBox, "Text", "group: Grace");
+        SetProperty(lastBox, "Text", "group: Hopper");
+        AssertEqual(true, Invoke(bindingGroup, "CommitEdit"), "compiled BindingGroup accepted commit");
+        AssertEqual("group: Grace", GetProperty(dataContext, "BindingGroupFirstName"), "compiled BindingGroup accepted first source");
+        AssertEqual("group: Hopper", GetProperty(dataContext, "BindingGroupLastName"), "compiled BindingGroup accepted last source");
+        AssertEqual(false, GetDependencyPropertyValue(panel, validationType, "HasErrorProperty"), "compiled BindingGroup accepted error state");
     }
 
     private static void ValidatePostShowBindingFeatures(object window)

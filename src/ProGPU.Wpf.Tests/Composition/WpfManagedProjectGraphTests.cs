@@ -958,8 +958,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AssertCollectionCount(children, expectedMinimum: 14", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetCollectionItem(children, GetCollectionCount(children) - 1)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateThemedVisualReplay(windowsBase, window)", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("Invoke(window, \"FindName\", \"ImplicitStyleCheckBox\")", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("SetEnumProperty(implicitStyleCheckBox, \"Visibility\", \"Collapsed\")", harnessProgram, StringComparison.Ordinal);
+        Assert.DoesNotContain("Invoke(window, \"FindName\", \"ImplicitStyleCheckBox\")", harnessProgram, StringComparison.Ordinal);
+        Assert.DoesNotContain("SetEnumProperty(implicitStyleCheckBox, \"Visibility\", \"Collapsed\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("MeasureAndArrange(windowsBase, content, pixelWidth, pixelHeight)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(element, \"Measure\", availableSize)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(element, \"Arrange\", finalRect)", harnessProgram, StringComparison.Ordinal);
@@ -1138,9 +1138,15 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(classification, "if (OperatingSystem.IsWindows())", "MILGetClassificationTables(out ct)");
         Assert.Contains("GetManagedUnicodeClass", classification, StringComparison.Ordinal);
         Assert.Contains("ManagedCharAttributeOf", classification, StringComparison.Ordinal);
+        Assert.Contains("case UnicodeCategory.PrivateUse:", classification, StringComparison.Ordinal);
+        Assert.Contains("return ManagedPrivateUseClass;", classification, StringComparison.Ordinal);
+        Assert.Contains("ManagedPrivateUseClass => CreateManagedAttribute", classification, StringComparison.Ordinal);
         AssertGuardBefore(lineServices, "if (OperatingSystem.IsWindows())", "LoGetEscStringImpl(ref escStringInfo)");
         Assert.Contains("s_managedObjectReplacement", lineServices, StringComparison.Ordinal);
         Assert.Contains("The full WPF LineServices path is still native.", typeface, StringComparison.Ordinal);
+        Assert.Contains("ContainsOnlyPrivateUseCharacters", typeface, StringComparison.Ordinal);
+        Assert.Contains("IsPrivateUseCharacter", typeface, StringComparison.Ordinal);
+        Assert.Contains("the existing null-glyph unshaped GlyphRun path", typeface, StringComparison.Ordinal);
         AssertGuardBefore(typeface, "if (!OperatingSystem.IsWindows())", "TypographyAvailabilities typography");
         AssertGuardBefore(uxThemeWrapper, "_themeState = OperatingSystem.IsWindows()", "SafeNativeMethods.IsUxThemeActive()");
         AssertGuardBefore(dpiAwareness, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetWindowDpiAwarenessContext(hWnd)");

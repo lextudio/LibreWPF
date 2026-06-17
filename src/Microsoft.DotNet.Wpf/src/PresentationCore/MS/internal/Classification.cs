@@ -459,9 +459,11 @@ namespace MS.Internal
                 case UnicodeCategory.Control:
                 case UnicodeCategory.Format:
                 case UnicodeCategory.Surrogate:
-                case UnicodeCategory.PrivateUse:
                 case UnicodeCategory.OtherNotAssigned:
                     return ManagedControlClass;
+
+                case UnicodeCategory.PrivateUse:
+                    return ManagedPrivateUseClass;
 
                 case UnicodeCategory.UppercaseLetter:
                 case UnicodeCategory.LowercaseLetter:
@@ -569,6 +571,11 @@ namespace MS.Internal
                     ItemClass.WeakClass,
                     CharacterAttributeFlags.CharacterSpace | CharacterAttributeFlags.CharacterFastText,
                     DirectionClass.WhiteSpace),
+                ManagedPrivateUseClass => CreateManagedAttribute(
+                    ScriptID.Default,
+                    ItemClass.WeakClass,
+                    CharacterAttributeFlags.CharacterFastText,
+                    DirectionClass.OtherNeutral),
                 _ => CreateManagedAttribute(
                     ScriptID.Default,
                     ItemClass.WeakClass,
@@ -607,6 +614,7 @@ namespace MS.Internal
         private const short ManagedHebrewClass = 10;
         private const short ManagedPunctuationClass = 11;
         private const short ManagedTabClass = 12;
+        private const short ManagedPrivateUseClass = 13;
 
         private static readonly IntPtr _unicodeClassTable;
         private static readonly IntPtr _charAttributeTable;

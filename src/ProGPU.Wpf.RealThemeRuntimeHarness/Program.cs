@@ -181,8 +181,6 @@ internal static class Program
         const uint pixelHeight = 260;
 
         object content = GetProperty(window, "Content");
-        object implicitStyleCheckBox = Invoke(window, "FindName", "ImplicitStyleCheckBox");
-        SetEnumProperty(implicitStyleCheckBox, "Visibility", "Collapsed");
 
         MeasureAndArrange(windowsBase, content, pixelWidth, pixelHeight);
 

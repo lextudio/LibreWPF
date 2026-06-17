@@ -990,6 +990,7 @@ internal static class Program
         AssertType(templateBorder, "System.Windows.Controls.Border", "compiled ControlTemplate named part");
         AssertSame(accentBrush, GetProperty(templateBorder, "Background"), "compiled ControlTemplate dynamic resource initial value");
         AssertEqual(1.0, GetProperty(templateBorder, "Opacity"), "compiled ControlTemplate trigger initial opacity");
+        ValidateTemplateVisualStateManager(templateBorder);
 
         SetDictionaryValue(resources, "AccentBrush", replacementAccentBrush);
         AssertSame(replacementAccentBrush, GetProperty(templateBorder, "Background"), "compiled ControlTemplate dynamic resource update");
@@ -997,6 +998,55 @@ internal static class Program
         SetProperty(templatedButton, "IsEnabled", false);
         AssertEqual(false, GetProperty(templatedButton, "IsEnabled"), "compiled ControlTemplate trigger source state");
         AssertEqual(0.42, GetProperty(templateBorder, "Opacity"), "compiled ControlTemplate trigger disabled opacity");
+    }
+
+    private static void ValidateTemplateVisualStateManager(object templateBorder)
+    {
+        Type visualStateManagerType = templateBorder.GetType().Assembly.GetType(
+            "System.Windows.VisualStateManager",
+            throwOnError: true)
+            ?? throw new TypeLoadException("System.Windows.VisualStateManager");
+
+        object groups = InvokeStatic(visualStateManagerType, "GetVisualStateGroups", templateBorder);
+        AssertCollectionCount(groups, expected: 1, "compiled VisualStateManager group collection");
+
+        object commonStates = GetCollectionItem(groups, 0);
+        AssertType(commonStates, "System.Windows.VisualStateGroup", "compiled VisualStateGroup");
+        AssertEqual("CommonStates", GetProperty(commonStates, "Name"), "compiled VisualStateGroup name");
+
+        object states = GetProperty(commonStates, "States");
+        AssertCollectionCount(states, expected: 2, "compiled VisualState entries");
+        object normalState = GetCollectionItem(states, 0);
+        object pressedState = GetCollectionItem(states, 1);
+        AssertType(normalState, "System.Windows.VisualState", "compiled Normal VisualState");
+        AssertType(pressedState, "System.Windows.VisualState", "compiled Pressed VisualState");
+        AssertEqual("Normal", GetProperty(normalState, "Name"), "compiled Normal VisualState name");
+        AssertEqual("Pressed", GetProperty(pressedState, "Name"), "compiled Pressed VisualState name");
+
+        object pressedStoryboard = GetProperty(pressedState, "Storyboard");
+        AssertType(pressedStoryboard, "System.Windows.Media.Animation.Storyboard", "compiled Pressed VisualState storyboard");
+        object pressedAnimations = GetProperty(pressedStoryboard, "Children");
+        AssertCollectionCount(pressedAnimations, expected: 1, "compiled Pressed VisualState storyboard animations");
+        object pressedAnimation = GetCollectionItem(pressedAnimations, 0);
+        AssertType(pressedAnimation, "System.Windows.Media.Animation.DoubleAnimation", "compiled Pressed VisualState animation");
+        AssertEqual(0.73, GetProperty(pressedAnimation, "To"), "compiled Pressed VisualState animation target value");
+        AssertEqual("00:00:00", GetProperty(pressedAnimation, "Duration").ToString(), "compiled Pressed VisualState animation duration");
+    }
+
+    private static void ValidatePostShowTemplateVisualStateManager(object window, Action flushRender)
+    {
+        object templatedButton = GetField(window, "TemplatedButton");
+        object template = GetProperty(templatedButton, "Template");
+        object templateBorder = Invoke(template, "FindName", "TemplateBorder", templatedButton);
+        Type visualStateManagerType = templateBorder.GetType().Assembly.GetType(
+            "System.Windows.VisualStateManager",
+            throwOnError: true)
+            ?? throw new TypeLoadException("System.Windows.VisualStateManager");
+
+        AssertEqual(true, InvokeStatic(visualStateManagerType, "GoToElementState", templateBorder, "Pressed", false), "compiled VisualStateManager Pressed transition");
+        flushRender();
+
+        AssertEqual(0.73, GetProperty(templateBorder, "Opacity"), "compiled VisualStateManager Pressed opacity");
     }
 
     private static void ValidateItemsBindingAndTemplate(object window)
@@ -1816,6 +1866,9 @@ internal static class Program
             Invoke(typedActivation.Window, "UpdateLayout");
             ValidatePostShowLoadedEvent(typedActivation.Window);
             ValidatePostShowClickStoryboardEventTrigger(
+                typedActivation.Window,
+                () => FlushDispatcherOperations(typedActivation.Window, "Render"));
+            ValidatePostShowTemplateVisualStateManager(
                 typedActivation.Window,
                 () => FlushDispatcherOperations(typedActivation.Window, "Render"));
             ValidatePostShowItemTemplateTriggerActivation(_presentationCore, typedActivation.Window);

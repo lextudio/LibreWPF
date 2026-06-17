@@ -16,6 +16,21 @@
                     x:Name="TemplateBorder"
                     Background="{DynamicResource AccentBrush}"
                     Padding="4">
+                    <VisualStateManager.VisualStateGroups>
+                        <VisualStateGroup x:Name="CommonStates">
+                            <VisualState x:Name="Normal" />
+                            <VisualState x:Name="Pressed">
+                                <Storyboard>
+                                    <DoubleAnimation
+                                        Storyboard.TargetName="TemplateBorder"
+                                        Storyboard.TargetProperty="Opacity"
+                                        To="0.73"
+                                        Duration="0:0:0"
+                                        FillBehavior="HoldEnd" />
+                                </Storyboard>
+                            </VisualState>
+                        </VisualStateGroup>
+                    </VisualStateManager.VisualStateGroups>
                     <ContentPresenter
                         Content="{TemplateBinding Content}"
                         HorizontalAlignment="Center"

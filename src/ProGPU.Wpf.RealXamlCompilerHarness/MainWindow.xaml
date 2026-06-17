@@ -228,6 +228,44 @@
             MaxLength="12"
             PasswordChanged="OnPasswordChanged"
             PasswordChar="#" />
+        <StackPanel
+            x:Name="LayoutPanelSmoke"
+            Margin="0,8,0,0">
+            <DockPanel
+                x:Name="DockPanelSmoke"
+                LastChildFill="False">
+                <TextBlock
+                    x:Name="DockPanelLeftChild"
+                    DockPanel.Dock="Left"
+                    Text="dock left" />
+                <TextBlock
+                    x:Name="DockPanelRightChild"
+                    DockPanel.Dock="Right"
+                    Text="dock right" />
+            </DockPanel>
+            <Canvas
+                x:Name="CanvasSmoke"
+                Width="120"
+                Height="32">
+                <TextBlock
+                    x:Name="CanvasChild"
+                    Canvas.Left="12"
+                    Canvas.Top="6"
+                    Text="canvas child" />
+            </Canvas>
+            <WrapPanel
+                x:Name="WrapPanelSmoke"
+                ItemHeight="20"
+                ItemWidth="64"
+                Orientation="Horizontal">
+                <TextBlock
+                    x:Name="WrapFirstChild"
+                    Text="wrap one" />
+                <TextBlock
+                    x:Name="WrapSecondChild"
+                    Text="wrap two" />
+            </WrapPanel>
+        </StackPanel>
         <Button
             x:Name="StyledEventButton"
             Margin="0,8,0,0"

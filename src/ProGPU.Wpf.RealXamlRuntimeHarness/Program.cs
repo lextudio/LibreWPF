@@ -179,7 +179,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 53, "stack panel children");
+        AssertCollectionCount(children, expected: 54, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -223,6 +223,7 @@ internal static class Program
         ValidateUnsharedResource(window, application);
         ValidateNestedUserControl(window);
         ValidateReadOnlyGridCollectionsAndAttachedProperties(window);
+        ValidateLayoutPanels(window);
         ValidateImplicitMergedStyle(window, application);
         ValidateXamlEventHandler(window);
         ValidateStyleEventSetter(window);
@@ -1373,6 +1374,55 @@ internal static class Program
         AssertEqual("grid beta", GetProperty(secondCell, "Text"), "compiled Grid second-cell text");
         AssertEqual(1, GetDependencyPropertyValue(secondCell, layoutGrid.GetType(), "RowProperty"), "compiled Grid second-cell row");
         AssertEqual(1, GetDependencyPropertyValue(secondCell, layoutGrid.GetType(), "ColumnProperty"), "compiled Grid second-cell column");
+    }
+
+    private static void ValidateLayoutPanels(object window)
+    {
+        object layoutPanel = GetField(window, "LayoutPanelSmoke");
+        AssertType(layoutPanel, "System.Windows.Controls.StackPanel", "compiled layout panel host");
+        AssertCollectionCount(GetProperty(layoutPanel, "Children"), expected: 3, "compiled layout panel host children");
+
+        object dockPanel = GetField(window, "DockPanelSmoke");
+        AssertType(dockPanel, "System.Windows.Controls.DockPanel", "compiled DockPanel");
+        AssertEqual(false, GetProperty(dockPanel, "LastChildFill"), "compiled DockPanel LastChildFill");
+        AssertCollectionCount(GetProperty(dockPanel, "Children"), expected: 2, "compiled DockPanel children");
+
+        object dockLeft = GetField(window, "DockPanelLeftChild");
+        AssertType(dockLeft, "System.Windows.Controls.TextBlock", "compiled DockPanel left child");
+        AssertEqual("dock left", GetProperty(dockLeft, "Text"), "compiled DockPanel left child text");
+        AssertEqual("Left", GetDependencyPropertyValue(dockLeft, dockPanel.GetType(), "DockProperty").ToString(), "compiled DockPanel left attached Dock");
+
+        object dockRight = GetField(window, "DockPanelRightChild");
+        AssertType(dockRight, "System.Windows.Controls.TextBlock", "compiled DockPanel right child");
+        AssertEqual("dock right", GetProperty(dockRight, "Text"), "compiled DockPanel right child text");
+        AssertEqual("Right", GetDependencyPropertyValue(dockRight, dockPanel.GetType(), "DockProperty").ToString(), "compiled DockPanel right attached Dock");
+
+        object canvas = GetField(window, "CanvasSmoke");
+        AssertType(canvas, "System.Windows.Controls.Canvas", "compiled Canvas");
+        AssertEqual(120.0, GetProperty(canvas, "Width"), "compiled Canvas width");
+        AssertEqual(32.0, GetProperty(canvas, "Height"), "compiled Canvas height");
+        AssertCollectionCount(GetProperty(canvas, "Children"), expected: 1, "compiled Canvas children");
+
+        object canvasChild = GetField(window, "CanvasChild");
+        AssertType(canvasChild, "System.Windows.Controls.TextBlock", "compiled Canvas child");
+        AssertEqual("canvas child", GetProperty(canvasChild, "Text"), "compiled Canvas child text");
+        AssertEqual(12.0, GetDependencyPropertyValue(canvasChild, canvas.GetType(), "LeftProperty"), "compiled Canvas left attached property");
+        AssertEqual(6.0, GetDependencyPropertyValue(canvasChild, canvas.GetType(), "TopProperty"), "compiled Canvas top attached property");
+
+        object wrapPanel = GetField(window, "WrapPanelSmoke");
+        AssertType(wrapPanel, "System.Windows.Controls.WrapPanel", "compiled WrapPanel");
+        AssertEqual("Horizontal", GetProperty(wrapPanel, "Orientation").ToString(), "compiled WrapPanel orientation");
+        AssertEqual(64.0, GetProperty(wrapPanel, "ItemWidth"), "compiled WrapPanel item width");
+        AssertEqual(20.0, GetProperty(wrapPanel, "ItemHeight"), "compiled WrapPanel item height");
+        AssertCollectionCount(GetProperty(wrapPanel, "Children"), expected: 2, "compiled WrapPanel children");
+
+        object wrapFirst = GetField(window, "WrapFirstChild");
+        AssertType(wrapFirst, "System.Windows.Controls.TextBlock", "compiled WrapPanel first child");
+        AssertEqual("wrap one", GetProperty(wrapFirst, "Text"), "compiled WrapPanel first child text");
+
+        object wrapSecond = GetField(window, "WrapSecondChild");
+        AssertType(wrapSecond, "System.Windows.Controls.TextBlock", "compiled WrapPanel second child");
+        AssertEqual("wrap two", GetProperty(wrapSecond, "Text"), "compiled WrapPanel second child text");
     }
 
     private static void ValidateImplicitMergedStyle(object window, object application)

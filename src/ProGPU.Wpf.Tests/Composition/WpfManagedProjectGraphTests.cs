@@ -946,6 +946,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"GridFirstCell\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Grid.Row=\"1\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Grid.Column=\"1\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"LayoutPanelSmoke\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"DockPanelSmoke\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("LastChildFill=\"False\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DockPanel.Dock=\"Left\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DockPanel.Dock=\"Right\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"CanvasSmoke\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Canvas.Left=\"12\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Canvas.Top=\"6\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"WrapPanelSmoke\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemWidth=\"64\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ImplicitStyleCheckBox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("IsChecked=\"True\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"EventButton\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1386,6 +1396,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateReadOnlyGridCollectionsAndAttachedProperties(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Grid row definitions", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDependencyPropertyValue(firstCell, layoutGrid.GetType(), \"RowProperty\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLayoutPanels(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DockPanel left attached Dock", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Canvas top attached property", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled WrapPanel item width", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateImplicitMergedStyle(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled implicit CheckBox style tag", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateXamlEventHandler(window)", harnessProgram, StringComparison.Ordinal);
@@ -1728,6 +1742,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateReadOnlyGridCollectionsAndAttachedProperties(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Grid column definitions", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDependencyPropertyValue(secondCell, layoutGrid.GetType(), \"ColumnProperty\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLayoutPanels(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DockPanel right attached Dock", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Canvas left attached property", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled WrapPanel item height", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateImplicitMergedStyle(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled implicit CheckBox style margin top", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateXamlEventHandler(window)", harnessProgram, StringComparison.Ordinal);

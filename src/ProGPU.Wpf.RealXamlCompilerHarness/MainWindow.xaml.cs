@@ -167,6 +167,14 @@ public partial class MainWindow : Window
     }
 }
 
+public sealed class ProviderDataFactory
+{
+    public string CreateProviderGreeting(string prefix, string value)
+    {
+        return $"{prefix} data {value}";
+    }
+}
+
 public sealed class SmokeItem
 {
     public SmokeItem(string name)

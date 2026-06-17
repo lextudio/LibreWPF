@@ -143,7 +143,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 18, "stack panel children");
+        AssertCollectionCount(children, expected: 19, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -167,6 +167,7 @@ internal static class Program
 
         ValidateBindingAndCommand(window);
         ValidateAdvancedBindingFeatures(window);
+        ValidateObjectDataProvider(window);
         ValidateMergedResourceDictionary(window, application);
         ValidateNestedUserControl(window);
         ValidateReadOnlyGridCollectionsAndAttachedProperties(window);
@@ -360,6 +361,32 @@ internal static class Program
         AssertType(relativeSourceBlock, "System.Windows.Controls.TextBlock", "compiled RelativeSource TextBlock");
         AssertEqual("ancestor binding source", GetProperty(relativeSourceBlock, "Text"), "compiled RelativeSource ancestor binding value");
         AssertBindingPath(relativeSourceBlock, "TextProperty", "Tag", "compiled RelativeSource binding path");
+    }
+
+    private static void ValidateObjectDataProvider(object window)
+    {
+        object provider = Invoke(window, "TryFindResource", "ProviderGreeting");
+        AssertType(provider, "System.Windows.Data.ObjectDataProvider", "compiled ObjectDataProvider resource");
+        AssertEqual(false, GetProperty(provider, "IsAsynchronous"), "compiled ObjectDataProvider synchronous flag");
+        AssertEqual("CreateProviderGreeting", GetProperty(provider, "MethodName"), "compiled ObjectDataProvider method name");
+        Type providerFactoryType = window.GetType().Assembly.GetType("ProGPU.Wpf.RealXamlCompilerHarness.ProviderDataFactory", throwOnError: true)
+            ?? throw new TypeLoadException("ProGPU.Wpf.RealXamlCompilerHarness.ProviderDataFactory");
+        AssertSame(providerFactoryType, GetProperty(provider, "ObjectType"), "compiled ObjectDataProvider object type");
+        AssertType(GetProperty(provider, "ObjectInstance"), "ProGPU.Wpf.RealXamlCompilerHarness.ProviderDataFactory", "compiled ObjectDataProvider object instance");
+        AssertEqual("provider data 7", GetProperty(provider, "Data"), "compiled ObjectDataProvider data");
+
+        object methodParameters = GetProperty(provider, "MethodParameters");
+        AssertCollectionCount(methodParameters, expected: 2, "compiled ObjectDataProvider method parameters");
+        AssertEqual("provider", GetCollectionItem(methodParameters, 0), "compiled ObjectDataProvider first parameter");
+        AssertEqual("7", GetCollectionItem(methodParameters, 1), "compiled ObjectDataProvider second parameter");
+
+        object providerGreetingBlock = GetField(window, "ProviderGreetingBlock");
+        AssertType(providerGreetingBlock, "System.Windows.Controls.TextBlock", "compiled ObjectDataProvider TextBlock");
+        AssertEqual("provider data 7", GetProperty(providerGreetingBlock, "Text"), "compiled ObjectDataProvider bound text");
+
+        object bindingExpression = GetBindingExpression(providerGreetingBlock, "TextProperty");
+        object parentBinding = GetProperty(bindingExpression, "ParentBinding");
+        AssertSame(provider, GetProperty(parentBinding, "Source"), "compiled ObjectDataProvider binding source");
     }
 
     private static void ValidateMergedResourceDictionary(object window, object application)

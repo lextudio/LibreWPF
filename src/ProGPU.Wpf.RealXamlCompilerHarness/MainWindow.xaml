@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
     xmlns:local="clr-namespace:ProGPU.Wpf.RealXamlCompilerHarness"
+    xmlns:sys="clr-namespace:System;assembly=mscorlib"
     Title="ProGPU WPF XAML smoke"
     Width="420"
     Height="260">
@@ -17,6 +18,16 @@
                     PropertyName="Name" />
             </CollectionViewSource.SortDescriptions>
         </CollectionViewSource>
+        <ObjectDataProvider
+            x:Key="ProviderGreeting"
+            IsAsynchronous="False"
+            MethodName="CreateProviderGreeting"
+            ObjectType="{x:Type local:ProviderDataFactory}">
+            <ObjectDataProvider.MethodParameters>
+                <sys:String>provider</sys:String>
+                <sys:String>7</sys:String>
+            </ObjectDataProvider.MethodParameters>
+        </ObjectDataProvider>
     </Window.Resources>
     <Window.CommandBindings>
         <CommandBinding
@@ -89,6 +100,10 @@
             x:Name="ValidatedBox"
             Margin="0,8,0,0"
             Text="{Binding ValidatedText, UpdateSourceTrigger=Explicit, ValidatesOnDataErrors=True, NotifyOnValidationError=True}" />
+        <TextBlock
+            x:Name="ProviderGreetingBlock"
+            Margin="0,8,0,0"
+            Text="{Binding Source={StaticResource ProviderGreeting}}" />
         <TextBlock
             x:Name="MergedResourceBlock"
             Foreground="{StaticResource MergedAccentBrush}"

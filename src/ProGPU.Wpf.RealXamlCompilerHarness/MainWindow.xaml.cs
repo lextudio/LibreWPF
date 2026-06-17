@@ -434,3 +434,22 @@ public sealed class SmokeItemContainerStyleSelector : StyleSelector
         return DefaultStyle ?? base.SelectStyle(item, container);
     }
 }
+
+public sealed class SmokeDetailTemplateSelector : DataTemplateSelector
+{
+    public DataTemplate? SelectedTemplate { get; set; }
+
+    public DataTemplate? FallbackTemplate { get; set; }
+
+    public override DataTemplate? SelectTemplate(object item, DependencyObject container)
+    {
+        if (item is SmokeDetail detail &&
+            detail.Title.Contains("implicit", StringComparison.Ordinal) &&
+            SelectedTemplate != null)
+        {
+            return SelectedTemplate;
+        }
+
+        return FallbackTemplate ?? base.SelectTemplate(item, container);
+    }
+}

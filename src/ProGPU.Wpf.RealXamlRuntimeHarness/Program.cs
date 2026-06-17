@@ -79,6 +79,7 @@ internal static class Program
             ValidatePostShowItemTemplateSelector(presentationCore, window);
             ValidatePostShowItemContainerStyleSelector(presentationCore, window);
             ValidatePostShowImplicitDataTemplate(presentationCore, window);
+            ValidatePostShowContentTemplateSelector(presentationCore, window);
             ValidatePostShowHierarchicalDataTemplate(presentationCore, window);
             ValidatePortableKeyboardFocus(presentationCore, window);
             ValidatePortableInputBindingActivation(presentationCore, activation, window);
@@ -176,7 +177,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 38, "stack panel children");
+        AssertCollectionCount(children, expected: 39, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -228,6 +229,7 @@ internal static class Program
         ValidateTemplateAndDynamicResource(window, application);
         ValidateItemsBindingAndTemplate(window);
         ValidateImplicitDataTemplate(window);
+        ValidateContentTemplateSelector(window);
         ValidateHierarchicalDataTemplate(window);
     }
 
@@ -951,6 +953,19 @@ internal static class Program
         AssertEqual("implicit data template", GetProperty(detailTextBlock, "Tag"), "compiled implicit DataTemplate generated value");
     }
 
+    private static void ValidatePostShowContentTemplateSelector(Assembly presentationCore, object window)
+    {
+        object selectorTemplateHost = GetField(window, "SelectorTemplateHost");
+        Invoke(selectorTemplateHost, "ApplyTemplate");
+        Invoke(selectorTemplateHost, "UpdateLayout");
+
+        object detailTextBlock = FindVisualDescendantByName(presentationCore, selectorTemplateHost, "SelectedDetailTextBlock")
+            ?? throw new InvalidOperationException("Expected ContentTemplateSelector host to contain SelectedDetailTextBlock.");
+        AssertType(detailTextBlock, "System.Windows.Controls.TextBlock", "compiled ContentTemplateSelector generated TextBlock");
+        AssertEqual("detail from implicit template", GetProperty(detailTextBlock, "Text"), "compiled ContentTemplateSelector generated TextBlock binding");
+        AssertEqual("content template selector selected", GetProperty(detailTextBlock, "Tag"), "compiled ContentTemplateSelector generated value");
+    }
+
     private static void ValidatePostShowHierarchicalDataTemplate(Assembly presentationCore, object window)
     {
         object nodeTree = GetField(window, "NodeTree");
@@ -1608,6 +1623,37 @@ internal static class Program
         object implicitTemplateHost = GetField(window, "ImplicitTemplateHost");
         AssertType(implicitTemplateHost, "System.Windows.Controls.ContentControl", "compiled implicit DataTemplate host");
         AssertSame(detail, GetProperty(implicitTemplateHost, "Content"), "compiled implicit DataTemplate host content binding");
+    }
+
+    private static void ValidateContentTemplateSelector(object window)
+    {
+        object dataContext = GetProperty(window, "DataContext");
+        object detail = GetProperty(dataContext, "Detail");
+        object selectedTemplate = Invoke(window, "TryFindResource", "SelectedDetailTemplate");
+        AssertType(selectedTemplate, "System.Windows.DataTemplate", "compiled ContentTemplateSelector selected template resource");
+        object selectedTemplateRoot = Invoke(selectedTemplate, "LoadContent");
+        AssertType(selectedTemplateRoot, "System.Windows.Controls.TextBlock", "compiled ContentTemplateSelector selected template root");
+        AssertEqual("SelectedDetailTextBlock", GetProperty(selectedTemplateRoot, "Name"), "compiled ContentTemplateSelector selected template named root");
+        AssertEqual("content template selector selected", GetProperty(selectedTemplateRoot, "Tag"), "compiled ContentTemplateSelector selected template tag");
+        AssertBindingPath(selectedTemplateRoot, "TextProperty", "Title", "compiled ContentTemplateSelector selected binding path");
+
+        object fallbackTemplate = Invoke(window, "TryFindResource", "FallbackDetailTemplate");
+        AssertType(fallbackTemplate, "System.Windows.DataTemplate", "compiled ContentTemplateSelector fallback template resource");
+        object fallbackTemplateRoot = Invoke(fallbackTemplate, "LoadContent");
+        AssertType(fallbackTemplateRoot, "System.Windows.Controls.TextBlock", "compiled ContentTemplateSelector fallback template root");
+        AssertEqual("SelectedDetailTextBlock", GetProperty(fallbackTemplateRoot, "Name"), "compiled ContentTemplateSelector fallback template named root");
+        AssertEqual("content template selector fallback", GetProperty(fallbackTemplateRoot, "Tag"), "compiled ContentTemplateSelector fallback template tag");
+        AssertBindingPath(fallbackTemplateRoot, "TextProperty", "Title", "compiled ContentTemplateSelector fallback binding path");
+
+        object selector = Invoke(window, "TryFindResource", "SmokeDetailTemplateSelector");
+        AssertType(selector, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeDetailTemplateSelector", "compiled ContentTemplateSelector resource");
+        AssertSame(selectedTemplate, GetProperty(selector, "SelectedTemplate"), "compiled ContentTemplateSelector selected template property");
+        AssertSame(fallbackTemplate, GetProperty(selector, "FallbackTemplate"), "compiled ContentTemplateSelector fallback template property");
+
+        object selectorTemplateHost = GetField(window, "SelectorTemplateHost");
+        AssertType(selectorTemplateHost, "System.Windows.Controls.ContentControl", "compiled ContentTemplateSelector host");
+        AssertSame(detail, GetProperty(selectorTemplateHost, "Content"), "compiled ContentTemplateSelector host content binding");
+        AssertSame(selector, GetProperty(selectorTemplateHost, "ContentTemplateSelector"), "compiled ContentControl ContentTemplateSelector binding");
     }
 
     private static void ValidateHierarchicalDataTemplate(object window)

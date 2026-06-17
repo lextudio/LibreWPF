@@ -35,6 +35,22 @@
                 Tag="implicit data template"
                 Text="{Binding Title}" />
         </DataTemplate>
+        <DataTemplate x:Key="SelectedDetailTemplate" DataType="{x:Type local:SmokeDetail}">
+            <TextBlock
+                x:Name="SelectedDetailTextBlock"
+                Tag="content template selector selected"
+                Text="{Binding Title}" />
+        </DataTemplate>
+        <DataTemplate x:Key="FallbackDetailTemplate" DataType="{x:Type local:SmokeDetail}">
+            <TextBlock
+                x:Name="SelectedDetailTextBlock"
+                Tag="content template selector fallback"
+                Text="{Binding Title}" />
+        </DataTemplate>
+        <local:SmokeDetailTemplateSelector
+            x:Key="SmokeDetailTemplateSelector"
+            FallbackTemplate="{StaticResource FallbackDetailTemplate}"
+            SelectedTemplate="{StaticResource SelectedDetailTemplate}" />
         <HierarchicalDataTemplate
             x:Key="SmokeNodeTemplate"
             DataType="{x:Type local:SmokeNode}"
@@ -483,5 +499,10 @@
             x:Name="ImplicitTemplateHost"
             Margin="0,8,0,0"
             Content="{Binding Detail}" />
+        <ContentControl
+            x:Name="SelectorTemplateHost"
+            Margin="0,8,0,0"
+            Content="{Binding Detail}"
+            ContentTemplateSelector="{StaticResource SmokeDetailTemplateSelector}" />
     </StackPanel>
 </Window>

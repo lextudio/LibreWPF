@@ -263,6 +263,25 @@
                 </EventTrigger>
             </TextBlock.Triggers>
         </TextBlock>
+        <Button
+            x:Name="StoryboardTriggerButton"
+            Margin="0,8,0,0"
+            Content="run storyboard trigger"
+            Opacity="1">
+            <Button.Triggers>
+                <EventTrigger RoutedEvent="Button.Click">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation
+                                Storyboard.TargetProperty="Opacity"
+                                To="0.64"
+                                Duration="0:0:0"
+                                FillBehavior="HoldEnd" />
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Button.Triggers>
+        </Button>
         <TextBlock
             x:Name="MarkupExtensionBlock"
             Margin="0,8,0,0"

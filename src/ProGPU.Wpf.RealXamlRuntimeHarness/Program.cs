@@ -67,6 +67,9 @@ internal static class Program
                 out activation);
             ValidatePostShowBindingFeatures(window);
             ValidatePostShowLoadedEvent(window);
+            ValidatePostShowClickStoryboardEventTrigger(
+                window,
+                () => FlushDispatcherOperations(activationServiceType, window, "Render"));
             ValidatePostShowItemTemplateTriggerActivation(presentationCore, window);
             ValidatePostShowGroupStyleHeader(presentationCore, window);
             ValidatePostShowItemTemplateSelector(presentationCore, window);
@@ -158,7 +161,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 34, "stack panel children");
+        AssertCollectionCount(children, expected: 35, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -765,6 +768,43 @@ internal static class Program
         AssertEqual(0.37, GetProperty(doubleAnimation, "To"), "compiled DoubleAnimation target value");
         AssertEqual("00:00:00", GetProperty(doubleAnimation, "Duration").ToString(), "compiled DoubleAnimation duration");
         AssertEqual("HoldEnd", GetProperty(doubleAnimation, "FillBehavior").ToString(), "compiled DoubleAnimation fill behavior");
+
+        object storyboardTriggerButton = GetField(window, "StoryboardTriggerButton");
+        AssertType(storyboardTriggerButton, "System.Windows.Controls.Button", "compiled click Storyboard trigger Button");
+        AssertEqual("run storyboard trigger", GetProperty(storyboardTriggerButton, "Content"), "compiled click Storyboard trigger Button content");
+        AssertEqual(1.0, GetProperty(storyboardTriggerButton, "Opacity"), "compiled click Storyboard trigger Button initial opacity");
+
+        object clickTriggers = GetProperty(storyboardTriggerButton, "Triggers");
+        AssertCollectionCount(clickTriggers, expected: 1, "compiled click EventTrigger collection");
+        object clickEventTrigger = GetCollectionItem(clickTriggers, 0);
+        AssertType(clickEventTrigger, "System.Windows.EventTrigger", "compiled click EventTrigger");
+        AssertEqual("Click", GetProperty(GetProperty(clickEventTrigger, "RoutedEvent"), "Name"), "compiled click EventTrigger routed event");
+
+        object clickActions = GetProperty(clickEventTrigger, "Actions");
+        AssertCollectionCount(clickActions, expected: 1, "compiled click EventTrigger actions");
+        object clickBeginStoryboard = GetCollectionItem(clickActions, 0);
+        AssertType(clickBeginStoryboard, "System.Windows.Media.Animation.BeginStoryboard", "compiled click BeginStoryboard action");
+
+        object clickStoryboard = GetProperty(clickBeginStoryboard, "Storyboard");
+        AssertType(clickStoryboard, "System.Windows.Media.Animation.Storyboard", "compiled click Storyboard");
+        object clickChildren = GetProperty(clickStoryboard, "Children");
+        AssertCollectionCount(clickChildren, expected: 1, "compiled click Storyboard children");
+        object clickDoubleAnimation = GetCollectionItem(clickChildren, 0);
+        AssertType(clickDoubleAnimation, "System.Windows.Media.Animation.DoubleAnimation", "compiled click DoubleAnimation");
+        AssertEqual(0.64, GetProperty(clickDoubleAnimation, "To"), "compiled click DoubleAnimation target value");
+        AssertEqual("00:00:00", GetProperty(clickDoubleAnimation, "Duration").ToString(), "compiled click DoubleAnimation duration");
+        AssertEqual("HoldEnd", GetProperty(clickDoubleAnimation, "FillBehavior").ToString(), "compiled click DoubleAnimation fill behavior");
+    }
+
+    private static void ValidatePostShowClickStoryboardEventTrigger(object window, Action flushRender)
+    {
+        object storyboardTriggerButton = GetField(window, "StoryboardTriggerButton");
+        AssertEqual(1.0, GetProperty(storyboardTriggerButton, "Opacity"), "compiled click Storyboard trigger Button pre-click opacity");
+
+        Invoke(storyboardTriggerButton, "OnClick");
+        flushRender();
+
+        AssertEqual(0.64, GetProperty(storyboardTriggerButton, "Opacity"), "compiled click Storyboard trigger Button post-click opacity");
     }
 
     private static void ValidateMarkupExtension(object window)
@@ -1222,6 +1262,21 @@ internal static class Program
         AssertEqual("ProGPU WPF XAML smoke", portableActivation.Host.Title, "host title");
         AssertEqual(420, portableActivation.Host.Width, "host width");
         AssertEqual(260, portableActivation.Host.Height, "host height");
+    }
+
+    private static void FlushDispatcherOperations(Type activationServiceType, object window, params string[] markerPriorityNames)
+    {
+        MethodInfo flushMethod = activationServiceType.GetMethod(
+            "FlushDispatcherOperations",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMethodException(activationServiceType.FullName, "FlushDispatcherOperations");
+        Type dispatcherPriorityType = flushMethod.GetParameters()[1].ParameterType;
+
+        foreach (string markerPriorityName in markerPriorityNames)
+        {
+            object markerPriority = Enum.Parse(dispatcherPriorityType, markerPriorityName);
+            flushMethod.Invoke(null, new[] { window, markerPriority });
+        }
     }
 
     private static object Create(Assembly assembly, string typeName, params object?[] parameters)

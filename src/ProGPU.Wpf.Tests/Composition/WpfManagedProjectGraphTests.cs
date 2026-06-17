@@ -853,6 +853,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("To=\"0.37\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Duration=\"0:0:0\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("FillBehavior=\"HoldEnd\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"StoryboardTriggerButton\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Button.Triggers", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("RoutedEvent=\"Button.Click\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Storyboard.TargetProperty=\"Opacity\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("To=\"0.64\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MarkupExtensionBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{local:SmokeText Prefix=compiled, Value=markup}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MergedResourceBlock\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1164,8 +1169,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Storyboard children", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DoubleAnimation target value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DoubleAnimation fill behavior", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled click Storyboard trigger Button", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled click DoubleAnimation target value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowLoadedEvent(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Storyboard target post-Loaded opacity", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowClickStoryboardEventTrigger(", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FlushDispatcherOperations(activationServiceType, window, \"Render\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled click Storyboard trigger Button post-click opacity", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Storyboard target Loaded handler count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Storyboard target Loaded routed event name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMarkupExtension(window)", harnessProgram, StringComparison.Ordinal);
@@ -1395,7 +1405,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Storyboard children", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DoubleAnimation target value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DoubleAnimation fill behavior", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled click Storyboard trigger Button", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled click DoubleAnimation target value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowLoadedEvent(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowClickStoryboardEventTrigger(", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FlushDispatcherOperations(typedActivation.Window, \"Render\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled click Storyboard trigger Button post-click opacity", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLoadedEventHandlerState(activation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("FlushDispatcherOperations(typedActivation.Window, \"Loaded\", \"Render\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableMediaContextRenderServiceTypeName", harnessProgram, StringComparison.Ordinal);

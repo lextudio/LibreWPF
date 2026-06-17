@@ -66,6 +66,7 @@ internal static class Program
                 out activationServiceType,
                 out activation);
             ValidatePostShowBindingFeatures(window);
+            ValidatePostShowLoadedEvent(window);
             ValidatePostShowItemTemplateTriggerActivation(presentationCore, window);
             ValidatePostShowGroupStyleHeader(presentationCore, window);
             ValidatePostShowItemTemplateSelector(presentationCore, window);
@@ -504,6 +505,15 @@ internal static class Program
         AssertBindingPath(relativeSourceBlock, "TextProperty", "Tag", "compiled RelativeSource binding path");
     }
 
+    private static void ValidatePostShowLoadedEvent(object window)
+    {
+        object storyboardTargetBlock = GetField(window, "StoryboardTargetBlock");
+        AssertEqual(true, GetProperty(storyboardTargetBlock, "IsLoaded"), "compiled Storyboard target loaded state");
+        AssertEqual(1, GetProperty(window, "StoryboardTargetLoadedCount"), "compiled Storyboard target Loaded handler count");
+        AssertEqual("StoryboardTargetBlock", GetProperty(window, "LastStoryboardTargetLoadedSenderName"), "compiled Storyboard target Loaded sender name");
+        AssertEqual("Loaded", GetProperty(window, "LastStoryboardTargetLoadedRoutedEventName"), "compiled Storyboard target Loaded routed event name");
+    }
+
     private static void ValidatePostShowItemTemplateTriggerActivation(Assembly presentationCore, object window)
     {
         object itemsList = GetField(window, "ItemsList");
@@ -732,6 +742,7 @@ internal static class Program
         AssertType(storyboardTargetBlock, "System.Windows.Controls.TextBlock", "compiled Storyboard target TextBlock");
         AssertEqual("compiled storyboard target", GetProperty(storyboardTargetBlock, "Text"), "compiled Storyboard target text");
         AssertEqual(1.0, GetProperty(storyboardTargetBlock, "Opacity"), "compiled Storyboard target initial opacity");
+        AssertEqual(0, GetProperty(window, "StoryboardTargetLoadedCount"), "compiled Storyboard target initial Loaded count");
 
         object triggers = GetProperty(storyboardTargetBlock, "Triggers");
         AssertCollectionCount(triggers, expected: 1, "compiled EventTrigger collection");

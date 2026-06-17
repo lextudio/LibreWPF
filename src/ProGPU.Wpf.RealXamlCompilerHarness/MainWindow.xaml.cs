@@ -42,6 +42,12 @@ public partial class MainWindow : Window
 
     public string? LastStyledClickRoutedEventName { get; private set; }
 
+    public int StoryboardTargetLoadedCount { get; private set; }
+
+    public string? LastStoryboardTargetLoadedSenderName { get; private set; }
+
+    public string? LastStoryboardTargetLoadedRoutedEventName { get; private set; }
+
     public int FilteredItemsFilterCount { get; private set; }
 
     private void OnSmokeCommandCanExecute(object sender, CanExecuteRoutedEventArgs e)
@@ -72,6 +78,13 @@ public partial class MainWindow : Window
         LastStyledClickSenderName = sender is FrameworkElement element ? element.Name : null;
         LastStyledClickRoutedEventName = e.RoutedEvent?.Name;
         e.Handled = true;
+    }
+
+    private void OnStoryboardTargetLoaded(object sender, RoutedEventArgs e)
+    {
+        StoryboardTargetLoadedCount++;
+        LastStoryboardTargetLoadedSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastStoryboardTargetLoadedRoutedEventName = e.RoutedEvent?.Name;
     }
 
     private void OnFilteredItemsViewFilter(object sender, FilterEventArgs e)

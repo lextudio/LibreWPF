@@ -590,7 +590,10 @@ namespace System.Windows.Media
                 if (nextTickNeeded >= TimeSpan.Zero)
                 {
                     nextTickNeeded = TimeSpan.FromTicks(Math.Max(nextTickNeeded.Ticks, minimumDelay.Ticks));
-                    EnterInterlockedPresentation();
+                    if (Channel != null)
+                    {
+                        EnterInterlockedPresentation();
+                    }
                 }
                 else
                 {

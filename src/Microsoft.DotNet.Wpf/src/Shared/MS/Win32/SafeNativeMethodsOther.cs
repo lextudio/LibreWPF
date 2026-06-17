@@ -55,6 +55,11 @@ namespace MS.Win32
             // But we don't want to introduce new "throws" w/o 
             // time to follow up on any new problems that causes.
 
+            if (!OperatingSystem.IsWindows())
+            {
+                return 0;
+            }
+
             return SafeNativeMethodsPrivate.GetCaretBlinkTime();
         }
 

@@ -244,6 +244,7 @@
             Text="{Binding Source={StaticResource ProviderXml}, XPath=@Text}" />
         <TextBlock
             x:Name="StoryboardTargetBlock"
+            Loaded="OnStoryboardTargetLoaded"
             Margin="0,8,0,0"
             Opacity="1"
             Text="compiled storyboard target">

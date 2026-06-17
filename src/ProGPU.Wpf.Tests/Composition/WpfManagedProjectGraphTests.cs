@@ -164,6 +164,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RenderDisconnectedMessageHandlerCore(resizedCompositionTarget)", mediaContext, StringComparison.Ordinal);
         Assert.Contains("private void RenderDisconnectedMessageHandlerCore", mediaContext, StringComparison.Ordinal);
         Assert.Contains("ScheduleNextRenderOp(_timeDelay)", mediaContext, StringComparison.Ordinal);
+        Assert.Contains("if (Channel != null)", mediaContext, StringComparison.Ordinal);
+        Assert.Contains("EnterInterlockedPresentation();", mediaContext, StringComparison.Ordinal);
 
         Assert.Contains("internal static void FlushDispatcherOperations(object window, DispatcherPriority markerPriority)", activationService, StringComparison.Ordinal);
         Assert.Contains("Dispatcher.PushFrame(frame)", activationService, StringComparison.Ordinal);
@@ -174,7 +176,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("typeof(Action<TimeSpan>)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("IWpfDelayedRenderScheduler delayedScheduler", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.RenderWakeupRequested += OnHostRenderWakeupRequested", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("TryFlushDispatcherOperations(Window, \"Render\")", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("FlushWpfDispatcherOperations(\"Loaded\", \"Render\")", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("FlushWpfDispatcherOperations(\"Render\")", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("TryFlushDispatcherOperations(Window, markerPriorityName)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("FindPortableWindowActivationServiceType(window)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("_window.Update += OnUpdate", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_window.Update -= OnUpdate", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("private void OnUpdate(double deltaSeconds)", proGpuHost, StringComparison.Ordinal);
@@ -838,6 +843,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"XmlProviderBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding Source={StaticResource ProviderXml}, XPath=@Text}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"StoryboardTargetBlock\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Loaded=\"OnStoryboardTargetLoaded\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("TextBlock.Triggers", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("EventTrigger RoutedEvent=\"FrameworkElement.Loaded\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("BeginStoryboard", mainWindowXaml, StringComparison.Ordinal);
@@ -982,6 +988,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public int StyledClickCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnStyledButtonClick", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastStyledClickRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int StoryboardTargetLoadedCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnStoryboardTargetLoaded", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastStoryboardTargetLoadedRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int FilteredItemsFilterCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnFilteredItemsViewFilter", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("e.Accepted = e.Item is SmokeItem smokeItem", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1149,11 +1158,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled XmlDataProvider binding XPath", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateStoryboardEventTrigger(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Storyboard target TextBlock", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Storyboard target initial Loaded count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled EventTrigger routed event", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled BeginStoryboard action", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Storyboard children", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DoubleAnimation target value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DoubleAnimation fill behavior", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowLoadedEvent(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Storyboard target Loaded handler count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Storyboard target Loaded routed event name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMarkupExtension(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MarkupExtension TextBlock", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MarkupExtension provided text", harnessProgram, StringComparison.Ordinal);
@@ -1375,11 +1388,21 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled XmlDataProvider binding XPath", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateStoryboardEventTrigger(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Storyboard target TextBlock", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Storyboard target initial Loaded count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled EventTrigger routed event", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled BeginStoryboard action", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Storyboard children", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DoubleAnimation target value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DoubleAnimation fill behavior", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowLoadedEvent(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLoadedEventHandlerState(activation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FlushDispatcherOperations(typedActivation.Window, \"Loaded\", \"Render\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PortablePresentationSourceTypeName", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CreatePortablePresentationSource(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SetProperty(source, \"RootVisual\", window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("typedActivation.DisposePresentationSource()", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Storyboard target Loaded handler count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Storyboard target Loaded routed event name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMarkupExtension(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MarkupExtension TextBlock", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MarkupExtension provided text", harnessProgram, StringComparison.Ordinal);
@@ -1625,6 +1648,14 @@ public sealed class WpfManagedProjectGraphTests
             "windows",
             "Documents",
             "TextSelection.cs"));
+        var safeNativeMethodsOther = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "Shared",
+            "MS",
+            "Win32",
+            "SafeNativeMethodsOther.cs"));
         var textServicesLoader = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -1744,6 +1775,7 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETCARETWIDTH");
         AssertGuardBefore(textSelection, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetLocaleInfoW");
         Assert.Contains("return cultureInfo.TextInfo.IsRightToLeft", textSelection, StringComparison.Ordinal);
+        AssertGuardBefore(safeNativeMethodsOther, "if (!OperatingSystem.IsWindows())", "SafeNativeMethodsPrivate.GetCaretBlinkTime()");
         AssertGuardBefore(textServicesLoader, "if (!OperatingSystem.IsWindows())", "Invariant.Assert(Thread.CurrentThread.GetApartmentState() == ApartmentState.STA");
         Assert.Contains("return null;", textServicesLoader, StringComparison.Ordinal);
         Assert.Contains("private static bool IsNativePtsFormatterAvailable", flowDocumentView, StringComparison.Ordinal);

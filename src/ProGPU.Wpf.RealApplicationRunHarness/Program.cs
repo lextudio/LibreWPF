@@ -7,6 +7,7 @@ internal static class Program
     private const string CompilerHarnessAssemblyName = "ProGPU.Wpf.RealXamlCompilerHarness";
     private const string AppTypeName = "ProGPU.Wpf.RealXamlCompilerHarness.App";
     private const string MainWindowTypeName = "ProGPU.Wpf.RealXamlCompilerHarness.MainWindow";
+    private const string PortablePresentationSourceTypeName = "System.Windows.PortablePresentationSource";
     private const string PortableWindowActivationServiceTypeName = "System.Windows.PortableWindowActivationService";
 
     [STAThread]
@@ -439,6 +440,20 @@ internal static class Program
         AssertBindingPath(relativeSourceBlock, "TextProperty", "Tag", "compiled RelativeSource binding path");
     }
 
+    private static void ValidatePostShowLoadedEvent(object window)
+    {
+        object storyboardTargetBlock = GetField(window, "StoryboardTargetBlock");
+        AssertEqual(true, GetProperty(storyboardTargetBlock, "IsLoaded"), "compiled Storyboard target loaded state");
+        ValidateLoadedEventHandlerState(window);
+    }
+
+    private static void ValidateLoadedEventHandlerState(object window)
+    {
+        AssertEqual(1, GetProperty(window, "StoryboardTargetLoadedCount"), "compiled Storyboard target Loaded handler count");
+        AssertEqual("StoryboardTargetBlock", GetProperty(window, "LastStoryboardTargetLoadedSenderName"), "compiled Storyboard target Loaded sender name");
+        AssertEqual("Loaded", GetProperty(window, "LastStoryboardTargetLoadedRoutedEventName"), "compiled Storyboard target Loaded routed event name");
+    }
+
     private static void ValidatePostShowItemTemplateTriggerActivation(Assembly presentationCore, object window)
     {
         object itemsList = GetField(window, "ItemsList");
@@ -667,6 +682,7 @@ internal static class Program
         AssertType(storyboardTargetBlock, "System.Windows.Controls.TextBlock", "compiled Storyboard target TextBlock");
         AssertEqual("compiled storyboard target", GetProperty(storyboardTargetBlock, "Text"), "compiled Storyboard target text");
         AssertEqual(1.0, GetProperty(storyboardTargetBlock, "Opacity"), "compiled Storyboard target initial opacity");
+        AssertEqual(0, GetProperty(window, "StoryboardTargetLoadedCount"), "compiled Storyboard target initial Loaded count");
 
         object triggers = GetProperty(storyboardTargetBlock, "Triggers");
         AssertCollectionCount(triggers, expected: 1, "compiled EventTrigger collection");
@@ -1126,7 +1142,7 @@ internal static class Program
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
             ?? throw new MissingMethodException(activationServiceType.FullName, "Register");
 
-        var recorder = new ActivationRecorder(presentationCore, compilerHarness, application);
+        var recorder = new ActivationRecorder(presentationCore, compilerHarness, application, activationServiceType);
         register.Invoke(
             null,
             new object?[]
@@ -1609,13 +1625,19 @@ internal static class Program
         private readonly Assembly _presentationCore;
         private readonly Assembly _compilerHarness;
         private readonly object _application;
+        private readonly Type _activationServiceType;
         private object? _activation;
 
-        public ActivationRecorder(Assembly presentationCore, Assembly compilerHarness, object application)
+        public ActivationRecorder(
+            Assembly presentationCore,
+            Assembly compilerHarness,
+            object application,
+            Type activationServiceType)
         {
             _presentationCore = presentationCore;
             _compilerHarness = compilerHarness;
             _application = application;
+            _activationServiceType = activationServiceType;
         }
 
         public int ActivateCount { get; private set; }
@@ -1639,8 +1661,9 @@ internal static class Program
             AssertSame(GetRequiredType(_compilerHarness, MainWindowTypeName), window.GetType(), "activated startup window type");
             ValidateMainWindow(window, _application);
 
+            object presentationSource = CreatePortablePresentationSource(window);
             ActivateCount++;
-            _activation = new RecordingActivation(window)
+            _activation = new RecordingActivation(window, presentationSource)
             {
                 Title = GetProperty(window, "Title").ToString() ?? string.Empty,
                 Width = Convert.ToDouble(GetProperty(window, "Width")),
@@ -1653,7 +1676,9 @@ internal static class Program
         {
             AssertSameActivation(activation);
             ShowCount++;
-            ((RecordingActivation)activation).IsVisible = true;
+            var typedActivation = (RecordingActivation)activation;
+            typedActivation.IsVisible = true;
+            FlushDispatcherOperations(typedActivation.Window, "Loaded", "Render");
         }
 
         public void Hide(object activation)
@@ -1698,6 +1723,7 @@ internal static class Program
             AssertEqual(420.0, typedActivation.Width, "activated window width");
             AssertEqual(260.0, typedActivation.Height, "activated window height");
             Invoke(typedActivation.Window, "UpdateLayout");
+            ValidatePostShowLoadedEvent(typedActivation.Window);
             ValidatePostShowItemTemplateTriggerActivation(_presentationCore, typedActivation.Window);
             ValidatePostShowGroupStyleHeader(_presentationCore, typedActivation.Window);
             ValidatePostShowItemTemplateSelector(_presentationCore, typedActivation.Window);
@@ -1709,7 +1735,12 @@ internal static class Program
         {
             AssertSameActivation(activation);
             DisposeCount++;
-            ((RecordingActivation)activation).IsDisposed = true;
+            var typedActivation = (RecordingActivation)activation;
+            if (!typedActivation.IsDisposed)
+            {
+                typedActivation.DisposePresentationSource();
+                typedActivation.IsDisposed = true;
+            }
         }
 
         public void ValidateAfterRun()
@@ -1733,6 +1764,7 @@ internal static class Program
             AssertEqual(true, activation.IsClosed, "recorded activation close state");
             AssertEqual(true, activation.IsDisposed, "recorded activation dispose state");
             ValidatePostShowBindingFeatures(activation.Window);
+            ValidateLoadedEventHandlerState(activation.Window);
             ValidatePostShowItemTemplateTriggerActivation(_presentationCore, activation.Window);
             ValidatePostShowGroupStyleHeader(_presentationCore, activation.Window);
             ValidatePostShowItemTemplateSelector(_presentationCore, activation.Window);
@@ -1746,6 +1778,35 @@ internal static class Program
             {
                 throw new InvalidOperationException("Portable activation callback received an unknown activation object.");
             }
+        }
+
+        private void FlushDispatcherOperations(object window, params string[] markerPriorityNames)
+        {
+            MethodInfo flushMethod = _activationServiceType.GetMethod(
+                "FlushDispatcherOperations",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                ?? throw new MissingMethodException(_activationServiceType.FullName, "FlushDispatcherOperations");
+            Type dispatcherPriorityType = flushMethod.GetParameters()[1].ParameterType;
+
+            foreach (string markerPriorityName in markerPriorityNames)
+            {
+                object markerPriority = Enum.Parse(dispatcherPriorityType, markerPriorityName);
+                flushMethod.Invoke(null, new[] { window, markerPriority });
+            }
+        }
+
+        private object CreatePortablePresentationSource(object window)
+        {
+            Type sourceType = GetRequiredType(_presentationCore, PortablePresentationSourceTypeName);
+            object source = Activator.CreateInstance(
+                sourceType,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                args: Array.Empty<object>(),
+                culture: null)
+                ?? throw new InvalidOperationException($"Failed to create '{PortablePresentationSourceTypeName}'.");
+            SetProperty(source, "RootVisual", window);
+            return source;
         }
 
         private string DescribeMainWindow()
@@ -1768,12 +1829,15 @@ internal static class Program
 
     private sealed class RecordingActivation
     {
-        public RecordingActivation(object window)
+        public RecordingActivation(object window, object presentationSource)
         {
             Window = window;
+            PresentationSource = presentationSource;
         }
 
         public object Window { get; }
+
+        public object PresentationSource { get; }
 
         public bool IsVisible { get; set; }
 
@@ -1788,6 +1852,23 @@ internal static class Program
         public double Height { get; set; }
 
         public object? WindowState { get; set; }
+
+        public void DisposePresentationSource()
+        {
+            if (PresentationSource is IDisposable disposable)
+            {
+                disposable.Dispose();
+                return;
+            }
+
+            MethodInfo? dispose = PresentationSource.GetType().GetMethod(
+                nameof(IDisposable.Dispose),
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                Type.EmptyTypes,
+                modifiers: null);
+            dispose?.Invoke(PresentationSource, Array.Empty<object>());
+        }
     }
 
     private sealed class WpfAssemblyLoadContext : AssemblyLoadContext

@@ -130,6 +130,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
     {
         ThrowIfDisposed();
         Host.Show();
+        FlushWpfDispatcherOperations("Loaded", "Render");
     }
 
     public void Hide()
@@ -360,10 +361,23 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return;
         }
 
+        FlushWpfDispatcherOperations("Render");
+    }
+
+    private void FlushWpfDispatcherOperations(params string[] markerPriorityNames)
+    {
+        if (_isFlushingWpfDispatcher)
+        {
+            return;
+        }
+
         _isFlushingWpfDispatcher = true;
         try
         {
-            TryFlushDispatcherOperations(Window, "Render");
+            foreach (string markerPriorityName in markerPriorityNames)
+            {
+                TryFlushDispatcherOperations(Window, markerPriorityName);
+            }
         }
         finally
         {
@@ -726,9 +740,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private static bool TryFlushDispatcherOperations(object window, string markerPriorityName)
     {
-        var serviceType = window.GetType().Assembly.GetType(
-            PortableWindowActivationServiceTypeName,
-            throwOnError: false);
+        Type? serviceType = FindPortableWindowActivationServiceType(window);
         if (serviceType == null)
         {
             return false;
@@ -763,9 +775,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private static bool TryInvokePortableWindowActivationService(object window, bool isActive)
     {
-        var serviceType = window.GetType().Assembly.GetType(
-            PortableWindowActivationServiceTypeName,
-            throwOnError: false);
+        Type? serviceType = FindPortableWindowActivationServiceType(window);
         if (serviceType == null)
         {
             return false;
@@ -799,6 +809,22 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
         setActivationStateMethod.Invoke(null, new object[] { window, isActive });
         return true;
+    }
+
+    private static Type? FindPortableWindowActivationServiceType(object window)
+    {
+        for (Type? currentType = window.GetType(); currentType != null; currentType = currentType.BaseType)
+        {
+            Type? serviceType = currentType.Assembly.GetType(
+                PortableWindowActivationServiceTypeName,
+                throwOnError: false);
+            if (serviceType != null)
+            {
+                return serviceType;
+            }
+        }
+
+        return null;
     }
 
     private static bool TryReadBooleanProperty(object instance, string propertyName, out bool value)

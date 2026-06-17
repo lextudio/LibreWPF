@@ -143,6 +143,7 @@ public partial class MainWindow : Window
         private bool _isWarning;
         private bool _isCritical;
         private SmokeItem? _selectedItem;
+        private string _selectedCategory = "secondary group";
         private string _validatedText = "valid binding text";
         private string _ruleValidatedText = "rule: valid binding text";
 
@@ -250,6 +251,19 @@ public partial class MainWindow : Window
                 if (!ReferenceEquals(_selectedItem, value))
                 {
                     _selectedItem = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string SelectedCategory
+        {
+            get => _selectedCategory;
+            set
+            {
+                if (!string.Equals(_selectedCategory, value, StringComparison.Ordinal))
+                {
+                    _selectedCategory = value;
                     OnPropertyChanged();
                 }
             }

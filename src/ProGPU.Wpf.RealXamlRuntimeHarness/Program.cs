@@ -177,7 +177,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 39, "stack panel children");
+        AssertCollectionCount(children, expected: 40, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -1531,6 +1531,19 @@ internal static class Program
         AssertSame(sourceItems, GetProperty(styleSelectorItemsList, "ItemsSource"), "compiled ItemContainerStyleSelector ListBox ItemsSource binding");
         AssertSame(containerStyleSelector, GetProperty(styleSelectorItemsList, "ItemContainerStyleSelector"), "compiled ListBox ItemContainerStyleSelector binding");
         AssertCollectionCount(GetProperty(styleSelectorItemsList, "Items"), expected: 2, "compiled ItemContainerStyleSelector generated items");
+
+        object displayMemberItemsList = GetField(window, "DisplayMemberItemsList");
+        AssertType(displayMemberItemsList, "System.Windows.Controls.ListBox", "compiled DisplayMemberPath ListBox");
+        AssertSame(sourceItems, GetProperty(displayMemberItemsList, "ItemsSource"), "compiled DisplayMemberPath ListBox ItemsSource binding");
+        AssertEqual("Name", GetProperty(displayMemberItemsList, "DisplayMemberPath"), "compiled ListBox DisplayMemberPath");
+        AssertEqual("Category", GetProperty(displayMemberItemsList, "SelectedValuePath"), "compiled ListBox SelectedValuePath");
+        AssertBindingPath(displayMemberItemsList, "SelectedValueProperty", "SelectedCategory", "compiled ListBox SelectedValue binding path");
+        AssertEqual("secondary group", GetProperty(dataContext, "SelectedCategory"), "compiled ListBox initial selected category source");
+        AssertEqual("secondary group", GetProperty(displayMemberItemsList, "SelectedValue"), "compiled ListBox initial selected value");
+        AssertSame(GetCollectionItem(sourceItems, 1), GetProperty(displayMemberItemsList, "SelectedItem"), "compiled ListBox selected item by value path");
+        SetProperty(displayMemberItemsList, "SelectedValue", "primary group");
+        AssertEqual("primary group", GetProperty(dataContext, "SelectedCategory"), "compiled ListBox two-way selected value source update");
+        AssertSame(GetCollectionItem(sourceItems, 0), GetProperty(displayMemberItemsList, "SelectedItem"), "compiled ListBox selected item after selected value update");
 
         object sortedItemsViewSource = Invoke(window, "TryFindResource", "SortedItemsView");
         AssertType(sortedItemsViewSource, "System.Windows.Data.CollectionViewSource", "compiled CollectionViewSource resource");

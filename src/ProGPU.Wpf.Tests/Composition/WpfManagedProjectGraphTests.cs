@@ -991,6 +991,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GroupStyle.HeaderTemplate", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"GroupHeaderTextBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Tag=\"group header template\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"DisplayMemberItemsList\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DisplayMemberPath=\"Name\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SelectedValuePath=\"Category\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SelectedValue=\"{Binding SelectedCategory, Mode=TwoWay}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"NodeTree\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemTemplate=\"{StaticResource SmokeNodeTemplate}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Nodes}\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1064,6 +1068,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public bool IsWarning", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public bool IsCritical", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public SmokeItem? SelectedItem", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public string SelectedCategory", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private string _selectedCategory = \"secondary group\"", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeDetailTemplateSelector : DataTemplateSelector", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public DataTemplate? SelectedTemplate", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public override DataTemplate? SelectTemplate", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1329,6 +1335,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ItemContainerStyleSelector resource", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ItemContainerStyleSelector alpha style property", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox ItemContainerStyleSelector binding", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DisplayMemberPath ListBox", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox DisplayMemberPath", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox SelectedValuePath", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox SelectedValue binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox two-way selected value source update", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowItemTemplateTriggerActivation(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateGeneratedItemTemplateTextBlock(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate inactive generated item container", harnessProgram, StringComparison.Ordinal);
@@ -1614,6 +1625,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ItemContainerStyleSelector resource", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ItemContainerStyleSelector default style property", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox ItemContainerStyleSelector binding", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DisplayMemberPath ListBox", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox DisplayMemberPath", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox SelectedValuePath", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox SelectedValue binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox two-way selected value source update", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowItemTemplateTriggerActivation(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateGeneratedItemTemplateTextBlock(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate inactive generated item container", harnessProgram, StringComparison.Ordinal);

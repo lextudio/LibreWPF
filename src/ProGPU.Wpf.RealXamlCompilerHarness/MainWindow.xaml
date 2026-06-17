@@ -471,6 +471,13 @@
                 </GroupStyle>
             </ListBox.GroupStyle>
         </ListBox>
+        <ListBox
+            x:Name="DisplayMemberItemsList"
+            Margin="0,8,0,0"
+            DisplayMemberPath="Name"
+            ItemsSource="{Binding Items}"
+            SelectedValue="{Binding SelectedCategory, Mode=TwoWay}"
+            SelectedValuePath="Category" />
         <TreeView
             x:Name="NodeTree"
             Margin="0,8,0,0"

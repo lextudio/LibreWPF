@@ -200,6 +200,7 @@ internal static class Program
         Type brushType = GetRequiredType(presentationCore, "System.Windows.Media.Brush");
         Type penType = GetRequiredType(presentationCore, "System.Windows.Media.Pen");
         Type drawingType = GetRequiredType(presentationCore, "System.Windows.Media.Drawing");
+        Type glyphRunType = GetRequiredType(presentationCore, "System.Windows.Media.GlyphRun");
         Type geometryType = GetRequiredType(presentationCore, "System.Windows.Media.Geometry");
         Type transformType = GetRequiredType(presentationCore, "System.Windows.Media.Transform");
         Type pointType = GetRequiredType(windowsBase, "System.Windows.Point");
@@ -242,6 +243,7 @@ internal static class Program
             presentationCore,
             new[] { 2.25, 42.25 },
             new[] { 3.25, 53.25 });
+        object glyphRun = CreateRealGlyphRun(presentationCore, windowsBase, pointType);
 
         InvokeDrawing(
             drawingContext,
@@ -367,6 +369,12 @@ internal static class Program
             "DrawDrawing",
             new[] { drawingType },
             geometryDrawing);
+        InvokeDrawing(
+            drawingContext,
+            "DrawGlyphRun",
+            new[] { brushType, glyphRunType },
+            blueBrush,
+            glyphRun);
         Invoke(drawingContext, "Close");
     }
 
@@ -403,7 +411,8 @@ internal static class Program
             ProGpuRenderCommandType.PopOpacityMask,
             ProGpuRenderCommandType.DrawRoundedRect,
             ProGpuRenderCommandType.DrawRect,
-            ProGpuRenderCommandType.DrawPath
+            ProGpuRenderCommandType.DrawPath,
+            ProGpuRenderCommandType.DrawGlyphRun
         };
         if (commands.Count != expectedCommandTypes.Length)
         {
@@ -438,6 +447,16 @@ internal static class Program
         {
             throw new InvalidOperationException("Expected real DrawingVisual retained drawing resource path to carry a native brush and path.");
         }
+
+        ushort[]? glyphIndices = commands[17].GlyphIndices;
+        if (glyphIndices == null || glyphIndices.Length != 2 || commands[17].Brush == null)
+        {
+            throw new InvalidOperationException("Expected real DrawingVisual retained glyph run to carry native glyph indices and brush.");
+        }
+
+        AssertEqual(12f, commands[17].FontSize, "real DrawingVisual retained glyph run font size");
+        AssertEqual(12f, commands[17].Position.X, "real DrawingVisual retained glyph run position X");
+        AssertEqual(64f, commands[17].Position.Y, "real DrawingVisual retained glyph run position Y");
     }
 
     private static ProGpuContainerVisual GetSingleContainerChild(ProGpuContainerVisual parent, string description)
@@ -493,6 +512,136 @@ internal static class Program
         object guidelineSet = constructor.Invoke(new object[] { guidelinesX, guidelinesY, true });
         Invoke(guidelineSet, "Freeze");
         return guidelineSet;
+    }
+
+    private static object CreateRealGlyphRun(Assembly presentationCore, Assembly windowsBase, Type pointType)
+    {
+        Type glyphTypefaceType = GetRequiredType(presentationCore, "System.Windows.Media.GlyphTypeface");
+        Type glyphRunType = GetRequiredType(presentationCore, "System.Windows.Media.GlyphRun");
+        Type xmlLanguageType = GetRequiredType(presentationCore, "System.Windows.Markup.XmlLanguage");
+        object glyphTypeface = CreateRealGlyphTypeface(glyphTypefaceType);
+        object baselineOrigin = Activator.CreateInstance(pointType, 12.0, 64.0)
+            ?? throw new InvalidOperationException("Failed to create System.Windows.Point.");
+
+        ConstructorInfo constructor = glyphRunType.GetConstructor(
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            types: new[]
+            {
+                glyphTypefaceType,
+                typeof(int),
+                typeof(bool),
+                typeof(double),
+                typeof(float),
+                typeof(System.Collections.Generic.IList<ushort>),
+                pointType,
+                typeof(System.Collections.Generic.IList<double>),
+                typeof(System.Collections.Generic.IList<>).MakeGenericType(pointType),
+                typeof(System.Collections.Generic.IList<char>),
+                typeof(string),
+                typeof(System.Collections.Generic.IList<ushort>),
+                typeof(System.Collections.Generic.IList<bool>),
+                xmlLanguageType
+            },
+            modifiers: null)
+            ?? throw new MissingMethodException(glyphRunType.FullName, ".ctor(GlyphTypeface, int, bool, double, float, ...)");
+
+        return constructor.Invoke(new object?[]
+        {
+            glyphTypeface,
+            0,
+            false,
+            12.0,
+            1.0f,
+            new ushort[] { 0, 0 },
+            baselineOrigin,
+            new[] { 7.0, 8.0 },
+            null,
+            new[] { 'A', 'B' },
+            null,
+            null,
+            null,
+            null
+        });
+    }
+
+    private static object CreateRealGlyphTypeface(Type glyphTypefaceType)
+    {
+        Exception? lastFailure = null;
+        foreach (string fontPath in EnumerateSystemFontFiles())
+        {
+            try
+            {
+                return Activator.CreateInstance(glyphTypefaceType, new Uri(fontPath, UriKind.Absolute))
+                    ?? throw new InvalidOperationException($"Failed to create real GlyphTypeface for '{fontPath}'.");
+            }
+            catch (Exception ex) when (ex is ArgumentException or IOException or NotSupportedException or TargetInvocationException)
+            {
+                lastFailure = ex;
+            }
+        }
+
+        throw new FileNotFoundException(
+            "Could not locate a local TrueType/OpenType font file loadable by the real GlyphTypeface smoke.",
+            lastFailure);
+    }
+
+    private static IEnumerable<string> EnumerateSystemFontFiles()
+    {
+        foreach (string directory in EnumerateFontDirectories())
+        {
+            foreach (string extension in new[] { "*.ttf", "*.otf" })
+            {
+                foreach (string file in SafeEnumerateFiles(directory, extension))
+                {
+                    yield return file;
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<string> EnumerateFontDirectories()
+    {
+        string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        yield return "/System/Library/Fonts/Supplemental";
+        yield return "/System/Library/Fonts";
+        yield return "/Library/Fonts";
+        yield return "/usr/share/fonts";
+        yield return "/usr/local/share/fonts";
+        if (!string.IsNullOrWhiteSpace(home))
+        {
+            yield return Path.Combine(home, ".local", "share", "fonts");
+            yield return Path.Combine(home, "Library", "Fonts");
+        }
+
+        string windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        if (!string.IsNullOrWhiteSpace(windows))
+        {
+            yield return Path.Combine(windows, "Fonts");
+        }
+    }
+
+    private static IEnumerable<string> SafeEnumerateFiles(string directory, string pattern)
+    {
+        if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
+        {
+            yield break;
+        }
+
+        string[] files;
+        try
+        {
+            files = Directory.GetFiles(directory, pattern, SearchOption.AllDirectories);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException)
+        {
+            yield break;
+        }
+
+        foreach (string file in files)
+        {
+            yield return file;
+        }
     }
 
     private static Type GetRequiredType(Assembly assembly, string typeName)

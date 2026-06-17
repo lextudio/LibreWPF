@@ -1,5 +1,9 @@
 # ProGPU Branch Plan for WPF Port Acceleration
 
+## Reuse Policy
+
+The ProGPU branch should add reusable native primitives and shim behavior only where they let the WPF port keep real managed WPF code on the active path. Rendering, text rasterization, shader effects, vector geometry, image upload, cache/lifetime, and backend resource fixes belong in ProGPU when the alternative would be a WPF-bridge workaround or managed-side pixel/vector emulation. XAML, controls, resources, styles/templates, routed events/commands, layout metadata, application lifetime, and theme dictionaries should stay in the WPF superproject and continue to use upstream managed WPF code.
+
 ## Current Branch State
 
 The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and-leaks`. The branch has been fast-forwarded to the latest origin commits and now includes:

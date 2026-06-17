@@ -939,6 +939,7 @@
 - Extended the real `DrawingVisual.RenderOpen()` bridge smoke to cover a real WPF `ImageBrush` backed by the managed `BitmapSource` test shape, verifying retained native `PushGeometryClip`/`DrawTexture`/`PopGeometryClip` commands while keeping ProGPU references confined to bridge and harness assertions.
 - Promoted the reflected `ImageBrush`/`DrawingBrush`/`VisualBrush` fill paths behind a shared `TryReplayTileBrushFill(...)` helper and switched source-level object-sink rectangle/geometry fills to use it, preserving partial replay diagnostics for unsupported nested drawing or visual content.
 - Extended the real `DrawingVisual.RenderOpen()` bridge smoke to cover a real WPF `DrawingBrush` backed by a managed `GeometryDrawing`, verifying retained native `PushGeometryClip`/`DrawPath`/`PopGeometryClip` commands through the same tile-brush replay path.
+- Added ProGPU submodule commit `0d1cc9f` for two active ProGPU PR #17 Skia backend-target review threads. `SKSurface.Create(GRBackendRenderTarget, ...)` now requires wrapped ProGPU textures to include `TextureUsage.CopySrc` for `Snapshot()` copy paths and rejects non-1x render-target or texture sample counts until the shim has multisample-aware rendering/resolve support. Replies were posted to review discussions `discussion_r3425835206` and `discussion_r3425835210`.
 
 ## Open Porting Items
 

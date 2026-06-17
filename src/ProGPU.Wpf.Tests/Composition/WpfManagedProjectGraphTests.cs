@@ -766,7 +766,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Click=\"OnXamlClick\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"CommandButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{Binding SmokeCommand}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("xmlns:componentModel=\"clr-namespace:System.ComponentModel;assembly=WindowsBase\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:local=\"clr-namespace:ProGPU.Wpf.RealXamlCompilerHarness\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CollectionViewSource", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"SortedItemsView\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CollectionViewSource.SortDescriptions", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("componentModel:SortDescription", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Direction=\"Descending\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("PropertyName=\"Name\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Window.CommandBindings", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{x:Static local:MainWindow.SmokeRoutedCommand}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CanExecute=\"OnSmokeCommandCanExecute\"", mainWindowXaml, StringComparison.Ordinal);
@@ -781,6 +788,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"ItemsList\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Items}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SelectedItem=\"{Binding SelectedItem, Mode=TwoWay}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SortedItemsList\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding Source={StaticResource SortedItemsView}}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ListBox.ItemsPanel", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsPanelTemplate", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DataTemplate DataType=\"{x:Type local:SmokeItem}\"", mainWindowXaml, StringComparison.Ordinal);
@@ -926,6 +935,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ListBox ItemsSource binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate text binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox collection-change items", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CollectionViewSource resource", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CollectionViewSource sort direction", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox CollectionViewSource binding", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CollectionViewSource collection-change first item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(window, \"FindName\", \"InputBox\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("new ProGpuWpfWindowHost(WpfPortableWindowActivation.CreateHostOptions(w))", harnessProgram, StringComparison.Ordinal);
@@ -1028,6 +1041,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateItemsBindingAndTemplate(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox two-way selected item binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate text binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CollectionViewSource resource", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CollectionViewSource sort property", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled sorted ListBox generated items", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CollectionViewSource collection-change first item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("recorder.ValidateAfterRun()", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("if (RunCount != 1)", harnessProgram, StringComparison.Ordinal);
     }

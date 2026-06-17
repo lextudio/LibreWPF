@@ -143,7 +143,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 17, "stack panel children");
+        AssertCollectionCount(children, expected: 18, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -552,9 +552,27 @@ internal static class Program
         AssertType(templateRoot, "System.Windows.Controls.TextBlock", "compiled DataTemplate root");
         AssertBindingPath(templateRoot, "TextProperty", "Name", "compiled DataTemplate text binding path");
 
+        object sortedItemsViewSource = Invoke(window, "TryFindResource", "SortedItemsView");
+        AssertType(sortedItemsViewSource, "System.Windows.Data.CollectionViewSource", "compiled CollectionViewSource resource");
+        object sortDescriptions = GetProperty(sortedItemsViewSource, "SortDescriptions");
+        AssertCollectionCount(sortDescriptions, expected: 1, "compiled CollectionViewSource sort descriptions");
+        object sortDescription = GetCollectionItem(sortDescriptions, 0);
+        AssertEqual("Name", GetProperty(sortDescription, "PropertyName"), "compiled CollectionViewSource sort property");
+        AssertEqual("Descending", GetProperty(sortDescription, "Direction").ToString(), "compiled CollectionViewSource sort direction");
+
+        object sortedItemsList = GetField(window, "SortedItemsList");
+        AssertType(sortedItemsList, "System.Windows.Controls.ListBox", "compiled sorted ListBox");
+        AssertSame(GetProperty(sortedItemsViewSource, "View"), GetProperty(sortedItemsList, "ItemsSource"), "compiled ListBox CollectionViewSource binding");
+        object sortedItems = GetProperty(sortedItemsList, "Items");
+        AssertCollectionCount(sortedItems, expected: 2, "compiled sorted ListBox generated items");
+        AssertEqual("item beta", GetProperty(GetCollectionItem(sortedItems, 0), "Name"), "compiled CollectionViewSource initial first item");
+        AssertEqual("item alpha", GetProperty(GetCollectionItem(sortedItems, 1), "Name"), "compiled CollectionViewSource initial second item");
+
         object thirdItem = Create(window.GetType().Assembly, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeItem", "item gamma");
         AddToCollection(sourceItems, thirdItem);
         AssertCollectionCount(GetProperty(itemsList, "Items"), expected: 3, "compiled ListBox collection-change items");
+        AssertCollectionCount(sortedItems, expected: 3, "compiled sorted ListBox collection-change items");
+        AssertEqual("item gamma", GetProperty(GetCollectionItem(sortedItems, 0), "Name"), "compiled CollectionViewSource collection-change first item");
     }
 
     private static void ShowPortableActivation(

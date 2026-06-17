@@ -461,6 +461,11 @@ namespace System.Windows.Input
 
         private PresentationSource GetActiveSource()
         {
+            if (!global::System.OperatingSystem.IsWindows())
+            {
+                return GetPortableActiveSource();
+            }
+
             IntPtr hwnd = MS.Win32.UnsafeNativeMethods.GetActiveWindow();
             if (hwnd != IntPtr.Zero)
                 return HwndSource.FromHwnd(hwnd);
@@ -470,9 +475,27 @@ namespace System.Windows.Input
 
         private PresentationSource CriticalGetActiveSource()
         {
+            if (!global::System.OperatingSystem.IsWindows())
+            {
+                return GetPortableActiveSource();
+            }
+
             IntPtr hwnd = MS.Win32.UnsafeNativeMethods.GetActiveWindow();
             if (hwnd != IntPtr.Zero)
                 return HwndSource.CriticalFromHwnd(hwnd);
+
+            return null;
+        }
+
+        private static PresentationSource GetPortableActiveSource()
+        {
+            foreach (PresentationSource source in PresentationSource.CriticalCurrentSources)
+            {
+                if (source?.RootVisual != null)
+                {
+                    return source;
+                }
+            }
 
             return null;
         }

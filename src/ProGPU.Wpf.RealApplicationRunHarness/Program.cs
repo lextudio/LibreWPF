@@ -150,7 +150,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 56, "stack panel children");
+        AssertCollectionCount(children, expected: 57, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -216,6 +216,7 @@ internal static class Program
         ValidateHierarchicalDataTemplate(window);
         ValidateTabControl(window);
         ValidateSectionControls(window);
+        ValidateNavigationFrame(window);
     }
 
     private static void ValidateTextBoxSelection(object inputBox)
@@ -2095,6 +2096,35 @@ internal static class Program
         AssertBindingPath(groupContent, "TextProperty", "ButtonText", "compiled GroupBox content binding path");
     }
 
+    private static void ValidateNavigationFrame(object window)
+    {
+        object frame = GetField(window, "SourceNavigationFrame");
+        AssertType(frame, "System.Windows.Controls.Frame", "compiled source Frame");
+        AssertEqual("Hidden", GetProperty(frame, "NavigationUIVisibility").ToString(), "compiled Frame navigation UI visibility");
+        AssertContains("SmokePage.xaml", GetProperty(frame, "Source")?.ToString() ?? string.Empty, "compiled Frame source");
+    }
+
+    private static void ValidatePostShowNavigationFrame(object window)
+    {
+        object frame = GetField(window, "SourceNavigationFrame");
+        Invoke(frame, "UpdateLayout");
+
+        object page = GetProperty(frame, "Content");
+        AssertType(page, "System.Windows.Controls.Page", "compiled source Page content");
+        AssertEqual("compiled source page", GetProperty(page, "Title"), "compiled source Page title");
+
+        object pagePanel = Invoke(page, "FindName", "SourceNavigationPagePanel");
+        AssertType(pagePanel, "System.Windows.Controls.StackPanel", "compiled Page content panel");
+        AssertSame(pagePanel, GetProperty(page, "Content"), "compiled Page content");
+        AssertCollectionCount(GetProperty(pagePanel, "Children"), expected: 1, "compiled Page content panel children");
+
+        object pageText = Invoke(page, "FindName", "SourceNavigationPageText");
+        AssertType(pageText, "System.Windows.Controls.TextBlock", "compiled Page content text");
+        AssertSame(pageText, GetCollectionItem(GetProperty(pagePanel, "Children"), 0), "compiled Page content text child");
+        AssertEqual("source page content", GetProperty(pageText, "Tag"), "compiled Page content text tag");
+        AssertEqual("compiled source page content", GetProperty(pageText, "Text"), "compiled Page content text");
+    }
+
     private static ActivationRecorder RegisterPortableActivation(
         Assembly presentationFramework,
         Assembly presentationCore,
@@ -2796,6 +2826,7 @@ internal static class Program
             ValidatePostShowHierarchicalDataTemplate(_presentationCore, typedActivation.Window);
             ValidatePostShowTabControl(_presentationCore, typedActivation.Window);
             ValidatePostShowSectionControls(_presentationCore, typedActivation.Window);
+            ValidatePostShowNavigationFrame(typedActivation.Window);
             ValidatePostShowScrollingControls(typedActivation.Window);
             ValidatePortableInputBindingActivation(typedActivation.Window);
             ValidatePortableTextInputActivation(typedActivation.Window);

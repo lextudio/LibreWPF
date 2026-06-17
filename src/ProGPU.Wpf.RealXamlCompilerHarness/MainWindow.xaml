@@ -802,5 +802,10 @@
                 Tag="group box content"
                 Text="{Binding ButtonText}" />
         </GroupBox>
+        <Frame
+            x:Name="SourceNavigationFrame"
+            Margin="0,8,0,0"
+            NavigationUIVisibility="Hidden"
+            Source="SmokePage.xaml" />
     </StackPanel>
 </Window>

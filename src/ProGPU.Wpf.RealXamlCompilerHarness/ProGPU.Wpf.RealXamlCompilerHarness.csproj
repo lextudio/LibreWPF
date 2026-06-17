@@ -26,6 +26,9 @@
     <Page Include="SmokeUserControl.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="SmokePage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>

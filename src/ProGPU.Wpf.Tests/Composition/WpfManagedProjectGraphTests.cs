@@ -693,6 +693,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.RealXamlCompilerHarness",
             "SmokeUserControl.xaml");
+        var smokePageXamlPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealXamlCompilerHarness",
+            "SmokePage.xaml");
         var appCodeBehindPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.RealXamlCompilerHarness",
@@ -711,6 +715,7 @@ public sealed class WpfManagedProjectGraphTests
         var smokeResourcesXaml = File.ReadAllText(smokeResourcesXamlPath);
         var mainWindowXaml = File.ReadAllText(mainWindowXamlPath);
         var smokeUserControlXaml = File.ReadAllText(smokeUserControlXamlPath);
+        var smokePageXaml = File.ReadAllText(smokePageXamlPath);
         var appCodeBehind = File.ReadAllText(appCodeBehindPath);
         var mainWindowCodeBehind = File.ReadAllText(mainWindowCodeBehindPath);
         var smokeUserControlCodeBehind = File.ReadAllText(smokeUserControlCodeBehindPath);
@@ -730,6 +735,11 @@ public sealed class WpfManagedProjectGraphTests
             harnessProject.Descendants("Page"),
             item => item.Attribute("Include")?.Value == "SmokeUserControl.xaml");
         Assert.Equal("MSBuild:Compile", smokeUserControlPage.Element("Generator")?.Value);
+
+        var smokePage = Assert.Single(
+            harnessProject.Descendants("Page"),
+            item => item.Attribute("Include")?.Value == "SmokePage.xaml");
+        Assert.Equal("MSBuild:Compile", smokePage.Element("Generator")?.Value);
 
         var page = Assert.Single(
             harnessProject.Descendants("Page"),
@@ -1132,6 +1142,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"GroupBoxContentText\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Tag=\"group box content\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding ButtonText}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SourceNavigationFrame\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("NavigationUIVisibility=\"Hidden\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Source=\"SmokePage.xaml\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Title=\"compiled source page\"", smokePageXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SourceNavigationPagePanel\"", smokePageXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SourceNavigationPageText\"", smokePageXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"compiled source page content\"", smokePageXaml, StringComparison.Ordinal);
         Assert.Contains("ListBox.ItemContainerStyle", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style TargetType=\"{x:Type ListBoxItem}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Setter Property=\"Tag\" Value=\"container trigger inactive\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1490,6 +1507,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateHierarchicalDataTemplate(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTabControl(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateSectionControls(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateNavigationFrame(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled implicit DataTemplate detail model", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled implicit DataTemplate host content binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ContentTemplateSelector selected template resource", harnessProgram, StringComparison.Ordinal);
@@ -1503,6 +1521,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Expander content binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GroupBox HeaderTemplate resource", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GroupBox content binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowNavigationFrame(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled source Frame", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled source Page content", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Page content text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox ItemsSource binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox item container style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ItemContainerStyle setter property", harnessProgram, StringComparison.Ordinal);
@@ -1843,6 +1865,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateHierarchicalDataTemplate(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTabControl(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateSectionControls(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateNavigationFrame(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled implicit DataTemplate detail title", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled implicit DataTemplate host content binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ContentTemplateSelector selected template resource", harnessProgram, StringComparison.Ordinal);
@@ -1856,6 +1879,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Expander content binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GroupBox HeaderTemplate resource", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GroupBox content binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowNavigationFrame(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled source Frame", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled source Page content", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Page content text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox two-way selected item binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox item container style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ItemContainerStyle setter property", harnessProgram, StringComparison.Ordinal);
@@ -2093,6 +2120,15 @@ public sealed class WpfManagedProjectGraphTests
             "Stylus",
             "Common",
             "StylusLogic.cs"));
+        var accessKeyManager = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Input",
+            "AccessKeyManager.cs"));
         var systemResources = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -2264,6 +2300,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GeneralTransform inverse = transform.Inverse", rectangleGeometry, StringComparison.Ordinal);
         Assert.Contains("return OperatingSystem.IsWindows() && !CoreAppContextSwitches.DisableStylusAndTouchSupport", stylusLogic, StringComparison.Ordinal);
         AssertGuardBefore(stylusLogic, "if (!OperatingSystem.IsWindows())", "Registry.CurrentUser.OpenSubKey");
+        AssertGuardBefore(accessKeyManager, "if (!global::System.OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetActiveWindow()");
+        Assert.Contains("PresentationSource.CriticalCurrentSources", accessKeyManager, StringComparison.Ordinal);
+        Assert.Contains("GetPortableActiveSource()", accessKeyManager, StringComparison.Ordinal);
         AssertGuardBefore(systemResources, "if (!OperatingSystem.IsWindows())", "new HwndWrapper(");
         AssertGuardBefore(systemResources, "if (OperatingSystem.IsWindows())", "XamlAccessLevel.AssemblyAccessTo(assembly)");
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETHIGHCONTRAST");

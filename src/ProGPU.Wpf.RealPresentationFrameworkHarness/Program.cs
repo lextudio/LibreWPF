@@ -199,6 +199,7 @@ internal static class Program
 
         Type brushType = GetRequiredType(presentationCore, "System.Windows.Media.Brush");
         Type penType = GetRequiredType(presentationCore, "System.Windows.Media.Pen");
+        Type drawingType = GetRequiredType(presentationCore, "System.Windows.Media.Drawing");
         Type geometryType = GetRequiredType(presentationCore, "System.Windows.Media.Geometry");
         Type transformType = GetRequiredType(presentationCore, "System.Windows.Media.Transform");
         Type pointType = GetRequiredType(windowsBase, "System.Windows.Point");
@@ -227,6 +228,15 @@ internal static class Program
         object clipRect = Activator.CreateInstance(rectType, 1.0, 1.0, 42.0, 34.0)
             ?? throw new InvalidOperationException("Failed to create System.Windows.Rect.");
         object clipGeometry = Create(presentationCore, "System.Windows.Media.RectangleGeometry", clipRect);
+        object drawingGeometryRect = Activator.CreateInstance(rectType, 46.0, 8.0, 14.0, 9.0)
+            ?? throw new InvalidOperationException("Failed to create System.Windows.Rect.");
+        object drawingGeometry = Create(presentationCore, "System.Windows.Media.RectangleGeometry", drawingGeometryRect);
+        object geometryDrawing = Create(
+            presentationCore,
+            "System.Windows.Media.GeometryDrawing",
+            purpleBrush,
+            null,
+            drawingGeometry);
         object transform = Create(presentationCore, "System.Windows.Media.TranslateTransform", 6.0, 7.0);
         object guidelineSet = CreateDynamicGuidelineSet(
             presentationCore,
@@ -352,6 +362,11 @@ internal static class Program
             drawingContext,
             "Pop",
             Type.EmptyTypes);
+        InvokeDrawing(
+            drawingContext,
+            "DrawDrawing",
+            new[] { drawingType },
+            geometryDrawing);
         Invoke(drawingContext, "Close");
     }
 
@@ -387,7 +402,8 @@ internal static class Program
             ProGpuRenderCommandType.DrawRect,
             ProGpuRenderCommandType.PopOpacityMask,
             ProGpuRenderCommandType.DrawRoundedRect,
-            ProGpuRenderCommandType.DrawRect
+            ProGpuRenderCommandType.DrawRect,
+            ProGpuRenderCommandType.DrawPath
         };
         if (commands.Count != expectedCommandTypes.Length)
         {
@@ -418,6 +434,10 @@ internal static class Program
         AssertEqual(3f, commands[15].Rect.Y, "real DrawingVisual retained guideline snapped rect Y");
         AssertEqual(40f, commands[15].Rect.Width, "real DrawingVisual retained guideline snapped rect width");
         AssertEqual(50f, commands[15].Rect.Height, "real DrawingVisual retained guideline snapped rect height");
+        if (commands[16].Brush == null || commands[16].Path == null)
+        {
+            throw new InvalidOperationException("Expected real DrawingVisual retained drawing resource path to carry a native brush and path.");
+        }
     }
 
     private static ProGpuContainerVisual GetSingleContainerChild(ProGpuContainerVisual parent, string description)

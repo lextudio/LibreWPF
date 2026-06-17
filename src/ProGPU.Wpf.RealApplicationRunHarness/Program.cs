@@ -1915,6 +1915,7 @@ internal static class Program
             ValidatePostShowImplicitDataTemplate(_presentationCore, typedActivation.Window);
             ValidatePostShowHierarchicalDataTemplate(_presentationCore, typedActivation.Window);
             ValidatePortableInputBindingActivation(typedActivation.Window);
+            ValidatePortableTextInputActivation(typedActivation.Window);
         }
 
         public void Dispose(object activation)
@@ -1958,6 +1959,7 @@ internal static class Program
             ValidatePostShowImplicitDataTemplate(_presentationCore, activation.Window);
             ValidatePostShowHierarchicalDataTemplate(_presentationCore, activation.Window);
             AssertEqual("input binding payload", GetProperty(activation.Window, "LastRoutedCommandParameter"), "portable input KeyBinding persisted command parameter");
+            AssertEqual("portable x", GetProperty(GetField(activation.Window, "InputBox"), "Text"), "portable text input persisted TextBox text");
         }
 
         private void AssertSameActivation(object activation)
@@ -2093,7 +2095,28 @@ internal static class Program
             AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable Application.Run input KeyBinding clear focus");
         }
 
-        private object CreatePortableInputEvent(string kindName, string? key, int scanCode, string modifiersName)
+        private void ValidatePortableTextInputActivation(object window)
+        {
+            object inputBox = GetField(window, "InputBox");
+            Type keyboardType = GetRequiredType(_presentationCore, "System.Windows.Input.Keyboard");
+            SetProperty(inputBox, "Text", "portable ");
+            Invoke(inputBox, "Select", "portable ".Length, 0);
+            object focused = InvokeStatic(keyboardType, "Focus", inputBox);
+            AssertSame(inputBox, focused, "portable Application.Run text input focused target");
+
+            object textInput = CreatePortableInputEvent("TextInput", key: null, scanCode: 0, character: 'x', modifiersName: "None");
+            Invoke(window, "HandlePortableInput", textInput);
+
+            AssertEqual(true, GetProperty(textInput, "Handled"), "portable Application.Run text input handled state");
+            AssertEqual("portable x", GetProperty(inputBox, "Text"), "portable Application.Run text input TextBox text");
+            AssertEqual("portable x".Length, GetProperty(inputBox, "SelectionStart"), "portable Application.Run text input caret index");
+            AssertEqual(0, GetProperty(inputBox, "SelectionLength"), "portable Application.Run text input selection length");
+
+            InvokeStatic(keyboardType, "ClearFocus");
+            AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable Application.Run text input clear focus");
+        }
+
+        private object CreatePortableInputEvent(string kindName, string? key, int scanCode, string modifiersName, char? character = null)
         {
             Assembly presentationFramework = _activationServiceType.Assembly;
             Type argsType = GetRequiredType(presentationFramework, "System.Windows.PortableInputEventArgs");
@@ -2110,7 +2133,7 @@ internal static class Program
                     Enum.Parse(kindType, kindName),
                     key,
                     scanCode,
-                    null,
+                    character,
                     0d,
                     0d,
                     0d,

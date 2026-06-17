@@ -205,7 +205,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.MouseVanish] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETMOUSEVANISH, 0, ref _mouseVanish, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _mouseVanish = false;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETMOUSEVANISH, 0, ref _mouseVanish, 0))
                         {
                         }
                         else

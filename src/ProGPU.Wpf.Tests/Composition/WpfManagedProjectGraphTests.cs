@@ -1229,6 +1229,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePortableInputBindingActivation(presentationCore, activation, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("RaiseHostInput(portableActivation.Host, keyDown)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable input KeyBinding handled state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableTextInputActivation(presentationCore, activation, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable text input TextBox text", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable text input caret index", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTemplateAndDynamicResource(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button control template", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled VisualStateManager group collection", harnessProgram, StringComparison.Ordinal);
@@ -1486,6 +1489,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePortableInputBindingActivation(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreatePortableInputEvent(\"KeyDown\", \"F6\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable Application.Run input KeyBinding handled state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableTextInputActivation(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CreatePortableInputEvent(\"TextInput\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run text input TextBox text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTemplateAndDynamicResource(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ControlTemplate named part", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled VisualStateManager group collection", harnessProgram, StringComparison.Ordinal);
@@ -1829,6 +1835,7 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(systemResources, "if (!OperatingSystem.IsWindows())", "new HwndWrapper(");
         AssertGuardBefore(systemResources, "if (OperatingSystem.IsWindows())", "XamlAccessLevel.AssemblyAccessTo(assembly)");
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETHIGHCONTRAST");
+        AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETMOUSEVANISH");
         Assert.Contains("private const int DefaultScrollBarMetric = 17", systemParameters, StringComparison.Ordinal);
         Assert.Contains("private const int DefaultPrimaryScreenWidth = 1024", systemParameters, StringComparison.Ordinal);
         Assert.Contains("private const int DefaultPrimaryScreenHeight = 768", systemParameters, StringComparison.Ordinal);

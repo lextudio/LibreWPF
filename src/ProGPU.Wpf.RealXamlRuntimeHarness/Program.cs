@@ -81,6 +81,7 @@ internal static class Program
             ValidatePostShowHierarchicalDataTemplate(presentationCore, window);
             ValidatePortableKeyboardFocus(presentationCore, window);
             ValidatePortableInputBindingActivation(presentationCore, activation, window);
+            ValidatePortableTextInputActivation(presentationCore, activation, window);
         }
         finally
         {
@@ -431,6 +432,35 @@ internal static class Program
 
         InvokeStatic(keyboardType, "ClearFocus");
         AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable input KeyBinding clear focus");
+    }
+
+    private static void ValidatePortableTextInputActivation(Assembly presentationCore, object activation, object window)
+    {
+        if (activation is not WpfPortableWindowActivation portableActivation)
+        {
+            throw new InvalidOperationException(
+                $"Expected a ProGPU portable activation for text input routing, got '{activation.GetType().FullName}'.");
+        }
+
+        object inputBox = GetField(window, "InputBox");
+        Type keyboardType = GetRequiredType(presentationCore, "System.Windows.Input.Keyboard");
+        SetProperty(inputBox, "Text", "portable ");
+        Invoke(inputBox, "Select", "portable ".Length, 0);
+        object focused = InvokeStatic(keyboardType, "Focus", inputBox);
+        AssertSame(inputBox, focused, "portable text input focused target");
+
+        var textInput = new WpfInputEventArgs(
+            WpfInputEventKind.TextInput,
+            character: 'x');
+        RaiseHostInput(portableActivation.Host, textInput);
+
+        AssertEqual(true, textInput.Handled, "portable text input handled state");
+        AssertEqual("portable x", GetProperty(inputBox, "Text"), "portable text input TextBox text");
+        AssertEqual("portable x".Length, GetProperty(inputBox, "SelectionStart"), "portable text input caret index");
+        AssertEqual(0, GetProperty(inputBox, "SelectionLength"), "portable text input selection length");
+
+        InvokeStatic(keyboardType, "ClearFocus");
+        AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable text input clear focus");
     }
 
     private static void ValidateBindingAndCommand(object window)

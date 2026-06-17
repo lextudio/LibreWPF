@@ -1289,7 +1289,7 @@ internal static class Program
     {
         object layoutPanel = GetField(window, "LayoutPanelSmoke");
         AssertType(layoutPanel, "System.Windows.Controls.StackPanel", "compiled layout panel host");
-        AssertCollectionCount(GetProperty(layoutPanel, "Children"), expected: 5, "compiled layout panel host children");
+        AssertCollectionCount(GetProperty(layoutPanel, "Children"), expected: 6, "compiled layout panel host children");
 
         object dockPanel = GetField(window, "DockPanelSmoke");
         AssertType(dockPanel, "System.Windows.Controls.DockPanel", "compiled DockPanel");
@@ -1352,6 +1352,47 @@ internal static class Program
         AssertType(uniformThird, "System.Windows.Controls.TextBlock", "compiled UniformGrid third child");
         AssertEqual("uniform three", GetProperty(uniformThird, "Text"), "compiled UniformGrid third child text");
 
+        object sharedScope = GetField(window, "SharedSizeScopePanel");
+        AssertType(sharedScope, "System.Windows.Controls.StackPanel", "compiled shared-size scope panel");
+        AssertEqual(true, GetDependencyPropertyValue(sharedScope, GetField(window, "SharedSizeGridA").GetType(), "IsSharedSizeScopeProperty"), "compiled Grid shared-size scope flag");
+        AssertCollectionCount(GetProperty(sharedScope, "Children"), expected: 2, "compiled shared-size scope children");
+
+        object sharedGridA = GetField(window, "SharedSizeGridA");
+        AssertType(sharedGridA, "System.Windows.Controls.Grid", "compiled shared-size first Grid");
+        AssertEqual(220.0, GetProperty(sharedGridA, "Width"), "compiled shared-size first Grid width");
+        AssertCollectionCount(GetProperty(sharedGridA, "ColumnDefinitions"), expected: 2, "compiled shared-size first Grid columns");
+        AssertCollectionCount(GetProperty(sharedGridA, "Children"), expected: 2, "compiled shared-size first Grid children");
+
+        object sharedGridANameColumn = GetField(window, "SharedSizeGridANameColumn");
+        AssertEqual("SharedLabelColumn", GetProperty(sharedGridANameColumn, "SharedSizeGroup"), "compiled shared-size first column group");
+
+        object sharedAHeader = GetField(window, "SharedSizeAHeader");
+        AssertType(sharedAHeader, "System.Windows.Controls.TextBlock", "compiled shared-size first header");
+        AssertEqual("A", GetProperty(sharedAHeader, "Text"), "compiled shared-size first header text");
+
+        object sharedAValue = GetField(window, "SharedSizeAValue");
+        AssertType(sharedAValue, "System.Windows.Controls.TextBlock", "compiled shared-size first value");
+        AssertEqual("short value", GetProperty(sharedAValue, "Text"), "compiled shared-size first value text");
+        AssertEqual(1, GetDependencyPropertyValue(sharedAValue, sharedGridA.GetType(), "ColumnProperty"), "compiled shared-size first value column");
+
+        object sharedGridB = GetField(window, "SharedSizeGridB");
+        AssertType(sharedGridB, "System.Windows.Controls.Grid", "compiled shared-size second Grid");
+        AssertEqual(220.0, GetProperty(sharedGridB, "Width"), "compiled shared-size second Grid width");
+        AssertCollectionCount(GetProperty(sharedGridB, "ColumnDefinitions"), expected: 2, "compiled shared-size second Grid columns");
+        AssertCollectionCount(GetProperty(sharedGridB, "Children"), expected: 2, "compiled shared-size second Grid children");
+
+        object sharedGridBNameColumn = GetField(window, "SharedSizeGridBNameColumn");
+        AssertEqual("SharedLabelColumn", GetProperty(sharedGridBNameColumn, "SharedSizeGroup"), "compiled shared-size second column group");
+
+        object sharedBHeader = GetField(window, "SharedSizeBHeader");
+        AssertType(sharedBHeader, "System.Windows.Controls.TextBlock", "compiled shared-size second header");
+        AssertEqual("shared size label wider", GetProperty(sharedBHeader, "Text"), "compiled shared-size second header text");
+
+        object sharedBValue = GetField(window, "SharedSizeBValue");
+        AssertType(sharedBValue, "System.Windows.Controls.TextBlock", "compiled shared-size second value");
+        AssertEqual("shared value", GetProperty(sharedBValue, "Text"), "compiled shared-size second value text");
+        AssertEqual(1, GetDependencyPropertyValue(sharedBValue, sharedGridB.GetType(), "ColumnProperty"), "compiled shared-size second value column");
+
         object splitterGrid = GetField(window, "GridSplitterGrid");
         AssertType(splitterGrid, "System.Windows.Controls.Grid", "compiled GridSplitter grid");
         AssertEqual(180.0, GetProperty(splitterGrid, "Width"), "compiled GridSplitter grid width");
@@ -1380,6 +1421,26 @@ internal static class Program
         AssertType(splitterRight, "System.Windows.Controls.TextBlock", "compiled GridSplitter right pane");
         AssertEqual("split right", GetProperty(splitterRight, "Text"), "compiled GridSplitter right text");
         AssertEqual(2, GetDependencyPropertyValue(splitterRight, splitterGrid.GetType(), "ColumnProperty"), "compiled GridSplitter right column");
+    }
+
+    private static void ValidatePostShowSharedSizeGridLayout(object window)
+    {
+        object sharedScope = GetField(window, "SharedSizeScopePanel");
+        Invoke(sharedScope, "UpdateLayout");
+        Invoke(window, "UpdateLayout");
+
+        object firstColumn = GetField(window, "SharedSizeGridANameColumn");
+        object secondColumn = GetField(window, "SharedSizeGridBNameColumn");
+        double firstWidth = Convert.ToDouble(GetProperty(firstColumn, "ActualWidth"));
+        double secondWidth = Convert.ToDouble(GetProperty(secondColumn, "ActualWidth"));
+
+        if (firstWidth <= 0 || secondWidth <= 0)
+        {
+            throw new InvalidOperationException(
+                $"Expected compiled shared-size Grid columns to be measured, got '{firstWidth}' and '{secondWidth}'.");
+        }
+
+        AssertClose(firstWidth, secondWidth, 0.001, "compiled shared-size Grid column width");
     }
 
     private static void ValidateScrollingControls(object window)
@@ -3140,6 +3201,15 @@ internal static class Program
         }
     }
 
+    private static void AssertClose(double expected, double actual, double tolerance, string description)
+    {
+        if (Math.Abs(expected - actual) > tolerance)
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to be within '{tolerance}' of '{expected}', got '{actual}'.");
+        }
+    }
+
     private static void AssertPoint(object? actual, double expectedX, double expectedY, string description)
     {
         if (actual == null)
@@ -3381,6 +3451,7 @@ internal static class Program
             ValidatePostShowNavigationFrame(
                 typedActivation.Window,
                 () => FlushDispatcherOperations(typedActivation.Window, "Render"));
+            ValidatePostShowSharedSizeGridLayout(typedActivation.Window);
             ValidatePostShowScrollingControls(typedActivation.Window);
             ValidatePortableInputBindingActivation(typedActivation.Window);
             ValidatePortableTextInputActivation(typedActivation.Window);

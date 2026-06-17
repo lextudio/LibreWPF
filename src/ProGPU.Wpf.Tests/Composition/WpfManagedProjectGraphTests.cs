@@ -1590,6 +1590,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled WrapPanel item width", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled UniformGrid first column", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled UniformGrid third child text", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Grid shared-size scope flag", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled shared-size first column group", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowSharedSizeGridLayout(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled shared-size Grid column width", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateScrollingControls(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ScrollViewer content children", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ScrollBar updated value", harnessProgram, StringComparison.Ordinal);
@@ -1997,6 +2001,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled WrapPanel item height", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled UniformGrid rows", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled UniformGrid children", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled shared-size second column group", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled shared-size second value column", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowSharedSizeGridLayout(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled shared-size Grid columns to be measured", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GridSplitter resize behavior", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GridSplitter keyboard increment", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateScrollingControls(window)", harnessProgram, StringComparison.Ordinal);

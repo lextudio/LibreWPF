@@ -280,6 +280,46 @@
                     x:Name="UniformThirdChild"
                     Text="uniform three" />
             </UniformGrid>
+            <StackPanel
+                x:Name="SharedSizeScopePanel"
+                Grid.IsSharedSizeScope="True">
+                <Grid
+                    x:Name="SharedSizeGridA"
+                    Width="220">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition
+                            x:Name="SharedSizeGridANameColumn"
+                            SharedSizeGroup="SharedLabelColumn"
+                            Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                        x:Name="SharedSizeAHeader"
+                        Text="A" />
+                    <TextBlock
+                        x:Name="SharedSizeAValue"
+                        Grid.Column="1"
+                        Text="short value" />
+                </Grid>
+                <Grid
+                    x:Name="SharedSizeGridB"
+                    Width="220">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition
+                            x:Name="SharedSizeGridBNameColumn"
+                            SharedSizeGroup="SharedLabelColumn"
+                            Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                        x:Name="SharedSizeBHeader"
+                        Text="shared size label wider" />
+                    <TextBlock
+                        x:Name="SharedSizeBValue"
+                        Grid.Column="1"
+                        Text="shared value" />
+                </Grid>
+            </StackPanel>
             <Grid
                 x:Name="GridSplitterGrid"
                 Width="180"

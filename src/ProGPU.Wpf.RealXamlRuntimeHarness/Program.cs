@@ -630,9 +630,14 @@ internal static class Program
         object templateBorder = Invoke(expectedTemplate, "FindName", "TemplateBorder", templatedButton);
         AssertType(templateBorder, "System.Windows.Controls.Border", "compiled ControlTemplate named part");
         AssertSame(accentBrush, GetProperty(templateBorder, "Background"), "compiled ControlTemplate dynamic resource initial value");
+        AssertEqual(1.0, GetProperty(templateBorder, "Opacity"), "compiled ControlTemplate trigger initial opacity");
 
         SetDictionaryValue(resources, "AccentBrush", replacementAccentBrush);
         AssertSame(replacementAccentBrush, GetProperty(templateBorder, "Background"), "compiled ControlTemplate dynamic resource update");
+
+        SetProperty(templatedButton, "IsEnabled", false);
+        AssertEqual(false, GetProperty(templatedButton, "IsEnabled"), "compiled ControlTemplate trigger source state");
+        AssertEqual(0.42, GetProperty(templateBorder, "Opacity"), "compiled ControlTemplate trigger disabled opacity");
     }
 
     private static void ValidateItemsBindingAndTemplate(object window)

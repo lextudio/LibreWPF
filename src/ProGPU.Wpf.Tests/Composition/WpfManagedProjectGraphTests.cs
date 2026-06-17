@@ -754,6 +754,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ControlTemplate x:Key=\"SmokeButtonTemplate\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("Background=\"{DynamicResource AccentBrush}\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"{TemplateBinding Content}\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("ControlTemplate.Triggers", appXaml, StringComparison.Ordinal);
+        Assert.Contains("Trigger Property=\"IsEnabled\" Value=\"False\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("Setter TargetName=\"TemplateBorder\" Property=\"Opacity\" Value=\"0.42\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("Style x:Key=\"SmokeTextBoxStyle\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"BasedOnTextBoxStyle\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("BasedOn=\"{StaticResource SmokeTextBoxStyle}\"", appXaml, StringComparison.Ordinal);
@@ -1032,6 +1035,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateTemplateAndDynamicResource(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button control template", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ControlTemplate dynamic resource update", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ControlTemplate trigger disabled opacity", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateStyleAndDataTrigger(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button triggered style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTrigger active value", harnessProgram, StringComparison.Ordinal);
@@ -1162,6 +1166,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateTemplateAndDynamicResource(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ControlTemplate named part", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ControlTemplate dynamic resource update", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ControlTemplate trigger source state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateStyleAndDataTrigger(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTrigger inactive value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTrigger active brush", harnessProgram, StringComparison.Ordinal);

@@ -178,6 +178,20 @@
             x:Name="ValidatedBox"
             Margin="0,8,0,0"
             Text="{Binding ValidatedText, UpdateSourceTrigger=Explicit, ValidatesOnDataErrors=True, NotifyOnValidationError=True}" />
+        <TextBox
+            x:Name="RuleValidatedBox"
+            Margin="0,8,0,0">
+            <TextBox.Text>
+                <Binding
+                    NotifyOnValidationError="True"
+                    Path="RuleValidatedText"
+                    UpdateSourceTrigger="Explicit">
+                    <Binding.ValidationRules>
+                        <local:SmokePrefixValidationRule RequiredPrefix="rule:" />
+                    </Binding.ValidationRules>
+                </Binding>
+            </TextBox.Text>
+        </TextBox>
         <TextBlock
             x:Name="ProviderGreetingBlock"
             Margin="0,8,0,0"

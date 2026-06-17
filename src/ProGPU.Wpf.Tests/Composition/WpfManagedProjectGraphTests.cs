@@ -819,6 +819,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RelativeSource={RelativeSource AncestorType={x:Type Border}}, Path=Tag", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ValidatedBox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ValidatedText, UpdateSourceTrigger=Explicit, ValidatesOnDataErrors=True, NotifyOnValidationError=True", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"RuleValidatedBox\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Path=\"RuleValidatedText\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Binding.ValidationRules", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("local:SmokePrefixValidationRule RequiredPrefix=\"rule:\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ProviderGreetingBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding Source={StaticResource ProviderGreeting}}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MarkupExtensionBlock\"", mainWindowXaml, StringComparison.Ordinal);
@@ -961,6 +965,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public SmokeDetail Detail", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string TriggerButtonText", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string ValidatedText", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public string RuleValidatedText", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidatedText is required", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public bool IsWarning", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public bool IsCritical", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -980,6 +985,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public sealed class SmokeJoinConverter : IMultiValueConverter", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("return $\"{prefix}:{text.ToUpperInvariant()}\";", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("return $\"{prefix}:{string.Join(\"|\", parts)}\";", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokePrefixValidationRule : ValidationRule", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public string RequiredPrefix", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidationResult.ValidResult", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeCommand : ICommand", mainWindowCodeBehind, StringComparison.Ordinal);
 
         Assert.Contains("x:Class=\"ProGPU.Wpf.RealXamlCompilerHarness.SmokeUserControl\"", smokeUserControlXaml, StringComparison.Ordinal);
@@ -1087,6 +1095,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled validation binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled validation error state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled validation restored error state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ValidationRule binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Binding ValidationRules", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled custom ValidationRule parameter", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ValidationRule rejected source value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ValidationRule restored error state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateObjectDataProvider(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ObjectDataProvider resource", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ObjectDataProvider method parameters", harnessProgram, StringComparison.Ordinal);
@@ -1286,6 +1299,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled RelativeSource binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled validation invalid source value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled validation restored source value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ValidationRule binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Binding ValidationRules", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled custom ValidationRule parameter", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ValidationRule rejected source value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ValidationRule restored error state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateObjectDataProvider(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ObjectDataProvider synchronous flag", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ObjectDataProvider object type", harnessProgram, StringComparison.Ordinal);

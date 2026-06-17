@@ -157,7 +157,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 31, "stack panel children");
+        AssertCollectionCount(children, expected: 32, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -422,6 +422,30 @@ internal static class Program
         Invoke(bindingExpression, "UpdateSource");
         AssertEqual("valid binding text restored", GetProperty(dataContext, "ValidatedText"), "compiled validation restored source value");
         AssertEqual(false, GetDependencyPropertyValue(validatedBox, validationType, "HasErrorProperty"), "compiled validation restored error state");
+
+        object ruleValidatedBox = GetField(window, "RuleValidatedBox");
+        AssertType(ruleValidatedBox, "System.Windows.Controls.TextBox", "compiled ValidationRule TextBox");
+        AssertEqual("rule: valid binding text", GetProperty(ruleValidatedBox, "Text"), "compiled ValidationRule TextBox initial text");
+        AssertEqual("rule: valid binding text", GetProperty(dataContext, "RuleValidatedText"), "compiled ValidationRule source initial value");
+        object ruleBindingExpression = GetBindingExpression(ruleValidatedBox, "TextProperty");
+        object ruleBinding = GetProperty(ruleBindingExpression, "ParentBinding");
+        AssertBindingObjectPath(ruleBinding, "RuleValidatedText", "compiled ValidationRule binding path");
+        object validationRules = GetProperty(ruleBinding, "ValidationRules");
+        AssertCollectionCount(validationRules, expected: 1, "compiled Binding ValidationRules");
+        object validationRule = GetCollectionItem(validationRules, 0);
+        AssertType(validationRule, "ProGPU.Wpf.RealXamlCompilerHarness.SmokePrefixValidationRule", "compiled custom ValidationRule");
+        AssertEqual("rule:", GetProperty(validationRule, "RequiredPrefix"), "compiled custom ValidationRule parameter");
+        AssertEqual(false, GetDependencyPropertyValue(ruleValidatedBox, validationType, "HasErrorProperty"), "compiled ValidationRule initial error state");
+
+        SetProperty(ruleValidatedBox, "Text", "invalid rule text");
+        Invoke(ruleBindingExpression, "UpdateSource");
+        AssertEqual("rule: valid binding text", GetProperty(dataContext, "RuleValidatedText"), "compiled ValidationRule rejected source value");
+        AssertEqual(true, GetDependencyPropertyValue(ruleValidatedBox, validationType, "HasErrorProperty"), "compiled ValidationRule error state");
+
+        SetProperty(ruleValidatedBox, "Text", "rule: restored binding text");
+        Invoke(ruleBindingExpression, "UpdateSource");
+        AssertEqual("rule: restored binding text", GetProperty(dataContext, "RuleValidatedText"), "compiled ValidationRule restored source value");
+        AssertEqual(false, GetDependencyPropertyValue(ruleValidatedBox, validationType, "HasErrorProperty"), "compiled ValidationRule restored error state");
     }
 
     private static void ValidatePostShowBindingFeatures(object window)

@@ -968,6 +968,8 @@
 - Verified the `GroupStyle.HeaderTemplate` managed-framework slice with clean runs of `ProGPU.Wpf.RealXamlRuntimeHarness`, `ProGPU.Wpf.RealApplicationRunHarness`, and `ProGPU.Wpf.RealThemeRuntimeHarness`, a clean `ProGPU.Wpf.Tests` build, focused `WpfManagedProjectGraphTests` through `vstest` with 28 tests passed, and `git diff --check`.
 - Extended the compiled XAML app smoke to exercise WPF's real binding converter pipeline. The app now declares `IValueConverter` and `IMultiValueConverter` resources in BAML, binds text through converter parameters, and both real-WPF harnesses verify converter metadata plus converted output after `INotifyPropertyChanged` updates.
 - Verified the binding-converter managed-framework slice with clean runs of `ProGPU.Wpf.RealXamlRuntimeHarness`, `ProGPU.Wpf.RealApplicationRunHarness`, and `ProGPU.Wpf.RealThemeRuntimeHarness`, a clean `ProGPU.Wpf.Tests` build, focused `WpfManagedProjectGraphTests` through `vstest` with 28 tests passed, and `git diff --check`.
+- Extended the compiled XAML app smoke to exercise WPF's real custom `ValidationRule` pipeline. The app now declares a `Binding.ValidationRules` entry in BAML, exposes a rule-backed view-model property, and both real-WPF harnesses verify rule metadata, rejected source updates, `Validation.HasError`, and restored valid source updates through `BindingExpression.UpdateSource()`.
+- Verified the custom `ValidationRule` managed-framework slice with clean runs of `ProGPU.Wpf.RealXamlRuntimeHarness`, `ProGPU.Wpf.RealApplicationRunHarness`, and `ProGPU.Wpf.RealThemeRuntimeHarness`, a clean `ProGPU.Wpf.Tests` build, focused `WpfManagedProjectGraphTests` through `vstest` with 28 tests passed, and `git diff --check`.
 
 ## Open Porting Items
 

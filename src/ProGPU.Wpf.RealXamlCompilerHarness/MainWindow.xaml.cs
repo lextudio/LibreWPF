@@ -88,6 +88,7 @@ public partial class MainWindow : Window
         private bool _isCritical;
         private SmokeItem? _selectedItem;
         private string _validatedText = "valid binding text";
+        private string _ruleValidatedText = "rule: valid binding text";
 
         public SmokeViewModel()
         {
@@ -135,6 +136,19 @@ public partial class MainWindow : Window
                 if (!string.Equals(_validatedText, value, StringComparison.Ordinal))
                 {
                     _validatedText = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string RuleValidatedText
+        {
+            get => _ruleValidatedText;
+            set
+            {
+                if (!string.Equals(_ruleValidatedText, value, StringComparison.Ordinal))
+                {
+                    _ruleValidatedText = value;
                     OnPropertyChanged();
                 }
             }
@@ -270,6 +284,19 @@ public sealed class SmokeJoinConverter : IMultiValueConverter
         object[] values = new object[targetTypes.Length];
         Array.Fill(values, Binding.DoNothing);
         return values;
+    }
+}
+
+public sealed class SmokePrefixValidationRule : ValidationRule
+{
+    public string RequiredPrefix { get; set; } = string.Empty;
+
+    public override ValidationResult Validate(object value, CultureInfo cultureInfo)
+    {
+        string text = value?.ToString() ?? string.Empty;
+        return text.StartsWith(RequiredPrefix, StringComparison.Ordinal)
+            ? ValidationResult.ValidResult
+            : new ValidationResult(false, $"Value must start with '{RequiredPrefix}'.");
     }
 }
 

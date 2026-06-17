@@ -139,7 +139,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 32, "stack panel children");
+        AssertCollectionCount(children, expected: 33, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -175,6 +175,7 @@ internal static class Program
         ValidateBindingAndCommand(window);
         ValidateAdvancedBindingFeatures(window);
         ValidateObjectDataProvider(window);
+        ValidateXmlDataProvider(window);
         ValidateMarkupExtension(window);
         ValidateMergedResourceDictionary(window, application);
         ValidateNestedUserControl(window);
@@ -594,6 +595,23 @@ internal static class Program
         object bindingExpression = GetBindingExpression(providerGreetingBlock, "TextProperty");
         object parentBinding = GetProperty(bindingExpression, "ParentBinding");
         AssertSame(provider, GetProperty(parentBinding, "Source"), "compiled ObjectDataProvider binding source");
+    }
+
+    private static void ValidateXmlDataProvider(object window)
+    {
+        object provider = Invoke(window, "TryFindResource", "ProviderXml");
+        AssertType(provider, "System.Windows.Data.XmlDataProvider", "compiled XmlDataProvider resource");
+        AssertEqual("/Smoke/Message", GetProperty(provider, "XPath"), "compiled XmlDataProvider XPath");
+        AssertEqual(false, GetProperty(provider, "IsAsynchronous"), "compiled XmlDataProvider synchronous flag");
+
+        object xmlProviderBlock = GetField(window, "XmlProviderBlock");
+        AssertType(xmlProviderBlock, "System.Windows.Controls.TextBlock", "compiled XmlDataProvider TextBlock");
+        AssertEqual("xml provider text", GetProperty(xmlProviderBlock, "Text"), "compiled XmlDataProvider XPath bound text");
+
+        object bindingExpression = GetBindingExpression(xmlProviderBlock, "TextProperty");
+        object parentBinding = GetProperty(bindingExpression, "ParentBinding");
+        AssertSame(provider, GetProperty(parentBinding, "Source"), "compiled XmlDataProvider binding source");
+        AssertEqual("@Text", GetProperty(parentBinding, "XPath"), "compiled XmlDataProvider binding XPath");
     }
 
     private static void ValidateMarkupExtension(object window)

@@ -72,6 +72,16 @@
                 <sys:String>7</sys:String>
             </ObjectDataProvider.MethodParameters>
         </ObjectDataProvider>
+        <XmlDataProvider
+            x:Key="ProviderXml"
+            IsAsynchronous="False"
+            XPath="/Smoke/Message">
+            <x:XData>
+                <Smoke xmlns="">
+                    <Message Text="xml provider text" />
+                </Smoke>
+            </x:XData>
+        </XmlDataProvider>
         <Style x:Key="EventSetterButtonStyle" TargetType="{x:Type Button}">
             <Setter Property="Tag" Value="event setter style" />
             <EventSetter Event="Click" Handler="OnStyledButtonClick" />
@@ -196,6 +206,10 @@
             x:Name="ProviderGreetingBlock"
             Margin="0,8,0,0"
             Text="{Binding Source={StaticResource ProviderGreeting}}" />
+        <TextBlock
+            x:Name="XmlProviderBlock"
+            Margin="0,8,0,0"
+            Text="{Binding Source={StaticResource ProviderXml}, XPath=@Text}" />
         <TextBlock
             x:Name="MarkupExtensionBlock"
             Margin="0,8,0,0"

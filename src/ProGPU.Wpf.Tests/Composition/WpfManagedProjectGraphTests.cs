@@ -825,6 +825,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("local:SmokePrefixValidationRule RequiredPrefix=\"rule:\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ProviderGreetingBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding Source={StaticResource ProviderGreeting}}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"XmlProviderBlock\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding Source={StaticResource ProviderXml}, XPath=@Text}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MarkupExtensionBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{local:SmokeText Prefix=compiled, Value=markup}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MergedResourceBlock\"", mainWindowXaml, StringComparison.Ordinal);
@@ -887,6 +889,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ObjectDataProvider.MethodParameters", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<sys:String>provider</sys:String>", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<sys:String>7</sys:String>", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("XmlDataProvider", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"ProviderXml\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("IsAsynchronous=\"False\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("XPath=\"/Smoke/Message\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:XData", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<Message Text=\"xml provider text\" />", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style x:Key=\"EventSetterButtonStyle\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Setter Property=\"Tag\" Value=\"event setter style\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("EventSetter Event=\"Click\" Handler=\"OnStyledButtonClick\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1105,6 +1113,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ObjectDataProvider method parameters", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ObjectDataProvider bound text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ObjectDataProvider binding source", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateXmlDataProvider(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled XmlDataProvider resource", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled XmlDataProvider XPath", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled XmlDataProvider synchronous flag", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled XmlDataProvider XPath bound text", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled XmlDataProvider binding XPath", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMarkupExtension(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MarkupExtension TextBlock", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MarkupExtension provided text", harnessProgram, StringComparison.Ordinal);
@@ -1310,6 +1324,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ObjectDataProvider object instance", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ObjectDataProvider second parameter", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ObjectDataProvider binding source", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateXmlDataProvider(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled XmlDataProvider resource", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled XmlDataProvider XPath", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled XmlDataProvider synchronous flag", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled XmlDataProvider XPath bound text", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled XmlDataProvider binding XPath", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMarkupExtension(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MarkupExtension TextBlock", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MarkupExtension provided text", harnessProgram, StringComparison.Ordinal);

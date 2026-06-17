@@ -879,6 +879,9 @@
 - Advanced the ProGPU submodule to `52b9b9a` (`wpf: Apply StreamGeometry transforms to bounds`) and replied to ProGPU PR #17 review thread `discussion_r3424663070`.
 - ProGPU's WPF `StreamGeometry` shim now computes `Bounds` through the same transform-aware path helper used by `PathGeometry` and `CombinedGeometry`, so layout, hit-testing, clipping, and retained cache bounds can query transformed geometry before any draw call.
 - Verified the ProGPU StreamGeometry bounds slice with `git diff --check` and focused `WpfPathGeometryDrawTests|WpfDrawingContextClipTests`; 14 focused tests passed with existing warnings only.
+- Advanced the ProGPU submodule to `24429a9` (`skia: Preserve snapshot texture format`) and replied to ProGPU PR #17 review thread `discussion_r3424522620`.
+- Skia `SKSurface.Snapshot()` now preserves the backing `GpuTexture.Format` instead of forcing RGBA, so BGRA backend render targets snapshot without hidden channel swaps or WebGPU texture-copy format mismatches.
+- Verified the ProGPU snapshot-format slice with `git diff --check` and focused `SkSurfaceBackendRenderTargetTests`; 9 focused tests passed with existing warnings only.
 
 ## Open Porting Items
 

@@ -61,7 +61,7 @@ internal sealed class ProGpuNativeBrush : MediaBrush
         return _brush;
     }
 
-    public ProGpuBrush ToNative(Rect bounds)
+    public override ProGpuBrush ToNative(Rect bounds)
     {
         var hasUsableBounds = IsUsable(bounds);
         if (MappingMode == ProGpuBrushMappingMode.RelativeToBoundingBox && !hasUsableBounds)

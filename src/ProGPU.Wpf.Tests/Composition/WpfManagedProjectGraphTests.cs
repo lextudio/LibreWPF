@@ -790,6 +790,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryFindResource\", \"MergedAccentBrush\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(resources, \"SmokeTextBoxStyle\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetField(window, \"InputBox\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateTextBoxSelection(inputBox)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled TextBox selected text replacement", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetField(window, \"BindingBlock\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetField(window, \"CommandButton\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateBindingAndCommand(window)", harnessProgram, StringComparison.Ordinal);
@@ -822,6 +824,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Invoke(window, \"FindName\", \"InputBox\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("new ProGpuWpfWindowHost(WpfPortableWindowActivation.CreateHostOptions(w))", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Invoke(window, \"Show\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Invoke(window, \"UpdateLayout\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetProperty(window, \"PortableWindowActivation\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable window visible state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableKeyboardFocus(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("InvokeStatic(keyboardType, \"Focus\", window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable root Keyboard.Focus return value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("IsKeyboardFocused", harnessProgram, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -878,6 +888,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateMainWindow(window, _application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateBindingAndCommand(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TextBlock property-change binding", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateTextBoxSelection(inputBox)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled TextBox selected text replacement", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button command binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMergedResourceDictionary(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled merged-resource margin top", harnessProgram, StringComparison.Ordinal);

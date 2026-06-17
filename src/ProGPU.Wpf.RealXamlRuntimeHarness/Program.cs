@@ -42,11 +42,13 @@ internal static class Program
             presentationFrameworkPath,
             presentationCorePath,
             compilerHarnessPath);
+        Assembly presentationCore = loadContext.LoadFromAssemblyPath(presentationCorePath);
         Assembly presentationFramework = loadContext.LoadFromAssemblyPath(presentationFrameworkPath);
         Assembly compilerHarness = loadContext.LoadFromAssemblyPath(compilerHarnessPath);
 
         object? application = null;
         object? activation = null;
+        object? window = null;
         Type? activationServiceType = null;
 
         try
@@ -55,20 +57,26 @@ internal static class Program
             Invoke(application, "InitializeComponent");
             ValidateApplication(application);
 
-            object window = Create(compilerHarness, MainWindowTypeName);
+            window = Create(compilerHarness, MainWindowTypeName);
             ValidateMainWindow(window, application);
 
-            RegisterPortableActivation(
+            ShowPortableActivation(
                 presentationFramework,
                 window,
                 out activationServiceType,
                 out activation);
+            ValidatePortableKeyboardFocus(presentationCore, window);
         }
         finally
         {
             if (activation != null)
             {
-                Invoke(activation, "Dispose");
+                if (window != null)
+                {
+                    TryInvoke(window, "Close");
+                }
+
+                TryInvoke(activation, "Dispose");
             }
 
             activationServiceType?.GetMethod(
@@ -77,7 +85,7 @@ internal static class Program
 
             if (application != null)
             {
-                Invoke(application, "Shutdown");
+                TryInvoke(application, "Shutdown");
             }
 
             loadContext.Unload();
@@ -144,6 +152,7 @@ internal static class Program
         object inputBox = GetField(window, "InputBox");
         AssertType(inputBox, "System.Windows.Controls.TextBox", "compiled named TextBox");
         AssertEqual("compiled TextBox", GetProperty(inputBox, "Text"), "compiled TextBox text");
+        ValidateTextBoxSelection(inputBox);
 
         object resources = GetProperty(application, "Resources");
         object expectedStyle = GetDictionaryValue(resources, "SmokeTextBoxStyle");
@@ -168,6 +177,42 @@ internal static class Program
         ValidateStyleAndDataTrigger(window, application);
         ValidateTemplateAndDynamicResource(window, application);
         ValidateItemsBindingAndTemplate(window);
+    }
+
+    private static void ValidateTextBoxSelection(object inputBox)
+    {
+        Invoke(inputBox, "Select", 9, 7);
+        AssertEqual(9, GetProperty(inputBox, "SelectionStart"), "compiled TextBox selection start");
+        AssertEqual(7, GetProperty(inputBox, "SelectionLength"), "compiled TextBox selection length");
+        AssertEqual("TextBox", GetProperty(inputBox, "SelectedText"), "compiled TextBox selected text");
+
+        SetProperty(inputBox, "SelectedText", "selection");
+        AssertEqual("compiled selection", GetProperty(inputBox, "Text"), "compiled TextBox selected text replacement");
+        AssertEqual(9, GetProperty(inputBox, "SelectionStart"), "compiled TextBox replacement selection start");
+        AssertEqual(9, GetProperty(inputBox, "SelectionLength"), "compiled TextBox replacement selection length");
+        AssertEqual("selection", GetProperty(inputBox, "SelectedText"), "compiled TextBox replacement selected text");
+    }
+
+    private static void ValidatePortableKeyboardFocus(Assembly presentationCore, object window)
+    {
+        Type keyboardType = GetRequiredType(presentationCore, "System.Windows.Input.Keyboard");
+        object focused = InvokeStatic(keyboardType, "Focus", window);
+        if (!ReferenceEquals(window, focused))
+        {
+            throw new InvalidOperationException(
+                "Keyboard.Focus did not return the shown portable root window. " +
+                $"Focused={focused.GetType().FullName}; " +
+                $"IsVisible={GetProperty(window, "IsVisible")}; " +
+                $"Focusable={GetProperty(window, "Focusable")}; " +
+                $"IsEnabled={GetProperty(window, "IsEnabled")}.");
+        }
+
+        AssertSame(window, focused, "portable root Keyboard.Focus return value");
+        AssertSame(window, GetStaticProperty(keyboardType, "FocusedElement"), "portable root Keyboard focused element");
+        AssertEqual(true, GetProperty(window, "IsKeyboardFocused"), "portable root keyboard focus state");
+
+        InvokeStatic(keyboardType, "ClearFocus");
+        AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable Keyboard clear focus");
     }
 
     private static void ValidateBindingAndCommand(object window)
@@ -359,7 +404,7 @@ internal static class Program
         AssertCollectionCount(GetProperty(itemsList, "Items"), expected: 3, "compiled ListBox collection-change items");
     }
 
-    private static void RegisterPortableActivation(
+    private static void ShowPortableActivation(
         Assembly presentationFramework,
         object window,
         out Type activationServiceType,
@@ -375,17 +420,9 @@ internal static class Program
         activationServiceType = GetRequiredType(presentationFramework, PortableWindowActivationServiceTypeName);
         AssertEqual(true, GetStaticProperty(activationServiceType, "IsEnabled"), "portable activation enabled");
 
-        MethodInfo tryActivate = activationServiceType.GetMethod(
-            "TryActivate",
-            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-            ?? throw new MissingMethodException(activationServiceType.FullName, "TryActivate");
-        object?[] parameters = { window, null };
-        if (!Equals(true, tryActivate.Invoke(null, parameters)) || parameters[1] == null)
-        {
-            throw new InvalidOperationException("Real compiled XAML window did not create a portable ProGPU activation.");
-        }
-
-        activation = parameters[1]!;
+        Invoke(window, "Show");
+        Invoke(window, "UpdateLayout");
+        activation = GetProperty(window, "PortableWindowActivation");
         if (activation is not WpfPortableWindowActivation portableActivation)
         {
             throw new InvalidOperationException($"Expected a ProGPU activation, got {activation.GetType().FullName}.");
@@ -393,6 +430,9 @@ internal static class Program
 
         AssertSame(window, portableActivation.Window, "activation window");
         AssertSame(window, portableActivation.RootVisual, "activation root visual");
+        AssertEqual("Visible", GetProperty(window, "Visibility").ToString(), "portable window visibility");
+        AssertEqual(true, GetProperty(window, "IsVisible"), "portable window visible state");
+        AssertEqual(true, portableActivation.Host.IsVisible, "host visible state");
         AssertEqual("ProGPU WPF XAML smoke", portableActivation.Host.Title, "host title");
         AssertEqual(420, portableActivation.Host.Width, "host width");
         AssertEqual(260, portableActivation.Host.Height, "host height");
@@ -413,10 +453,19 @@ internal static class Program
 
     private static object GetProperty(object instance, string propertyName)
     {
-        return instance.GetType().GetProperty(
-            propertyName,
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(instance)
-            ?? throw new InvalidOperationException($"Expected '{instance.GetType().FullName}.{propertyName}' to have a value.");
+        for (Type? type = instance.GetType(); type != null; type = type.BaseType)
+        {
+            PropertyInfo? property = type.GetProperty(
+                propertyName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+            if (property != null)
+            {
+                return property.GetValue(instance)
+                    ?? throw new InvalidOperationException($"Expected '{type.FullName}.{propertyName}' to have a value.");
+            }
+        }
+
+        throw new MissingMemberException(instance.GetType().FullName, propertyName);
     }
 
     private static object GetStaticProperty(Type type, string propertyName)
@@ -425,6 +474,13 @@ internal static class Program
             propertyName,
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(null)
             ?? throw new InvalidOperationException($"Expected '{type.FullName}.{propertyName}' to have a value.");
+    }
+
+    private static object? TryGetStaticProperty(Type type, string propertyName)
+    {
+        return type.GetProperty(
+            propertyName,
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(null);
     }
 
     private static void SetProperty(object instance, string propertyName, object? value)
@@ -564,6 +620,25 @@ internal static class Program
         return method.Invoke(instance, parameters) ?? new object();
     }
 
+    private static object InvokeStatic(Type type, string methodName, params object?[] parameters)
+    {
+        MethodInfo method = type.GetMethods(
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            .FirstOrDefault(candidate =>
+            {
+                if (!string.Equals(candidate.Name, methodName, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                ParameterInfo[] candidateParameters = candidate.GetParameters();
+                return candidateParameters.Length == parameters.Length;
+            })
+            ?? throw new MissingMethodException(type.FullName, methodName);
+
+        return method.Invoke(null, parameters) ?? new object();
+    }
+
     private static object InvokeTwoArgumentCommand(object command, string methodName, object? parameter, object target)
     {
         MethodInfo method = command.GetType().GetMethods(
@@ -582,6 +657,20 @@ internal static class Program
             ?? throw new MissingMethodException(command.GetType().FullName, methodName);
 
         return method.Invoke(command, new[] { parameter, target }) ?? new object();
+    }
+
+    private static void TryInvoke(object instance, string methodName, params object?[] parameters)
+    {
+        try
+        {
+            Invoke(instance, methodName, parameters);
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException is InvalidOperationException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
     }
 
     private static void AssertCollectionCount(object collection, int expected, string description)

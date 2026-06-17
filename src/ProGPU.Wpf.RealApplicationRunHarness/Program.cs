@@ -138,6 +138,7 @@ internal static class Program
         object inputBox = GetField(window, "InputBox");
         AssertType(inputBox, "System.Windows.Controls.TextBox", "compiled named TextBox");
         AssertEqual("compiled TextBox", GetProperty(inputBox, "Text"), "compiled TextBox text");
+        ValidateTextBoxSelection(inputBox);
 
         object resources = GetProperty(application, "Resources");
         object expectedStyle = GetDictionaryValue(resources, "SmokeTextBoxStyle");
@@ -162,6 +163,20 @@ internal static class Program
         ValidateStyleAndDataTrigger(window, application);
         ValidateTemplateAndDynamicResource(window, application);
         ValidateItemsBindingAndTemplate(window);
+    }
+
+    private static void ValidateTextBoxSelection(object inputBox)
+    {
+        Invoke(inputBox, "Select", 9, 7);
+        AssertEqual(9, GetProperty(inputBox, "SelectionStart"), "compiled TextBox selection start");
+        AssertEqual(7, GetProperty(inputBox, "SelectionLength"), "compiled TextBox selection length");
+        AssertEqual("TextBox", GetProperty(inputBox, "SelectedText"), "compiled TextBox selected text");
+
+        SetProperty(inputBox, "SelectedText", "selection");
+        AssertEqual("compiled selection", GetProperty(inputBox, "Text"), "compiled TextBox selected text replacement");
+        AssertEqual(9, GetProperty(inputBox, "SelectionStart"), "compiled TextBox replacement selection start");
+        AssertEqual(9, GetProperty(inputBox, "SelectionLength"), "compiled TextBox replacement selection length");
+        AssertEqual("selection", GetProperty(inputBox, "SelectedText"), "compiled TextBox replacement selected text");
     }
 
     private static void ValidateBindingAndCommand(object window)

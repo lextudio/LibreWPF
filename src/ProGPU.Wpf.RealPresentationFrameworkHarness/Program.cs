@@ -205,6 +205,7 @@ public static class Program
         Type formattedTextType = GetRequiredType(presentationCore, "System.Windows.Media.FormattedText");
         Type glyphRunType = GetRequiredType(presentationCore, "System.Windows.Media.GlyphRun");
         Type geometryType = GetRequiredType(presentationCore, "System.Windows.Media.Geometry");
+        Type imageBrushType = GetRequiredType(presentationCore, "System.Windows.Media.ImageBrush");
         Type imageSourceType = GetRequiredType(presentationCore, "System.Windows.Media.ImageSource");
         Type transformType = GetRequiredType(presentationCore, "System.Windows.Media.Transform");
         Type pointType = GetRequiredType(windowsBase, "System.Windows.Point");
@@ -253,6 +254,10 @@ public static class Program
             ?? throw new InvalidOperationException("Failed to create System.Windows.Point.");
         object imageSource = CreateRealManagedBitmapSource(presentationCore, windowsBase);
         object imageRect = Activator.CreateInstance(rectType, 62.0, 8.0, 16.0, 12.0)
+            ?? throw new InvalidOperationException("Failed to create System.Windows.Rect.");
+        object imageBrush = Activator.CreateInstance(imageBrushType, imageSource)
+            ?? throw new InvalidOperationException("Failed to create System.Windows.Media.ImageBrush.");
+        object imageBrushRect = Activator.CreateInstance(rectType, 82.0, 8.0, 16.0, 12.0)
             ?? throw new InvalidOperationException("Failed to create System.Windows.Rect.");
 
         InvokeDrawing(
@@ -397,6 +402,13 @@ public static class Program
             new[] { imageSourceType, rectType },
             imageSource,
             imageRect);
+        InvokeDrawing(
+            drawingContext,
+            "DrawRectangle",
+            new[] { brushType, penType, rectType },
+            imageBrush,
+            null,
+            imageBrushRect);
         Invoke(drawingContext, "Close");
     }
 
@@ -436,7 +448,10 @@ public static class Program
             ProGpuRenderCommandType.DrawPath,
             ProGpuRenderCommandType.DrawGlyphRun,
             ProGpuRenderCommandType.DrawGlyphRun,
-            ProGpuRenderCommandType.DrawTexture
+            ProGpuRenderCommandType.DrawTexture,
+            ProGpuRenderCommandType.PushGeometryClip,
+            ProGpuRenderCommandType.DrawTexture,
+            ProGpuRenderCommandType.PopGeometryClip
         };
         if (commands.Count != expectedCommandTypes.Length)
         {
@@ -500,6 +515,20 @@ public static class Program
         AssertEqual(8f, commands[19].Rect.Y, "real DrawingVisual retained bitmap image rect Y");
         AssertEqual(16f, commands[19].Rect.Width, "real DrawingVisual retained bitmap image rect width");
         AssertEqual(12f, commands[19].Rect.Height, "real DrawingVisual retained bitmap image rect height");
+        if (commands[20].Path == null)
+        {
+            throw new InvalidOperationException("Expected real DrawingVisual retained image brush fill to push a native geometry clip.");
+        }
+
+        if (commands[21].Texture == null)
+        {
+            throw new InvalidOperationException("Expected real DrawingVisual retained image brush fill to upload a native ProGPU texture.");
+        }
+
+        AssertEqual(82f, commands[21].Rect.X, "real DrawingVisual retained image brush texture rect X");
+        AssertEqual(8f, commands[21].Rect.Y, "real DrawingVisual retained image brush texture rect Y");
+        AssertEqual(16f, commands[21].Rect.Width, "real DrawingVisual retained image brush texture rect width");
+        AssertEqual(12f, commands[21].Rect.Height, "real DrawingVisual retained image brush texture rect height");
     }
 
     private static ProGpuContainerVisual GetSingleContainerChild(ProGpuContainerVisual parent, string description)

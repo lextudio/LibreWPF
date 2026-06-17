@@ -189,7 +189,7 @@ internal static class WpfReflectionDrawingReplay
             : unsupportedAny ? WpfDrawingReplayStatus.Unsupported : WpfDrawingReplayStatus.Skipped;
     }
 
-    private static bool TryReplayImageBrushFill(
+    internal static bool TryReplayImageBrushFill(
         object brush,
         MediaGeometry geometry,
         IWpfCompositionCommandSink sink,

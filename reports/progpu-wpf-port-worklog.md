@@ -935,6 +935,8 @@
 - Verified the style-inheritance managed-XAML slice with clean build/run of `ProGPU.Wpf.RealXamlRuntimeHarness`, clean build/run of `ProGPU.Wpf.RealApplicationRunHarness`, clean build/run of `ProGPU.Wpf.RealThemeRuntimeHarness`, a clean `ProGPU.Wpf.Tests` build, focused `WpfManagedProjectGraphTests` through `vstest` with 28 tests passed, and `git diff --check`.
 - Extended the real `DrawingVisual.RenderOpen()` bridge smoke to cover WPF `DrawingContext.DrawImage(...)` with a real managed `BitmapSource` subclass. The harness avoids WPF's `BitmapSource.Create(...)` WIC path, keeps the image object on the WPF-managed API surface, adapts it through `WpfBitmapSourceImageAdapter`, and verifies a retained ProGPU owner-branch native `DrawTexture` command with the destination rectangle.
 - Added an explicit `ProGPU.Backend` reference to the harness only, so it can assert the native texture payload without leaking ProGPU references into the real managed WPF subsystem projects.
+- Reused the reflected `ImageBrush` geometry-fill replay from the source-level `WpfObjectRenderDataDrawingContext`, so real WPF `DrawingContext.DrawRectangle(ImageBrush, ...)` and `DrawGeometry(ImageBrush, ...)` calls can emit native ProGPU clips/textures without duplicating a managed fallback path.
+- Extended the real `DrawingVisual.RenderOpen()` bridge smoke to cover a real WPF `ImageBrush` backed by the managed `BitmapSource` test shape, verifying retained native `PushGeometryClip`/`DrawTexture`/`PopGeometryClip` commands while keeping ProGPU references confined to bridge and harness assertions.
 
 ## Open Porting Items
 

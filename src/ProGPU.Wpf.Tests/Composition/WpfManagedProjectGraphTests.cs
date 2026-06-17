@@ -624,6 +624,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("System.Windows.Media.GeometryDrawing", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Media.FormattedText", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Media.GlyphRun", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Media.ImageBrush", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Media.Imaging.BitmapSource", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("WpfBitmapSourceImageAdapter", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"DrawLine\"", harnessProgram, StringComparison.Ordinal);
@@ -656,6 +657,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("real DrawingVisual retained glyph run", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("real DrawingVisual retained formatted text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("real DrawingVisual retained bitmap image", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("real DrawingVisual retained image brush", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("real DrawingVisual transformed line X offset", harnessProgram, StringComparison.Ordinal);
     }
 

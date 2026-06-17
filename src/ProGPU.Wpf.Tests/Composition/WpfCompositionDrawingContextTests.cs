@@ -110,6 +110,26 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void ObjectRenderDataDrawingContextReplaysImageBrushRectangleThroughImageSourceAdapter()
+    {
+        var sink = new RecordingSink();
+        var imageSource = new FakeBitmapSource();
+        var imageBrush = new FakeImageBrush(imageSource);
+        var adapter = new FakeImageSourceAdapter();
+        using var context = new WpfObjectRenderDataDrawingContext(sink, adapter);
+
+        context.DrawRectangle(imageBrush, null, new FakeRect(1, 2, 30, 40));
+
+        Assert.Equal(new[] { "PushClip", "DrawImage", "Pop" }, sink.Operations);
+        Assert.Same(imageSource, adapter.LastImageSource);
+        var replayed = Assert.Single(sink.Images);
+        Assert.Same(adapter.AdaptedImageSource, replayed.ImageSource);
+        Assert.Equal(new Rect(1, 2, 30, 40), replayed.Rectangle);
+        Assert.Contains(imageBrush, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void GeneratedDrawingContextRegistersAppliedResourcesAsRetainedDependencies()
     {
         var sink = new RecordingSink();
@@ -603,6 +623,16 @@ public sealed class WpfCompositionDrawingContextTests
 
     private sealed class FakeBitmapSource
     {
+    }
+
+    private sealed class FakeImageBrush
+    {
+        public FakeImageBrush(object? imageSource)
+        {
+            ImageSource = imageSource;
+        }
+
+        public object? ImageSource { get; }
     }
 
     private sealed class FakeBlurBitmapEffect

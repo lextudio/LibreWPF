@@ -72,21 +72,46 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
         ThrowIfClosed();
         MediaBrush? mediaBrush = WpfReflectionResourceResolver.AdaptBrush(brush);
         MediaPen? mediaPen = WpfReflectionResourceResolver.AdaptPen(pen);
-        if (mediaBrush == null && mediaPen == null)
-        {
-            CountUnsupportedIfPresent(brush, pen);
-            return;
-        }
-
         if (!TryReadRect(rectangle, out var mediaRectangle))
         {
             CountUnsupported();
             return;
         }
 
-        RegisterRetainedDependencies(brush, pen);
-        _sink.DrawRectangle(mediaBrush, mediaPen, mediaRectangle);
-        CountApplied();
+        if (mediaBrush != null)
+        {
+            RegisterRetainedDependencies(brush, pen);
+            _sink.DrawRectangle(mediaBrush, mediaPen, mediaRectangle);
+            CountApplied();
+            return;
+        }
+
+        if (brush != null
+            && WpfReflectionDrawingReplay.TryReplayImageBrushFill(
+                brush,
+                WpfReflectionResourceResolver.CreateRectanglePath(mediaRectangle),
+                _sink,
+                _resources.AdaptImageSource))
+        {
+            RegisterRetainedDependencies(brush, pen);
+            if (mediaPen != null)
+            {
+                _sink.DrawRectangle(null, mediaPen, mediaRectangle);
+            }
+
+            CountApplied();
+            return;
+        }
+
+        if (mediaPen != null)
+        {
+            RegisterRetainedDependencies(pen);
+            _sink.DrawRectangle(null, mediaPen, mediaRectangle);
+            CountApplied();
+            return;
+        }
+
+        CountUnsupportedIfPresent(brush, pen);
     }
 
     public void DrawRectangle(object? brush, object? pen, object? rectangle, object? rectangleAnimations)
@@ -177,15 +202,46 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
         MediaBrush? mediaBrush = WpfReflectionResourceResolver.AdaptBrush(brush);
         MediaPen? mediaPen = WpfReflectionResourceResolver.AdaptPen(pen);
         MediaGeometry? mediaGeometry = WpfReflectionResourceResolver.AdaptGeometry(geometry);
-        if (mediaGeometry == null || (mediaBrush == null && mediaPen == null))
+        if (mediaGeometry == null)
         {
             CountUnsupportedIfPresent(brush, pen, geometry);
             return;
         }
 
-        RegisterRetainedDependencies(brush, pen, geometry);
-        _sink.DrawGeometry(mediaBrush, mediaPen, mediaGeometry);
-        CountApplied();
+        if (mediaBrush != null)
+        {
+            RegisterRetainedDependencies(brush, pen, geometry);
+            _sink.DrawGeometry(mediaBrush, mediaPen, mediaGeometry);
+            CountApplied();
+            return;
+        }
+
+        if (brush != null
+            && WpfReflectionDrawingReplay.TryReplayImageBrushFill(
+                brush,
+                mediaGeometry,
+                _sink,
+                _resources.AdaptImageSource))
+        {
+            RegisterRetainedDependencies(brush, pen, geometry);
+            if (mediaPen != null)
+            {
+                _sink.DrawGeometry(null, mediaPen, mediaGeometry);
+            }
+
+            CountApplied();
+            return;
+        }
+
+        if (mediaPen != null)
+        {
+            RegisterRetainedDependencies(pen, geometry);
+            _sink.DrawGeometry(null, mediaPen, mediaGeometry);
+            CountApplied();
+            return;
+        }
+
+        CountUnsupportedIfPresent(brush, pen, geometry);
     }
 
     public void DrawImage(object? imageSource, object? rectangle)

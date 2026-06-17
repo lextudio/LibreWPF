@@ -120,8 +120,12 @@ internal static class Program
     {
         object windowStyle = GetDictionaryValue(themeDictionary, "DefaultWindowStyle");
         object buttonStyle = GetDictionaryValue(themeDictionary, "AccentButtonStyle");
+        object comboBoxStyle = GetDictionaryValue(themeDictionary, "DefaultComboBoxStyle");
+        object passwordBoxStyle = GetDictionaryValue(themeDictionary, "DefaultPasswordBoxStyle");
         object textBoxStyle = GetDictionaryValue(themeDictionary, "DefaultTextBoxStyle");
         object richTextBoxStyle = GetDictionaryValue(themeDictionary, "DefaultRichTextBoxStyle");
+        Type comboBoxType = GetRequiredType(presentationFramework, "System.Windows.Controls.ComboBox");
+        Type passwordBoxType = GetRequiredType(presentationFramework, "System.Windows.Controls.PasswordBox");
         Type sliderType = GetRequiredType(presentationFramework, "System.Windows.Controls.Slider");
         Type progressBarType = GetRequiredType(presentationFramework, "System.Windows.Controls.ProgressBar");
         object sliderStyle = GetDictionaryValue(themeDictionary, sliderType);
@@ -145,6 +149,19 @@ internal static class Program
         SetProperty(textBox, "Style", textBoxStyle);
         AddToCollection(children, textBox);
 
+        object comboBox = Create(presentationFramework, "System.Windows.Controls.ComboBox");
+        object comboBoxItems = GetProperty(comboBox, "Items");
+        AddToCollection(comboBoxItems, "theme item one");
+        AddToCollection(comboBoxItems, "theme item two");
+        SetProperty(comboBox, "SelectedIndex", 1);
+        SetProperty(comboBox, "Style", comboBoxStyle);
+        AddToCollection(children, comboBox);
+
+        object passwordBox = Create(presentationFramework, "System.Windows.Controls.PasswordBox");
+        SetProperty(passwordBox, "Password", "theme-secret");
+        SetProperty(passwordBox, "Style", passwordBoxStyle);
+        AddToCollection(children, passwordBox);
+
         object slider = Create(presentationFramework, "System.Windows.Controls.Slider");
         SetProperty(slider, "Minimum", 0.0);
         SetProperty(slider, "Maximum", 100.0);
@@ -162,11 +179,17 @@ internal static class Program
         AssertSame(windowStyle, GetProperty(window, "Style"), "Window Fluent style");
         AssertSame(buttonStyle, GetProperty(button, "Style"), "Button Fluent style");
         AssertSame(textBoxStyle, GetProperty(textBox, "Style"), "TextBox Fluent style");
+        AssertSame(comboBoxStyle, GetProperty(comboBox, "Style"), "ComboBox Fluent style");
+        AssertSame(passwordBoxStyle, GetProperty(passwordBox, "Style"), "PasswordBox Fluent style");
         AssertSame(sliderStyle, GetProperty(slider, "Style"), "Slider Fluent style");
         AssertSame(progressBarStyle, GetProperty(progressBar, "Style"), "ProgressBar Fluent style");
         AssertSame(richTextBoxStyle, GetProperty(richTextBox, "Style"), "RichTextBox Fluent style");
         AssertSame(buttonStyle, Invoke(application, "TryFindResource", "AccentButtonStyle"), "application Fluent resource lookup");
         AssertSame(textBoxStyle, Invoke(application, "TryFindResource", "DefaultTextBoxStyle"), "application Fluent TextBox resource lookup");
+        AssertSame(comboBoxStyle, Invoke(application, "TryFindResource", "DefaultComboBoxStyle"), "application Fluent ComboBox resource lookup");
+        AssertSame(passwordBoxStyle, Invoke(application, "TryFindResource", "DefaultPasswordBoxStyle"), "application Fluent PasswordBox resource lookup");
+        AssertType(Invoke(application, "TryFindResource", comboBoxType), "System.Windows.Style", "application Fluent ComboBox implicit style lookup");
+        AssertType(Invoke(application, "TryFindResource", passwordBoxType), "System.Windows.Style", "application Fluent PasswordBox implicit style lookup");
         AssertSame(sliderStyle, Invoke(application, "TryFindResource", sliderType), "application Fluent Slider implicit style lookup");
         AssertSame(progressBarStyle, Invoke(application, "TryFindResource", progressBarType), "application Fluent ProgressBar implicit style lookup");
     }
@@ -175,24 +198,38 @@ internal static class Program
     {
         object content = GetProperty(window, "Content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expectedMinimum: 17, "themed stack panel children");
+        AssertCollectionCount(children, expectedMinimum: 19, "themed stack panel children");
 
         int childCount = GetCollectionCount(children);
-        object button = GetCollectionItem(children, childCount - 4);
-        object textBox = GetCollectionItem(children, childCount - 3);
+        object button = GetCollectionItem(children, childCount - 6);
+        object textBox = GetCollectionItem(children, childCount - 5);
+        object comboBox = GetCollectionItem(children, childCount - 4);
+        object passwordBox = GetCollectionItem(children, childCount - 3);
         object slider = GetCollectionItem(children, childCount - 2);
         object progressBar = GetCollectionItem(children, childCount - 1);
         object richTextBox = Invoke(window, "FindName", "DocumentBox");
         AssertType(richTextBox, "System.Windows.Controls.RichTextBox", "compiled themed RichTextBox");
         AssertType(textBox, "System.Windows.Controls.TextBox", "created themed TextBox");
+        AssertType(comboBox, "System.Windows.Controls.ComboBox", "created themed ComboBox");
+        AssertType(passwordBox, "System.Windows.Controls.PasswordBox", "created themed PasswordBox");
         AssertType(slider, "System.Windows.Controls.Slider", "created themed Slider");
         AssertType(progressBar, "System.Windows.Controls.ProgressBar", "created themed ProgressBar");
 
         AssertType(GetDictionaryValue(themeDictionary, "DefaultWindowStyle"), "System.Windows.Style", "DefaultWindowStyle");
         AssertType(GetDictionaryValue(themeDictionary, "AccentButtonStyle"), "System.Windows.Style", "AccentButtonStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxStyle"), "System.Windows.Style", "DefaultComboBoxStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxItemStyle"), "System.Windows.Style", "DefaultComboBoxItemStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxTextBoxStyle"), "System.Windows.Style", "DefaultComboBoxTextBoxStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxToggleButtonStyle"), "System.Windows.Style", "DefaultComboBoxToggleButtonStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxTemplate"), "System.Windows.Controls.ControlTemplate", "DefaultComboBoxTemplate");
+        AssertType(GetDictionaryValue(themeDictionary, "EditableComboBoxTemplate"), "System.Windows.Controls.ControlTemplate", "EditableComboBoxTemplate");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultPasswordBoxStyle"), "System.Windows.Style", "DefaultPasswordBoxStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultPasswordBoxContextMenu"), "System.Windows.Controls.ContextMenu", "DefaultPasswordBoxContextMenu");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultTextBoxStyle"), "System.Windows.Style", "DefaultTextBoxStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultTextBoxControlTemplate"), "System.Windows.Controls.ControlTemplate", "DefaultTextBoxControlTemplate");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultRichTextBoxStyle"), "System.Windows.Style", "DefaultRichTextBoxStyle");
+        AssertType(GetDictionaryValue(themeDictionary, comboBox.GetType()), "System.Windows.Style", "implicit ComboBox Fluent style");
+        AssertType(GetDictionaryValue(themeDictionary, passwordBox.GetType()), "System.Windows.Style", "implicit PasswordBox Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, slider.GetType()), "System.Windows.Style", "implicit Slider Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, progressBar.GetType()), "System.Windows.Style", "implicit ProgressBar Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, "HorizontalSliderTemplate"), "System.Windows.Controls.ControlTemplate", "HorizontalSliderTemplate");
@@ -205,6 +242,8 @@ internal static class Program
         AssertStyleTarget(GetProperty(window, "Style"), "System.Windows.Window", "Window Fluent style target");
         AssertStyleTarget(GetProperty(button, "Style"), "System.Windows.Controls.Button", "Button Fluent style target");
         AssertStyleTarget(GetProperty(textBox, "Style"), "System.Windows.Controls.TextBox", "TextBox Fluent style target");
+        AssertStyleTarget(GetProperty(comboBox, "Style"), "System.Windows.Controls.ComboBox", "ComboBox Fluent style target");
+        AssertStyleTarget(GetProperty(passwordBox, "Style"), "System.Windows.Controls.PasswordBox", "PasswordBox Fluent style target");
         AssertStyleTarget(GetProperty(slider, "Style"), "System.Windows.Controls.Slider", "Slider Fluent style target");
         AssertStyleTarget(GetProperty(progressBar, "Style"), "System.Windows.Controls.ProgressBar", "ProgressBar Fluent style target");
         AssertStyleTarget(GetProperty(richTextBox, "Style"), "System.Windows.Controls.RichTextBox", "RichTextBox Fluent style target");
@@ -212,6 +251,8 @@ internal static class Program
         Invoke(window, "ApplyTemplate");
         Invoke(button, "ApplyTemplate");
         Invoke(textBox, "ApplyTemplate");
+        Invoke(comboBox, "ApplyTemplate");
+        Invoke(passwordBox, "ApplyTemplate");
         Invoke(slider, "ApplyTemplate");
         Invoke(progressBar, "ApplyTemplate");
         Invoke(richTextBox, "ApplyTemplate");
@@ -219,14 +260,22 @@ internal static class Program
         AssertType(GetProperty(window, "Template"), "System.Windows.Controls.ControlTemplate", "Window template");
         AssertType(GetProperty(button, "Template"), "System.Windows.Controls.ControlTemplate", "Button template");
         AssertType(GetProperty(textBox, "Template"), "System.Windows.Controls.ControlTemplate", "TextBox template");
+        AssertType(GetProperty(comboBox, "Template"), "System.Windows.Controls.ControlTemplate", "ComboBox template");
+        AssertType(GetProperty(passwordBox, "Template"), "System.Windows.Controls.ControlTemplate", "PasswordBox template");
         AssertType(GetProperty(slider, "Template"), "System.Windows.Controls.ControlTemplate", "Slider template");
         AssertType(GetProperty(progressBar, "Template"), "System.Windows.Controls.ControlTemplate", "ProgressBar template");
         AssertType(GetProperty(richTextBox, "Template"), "System.Windows.Controls.ControlTemplate", "RichTextBox template");
+        AssertStyleHasSetter(GetProperty(comboBox, "Style"), "Template", "ComboBox Fluent template setter");
+        AssertStyleHasSetter(GetProperty(passwordBox, "Style"), "Template", "PasswordBox Fluent template setter");
         AssertStyleHasSetter(GetProperty(textBox, "Style"), "Template", "TextBox Fluent template setter");
         AssertStyleHasSetter(GetProperty(progressBar, "Style"), "Template", "ProgressBar Fluent template setter");
         AssertStyleHasSetter(GetProperty(richTextBox, "Style"), "ContextMenu", "RichTextBox Fluent context-menu setter");
         AssertEqual("themed button smoke", GetProperty(button, "Content"), "themed button content");
         AssertEqual("themed text box smoke", GetProperty(textBox, "Text"), "themed TextBox text");
+        AssertEqual(2, GetCollectionCount(GetProperty(comboBox, "Items")), "themed ComboBox item count");
+        AssertEqual(1, GetProperty(comboBox, "SelectedIndex"), "themed ComboBox selected index");
+        AssertEqual("theme item two", GetProperty(comboBox, "SelectedItem"), "themed ComboBox selected item");
+        AssertEqual("theme-secret", GetProperty(passwordBox, "Password"), "themed PasswordBox password");
         AssertEqual(0.0, GetProperty(slider, "Minimum"), "themed Slider minimum");
         AssertEqual(100.0, GetProperty(slider, "Maximum"), "themed Slider maximum");
         AssertEqual(42.0, GetProperty(slider, "Value"), "themed Slider value");

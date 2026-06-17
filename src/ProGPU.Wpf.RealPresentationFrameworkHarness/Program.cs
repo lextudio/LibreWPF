@@ -197,22 +197,61 @@ internal static class Program
         object drawingVisual = Create(presentationCore, "System.Windows.Media.DrawingVisual");
         object drawingContext = Invoke(drawingVisual, "RenderOpen");
 
-        Type colorsType = GetRequiredType(presentationCore, "System.Windows.Media.Colors");
-        object color = GetStaticProperty(colorsType, "Red");
-        object brush = Create(presentationCore, "System.Windows.Media.SolidColorBrush", color);
+        Type brushType = GetRequiredType(presentationCore, "System.Windows.Media.Brush");
+        Type penType = GetRequiredType(presentationCore, "System.Windows.Media.Pen");
+        Type geometryType = GetRequiredType(presentationCore, "System.Windows.Media.Geometry");
+        Type pointType = GetRequiredType(windowsBase, "System.Windows.Point");
         Type rectType = GetRequiredType(windowsBase, "System.Windows.Rect");
+
+        Type colorsType = GetRequiredType(presentationCore, "System.Windows.Media.Colors");
+        object redBrush = Create(presentationCore, "System.Windows.Media.SolidColorBrush", GetStaticProperty(colorsType, "Red"));
+        object greenBrush = Create(presentationCore, "System.Windows.Media.SolidColorBrush", GetStaticProperty(colorsType, "Green"));
+        object blueBrush = Create(presentationCore, "System.Windows.Media.SolidColorBrush", GetStaticProperty(colorsType, "Blue"));
+        object purpleBrush = Create(presentationCore, "System.Windows.Media.SolidColorBrush", GetStaticProperty(colorsType, "Purple"));
+        object bluePen = Create(presentationCore, "System.Windows.Media.Pen", blueBrush, 2.0);
+
         object rect = Activator.CreateInstance(rectType, 4.0, 5.0, 24.0, 12.0)
             ?? throw new InvalidOperationException("Failed to create System.Windows.Rect.");
+        object lineStart = Activator.CreateInstance(pointType, 2.0, 3.0)
+            ?? throw new InvalidOperationException("Failed to create System.Windows.Point.");
+        object lineEnd = Activator.CreateInstance(pointType, 40.0, 20.0)
+            ?? throw new InvalidOperationException("Failed to create System.Windows.Point.");
+        object ellipseCenter = Activator.CreateInstance(pointType, 28.0, 24.0)
+            ?? throw new InvalidOperationException("Failed to create System.Windows.Point.");
+        object geometryRect = Activator.CreateInstance(rectType, 10.0, 28.0, 18.0, 11.0)
+            ?? throw new InvalidOperationException("Failed to create System.Windows.Rect.");
+        object rectangleGeometry = Create(presentationCore, "System.Windows.Media.RectangleGeometry", geometryRect);
 
-        MethodInfo drawRectangle = drawingContext.GetType().GetMethod(
+        InvokeDrawing(
+            drawingContext,
             "DrawRectangle",
-            BindingFlags.Instance | BindingFlags.Public,
-            binder: null,
-            types: new[] { GetRequiredType(presentationCore, "System.Windows.Media.Brush"), GetRequiredType(presentationCore, "System.Windows.Media.Pen"), rectType },
-            modifiers: null)
-            ?? throw new MissingMethodException(drawingContext.GetType().FullName, "DrawRectangle");
-
-        drawRectangle.Invoke(drawingContext, new[] { brush, null, rect });
+            new[] { brushType, penType, rectType },
+            redBrush,
+            null,
+            rect);
+        InvokeDrawing(
+            drawingContext,
+            "DrawLine",
+            new[] { penType, pointType, pointType },
+            bluePen,
+            lineStart,
+            lineEnd);
+        InvokeDrawing(
+            drawingContext,
+            "DrawEllipse",
+            new[] { brushType, penType, pointType, typeof(double), typeof(double) },
+            greenBrush,
+            null,
+            ellipseCenter,
+            9.0,
+            5.0);
+        InvokeDrawing(
+            drawingContext,
+            "DrawGeometry",
+            new[] { brushType, penType, geometryType },
+            purpleBrush,
+            null,
+            rectangleGeometry);
         Invoke(drawingContext, "Close");
     }
 
@@ -231,10 +270,26 @@ internal static class Program
             retainedFrameRoot,
             "real framework drawing visual owner branch");
         IReadOnlyList<ProGpuRenderCommand> commands = GetRetainedCommands(ownerBranch);
-        if (commands.Count != 1 || commands[0].Type != ProGpuRenderCommandType.DrawRect)
+        ProGpuRenderCommandType[] expectedCommandTypes =
+        {
+            ProGpuRenderCommandType.DrawRect,
+            ProGpuRenderCommandType.DrawLine,
+            ProGpuRenderCommandType.DrawEllipse,
+            ProGpuRenderCommandType.DrawPath
+        };
+        if (commands.Count != expectedCommandTypes.Length)
         {
             throw new InvalidOperationException(
-                $"Expected one retained DrawRect command after real DrawingVisual dispatch, got {commands.Count} commands.");
+                $"Expected {expectedCommandTypes.Length} retained drawing commands after real DrawingVisual dispatch, got {commands.Count} commands.");
+        }
+
+        for (var i = 0; i < expectedCommandTypes.Length; i++)
+        {
+            if (commands[i].Type != expectedCommandTypes[i])
+            {
+                throw new InvalidOperationException(
+                    $"Expected retained DrawingVisual command {i} to be {expectedCommandTypes[i]}, got {commands[i].Type}.");
+            }
         }
     }
 
@@ -319,6 +374,18 @@ internal static class Program
             modifiers: null)
             ?? throw new MissingMethodException(instance.GetType().FullName, methodName);
         return method.Invoke(instance, null) ?? new object();
+    }
+
+    private static void InvokeDrawing(object drawingContext, string methodName, Type[] parameterTypes, params object?[] parameters)
+    {
+        MethodInfo method = drawingContext.GetType().GetMethod(
+            methodName,
+            BindingFlags.Instance | BindingFlags.Public,
+            binder: null,
+            types: parameterTypes,
+            modifiers: null)
+            ?? throw new MissingMethodException(drawingContext.GetType().FullName, methodName);
+        method.Invoke(drawingContext, parameters);
     }
 
     private static void AddToCollection(object collection, object item)

@@ -619,7 +619,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("System.Windows.Documents.FlowDocument", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Controls.ControlTemplate", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Media.DrawingVisual", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"DrawLine\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"DrawEllipse\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"DrawGeometry\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("VerifyRetainedDrawingVisualBranch(target)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGpuRenderCommandType.DrawLine", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGpuRenderCommandType.DrawEllipse", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGpuRenderCommandType.DrawPath", harnessProgram, StringComparison.Ordinal);
     }
 
     [Fact]

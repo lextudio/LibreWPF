@@ -952,6 +952,8 @@
 - Verified the generated-content `DataTemplate.Triggers` slice with clean build/run of `ProGPU.Wpf.RealXamlRuntimeHarness`, clean build/run of `ProGPU.Wpf.RealApplicationRunHarness`, clean build/run of `ProGPU.Wpf.RealThemeRuntimeHarness`, a clean `ProGPU.Wpf.Tests` build, focused `WpfManagedProjectGraphTests` through `vstest` with 28 tests passed, and `git diff --check`.
 - Strengthened the generated-content `DataTemplate.Triggers` smoke to prove selectivity, not just activation. Both real-WPF harnesses now validate that generated `item alpha` keeps the inactive `Tag` while generated `item beta` gets the active trigger value, reusing WPF's compiled template trigger manager and item-container generator.
 - Verified the `DataTemplate.Triggers` selectivity slice with clean runs of `ProGPU.Wpf.RealXamlRuntimeHarness`, `ProGPU.Wpf.RealApplicationRunHarness`, and `ProGPU.Wpf.RealThemeRuntimeHarness`, a clean `ProGPU.Wpf.Tests` build, focused `WpfManagedProjectGraphTests` through `vstest` with 28 tests passed, and `git diff --check`.
+- Extended the compiled XAML app smoke to exercise WPF's real `ItemContainerStyle` path for generated `ListBoxItem` containers. The `ItemsList` now declares a container style with a `DataTrigger` on `SmokeItem.Name`; both real-WPF harnesses verify the compiled style metadata and generated inactive/active container `Tag` values after `Window.Show()`/`Application.Run()`.
+- Verified the `ItemContainerStyle` managed-framework slice with clean runs of `ProGPU.Wpf.RealXamlRuntimeHarness`, `ProGPU.Wpf.RealApplicationRunHarness`, and `ProGPU.Wpf.RealThemeRuntimeHarness`, a clean `ProGPU.Wpf.Tests` build, focused `WpfManagedProjectGraphTests` through `vstest` with 28 tests passed, and `git diff --check`.
 
 ## Open Porting Items
 

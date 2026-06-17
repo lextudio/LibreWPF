@@ -409,8 +409,10 @@ internal static class Program
             itemsList,
             alphaItem,
             "item alpha",
+            "container trigger inactive",
             "template trigger inactive",
             "compiled DataTemplate inactive generated item container",
+            "compiled ItemContainerStyle trigger inactive generated value",
             "compiled DataTemplate inactive generated TextBlock",
             "compiled DataTemplate inactive generated TextBlock binding",
             "compiled DataTemplate trigger inactive generated value");
@@ -421,8 +423,10 @@ internal static class Program
             itemsList,
             betaItem,
             "item beta",
+            "container trigger active",
             "template trigger active",
             "compiled DataTemplate active generated item container",
+            "compiled ItemContainerStyle trigger active generated value",
             "compiled DataTemplate active generated TextBlock",
             "compiled DataTemplate active generated TextBlock binding",
             "compiled DataTemplate trigger active generated value");
@@ -433,8 +437,10 @@ internal static class Program
         object itemsList,
         object item,
         string expectedText,
+        string expectedContainerTag,
         string expectedTag,
         string itemContainerDescription,
+        string itemContainerTagDescription,
         string textBlockDescription,
         string bindingDescription,
         string tagDescription)
@@ -445,6 +451,7 @@ internal static class Program
         object itemContainerGenerator = GetProperty(itemsList, "ItemContainerGenerator");
         object itemContainer = Invoke(itemContainerGenerator, "ContainerFromItem", item);
         AssertType(itemContainer, "System.Windows.Controls.ListBoxItem", itemContainerDescription);
+        AssertEqual(expectedContainerTag, GetProperty(itemContainer, "Tag"), itemContainerTagDescription);
         Invoke(itemContainer, "ApplyTemplate");
         Invoke(itemContainer, "UpdateLayout");
 
@@ -715,6 +722,28 @@ internal static class Program
 
         object itemTemplate = GetProperty(itemsList, "ItemTemplate");
         AssertType(itemTemplate, "System.Windows.DataTemplate", "compiled ListBox item template");
+        object itemContainerStyle = GetProperty(itemsList, "ItemContainerStyle");
+        AssertType(itemContainerStyle, "System.Windows.Style", "compiled ListBox item container style");
+        AssertEqual("System.Windows.Controls.ListBoxItem", GetProperty(itemContainerStyle, "TargetType").ToString(), "compiled ListBox item container style target");
+        object itemContainerSetters = GetProperty(itemContainerStyle, "Setters");
+        AssertCollectionCount(itemContainerSetters, expected: 1, "compiled ItemContainerStyle setters");
+        object itemContainerSetter = GetCollectionItem(itemContainerSetters, 0);
+        AssertType(itemContainerSetter, "System.Windows.Setter", "compiled ItemContainerStyle setter");
+        AssertEqual("Tag", GetProperty(GetProperty(itemContainerSetter, "Property"), "Name"), "compiled ItemContainerStyle setter property");
+        AssertEqual("container trigger inactive", GetProperty(itemContainerSetter, "Value"), "compiled ItemContainerStyle default setter value");
+        object itemContainerStyleTriggers = GetProperty(itemContainerStyle, "Triggers");
+        AssertCollectionCount(itemContainerStyleTriggers, expected: 1, "compiled ItemContainerStyle triggers");
+        object itemContainerStyleTrigger = GetCollectionItem(itemContainerStyleTriggers, 0);
+        AssertType(itemContainerStyleTrigger, "System.Windows.DataTrigger", "compiled ItemContainerStyle DataTrigger");
+        AssertBindingObjectPath(GetProperty(itemContainerStyleTrigger, "Binding"), "Name", "compiled ItemContainerStyle DataTrigger binding path");
+        AssertEqual("item beta", GetProperty(itemContainerStyleTrigger, "Value"), "compiled ItemContainerStyle DataTrigger value");
+        object itemContainerStyleTriggerSetters = GetProperty(itemContainerStyleTrigger, "Setters");
+        AssertCollectionCount(itemContainerStyleTriggerSetters, expected: 1, "compiled ItemContainerStyle DataTrigger setters");
+        object itemContainerStyleTriggerSetter = GetCollectionItem(itemContainerStyleTriggerSetters, 0);
+        AssertType(itemContainerStyleTriggerSetter, "System.Windows.Setter", "compiled ItemContainerStyle DataTrigger setter");
+        AssertEqual("Tag", GetProperty(GetProperty(itemContainerStyleTriggerSetter, "Property"), "Name"), "compiled ItemContainerStyle DataTrigger setter property");
+        AssertEqual("container trigger active", GetProperty(itemContainerStyleTriggerSetter, "Value"), "compiled ItemContainerStyle DataTrigger setter value");
+
         object templateRoot = Invoke(itemTemplate, "LoadContent");
         AssertType(templateRoot, "System.Windows.Controls.TextBlock", "compiled DataTemplate root");
         AssertEqual("ItemTextBlock", GetProperty(templateRoot, "Name"), "compiled DataTemplate named root");

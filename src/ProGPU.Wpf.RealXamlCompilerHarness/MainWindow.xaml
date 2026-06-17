@@ -200,6 +200,16 @@
             Margin="0,8,0,0"
             ItemsSource="{Binding Items}"
             SelectedItem="{Binding SelectedItem, Mode=TwoWay}">
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="{x:Type ListBoxItem}">
+                    <Setter Property="Tag" Value="container trigger inactive" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Name}" Value="item beta">
+                            <Setter Property="Tag" Value="container trigger active" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ListBox.ItemContainerStyle>
             <ListBox.ItemsPanel>
                 <ItemsPanelTemplate>
                     <StackPanel />

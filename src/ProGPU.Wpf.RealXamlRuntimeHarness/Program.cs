@@ -179,7 +179,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 52, "stack panel children");
+        AssertCollectionCount(children, expected: 53, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -190,6 +190,7 @@ internal static class Program
         AssertType(inputBox, "System.Windows.Controls.TextBox", "compiled named TextBox");
         AssertEqual("compiled TextBox", GetProperty(inputBox, "Text"), "compiled TextBox text");
         ValidateTextBoxSelection(inputBox);
+        ValidatePasswordBox(window);
 
         object resources = GetProperty(application, "Resources");
         object expectedStyle = GetDictionaryValue(resources, "SmokeTextBoxStyle");
@@ -255,6 +256,34 @@ internal static class Program
         AssertEqual(9, GetProperty(inputBox, "SelectionStart"), "compiled TextBox replacement selection start");
         AssertEqual(9, GetProperty(inputBox, "SelectionLength"), "compiled TextBox replacement selection length");
         AssertEqual("selection", GetProperty(inputBox, "SelectedText"), "compiled TextBox replacement selected text");
+    }
+
+    private static void ValidatePasswordBox(object window)
+    {
+        object passwordBox = GetField(window, "CredentialBox");
+        AssertType(passwordBox, "System.Windows.Controls.PasswordBox", "compiled PasswordBox");
+        AssertEqual(12, GetProperty(passwordBox, "MaxLength"), "compiled PasswordBox max length");
+        AssertEqual('#', GetProperty(passwordBox, "PasswordChar"), "compiled PasswordBox password char");
+        AssertEqual(string.Empty, GetProperty(passwordBox, "Password"), "compiled PasswordBox initial password");
+        object securePassword = GetProperty(passwordBox, "SecurePassword");
+        AssertEqual(0, GetProperty(securePassword, "Length"), "compiled PasswordBox initial secure password length");
+        AssertEqual(0, GetProperty(window, "PasswordChangedCount"), "compiled PasswordBox initial changed count");
+
+        SetProperty(passwordBox, "Password", "secret42");
+
+        AssertEqual("secret42", GetProperty(passwordBox, "Password"), "compiled PasswordBox updated password");
+        securePassword = GetProperty(passwordBox, "SecurePassword");
+        AssertEqual(8, GetProperty(securePassword, "Length"), "compiled PasswordBox secure password length");
+        AssertEqual(1, GetProperty(window, "PasswordChangedCount"), "compiled PasswordBox PasswordChanged count");
+        AssertEqual("CredentialBox", GetProperty(window, "LastPasswordChangedSenderName"), "compiled PasswordBox PasswordChanged sender");
+        AssertEqual("PasswordChanged", GetProperty(window, "LastPasswordChangedRoutedEventName"), "compiled PasswordBox PasswordChanged routed event");
+
+        Invoke(passwordBox, "Clear");
+
+        AssertEqual(string.Empty, GetProperty(passwordBox, "Password"), "compiled PasswordBox cleared password");
+        securePassword = GetProperty(passwordBox, "SecurePassword");
+        AssertEqual(0, GetProperty(securePassword, "Length"), "compiled PasswordBox cleared secure password length");
+        AssertEqual(2, GetProperty(window, "PasswordChangedCount"), "compiled PasswordBox clear changed count");
     }
 
     private static void ValidateRichFlowDocument(object window)

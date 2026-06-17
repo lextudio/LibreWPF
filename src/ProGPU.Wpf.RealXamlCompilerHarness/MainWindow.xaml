@@ -223,6 +223,11 @@
             LostMouseCapture="OnXamlLostMouseCapture"
             MouseWheel="OnXamlMouseWheel"
             Content="run xaml event" />
+        <PasswordBox
+            x:Name="CredentialBox"
+            MaxLength="12"
+            PasswordChanged="OnPasswordChanged"
+            PasswordChar="#" />
         <Button
             x:Name="StyledEventButton"
             Margin="0,8,0,0"

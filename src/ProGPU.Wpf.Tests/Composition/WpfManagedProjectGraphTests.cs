@@ -838,6 +838,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"ContextButtonToolTipText\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"compiled ToolTip content\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("TextBox", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"CredentialBox\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("MaxLength=\"12\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("PasswordChanged=\"OnPasswordChanged\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("PasswordChar=\"#\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("RichTextBox", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"BasedOnTextBox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style=\"{StaticResource BasedOnTextBoxStyle}\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1150,6 +1154,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public int ContextMenuClickCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnContextMenuClick", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastContextMenuClickRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int PasswordChangedCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnPasswordChanged", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastPasswordChangedRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int StoryboardTargetLoadedCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnStoryboardTargetLoaded", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastStoryboardTargetLoadedRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1280,6 +1287,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetField(window, \"InputBox\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTextBoxSelection(inputBox)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TextBox selected text replacement", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePasswordBox(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled PasswordBox PasswordChanged count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled PasswordBox secure password length", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled PasswordBox clear changed count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateRichFlowDocument(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetField(window, \"DocumentBox\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Documents.Bold", harnessProgram, StringComparison.Ordinal);
@@ -1620,6 +1631,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled TextBlock property-change binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTextBoxSelection(inputBox)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TextBox selected text replacement", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePasswordBox(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled PasswordBox PasswordChanged count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled PasswordBox secure password length", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled PasswordBox clear changed count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateRichFlowDocument(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument TextRange paragraph text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument list items", harnessProgram, StringComparison.Ordinal);

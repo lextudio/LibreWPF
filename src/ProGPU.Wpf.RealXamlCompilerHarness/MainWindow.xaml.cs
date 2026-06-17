@@ -74,6 +74,12 @@ public partial class MainWindow : Window
 
     public string? LastContextMenuClickRoutedEventName { get; private set; }
 
+    public int PasswordChangedCount { get; private set; }
+
+    public string? LastPasswordChangedSenderName { get; private set; }
+
+    public string? LastPasswordChangedRoutedEventName { get; private set; }
+
     public int StoryboardTargetLoadedCount { get; private set; }
 
     public string? LastStoryboardTargetLoadedSenderName { get; private set; }
@@ -148,6 +154,14 @@ public partial class MainWindow : Window
         ContextMenuClickCount++;
         LastContextMenuClickSenderName = sender is FrameworkElement element ? element.Name : null;
         LastContextMenuClickRoutedEventName = e.RoutedEvent?.Name;
+        e.Handled = true;
+    }
+
+    private void OnPasswordChanged(object sender, RoutedEventArgs e)
+    {
+        PasswordChangedCount++;
+        LastPasswordChangedSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastPasswordChangedRoutedEventName = e.RoutedEvent?.Name;
         e.Handled = true;
     }
 

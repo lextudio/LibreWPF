@@ -584,6 +584,13 @@
             ItemsSource="{Binding Items}"
             SelectedValue="{Binding SelectedCategory, Mode=TwoWay}"
             SelectedValuePath="Category" />
+        <ComboBox
+            x:Name="ItemsComboBox"
+            Margin="0,8,0,0"
+            DisplayMemberPath="Name"
+            ItemsSource="{Binding Items}"
+            SelectedValue="{Binding ComboSelectedCategory, Mode=TwoWay}"
+            SelectedValuePath="Category" />
         <TreeView
             x:Name="NodeTree"
             Margin="0,8,0,0"

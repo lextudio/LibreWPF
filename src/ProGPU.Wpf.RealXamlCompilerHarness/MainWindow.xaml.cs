@@ -172,6 +172,7 @@ public partial class MainWindow : Window
         private bool _isCritical;
         private SmokeItem? _selectedItem;
         private string _selectedCategory = "secondary group";
+        private string _comboSelectedCategory = "secondary group";
         private string _validatedText = "valid binding text";
         private string _ruleValidatedText = "rule: valid binding text";
         private string _bindingGroupFirstName = "group: Ada";
@@ -320,6 +321,19 @@ public partial class MainWindow : Window
                 if (!string.Equals(_selectedCategory, value, StringComparison.Ordinal))
                 {
                     _selectedCategory = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string ComboSelectedCategory
+        {
+            get => _comboSelectedCategory;
+            set
+            {
+                if (!string.Equals(_comboSelectedCategory, value, StringComparison.Ordinal))
+                {
+                    _comboSelectedCategory = value;
                     OnPropertyChanged();
                 }
             }

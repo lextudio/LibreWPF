@@ -150,7 +150,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 48, "stack panel children");
+        AssertCollectionCount(children, expected: 49, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -204,6 +204,7 @@ internal static class Program
         ValidateStyleAndDataTrigger(window, application);
         ValidateTemplateAndDynamicResource(window, application);
         ValidateItemsBindingAndTemplate(window);
+        ValidateComboBox(window);
         ValidateImplicitDataTemplate(window);
         ValidateContentTemplateSelector(window);
         ValidateHierarchicalDataTemplate(window);
@@ -1680,6 +1681,31 @@ internal static class Program
         AssertEqual(expectedName, GetProperty(group, "Name"), $"compiled CollectionViewSource {description} group name");
         AssertEqual(expectedItemCount, GetProperty(group, "ItemCount"), $"compiled CollectionViewSource {description} group item count");
         AssertCollectionCount(GetProperty(group, "Items"), expected: expectedItemCount, $"compiled CollectionViewSource {description} group items");
+    }
+
+    private static void ValidateComboBox(object window)
+    {
+        object dataContext = GetProperty(window, "DataContext");
+        object sourceItems = GetProperty(dataContext, "Items");
+
+        object comboBox = GetField(window, "ItemsComboBox");
+        AssertType(comboBox, "System.Windows.Controls.ComboBox", "compiled ComboBox");
+        AssertSame(sourceItems, GetProperty(comboBox, "ItemsSource"), "compiled ComboBox ItemsSource binding");
+        AssertCollectionCount(GetProperty(comboBox, "Items"), expected: 3, "compiled ComboBox collection-change items");
+        AssertEqual("Name", GetProperty(comboBox, "DisplayMemberPath"), "compiled ComboBox DisplayMemberPath");
+        AssertEqual("Category", GetProperty(comboBox, "SelectedValuePath"), "compiled ComboBox SelectedValuePath");
+        AssertBindingPath(comboBox, "SelectedValueProperty", "ComboSelectedCategory", "compiled ComboBox SelectedValue binding path");
+        AssertEqual("secondary group", GetProperty(dataContext, "ComboSelectedCategory"), "compiled ComboBox initial selected category source");
+        AssertEqual("secondary group", GetProperty(comboBox, "SelectedValue"), "compiled ComboBox initial selected value");
+        AssertSame(GetCollectionItem(sourceItems, 1), GetProperty(comboBox, "SelectedItem"), "compiled ComboBox selected item by value path");
+        AssertEqual(1, GetProperty(comboBox, "SelectedIndex"), "compiled ComboBox initial selected index");
+
+        SetProperty(comboBox, "SelectedValue", "primary group");
+
+        AssertEqual("primary group", GetProperty(dataContext, "ComboSelectedCategory"), "compiled ComboBox two-way selected value source update");
+        AssertEqual("primary group", GetProperty(comboBox, "SelectedValue"), "compiled ComboBox updated selected value");
+        AssertSame(GetCollectionItem(sourceItems, 0), GetProperty(comboBox, "SelectedItem"), "compiled ComboBox selected item after selected value update");
+        AssertEqual(0, GetProperty(comboBox, "SelectedIndex"), "compiled ComboBox updated selected index");
     }
 
     private static void ValidateImplicitDataTemplate(object window)

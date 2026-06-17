@@ -1053,6 +1053,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DisplayMemberPath=\"Name\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SelectedValuePath=\"Category\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SelectedValue=\"{Binding SelectedCategory, Mode=TwoWay}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ItemsComboBox\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SelectedValue=\"{Binding ComboSelectedCategory, Mode=TwoWay}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"NodeTree\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemTemplate=\"{StaticResource SmokeNodeTemplate}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Nodes}\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1158,6 +1160,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public SmokeItem? SelectedItem", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string SelectedCategory", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private string _selectedCategory = \"secondary group\"", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public string ComboSelectedCategory", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private string _comboSelectedCategory = \"secondary group\"", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeDetailTemplateSelector : DataTemplateSelector", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public DataTemplate? SelectedTemplate", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public override DataTemplate? SelectTemplate", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1458,6 +1462,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ListBox SelectedValuePath", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox SelectedValue binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox two-way selected value source update", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateComboBox(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ComboBox SelectedValue binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ComboBox collection-change items", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ComboBox two-way selected value source update", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowItemTemplateTriggerActivation(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowTabControl(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowSectionControls(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
@@ -1783,6 +1791,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ListBox SelectedValuePath", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox SelectedValue binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox two-way selected value source update", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateComboBox(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ComboBox SelectedValue binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ComboBox collection-change items", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ComboBox two-way selected value source update", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowItemTemplateTriggerActivation(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowTabControl(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowSectionControls(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);

@@ -60,6 +60,20 @@
             x:Key="SmokeItemTemplateSelector"
             AlphaTemplate="{StaticResource AlphaItemTemplate}"
             DefaultTemplate="{StaticResource DefaultItemTemplate}" />
+        <Style
+            x:Key="AlphaItemContainerSelectorStyle"
+            TargetType="{x:Type ListBoxItem}">
+            <Setter Property="Tag" Value="style selector alpha container" />
+        </Style>
+        <Style
+            x:Key="DefaultItemContainerSelectorStyle"
+            TargetType="{x:Type ListBoxItem}">
+            <Setter Property="Tag" Value="style selector default container" />
+        </Style>
+        <local:SmokeItemContainerStyleSelector
+            x:Key="SmokeItemContainerStyleSelector"
+            AlphaStyle="{StaticResource AlphaItemContainerSelectorStyle}"
+            DefaultStyle="{StaticResource DefaultItemContainerSelectorStyle}" />
         <local:SmokeUpperConverter x:Key="SmokeUpperConverter" />
         <local:SmokeJoinConverter x:Key="SmokeJoinConverter" />
         <ObjectDataProvider
@@ -451,6 +465,20 @@
             Margin="0,8,0,0"
             ItemTemplateSelector="{StaticResource SmokeItemTemplateSelector}"
             ItemsSource="{Binding Items}" />
+        <ListBox
+            x:Name="StyleSelectorItemsList"
+            Margin="0,8,0,0"
+            ItemContainerStyleSelector="{StaticResource SmokeItemContainerStyleSelector}"
+            ItemsSource="{Binding Items}">
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type local:SmokeItem}">
+                    <TextBlock
+                        x:Name="StyleSelectorItemTextBlock"
+                        Tag="style selector item template"
+                        Text="{Binding Name}" />
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
         <ContentControl
             x:Name="ImplicitTemplateHost"
             Margin="0,8,0,0"

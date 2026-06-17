@@ -150,7 +150,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 37, "stack panel children");
+        AssertCollectionCount(children, expected: 38, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -602,6 +602,62 @@ internal static class Program
         AssertType(itemTextBlock, "System.Windows.Controls.TextBlock", textBlockDescription);
         AssertEqual(expectedText, GetProperty(itemTextBlock, "Text"), bindingDescription);
         AssertEqual(expectedTag, GetProperty(itemTextBlock, "Tag"), tagDescription);
+    }
+
+    private static void ValidatePostShowItemContainerStyleSelector(Assembly presentationCore, object window)
+    {
+        object styleSelectorItemsList = GetField(window, "StyleSelectorItemsList");
+        object sourceItems = GetProperty(GetProperty(window, "DataContext"), "Items");
+
+        ValidateGeneratedStyleSelectorItem(
+            presentationCore,
+            styleSelectorItemsList,
+            GetCollectionItem(sourceItems, 0),
+            "item alpha",
+            "style selector alpha container",
+            "compiled ItemContainerStyleSelector alpha generated item container",
+            "compiled ItemContainerStyleSelector alpha generated container style",
+            "compiled ItemContainerStyleSelector alpha generated TextBlock",
+            "compiled ItemContainerStyleSelector alpha generated TextBlock binding");
+
+        ValidateGeneratedStyleSelectorItem(
+            presentationCore,
+            styleSelectorItemsList,
+            GetCollectionItem(sourceItems, 1),
+            "item beta",
+            "style selector default container",
+            "compiled ItemContainerStyleSelector default generated item container",
+            "compiled ItemContainerStyleSelector default generated container style",
+            "compiled ItemContainerStyleSelector default generated TextBlock",
+            "compiled ItemContainerStyleSelector default generated TextBlock binding");
+    }
+
+    private static void ValidateGeneratedStyleSelectorItem(
+        Assembly presentationCore,
+        object styleSelectorItemsList,
+        object item,
+        string expectedText,
+        string expectedContainerTag,
+        string itemContainerDescription,
+        string itemContainerTagDescription,
+        string textBlockDescription,
+        string bindingDescription)
+    {
+        Invoke(styleSelectorItemsList, "ScrollIntoView", item);
+        Invoke(styleSelectorItemsList, "UpdateLayout");
+
+        object itemContainerGenerator = GetProperty(styleSelectorItemsList, "ItemContainerGenerator");
+        object itemContainer = Invoke(itemContainerGenerator, "ContainerFromItem", item);
+        AssertType(itemContainer, "System.Windows.Controls.ListBoxItem", itemContainerDescription);
+        AssertEqual(expectedContainerTag, GetProperty(itemContainer, "Tag"), itemContainerTagDescription);
+        Invoke(itemContainer, "ApplyTemplate");
+        Invoke(itemContainer, "UpdateLayout");
+
+        object itemTextBlock = FindVisualDescendantByName(presentationCore, itemContainer, "StyleSelectorItemTextBlock")
+            ?? throw new InvalidOperationException("Expected style-selector-generated item container to contain StyleSelectorItemTextBlock.");
+        AssertType(itemTextBlock, "System.Windows.Controls.TextBlock", textBlockDescription);
+        AssertEqual(expectedText, GetProperty(itemTextBlock, "Text"), bindingDescription);
+        AssertEqual("style selector item template", GetProperty(itemTextBlock, "Tag"), "compiled ItemContainerStyleSelector generated TextBlock tag");
     }
 
     private static void ValidatePostShowImplicitDataTemplate(Assembly presentationCore, object window)
@@ -1165,6 +1221,23 @@ internal static class Program
         AssertSame(sourceItems, GetProperty(selectorItemsList, "ItemsSource"), "compiled DataTemplateSelector ListBox ItemsSource binding");
         AssertSame(selector, GetProperty(selectorItemsList, "ItemTemplateSelector"), "compiled ListBox ItemTemplateSelector binding");
         AssertCollectionCount(GetProperty(selectorItemsList, "Items"), expected: 2, "compiled DataTemplateSelector generated items");
+
+        object alphaContainerStyle = Invoke(window, "TryFindResource", "AlphaItemContainerSelectorStyle");
+        AssertType(alphaContainerStyle, "System.Windows.Style", "compiled ItemContainerStyleSelector alpha style resource");
+        AssertEqual("System.Windows.Controls.ListBoxItem", GetProperty(alphaContainerStyle, "TargetType").ToString(), "compiled ItemContainerStyleSelector alpha style target");
+        object defaultContainerStyle = Invoke(window, "TryFindResource", "DefaultItemContainerSelectorStyle");
+        AssertType(defaultContainerStyle, "System.Windows.Style", "compiled ItemContainerStyleSelector default style resource");
+        AssertEqual("System.Windows.Controls.ListBoxItem", GetProperty(defaultContainerStyle, "TargetType").ToString(), "compiled ItemContainerStyleSelector default style target");
+        object containerStyleSelector = Invoke(window, "TryFindResource", "SmokeItemContainerStyleSelector");
+        AssertType(containerStyleSelector, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeItemContainerStyleSelector", "compiled ItemContainerStyleSelector resource");
+        AssertSame(alphaContainerStyle, GetProperty(containerStyleSelector, "AlphaStyle"), "compiled ItemContainerStyleSelector alpha style property");
+        AssertSame(defaultContainerStyle, GetProperty(containerStyleSelector, "DefaultStyle"), "compiled ItemContainerStyleSelector default style property");
+
+        object styleSelectorItemsList = GetField(window, "StyleSelectorItemsList");
+        AssertType(styleSelectorItemsList, "System.Windows.Controls.ListBox", "compiled style selector ListBox");
+        AssertSame(sourceItems, GetProperty(styleSelectorItemsList, "ItemsSource"), "compiled ItemContainerStyleSelector ListBox ItemsSource binding");
+        AssertSame(containerStyleSelector, GetProperty(styleSelectorItemsList, "ItemContainerStyleSelector"), "compiled ListBox ItemContainerStyleSelector binding");
+        AssertCollectionCount(GetProperty(styleSelectorItemsList, "Items"), expected: 2, "compiled ItemContainerStyleSelector generated items");
 
         object sortedItemsViewSource = Invoke(window, "TryFindResource", "SortedItemsView");
         AssertType(sortedItemsViewSource, "System.Windows.Data.CollectionViewSource", "compiled CollectionViewSource resource");
@@ -1968,6 +2041,7 @@ internal static class Program
             ValidatePostShowItemTemplateTriggerActivation(_presentationCore, typedActivation.Window);
             ValidatePostShowGroupStyleHeader(_presentationCore, typedActivation.Window);
             ValidatePostShowItemTemplateSelector(_presentationCore, typedActivation.Window);
+            ValidatePostShowItemContainerStyleSelector(_presentationCore, typedActivation.Window);
             ValidatePostShowImplicitDataTemplate(_presentationCore, typedActivation.Window);
             ValidatePostShowHierarchicalDataTemplate(_presentationCore, typedActivation.Window);
             ValidatePortableInputBindingActivation(typedActivation.Window);
@@ -2014,6 +2088,7 @@ internal static class Program
             ValidatePostShowItemTemplateTriggerActivation(_presentationCore, activation.Window);
             ValidatePostShowGroupStyleHeader(_presentationCore, activation.Window);
             ValidatePostShowItemTemplateSelector(_presentationCore, activation.Window);
+            ValidatePostShowItemContainerStyleSelector(_presentationCore, activation.Window);
             ValidatePostShowImplicitDataTemplate(_presentationCore, activation.Window);
             ValidatePostShowHierarchicalDataTemplate(_presentationCore, activation.Window);
             AssertEqual("input binding payload", GetProperty(activation.Window, "LastRoutedCommandParameter"), "portable input KeyBinding persisted command parameter");

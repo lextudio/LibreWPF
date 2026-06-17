@@ -415,3 +415,22 @@ public sealed class SmokeItemTemplateSelector : DataTemplateSelector
         return DefaultTemplate ?? base.SelectTemplate(item, container);
     }
 }
+
+public sealed class SmokeItemContainerStyleSelector : StyleSelector
+{
+    public Style? AlphaStyle { get; set; }
+
+    public Style? DefaultStyle { get; set; }
+
+    public override Style? SelectStyle(object item, DependencyObject container)
+    {
+        if (item is SmokeItem smokeItem &&
+            string.Equals(smokeItem.Name, "item alpha", StringComparison.Ordinal) &&
+            AlphaStyle != null)
+        {
+            return AlphaStyle;
+        }
+
+        return DefaultStyle ?? base.SelectStyle(item, container);
+    }
+}

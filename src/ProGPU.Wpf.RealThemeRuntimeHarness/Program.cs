@@ -121,12 +121,21 @@ internal static class Program
         object windowStyle = GetDictionaryValue(themeDictionary, "DefaultWindowStyle");
         object buttonStyle = GetDictionaryValue(themeDictionary, "AccentButtonStyle");
         object comboBoxStyle = GetDictionaryValue(themeDictionary, "DefaultComboBoxStyle");
+        object listViewStyle = GetDictionaryValue(themeDictionary, "DefaultListViewStyle");
+        object listViewItemStyle = GetDictionaryValue(themeDictionary, "DefaultListViewItemStyle");
         object passwordBoxStyle = GetDictionaryValue(themeDictionary, "DefaultPasswordBoxStyle");
+        object tabControlStyle = GetDictionaryValue(themeDictionary, "DefaultTabControlStyle");
+        object tabItemStyle = GetDictionaryValue(themeDictionary, "DefaultTabItemStyle");
         object textBoxStyle = GetDictionaryValue(themeDictionary, "DefaultTextBoxStyle");
+        object treeViewStyle = GetDictionaryValue(themeDictionary, "DefaultTreeViewStyle");
+        object treeViewItemStyle = GetDictionaryValue(themeDictionary, "DefaultTreeViewItemStyle");
         object richTextBoxStyle = GetDictionaryValue(themeDictionary, "DefaultRichTextBoxStyle");
         Type comboBoxType = GetRequiredType(presentationFramework, "System.Windows.Controls.ComboBox");
+        Type listViewType = GetRequiredType(presentationFramework, "System.Windows.Controls.ListView");
         Type passwordBoxType = GetRequiredType(presentationFramework, "System.Windows.Controls.PasswordBox");
         Type sliderType = GetRequiredType(presentationFramework, "System.Windows.Controls.Slider");
+        Type tabControlType = GetRequiredType(presentationFramework, "System.Windows.Controls.TabControl");
+        Type treeViewType = GetRequiredType(presentationFramework, "System.Windows.Controls.TreeView");
         Type progressBarType = GetRequiredType(presentationFramework, "System.Windows.Controls.ProgressBar");
         object sliderStyle = GetDictionaryValue(themeDictionary, sliderType);
         object progressBarStyle = GetDictionaryValue(themeDictionary, progressBarType);
@@ -148,6 +157,50 @@ internal static class Program
         SetProperty(textBox, "Text", "themed text box smoke");
         SetProperty(textBox, "Style", textBoxStyle);
         AddToCollection(children, textBox);
+
+        object tabControl = Create(presentationFramework, "System.Windows.Controls.TabControl");
+        object tabItems = GetProperty(tabControl, "Items");
+        object firstTabItem = Create(presentationFramework, "System.Windows.Controls.TabItem");
+        SetProperty(firstTabItem, "Header", "Theme tab one");
+        SetProperty(firstTabItem, "Content", "Theme tab content one");
+        SetProperty(firstTabItem, "Style", tabItemStyle);
+        AddToCollection(tabItems, firstTabItem);
+        object secondTabItem = Create(presentationFramework, "System.Windows.Controls.TabItem");
+        SetProperty(secondTabItem, "Header", "Theme tab two");
+        SetProperty(secondTabItem, "Content", "Theme tab content two");
+        SetProperty(secondTabItem, "Style", tabItemStyle);
+        AddToCollection(tabItems, secondTabItem);
+        SetProperty(tabControl, "SelectedIndex", 1);
+        SetProperty(tabControl, "Style", tabControlStyle);
+        AddToCollection(children, tabControl);
+
+        object listView = Create(presentationFramework, "System.Windows.Controls.ListView");
+        object listViewItems = GetProperty(listView, "Items");
+        object firstListViewItem = Create(presentationFramework, "System.Windows.Controls.ListViewItem");
+        SetProperty(firstListViewItem, "Content", "Theme list item one");
+        SetProperty(firstListViewItem, "Style", listViewItemStyle);
+        AddToCollection(listViewItems, firstListViewItem);
+        object secondListViewItem = Create(presentationFramework, "System.Windows.Controls.ListViewItem");
+        SetProperty(secondListViewItem, "Content", "Theme list item two");
+        SetProperty(secondListViewItem, "Style", listViewItemStyle);
+        AddToCollection(listViewItems, secondListViewItem);
+        SetProperty(listView, "SelectedIndex", 1);
+        SetProperty(listView, "Style", listViewStyle);
+        AddToCollection(children, listView);
+
+        object treeView = Create(presentationFramework, "System.Windows.Controls.TreeView");
+        object treeViewItems = GetProperty(treeView, "Items");
+        object rootTreeViewItem = Create(presentationFramework, "System.Windows.Controls.TreeViewItem");
+        SetProperty(rootTreeViewItem, "Header", "Theme tree root");
+        SetProperty(rootTreeViewItem, "IsExpanded", true);
+        SetProperty(rootTreeViewItem, "Style", treeViewItemStyle);
+        object childTreeViewItem = Create(presentationFramework, "System.Windows.Controls.TreeViewItem");
+        SetProperty(childTreeViewItem, "Header", "Theme tree child");
+        SetProperty(childTreeViewItem, "Style", treeViewItemStyle);
+        AddToCollection(GetProperty(rootTreeViewItem, "Items"), childTreeViewItem);
+        AddToCollection(treeViewItems, rootTreeViewItem);
+        SetProperty(treeView, "Style", treeViewStyle);
+        AddToCollection(children, treeView);
 
         object comboBox = Create(presentationFramework, "System.Windows.Controls.ComboBox");
         object comboBoxItems = GetProperty(comboBox, "Items");
@@ -179,6 +232,9 @@ internal static class Program
         AssertSame(windowStyle, GetProperty(window, "Style"), "Window Fluent style");
         AssertSame(buttonStyle, GetProperty(button, "Style"), "Button Fluent style");
         AssertSame(textBoxStyle, GetProperty(textBox, "Style"), "TextBox Fluent style");
+        AssertSame(tabControlStyle, GetProperty(tabControl, "Style"), "TabControl Fluent style");
+        AssertSame(listViewStyle, GetProperty(listView, "Style"), "ListView Fluent style");
+        AssertSame(treeViewStyle, GetProperty(treeView, "Style"), "TreeView Fluent style");
         AssertSame(comboBoxStyle, GetProperty(comboBox, "Style"), "ComboBox Fluent style");
         AssertSame(passwordBoxStyle, GetProperty(passwordBox, "Style"), "PasswordBox Fluent style");
         AssertSame(sliderStyle, GetProperty(slider, "Style"), "Slider Fluent style");
@@ -189,8 +245,11 @@ internal static class Program
         AssertSame(comboBoxStyle, Invoke(application, "TryFindResource", "DefaultComboBoxStyle"), "application Fluent ComboBox resource lookup");
         AssertSame(passwordBoxStyle, Invoke(application, "TryFindResource", "DefaultPasswordBoxStyle"), "application Fluent PasswordBox resource lookup");
         AssertType(Invoke(application, "TryFindResource", comboBoxType), "System.Windows.Style", "application Fluent ComboBox implicit style lookup");
+        AssertType(Invoke(application, "TryFindResource", listViewType), "System.Windows.Style", "application Fluent ListView implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", passwordBoxType), "System.Windows.Style", "application Fluent PasswordBox implicit style lookup");
         AssertSame(sliderStyle, Invoke(application, "TryFindResource", sliderType), "application Fluent Slider implicit style lookup");
+        AssertType(Invoke(application, "TryFindResource", tabControlType), "System.Windows.Style", "application Fluent TabControl implicit style lookup");
+        AssertType(Invoke(application, "TryFindResource", treeViewType), "System.Windows.Style", "application Fluent TreeView implicit style lookup");
         AssertSame(progressBarStyle, Invoke(application, "TryFindResource", progressBarType), "application Fluent ProgressBar implicit style lookup");
     }
 
@@ -198,11 +257,14 @@ internal static class Program
     {
         object content = GetProperty(window, "Content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expectedMinimum: 19, "themed stack panel children");
+        AssertCollectionCount(children, expectedMinimum: 22, "themed stack panel children");
 
         int childCount = GetCollectionCount(children);
-        object button = GetCollectionItem(children, childCount - 6);
-        object textBox = GetCollectionItem(children, childCount - 5);
+        object button = GetCollectionItem(children, childCount - 9);
+        object textBox = GetCollectionItem(children, childCount - 8);
+        object tabControl = GetCollectionItem(children, childCount - 7);
+        object listView = GetCollectionItem(children, childCount - 6);
+        object treeView = GetCollectionItem(children, childCount - 5);
         object comboBox = GetCollectionItem(children, childCount - 4);
         object passwordBox = GetCollectionItem(children, childCount - 3);
         object slider = GetCollectionItem(children, childCount - 2);
@@ -210,6 +272,9 @@ internal static class Program
         object richTextBox = Invoke(window, "FindName", "DocumentBox");
         AssertType(richTextBox, "System.Windows.Controls.RichTextBox", "compiled themed RichTextBox");
         AssertType(textBox, "System.Windows.Controls.TextBox", "created themed TextBox");
+        AssertType(tabControl, "System.Windows.Controls.TabControl", "created themed TabControl");
+        AssertType(listView, "System.Windows.Controls.ListView", "created themed ListView");
+        AssertType(treeView, "System.Windows.Controls.TreeView", "created themed TreeView");
         AssertType(comboBox, "System.Windows.Controls.ComboBox", "created themed ComboBox");
         AssertType(passwordBox, "System.Windows.Controls.PasswordBox", "created themed PasswordBox");
         AssertType(slider, "System.Windows.Controls.Slider", "created themed Slider");
@@ -223,14 +288,28 @@ internal static class Program
         AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxToggleButtonStyle"), "System.Windows.Style", "DefaultComboBoxToggleButtonStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxTemplate"), "System.Windows.Controls.ControlTemplate", "DefaultComboBoxTemplate");
         AssertType(GetDictionaryValue(themeDictionary, "EditableComboBoxTemplate"), "System.Windows.Controls.ControlTemplate", "EditableComboBoxTemplate");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultListViewStyle"), "System.Windows.Style", "DefaultListViewStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultListViewItemStyle"), "System.Windows.Style", "DefaultListViewItemStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "ListViewTemplate"), "System.Windows.Controls.ControlTemplate", "ListViewTemplate");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultPasswordBoxStyle"), "System.Windows.Style", "DefaultPasswordBoxStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultPasswordBoxContextMenu"), "System.Windows.Controls.ContextMenu", "DefaultPasswordBoxContextMenu");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultTabControlStyle"), "System.Windows.Style", "DefaultTabControlStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultTabItemStyle"), "System.Windows.Style", "DefaultTabItemStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultTopTabControlStyle"), "System.Windows.Controls.ControlTemplate", "DefaultTopTabControlStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultBottomTabControlStyle"), "System.Windows.Controls.ControlTemplate", "DefaultBottomTabControlStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultLeftTabControlStyle"), "System.Windows.Controls.ControlTemplate", "DefaultLeftTabControlStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultRightTabControlStyle"), "System.Windows.Controls.ControlTemplate", "DefaultRightTabControlStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultTextBoxStyle"), "System.Windows.Style", "DefaultTextBoxStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultTextBoxControlTemplate"), "System.Windows.Controls.ControlTemplate", "DefaultTextBoxControlTemplate");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultTreeViewStyle"), "System.Windows.Style", "DefaultTreeViewStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultTreeViewItemStyle"), "System.Windows.Style", "DefaultTreeViewItemStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultRichTextBoxStyle"), "System.Windows.Style", "DefaultRichTextBoxStyle");
         AssertType(GetDictionaryValue(themeDictionary, comboBox.GetType()), "System.Windows.Style", "implicit ComboBox Fluent style");
+        AssertType(GetDictionaryValue(themeDictionary, listView.GetType()), "System.Windows.Style", "implicit ListView Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, passwordBox.GetType()), "System.Windows.Style", "implicit PasswordBox Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, slider.GetType()), "System.Windows.Style", "implicit Slider Fluent style");
+        AssertType(GetDictionaryValue(themeDictionary, tabControl.GetType()), "System.Windows.Style", "implicit TabControl Fluent style");
+        AssertType(GetDictionaryValue(themeDictionary, treeView.GetType()), "System.Windows.Style", "implicit TreeView Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, progressBar.GetType()), "System.Windows.Style", "implicit ProgressBar Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, "HorizontalSliderTemplate"), "System.Windows.Controls.ControlTemplate", "HorizontalSliderTemplate");
         AssertType(GetDictionaryValue(themeDictionary, "VerticalSliderTemplate"), "System.Windows.Controls.ControlTemplate", "VerticalSliderTemplate");
@@ -242,6 +321,9 @@ internal static class Program
         AssertStyleTarget(GetProperty(window, "Style"), "System.Windows.Window", "Window Fluent style target");
         AssertStyleTarget(GetProperty(button, "Style"), "System.Windows.Controls.Button", "Button Fluent style target");
         AssertStyleTarget(GetProperty(textBox, "Style"), "System.Windows.Controls.TextBox", "TextBox Fluent style target");
+        AssertStyleTarget(GetProperty(tabControl, "Style"), "System.Windows.Controls.TabControl", "TabControl Fluent style target");
+        AssertStyleTarget(GetProperty(listView, "Style"), "System.Windows.Controls.ListView", "ListView Fluent style target");
+        AssertStyleTarget(GetProperty(treeView, "Style"), "System.Windows.Controls.TreeView", "TreeView Fluent style target");
         AssertStyleTarget(GetProperty(comboBox, "Style"), "System.Windows.Controls.ComboBox", "ComboBox Fluent style target");
         AssertStyleTarget(GetProperty(passwordBox, "Style"), "System.Windows.Controls.PasswordBox", "PasswordBox Fluent style target");
         AssertStyleTarget(GetProperty(slider, "Style"), "System.Windows.Controls.Slider", "Slider Fluent style target");
@@ -251,6 +333,12 @@ internal static class Program
         Invoke(window, "ApplyTemplate");
         Invoke(button, "ApplyTemplate");
         Invoke(textBox, "ApplyTemplate");
+        Invoke(tabControl, "ApplyTemplate");
+        ApplyItemsTemplates(tabControl, "themed TabControl items");
+        Invoke(listView, "ApplyTemplate");
+        ApplyItemsTemplates(listView, "themed ListView items");
+        Invoke(treeView, "ApplyTemplate");
+        ApplyItemsTemplates(treeView, "themed TreeView root items");
         Invoke(comboBox, "ApplyTemplate");
         Invoke(passwordBox, "ApplyTemplate");
         Invoke(slider, "ApplyTemplate");
@@ -260,11 +348,17 @@ internal static class Program
         AssertType(GetProperty(window, "Template"), "System.Windows.Controls.ControlTemplate", "Window template");
         AssertType(GetProperty(button, "Template"), "System.Windows.Controls.ControlTemplate", "Button template");
         AssertType(GetProperty(textBox, "Template"), "System.Windows.Controls.ControlTemplate", "TextBox template");
+        AssertType(GetProperty(tabControl, "Template"), "System.Windows.Controls.ControlTemplate", "TabControl template");
+        AssertType(GetProperty(listView, "Template"), "System.Windows.Controls.ControlTemplate", "ListView template");
+        AssertType(GetProperty(treeView, "Template"), "System.Windows.Controls.ControlTemplate", "TreeView template");
         AssertType(GetProperty(comboBox, "Template"), "System.Windows.Controls.ControlTemplate", "ComboBox template");
         AssertType(GetProperty(passwordBox, "Template"), "System.Windows.Controls.ControlTemplate", "PasswordBox template");
         AssertType(GetProperty(slider, "Template"), "System.Windows.Controls.ControlTemplate", "Slider template");
         AssertType(GetProperty(progressBar, "Template"), "System.Windows.Controls.ControlTemplate", "ProgressBar template");
         AssertType(GetProperty(richTextBox, "Template"), "System.Windows.Controls.ControlTemplate", "RichTextBox template");
+        AssertStyleHasSetter(GetProperty(tabControl, "Style"), "Template", "TabControl Fluent template setter");
+        AssertStyleHasSetter(GetProperty(listView, "Style"), "Template", "ListView Fluent template setter");
+        AssertStyleHasSetter(GetProperty(treeView, "Style"), "Template", "TreeView Fluent template setter");
         AssertStyleHasSetter(GetProperty(comboBox, "Style"), "Template", "ComboBox Fluent template setter");
         AssertStyleHasSetter(GetProperty(passwordBox, "Style"), "Template", "PasswordBox Fluent template setter");
         AssertStyleHasSetter(GetProperty(textBox, "Style"), "Template", "TextBox Fluent template setter");
@@ -272,6 +366,17 @@ internal static class Program
         AssertStyleHasSetter(GetProperty(richTextBox, "Style"), "ContextMenu", "RichTextBox Fluent context-menu setter");
         AssertEqual("themed button smoke", GetProperty(button, "Content"), "themed button content");
         AssertEqual("themed text box smoke", GetProperty(textBox, "Text"), "themed TextBox text");
+        AssertEqual(2, GetCollectionCount(GetProperty(tabControl, "Items")), "themed TabControl item count");
+        AssertEqual(1, GetProperty(tabControl, "SelectedIndex"), "themed TabControl selected index");
+        AssertEqual("Theme tab two", GetProperty(GetCollectionItem(GetProperty(tabControl, "Items"), 1), "Header"), "themed TabItem header");
+        AssertEqual(2, GetCollectionCount(GetProperty(listView, "Items")), "themed ListView item count");
+        AssertEqual(1, GetProperty(listView, "SelectedIndex"), "themed ListView selected index");
+        AssertEqual("Theme list item two", GetProperty(GetCollectionItem(GetProperty(listView, "Items"), 1), "Content"), "themed ListViewItem content");
+        AssertEqual(1, GetCollectionCount(GetProperty(treeView, "Items")), "themed TreeView root item count");
+        object rootTreeViewItem = GetCollectionItem(GetProperty(treeView, "Items"), 0);
+        AssertEqual("Theme tree root", GetProperty(rootTreeViewItem, "Header"), "themed TreeViewItem root header");
+        AssertEqual(true, GetProperty(rootTreeViewItem, "IsExpanded"), "themed TreeViewItem expanded state");
+        AssertEqual("Theme tree child", GetProperty(GetCollectionItem(GetProperty(rootTreeViewItem, "Items"), 0), "Header"), "themed TreeViewItem child header");
         AssertEqual(2, GetCollectionCount(GetProperty(comboBox, "Items")), "themed ComboBox item count");
         AssertEqual(1, GetProperty(comboBox, "SelectedIndex"), "themed ComboBox selected index");
         AssertEqual("theme item two", GetProperty(comboBox, "SelectedItem"), "themed ComboBox selected item");
@@ -319,6 +424,25 @@ internal static class Program
 
         AssertPositiveSize(GetProperty(element, "DesiredSize"), "themed content desired size");
         AssertPositiveSize(GetProperty(element, "RenderSize"), "themed content render size");
+    }
+
+    private static void ApplyItemsTemplates(object itemsOwner, string description)
+    {
+        object items = GetProperty(itemsOwner, "Items");
+        AssertCollectionCount(items, expectedMinimum: 1, description);
+
+        int count = GetCollectionCount(items);
+        for (int i = 0; i < count; i++)
+        {
+            object item = GetCollectionItem(items, i);
+            Invoke(item, "ApplyTemplate");
+
+            object? childItems = GetOptionalProperty(item, "Items");
+            if (childItems != null && GetCollectionCount(childItems) > 0)
+            {
+                ApplyItemsTemplates(item, $"{description} child items");
+            }
+        }
     }
 
     private static void RegisterPortableActivation(

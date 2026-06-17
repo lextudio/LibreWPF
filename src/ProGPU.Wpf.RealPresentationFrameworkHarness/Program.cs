@@ -305,6 +305,22 @@ internal static class Program
             drawingContext,
             "Pop",
             Type.EmptyTypes);
+        InvokeDrawing(
+            drawingContext,
+            "PushOpacityMask",
+            new[] { brushType },
+            redBrush);
+        InvokeDrawing(
+            drawingContext,
+            "DrawRectangle",
+            new[] { brushType, penType, rectType },
+            purpleBrush,
+            null,
+            rect);
+        InvokeDrawing(
+            drawingContext,
+            "Pop",
+            Type.EmptyTypes);
         Invoke(drawingContext, "Close");
     }
 
@@ -335,7 +351,10 @@ internal static class Program
             ProGpuRenderCommandType.PushGeometryClip,
             ProGpuRenderCommandType.DrawRect,
             ProGpuRenderCommandType.PopGeometryClip,
-            ProGpuRenderCommandType.DrawLine
+            ProGpuRenderCommandType.DrawLine,
+            ProGpuRenderCommandType.PushOpacityMask,
+            ProGpuRenderCommandType.DrawRect,
+            ProGpuRenderCommandType.PopOpacityMask
         };
         if (commands.Count != expectedCommandTypes.Length)
         {
@@ -355,6 +374,10 @@ internal static class Program
         AssertEqual(0.5f, commands[4].FontSize, "real DrawingVisual retained opacity value");
         AssertEqual(6f, commands[10].Transform.M41, "real DrawingVisual transformed line X offset");
         AssertEqual(7f, commands[10].Transform.M42, "real DrawingVisual transformed line Y offset");
+        if (commands[11].Brush == null)
+        {
+            throw new InvalidOperationException("Expected real DrawingVisual retained opacity mask to carry a native brush.");
+        }
     }
 
     private static ProGpuContainerVisual GetSingleContainerChild(ProGpuContainerVisual parent, string description)

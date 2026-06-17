@@ -598,6 +598,7 @@ public sealed class WpfManagedProjectGraphTests
 
         AssertProjectReference(harnessProject, @"ProGPU.Wpf\ProGPU.Wpf.csproj");
         AssertProjectReference(harnessProject, @"external\ProGPU\src\ProGPU.Scene\ProGPU.Scene.csproj");
+        AssertProjectReference(harnessProject, @"external\ProGPU\src\ProGPU.Vector\ProGPU.Vector.csproj");
 
         var presentationCoreReference = AssertProjectReference(
             harnessProject,
@@ -625,12 +626,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"PushOpacity\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"PushClip\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"PushTransform\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"PushOpacityMask\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("VerifyRetainedDrawingVisualBranch(target)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.DrawLine", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.DrawEllipse", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.DrawPath", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.PushOpacity", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.PushGeometryClip", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGpuRenderCommandType.PushOpacityMask", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("real DrawingVisual retained opacity mask", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("real DrawingVisual transformed line X offset", harnessProgram, StringComparison.Ordinal);
     }
 

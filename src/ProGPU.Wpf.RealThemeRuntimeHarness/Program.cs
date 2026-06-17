@@ -121,32 +121,48 @@ internal static class Program
         object windowStyle = GetDictionaryValue(themeDictionary, "DefaultWindowStyle");
         object buttonStyle = GetDictionaryValue(themeDictionary, "AccentButtonStyle");
         object calendarStyle = GetDictionaryValue(themeDictionary, "DefaultCalendarStyle");
+        object checkBoxStyle = GetDictionaryValue(themeDictionary, "DefaultCheckBoxStyle");
         object comboBoxStyle = GetDictionaryValue(themeDictionary, "DefaultComboBoxStyle");
         object datePickerStyle = GetDictionaryValue(themeDictionary, "DefaultDatePickerStyle");
+        object expanderStyle = GetDictionaryValue(themeDictionary, "DefaultExpanderStyle");
+        object groupBoxStyle = GetDictionaryValue(themeDictionary, "DefaultGroupBoxStyle");
         object listViewStyle = GetDictionaryValue(themeDictionary, "DefaultListViewStyle");
         object listViewItemStyle = GetDictionaryValue(themeDictionary, "DefaultListViewItemStyle");
         object menuStyle = GetDictionaryValue(themeDictionary, "DefaultMenuStyle");
         object menuItemStyle = GetDictionaryValue(themeDictionary, "DefaultMenuItemStyle");
         object passwordBoxStyle = GetDictionaryValue(themeDictionary, "DefaultPasswordBoxStyle");
+        object radioButtonStyle = GetDictionaryValue(themeDictionary, "DefaultRadioButtonStyle");
+        object repeatButtonStyle = GetDictionaryValue(themeDictionary, "DefaultRepeatButtonStyle");
+        object scrollBarStyle = GetDictionaryValue(themeDictionary, "DefaultScrollBarStyle");
+        object scrollViewerStyle = GetDictionaryValue(themeDictionary, "DefaultScrollViewerStyle");
         object statusBarItemStyle = GetDictionaryValue(themeDictionary, "DefaultStatusBarItemStyle");
         object tabControlStyle = GetDictionaryValue(themeDictionary, "DefaultTabControlStyle");
         object tabItemStyle = GetDictionaryValue(themeDictionary, "DefaultTabItemStyle");
         object textBoxStyle = GetDictionaryValue(themeDictionary, "DefaultTextBoxStyle");
+        object toggleButtonStyle = GetDictionaryValue(themeDictionary, "DefaultToggleButtonStyle");
         object treeViewStyle = GetDictionaryValue(themeDictionary, "DefaultTreeViewStyle");
         object treeViewItemStyle = GetDictionaryValue(themeDictionary, "DefaultTreeViewItemStyle");
         object richTextBoxStyle = GetDictionaryValue(themeDictionary, "DefaultRichTextBoxStyle");
         Type calendarType = GetRequiredType(presentationFramework, "System.Windows.Controls.Calendar");
+        Type checkBoxType = GetRequiredType(presentationFramework, "System.Windows.Controls.CheckBox");
         Type comboBoxType = GetRequiredType(presentationFramework, "System.Windows.Controls.ComboBox");
         Type datePickerType = GetRequiredType(presentationFramework, "System.Windows.Controls.DatePicker");
+        Type expanderType = GetRequiredType(presentationFramework, "System.Windows.Controls.Expander");
+        Type groupBoxType = GetRequiredType(presentationFramework, "System.Windows.Controls.GroupBox");
         Type listViewType = GetRequiredType(presentationFramework, "System.Windows.Controls.ListView");
         Type menuType = GetRequiredType(presentationFramework, "System.Windows.Controls.Menu");
         Type menuItemType = GetRequiredType(presentationFramework, "System.Windows.Controls.MenuItem");
         Type passwordBoxType = GetRequiredType(presentationFramework, "System.Windows.Controls.PasswordBox");
+        Type radioButtonType = GetRequiredType(presentationFramework, "System.Windows.Controls.RadioButton");
+        Type repeatButtonType = GetRequiredType(presentationFramework, "System.Windows.Controls.Primitives.RepeatButton");
+        Type scrollBarType = GetRequiredType(presentationFramework, "System.Windows.Controls.Primitives.ScrollBar");
+        Type scrollViewerType = GetRequiredType(presentationFramework, "System.Windows.Controls.ScrollViewer");
         Type sliderType = GetRequiredType(presentationFramework, "System.Windows.Controls.Slider");
         Type statusBarType = GetRequiredType(presentationFramework, "System.Windows.Controls.Primitives.StatusBar");
         Type toolBarType = GetRequiredType(presentationFramework, "System.Windows.Controls.ToolBar");
         Type toolBarTrayType = GetRequiredType(presentationFramework, "System.Windows.Controls.ToolBarTray");
         Type tabControlType = GetRequiredType(presentationFramework, "System.Windows.Controls.TabControl");
+        Type toggleButtonType = GetRequiredType(presentationFramework, "System.Windows.Controls.Primitives.ToggleButton");
         Type treeViewType = GetRequiredType(presentationFramework, "System.Windows.Controls.TreeView");
         Type progressBarType = GetRequiredType(presentationFramework, "System.Windows.Controls.ProgressBar");
         object sliderStyle = GetDictionaryValue(themeDictionary, sliderType);
@@ -284,6 +300,61 @@ internal static class Program
         SetProperty(statusBar, "Style", statusBarStyle);
         AddToCollection(children, statusBar);
 
+        object checkBox = Create(presentationFramework, "System.Windows.Controls.CheckBox");
+        SetProperty(checkBox, "Content", "Theme check");
+        SetProperty(checkBox, "IsChecked", true);
+        SetProperty(checkBox, "Style", checkBoxStyle);
+        AddToCollection(children, checkBox);
+
+        object radioButton = Create(presentationFramework, "System.Windows.Controls.RadioButton");
+        SetProperty(radioButton, "Content", "Theme radio");
+        SetProperty(radioButton, "GroupName", "ThemeChoice");
+        SetProperty(radioButton, "IsChecked", true);
+        SetProperty(radioButton, "Style", radioButtonStyle);
+        AddToCollection(children, radioButton);
+
+        object toggleButton = Create(presentationFramework, "System.Windows.Controls.Primitives.ToggleButton");
+        SetProperty(toggleButton, "Content", "Theme toggle");
+        SetProperty(toggleButton, "IsChecked", true);
+        SetProperty(toggleButton, "Style", toggleButtonStyle);
+        AddToCollection(children, toggleButton);
+
+        object repeatButton = Create(presentationFramework, "System.Windows.Controls.Primitives.RepeatButton");
+        SetProperty(repeatButton, "Content", "Theme repeat");
+        SetProperty(repeatButton, "Style", repeatButtonStyle);
+        AddToCollection(children, repeatButton);
+
+        object expander = Create(presentationFramework, "System.Windows.Controls.Expander");
+        SetProperty(expander, "Header", "Theme expander");
+        SetProperty(expander, "Content", "Theme expander content");
+        SetProperty(expander, "IsExpanded", true);
+        SetProperty(expander, "Style", expanderStyle);
+        AddToCollection(children, expander);
+
+        object groupBox = Create(presentationFramework, "System.Windows.Controls.GroupBox");
+        SetProperty(groupBox, "Header", "Theme group");
+        SetProperty(groupBox, "Content", "Theme group content");
+        SetProperty(groupBox, "Style", groupBoxStyle);
+        AddToCollection(children, groupBox);
+
+        object scrollViewer = Create(presentationFramework, "System.Windows.Controls.ScrollViewer");
+        SetProperty(scrollViewer, "Content", "Theme scroll content line one\nTheme scroll content line two\nTheme scroll content line three");
+        SetEnumProperty(scrollViewer, "VerticalScrollBarVisibility", "Visible");
+        SetEnumProperty(scrollViewer, "HorizontalScrollBarVisibility", "Auto");
+        SetProperty(scrollViewer, "Style", scrollViewerStyle);
+        AddToCollection(children, scrollViewer);
+
+        object scrollBar = Create(presentationFramework, "System.Windows.Controls.Primitives.ScrollBar");
+        SetEnumProperty(scrollBar, "Orientation", "Vertical");
+        SetProperty(scrollBar, "Minimum", 0.0);
+        SetProperty(scrollBar, "Maximum", 100.0);
+        SetProperty(scrollBar, "ViewportSize", 25.0);
+        SetProperty(scrollBar, "Value", 33.0);
+        SetProperty(scrollBar, "SmallChange", 1.0);
+        SetProperty(scrollBar, "LargeChange", 10.0);
+        SetProperty(scrollBar, "Style", scrollBarStyle);
+        AddToCollection(children, scrollBar);
+
         object comboBox = Create(presentationFramework, "System.Windows.Controls.ComboBox");
         object comboBoxItems = GetProperty(comboBox, "Items");
         AddToCollection(comboBoxItems, "theme item one");
@@ -323,6 +394,14 @@ internal static class Program
         AssertSame(toolBarStyle, GetProperty(toolBar, "Style"), "ToolBar Fluent style");
         AssertSame(toolBarTrayStyle, GetProperty(toolBarTray, "Style"), "ToolBarTray Fluent style");
         AssertSame(statusBarStyle, GetProperty(statusBar, "Style"), "StatusBar Fluent style");
+        AssertSame(checkBoxStyle, GetProperty(checkBox, "Style"), "CheckBox Fluent style");
+        AssertSame(radioButtonStyle, GetProperty(radioButton, "Style"), "RadioButton Fluent style");
+        AssertSame(toggleButtonStyle, GetProperty(toggleButton, "Style"), "ToggleButton Fluent style");
+        AssertSame(repeatButtonStyle, GetProperty(repeatButton, "Style"), "RepeatButton Fluent style");
+        AssertSame(expanderStyle, GetProperty(expander, "Style"), "Expander Fluent style");
+        AssertSame(groupBoxStyle, GetProperty(groupBox, "Style"), "GroupBox Fluent style");
+        AssertSame(scrollViewerStyle, GetProperty(scrollViewer, "Style"), "ScrollViewer Fluent style");
+        AssertSame(scrollBarStyle, GetProperty(scrollBar, "Style"), "ScrollBar Fluent style");
         AssertSame(comboBoxStyle, GetProperty(comboBox, "Style"), "ComboBox Fluent style");
         AssertSame(passwordBoxStyle, GetProperty(passwordBox, "Style"), "PasswordBox Fluent style");
         AssertSame(sliderStyle, GetProperty(slider, "Style"), "Slider Fluent style");
@@ -334,18 +413,34 @@ internal static class Program
         AssertSame(comboBoxStyle, Invoke(application, "TryFindResource", "DefaultComboBoxStyle"), "application Fluent ComboBox resource lookup");
         AssertSame(datePickerStyle, Invoke(application, "TryFindResource", "DefaultDatePickerStyle"), "application Fluent DatePicker resource lookup");
         AssertType(Invoke(application, "TryFindResource", calendarType), "System.Windows.Style", "application Fluent Calendar implicit style lookup");
+        AssertSame(checkBoxStyle, Invoke(application, "TryFindResource", "DefaultCheckBoxStyle"), "application Fluent CheckBox resource lookup");
+        AssertSame(expanderStyle, Invoke(application, "TryFindResource", "DefaultExpanderStyle"), "application Fluent Expander resource lookup");
+        AssertSame(groupBoxStyle, Invoke(application, "TryFindResource", "DefaultGroupBoxStyle"), "application Fluent GroupBox resource lookup");
         AssertSame(menuStyle, Invoke(application, "TryFindResource", "DefaultMenuStyle"), "application Fluent Menu resource lookup");
         AssertSame(menuItemStyle, Invoke(application, "TryFindResource", "DefaultMenuItemStyle"), "application Fluent MenuItem resource lookup");
         AssertSame(statusBarItemStyle, Invoke(application, "TryFindResource", "DefaultStatusBarItemStyle"), "application Fluent StatusBarItem resource lookup");
         AssertSame(passwordBoxStyle, Invoke(application, "TryFindResource", "DefaultPasswordBoxStyle"), "application Fluent PasswordBox resource lookup");
+        AssertSame(radioButtonStyle, Invoke(application, "TryFindResource", "DefaultRadioButtonStyle"), "application Fluent RadioButton resource lookup");
+        AssertSame(repeatButtonStyle, Invoke(application, "TryFindResource", "DefaultRepeatButtonStyle"), "application Fluent RepeatButton resource lookup");
+        AssertSame(scrollBarStyle, Invoke(application, "TryFindResource", "DefaultScrollBarStyle"), "application Fluent ScrollBar resource lookup");
+        AssertSame(scrollViewerStyle, Invoke(application, "TryFindResource", "DefaultScrollViewerStyle"), "application Fluent ScrollViewer resource lookup");
+        AssertSame(toggleButtonStyle, Invoke(application, "TryFindResource", "DefaultToggleButtonStyle"), "application Fluent ToggleButton resource lookup");
+        AssertType(Invoke(application, "TryFindResource", checkBoxType), "System.Windows.Style", "application Fluent CheckBox implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", comboBoxType), "System.Windows.Style", "application Fluent ComboBox implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", datePickerType), "System.Windows.Style", "application Fluent DatePicker implicit style lookup");
+        AssertType(Invoke(application, "TryFindResource", expanderType), "System.Windows.Style", "application Fluent Expander implicit style lookup");
+        AssertType(Invoke(application, "TryFindResource", groupBoxType), "System.Windows.Style", "application Fluent GroupBox implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", listViewType), "System.Windows.Style", "application Fluent ListView implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", menuType), "System.Windows.Style", "application Fluent Menu implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", passwordBoxType), "System.Windows.Style", "application Fluent PasswordBox implicit style lookup");
+        AssertType(Invoke(application, "TryFindResource", radioButtonType), "System.Windows.Style", "application Fluent RadioButton implicit style lookup");
+        AssertType(Invoke(application, "TryFindResource", repeatButtonType), "System.Windows.Style", "application Fluent RepeatButton implicit style lookup");
+        AssertType(Invoke(application, "TryFindResource", scrollBarType), "System.Windows.Style", "application Fluent ScrollBar implicit style lookup");
+        AssertType(Invoke(application, "TryFindResource", scrollViewerType), "System.Windows.Style", "application Fluent ScrollViewer implicit style lookup");
         AssertSame(sliderStyle, Invoke(application, "TryFindResource", sliderType), "application Fluent Slider implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", statusBarType), "System.Windows.Style", "application Fluent StatusBar implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", tabControlType), "System.Windows.Style", "application Fluent TabControl implicit style lookup");
+        AssertType(Invoke(application, "TryFindResource", toggleButtonType), "System.Windows.Style", "application Fluent ToggleButton implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", toolBarType), "System.Windows.Style", "application Fluent ToolBar implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", toolBarTrayType), "System.Windows.Style", "application Fluent ToolBarTray implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", treeViewType), "System.Windows.Style", "application Fluent TreeView implicit style lookup");
@@ -356,19 +451,27 @@ internal static class Program
     {
         object content = GetProperty(window, "Content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expectedMinimum: 27, "themed stack panel children");
+        AssertCollectionCount(children, expectedMinimum: 35, "themed stack panel children");
 
         int childCount = GetCollectionCount(children);
-        object button = GetCollectionItem(children, childCount - 14);
-        object textBox = GetCollectionItem(children, childCount - 13);
-        object tabControl = GetCollectionItem(children, childCount - 12);
-        object listView = GetCollectionItem(children, childCount - 11);
-        object treeView = GetCollectionItem(children, childCount - 10);
-        object calendar = GetCollectionItem(children, childCount - 9);
-        object datePicker = GetCollectionItem(children, childCount - 8);
-        object menu = GetCollectionItem(children, childCount - 7);
-        object toolBarTray = GetCollectionItem(children, childCount - 6);
-        object statusBar = GetCollectionItem(children, childCount - 5);
+        object button = GetCollectionItem(children, childCount - 22);
+        object textBox = GetCollectionItem(children, childCount - 21);
+        object tabControl = GetCollectionItem(children, childCount - 20);
+        object listView = GetCollectionItem(children, childCount - 19);
+        object treeView = GetCollectionItem(children, childCount - 18);
+        object calendar = GetCollectionItem(children, childCount - 17);
+        object datePicker = GetCollectionItem(children, childCount - 16);
+        object menu = GetCollectionItem(children, childCount - 15);
+        object toolBarTray = GetCollectionItem(children, childCount - 14);
+        object statusBar = GetCollectionItem(children, childCount - 13);
+        object checkBox = GetCollectionItem(children, childCount - 12);
+        object radioButton = GetCollectionItem(children, childCount - 11);
+        object toggleButton = GetCollectionItem(children, childCount - 10);
+        object repeatButton = GetCollectionItem(children, childCount - 9);
+        object expander = GetCollectionItem(children, childCount - 8);
+        object groupBox = GetCollectionItem(children, childCount - 7);
+        object scrollViewer = GetCollectionItem(children, childCount - 6);
+        object scrollBar = GetCollectionItem(children, childCount - 5);
         object comboBox = GetCollectionItem(children, childCount - 4);
         object passwordBox = GetCollectionItem(children, childCount - 3);
         object slider = GetCollectionItem(children, childCount - 2);
@@ -388,6 +491,14 @@ internal static class Program
         AssertType(menu, "System.Windows.Controls.Menu", "created themed Menu");
         AssertType(toolBarTray, "System.Windows.Controls.ToolBarTray", "created themed ToolBarTray");
         AssertType(statusBar, "System.Windows.Controls.Primitives.StatusBar", "created themed StatusBar");
+        AssertType(checkBox, "System.Windows.Controls.CheckBox", "created themed CheckBox");
+        AssertType(radioButton, "System.Windows.Controls.RadioButton", "created themed RadioButton");
+        AssertType(toggleButton, "System.Windows.Controls.Primitives.ToggleButton", "created themed ToggleButton");
+        AssertType(repeatButton, "System.Windows.Controls.Primitives.RepeatButton", "created themed RepeatButton");
+        AssertType(expander, "System.Windows.Controls.Expander", "created themed Expander");
+        AssertType(groupBox, "System.Windows.Controls.GroupBox", "created themed GroupBox");
+        AssertType(scrollViewer, "System.Windows.Controls.ScrollViewer", "created themed ScrollViewer");
+        AssertType(scrollBar, "System.Windows.Controls.Primitives.ScrollBar", "created themed ScrollBar");
         AssertType(comboBox, "System.Windows.Controls.ComboBox", "created themed ComboBox");
         AssertType(passwordBox, "System.Windows.Controls.PasswordBox", "created themed PasswordBox");
         AssertType(slider, "System.Windows.Controls.Slider", "created themed Slider");
@@ -399,6 +510,7 @@ internal static class Program
         AssertType(GetDictionaryValue(themeDictionary, "DefaultCalendarButtonStyle"), "System.Windows.Style", "DefaultCalendarButtonStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultCalendarDayButtonStyle"), "System.Windows.Style", "DefaultCalendarDayButtonStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultCalendarItemStyle"), "System.Windows.Style", "DefaultCalendarItemStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultCheckBoxStyle"), "System.Windows.Style", "DefaultCheckBoxStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxStyle"), "System.Windows.Style", "DefaultComboBoxStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxItemStyle"), "System.Windows.Style", "DefaultComboBoxItemStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxTextBoxStyle"), "System.Windows.Style", "DefaultComboBoxTextBoxStyle");
@@ -408,6 +520,9 @@ internal static class Program
         AssertType(GetDictionaryValue(themeDictionary, "DefaultDatePickerStyle"), "System.Windows.Style", "DefaultDatePickerStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DatePickerCalendarStyle"), "System.Windows.Style", "DatePickerCalendarStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultDatePickerTextBoxStyle"), "System.Windows.Style", "DefaultDatePickerTextBoxStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultExpanderStyle"), "System.Windows.Style", "DefaultExpanderStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultExpanderToggleButtonDownStyle"), "System.Windows.Controls.ControlTemplate", "DefaultExpanderToggleButtonDownStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultGroupBoxStyle"), "System.Windows.Style", "DefaultGroupBoxStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultListViewStyle"), "System.Windows.Style", "DefaultListViewStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultListViewItemStyle"), "System.Windows.Style", "DefaultListViewItemStyle");
         AssertType(GetDictionaryValue(themeDictionary, "ListViewTemplate"), "System.Windows.Controls.ControlTemplate", "ListViewTemplate");
@@ -415,6 +530,12 @@ internal static class Program
         AssertType(GetDictionaryValue(themeDictionary, "DefaultMenuItemStyle"), "System.Windows.Style", "DefaultMenuItemStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultPasswordBoxStyle"), "System.Windows.Style", "DefaultPasswordBoxStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultPasswordBoxContextMenu"), "System.Windows.Controls.ContextMenu", "DefaultPasswordBoxContextMenu");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultRadioButtonStyle"), "System.Windows.Style", "DefaultRadioButtonStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultRepeatButtonStyle"), "System.Windows.Style", "DefaultRepeatButtonStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultScrollBarStyle"), "System.Windows.Style", "DefaultScrollBarStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "HorizontalScrollBarTemplate"), "System.Windows.Controls.ControlTemplate", "HorizontalScrollBarTemplate");
+        AssertType(GetDictionaryValue(themeDictionary, "VerticalScrollBarTemplate"), "System.Windows.Controls.ControlTemplate", "VerticalScrollBarTemplate");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultScrollViewerStyle"), "System.Windows.Style", "DefaultScrollViewerStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultStatusBarItemStyle"), "System.Windows.Style", "DefaultStatusBarItemStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultTabControlStyle"), "System.Windows.Style", "DefaultTabControlStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultTabItemStyle"), "System.Windows.Style", "DefaultTabItemStyle");
@@ -424,6 +545,7 @@ internal static class Program
         AssertType(GetDictionaryValue(themeDictionary, "DefaultRightTabControlStyle"), "System.Windows.Controls.ControlTemplate", "DefaultRightTabControlStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultTextBoxStyle"), "System.Windows.Style", "DefaultTextBoxStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultTextBoxControlTemplate"), "System.Windows.Controls.ControlTemplate", "DefaultTextBoxControlTemplate");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultToggleButtonStyle"), "System.Windows.Style", "DefaultToggleButtonStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultTreeViewStyle"), "System.Windows.Style", "DefaultTreeViewStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultTreeViewItemStyle"), "System.Windows.Style", "DefaultTreeViewItemStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultRichTextBoxStyle"), "System.Windows.Style", "DefaultRichTextBoxStyle");
@@ -435,14 +557,22 @@ internal static class Program
         AssertType(GetDictionaryValue(themeDictionary, themedToolBar.GetType()), "System.Windows.Style", "implicit ToolBar Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, toolBarTray.GetType()), "System.Windows.Style", "implicit ToolBarTray Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, calendar.GetType()), "System.Windows.Style", "implicit Calendar Fluent style");
+        AssertType(GetDictionaryValue(themeDictionary, checkBox.GetType()), "System.Windows.Style", "implicit CheckBox Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, comboBox.GetType()), "System.Windows.Style", "implicit ComboBox Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, datePicker.GetType()), "System.Windows.Style", "implicit DatePicker Fluent style");
+        AssertType(GetDictionaryValue(themeDictionary, expander.GetType()), "System.Windows.Style", "implicit Expander Fluent style");
+        AssertType(GetDictionaryValue(themeDictionary, groupBox.GetType()), "System.Windows.Style", "implicit GroupBox Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, listView.GetType()), "System.Windows.Style", "implicit ListView Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, menu.GetType()), "System.Windows.Style", "implicit Menu Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, passwordBox.GetType()), "System.Windows.Style", "implicit PasswordBox Fluent style");
+        AssertType(GetDictionaryValue(themeDictionary, radioButton.GetType()), "System.Windows.Style", "implicit RadioButton Fluent style");
+        AssertType(GetDictionaryValue(themeDictionary, repeatButton.GetType()), "System.Windows.Style", "implicit RepeatButton Fluent style");
+        AssertType(GetDictionaryValue(themeDictionary, scrollBar.GetType()), "System.Windows.Style", "implicit ScrollBar Fluent style");
+        AssertType(GetDictionaryValue(themeDictionary, scrollViewer.GetType()), "System.Windows.Style", "implicit ScrollViewer Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, statusBar.GetType()), "System.Windows.Style", "implicit StatusBar Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, slider.GetType()), "System.Windows.Style", "implicit Slider Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, tabControl.GetType()), "System.Windows.Style", "implicit TabControl Fluent style");
+        AssertType(GetDictionaryValue(themeDictionary, toggleButton.GetType()), "System.Windows.Style", "implicit ToggleButton Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, treeView.GetType()), "System.Windows.Style", "implicit TreeView Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, progressBar.GetType()), "System.Windows.Style", "implicit ProgressBar Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, "HorizontalSliderTemplate"), "System.Windows.Controls.ControlTemplate", "HorizontalSliderTemplate");
@@ -470,6 +600,14 @@ internal static class Program
         AssertStyleTarget(GetProperty(statusBar, "Style"), "System.Windows.Controls.Primitives.StatusBar", "StatusBar Fluent style target");
         AssertStyleTarget(GetProperty(GetCollectionItem(GetProperty(statusBar, "Items"), 0), "Style"), "System.Windows.Controls.Primitives.StatusBarItem", "StatusBarItem Fluent style target");
         AssertStyleTarget(GetProperty(GetCollectionItem(GetProperty(statusBar, "Items"), 1), "Style"), "System.Windows.Controls.Separator", "StatusBar separator Fluent style target");
+        AssertStyleTarget(GetProperty(checkBox, "Style"), "System.Windows.Controls.CheckBox", "CheckBox Fluent style target");
+        AssertStyleTarget(GetProperty(radioButton, "Style"), "System.Windows.Controls.RadioButton", "RadioButton Fluent style target");
+        AssertStyleTarget(GetProperty(toggleButton, "Style"), "System.Windows.Controls.Primitives.ToggleButton", "ToggleButton Fluent style target");
+        AssertStyleTarget(GetProperty(repeatButton, "Style"), "System.Windows.Controls.Primitives.RepeatButton", "RepeatButton Fluent style target");
+        AssertStyleTarget(GetProperty(expander, "Style"), "System.Windows.Controls.Expander", "Expander Fluent style target");
+        AssertStyleTarget(GetProperty(groupBox, "Style"), "System.Windows.Controls.GroupBox", "GroupBox Fluent style target");
+        AssertStyleTarget(GetProperty(scrollViewer, "Style"), "System.Windows.Controls.ScrollViewer", "ScrollViewer Fluent style target");
+        AssertStyleTarget(GetProperty(scrollBar, "Style"), "System.Windows.Controls.Primitives.ScrollBar", "ScrollBar Fluent style target");
         AssertStyleTarget(GetProperty(comboBox, "Style"), "System.Windows.Controls.ComboBox", "ComboBox Fluent style target");
         AssertStyleTarget(GetProperty(passwordBox, "Style"), "System.Windows.Controls.PasswordBox", "PasswordBox Fluent style target");
         AssertStyleTarget(GetProperty(slider, "Style"), "System.Windows.Controls.Slider", "Slider Fluent style target");
@@ -494,6 +632,14 @@ internal static class Program
         ApplyItemsTemplates(themedToolBar, "themed ToolBar items");
         Invoke(statusBar, "ApplyTemplate");
         ApplyItemsTemplates(statusBar, "themed StatusBar items");
+        Invoke(checkBox, "ApplyTemplate");
+        Invoke(radioButton, "ApplyTemplate");
+        Invoke(toggleButton, "ApplyTemplate");
+        Invoke(repeatButton, "ApplyTemplate");
+        Invoke(expander, "ApplyTemplate");
+        Invoke(groupBox, "ApplyTemplate");
+        Invoke(scrollViewer, "ApplyTemplate");
+        Invoke(scrollBar, "ApplyTemplate");
         Invoke(comboBox, "ApplyTemplate");
         Invoke(passwordBox, "ApplyTemplate");
         Invoke(slider, "ApplyTemplate");
@@ -510,6 +656,14 @@ internal static class Program
         AssertType(GetProperty(datePicker, "Template"), "System.Windows.Controls.ControlTemplate", "DatePicker template");
         AssertType(GetProperty(menu, "Template"), "System.Windows.Controls.ControlTemplate", "Menu template");
         AssertType(GetProperty(themedToolBar, "Template"), "System.Windows.Controls.ControlTemplate", "ToolBar template");
+        AssertType(GetProperty(checkBox, "Template"), "System.Windows.Controls.ControlTemplate", "CheckBox template");
+        AssertType(GetProperty(radioButton, "Template"), "System.Windows.Controls.ControlTemplate", "RadioButton template");
+        AssertType(GetProperty(toggleButton, "Template"), "System.Windows.Controls.ControlTemplate", "ToggleButton template");
+        AssertType(GetProperty(repeatButton, "Template"), "System.Windows.Controls.ControlTemplate", "RepeatButton template");
+        AssertType(GetProperty(expander, "Template"), "System.Windows.Controls.ControlTemplate", "Expander template");
+        AssertType(GetProperty(groupBox, "Template"), "System.Windows.Controls.ControlTemplate", "GroupBox template");
+        AssertType(GetProperty(scrollViewer, "Template"), "System.Windows.Controls.ControlTemplate", "ScrollViewer template");
+        AssertType(GetProperty(scrollBar, "Template"), "System.Windows.Controls.ControlTemplate", "ScrollBar template");
         AssertType(GetProperty(comboBox, "Template"), "System.Windows.Controls.ControlTemplate", "ComboBox template");
         AssertType(GetProperty(passwordBox, "Template"), "System.Windows.Controls.ControlTemplate", "PasswordBox template");
         AssertType(GetProperty(slider, "Template"), "System.Windows.Controls.ControlTemplate", "Slider template");
@@ -523,6 +677,15 @@ internal static class Program
         AssertStyleHasSetter(GetProperty(menu, "Style"), "Template", "Menu Fluent template setter");
         AssertStyleHasSetter(GetProperty(themedToolBar, "Style"), "Template", "ToolBar Fluent template setter");
         AssertStyleHasSetter(GetProperty(GetCollectionItem(GetProperty(statusBar, "Items"), 0), "Style"), "Template", "StatusBarItem Fluent template setter");
+        AssertStyleHasSetter(GetProperty(checkBox, "Style"), "Template", "CheckBox Fluent template setter");
+        AssertStyleHasSetter(GetProperty(radioButton, "Style"), "Template", "RadioButton Fluent template setter");
+        AssertStyleHasSetter(GetProperty(toggleButton, "Style"), "Template", "ToggleButton Fluent template setter");
+        AssertStyleHasSetter(GetProperty(repeatButton, "Style"), "Template", "RepeatButton Fluent template setter");
+        AssertStyleHasSetter(GetProperty(expander, "Style"), "Template", "Expander Fluent template setter");
+        AssertStyleHasSetter(GetProperty(groupBox, "Style"), "Template", "GroupBox Fluent template setter");
+        AssertStyleHasSetter(GetProperty(scrollViewer, "Style"), "Template", "ScrollViewer Fluent template setter");
+        AssertStyleHasTriggerSetter(GetProperty(scrollBar, "Style"), "Orientation", "Horizontal", "Template", "ScrollBar Fluent horizontal template trigger");
+        AssertStyleHasTriggerSetter(GetProperty(scrollBar, "Style"), "Orientation", "Vertical", "Template", "ScrollBar Fluent vertical template trigger");
         AssertStyleHasSetter(GetProperty(comboBox, "Style"), "Template", "ComboBox Fluent template setter");
         AssertStyleHasSetter(GetProperty(passwordBox, "Style"), "Template", "PasswordBox Fluent template setter");
         AssertStyleHasSetter(GetProperty(textBox, "Style"), "Template", "TextBox Fluent template setter");
@@ -554,6 +717,26 @@ internal static class Program
         AssertEqual(true, GetProperty(GetCollectionItem(GetProperty(themedToolBar, "Items"), 1), "IsChecked"), "themed ToolBar toggle checked state");
         AssertEqual(2, GetCollectionCount(GetProperty(statusBar, "Items")), "themed StatusBar item count");
         AssertEqual("Theme status", GetProperty(GetCollectionItem(GetProperty(statusBar, "Items"), 0), "Content"), "themed StatusBarItem content");
+        AssertEqual("Theme check", GetProperty(checkBox, "Content"), "themed CheckBox content");
+        AssertEqual(true, GetProperty(checkBox, "IsChecked"), "themed CheckBox checked state");
+        AssertEqual("Theme radio", GetProperty(radioButton, "Content"), "themed RadioButton content");
+        AssertEqual(true, GetProperty(radioButton, "IsChecked"), "themed RadioButton checked state");
+        AssertEqual("ThemeChoice", GetProperty(radioButton, "GroupName"), "themed RadioButton group name");
+        AssertEqual("Theme toggle", GetProperty(toggleButton, "Content"), "themed ToggleButton content");
+        AssertEqual(true, GetProperty(toggleButton, "IsChecked"), "themed ToggleButton checked state");
+        AssertEqual("Theme repeat", GetProperty(repeatButton, "Content"), "themed RepeatButton content");
+        AssertEqual("Theme expander", GetProperty(expander, "Header"), "themed Expander header");
+        AssertEqual("Theme expander content", GetProperty(expander, "Content"), "themed Expander content");
+        AssertEqual(true, GetProperty(expander, "IsExpanded"), "themed Expander expanded state");
+        AssertEqual("Theme group", GetProperty(groupBox, "Header"), "themed GroupBox header");
+        AssertEqual("Theme group content", GetProperty(groupBox, "Content"), "themed GroupBox content");
+        AssertEqual("Visible", GetProperty(scrollViewer, "VerticalScrollBarVisibility").ToString(), "themed ScrollViewer vertical visibility");
+        AssertEqual("Auto", GetProperty(scrollViewer, "HorizontalScrollBarVisibility").ToString(), "themed ScrollViewer horizontal visibility");
+        AssertEqual("Vertical", GetProperty(scrollBar, "Orientation").ToString(), "themed ScrollBar orientation");
+        AssertEqual(0.0, GetProperty(scrollBar, "Minimum"), "themed ScrollBar minimum");
+        AssertEqual(100.0, GetProperty(scrollBar, "Maximum"), "themed ScrollBar maximum");
+        AssertEqual(25.0, GetProperty(scrollBar, "ViewportSize"), "themed ScrollBar viewport size");
+        AssertEqual(33.0, GetProperty(scrollBar, "Value"), "themed ScrollBar value");
         AssertEqual(2, GetCollectionCount(GetProperty(comboBox, "Items")), "themed ComboBox item count");
         AssertEqual(1, GetProperty(comboBox, "SelectedIndex"), "themed ComboBox selected index");
         AssertEqual("theme item two", GetProperty(comboBox, "SelectedItem"), "themed ComboBox selected item");
@@ -819,6 +1002,59 @@ internal static class Program
         }
 
         throw new InvalidOperationException($"Expected {description} to include a '{dependencyPropertyName}' setter.");
+    }
+
+    private static void AssertStyleHasTriggerSetter(
+        object style,
+        string triggerPropertyName,
+        string triggerValue,
+        string setterPropertyName,
+        string description)
+    {
+        object triggers = GetProperty(style, "Triggers");
+        if (triggers is not IEnumerable enumerable)
+        {
+            throw new InvalidOperationException($"Expected {description} to expose enumerable triggers.");
+        }
+
+        foreach (object triggerBase in enumerable)
+        {
+            if (!string.Equals(triggerBase.GetType().FullName, "System.Windows.Trigger", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            object triggerProperty = GetProperty(triggerBase, "Property");
+            object value = GetProperty(triggerBase, "Value");
+            if (!string.Equals(GetProperty(triggerProperty, "Name").ToString(), triggerPropertyName, StringComparison.Ordinal) ||
+                !string.Equals(value.ToString(), triggerValue, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            object setters = GetProperty(triggerBase, "Setters");
+            if (setters is not IEnumerable setterEnumerable)
+            {
+                throw new InvalidOperationException($"Expected {description} to expose enumerable trigger setters.");
+            }
+
+            foreach (object setterBase in setterEnumerable)
+            {
+                if (!string.Equals(setterBase.GetType().FullName, "System.Windows.Setter", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                object setterProperty = GetProperty(setterBase, "Property");
+                if (string.Equals(GetProperty(setterProperty, "Name").ToString(), setterPropertyName, StringComparison.Ordinal))
+                {
+                    return;
+                }
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Expected {description} to include a '{setterPropertyName}' setter under {triggerPropertyName}={triggerValue}.");
     }
 
     private static void AssertType(object instance, string expectedFullName, string description)

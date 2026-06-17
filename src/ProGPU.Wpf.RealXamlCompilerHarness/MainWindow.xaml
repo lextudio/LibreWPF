@@ -734,6 +734,22 @@
             ItemsSource="{Binding Items}"
             SelectedValue="{Binding ComboSelectedCategory, Mode=TwoWay}"
             SelectedValuePath="Category" />
+        <StackPanel
+            x:Name="SelectorEventPanel"
+            Margin="0,8,0,0">
+            <ListBox
+                x:Name="SelectionEventListBox"
+                SelectionChanged="OnSelectionEventListBoxChanged">
+                <ListBoxItem Content="selection alpha" />
+                <ListBoxItem Content="selection beta" />
+            </ListBox>
+            <ComboBox
+                x:Name="SelectionEventComboBox"
+                SelectionChanged="OnSelectionEventComboBoxChanged">
+                <ComboBoxItem Content="combo alpha" />
+                <ComboBoxItem Content="combo beta" />
+            </ComboBox>
+        </StackPanel>
         <ListView
             x:Name="GridItemsListView"
             Margin="0,8,0,0"

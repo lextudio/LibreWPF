@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
@@ -129,6 +130,34 @@ public partial class MainWindow : Window
     public string? LastExplicitTreeUnselectedSenderName { get; private set; }
 
     public string? LastExplicitTreeUnselectedRoutedEventName { get; private set; }
+
+    public int ListBoxSelectionChangedCount { get; private set; }
+
+    public string? LastListBoxSelectionSenderName { get; private set; }
+
+    public string? LastListBoxSelectionRoutedEventName { get; private set; }
+
+    public int LastListBoxSelectionAddedCount { get; private set; }
+
+    public int LastListBoxSelectionRemovedCount { get; private set; }
+
+    public string? LastListBoxSelectionAddedItem { get; private set; }
+
+    public string? LastListBoxSelectionRemovedItem { get; private set; }
+
+    public int ComboBoxSelectionChangedCount { get; private set; }
+
+    public string? LastComboBoxSelectionSenderName { get; private set; }
+
+    public string? LastComboBoxSelectionRoutedEventName { get; private set; }
+
+    public int LastComboBoxSelectionAddedCount { get; private set; }
+
+    public int LastComboBoxSelectionRemovedCount { get; private set; }
+
+    public string? LastComboBoxSelectionAddedItem { get; private set; }
+
+    public string? LastComboBoxSelectionRemovedItem { get; private set; }
 
     public int StoryboardTargetLoadedCount { get; private set; }
 
@@ -269,6 +298,40 @@ public partial class MainWindow : Window
         ExplicitTreeUnselectedCount++;
         LastExplicitTreeUnselectedSenderName = sender is FrameworkElement element ? element.Name : null;
         LastExplicitTreeUnselectedRoutedEventName = e.RoutedEvent?.Name;
+    }
+
+    private void OnSelectionEventListBoxChanged(object sender, SelectionChangedEventArgs e)
+    {
+        ListBoxSelectionChangedCount++;
+        LastListBoxSelectionSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastListBoxSelectionRoutedEventName = e.RoutedEvent?.Name;
+        LastListBoxSelectionAddedCount = e.AddedItems.Count;
+        LastListBoxSelectionRemovedCount = e.RemovedItems.Count;
+        LastListBoxSelectionAddedItem = DescribeSelectionItem(e.AddedItems);
+        LastListBoxSelectionRemovedItem = DescribeSelectionItem(e.RemovedItems);
+    }
+
+    private void OnSelectionEventComboBoxChanged(object sender, SelectionChangedEventArgs e)
+    {
+        ComboBoxSelectionChangedCount++;
+        LastComboBoxSelectionSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastComboBoxSelectionRoutedEventName = e.RoutedEvent?.Name;
+        LastComboBoxSelectionAddedCount = e.AddedItems.Count;
+        LastComboBoxSelectionRemovedCount = e.RemovedItems.Count;
+        LastComboBoxSelectionAddedItem = DescribeSelectionItem(e.AddedItems);
+        LastComboBoxSelectionRemovedItem = DescribeSelectionItem(e.RemovedItems);
+    }
+
+    private static string? DescribeSelectionItem(IList items)
+    {
+        return items.Count > 0 ? DescribeSelectionItem(items[0]) : null;
+    }
+
+    private static string? DescribeSelectionItem(object? item)
+    {
+        return item is ContentControl contentControl
+            ? contentControl.Content?.ToString()
+            : item?.ToString();
     }
 
     private void OnStoryboardTargetLoaded(object sender, RoutedEventArgs e)

@@ -185,7 +185,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 61, "stack panel children");
+        AssertCollectionCount(children, expected: 62, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -246,6 +246,7 @@ internal static class Program
         ValidateTemplateAndDynamicResource(window, application);
         ValidateItemsBindingAndTemplate(window);
         ValidateComboBox(window);
+        ValidateSelectorSelectionChangedEvents(window);
         ValidateListViewGridView(window);
         ValidateImplicitDataTemplate(window);
         ValidateContentTemplateSelector(window);
@@ -2259,6 +2260,69 @@ internal static class Program
         AssertEqual("primary group", GetProperty(comboBox, "SelectedValue"), "compiled ComboBox updated selected value");
         AssertSame(GetCollectionItem(sourceItems, 0), GetProperty(comboBox, "SelectedItem"), "compiled ComboBox selected item after selected value update");
         AssertEqual(0, GetProperty(comboBox, "SelectedIndex"), "compiled ComboBox updated selected index");
+    }
+
+    private static void ValidateSelectorSelectionChangedEvents(object window)
+    {
+        object panel = GetField(window, "SelectorEventPanel");
+        AssertType(panel, "System.Windows.Controls.StackPanel", "compiled selector event panel");
+        AssertCollectionCount(GetProperty(panel, "Children"), expected: 2, "compiled selector event panel children");
+
+        object listBox = GetField(window, "SelectionEventListBox");
+        AssertType(listBox, "System.Windows.Controls.ListBox", "compiled SelectionChanged ListBox");
+        object listBoxItems = GetProperty(listBox, "Items");
+        AssertCollectionCount(listBoxItems, expected: 2, "compiled SelectionChanged ListBox items");
+        object listBoxAlpha = GetCollectionItem(listBoxItems, 0);
+        object listBoxBeta = GetCollectionItem(listBoxItems, 1);
+        AssertEqual("selection alpha", GetProperty(listBoxAlpha, "Content"), "compiled SelectionChanged ListBox alpha content");
+        AssertEqual("selection beta", GetProperty(listBoxBeta, "Content"), "compiled SelectionChanged ListBox beta content");
+        AssertEqual(-1, GetProperty(listBox, "SelectedIndex"), "compiled SelectionChanged ListBox initial selected index");
+        AssertEqual(0, GetProperty(window, "ListBoxSelectionChangedCount"), "compiled ListBox SelectionChanged initial count");
+
+        SetProperty(listBox, "SelectedIndex", 0);
+        AssertSame(listBoxAlpha, GetProperty(listBox, "SelectedItem"), "compiled SelectionChanged ListBox selected alpha item");
+        AssertEqual(1, GetProperty(window, "ListBoxSelectionChangedCount"), "compiled ListBox SelectionChanged alpha count");
+        AssertEqual("SelectionEventListBox", GetProperty(window, "LastListBoxSelectionSenderName"), "compiled ListBox SelectionChanged sender");
+        AssertEqual("SelectionChanged", GetProperty(window, "LastListBoxSelectionRoutedEventName"), "compiled ListBox SelectionChanged routed event");
+        AssertEqual(1, GetProperty(window, "LastListBoxSelectionAddedCount"), "compiled ListBox SelectionChanged alpha added count");
+        AssertEqual(0, GetProperty(window, "LastListBoxSelectionRemovedCount"), "compiled ListBox SelectionChanged alpha removed count");
+        AssertEqual("selection alpha", GetProperty(window, "LastListBoxSelectionAddedItem"), "compiled ListBox SelectionChanged alpha added item");
+
+        SetProperty(listBox, "SelectedIndex", 1);
+        AssertSame(listBoxBeta, GetProperty(listBox, "SelectedItem"), "compiled SelectionChanged ListBox selected beta item");
+        AssertEqual(2, GetProperty(window, "ListBoxSelectionChangedCount"), "compiled ListBox SelectionChanged beta count");
+        AssertEqual(1, GetProperty(window, "LastListBoxSelectionAddedCount"), "compiled ListBox SelectionChanged beta added count");
+        AssertEqual(1, GetProperty(window, "LastListBoxSelectionRemovedCount"), "compiled ListBox SelectionChanged beta removed count");
+        AssertEqual("selection beta", GetProperty(window, "LastListBoxSelectionAddedItem"), "compiled ListBox SelectionChanged beta added item");
+        AssertEqual("selection alpha", GetProperty(window, "LastListBoxSelectionRemovedItem"), "compiled ListBox SelectionChanged alpha removed item");
+
+        object comboBox = GetField(window, "SelectionEventComboBox");
+        AssertType(comboBox, "System.Windows.Controls.ComboBox", "compiled SelectionChanged ComboBox");
+        object comboBoxItems = GetProperty(comboBox, "Items");
+        AssertCollectionCount(comboBoxItems, expected: 2, "compiled SelectionChanged ComboBox items");
+        object comboAlpha = GetCollectionItem(comboBoxItems, 0);
+        object comboBeta = GetCollectionItem(comboBoxItems, 1);
+        AssertEqual("combo alpha", GetProperty(comboAlpha, "Content"), "compiled SelectionChanged ComboBox alpha content");
+        AssertEqual("combo beta", GetProperty(comboBeta, "Content"), "compiled SelectionChanged ComboBox beta content");
+        AssertEqual(-1, GetProperty(comboBox, "SelectedIndex"), "compiled SelectionChanged ComboBox initial selected index");
+        AssertEqual(0, GetProperty(window, "ComboBoxSelectionChangedCount"), "compiled ComboBox SelectionChanged initial count");
+
+        SetProperty(comboBox, "SelectedIndex", 0);
+        AssertSame(comboAlpha, GetProperty(comboBox, "SelectedItem"), "compiled SelectionChanged ComboBox selected alpha item");
+        AssertEqual(1, GetProperty(window, "ComboBoxSelectionChangedCount"), "compiled ComboBox SelectionChanged alpha count");
+        AssertEqual("SelectionEventComboBox", GetProperty(window, "LastComboBoxSelectionSenderName"), "compiled ComboBox SelectionChanged sender");
+        AssertEqual("SelectionChanged", GetProperty(window, "LastComboBoxSelectionRoutedEventName"), "compiled ComboBox SelectionChanged routed event");
+        AssertEqual(1, GetProperty(window, "LastComboBoxSelectionAddedCount"), "compiled ComboBox SelectionChanged alpha added count");
+        AssertEqual(0, GetProperty(window, "LastComboBoxSelectionRemovedCount"), "compiled ComboBox SelectionChanged alpha removed count");
+        AssertEqual("combo alpha", GetProperty(window, "LastComboBoxSelectionAddedItem"), "compiled ComboBox SelectionChanged alpha added item");
+
+        SetProperty(comboBox, "SelectedIndex", 1);
+        AssertSame(comboBeta, GetProperty(comboBox, "SelectedItem"), "compiled SelectionChanged ComboBox selected beta item");
+        AssertEqual(2, GetProperty(window, "ComboBoxSelectionChangedCount"), "compiled ComboBox SelectionChanged beta count");
+        AssertEqual(1, GetProperty(window, "LastComboBoxSelectionAddedCount"), "compiled ComboBox SelectionChanged beta added count");
+        AssertEqual(1, GetProperty(window, "LastComboBoxSelectionRemovedCount"), "compiled ComboBox SelectionChanged beta removed count");
+        AssertEqual("combo beta", GetProperty(window, "LastComboBoxSelectionAddedItem"), "compiled ComboBox SelectionChanged beta added item");
+        AssertEqual("combo alpha", GetProperty(window, "LastComboBoxSelectionRemovedItem"), "compiled ComboBox SelectionChanged alpha removed item");
     }
 
     private static void ValidateListViewGridView(object window)

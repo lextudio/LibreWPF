@@ -1134,6 +1134,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SelectedValue=\"{Binding SelectedCategory, Mode=TwoWay}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ItemsComboBox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SelectedValue=\"{Binding ComboSelectedCategory, Mode=TwoWay}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SelectorEventPanel\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SelectionEventListBox\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SelectionChanged=\"OnSelectionEventListBoxChanged\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"selection alpha\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"selection beta\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SelectionEventComboBox\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SelectionChanged=\"OnSelectionEventComboBoxChanged\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"combo alpha\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"combo beta\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"GridItemsListView\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<ListView.View>", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("GridView AllowsColumnReorder=\"False\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1280,6 +1289,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public int ExplicitTreeSelectedCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnExplicitTreeSelected", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnExplicitTreeUnselected", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int ListBoxSelectionChangedCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnSelectionEventListBoxChanged", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int ComboBoxSelectionChangedCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnSelectionEventComboBoxChanged", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private static string? DescribeSelectionItem(IList items)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int StoryboardTargetLoadedCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnStoryboardTargetLoaded", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastStoryboardTargetLoadedRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1665,6 +1679,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ComboBox SelectedValue binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ComboBox collection-change items", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ComboBox two-way selected value source update", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateSelectorSelectionChangedEvents(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox SelectionChanged beta removed count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ComboBox SelectionChanged beta added item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateListViewGridView(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GridView ListView collection-change items", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GridView name DisplayMemberBinding path", harnessProgram, StringComparison.Ordinal);
@@ -2047,6 +2064,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ComboBox SelectedValue binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ComboBox collection-change items", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ComboBox two-way selected value source update", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateSelectorSelectionChangedEvents(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox SelectionChanged routed event", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ComboBox SelectionChanged beta removed count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateListViewGridView(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GridView ListView collection-change items", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GridView category DisplayMemberBinding path", harnessProgram, StringComparison.Ordinal);

@@ -2020,6 +2020,8 @@ internal static class Program
             AssertAtLeast(2, GetProperty(activation.Window, "XamlClickCount"), "portable mouse routed Click persisted count");
             AssertEqual("EventButton", GetProperty(activation.Window, "LastXamlClickSenderName"), "portable mouse routed Click persisted sender name");
             AssertEqual("Click", GetProperty(activation.Window, "LastXamlClickRoutedEventName"), "portable mouse routed Click persisted event name");
+            AssertAtLeast(1, GetProperty(activation.Window, "XamlGotMouseCaptureCount"), "portable mouse GotMouseCapture persisted count");
+            AssertAtLeast(1, GetProperty(activation.Window, "XamlLostMouseCaptureCount"), "portable mouse LostMouseCapture persisted count");
         }
 
         private void AssertSameActivation(object activation)
@@ -2184,9 +2186,28 @@ internal static class Program
             (double x, double y) = GetElementCenterInWindow(_presentationCore, eventButton, window);
 
             int initialClickCount = Convert.ToInt32(GetProperty(window, "XamlClickCount"));
+            int initialGotCaptureCount = Convert.ToInt32(GetProperty(window, "XamlGotMouseCaptureCount"));
+            int initialLostCaptureCount = Convert.ToInt32(GetProperty(window, "XamlLostMouseCaptureCount"));
+            Type mouseType = GetRequiredType(_presentationCore, "System.Windows.Input.Mouse");
+
             Invoke(window, "HandlePortableInput", CreatePortableInputEvent("MouseMove", x: x, y: y));
             Invoke(window, "HandlePortableInput", CreatePortableInputEvent("MouseDown", x: x, y: y, buttonName: "Left"));
+            object capturedAfterDown = TryGetStaticProperty(mouseType, "Captured")
+                ?? throw new InvalidOperationException("Expected portable Application.Run mouse capture after mouse down.");
+            AssertSame(eventButton, capturedAfterDown, "portable Application.Run mouse captured element after down");
+            AssertEqual(true, GetProperty(eventButton, "IsMouseCaptured"), "portable Application.Run mouse ButtonBase IsMouseCaptured after down");
+            AssertEqual(true, GetProperty(eventButton, "IsPressed"), "portable Application.Run mouse ButtonBase IsPressed after down");
+            AssertEqual(initialGotCaptureCount + 1, GetProperty(window, "XamlGotMouseCaptureCount"), "portable Application.Run mouse GotMouseCapture count");
+            AssertEqual("EventButton", GetProperty(window, "LastXamlGotMouseCaptureSenderName"), "portable Application.Run mouse GotMouseCapture sender name");
+            AssertEqual("GotMouseCapture", GetProperty(window, "LastXamlGotMouseCaptureRoutedEventName"), "portable Application.Run mouse GotMouseCapture event name");
+
             Invoke(window, "HandlePortableInput", CreatePortableInputEvent("MouseUp", x: x, y: y, buttonName: "Left"));
+            AssertEqual(null, TryGetStaticProperty(mouseType, "Captured"), "portable Application.Run mouse captured element after up");
+            AssertEqual(false, GetProperty(eventButton, "IsMouseCaptured"), "portable Application.Run mouse ButtonBase IsMouseCaptured after up");
+            AssertEqual(false, GetProperty(eventButton, "IsPressed"), "portable Application.Run mouse ButtonBase IsPressed after up");
+            AssertEqual(initialLostCaptureCount + 1, GetProperty(window, "XamlLostMouseCaptureCount"), "portable Application.Run mouse LostMouseCapture count");
+            AssertEqual("EventButton", GetProperty(window, "LastXamlLostMouseCaptureSenderName"), "portable Application.Run mouse LostMouseCapture sender name");
+            AssertEqual("LostMouseCapture", GetProperty(window, "LastXamlLostMouseCaptureRoutedEventName"), "portable Application.Run mouse LostMouseCapture event name");
 
             AssertEqual(initialClickCount + 1, GetProperty(window, "XamlClickCount"), "portable Application.Run mouse routed Click count");
             AssertEqual("EventButton", GetProperty(window, "LastXamlClickSenderName"), "portable Application.Run mouse routed Click sender name");

@@ -888,6 +888,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("IsChecked=\"True\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"EventButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"OnXamlClick\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("GotMouseCapture=\"OnXamlGotMouseCapture\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("LostMouseCapture=\"OnXamlLostMouseCapture\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"StyledEventButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style=\"{StaticResource EventSetterButtonStyle}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"CommandButton\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1008,6 +1010,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public int XamlClickCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnXamlClick", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastXamlClickRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int XamlGotMouseCaptureCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnXamlGotMouseCapture", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastXamlGotMouseCaptureRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int XamlLostMouseCaptureCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnXamlLostMouseCapture", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastXamlLostMouseCaptureRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int StyledClickCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnStyledButtonClick", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastStyledClickRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1236,6 +1244,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("portable text input caret index", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableMouseClickActivation(presentationCore, activation, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("WpfInputEventKind.MouseDown", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable mouse captured element after down", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable mouse GotMouseCapture count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable mouse LostMouseCapture count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable mouse routed Click count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetTransformToDevice(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTemplateAndDynamicResource(window, application)", harnessProgram, StringComparison.Ordinal);
@@ -1500,8 +1511,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("portable Application.Run text input TextBox text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableMouseClickActivation(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreatePortableInputEvent(\"MouseDown\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run mouse captured element after down", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run mouse GotMouseCapture count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run mouse LostMouseCapture count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable Application.Run mouse routed Click count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable mouse routed Click persisted count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable mouse GotMouseCapture persisted count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable mouse LostMouseCapture persisted count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTemplateAndDynamicResource(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ControlTemplate named part", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled VisualStateManager group collection", harnessProgram, StringComparison.Ordinal);

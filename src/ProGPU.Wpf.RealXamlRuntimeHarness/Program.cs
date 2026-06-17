@@ -495,6 +495,8 @@ internal static class Program
                 $"MoveHandled={mouseMove.Handled}, Input=({x}, {y}), InputHitTest={DescribeInputElement(directHit)}.");
         }
 
+        int initialGotCaptureCount = Convert.ToInt32(GetProperty(window, "XamlGotMouseCaptureCount"));
+        int initialLostCaptureCount = Convert.ToInt32(GetProperty(window, "XamlLostMouseCaptureCount"));
         RaiseHostInput(
             portableActivation.Host,
             new WpfInputEventArgs(
@@ -502,6 +504,15 @@ internal static class Program
                 x: x,
                 y: y,
                 button: WpfMouseButton.Left));
+        object capturedAfterDown = TryGetStaticProperty(mouseType, "Captured")
+            ?? throw new InvalidOperationException("Expected portable mouse capture after mouse down.");
+        AssertSame(eventButton, capturedAfterDown, "portable mouse captured element after down");
+        AssertEqual(true, GetProperty(eventButton, "IsMouseCaptured"), "portable mouse ButtonBase IsMouseCaptured after down");
+        AssertEqual(true, GetProperty(eventButton, "IsPressed"), "portable mouse ButtonBase IsPressed after down");
+        AssertEqual(initialGotCaptureCount + 1, GetProperty(window, "XamlGotMouseCaptureCount"), "portable mouse GotMouseCapture count");
+        AssertEqual("EventButton", GetProperty(window, "LastXamlGotMouseCaptureSenderName"), "portable mouse GotMouseCapture sender name");
+        AssertEqual("GotMouseCapture", GetProperty(window, "LastXamlGotMouseCaptureRoutedEventName"), "portable mouse GotMouseCapture event name");
+
         RaiseHostInput(
             portableActivation.Host,
             new WpfInputEventArgs(
@@ -509,6 +520,12 @@ internal static class Program
                 x: x,
                 y: y,
                 button: WpfMouseButton.Left));
+        AssertEqual(null, TryGetStaticProperty(mouseType, "Captured"), "portable mouse captured element after up");
+        AssertEqual(false, GetProperty(eventButton, "IsMouseCaptured"), "portable mouse ButtonBase IsMouseCaptured after up");
+        AssertEqual(false, GetProperty(eventButton, "IsPressed"), "portable mouse ButtonBase IsPressed after up");
+        AssertEqual(initialLostCaptureCount + 1, GetProperty(window, "XamlLostMouseCaptureCount"), "portable mouse LostMouseCapture count");
+        AssertEqual("EventButton", GetProperty(window, "LastXamlLostMouseCaptureSenderName"), "portable mouse LostMouseCapture sender name");
+        AssertEqual("LostMouseCapture", GetProperty(window, "LastXamlLostMouseCaptureRoutedEventName"), "portable mouse LostMouseCapture event name");
 
         AssertPortableMouseClick(
             presentationCore,

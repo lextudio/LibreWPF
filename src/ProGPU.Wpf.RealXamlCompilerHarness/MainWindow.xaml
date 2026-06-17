@@ -117,6 +117,8 @@
             x:Name="EventButton"
             Margin="0,8,0,0"
             Click="OnXamlClick"
+            GotMouseCapture="OnXamlGotMouseCapture"
+            LostMouseCapture="OnXamlLostMouseCapture"
             Content="run xaml event" />
         <Button
             x:Name="StyledEventButton"

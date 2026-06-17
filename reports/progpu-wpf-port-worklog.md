@@ -899,6 +899,9 @@
 - Extended the compiled XAML basic app to exercise more of WPF's real rich document object model instead of substituting a ProGPU document shim. The `RichTextBox` now contains a named `FlowDocument` with a paragraph, `Bold` inline, `Hyperlink.NavigateUri`, decimal `List`, `ListItem` paragraphs, and real `TextRange` extraction across the document.
 - Updated both `ProGPU.Wpf.RealXamlRuntimeHarness` and `ProGPU.Wpf.RealApplicationRunHarness` to validate the rich document elements through WPF collections and `TextRange`, accounting for WPF's preserved whitespace in inline collections instead of assuming a simplified object tree.
 - Verified the rich-document managed-framework slice with clean build/run of `ProGPU.Wpf.RealXamlRuntimeHarness`, clean build/run of `ProGPU.Wpf.RealApplicationRunHarness`, clean build/run of `ProGPU.Wpf.RealThemeRuntimeHarness`, a clean `ProGPU.Wpf.Tests` build, focused `WpfManagedProjectGraphTests` through `vstest` with 28 tests passed, and `git diff --check`.
+- Added `SmokeUserControl.xaml` as a real compiled WPF `Page` item in the XAML compiler harness, with code-behind `InitializeComponent()`, generated fields, local `UserControl.Resources`, element-name binding, and generated `Click` hookup.
+- Embedded the compiled `SmokeUserControl` into `MainWindow.xaml` and extended the runtime plus `Application.Run()` harnesses to validate nested-control namescope lookup, resource lookup, generated fields, element-name binding value/path, and routed event delivery without adding a ProGPU-side control shim.
+- Verified the nested `UserControl` managed-XAML slice with clean build/run of `ProGPU.Wpf.RealXamlRuntimeHarness`, clean build/run of `ProGPU.Wpf.RealApplicationRunHarness`, clean build/run of `ProGPU.Wpf.RealThemeRuntimeHarness`, a clean `ProGPU.Wpf.Tests` build, focused `WpfManagedProjectGraphTests` through `vstest` with 28 tests passed, and `git diff --check`.
 
 ## Open Porting Items
 

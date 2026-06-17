@@ -639,6 +639,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.RealXamlCompilerHarness",
             "MainWindow.xaml");
+        var smokeUserControlXamlPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealXamlCompilerHarness",
+            "SmokeUserControl.xaml");
         var appCodeBehindPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.RealXamlCompilerHarness",
@@ -647,13 +651,19 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.RealXamlCompilerHarness",
             "MainWindow.xaml.cs");
+        var smokeUserControlCodeBehindPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealXamlCompilerHarness",
+            "SmokeUserControl.xaml.cs");
 
         var harnessProject = XDocument.Load(harnessProjectPath);
         var appXaml = File.ReadAllText(appXamlPath);
         var smokeResourcesXaml = File.ReadAllText(smokeResourcesXamlPath);
         var mainWindowXaml = File.ReadAllText(mainWindowXamlPath);
+        var smokeUserControlXaml = File.ReadAllText(smokeUserControlXamlPath);
         var appCodeBehind = File.ReadAllText(appCodeBehindPath);
         var mainWindowCodeBehind = File.ReadAllText(mainWindowCodeBehindPath);
+        var smokeUserControlCodeBehind = File.ReadAllText(smokeUserControlCodeBehindPath);
 
         Assert.Equal("true", Assert.Single(harnessProject.Descendants("InternalMarkupCompilation")).Value);
 
@@ -666,6 +676,11 @@ public sealed class WpfManagedProjectGraphTests
             item => item.Attribute("Include")?.Value == "SmokeResources.xaml");
         Assert.Equal("MSBuild:Compile", smokeResourcesPage.Element("Generator")?.Value);
 
+        var smokeUserControlPage = Assert.Single(
+            harnessProject.Descendants("Page"),
+            item => item.Attribute("Include")?.Value == "SmokeUserControl.xaml");
+        Assert.Equal("MSBuild:Compile", smokeUserControlPage.Element("Generator")?.Value);
+
         var page = Assert.Single(
             harnessProject.Descendants("Page"),
             item => item.Attribute("Include")?.Value == "MainWindow.xaml");
@@ -674,6 +689,7 @@ public sealed class WpfManagedProjectGraphTests
 
         AssertCompileInclude(harnessProject, "App.xaml.cs");
         AssertCompileInclude(harnessProject, "MainWindow.xaml.cs");
+        AssertCompileInclude(harnessProject, "SmokeUserControl.xaml.cs");
         AssertProjectReference(harnessProject, @"Microsoft.DotNet.Wpf\src\System.Xaml\System.Xaml.csproj");
         AssertProjectReference(harnessProject, @"Microsoft.DotNet.Wpf\src\WindowsBase\WindowsBase.csproj");
         AssertProjectReference(harnessProject, @"Microsoft.DotNet.Wpf\src\PresentationCore\PresentationCore.csproj");
@@ -726,6 +742,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"MergedResourceBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Foreground=\"{StaticResource MergedAccentBrush}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Margin=\"{StaticResource MergedBlockMargin}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("local:SmokeUserControl", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"NestedControl\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"AttachedLayoutGrid\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Grid.RowDefinitions", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Grid.ColumnDefinitions", mainWindowXaml, StringComparison.Ordinal);
@@ -775,6 +793,19 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("OnPropertyChanged();", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeItem", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeCommand : ICommand", mainWindowCodeBehind, StringComparison.Ordinal);
+
+        Assert.Contains("x:Class=\"ProGPU.Wpf.RealXamlCompilerHarness.SmokeUserControl\"", smokeUserControlXaml, StringComparison.Ordinal);
+        Assert.Contains("UserControl.Resources", smokeUserControlXaml, StringComparison.Ordinal);
+        Assert.Contains("SolidColorBrush x:Key=\"UserControlBrush\"", smokeUserControlXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ControlTitle\"", smokeUserControlXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ElementNameMirror\"", smokeUserControlXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding ElementName=ControlTitle, Path=Text}\"", smokeUserControlXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ControlEventButton\"", smokeUserControlXaml, StringComparison.Ordinal);
+        Assert.Contains("Click=\"OnControlButtonClick\"", smokeUserControlXaml, StringComparison.Ordinal);
+        Assert.Contains("public partial class SmokeUserControl : UserControl", smokeUserControlCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("InitializeComponent();", smokeUserControlCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int ControlClickCount", smokeUserControlCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnControlButtonClick", smokeUserControlCodeBehind, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -849,6 +880,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Button command binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMergedResourceDictionary(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled merged-resource foreground", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateNestedUserControl(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.RealXamlCompilerHarness.SmokeUserControl", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetField(nestedControl, \"ControlTitle\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled UserControl ElementName binding value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled UserControl click handler count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateReadOnlyGridCollectionsAndAttachedProperties(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Grid row definitions", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDependencyPropertyValue(firstCell, layoutGrid.GetType(), \"RowProperty\")", harnessProgram, StringComparison.Ordinal);
@@ -947,6 +983,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Button command binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMergedResourceDictionary(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled merged-resource margin top", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateNestedUserControl(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled UserControl ElementName binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled UserControl click routed event name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateReadOnlyGridCollectionsAndAttachedProperties(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Grid column definitions", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDependencyPropertyValue(secondCell, layoutGrid.GetType(), \"ColumnProperty\")", harnessProgram, StringComparison.Ordinal);

@@ -142,7 +142,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 13, "stack panel children");
+        AssertCollectionCount(children, expected: 14, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -166,6 +166,7 @@ internal static class Program
 
         ValidateBindingAndCommand(window);
         ValidateMergedResourceDictionary(window, application);
+        ValidateNestedUserControl(window);
         ValidateReadOnlyGridCollectionsAndAttachedProperties(window);
         ValidateImplicitMergedStyle(window, application);
         ValidateXamlEventHandler(window);
@@ -333,6 +334,38 @@ internal static class Program
         AssertEqual(GetProperty(expectedMargin, "Top"), GetProperty(actualMargin, "Top"), "compiled merged-resource margin top");
         AssertEqual(GetProperty(expectedMargin, "Right"), GetProperty(actualMargin, "Right"), "compiled merged-resource margin right");
         AssertEqual(GetProperty(expectedMargin, "Bottom"), GetProperty(actualMargin, "Bottom"), "compiled merged-resource margin bottom");
+    }
+
+    private static void ValidateNestedUserControl(object window)
+    {
+        object nestedControl = GetField(window, "NestedControl");
+        AssertType(nestedControl, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeUserControl", "compiled nested UserControl");
+
+        object foundNestedControl = Invoke(window, "FindName", "NestedControl");
+        AssertSame(nestedControl, foundNestedControl, "compiled nested UserControl namescope lookup");
+
+        object resources = GetProperty(nestedControl, "Resources");
+        object userControlBrush = GetDictionaryValue(resources, "UserControlBrush");
+        AssertEqual("#FF3F6E5A", GetProperty(userControlBrush, "Color").ToString(), "compiled UserControl brush color");
+
+        object controlTitle = GetField(nestedControl, "ControlTitle");
+        AssertType(controlTitle, "System.Windows.Controls.TextBlock", "compiled UserControl title TextBlock");
+        AssertEqual("compiled user control", GetProperty(controlTitle, "Text"), "compiled UserControl title text");
+        AssertSame(userControlBrush, GetProperty(controlTitle, "Foreground"), "compiled UserControl resource brush");
+
+        object elementNameMirror = GetField(nestedControl, "ElementNameMirror");
+        AssertType(elementNameMirror, "System.Windows.Controls.TextBlock", "compiled UserControl element-name TextBlock");
+        AssertEqual("compiled user control", GetProperty(elementNameMirror, "Text"), "compiled UserControl ElementName binding value");
+        AssertBindingPath(elementNameMirror, "TextProperty", "Text", "compiled UserControl ElementName binding path");
+
+        object controlEventButton = GetField(nestedControl, "ControlEventButton");
+        AssertType(controlEventButton, "System.Windows.Controls.Button", "compiled UserControl event Button");
+        AssertEqual("user control event", GetProperty(controlEventButton, "Content"), "compiled UserControl event Button content");
+        AssertEqual(0, GetProperty(nestedControl, "ControlClickCount"), "compiled UserControl initial click count");
+        Invoke(controlEventButton, "OnClick");
+        AssertEqual(1, GetProperty(nestedControl, "ControlClickCount"), "compiled UserControl click handler count");
+        AssertEqual("ControlEventButton", GetProperty(nestedControl, "LastControlClickSenderName"), "compiled UserControl click sender name");
+        AssertEqual("Click", GetProperty(nestedControl, "LastControlClickRoutedEventName"), "compiled UserControl click routed event name");
     }
 
     private static void ValidateReadOnlyGridCollectionsAndAttachedProperties(object window)

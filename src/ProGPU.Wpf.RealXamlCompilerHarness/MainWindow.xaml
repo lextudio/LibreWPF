@@ -60,6 +60,9 @@
             Foreground="{StaticResource MergedAccentBrush}"
             Margin="{StaticResource MergedBlockMargin}"
             Text="compiled merged resource" />
+        <local:SmokeUserControl
+            x:Name="NestedControl"
+            Margin="0,8,0,0" />
         <Grid
             x:Name="AttachedLayoutGrid"
             Margin="0,8,0,0">

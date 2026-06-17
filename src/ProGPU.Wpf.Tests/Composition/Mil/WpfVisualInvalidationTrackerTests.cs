@@ -1,5 +1,7 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using Xunit;
 
@@ -220,6 +222,87 @@ public sealed class WpfVisualInvalidationTrackerTests
         var dependencies = WpfVisualInvalidationTracker.EnumerateTrackedDependencies(drawing);
 
         Assert.Equal(new object[] { drawing, brush }, dependencies);
+    }
+
+    [Fact]
+    public void EnumerateTrackedDependenciesIncludesGradientStopGraph()
+    {
+        var firstStop = new GradientStop(Colors.Red, 0);
+        var secondStop = new GradientStop(Colors.Blue, 1);
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint = new Point(1, 1),
+            GradientStops = new GradientStopCollection
+            {
+                firstStop,
+                secondStop
+            }
+        };
+
+        var dependencies = WpfVisualInvalidationTracker.EnumerateTrackedDependencies(brush);
+
+        Assert.Contains(brush, dependencies);
+        Assert.Contains(brush.GradientStops, dependencies);
+        Assert.Contains(firstStop, dependencies);
+        Assert.Contains(secondStop, dependencies);
+    }
+
+    [Fact]
+    public void GradientStopChangeMarksTrackerDirty()
+    {
+        var stop = new GradientStop(Colors.Red, 0);
+        var brush = new LinearGradientBrush
+        {
+            GradientStops = new GradientStopCollection
+            {
+                stop,
+                new GradientStop(Colors.Blue, 1)
+            }
+        };
+        var root = new FakeVisual
+        {
+            Brush = brush
+        };
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        stop.Offset = 0.25;
+
+        Assert.True(tracker.IsDirty);
+        Assert.Contains(stop, tracker.DirtySources);
+    }
+
+    [Fact]
+    public void GradientStopCollectionChangeRefreshesSubscriptionsForNewStops()
+    {
+        var brush = new LinearGradientBrush
+        {
+            GradientStops = new GradientStopCollection
+            {
+                new GradientStop(Colors.Red, 0)
+            }
+        };
+        var root = new FakeVisual
+        {
+            Brush = brush
+        };
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        var addedStop = new GradientStop(Colors.Green, 0.5);
+        brush.GradientStops.Add(addedStop);
+
+        Assert.True(tracker.IsDirty);
+        Assert.Contains(brush.GradientStops, tracker.DirtySources);
+        tracker.ConsumeDirty();
+
+        addedStop.Color = Colors.Yellow;
+
+        Assert.True(tracker.IsDirty);
+        Assert.Contains(addedStop, tracker.DirtySources);
     }
 
     [Fact]

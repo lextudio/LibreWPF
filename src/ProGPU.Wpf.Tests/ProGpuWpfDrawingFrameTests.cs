@@ -806,6 +806,46 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void ObjectRenderDataSinkContextMapsGradientStopGraphToRetainedOwnerBranch()
+    {
+        var branchMap = new WpfRetainedVisualBranchMap();
+        var retainedRoot = new ProGpuContainerVisual();
+        var flatRoot = new ProGpuDrawingVisual();
+        var frame = new ProGpuWpfDrawingFrame(
+            new ProGpuContainerVisual(),
+            retainedRoot,
+            flatRoot,
+            200,
+            100,
+            retainedVisualBranchMap: branchMap);
+        var ownerVisual = new object();
+        var firstStop = new GradientStop(Colors.Red, 0);
+        var secondStop = new GradientStop(Colors.Blue, 1);
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint = new Point(1, 0),
+            GradientStops = new GradientStopCollection
+            {
+                firstStop,
+                secondStop
+            }
+        };
+
+        using (var context = frame.OpenObjectRenderDataSinkContext(ownerVisual))
+        {
+            context.DrawRectangle(brush, null, new Rect(9, 10, 11, 12));
+        }
+
+        var retainedFrameRoot = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
+        var ownerBranch = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedFrameRoot.Children));
+        AssertGradientDependencyTargetsOwner(branchMap, brush, ownerVisual, ownerBranch);
+        AssertGradientDependencyTargetsOwner(branchMap, brush.GradientStops, ownerVisual, ownerBranch);
+        AssertGradientDependencyTargetsOwner(branchMap, firstStop, ownerVisual, ownerBranch);
+        AssertGradientDependencyTargetsOwner(branchMap, secondStop, ownerVisual, ownerBranch);
+    }
+
+    [Fact]
     public void TryRegisterRenderDataSinkProviderReturnsFalseWhenProviderIsAbsent()
     {
         var frame = new ProGpuWpfDrawingFrame(new ProGpuDrawingVisual(), 200, 100);
@@ -814,5 +854,19 @@ public sealed class ProGpuWpfDrawingFrameTests
 
         Assert.False(registered);
         Assert.Null(registration);
+    }
+
+    private static void AssertGradientDependencyTargetsOwner(
+        WpfRetainedVisualBranchMap branchMap,
+        object dependency,
+        object ownerVisual,
+        ProGpuRetainedDrawingVisual ownerBranch)
+    {
+        var result = branchMap.InvalidateVisualsForSources(new[] { dependency });
+        var target = Assert.Single(branchMap.GetReplayTargetsForSources(new[] { dependency }));
+
+        Assert.True(result.CanTargetAllDirtySources);
+        Assert.Same(ownerVisual, target.Source);
+        Assert.Same(ownerBranch, target.Visual);
     }
 }

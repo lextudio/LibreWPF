@@ -246,6 +246,32 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void ObjectRenderDataDrawingContextRegistersGradientStopGraphAsRetainedDependencies()
+    {
+        var sink = new RecordingSink();
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+        var firstStop = new GradientStop(Colors.Red, 0);
+        var secondStop = new GradientStop(Colors.Blue, 1);
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint = new Point(1, 1),
+            GradientStops = new GradientStopCollection
+            {
+                firstStop,
+                secondStop
+            }
+        };
+
+        context.DrawRectangle(brush, null, new Rect(1, 2, 30, 40));
+
+        Assert.Contains(brush, sink.VisualDependencies);
+        Assert.Contains(brush.GradientStops, sink.VisualDependencies);
+        Assert.Contains(firstStop, sink.VisualDependencies);
+        Assert.Contains(secondStop, sink.VisualDependencies);
+    }
+
+    [Fact]
     public void GeneratedNoOpDrawGuardsDoNotForwardOrCountOperations()
     {
         var sink = new RecordingSink();

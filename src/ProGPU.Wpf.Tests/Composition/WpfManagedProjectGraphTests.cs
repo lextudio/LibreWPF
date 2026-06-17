@@ -820,6 +820,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("IsChecked=\"True\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"EventButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"OnXamlClick\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"StyledEventButton\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Style=\"{StaticResource EventSetterButtonStyle}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"CommandButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{Binding SmokeCommand}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:componentModel=\"clr-namespace:System.ComponentModel;assembly=WindowsBase\"", mainWindowXaml, StringComparison.Ordinal);
@@ -839,6 +841,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ObjectDataProvider.MethodParameters", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<sys:String>provider</sys:String>", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<sys:String>7</sys:String>", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Style x:Key=\"EventSetterButtonStyle\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Setter Property=\"Tag\" Value=\"event setter style\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("EventSetter Event=\"Click\" Handler=\"OnStyledButtonClick\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Window.CommandBindings", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{x:Static local:MainWindow.SmokeRoutedCommand}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CanExecute=\"OnSmokeCommandCanExecute\"", mainWindowXaml, StringComparison.Ordinal);
@@ -875,6 +880,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public int XamlClickCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnXamlClick", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastXamlClickRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int StyledClickCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnStyledButtonClick", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastStyledClickRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeViewModel : INotifyPropertyChanged", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("IDataErrorInfo", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ObservableCollection<SmokeItem> Items", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1007,6 +1015,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled implicit CheckBox style tag", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateXamlEventHandler(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled XAML Click handler count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateStyleEventSetter(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled EventSetter Click handler count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetField(window, \"RoutedCommandButton\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateRoutedCommand(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled routed command target", harnessProgram, StringComparison.Ordinal);
@@ -1134,6 +1144,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled implicit CheckBox style margin top", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateXamlEventHandler(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled XAML Click routed event name", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateStyleEventSetter(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled EventSetter Click routed event name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateRoutedCommand(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled routed command target", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTemplateAndDynamicResource(window, application)", harnessProgram, StringComparison.Ordinal);

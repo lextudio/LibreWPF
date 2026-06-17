@@ -148,7 +148,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 22, "stack panel children");
+        AssertCollectionCount(children, expected: 23, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -190,6 +190,7 @@ internal static class Program
         ValidateReadOnlyGridCollectionsAndAttachedProperties(window);
         ValidateImplicitMergedStyle(window, application);
         ValidateXamlEventHandler(window);
+        ValidateStyleEventSetter(window);
         ValidateRoutedCommand(window);
         ValidateStyleAndDataTrigger(window, application);
         ValidateTemplateAndDynamicResource(window, application);
@@ -524,6 +525,26 @@ internal static class Program
         AssertEqual(1, GetProperty(window, "XamlClickCount"), "compiled XAML Click handler count");
         AssertEqual("EventButton", GetProperty(window, "LastXamlClickSenderName"), "compiled XAML Click sender name");
         AssertEqual("Click", GetProperty(window, "LastXamlClickRoutedEventName"), "compiled XAML Click routed event name");
+    }
+
+    private static void ValidateStyleEventSetter(object window)
+    {
+        object styledEventButton = GetField(window, "StyledEventButton");
+        AssertType(styledEventButton, "System.Windows.Controls.Button", "compiled EventSetter Button");
+        AssertEqual("run style event", GetProperty(styledEventButton, "Content"), "compiled EventSetter Button content");
+        AssertEqual("event setter style", GetProperty(styledEventButton, "Tag"), "compiled EventSetter style setter");
+
+        object style = GetProperty(styledEventButton, "Style");
+        AssertType(style, "System.Windows.Style", "compiled EventSetter style");
+        object eventSetters = GetProperty(style, "Setters");
+        AssertAtLeast(2, GetProperty(eventSetters, "Count"), "compiled EventSetter style setters");
+        AssertEqual(0, GetProperty(window, "StyledClickCount"), "compiled EventSetter initial click count");
+
+        Invoke(styledEventButton, "OnClick");
+
+        AssertEqual(1, GetProperty(window, "StyledClickCount"), "compiled EventSetter Click handler count");
+        AssertEqual("StyledEventButton", GetProperty(window, "LastStyledClickSenderName"), "compiled EventSetter Click sender name");
+        AssertEqual("Click", GetProperty(window, "LastStyledClickRoutedEventName"), "compiled EventSetter Click routed event name");
     }
 
     private static void ValidateStyleAndDataTrigger(object window, object application)

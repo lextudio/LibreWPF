@@ -33,6 +33,12 @@ public partial class MainWindow : Window
 
     public string? LastXamlClickRoutedEventName { get; private set; }
 
+    public int StyledClickCount { get; private set; }
+
+    public string? LastStyledClickSenderName { get; private set; }
+
+    public string? LastStyledClickRoutedEventName { get; private set; }
+
     private void OnSmokeCommandCanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
         RoutedCommandCanExecuteCount++;
@@ -52,6 +58,14 @@ public partial class MainWindow : Window
         XamlClickCount++;
         LastXamlClickSenderName = sender is FrameworkElement element ? element.Name : null;
         LastXamlClickRoutedEventName = e.RoutedEvent?.Name;
+        e.Handled = true;
+    }
+
+    private void OnStyledButtonClick(object sender, RoutedEventArgs e)
+    {
+        StyledClickCount++;
+        LastStyledClickSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastStyledClickRoutedEventName = e.RoutedEvent?.Name;
         e.Handled = true;
     }
 

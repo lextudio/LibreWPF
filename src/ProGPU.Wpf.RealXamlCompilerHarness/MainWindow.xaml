@@ -79,6 +79,16 @@
             Margin="0,8,0,0"
             Text="{Binding Greeting}" />
         <TextBlock
+            x:Name="PriorityBindingBlock"
+            Margin="0,8,0,0">
+            <TextBlock.Text>
+                <PriorityBinding>
+                    <Binding Path="MissingPriorityText" />
+                    <Binding Path="Greeting" />
+                </PriorityBinding>
+            </TextBlock.Text>
+        </TextBlock>
+        <TextBlock
             x:Name="MultiBindingBlock"
             Margin="0,8,0,0">
             <TextBlock.Text>

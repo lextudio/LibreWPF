@@ -741,6 +741,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("second document item", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"BindingBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding Greeting}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"PriorityBindingBlock\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<PriorityBinding>", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<Binding Path=\"MissingPriorityText\" />", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MultiBindingBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<MultiBinding StringFormat=\"{}{0} / {1}\">", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<Binding Path=\"Greeting\" />", mainWindowXaml, StringComparison.Ordinal);
@@ -922,6 +925,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled TextBlock property-change binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button command binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateAdvancedBindingFeatures(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled PriorityBinding fallback value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled PriorityBinding child bindings", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled PriorityBinding fallback path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetPriorityBindingExpression", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MultiBinding string-format value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RelativeSource ancestor binding value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled validation binding path", harnessProgram, StringComparison.Ordinal);
@@ -1043,6 +1050,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled FlowDocument list items", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button command binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateAdvancedBindingFeatures(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled PriorityBinding fallback value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled PriorityBinding child bindings", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled PriorityBinding first path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetPriorityBindingExpression", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MultiBinding string-format value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RelativeSource binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled validation invalid source value", harnessProgram, StringComparison.Ordinal);

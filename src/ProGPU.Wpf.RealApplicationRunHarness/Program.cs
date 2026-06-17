@@ -128,7 +128,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 20, "stack panel children");
+        AssertCollectionCount(children, expected: 21, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -264,6 +264,19 @@ internal static class Program
     private static void ValidateAdvancedBindingFeatures(object window)
     {
         object dataContext = GetProperty(window, "DataContext");
+
+        object priorityBindingBlock = GetField(window, "PriorityBindingBlock");
+        AssertType(priorityBindingBlock, "System.Windows.Controls.TextBlock", "compiled PriorityBinding TextBlock");
+        AssertEqual(
+            "updated greeting from property change",
+            GetProperty(priorityBindingBlock, "Text"),
+            "compiled PriorityBinding fallback value");
+        object priorityBindingExpression = GetPriorityBindingExpression(priorityBindingBlock, "TextProperty");
+        object parentPriorityBinding = GetProperty(priorityBindingExpression, "ParentPriorityBinding");
+        object priorityBindings = GetProperty(parentPriorityBinding, "Bindings");
+        AssertCollectionCount(priorityBindings, expected: 2, "compiled PriorityBinding child bindings");
+        AssertBindingObjectPath(GetCollectionItem(priorityBindings, 0), "MissingPriorityText", "compiled PriorityBinding first path");
+        AssertBindingObjectPath(GetCollectionItem(priorityBindings, 1), "Greeting", "compiled PriorityBinding fallback path");
 
         object multiBindingBlock = GetField(window, "MultiBindingBlock");
         AssertType(multiBindingBlock, "System.Windows.Controls.TextBlock", "compiled MultiBinding TextBlock");
@@ -748,6 +761,12 @@ internal static class Program
         AssertEqual(expectedPath, GetProperty(path, "Path"), description);
     }
 
+    private static void AssertBindingObjectPath(object binding, string expectedPath, string description)
+    {
+        object path = GetProperty(binding, "Path");
+        AssertEqual(expectedPath, GetProperty(path, "Path"), description);
+    }
+
     private static object GetBindingExpression(object dependencyObject, string dependencyPropertyFieldName)
     {
         FieldInfo dependencyProperty = dependencyObject.GetType().GetField(
@@ -764,6 +783,32 @@ internal static class Program
         {
             throw new InvalidOperationException(
                 $"Expected '{dependencyObject.GetType().FullName}.{dependencyPropertyFieldName}' to have a binding expression.");
+        }
+
+        return bindingExpression;
+    }
+
+    private static object GetPriorityBindingExpression(object dependencyObject, string dependencyPropertyFieldName)
+    {
+        FieldInfo dependencyProperty = dependencyObject.GetType().GetField(
+            dependencyPropertyFieldName,
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.FlattenHierarchy)
+            ?? throw new MissingFieldException(dependencyObject.GetType().FullName, dependencyPropertyFieldName);
+        Type bindingOperationsType = dependencyObject.GetType().Assembly.GetType(
+            "System.Windows.Data.BindingOperations",
+            throwOnError: true)
+            ?? throw new TypeLoadException("System.Windows.Data.BindingOperations");
+        MethodInfo getPriorityBindingExpression = bindingOperationsType.GetMethods(BindingFlags.Static | BindingFlags.Public)
+            .FirstOrDefault(candidate =>
+                string.Equals(candidate.Name, "GetPriorityBindingExpression", StringComparison.Ordinal) &&
+                candidate.GetParameters().Length == 2)
+            ?? throw new MissingMethodException(bindingOperationsType.FullName, "GetPriorityBindingExpression");
+
+        object? bindingExpression = getPriorityBindingExpression.Invoke(null, new[] { dependencyObject, dependencyProperty.GetValue(null) });
+        if (bindingExpression == null)
+        {
+            throw new InvalidOperationException(
+                $"Expected '{dependencyObject.GetType().FullName}.{dependencyPropertyFieldName}' to have a priority binding expression.");
         }
 
         return bindingExpression;

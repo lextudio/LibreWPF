@@ -192,6 +192,21 @@
                 Tag="status text"
                 Text="{Binding Detail.Title}" />
         </StatusBar>
+        <Slider
+            x:Name="RangeValueSlider"
+            Margin="0,8,0,0"
+            IsSnapToTickEnabled="False"
+            Maximum="100"
+            Minimum="0"
+            TickFrequency="25"
+            Value="{Binding RangeValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        <ProgressBar
+            x:Name="RangeValueProgress"
+            Margin="0,8,0,0"
+            Height="12"
+            Maximum="100"
+            Minimum="0"
+            Value="{Binding RangeValue}" />
         <TextBox
             x:Name="InputBox"
             Style="{StaticResource SmokeTextBoxStyle}"

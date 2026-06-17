@@ -173,6 +173,7 @@ public partial class MainWindow : Window
         private SmokeItem? _selectedItem;
         private string _selectedCategory = "secondary group";
         private string _comboSelectedCategory = "secondary group";
+        private double _rangeValue = 42.0;
         private string _validatedText = "valid binding text";
         private string _ruleValidatedText = "rule: valid binding text";
         private string _bindingGroupFirstName = "group: Ada";
@@ -334,6 +335,19 @@ public partial class MainWindow : Window
                 if (!string.Equals(_comboSelectedCategory, value, StringComparison.Ordinal))
                 {
                     _comboSelectedCategory = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public double RangeValue
+        {
+            get => _rangeValue;
+            set
+            {
+                if (!double.Equals(_rangeValue, value))
+                {
+                    _rangeValue = value;
                     OnPropertyChanged();
                 }
             }

@@ -179,7 +179,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 50, "stack panel children");
+        AssertCollectionCount(children, expected: 52, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -230,6 +230,7 @@ internal static class Program
         ValidateMenuItems(window);
         ValidateContextMenuAndToolTip(window);
         ValidateToolBarAndStatusBar(window);
+        ValidateRangeControls(window);
         ValidateStyleAndDataTrigger(window, application);
         ValidateTemplateAndDynamicResource(window, application);
         ValidateItemsBindingAndTemplate(window);
@@ -1672,6 +1673,33 @@ internal static class Program
         AssertSame(statusText, GetCollectionItem(statusItems, 2), "compiled StatusBar TextBlock item");
         AssertEqual("status text", GetProperty(statusText, "Tag"), "compiled StatusBar TextBlock tag");
         AssertEqual("detail from implicit template", GetProperty(statusText, "Text"), "compiled StatusBar TextBlock binding");
+    }
+
+    private static void ValidateRangeControls(object window)
+    {
+        object dataContext = GetProperty(window, "DataContext");
+
+        object slider = GetField(window, "RangeValueSlider");
+        AssertType(slider, "System.Windows.Controls.Slider", "compiled Slider");
+        AssertEqual(0.0, GetProperty(slider, "Minimum"), "compiled Slider minimum");
+        AssertEqual(100.0, GetProperty(slider, "Maximum"), "compiled Slider maximum");
+        AssertEqual(25.0, GetProperty(slider, "TickFrequency"), "compiled Slider tick frequency");
+        AssertEqual(false, GetProperty(slider, "IsSnapToTickEnabled"), "compiled Slider snap-to-tick state");
+        AssertEqual(42.0, GetProperty(slider, "Value"), "compiled Slider initial value");
+        AssertBindingPath(slider, "ValueProperty", "RangeValue", "compiled Slider Value binding path");
+
+        object progress = GetField(window, "RangeValueProgress");
+        AssertType(progress, "System.Windows.Controls.ProgressBar", "compiled ProgressBar");
+        AssertEqual(0.0, GetProperty(progress, "Minimum"), "compiled ProgressBar minimum");
+        AssertEqual(100.0, GetProperty(progress, "Maximum"), "compiled ProgressBar maximum");
+        AssertEqual(12.0, GetProperty(progress, "Height"), "compiled ProgressBar height");
+        AssertEqual(42.0, GetProperty(progress, "Value"), "compiled ProgressBar initial value");
+        AssertBindingPath(progress, "ValueProperty", "RangeValue", "compiled ProgressBar Value binding path");
+
+        SetProperty(slider, "Value", 64.0);
+
+        AssertEqual(64.0, GetProperty(dataContext, "RangeValue"), "compiled Slider two-way value source update");
+        AssertEqual(64.0, GetProperty(progress, "Value"), "compiled ProgressBar value after source update");
     }
 
     private static void RaiseMenuItemClick(object menuItem)

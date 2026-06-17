@@ -817,6 +817,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Content=\"Ready\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"StatusTextBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Tag=\"status text\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"RangeValueSlider\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("TickFrequency=\"25\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Value=\"{Binding RangeValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"RangeValueProgress\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Height=\"12\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Value=\"{Binding RangeValue}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ContextMenuButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Button.ContextMenu", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ContextMenu x:Name=\"ContextButtonMenu\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1169,6 +1175,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private string _selectedCategory = \"secondary group\"", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string ComboSelectedCategory", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private string _comboSelectedCategory = \"secondary group\"", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public double RangeValue", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private double _rangeValue = 42.0", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeDetailTemplateSelector : DataTemplateSelector", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public DataTemplate? SelectedTemplate", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public override DataTemplate? SelectTemplate", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1395,6 +1403,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ToolBar routed command count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ToolBar ToggleButton checked state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled StatusBar TextBlock binding", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateRangeControls(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Slider Value binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Slider two-way value source update", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ProgressBar value after source update", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableInputBindingActivation(presentationCore, activation, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("RaiseHostInput(portableActivation.Host, keyDown)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable input KeyBinding handled state", harnessProgram, StringComparison.Ordinal);
@@ -1727,6 +1739,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ToolBar routed command count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ToolBar ToggleButton checked state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled StatusBar TextBlock binding", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateRangeControls(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Slider Value binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Slider two-way value source update", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ProgressBar value after source update", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableInputBindingActivation(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreatePortableInputEvent(\"KeyDown\", \"F6\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable Application.Run input KeyBinding handled state", harnessProgram, StringComparison.Ordinal);

@@ -90,7 +90,7 @@ internal static class Program
         AssertEqual("MainWindow.xaml", GetProperty(application, "StartupUri").ToString(), "startup URI");
 
         object resources = GetProperty(application, "Resources");
-        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 8, "application resource keys");
+        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 9, "application resource keys");
         object mergedDictionaries = GetProperty(resources, "MergedDictionaries");
         AssertCollectionCount(mergedDictionaries, expected: 1, "application merged dictionaries");
         object smokeResources = GetCollectionItem(mergedDictionaries, 0);
@@ -110,6 +110,8 @@ internal static class Program
         AssertType(unsharedAccentBrush, "System.Windows.Media.SolidColorBrush", "unshared accent brush");
         AssertEqual("#FF4D6F8E", GetProperty(unsharedAccentBrush, "Color").ToString(), "unshared accent brush color");
         AssertNotSame(unsharedAccentBrush, secondUnsharedAccentBrush, "compiled x:Shared=false resource lookup");
+
+        ValidateFreezableBrushResource(resources);
 
         object smokeButtonTemplate = GetDictionaryValue(resources, "SmokeButtonTemplate");
         AssertType(smokeButtonTemplate, "System.Windows.Controls.ControlTemplate", "button control template");
@@ -1141,6 +1143,33 @@ internal static class Program
         AssertEqual("#FF4D6F8E", GetProperty(backgroundB, "Color").ToString(), "compiled unshared-resource second color");
         AssertNotSame(backgroundA, backgroundB, "compiled x:Shared=false StaticResource consumers");
         AssertNotSame(dictionaryBrush, backgroundA, "compiled x:Shared=false dictionary and first consumer");
+    }
+
+    private static void ValidateFreezableBrushResource(object resources)
+    {
+        object freezableBrush = GetDictionaryValue(resources, "FreezableAccentBrush");
+        AssertType(freezableBrush, "System.Windows.Media.SolidColorBrush", "compiled Freezable brush");
+        AssertEqual("#FFB15E3B", GetProperty(freezableBrush, "Color").ToString(), "compiled Freezable brush color");
+        AssertEqual(true, GetProperty(freezableBrush, "CanFreeze"), "compiled Freezable brush can freeze");
+        AssertEqual(true, GetProperty(freezableBrush, "IsFrozen"), "compiled Freezable brush initial BAML frozen state");
+
+        Invoke(freezableBrush, "Freeze");
+        AssertEqual(true, GetProperty(freezableBrush, "IsFrozen"), "compiled Freezable brush idempotent frozen state");
+
+        object clone = Invoke(freezableBrush, "Clone");
+        AssertType(clone, "System.Windows.Media.SolidColorBrush", "compiled Freezable brush clone");
+        AssertNotSame(freezableBrush, clone, "compiled Freezable brush clone instance");
+        AssertEqual(false, GetProperty(clone, "IsFrozen"), "compiled Freezable brush clone mutable state");
+        AssertEqual("#FFB15E3B", GetProperty(clone, "Color").ToString(), "compiled Freezable brush clone color");
+
+        SetProperty(clone, "Opacity", 0.5);
+        AssertEqual(0.5, GetProperty(clone, "Opacity"), "compiled Freezable brush clone mutable opacity");
+
+        object currentValueClone = Invoke(clone, "CloneCurrentValue");
+        AssertType(currentValueClone, "System.Windows.Media.SolidColorBrush", "compiled Freezable current-value clone");
+        AssertNotSame(clone, currentValueClone, "compiled Freezable current-value clone instance");
+        AssertEqual(false, GetProperty(currentValueClone, "IsFrozen"), "compiled Freezable current-value clone mutable state");
+        AssertEqual(0.5, GetProperty(currentValueClone, "Opacity"), "compiled Freezable current-value clone opacity");
     }
 
     private static void ValidateNestedUserControl(object window)

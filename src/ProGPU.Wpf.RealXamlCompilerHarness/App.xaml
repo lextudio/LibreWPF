@@ -11,6 +11,7 @@
             <SolidColorBrush x:Key="AccentBrush" Color="#356D9E" />
             <SolidColorBrush x:Key="ReplacementAccentBrush" Color="#9C4A2F" />
             <SolidColorBrush x:Key="UnsharedAccentBrush" x:Shared="False" Color="#4D6F8E" />
+            <SolidColorBrush x:Key="FreezableAccentBrush" Color="#B15E3B" />
             <ControlTemplate x:Key="SmokeButtonTemplate" TargetType="{x:Type Button}">
                 <Border
                     x:Name="TemplateBorder"

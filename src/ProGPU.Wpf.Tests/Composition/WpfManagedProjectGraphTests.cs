@@ -803,6 +803,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<MultiBinding StringFormat=\"{}{0} / {1}\">", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<Binding Path=\"Greeting\" />", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<Binding Path=\"ButtonText\" />", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("local:SmokeUpperConverter", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"SmokeUpperConverter\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("local:SmokeJoinConverter", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"SmokeJoinConverter\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ConvertedBindingBlock\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Converter={StaticResource SmokeUpperConverter}", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ConverterParameter=converted", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ConvertedMultiBindingBlock\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Converter=\"{StaticResource SmokeJoinConverter}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ConverterParameter=\"converted-multi\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"AncestorBindingBorder\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Tag=\"ancestor binding source\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"RelativeSourceBlock\"", mainWindowXaml, StringComparison.Ordinal);
@@ -966,6 +976,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public DataTemplate? DefaultTemplate", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public override DataTemplate? SelectTemplate", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("string.Equals(smokeItem.Name, \"item alpha\", StringComparison.Ordinal)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokeUpperConverter : IValueConverter", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokeJoinConverter : IMultiValueConverter", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("return $\"{prefix}:{text.ToUpperInvariant()}\";", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("return $\"{prefix}:{string.Join(\"|\", parts)}\";", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeCommand : ICommand", mainWindowCodeBehind, StringComparison.Ordinal);
 
         Assert.Contains("x:Class=\"ProGPU.Wpf.RealXamlCompilerHarness.SmokeUserControl\"", smokeUserControlXaml, StringComparison.Ordinal);
@@ -1062,6 +1076,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled PriorityBinding fallback path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetPriorityBindingExpression", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MultiBinding string-format value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled converter binding value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled converter binding resource", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled converter parameter", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MultiBinding converter value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MultiBinding converter resource", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MultiBinding converter child bindings", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetMultiBindingExpression", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RelativeSource ancestor binding value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled validation binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled validation error state", harnessProgram, StringComparison.Ordinal);
@@ -1255,6 +1276,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled PriorityBinding first path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetPriorityBindingExpression", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MultiBinding string-format value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled converter binding value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled converter binding resource", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled converter parameter", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MultiBinding converter value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MultiBinding converter resource", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MultiBinding converter child bindings", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetMultiBindingExpression", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RelativeSource binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled validation invalid source value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled validation restored source value", harnessProgram, StringComparison.Ordinal);

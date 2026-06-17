@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -232,6 +233,43 @@ public sealed class SmokeTextExtension : MarkupExtension
     public override object ProvideValue(IServiceProvider serviceProvider)
     {
         return $"{Prefix} {Value} extension";
+    }
+}
+
+public sealed class SmokeUpperConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        string prefix = parameter?.ToString() ?? string.Empty;
+        string text = value?.ToString() ?? string.Empty;
+        return $"{prefix}:{text.ToUpperInvariant()}";
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        return Binding.DoNothing;
+    }
+}
+
+public sealed class SmokeJoinConverter : IMultiValueConverter
+{
+    public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+    {
+        string prefix = parameter?.ToString() ?? string.Empty;
+        string[] parts = new string[values.Length];
+        for (int i = 0; i < values.Length; i++)
+        {
+            parts[i] = values[i]?.ToString() ?? string.Empty;
+        }
+
+        return $"{prefix}:{string.Join("|", parts)}";
+    }
+
+    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+    {
+        object[] values = new object[targetTypes.Length];
+        Array.Fill(values, Binding.DoNothing);
+        return values;
     }
 }
 

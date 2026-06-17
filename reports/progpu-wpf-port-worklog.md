@@ -966,6 +966,8 @@
 - Verified the `HierarchicalDataTemplate`/`TreeView` managed-framework slice with clean runs of `ProGPU.Wpf.RealXamlRuntimeHarness`, `ProGPU.Wpf.RealApplicationRunHarness`, and `ProGPU.Wpf.RealThemeRuntimeHarness`, a clean `ProGPU.Wpf.Tests` build, focused `WpfManagedProjectGraphTests` through `vstest` with 28 tests passed, and `git diff --check`.
 - Extended the compiled XAML app smoke to exercise WPF's real grouped-item UI path. `GroupedItemsList` now declares a `ListBox.GroupStyle` with a compiled `HeaderTemplate`, and both real-WPF harnesses verify the `GroupStyle`/`DataTemplate` metadata plus generated group-header `TextBlock` content after portable show/run layout.
 - Verified the `GroupStyle.HeaderTemplate` managed-framework slice with clean runs of `ProGPU.Wpf.RealXamlRuntimeHarness`, `ProGPU.Wpf.RealApplicationRunHarness`, and `ProGPU.Wpf.RealThemeRuntimeHarness`, a clean `ProGPU.Wpf.Tests` build, focused `WpfManagedProjectGraphTests` through `vstest` with 28 tests passed, and `git diff --check`.
+- Extended the compiled XAML app smoke to exercise WPF's real binding converter pipeline. The app now declares `IValueConverter` and `IMultiValueConverter` resources in BAML, binds text through converter parameters, and both real-WPF harnesses verify converter metadata plus converted output after `INotifyPropertyChanged` updates.
+- Verified the binding-converter managed-framework slice with clean runs of `ProGPU.Wpf.RealXamlRuntimeHarness`, `ProGPU.Wpf.RealApplicationRunHarness`, and `ProGPU.Wpf.RealThemeRuntimeHarness`, a clean `ProGPU.Wpf.Tests` build, focused `WpfManagedProjectGraphTests` through `vstest` with 28 tests passed, and `git diff --check`.
 
 ## Open Porting Items
 

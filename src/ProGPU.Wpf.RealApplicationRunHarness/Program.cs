@@ -139,7 +139,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 29, "stack panel children");
+        AssertCollectionCount(children, expected: 31, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -309,6 +309,33 @@ internal static class Program
             "updated greeting from property change / run bound command",
             GetProperty(multiBindingBlock, "Text"),
             "compiled MultiBinding string-format value");
+
+        object convertedBindingBlock = GetField(window, "ConvertedBindingBlock");
+        AssertType(convertedBindingBlock, "System.Windows.Controls.TextBlock", "compiled converter TextBlock");
+        AssertEqual(
+            "converted:UPDATED GREETING FROM PROPERTY CHANGE",
+            GetProperty(convertedBindingBlock, "Text"),
+            "compiled converter binding value");
+        object convertedBindingExpression = GetBindingExpression(convertedBindingBlock, "TextProperty");
+        object convertedBinding = GetProperty(convertedBindingExpression, "ParentBinding");
+        AssertBindingObjectPath(convertedBinding, "Greeting", "compiled converter binding path");
+        AssertType(GetProperty(convertedBinding, "Converter"), "ProGPU.Wpf.RealXamlCompilerHarness.SmokeUpperConverter", "compiled converter binding resource");
+        AssertEqual("converted", GetProperty(convertedBinding, "ConverterParameter"), "compiled converter parameter");
+
+        object convertedMultiBindingBlock = GetField(window, "ConvertedMultiBindingBlock");
+        AssertType(convertedMultiBindingBlock, "System.Windows.Controls.TextBlock", "compiled MultiBinding converter TextBlock");
+        AssertEqual(
+            "converted-multi:updated greeting from property change|run bound command",
+            GetProperty(convertedMultiBindingBlock, "Text"),
+            "compiled MultiBinding converter value");
+        object convertedMultiBindingExpression = GetMultiBindingExpression(convertedMultiBindingBlock, "TextProperty");
+        object convertedMultiBinding = GetProperty(convertedMultiBindingExpression, "ParentMultiBinding");
+        AssertType(GetProperty(convertedMultiBinding, "Converter"), "ProGPU.Wpf.RealXamlCompilerHarness.SmokeJoinConverter", "compiled MultiBinding converter resource");
+        AssertEqual("converted-multi", GetProperty(convertedMultiBinding, "ConverterParameter"), "compiled MultiBinding converter parameter");
+        object convertedMultiBindings = GetProperty(convertedMultiBinding, "Bindings");
+        AssertCollectionCount(convertedMultiBindings, expected: 2, "compiled MultiBinding converter child bindings");
+        AssertBindingObjectPath(GetCollectionItem(convertedMultiBindings, 0), "Greeting", "compiled MultiBinding converter first path");
+        AssertBindingObjectPath(GetCollectionItem(convertedMultiBindings, 1), "ButtonText", "compiled MultiBinding converter second path");
 
         object validatedBox = GetField(window, "ValidatedBox");
         AssertType(validatedBox, "System.Windows.Controls.TextBox", "compiled validation TextBox");
@@ -1239,6 +1266,32 @@ internal static class Program
         {
             throw new InvalidOperationException(
                 $"Expected '{dependencyObject.GetType().FullName}.{dependencyPropertyFieldName}' to have a priority binding expression.");
+        }
+
+        return bindingExpression;
+    }
+
+    private static object GetMultiBindingExpression(object dependencyObject, string dependencyPropertyFieldName)
+    {
+        FieldInfo dependencyProperty = dependencyObject.GetType().GetField(
+            dependencyPropertyFieldName,
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.FlattenHierarchy)
+            ?? throw new MissingFieldException(dependencyObject.GetType().FullName, dependencyPropertyFieldName);
+        Type bindingOperationsType = dependencyObject.GetType().Assembly.GetType(
+            "System.Windows.Data.BindingOperations",
+            throwOnError: true)
+            ?? throw new TypeLoadException("System.Windows.Data.BindingOperations");
+        MethodInfo getMultiBindingExpression = bindingOperationsType.GetMethods(BindingFlags.Static | BindingFlags.Public)
+            .FirstOrDefault(candidate =>
+                string.Equals(candidate.Name, "GetMultiBindingExpression", StringComparison.Ordinal) &&
+                candidate.GetParameters().Length == 2)
+            ?? throw new MissingMethodException(bindingOperationsType.FullName, "GetMultiBindingExpression");
+
+        object? bindingExpression = getMultiBindingExpression.Invoke(null, new[] { dependencyObject, dependencyProperty.GetValue(null) });
+        if (bindingExpression == null)
+        {
+            throw new InvalidOperationException(
+                $"Expected '{dependencyObject.GetType().FullName}.{dependencyPropertyFieldName}' to have a multi binding expression.");
         }
 
         return bindingExpression;

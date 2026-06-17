@@ -60,6 +60,8 @@
             x:Key="SmokeItemTemplateSelector"
             AlphaTemplate="{StaticResource AlphaItemTemplate}"
             DefaultTemplate="{StaticResource DefaultItemTemplate}" />
+        <local:SmokeUpperConverter x:Key="SmokeUpperConverter" />
+        <local:SmokeJoinConverter x:Key="SmokeJoinConverter" />
         <ObjectDataProvider
             x:Key="ProviderGreeting"
             IsAsynchronous="False"
@@ -143,6 +145,22 @@
             Margin="0,8,0,0">
             <TextBlock.Text>
                 <MultiBinding StringFormat="{}{0} / {1}">
+                    <Binding Path="Greeting" />
+                    <Binding Path="ButtonText" />
+                </MultiBinding>
+            </TextBlock.Text>
+        </TextBlock>
+        <TextBlock
+            x:Name="ConvertedBindingBlock"
+            Margin="0,8,0,0"
+            Text="{Binding Greeting, Converter={StaticResource SmokeUpperConverter}, ConverterParameter=converted}" />
+        <TextBlock
+            x:Name="ConvertedMultiBindingBlock"
+            Margin="0,8,0,0">
+            <TextBlock.Text>
+                <MultiBinding
+                    Converter="{StaticResource SmokeJoinConverter}"
+                    ConverterParameter="converted-multi">
                     <Binding Path="Greeting" />
                     <Binding Path="ButtonText" />
                 </MultiBinding>

@@ -265,6 +265,37 @@
                     x:Name="WrapSecondChild"
                     Text="wrap two" />
             </WrapPanel>
+            <Grid
+                x:Name="GridSplitterGrid"
+                Width="180"
+                Height="32">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition
+                        Width="60"
+                        MinWidth="24" />
+                    <ColumnDefinition Width="5" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    x:Name="GridSplitterLeftPane"
+                    Grid.Column="0"
+                    Text="split left" />
+                <GridSplitter
+                    x:Name="GridSplitterSmoke"
+                    Grid.Column="1"
+                    Width="5"
+                    DragIncrement="3"
+                    HorizontalAlignment="Stretch"
+                    KeyboardIncrement="7"
+                    ResizeBehavior="PreviousAndNext"
+                    ResizeDirection="Columns"
+                    ShowsPreview="True"
+                    VerticalAlignment="Stretch" />
+                <TextBlock
+                    x:Name="GridSplitterRightPane"
+                    Grid.Column="2"
+                    Text="split right" />
+            </Grid>
         </StackPanel>
         <StackPanel
             x:Name="ScrollingSmokePanel"

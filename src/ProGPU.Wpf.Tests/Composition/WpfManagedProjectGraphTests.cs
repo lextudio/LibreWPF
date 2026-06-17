@@ -1007,6 +1007,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Canvas.Top=\"6\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"WrapPanelSmoke\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemWidth=\"64\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"GridSplitterGrid\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"GridSplitterSmoke\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ResizeBehavior=\"PreviousAndNext\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ResizeDirection=\"Columns\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ShowsPreview=\"True\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ScrollingSmokePanel\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ScrollViewerSmoke\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("VerticalScrollBarVisibility=\"Visible\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1988,6 +1993,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled DockPanel right attached Dock", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Canvas left attached property", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled WrapPanel item height", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled GridSplitter resize behavior", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled GridSplitter keyboard increment", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateScrollingControls(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ScrollViewer horizontal visibility", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ScrollBar viewport size", harnessProgram, StringComparison.Ordinal);

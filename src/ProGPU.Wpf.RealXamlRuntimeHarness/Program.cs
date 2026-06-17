@@ -1576,7 +1576,7 @@ internal static class Program
     {
         object layoutPanel = GetField(window, "LayoutPanelSmoke");
         AssertType(layoutPanel, "System.Windows.Controls.StackPanel", "compiled layout panel host");
-        AssertCollectionCount(GetProperty(layoutPanel, "Children"), expected: 3, "compiled layout panel host children");
+        AssertCollectionCount(GetProperty(layoutPanel, "Children"), expected: 4, "compiled layout panel host children");
 
         object dockPanel = GetField(window, "DockPanelSmoke");
         AssertType(dockPanel, "System.Windows.Controls.DockPanel", "compiled DockPanel");
@@ -1619,6 +1619,35 @@ internal static class Program
         object wrapSecond = GetField(window, "WrapSecondChild");
         AssertType(wrapSecond, "System.Windows.Controls.TextBlock", "compiled WrapPanel second child");
         AssertEqual("wrap two", GetProperty(wrapSecond, "Text"), "compiled WrapPanel second child text");
+
+        object splitterGrid = GetField(window, "GridSplitterGrid");
+        AssertType(splitterGrid, "System.Windows.Controls.Grid", "compiled GridSplitter grid");
+        AssertEqual(180.0, GetProperty(splitterGrid, "Width"), "compiled GridSplitter grid width");
+        AssertEqual(32.0, GetProperty(splitterGrid, "Height"), "compiled GridSplitter grid height");
+        AssertCollectionCount(GetProperty(splitterGrid, "ColumnDefinitions"), expected: 3, "compiled GridSplitter grid columns");
+        AssertCollectionCount(GetProperty(splitterGrid, "Children"), expected: 3, "compiled GridSplitter grid children");
+
+        object splitterLeft = GetField(window, "GridSplitterLeftPane");
+        AssertType(splitterLeft, "System.Windows.Controls.TextBlock", "compiled GridSplitter left pane");
+        AssertEqual("split left", GetProperty(splitterLeft, "Text"), "compiled GridSplitter left text");
+        AssertEqual(0, GetDependencyPropertyValue(splitterLeft, splitterGrid.GetType(), "ColumnProperty"), "compiled GridSplitter left column");
+
+        object splitter = GetField(window, "GridSplitterSmoke");
+        AssertType(splitter, "System.Windows.Controls.GridSplitter", "compiled GridSplitter");
+        AssertEqual(5.0, GetProperty(splitter, "Width"), "compiled GridSplitter width");
+        AssertEqual("Stretch", GetProperty(splitter, "HorizontalAlignment").ToString(), "compiled GridSplitter horizontal alignment");
+        AssertEqual("Stretch", GetProperty(splitter, "VerticalAlignment").ToString(), "compiled GridSplitter vertical alignment");
+        AssertEqual("PreviousAndNext", GetProperty(splitter, "ResizeBehavior").ToString(), "compiled GridSplitter resize behavior");
+        AssertEqual("Columns", GetProperty(splitter, "ResizeDirection").ToString(), "compiled GridSplitter resize direction");
+        AssertEqual(true, GetProperty(splitter, "ShowsPreview"), "compiled GridSplitter preview setting");
+        AssertEqual(3.0, GetProperty(splitter, "DragIncrement"), "compiled GridSplitter drag increment");
+        AssertEqual(7.0, GetProperty(splitter, "KeyboardIncrement"), "compiled GridSplitter keyboard increment");
+        AssertEqual(1, GetDependencyPropertyValue(splitter, splitterGrid.GetType(), "ColumnProperty"), "compiled GridSplitter column");
+
+        object splitterRight = GetField(window, "GridSplitterRightPane");
+        AssertType(splitterRight, "System.Windows.Controls.TextBlock", "compiled GridSplitter right pane");
+        AssertEqual("split right", GetProperty(splitterRight, "Text"), "compiled GridSplitter right text");
+        AssertEqual(2, GetDependencyPropertyValue(splitterRight, splitterGrid.GetType(), "ColumnProperty"), "compiled GridSplitter right column");
     }
 
     private static void ValidateScrollingControls(object window)

@@ -126,7 +126,8 @@ internal static class Program
 
         object content = GetProperty(window, "Content");
         object children = GetProperty(content, "Children");
-        object richTextBox = GetCollectionItem(children, 2);
+        object richTextBox = Invoke(window, "FindName", "DocumentBox");
+        AssertType(richTextBox, "System.Windows.Controls.RichTextBox", "compiled themed RichTextBox");
         SetProperty(richTextBox, "Style", richTextBoxStyle);
 
         object button = Create(presentationFramework, "System.Windows.Controls.Button");
@@ -147,7 +148,8 @@ internal static class Program
         AssertCollectionCount(children, expectedMinimum: 14, "themed stack panel children");
 
         object button = GetCollectionItem(children, GetCollectionCount(children) - 1);
-        object richTextBox = GetCollectionItem(children, 2);
+        object richTextBox = Invoke(window, "FindName", "DocumentBox");
+        AssertType(richTextBox, "System.Windows.Controls.RichTextBox", "compiled themed RichTextBox");
 
         AssertType(GetDictionaryValue(themeDictionary, "DefaultWindowStyle"), "System.Windows.Style", "DefaultWindowStyle");
         AssertType(GetDictionaryValue(themeDictionary, "AccentButtonStyle"), "System.Windows.Style", "AccentButtonStyle");

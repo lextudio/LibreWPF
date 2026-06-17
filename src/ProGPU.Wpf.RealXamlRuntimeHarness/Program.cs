@@ -98,7 +98,7 @@ internal static class Program
         AssertEqual("MainWindow.xaml", GetProperty(application, "StartupUri").ToString(), "startup URI");
 
         object resources = GetProperty(application, "Resources");
-        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 5, "application resource keys");
+        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 6, "application resource keys");
         object mergedDictionaries = GetProperty(resources, "MergedDictionaries");
         AssertCollectionCount(mergedDictionaries, expected: 1, "application merged dictionaries");
         object smokeResources = GetCollectionItem(mergedDictionaries, 0);
@@ -119,6 +119,11 @@ internal static class Program
         object textBoxStyle = GetDictionaryValue(resources, "SmokeTextBoxStyle");
         AssertType(textBoxStyle, "System.Windows.Style", "TextBox style");
         AssertEqual("System.Windows.Controls.TextBox", GetProperty(textBoxStyle, "TargetType").ToString(), "TextBox style target");
+
+        object basedOnTextBoxStyle = GetDictionaryValue(resources, "BasedOnTextBoxStyle");
+        AssertType(basedOnTextBoxStyle, "System.Windows.Style", "BasedOn TextBox style");
+        AssertEqual("System.Windows.Controls.TextBox", GetProperty(basedOnTextBoxStyle, "TargetType").ToString(), "BasedOn TextBox style target");
+        AssertSame(textBoxStyle, GetProperty(basedOnTextBoxStyle, "BasedOn"), "compiled TextBox BasedOn base style");
 
         object triggeredButtonStyle = GetDictionaryValue(resources, "TriggeredButtonStyle");
         AssertType(triggeredButtonStyle, "System.Windows.Style", "triggered Button style");
@@ -143,7 +148,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 21, "stack panel children");
+        AssertCollectionCount(children, expected: 22, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -159,6 +164,17 @@ internal static class Program
         object expectedStyle = GetDictionaryValue(resources, "SmokeTextBoxStyle");
         object actualStyle = GetProperty(inputBox, "Style");
         AssertSame(expectedStyle, actualStyle, "compiled TextBox style");
+
+        object basedOnTextBox = GetField(window, "BasedOnTextBox");
+        AssertType(basedOnTextBox, "System.Windows.Controls.TextBox", "compiled BasedOn TextBox");
+        AssertEqual("compiled BasedOn TextBox", GetProperty(basedOnTextBox, "Text"), "compiled BasedOn TextBox text");
+        object basedOnStyle = GetDictionaryValue(resources, "BasedOnTextBoxStyle");
+        AssertSame(basedOnStyle, GetProperty(basedOnTextBox, "Style"), "compiled TextBox BasedOn style");
+        AssertSame(expectedStyle, GetProperty(basedOnStyle, "BasedOn"), "compiled TextBox BasedOn base style");
+        AssertEqual("based on text box style", GetProperty(basedOnTextBox, "Tag"), "compiled TextBox BasedOn local setter");
+        AssertEqual(180.0, GetProperty(basedOnTextBox, "MinWidth"), "compiled TextBox BasedOn inherited MinWidth");
+        object basedOnMargin = GetProperty(basedOnTextBox, "Margin");
+        AssertEqual(8.0, GetProperty(basedOnMargin, "Top"), "compiled TextBox BasedOn inherited margin top");
 
         object foundInputBox = Invoke(window, "FindName", "InputBox");
         AssertSame(inputBox, foundInputBox, "compiled namescope lookup");

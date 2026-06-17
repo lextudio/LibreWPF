@@ -44,6 +44,10 @@
             x:Name="InputBox"
             Style="{StaticResource SmokeTextBoxStyle}"
             Text="compiled TextBox" />
+        <TextBox
+            x:Name="BasedOnTextBox"
+            Style="{StaticResource BasedOnTextBoxStyle}"
+            Text="compiled BasedOn TextBox" />
         <RichTextBox
             x:Name="DocumentBox"
             Margin="0,8,0,0">

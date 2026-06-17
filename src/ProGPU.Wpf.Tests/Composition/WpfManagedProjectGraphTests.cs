@@ -714,6 +714,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Background=\"{DynamicResource AccentBrush}\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"{TemplateBinding Content}\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("Style x:Key=\"SmokeTextBoxStyle\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"BasedOnTextBoxStyle\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("BasedOn=\"{StaticResource SmokeTextBoxStyle}\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("Setter Property=\"Tag\" Value=\"based on text box style\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("Style x:Key=\"TriggeredButtonStyle\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("Style.Triggers", appXaml, StringComparison.Ordinal);
         Assert.Contains("DataTrigger Binding=\"{Binding IsWarning}\" Value=\"True\"", appXaml, StringComparison.Ordinal);
@@ -729,6 +732,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Class=\"ProGPU.Wpf.RealXamlCompilerHarness.MainWindow\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("TextBox", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("RichTextBox", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"BasedOnTextBox\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Style=\"{StaticResource BasedOnTextBoxStyle}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"compiled BasedOn TextBox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("FlowDocument", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"DocumentBox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"CompiledDocument\"", mainWindowXaml, StringComparison.Ordinal);
@@ -907,6 +913,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetProperty(resources, \"MergedDictionaries\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindResource\", \"MergedAccentBrush\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(resources, \"SmokeTextBoxStyle\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetDictionaryValue(resources, \"BasedOnTextBoxStyle\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled TextBox BasedOn style", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled TextBox BasedOn base style", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled TextBox BasedOn inherited MinWidth", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetField(window, \"InputBox\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTextBoxSelection(inputBox)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TextBox selected text replacement", harnessProgram, StringComparison.Ordinal);
@@ -1041,6 +1051,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("new Func<object, object>(recorder.Activate)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("new Action<object>(recorder.Run)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMainWindow(window, _application)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetDictionaryValue(resources, \"BasedOnTextBoxStyle\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled TextBox BasedOn style", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled TextBox BasedOn local setter", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled TextBox BasedOn inherited margin top", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateBindingAndCommand(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TextBlock property-change binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTextBoxSelection(inputBox)", harnessProgram, StringComparison.Ordinal);
@@ -1146,6 +1160,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetDictionaryValue(themeDictionary, \"AccentButtonStyle\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(themeDictionary, \"DefaultRichTextBoxStyle\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(themeDictionary, \"WindowTemplateKey\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Invoke(window, \"FindName\", \"DocumentBox\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled themed RichTextBox", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(window, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(button, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(richTextBox, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);

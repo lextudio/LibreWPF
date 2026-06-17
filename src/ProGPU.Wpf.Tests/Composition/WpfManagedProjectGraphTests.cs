@@ -628,6 +628,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"PushClip\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"PushTransform\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"PushOpacityMask\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"PushGuidelineSet\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("VerifyRetainedDrawingVisualBranch(target)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.DrawLine", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.DrawRoundedRect", harnessProgram, StringComparison.Ordinal);
@@ -638,6 +639,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGpuRenderCommandType.PushOpacityMask", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("real DrawingVisual retained opacity mask", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("real DrawingVisual retained rounded rectangle radius X", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("real DrawingVisual retained guideline snapped rect X", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("real DrawingVisual transformed line X offset", harnessProgram, StringComparison.Ordinal);
     }
 

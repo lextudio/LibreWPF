@@ -213,6 +213,8 @@ internal static class Program
 
         object rect = Activator.CreateInstance(rectType, 4.0, 5.0, 24.0, 12.0)
             ?? throw new InvalidOperationException("Failed to create System.Windows.Rect.");
+        object guidelineRect = Activator.CreateInstance(rectType, 2.25, 3.25, 40.0, 50.0)
+            ?? throw new InvalidOperationException("Failed to create System.Windows.Rect.");
         object lineStart = Activator.CreateInstance(pointType, 2.0, 3.0)
             ?? throw new InvalidOperationException("Failed to create System.Windows.Point.");
         object lineEnd = Activator.CreateInstance(pointType, 40.0, 20.0)
@@ -226,6 +228,10 @@ internal static class Program
             ?? throw new InvalidOperationException("Failed to create System.Windows.Rect.");
         object clipGeometry = Create(presentationCore, "System.Windows.Media.RectangleGeometry", clipRect);
         object transform = Create(presentationCore, "System.Windows.Media.TranslateTransform", 6.0, 7.0);
+        object guidelineSet = CreateDynamicGuidelineSet(
+            presentationCore,
+            new[] { 2.25, 42.25 },
+            new[] { 3.25, 53.25 });
 
         InvokeDrawing(
             drawingContext,
@@ -330,6 +336,22 @@ internal static class Program
             rect,
             4.0,
             6.0);
+        InvokeDrawing(
+            drawingContext,
+            "PushGuidelineSet",
+            new[] { guidelineSet.GetType() },
+            guidelineSet);
+        InvokeDrawing(
+            drawingContext,
+            "DrawRectangle",
+            new[] { brushType, penType, rectType },
+            redBrush,
+            null,
+            guidelineRect);
+        InvokeDrawing(
+            drawingContext,
+            "Pop",
+            Type.EmptyTypes);
         Invoke(drawingContext, "Close");
     }
 
@@ -364,7 +386,8 @@ internal static class Program
             ProGpuRenderCommandType.PushOpacityMask,
             ProGpuRenderCommandType.DrawRect,
             ProGpuRenderCommandType.PopOpacityMask,
-            ProGpuRenderCommandType.DrawRoundedRect
+            ProGpuRenderCommandType.DrawRoundedRect,
+            ProGpuRenderCommandType.DrawRect
         };
         if (commands.Count != expectedCommandTypes.Length)
         {
@@ -391,6 +414,10 @@ internal static class Program
 
         AssertEqual(4f, commands[14].RadiusX, "real DrawingVisual retained rounded rectangle radius X");
         AssertEqual(6f, commands[14].RadiusY, "real DrawingVisual retained rounded rectangle radius Y");
+        AssertEqual(2f, commands[15].Rect.X, "real DrawingVisual retained guideline snapped rect X");
+        AssertEqual(3f, commands[15].Rect.Y, "real DrawingVisual retained guideline snapped rect Y");
+        AssertEqual(40f, commands[15].Rect.Width, "real DrawingVisual retained guideline snapped rect width");
+        AssertEqual(50f, commands[15].Rect.Height, "real DrawingVisual retained guideline snapped rect height");
     }
 
     private static ProGpuContainerVisual GetSingleContainerChild(ProGpuContainerVisual parent, string description)
@@ -431,6 +458,21 @@ internal static class Program
         Type type = GetRequiredType(assembly, typeName);
         return Activator.CreateInstance(type, parameters)
             ?? throw new InvalidOperationException($"Failed to create '{typeName}'.");
+    }
+
+    private static object CreateDynamicGuidelineSet(Assembly presentationCore, double[] guidelinesX, double[] guidelinesY)
+    {
+        Type guidelineSetType = GetRequiredType(presentationCore, "System.Windows.Media.GuidelineSet");
+        ConstructorInfo constructor = guidelineSetType.GetConstructor(
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            types: new[] { typeof(double[]), typeof(double[]), typeof(bool) },
+            modifiers: null)
+            ?? throw new MissingMethodException(guidelineSetType.FullName, ".ctor(double[], double[], bool)");
+
+        object guidelineSet = constructor.Invoke(new object[] { guidelinesX, guidelinesY, true });
+        Invoke(guidelineSet, "Freeze");
+        return guidelineSet;
     }
 
     private static Type GetRequiredType(Assembly assembly, string typeName)

@@ -898,6 +898,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ItemsSource=\"{Binding Source={StaticResource FilteredItemsView}}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"GroupedItemsList\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Source={StaticResource GroupedItemsView}}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ListBox.GroupStyle", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("GroupStyle.HeaderTemplate", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"GroupHeaderTextBlock\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Tag=\"group header template\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"NodeTree\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemTemplate=\"{StaticResource SmokeNodeTemplate}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Nodes}\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1159,10 +1163,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled CollectionViewSource group descriptions", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource group property", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox grouped CollectionViewSource binding", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox GroupStyle entries", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled GroupStyle HeaderTemplate binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateCollectionViewGroup(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource collection-change groups", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled filtered CollectionViewSource collection-change item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource collection-change first item", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowGroupStyleHeader(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled GroupStyle header generated binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(window, \"FindName\", \"InputBox\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("new ProGpuWpfWindowHost(WpfPortableWindowActivation.CreateHostOptions(w))", harnessProgram, StringComparison.Ordinal);
@@ -1342,10 +1350,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled CollectionViewSource group descriptions", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource group property", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox grouped CollectionViewSource binding", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox GroupStyle entries", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled GroupStyle HeaderTemplate binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateCollectionViewGroup(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource collection-change groups", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled filtered CollectionViewSource collection-change item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource collection-change first item", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowGroupStyleHeader(_presentationCore, activation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled GroupStyle header generated binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("recorder.ValidateAfterRun()", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("if (RunCount != 1)", harnessProgram, StringComparison.Ordinal);
     }

@@ -67,6 +67,7 @@ internal static class Program
                 out activation);
             ValidatePostShowBindingFeatures(window);
             ValidatePostShowItemTemplateTriggerActivation(presentationCore, window);
+            ValidatePostShowGroupStyleHeader(presentationCore, window);
             ValidatePostShowItemTemplateSelector(presentationCore, window);
             ValidatePostShowImplicitDataTemplate(presentationCore, window);
             ValidatePostShowHierarchicalDataTemplate(presentationCore, window);
@@ -435,6 +436,19 @@ internal static class Program
             "compiled DataTemplate active generated TextBlock",
             "compiled DataTemplate active generated TextBlock binding",
             "compiled DataTemplate trigger active generated value");
+    }
+
+    private static void ValidatePostShowGroupStyleHeader(Assembly presentationCore, object window)
+    {
+        object groupedItemsList = GetField(window, "GroupedItemsList");
+        Invoke(groupedItemsList, "ApplyTemplate");
+        Invoke(groupedItemsList, "UpdateLayout");
+
+        object groupHeaderTextBlock = FindVisualDescendantByName(presentationCore, groupedItemsList, "GroupHeaderTextBlock")
+            ?? throw new InvalidOperationException("Expected grouped ListBox to generate GroupHeaderTextBlock.");
+        AssertType(groupHeaderTextBlock, "System.Windows.Controls.TextBlock", "compiled GroupStyle generated header TextBlock");
+        AssertEqual("primary group", GetProperty(groupHeaderTextBlock, "Text"), "compiled GroupStyle header generated binding");
+        AssertEqual("group header template", GetProperty(groupHeaderTextBlock, "Tag"), "compiled GroupStyle header generated value");
     }
 
     private static void ValidateGeneratedItemTemplateTextBlock(
@@ -939,6 +953,17 @@ internal static class Program
         AssertType(groupedItemsList, "System.Windows.Controls.ListBox", "compiled grouped ListBox");
         object groupedItemsView = GetProperty(groupedItemsViewSource, "View");
         AssertSame(groupedItemsView, GetProperty(groupedItemsList, "ItemsSource"), "compiled ListBox grouped CollectionViewSource binding");
+        object groupStyles = GetProperty(groupedItemsList, "GroupStyle");
+        AssertCollectionCount(groupStyles, expected: 1, "compiled ListBox GroupStyle entries");
+        object groupStyle = GetCollectionItem(groupStyles, 0);
+        AssertType(groupStyle, "System.Windows.Controls.GroupStyle", "compiled ListBox GroupStyle");
+        object groupHeaderTemplate = GetProperty(groupStyle, "HeaderTemplate");
+        AssertType(groupHeaderTemplate, "System.Windows.DataTemplate", "compiled GroupStyle HeaderTemplate");
+        object groupHeaderTemplateRoot = Invoke(groupHeaderTemplate, "LoadContent");
+        AssertType(groupHeaderTemplateRoot, "System.Windows.Controls.TextBlock", "compiled GroupStyle HeaderTemplate root");
+        AssertEqual("GroupHeaderTextBlock", GetProperty(groupHeaderTemplateRoot, "Name"), "compiled GroupStyle HeaderTemplate named root");
+        AssertEqual("group header template", GetProperty(groupHeaderTemplateRoot, "Tag"), "compiled GroupStyle HeaderTemplate root tag");
+        AssertBindingPath(groupHeaderTemplateRoot, "TextProperty", "Name", "compiled GroupStyle HeaderTemplate binding path");
         object groups = GetProperty(groupedItemsView, "Groups");
         AssertCollectionCount(groups, expected: 2, "compiled CollectionViewSource initial groups");
         ValidateCollectionViewGroup(GetCollectionItem(groups, 0), "primary group", expectedItemCount: 1, "initial primary");

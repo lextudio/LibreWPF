@@ -282,7 +282,20 @@
         <ListBox
             x:Name="GroupedItemsList"
             Margin="0,8,0,0"
-            ItemsSource="{Binding Source={StaticResource GroupedItemsView}}" />
+            ItemsSource="{Binding Source={StaticResource GroupedItemsView}}">
+            <ListBox.GroupStyle>
+                <GroupStyle>
+                    <GroupStyle.HeaderTemplate>
+                        <DataTemplate>
+                            <TextBlock
+                                x:Name="GroupHeaderTextBlock"
+                                Tag="group header template"
+                                Text="{Binding Name}" />
+                        </DataTemplate>
+                    </GroupStyle.HeaderTemplate>
+                </GroupStyle>
+            </ListBox.GroupStyle>
+        </ListBox>
         <TreeView
             x:Name="NodeTree"
             Margin="0,8,0,0"

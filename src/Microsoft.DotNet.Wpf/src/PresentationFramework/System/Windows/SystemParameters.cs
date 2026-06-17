@@ -1403,7 +1403,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.MenuAnimation] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETMENUANIMATION, 0, ref _menuAnimation, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _menuAnimation = false;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETMENUANIMATION, 0, ref _menuAnimation, 0))
                         {
                         }
                         else

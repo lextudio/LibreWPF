@@ -791,6 +791,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Setter Property=\"Tag\" Value=\"implicit merged style\"", smokeResourcesXaml, StringComparison.Ordinal);
 
         Assert.Contains("x:Class=\"ProGPU.Wpf.RealXamlCompilerHarness.MainWindow\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SmokeMenu\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"FileMenuItem\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Header=\"_File\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MenuCommandItem\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CommandParameter=\"menu command payload\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CommandTarget=\"{Binding ElementName=SmokeMenu}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Header=\"Run _Command\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<Separator />", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MenuClickItem\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Click=\"OnMenuClick\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Header=\"_Click\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("TextBox", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("RichTextBox", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"BasedOnTextBox\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1089,6 +1100,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public int StyledClickCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnStyledButtonClick", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastStyledClickRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int MenuClickCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnMenuClick", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastMenuClickRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int StoryboardTargetLoadedCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnStoryboardTargetLoaded", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastStoryboardTargetLoadedRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1324,6 +1338,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Window input bindings", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled KeyGesture", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled KeyBinding command executed parameter", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateMenuItems(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RaiseMenuItemClick(clickItem)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled command MenuItem routed command", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled command MenuItem CanExecute result", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MenuItem Click handler count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled command MenuItem routed command count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableInputBindingActivation(presentationCore, activation, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("RaiseHostInput(portableActivation.Host, keyDown)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable input KeyBinding handled state", harnessProgram, StringComparison.Ordinal);
@@ -1634,6 +1654,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Window input bindings", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled KeyGesture", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled KeyBinding command executed parameter", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateMenuItems(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RaiseMenuItemClick(clickItem)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled command MenuItem routed command", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled command MenuItem CanExecute result", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MenuItem Click handler count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled command MenuItem routed command count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableInputBindingActivation(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreatePortableInputEvent(\"KeyDown\", \"F6\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable Application.Run input KeyBinding handled state", harnessProgram, StringComparison.Ordinal);
@@ -2069,6 +2095,7 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(systemResources, "if (OperatingSystem.IsWindows())", "XamlAccessLevel.AssemblyAccessTo(assembly)");
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETHIGHCONTRAST");
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETMOUSEVANISH");
+        AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETMENUANIMATION");
         Assert.Contains("private const int DefaultScrollBarMetric = 17", systemParameters, StringComparison.Ordinal);
         Assert.Contains("private const int DefaultPrimaryScreenWidth = 1024", systemParameters, StringComparison.Ordinal);
         Assert.Contains("private const int DefaultPrimaryScreenHeight = 768", systemParameters, StringComparison.Ordinal);

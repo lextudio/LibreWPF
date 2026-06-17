@@ -150,7 +150,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 44, "stack panel children");
+        AssertCollectionCount(children, expected: 45, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -198,6 +198,7 @@ internal static class Program
         ValidateStyleEventSetter(window);
         ValidateRoutedCommand(window);
         ValidateInputBinding(window);
+        ValidateMenuItems(window);
         ValidateStyleAndDataTrigger(window, application);
         ValidateTemplateAndDynamicResource(window, application);
         ValidateItemsBindingAndTemplate(window);
@@ -1200,6 +1201,78 @@ internal static class Program
 
         AssertEqual(2, GetProperty(window, "RoutedCommandExecutionCount"), "compiled KeyBinding command execution count");
         AssertEqual("input binding payload", GetProperty(window, "LastRoutedCommandParameter"), "compiled KeyBinding command executed parameter");
+    }
+
+    private static void ValidateMenuItems(object window)
+    {
+        object menu = GetField(window, "SmokeMenu");
+        AssertType(menu, "System.Windows.Controls.Menu", "compiled Menu");
+        AssertCollectionCount(GetProperty(menu, "Items"), expected: 1, "compiled Menu items");
+
+        object fileMenuItem = GetField(window, "FileMenuItem");
+        AssertType(fileMenuItem, "System.Windows.Controls.MenuItem", "compiled parent MenuItem");
+        AssertEqual("_File", GetProperty(fileMenuItem, "Header"), "compiled parent MenuItem header");
+        object fileMenuItems = GetProperty(fileMenuItem, "Items");
+        AssertCollectionCount(fileMenuItems, expected: 3, "compiled parent MenuItem children");
+
+        object commandItem = GetField(window, "MenuCommandItem");
+        AssertType(commandItem, "System.Windows.Controls.MenuItem", "compiled command MenuItem");
+        AssertEqual("Run _Command", GetProperty(commandItem, "Header"), "compiled command MenuItem header");
+        AssertSame(menu, GetProperty(commandItem, "CommandTarget"), "compiled command MenuItem target");
+        AssertEqual("menu command payload", GetProperty(commandItem, "CommandParameter"), "compiled command MenuItem parameter");
+        object command = GetProperty(commandItem, "Command");
+        AssertType(command, "System.Windows.Input.RoutedUICommand", "compiled command MenuItem routed command");
+        AssertEqual("SmokeRoutedCommand", GetProperty(command, "Name"), "compiled command MenuItem routed command name");
+        AssertSame(commandItem, GetCollectionItem(fileMenuItems, 0), "compiled command MenuItem collection position");
+
+        object separator = GetCollectionItem(fileMenuItems, 1);
+        AssertType(separator, "System.Windows.Controls.Separator", "compiled Menu separator");
+
+        object clickItem = GetField(window, "MenuClickItem");
+        AssertType(clickItem, "System.Windows.Controls.MenuItem", "compiled click MenuItem");
+        AssertEqual("_Click", GetProperty(clickItem, "Header"), "compiled click MenuItem header");
+        AssertSame(clickItem, GetCollectionItem(fileMenuItems, 2), "compiled click MenuItem collection position");
+        AssertEqual(0, GetProperty(window, "MenuClickCount"), "compiled MenuItem initial click count");
+
+        RaiseMenuItemClick(clickItem);
+
+        AssertEqual(1, GetProperty(window, "MenuClickCount"), "compiled MenuItem Click handler count");
+        AssertEqual("MenuClickItem", GetProperty(window, "LastMenuClickSenderName"), "compiled MenuItem Click sender name");
+        AssertEqual("Click", GetProperty(window, "LastMenuClickRoutedEventName"), "compiled MenuItem Click routed event name");
+        AssertEqual(2, GetProperty(window, "RoutedCommandExecutionCount"), "compiled command MenuItem initial routed command count");
+
+        object commandCanExecute = InvokeTwoArgumentCommand(
+            command,
+            "CanExecute",
+            GetProperty(commandItem, "CommandParameter"),
+            GetProperty(commandItem, "CommandTarget"));
+        AssertEqual(true, commandCanExecute, "compiled command MenuItem CanExecute result");
+        InvokeTwoArgumentCommand(
+            command,
+            "Execute",
+            GetProperty(commandItem, "CommandParameter"),
+            GetProperty(commandItem, "CommandTarget"));
+
+        AssertEqual(3, GetProperty(window, "RoutedCommandExecutionCount"), "compiled command MenuItem routed command count");
+        AssertEqual("menu command payload", GetProperty(window, "LastRoutedCommandParameter"), "compiled command MenuItem routed command parameter");
+    }
+
+    private static void RaiseMenuItemClick(object menuItem)
+    {
+        FieldInfo clickEventField = menuItem.GetType().GetField(
+            "ClickEvent",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.FlattenHierarchy)
+            ?? throw new MissingFieldException(menuItem.GetType().FullName, "ClickEvent");
+        object clickEvent = clickEventField.GetValue(null)
+            ?? throw new InvalidOperationException("Expected MenuItem.ClickEvent to be initialized.");
+        Type routedEventArgsType = clickEvent.GetType().Assembly.GetType(
+            "System.Windows.RoutedEventArgs",
+            throwOnError: true)
+            ?? throw new TypeLoadException("System.Windows.RoutedEventArgs");
+        object routedEventArgs = Activator.CreateInstance(routedEventArgsType, clickEvent, menuItem)
+            ?? throw new InvalidOperationException("Failed to create MenuItem Click RoutedEventArgs.");
+
+        Invoke(menuItem, "RaiseEvent", routedEventArgs);
     }
 
     private static void ValidateTemplateAndDynamicResource(object window, object application)

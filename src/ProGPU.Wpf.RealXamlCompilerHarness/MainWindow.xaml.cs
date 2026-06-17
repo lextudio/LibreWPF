@@ -62,6 +62,12 @@ public partial class MainWindow : Window
 
     public string? LastStyledClickRoutedEventName { get; private set; }
 
+    public int MenuClickCount { get; private set; }
+
+    public string? LastMenuClickSenderName { get; private set; }
+
+    public string? LastMenuClickRoutedEventName { get; private set; }
+
     public int StoryboardTargetLoadedCount { get; private set; }
 
     public string? LastStoryboardTargetLoadedSenderName { get; private set; }
@@ -120,6 +126,14 @@ public partial class MainWindow : Window
         StyledClickCount++;
         LastStyledClickSenderName = sender is FrameworkElement element ? element.Name : null;
         LastStyledClickRoutedEventName = e.RoutedEvent?.Name;
+        e.Handled = true;
+    }
+
+    private void OnMenuClick(object sender, RoutedEventArgs e)
+    {
+        MenuClickCount++;
+        LastMenuClickSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastMenuClickRoutedEventName = e.RoutedEvent?.Name;
         e.Handled = true;
     }
 

@@ -147,6 +147,23 @@
             FontSize="18"
             Foreground="{StaticResource AccentBrush}"
             Text="Real WPF XAML compiler smoke" />
+        <Menu x:Name="SmokeMenu" Margin="0,8,0,0">
+            <MenuItem
+                x:Name="FileMenuItem"
+                Header="_File">
+                <MenuItem
+                    x:Name="MenuCommandItem"
+                    Command="{x:Static local:MainWindow.SmokeRoutedCommand}"
+                    CommandParameter="menu command payload"
+                    CommandTarget="{Binding ElementName=SmokeMenu}"
+                    Header="Run _Command" />
+                <Separator />
+                <MenuItem
+                    x:Name="MenuClickItem"
+                    Click="OnMenuClick"
+                    Header="_Click" />
+            </MenuItem>
+        </Menu>
         <TextBox
             x:Name="InputBox"
             Style="{StaticResource SmokeTextBoxStyle}"

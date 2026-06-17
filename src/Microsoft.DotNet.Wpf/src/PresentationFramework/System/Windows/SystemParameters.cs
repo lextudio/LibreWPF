@@ -299,7 +299,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.DropShadow] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETDROPSHADOW, 0, ref _dropShadow, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _dropShadow = false;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETDROPSHADOW, 0, ref _dropShadow, 0))
                         {
                         }
                         else

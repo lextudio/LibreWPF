@@ -150,7 +150,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 45, "stack panel children");
+        AssertCollectionCount(children, expected: 46, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -199,6 +199,7 @@ internal static class Program
         ValidateRoutedCommand(window);
         ValidateInputBinding(window);
         ValidateMenuItems(window);
+        ValidateContextMenuAndToolTip(window);
         ValidateStyleAndDataTrigger(window, application);
         ValidateTemplateAndDynamicResource(window, application);
         ValidateItemsBindingAndTemplate(window);
@@ -1255,6 +1256,69 @@ internal static class Program
 
         AssertEqual(3, GetProperty(window, "RoutedCommandExecutionCount"), "compiled command MenuItem routed command count");
         AssertEqual("menu command payload", GetProperty(window, "LastRoutedCommandParameter"), "compiled command MenuItem routed command parameter");
+    }
+
+    private static void ValidateContextMenuAndToolTip(object window)
+    {
+        object contextButton = GetField(window, "ContextMenuButton");
+        AssertType(contextButton, "System.Windows.Controls.Button", "compiled ContextMenu owner Button");
+        AssertEqual("context menu target", GetProperty(contextButton, "Content"), "compiled ContextMenu owner Button content");
+
+        object contextMenu = GetProperty(contextButton, "ContextMenu");
+        AssertType(contextMenu, "System.Windows.Controls.ContextMenu", "compiled ContextMenu");
+        AssertEqual("ContextButtonMenu", GetProperty(contextMenu, "Name"), "compiled ContextMenu name");
+        object contextMenuItems = GetProperty(contextMenu, "Items");
+        AssertCollectionCount(contextMenuItems, expected: 3, "compiled ContextMenu items");
+
+        object commandItem = GetCollectionItem(contextMenuItems, 0);
+        AssertType(commandItem, "System.Windows.Controls.MenuItem", "compiled ContextMenu command item");
+        AssertEqual("ContextCommandItem", GetProperty(commandItem, "Name"), "compiled ContextMenu command item name");
+        AssertEqual("Run Context _Command", GetProperty(commandItem, "Header"), "compiled ContextMenu command item header");
+        AssertEqual("context menu command payload", GetProperty(commandItem, "CommandParameter"), "compiled ContextMenu command item parameter");
+        object command = GetProperty(commandItem, "Command");
+        AssertType(command, "System.Windows.Input.RoutedUICommand", "compiled ContextMenu routed command");
+        AssertEqual("SmokeRoutedCommand", GetProperty(command, "Name"), "compiled ContextMenu routed command name");
+
+        object separator = GetCollectionItem(contextMenuItems, 1);
+        AssertType(separator, "System.Windows.Controls.Separator", "compiled ContextMenu separator");
+
+        object clickItem = GetCollectionItem(contextMenuItems, 2);
+        AssertType(clickItem, "System.Windows.Controls.MenuItem", "compiled ContextMenu click item");
+        AssertEqual("ContextClickItem", GetProperty(clickItem, "Name"), "compiled ContextMenu click item name");
+        AssertEqual("Context _Click", GetProperty(clickItem, "Header"), "compiled ContextMenu click item header");
+        AssertEqual(0, GetProperty(window, "ContextMenuClickCount"), "compiled ContextMenu initial click count");
+
+        RaiseMenuItemClick(clickItem);
+
+        AssertEqual(1, GetProperty(window, "ContextMenuClickCount"), "compiled ContextMenu Click handler count");
+        AssertEqual("ContextClickItem", GetProperty(window, "LastContextMenuClickSenderName"), "compiled ContextMenu Click sender name");
+        AssertEqual("Click", GetProperty(window, "LastContextMenuClickRoutedEventName"), "compiled ContextMenu Click routed event name");
+        AssertEqual(3, GetProperty(window, "RoutedCommandExecutionCount"), "compiled ContextMenu initial routed command count");
+
+        object commandCanExecute = InvokeTwoArgumentCommand(
+            command,
+            "CanExecute",
+            GetProperty(commandItem, "CommandParameter"),
+            contextButton);
+        AssertEqual(true, commandCanExecute, "compiled ContextMenu CanExecute result");
+        InvokeTwoArgumentCommand(
+            command,
+            "Execute",
+            GetProperty(commandItem, "CommandParameter"),
+            contextButton);
+
+        AssertEqual(4, GetProperty(window, "RoutedCommandExecutionCount"), "compiled ContextMenu routed command count");
+        AssertEqual("context menu command payload", GetProperty(window, "LastRoutedCommandParameter"), "compiled ContextMenu routed command parameter");
+
+        object toolTip = GetProperty(contextButton, "ToolTip");
+        AssertType(toolTip, "System.Windows.Controls.ToolTip", "compiled ToolTip");
+        AssertEqual("ContextButtonToolTip", GetProperty(toolTip, "Name"), "compiled ToolTip name");
+        AssertEqual("Right", GetProperty(toolTip, "Placement").ToString(), "compiled ToolTip placement");
+        object toolTipContent = GetProperty(toolTip, "Content");
+        AssertType(toolTipContent, "System.Windows.Controls.TextBlock", "compiled ToolTip content");
+        AssertEqual("ContextButtonToolTipText", GetProperty(toolTipContent, "Name"), "compiled ToolTip content name");
+        AssertEqual("compiled tooltip text", GetProperty(toolTipContent, "Tag"), "compiled ToolTip content tag");
+        AssertEqual("compiled ToolTip content", GetProperty(toolTipContent, "Text"), "compiled ToolTip content text");
     }
 
     private static void RaiseMenuItemClick(object menuItem)

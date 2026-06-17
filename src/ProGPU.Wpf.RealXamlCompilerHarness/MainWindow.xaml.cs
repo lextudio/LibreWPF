@@ -68,6 +68,12 @@ public partial class MainWindow : Window
 
     public string? LastMenuClickRoutedEventName { get; private set; }
 
+    public int ContextMenuClickCount { get; private set; }
+
+    public string? LastContextMenuClickSenderName { get; private set; }
+
+    public string? LastContextMenuClickRoutedEventName { get; private set; }
+
     public int StoryboardTargetLoadedCount { get; private set; }
 
     public string? LastStoryboardTargetLoadedSenderName { get; private set; }
@@ -134,6 +140,14 @@ public partial class MainWindow : Window
         MenuClickCount++;
         LastMenuClickSenderName = sender is FrameworkElement element ? element.Name : null;
         LastMenuClickRoutedEventName = e.RoutedEvent?.Name;
+        e.Handled = true;
+    }
+
+    private void OnContextMenuClick(object sender, RoutedEventArgs e)
+    {
+        ContextMenuClickCount++;
+        LastContextMenuClickSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastContextMenuClickRoutedEventName = e.RoutedEvent?.Name;
         e.Handled = true;
     }
 

@@ -185,6 +185,35 @@
             Margin="0,8,0,0"
             Content="run style event"
             Style="{StaticResource EventSetterButtonStyle}" />
+        <Button
+            x:Name="ContextMenuButton"
+            Margin="0,8,0,0"
+            Content="context menu target">
+            <Button.ContextMenu>
+                <ContextMenu x:Name="ContextButtonMenu">
+                    <MenuItem
+                        x:Name="ContextCommandItem"
+                        Command="{x:Static local:MainWindow.SmokeRoutedCommand}"
+                        CommandParameter="context menu command payload"
+                        Header="Run Context _Command" />
+                    <Separator />
+                    <MenuItem
+                        x:Name="ContextClickItem"
+                        Click="OnContextMenuClick"
+                        Header="Context _Click" />
+                </ContextMenu>
+            </Button.ContextMenu>
+            <Button.ToolTip>
+                <ToolTip
+                    x:Name="ContextButtonToolTip"
+                    Placement="Right">
+                    <TextBlock
+                        x:Name="ContextButtonToolTipText"
+                        Tag="compiled tooltip text"
+                        Text="compiled ToolTip content" />
+                </ToolTip>
+            </Button.ToolTip>
+        </Button>
         <RichTextBox
             x:Name="DocumentBox"
             Margin="0,8,0,0">

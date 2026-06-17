@@ -252,6 +252,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("if(OperatingSystem.IsWindows() && Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)", inputManager, StringComparison.Ordinal);
         Assert.Contains("if (OperatingSystem.IsWindows())", mouseDevice, StringComparison.Ordinal);
         Assert.Contains("_doubleClickDeltaTime = 500;", mouseDevice, StringComparison.Ordinal);
+        Assert.Contains("inputSource?.CompositionTarget != null && !inputSource.CompositionTarget.IsDisposed", mouseDevice, StringComparison.Ordinal);
+        Assert.Contains("LocalHitTest(clientUnits, pt, inputSource, out enabledHit, out originalHit)", mouseDevice, StringComparison.Ordinal);
         Assert.True(
             inputManager.IndexOf("if (OperatingSystem.IsWindows())", StringComparison.Ordinal)
                 < inputManager.IndexOf("new Win32KeyboardDevice(this)", StringComparison.Ordinal),
@@ -1232,6 +1234,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePortableTextInputActivation(presentationCore, activation, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable text input TextBox text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable text input caret index", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableMouseClickActivation(presentationCore, activation, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("WpfInputEventKind.MouseDown", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable mouse routed Click count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetTransformToDevice(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTemplateAndDynamicResource(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button control template", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled VisualStateManager group collection", harnessProgram, StringComparison.Ordinal);
@@ -1492,6 +1498,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePortableTextInputActivation(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreatePortableInputEvent(\"TextInput\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable Application.Run text input TextBox text", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableMouseClickActivation(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CreatePortableInputEvent(\"MouseDown\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run mouse routed Click count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable mouse routed Click persisted count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTemplateAndDynamicResource(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ControlTemplate named part", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled VisualStateManager group collection", harnessProgram, StringComparison.Ordinal);
@@ -1687,6 +1697,26 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Media",
             "PathGeometry.cs"));
+        var rectangleGeometry = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "RectangleGeometry.cs"));
+        var stylusLogic = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Input",
+            "Stylus",
+            "Common",
+            "StylusLogic.cs"));
         var systemResources = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -1832,6 +1862,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private static MilRectD GetManagedPathBoundsAsRB", pathGeometry, StringComparison.Ordinal);
         Assert.Contains("ParsePathGeometryData(pathData, context)", pathGeometry, StringComparison.Ordinal);
         Assert.Contains("PathStreamGeometryContext", pathGeometry, StringComparison.Ordinal);
+        Assert.Contains("!OperatingSystem.IsWindows() && pen == null", rectangleGeometry, StringComparison.Ordinal);
+        Assert.Contains("FillContainsManaged(rect, radiusX, radiusY, hitPoint)", rectangleGeometry, StringComparison.Ordinal);
+        Assert.Contains("GeneralTransform inverse = transform.Inverse", rectangleGeometry, StringComparison.Ordinal);
+        Assert.Contains("return OperatingSystem.IsWindows() && !CoreAppContextSwitches.DisableStylusAndTouchSupport", stylusLogic, StringComparison.Ordinal);
+        AssertGuardBefore(stylusLogic, "if (!OperatingSystem.IsWindows())", "Registry.CurrentUser.OpenSubKey");
         AssertGuardBefore(systemResources, "if (!OperatingSystem.IsWindows())", "new HwndWrapper(");
         AssertGuardBefore(systemResources, "if (OperatingSystem.IsWindows())", "XamlAccessLevel.AssemblyAccessTo(assembly)");
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETHIGHCONTRAST");

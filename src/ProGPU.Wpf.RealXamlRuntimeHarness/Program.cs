@@ -82,6 +82,7 @@ internal static class Program
             ValidatePortableKeyboardFocus(presentationCore, window);
             ValidatePortableInputBindingActivation(presentationCore, activation, window);
             ValidatePortableTextInputActivation(presentationCore, activation, window);
+            ValidatePortableMouseClickActivation(presentationCore, activation, window);
         }
         finally
         {
@@ -461,6 +462,105 @@ internal static class Program
 
         InvokeStatic(keyboardType, "ClearFocus");
         AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable text input clear focus");
+    }
+
+    private static void ValidatePortableMouseClickActivation(Assembly presentationCore, object activation, object window)
+    {
+        if (activation is not WpfPortableWindowActivation portableActivation)
+        {
+            throw new InvalidOperationException(
+                $"Expected a ProGPU portable activation for mouse input routing, got '{activation.GetType().FullName}'.");
+        }
+
+        object eventButton = GetField(window, "EventButton");
+        Invoke(window, "UpdateLayout");
+        Invoke(eventButton, "UpdateLayout");
+        (double x, double y) = GetElementCenterInWindow(presentationCore, eventButton, window);
+        object? directHit = InvokeNullable(window, "InputHitTest", GetElementCenterPointInWindow(eventButton, window));
+
+        int initialClickCount = Convert.ToInt32(GetProperty(window, "XamlClickCount"));
+        var mouseMove = new WpfInputEventArgs(
+            WpfInputEventKind.MouseMove,
+            x: x,
+            y: y);
+        RaiseHostInput(
+            portableActivation.Host,
+            mouseMove);
+        Type mouseType = GetRequiredType(presentationCore, "System.Windows.Input.Mouse");
+        object? directlyOverAfterMove = TryGetStaticProperty(mouseType, "DirectlyOver");
+        if (directlyOverAfterMove == null)
+        {
+            throw new InvalidOperationException(
+                $"Expected portable mouse move to update Mouse.DirectlyOver. " +
+                $"MoveHandled={mouseMove.Handled}, Input=({x}, {y}), InputHitTest={DescribeInputElement(directHit)}.");
+        }
+
+        RaiseHostInput(
+            portableActivation.Host,
+            new WpfInputEventArgs(
+                WpfInputEventKind.MouseDown,
+                x: x,
+                y: y,
+                button: WpfMouseButton.Left));
+        RaiseHostInput(
+            portableActivation.Host,
+            new WpfInputEventArgs(
+                WpfInputEventKind.MouseUp,
+                x: x,
+                y: y,
+                button: WpfMouseButton.Left));
+
+        AssertPortableMouseClick(
+            presentationCore,
+            window,
+            eventButton,
+            directHit,
+            initialClickCount + 1,
+            x,
+            y,
+            "portable mouse routed Click count");
+        AssertEqual("EventButton", GetProperty(window, "LastXamlClickSenderName"), "portable mouse routed Click sender name");
+        AssertEqual("Click", GetProperty(window, "LastXamlClickRoutedEventName"), "portable mouse routed Click event name");
+    }
+
+    private static void AssertPortableMouseClick(
+        Assembly presentationCore,
+        object window,
+        object eventButton,
+        object? directHit,
+        int expectedClickCount,
+        double x,
+        double y,
+        string description)
+    {
+        object actualClickCount = GetProperty(window, "XamlClickCount");
+        if (Equals(expectedClickCount, actualClickCount))
+        {
+            return;
+        }
+
+        Type mouseType = GetRequiredType(presentationCore, "System.Windows.Input.Mouse");
+        object? directlyOver = TryGetStaticProperty(mouseType, "DirectlyOver");
+        object? captured = TryGetStaticProperty(mouseType, "Captured");
+        throw new InvalidOperationException(
+            $"Expected {description} to be '{expectedClickCount}', got '{actualClickCount}'. " +
+            $"Input=({x}, {y}), DirectlyOver={DescribeInputElement(directlyOver)}, " +
+            $"InputHitTest={DescribeInputElement(directHit)}, " +
+            $"Captured={DescribeInputElement(captured)}, " +
+            $"Button.IsMouseOver={GetProperty(eventButton, "IsMouseOver")}, " +
+            $"Button.IsMouseCaptured={GetProperty(eventButton, "IsMouseCaptured")}, " +
+            $"Button.IsPressed={GetProperty(eventButton, "IsPressed")}.");
+    }
+
+    private static string DescribeInputElement(object? element)
+    {
+        if (element == null)
+        {
+            return "<null>";
+        }
+
+        string name = DescribeOptionalProperty(element, "Name");
+        return $"{element.GetType().FullName}(Name={name})";
     }
 
     private static void ValidateBindingAndCommand(object window)
@@ -1477,6 +1577,67 @@ internal static class Program
         inputMethod.Invoke(host, new object?[] { null, input });
     }
 
+    private static (double X, double Y) GetElementCenterInWindow(Assembly presentationCore, object element, object window)
+    {
+        object windowPoint = GetElementCenterPointInWindow(element, window);
+        object transformToDevice = GetTransformToDevice(presentationCore, window);
+        (double x, double y) = TransformPoint(transformToDevice, windowPoint);
+
+        return (x, y);
+    }
+
+    private static object GetElementCenterPointInWindow(object element, object window)
+    {
+        double width = Convert.ToDouble(GetProperty(element, "ActualWidth"));
+        double height = Convert.ToDouble(GetProperty(element, "ActualHeight"));
+        object renderSize = GetProperty(element, "RenderSize");
+        if (width <= 0)
+        {
+            width = Convert.ToDouble(GetProperty(renderSize, "Width"));
+        }
+
+        if (height <= 0)
+        {
+            height = Convert.ToDouble(GetProperty(renderSize, "Height"));
+        }
+
+        if (width <= 0 || height <= 0)
+        {
+            throw new InvalidOperationException(
+                $"Expected '{element.GetType().FullName}' to have a non-empty arranged size.");
+        }
+
+        Type pointType = renderSize.GetType().Assembly.GetType("System.Windows.Point", throwOnError: true)
+            ?? throw new TypeLoadException("Could not load 'System.Windows.Point'.");
+        object center = Activator.CreateInstance(pointType, width / 2d, height / 2d)
+            ?? throw new InvalidOperationException("Failed to create a WPF Point for portable mouse input.");
+        return Invoke(element, "TranslatePoint", center, window);
+    }
+
+    private static object GetTransformToDevice(Assembly presentationCore, object visual)
+    {
+        Type presentationSourceType = GetRequiredType(presentationCore, "System.Windows.PresentationSource");
+        object source = InvokeStatic(presentationSourceType, "FromVisual", visual);
+        object compositionTarget = GetProperty(source, "CompositionTarget");
+        return GetProperty(compositionTarget, "TransformToDevice");
+    }
+
+    private static (double X, double Y) TransformPoint(object matrix, object point)
+    {
+        double x = Convert.ToDouble(GetProperty(point, "X"));
+        double y = Convert.ToDouble(GetProperty(point, "Y"));
+        double m11 = Convert.ToDouble(GetProperty(matrix, "M11"));
+        double m12 = Convert.ToDouble(GetProperty(matrix, "M12"));
+        double m21 = Convert.ToDouble(GetProperty(matrix, "M21"));
+        double m22 = Convert.ToDouble(GetProperty(matrix, "M22"));
+        double offsetX = Convert.ToDouble(GetProperty(matrix, "OffsetX"));
+        double offsetY = Convert.ToDouble(GetProperty(matrix, "OffsetY"));
+
+        return (
+            (x * m11) + (y * m21) + offsetX,
+            (x * m12) + (y * m22) + offsetY);
+    }
+
     private static object Create(Assembly assembly, string typeName, params object?[] parameters)
     {
         Type type = GetRequiredType(assembly, typeName);
@@ -1836,6 +1997,32 @@ internal static class Program
             if (method != null)
             {
                 return method.Invoke(instance, parameters) ?? new object();
+            }
+        }
+
+        throw new MissingMethodException(instance.GetType().FullName, methodName);
+    }
+
+    private static object? InvokeNullable(object instance, string methodName, params object?[] parameters)
+    {
+        for (Type? type = instance.GetType(); type != null; type = type.BaseType)
+        {
+            MethodInfo? method = type.GetMethods(
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
+                .FirstOrDefault(candidate =>
+                {
+                    if (!string.Equals(candidate.Name, methodName, StringComparison.Ordinal))
+                    {
+                        return false;
+                    }
+
+                    ParameterInfo[] candidateParameters = candidate.GetParameters();
+                    return candidateParameters.Length == parameters.Length;
+                });
+
+            if (method != null)
+            {
+                return method.Invoke(instance, parameters);
             }
         }
 

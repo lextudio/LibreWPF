@@ -113,6 +113,16 @@
             x:Name="BasedOnTextBox"
             Style="{StaticResource BasedOnTextBoxStyle}"
             Text="compiled BasedOn TextBox" />
+        <Button
+            x:Name="EventButton"
+            Margin="0,8,0,0"
+            Click="OnXamlClick"
+            Content="run xaml event" />
+        <Button
+            x:Name="StyledEventButton"
+            Margin="0,8,0,0"
+            Content="run style event"
+            Style="{StaticResource EventSetterButtonStyle}" />
         <RichTextBox
             x:Name="DocumentBox"
             Margin="0,8,0,0">
@@ -344,16 +354,6 @@
         <CheckBox
             x:Name="ImplicitStyleCheckBox"
             IsChecked="True" />
-        <Button
-            x:Name="EventButton"
-            Margin="0,8,0,0"
-            Click="OnXamlClick"
-            Content="run xaml event" />
-        <Button
-            x:Name="StyledEventButton"
-            Margin="0,8,0,0"
-            Content="run style event"
-            Style="{StaticResource EventSetterButtonStyle}" />
         <Button
             x:Name="CommandButton"
             Margin="0,8,0,0"

@@ -1363,6 +1363,62 @@ internal static class Program
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(instance);
     }
 
+    private static (double X, double Y) GetElementCenterInWindow(Assembly presentationCore, object element, object window)
+    {
+        double width = Convert.ToDouble(GetProperty(element, "ActualWidth"));
+        double height = Convert.ToDouble(GetProperty(element, "ActualHeight"));
+        object renderSize = GetProperty(element, "RenderSize");
+        if (width <= 0)
+        {
+            width = Convert.ToDouble(GetProperty(renderSize, "Width"));
+        }
+
+        if (height <= 0)
+        {
+            height = Convert.ToDouble(GetProperty(renderSize, "Height"));
+        }
+
+        if (width <= 0 || height <= 0)
+        {
+            throw new InvalidOperationException(
+                $"Expected '{element.GetType().FullName}' to have a non-empty arranged size.");
+        }
+
+        Type pointType = renderSize.GetType().Assembly.GetType("System.Windows.Point", throwOnError: true)
+            ?? throw new TypeLoadException("Could not load 'System.Windows.Point'.");
+        object center = Activator.CreateInstance(pointType, width / 2d, height / 2d)
+            ?? throw new InvalidOperationException("Failed to create a WPF Point for portable mouse input.");
+        object windowPoint = Invoke(element, "TranslatePoint", center, window);
+        object transformToDevice = GetTransformToDevice(presentationCore, window);
+        (double x, double y) = TransformPoint(transformToDevice, windowPoint);
+
+        return (x, y);
+    }
+
+    private static object GetTransformToDevice(Assembly presentationCore, object visual)
+    {
+        Type presentationSourceType = GetRequiredType(presentationCore, "System.Windows.PresentationSource");
+        object source = InvokeStatic(presentationSourceType, "FromVisual", visual);
+        object compositionTarget = GetProperty(source, "CompositionTarget");
+        return GetProperty(compositionTarget, "TransformToDevice");
+    }
+
+    private static (double X, double Y) TransformPoint(object matrix, object point)
+    {
+        double x = Convert.ToDouble(GetProperty(point, "X"));
+        double y = Convert.ToDouble(GetProperty(point, "Y"));
+        double m11 = Convert.ToDouble(GetProperty(matrix, "M11"));
+        double m12 = Convert.ToDouble(GetProperty(matrix, "M12"));
+        double m21 = Convert.ToDouble(GetProperty(matrix, "M21"));
+        double m22 = Convert.ToDouble(GetProperty(matrix, "M22"));
+        double offsetX = Convert.ToDouble(GetProperty(matrix, "OffsetX"));
+        double offsetY = Convert.ToDouble(GetProperty(matrix, "OffsetY"));
+
+        return (
+            (x * m11) + (y * m21) + offsetX,
+            (x * m12) + (y * m22) + offsetY);
+    }
+
     private static object? FindVisualDescendantByName(Assembly presentationCore, object root, string name)
     {
         if (string.Equals(TryGetProperty(root, "Name")?.ToString(), name, StringComparison.Ordinal))
@@ -1916,6 +1972,7 @@ internal static class Program
             ValidatePostShowHierarchicalDataTemplate(_presentationCore, typedActivation.Window);
             ValidatePortableInputBindingActivation(typedActivation.Window);
             ValidatePortableTextInputActivation(typedActivation.Window);
+            ValidatePortableMouseClickActivation(typedActivation.Window);
         }
 
         public void Dispose(object activation)
@@ -1960,6 +2017,9 @@ internal static class Program
             ValidatePostShowHierarchicalDataTemplate(_presentationCore, activation.Window);
             AssertEqual("input binding payload", GetProperty(activation.Window, "LastRoutedCommandParameter"), "portable input KeyBinding persisted command parameter");
             AssertEqual("portable x", GetProperty(GetField(activation.Window, "InputBox"), "Text"), "portable text input persisted TextBox text");
+            AssertAtLeast(2, GetProperty(activation.Window, "XamlClickCount"), "portable mouse routed Click persisted count");
+            AssertEqual("EventButton", GetProperty(activation.Window, "LastXamlClickSenderName"), "portable mouse routed Click persisted sender name");
+            AssertEqual("Click", GetProperty(activation.Window, "LastXamlClickRoutedEventName"), "portable mouse routed Click persisted event name");
         }
 
         private void AssertSameActivation(object activation)
@@ -2116,7 +2176,34 @@ internal static class Program
             AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable Application.Run text input clear focus");
         }
 
-        private object CreatePortableInputEvent(string kindName, string? key, int scanCode, string modifiersName, char? character = null)
+        private void ValidatePortableMouseClickActivation(object window)
+        {
+            object eventButton = GetField(window, "EventButton");
+            Invoke(window, "UpdateLayout");
+            Invoke(eventButton, "UpdateLayout");
+            (double x, double y) = GetElementCenterInWindow(_presentationCore, eventButton, window);
+
+            int initialClickCount = Convert.ToInt32(GetProperty(window, "XamlClickCount"));
+            Invoke(window, "HandlePortableInput", CreatePortableInputEvent("MouseMove", x: x, y: y));
+            Invoke(window, "HandlePortableInput", CreatePortableInputEvent("MouseDown", x: x, y: y, buttonName: "Left"));
+            Invoke(window, "HandlePortableInput", CreatePortableInputEvent("MouseUp", x: x, y: y, buttonName: "Left"));
+
+            AssertEqual(initialClickCount + 1, GetProperty(window, "XamlClickCount"), "portable Application.Run mouse routed Click count");
+            AssertEqual("EventButton", GetProperty(window, "LastXamlClickSenderName"), "portable Application.Run mouse routed Click sender name");
+            AssertEqual("Click", GetProperty(window, "LastXamlClickRoutedEventName"), "portable Application.Run mouse routed Click event name");
+        }
+
+        private object CreatePortableInputEvent(
+            string kindName,
+            string? key = null,
+            int scanCode = 0,
+            string modifiersName = "None",
+            char? character = null,
+            double x = 0,
+            double y = 0,
+            double deltaX = 0,
+            double deltaY = 0,
+            string buttonName = "None")
         {
             Assembly presentationFramework = _activationServiceType.Assembly;
             Type argsType = GetRequiredType(presentationFramework, "System.Windows.PortableInputEventArgs");
@@ -2134,11 +2221,11 @@ internal static class Program
                     key,
                     scanCode,
                     character,
-                    0d,
-                    0d,
-                    0d,
-                    0d,
-                    Enum.Parse(buttonType, "None"),
+                    x,
+                    y,
+                    deltaX,
+                    deltaY,
+                    Enum.Parse(buttonType, buttonName),
                     Enum.Parse(modifiersType, modifiersName)
                 },
                 culture: null)

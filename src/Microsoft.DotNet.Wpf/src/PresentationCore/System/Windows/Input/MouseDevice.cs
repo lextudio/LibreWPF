@@ -2135,6 +2135,10 @@ namespace System.Windows.Input
                     LocalHitTest(true, ptClientHit, sourceHit, out enabledHit, out originalHit);
                 }
             }
+            else if (inputSource?.CompositionTarget != null && !inputSource.CompositionTarget.IsDisposed)
+            {
+                LocalHitTest(clientUnits, pt, inputSource, out enabledHit, out originalHit);
+            }
         }
 
         internal static IInputElement LocalHitTest(bool clientUnits, Point pt, PresentationSource inputSource)

@@ -238,6 +238,11 @@ namespace System.Windows.Media
             double radiusY = RadiusY;
             Rect rect = Rect;
 
+            if (!OperatingSystem.IsWindows() && pen == null)
+            {
+                return FillContainsManaged(rect, radiusX, radiusY, hitPoint);
+            }
+
             uint pointCount = GetPointCount(rect, radiusX, radiusY);
             uint segmentCount = GetSegmentCount(rect, radiusX, radiusY);
             
@@ -259,6 +264,47 @@ namespace System.Windows.Media
                         segmentCount);
                 }
             }
+        }
+
+        private bool FillContainsManaged(Rect rect, double radiusX, double radiusY, Point hitPoint)
+        {
+            Transform transform = Transform;
+            if (transform != null && transform != Transform.Identity)
+            {
+                GeneralTransform inverse = transform.Inverse;
+                if (inverse == null || !inverse.TryTransform(hitPoint, out hitPoint))
+                {
+                    return false;
+                }
+            }
+
+            if (!rect.Contains(hitPoint))
+            {
+                return false;
+            }
+
+            radiusX = Math.Min(Math.Abs(radiusX), rect.Width / 2.0);
+            radiusY = Math.Min(Math.Abs(radiusY), rect.Height / 2.0);
+            if (radiusX <= 0.0 || radiusY <= 0.0)
+            {
+                return true;
+            }
+
+            double left = rect.Left + radiusX;
+            double right = rect.Right - radiusX;
+            double top = rect.Top + radiusY;
+            double bottom = rect.Bottom - radiusY;
+            if ((hitPoint.X >= left && hitPoint.X <= right) ||
+                (hitPoint.Y >= top && hitPoint.Y <= bottom))
+            {
+                return true;
+            }
+
+            double centerX = hitPoint.X < left ? left : right;
+            double centerY = hitPoint.Y < top ? top : bottom;
+            double normalizedX = (hitPoint.X - centerX) / radiusX;
+            double normalizedY = (hitPoint.Y - centerY) / radiusY;
+            return (normalizedX * normalizedX) + (normalizedY * normalizedY) <= 1.0;
         }
 
         /// <summary>
@@ -622,4 +668,3 @@ namespace System.Windows.Media
         #endregion
     }
 }
-

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Reflection;
 using System.Runtime.Loader;
 using System.Windows.Media.ProGPU;
+using System.Windows.Media.ProGPU.Platform;
 
 internal static class Program
 {
@@ -79,6 +80,7 @@ internal static class Program
             ValidatePostShowImplicitDataTemplate(presentationCore, window);
             ValidatePostShowHierarchicalDataTemplate(presentationCore, window);
             ValidatePortableKeyboardFocus(presentationCore, window);
+            ValidatePortableInputBindingActivation(presentationCore, activation, window);
         }
         finally
         {
@@ -392,6 +394,43 @@ internal static class Program
 
         InvokeStatic(keyboardType, "ClearFocus");
         AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable Keyboard clear focus");
+    }
+
+    private static void ValidatePortableInputBindingActivation(Assembly presentationCore, object activation, object window)
+    {
+        if (activation is not WpfPortableWindowActivation portableActivation)
+        {
+            throw new InvalidOperationException(
+                $"Expected a ProGPU portable activation for input routing, got '{activation.GetType().FullName}'.");
+        }
+
+        object inputBox = GetField(window, "InputBox");
+        Type keyboardType = GetRequiredType(presentationCore, "System.Windows.Input.Keyboard");
+        object focused = InvokeStatic(keyboardType, "Focus", inputBox);
+        AssertSame(inputBox, focused, "portable input KeyBinding focused target");
+
+        int initialExecutionCount = Convert.ToInt32(GetProperty(window, "RoutedCommandExecutionCount"));
+        var keyDown = new WpfInputEventArgs(
+            WpfInputEventKind.KeyDown,
+            key: "F6",
+            scanCode: 0,
+            modifiers: WpfInputModifiers.Control);
+        RaiseHostInput(portableActivation.Host, keyDown);
+
+        AssertEqual(true, keyDown.Handled, "portable input KeyBinding handled state");
+        AssertEqual(initialExecutionCount + 1, GetProperty(window, "RoutedCommandExecutionCount"), "portable input KeyBinding command execution count");
+        AssertEqual("input binding payload", GetProperty(window, "LastRoutedCommandParameter"), "portable input KeyBinding command parameter");
+
+        var keyUp = new WpfInputEventArgs(
+            WpfInputEventKind.KeyUp,
+            key: "F6",
+            scanCode: 0,
+            modifiers: WpfInputModifiers.None);
+        RaiseHostInput(portableActivation.Host, keyUp);
+        AssertEqual(initialExecutionCount + 1, GetProperty(window, "RoutedCommandExecutionCount"), "portable input KeyBinding ignores key up");
+
+        InvokeStatic(keyboardType, "ClearFocus");
+        AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable input KeyBinding clear focus");
     }
 
     private static void ValidateBindingAndCommand(object window)
@@ -1396,6 +1435,16 @@ internal static class Program
             object markerPriority = Enum.Parse(dispatcherPriorityType, markerPriorityName);
             flushMethod.Invoke(null, new[] { window, markerPriority });
         }
+    }
+
+    private static void RaiseHostInput(ProGpuWpfWindowHost host, WpfInputEventArgs input)
+    {
+        MethodInfo inputMethod = typeof(ProGpuWpfWindowHost).GetMethod(
+            "OnPlatformInputReceived",
+            BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new MissingMethodException(typeof(ProGpuWpfWindowHost).FullName, "OnPlatformInputReceived");
+
+        inputMethod.Invoke(host, new object?[] { null, input });
     }
 
     private static object Create(Assembly assembly, string typeName, params object?[] parameters)

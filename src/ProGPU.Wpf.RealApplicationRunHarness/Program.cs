@@ -1349,6 +1349,13 @@ internal static class Program
             ?? throw new InvalidOperationException($"Expected '{type.FullName}.{propertyName}' to have a value.");
     }
 
+    private static object? TryGetStaticProperty(Type type, string propertyName)
+    {
+        return type.GetProperty(
+            propertyName,
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(null);
+    }
+
     private static object? TryGetProperty(object instance, string propertyName)
     {
         return instance.GetType().GetProperty(
@@ -1907,6 +1914,7 @@ internal static class Program
             ValidatePostShowItemTemplateSelector(_presentationCore, typedActivation.Window);
             ValidatePostShowImplicitDataTemplate(_presentationCore, typedActivation.Window);
             ValidatePostShowHierarchicalDataTemplate(_presentationCore, typedActivation.Window);
+            ValidatePortableInputBindingActivation(typedActivation.Window);
         }
 
         public void Dispose(object activation)
@@ -1949,6 +1957,7 @@ internal static class Program
             ValidatePostShowItemTemplateSelector(_presentationCore, activation.Window);
             ValidatePostShowImplicitDataTemplate(_presentationCore, activation.Window);
             ValidatePostShowHierarchicalDataTemplate(_presentationCore, activation.Window);
+            AssertEqual("input binding payload", GetProperty(activation.Window, "LastRoutedCommandParameter"), "portable input KeyBinding persisted command parameter");
         }
 
         private void AssertSameActivation(object activation)
@@ -2059,6 +2068,58 @@ internal static class Program
                 ?? throw new InvalidOperationException($"Failed to create '{PortablePresentationSourceTypeName}'.");
             SetProperty(source, "RootVisual", window);
             return source;
+        }
+
+        private void ValidatePortableInputBindingActivation(object window)
+        {
+            object inputBox = GetField(window, "InputBox");
+            Type keyboardType = GetRequiredType(_presentationCore, "System.Windows.Input.Keyboard");
+            object focused = InvokeStatic(keyboardType, "Focus", inputBox);
+            AssertSame(inputBox, focused, "portable Application.Run input KeyBinding focused target");
+
+            int initialExecutionCount = Convert.ToInt32(GetProperty(window, "RoutedCommandExecutionCount"));
+            object keyDown = CreatePortableInputEvent("KeyDown", "F6", scanCode: 0, modifiersName: "Control");
+            Invoke(window, "HandlePortableInput", keyDown);
+
+            AssertEqual(true, GetProperty(keyDown, "Handled"), "portable Application.Run input KeyBinding handled state");
+            AssertEqual(initialExecutionCount + 1, GetProperty(window, "RoutedCommandExecutionCount"), "portable Application.Run input KeyBinding command execution count");
+            AssertEqual("input binding payload", GetProperty(window, "LastRoutedCommandParameter"), "portable Application.Run input KeyBinding command parameter");
+
+            object keyUp = CreatePortableInputEvent("KeyUp", "F6", scanCode: 0, modifiersName: "None");
+            Invoke(window, "HandlePortableInput", keyUp);
+            AssertEqual(initialExecutionCount + 1, GetProperty(window, "RoutedCommandExecutionCount"), "portable Application.Run input KeyBinding ignores key up");
+
+            InvokeStatic(keyboardType, "ClearFocus");
+            AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable Application.Run input KeyBinding clear focus");
+        }
+
+        private object CreatePortableInputEvent(string kindName, string? key, int scanCode, string modifiersName)
+        {
+            Assembly presentationFramework = _activationServiceType.Assembly;
+            Type argsType = GetRequiredType(presentationFramework, "System.Windows.PortableInputEventArgs");
+            Type kindType = GetRequiredType(presentationFramework, "System.Windows.PortableInputEventKind");
+            Type buttonType = GetRequiredType(presentationFramework, "System.Windows.PortableMouseButton");
+            Type modifiersType = GetRequiredType(presentationFramework, "System.Windows.PortableInputModifiers");
+
+            return Activator.CreateInstance(
+                argsType,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                args: new object?[]
+                {
+                    Enum.Parse(kindType, kindName),
+                    key,
+                    scanCode,
+                    null,
+                    0d,
+                    0d,
+                    0d,
+                    0d,
+                    Enum.Parse(buttonType, "None"),
+                    Enum.Parse(modifiersType, modifiersName)
+                },
+                culture: null)
+                ?? throw new InvalidOperationException($"Failed to create '{argsType.FullName}'.");
         }
 
         private string DescribeMainWindow()

@@ -1226,6 +1226,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Window input bindings", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled KeyGesture", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled KeyBinding command executed parameter", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableInputBindingActivation(presentationCore, activation, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RaiseHostInput(portableActivation.Host, keyDown)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable input KeyBinding handled state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTemplateAndDynamicResource(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button control template", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled VisualStateManager group collection", harnessProgram, StringComparison.Ordinal);
@@ -1480,6 +1483,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Window input bindings", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled KeyGesture", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled KeyBinding command executed parameter", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableInputBindingActivation(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CreatePortableInputEvent(\"KeyDown\", \"F6\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run input KeyBinding handled state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTemplateAndDynamicResource(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ControlTemplate named part", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled VisualStateManager group collection", harnessProgram, StringComparison.Ordinal);

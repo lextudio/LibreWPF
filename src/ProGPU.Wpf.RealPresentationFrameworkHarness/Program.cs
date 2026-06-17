@@ -200,6 +200,7 @@ internal static class Program
         Type brushType = GetRequiredType(presentationCore, "System.Windows.Media.Brush");
         Type penType = GetRequiredType(presentationCore, "System.Windows.Media.Pen");
         Type drawingType = GetRequiredType(presentationCore, "System.Windows.Media.Drawing");
+        Type formattedTextType = GetRequiredType(presentationCore, "System.Windows.Media.FormattedText");
         Type glyphRunType = GetRequiredType(presentationCore, "System.Windows.Media.GlyphRun");
         Type geometryType = GetRequiredType(presentationCore, "System.Windows.Media.Geometry");
         Type transformType = GetRequiredType(presentationCore, "System.Windows.Media.Transform");
@@ -244,6 +245,9 @@ internal static class Program
             new[] { 2.25, 42.25 },
             new[] { 3.25, 53.25 });
         object glyphRun = CreateRealGlyphRun(presentationCore, windowsBase, pointType);
+        object formattedText = CreateRealFormattedText(presentationCore, greenBrush);
+        object textOrigin = Activator.CreateInstance(pointType, 18.0, 82.0)
+            ?? throw new InvalidOperationException("Failed to create System.Windows.Point.");
 
         InvokeDrawing(
             drawingContext,
@@ -375,6 +379,12 @@ internal static class Program
             new[] { brushType, glyphRunType },
             blueBrush,
             glyphRun);
+        InvokeDrawing(
+            drawingContext,
+            "DrawText",
+            new[] { formattedTextType, pointType },
+            formattedText,
+            textOrigin);
         Invoke(drawingContext, "Close");
     }
 
@@ -412,6 +422,7 @@ internal static class Program
             ProGpuRenderCommandType.DrawRoundedRect,
             ProGpuRenderCommandType.DrawRect,
             ProGpuRenderCommandType.DrawPath,
+            ProGpuRenderCommandType.DrawGlyphRun,
             ProGpuRenderCommandType.DrawGlyphRun
         };
         if (commands.Count != expectedCommandTypes.Length)
@@ -457,6 +468,15 @@ internal static class Program
         AssertEqual(12f, commands[17].FontSize, "real DrawingVisual retained glyph run font size");
         AssertEqual(12f, commands[17].Position.X, "real DrawingVisual retained glyph run position X");
         AssertEqual(64f, commands[17].Position.Y, "real DrawingVisual retained glyph run position Y");
+
+        ushort[]? formattedGlyphIndices = commands[18].GlyphIndices;
+        if (formattedGlyphIndices == null || formattedGlyphIndices.Length == 0 || commands[18].Brush == null)
+        {
+            throw new InvalidOperationException("Expected real DrawingVisual retained formatted text to carry WPF-generated glyph indices and brush.");
+        }
+
+        AssertEqual(13f, commands[18].FontSize, "real DrawingVisual retained formatted text font size");
+        AssertEqual(18f, commands[18].Position.X, "real DrawingVisual retained formatted text position X");
     }
 
     private static ProGpuContainerVisual GetSingleContainerChild(ProGpuContainerVisual parent, string description)
@@ -562,6 +582,63 @@ internal static class Program
             null,
             null,
             null
+        });
+    }
+
+    private static object CreateRealFormattedText(Assembly presentationCore, object foregroundBrush)
+    {
+        Type brushType = GetRequiredType(presentationCore, "System.Windows.Media.Brush");
+        Type fontFamilyType = GetRequiredType(presentationCore, "System.Windows.Media.FontFamily");
+        Type formattedTextType = GetRequiredType(presentationCore, "System.Windows.Media.FormattedText");
+        Type flowDirectionType = GetRequiredType(presentationCore, "System.Windows.FlowDirection");
+        Type fontStretchType = GetRequiredType(presentationCore, "System.Windows.FontStretch");
+        Type fontStretchesType = GetRequiredType(presentationCore, "System.Windows.FontStretches");
+        Type fontStyleType = GetRequiredType(presentationCore, "System.Windows.FontStyle");
+        Type fontStylesType = GetRequiredType(presentationCore, "System.Windows.FontStyles");
+        Type fontWeightType = GetRequiredType(presentationCore, "System.Windows.FontWeight");
+        Type fontWeightsType = GetRequiredType(presentationCore, "System.Windows.FontWeights");
+        Type typefaceType = GetRequiredType(presentationCore, "System.Windows.Media.Typeface");
+        object fontFamily = Activator.CreateInstance(fontFamilyType, "Arial")
+            ?? throw new InvalidOperationException("Failed to create System.Windows.Media.FontFamily.");
+        object typeface = typefaceType.GetConstructor(
+            BindingFlags.Instance | BindingFlags.Public,
+            binder: null,
+            types: new[] { fontFamilyType, fontStyleType, fontWeightType, fontStretchType },
+            modifiers: null)?.Invoke(new[]
+            {
+                fontFamily,
+                GetStaticProperty(fontStylesType, "Normal"),
+                GetStaticProperty(fontWeightsType, "Normal"),
+                GetStaticProperty(fontStretchesType, "Normal")
+            })
+            ?? throw new InvalidOperationException("Failed to create System.Windows.Media.Typeface.");
+        object flowDirection = Enum.Parse(flowDirectionType, "LeftToRight");
+
+        ConstructorInfo constructor = formattedTextType.GetConstructor(
+            BindingFlags.Instance | BindingFlags.Public,
+            binder: null,
+            types: new[]
+            {
+                typeof(string),
+                typeof(System.Globalization.CultureInfo),
+                flowDirectionType,
+                typefaceType,
+                typeof(double),
+                brushType,
+                typeof(double)
+            },
+            modifiers: null)
+            ?? throw new MissingMethodException(formattedTextType.FullName, ".ctor(string, CultureInfo, FlowDirection, Typeface, double, Brush, double)");
+
+        return constructor.Invoke(new object[]
+        {
+            "Text",
+            System.Globalization.CultureInfo.InvariantCulture,
+            flowDirection,
+            typeface,
+            13.0,
+            foregroundBrush,
+            1.0
         });
     }
 

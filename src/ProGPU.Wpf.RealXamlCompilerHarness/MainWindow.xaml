@@ -22,6 +22,12 @@
             x:Key="FilteredItemsView"
             Filter="OnFilteredItemsViewFilter"
             Source="{Binding Items}" />
+        <DataTemplate DataType="{x:Type local:SmokeDetail}">
+            <TextBlock
+                x:Name="ImplicitDetailTextBlock"
+                Tag="implicit data template"
+                Text="{Binding Title}" />
+        </DataTemplate>
         <DataTemplate x:Key="AlphaItemTemplate" DataType="{x:Type local:SmokeItem}">
             <TextBlock
                 x:Name="SelectorTemplateTextBlock"
@@ -262,5 +268,9 @@
             Margin="0,8,0,0"
             ItemTemplateSelector="{StaticResource SmokeItemTemplateSelector}"
             ItemsSource="{Binding Items}" />
+        <ContentControl
+            x:Name="ImplicitTemplateHost"
+            Margin="0,8,0,0"
+            Content="{Binding Detail}" />
     </StackPanel>
 </Window>

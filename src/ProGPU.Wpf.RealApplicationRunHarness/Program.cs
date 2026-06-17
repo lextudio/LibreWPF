@@ -139,7 +139,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 26, "stack panel children");
+        AssertCollectionCount(children, expected: 27, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -186,6 +186,7 @@ internal static class Program
         ValidateStyleAndDataTrigger(window, application);
         ValidateTemplateAndDynamicResource(window, application);
         ValidateItemsBindingAndTemplate(window);
+        ValidateImplicitDataTemplate(window);
     }
 
     private static void ValidateTextBoxSelection(object inputBox)
@@ -454,6 +455,19 @@ internal static class Program
         AssertType(itemTextBlock, "System.Windows.Controls.TextBlock", textBlockDescription);
         AssertEqual(expectedText, GetProperty(itemTextBlock, "Text"), bindingDescription);
         AssertEqual(expectedTag, GetProperty(itemTextBlock, "Tag"), tagDescription);
+    }
+
+    private static void ValidatePostShowImplicitDataTemplate(Assembly presentationCore, object window)
+    {
+        object implicitTemplateHost = GetField(window, "ImplicitTemplateHost");
+        Invoke(implicitTemplateHost, "ApplyTemplate");
+        Invoke(implicitTemplateHost, "UpdateLayout");
+
+        object detailTextBlock = FindVisualDescendantByName(presentationCore, implicitTemplateHost, "ImplicitDetailTextBlock")
+            ?? throw new InvalidOperationException("Expected implicit data template host to contain ImplicitDetailTextBlock.");
+        AssertType(detailTextBlock, "System.Windows.Controls.TextBlock", "compiled implicit DataTemplate generated TextBlock");
+        AssertEqual("detail from implicit template", GetProperty(detailTextBlock, "Text"), "compiled implicit DataTemplate generated TextBlock binding");
+        AssertEqual("implicit data template", GetProperty(detailTextBlock, "Tag"), "compiled implicit DataTemplate generated value");
     }
 
     private static void ValidateObjectDataProvider(object window)
@@ -820,6 +834,18 @@ internal static class Program
         AssertEqual("item gamma", GetProperty(GetCollectionItem(sortedItems, 0), "Name"), "compiled CollectionViewSource collection-change first item");
         AssertCollectionCount(filteredItems, expected: 1, "compiled filtered CollectionViewSource collection-change items");
         AssertEqual("item beta", GetProperty(GetCollectionItem(filteredItems, 0), "Name"), "compiled filtered CollectionViewSource collection-change item");
+    }
+
+    private static void ValidateImplicitDataTemplate(object window)
+    {
+        object dataContext = GetProperty(window, "DataContext");
+        object detail = GetProperty(dataContext, "Detail");
+        AssertType(detail, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeDetail", "compiled implicit DataTemplate detail model");
+        AssertEqual("detail from implicit template", GetProperty(detail, "Title"), "compiled implicit DataTemplate detail title");
+
+        object implicitTemplateHost = GetField(window, "ImplicitTemplateHost");
+        AssertType(implicitTemplateHost, "System.Windows.Controls.ContentControl", "compiled implicit DataTemplate host");
+        AssertSame(detail, GetProperty(implicitTemplateHost, "Content"), "compiled implicit DataTemplate host content binding");
     }
 
     private static ActivationRecorder RegisterPortableActivation(
@@ -1383,6 +1409,7 @@ internal static class Program
             Invoke(typedActivation.Window, "UpdateLayout");
             ValidatePostShowItemTemplateTriggerActivation(_presentationCore, typedActivation.Window);
             ValidatePostShowItemTemplateSelector(_presentationCore, typedActivation.Window);
+            ValidatePostShowImplicitDataTemplate(_presentationCore, typedActivation.Window);
         }
 
         public void Dispose(object activation)
@@ -1415,6 +1442,7 @@ internal static class Program
             ValidatePostShowBindingFeatures(activation.Window);
             ValidatePostShowItemTemplateTriggerActivation(_presentationCore, activation.Window);
             ValidatePostShowItemTemplateSelector(_presentationCore, activation.Window);
+            ValidatePostShowImplicitDataTemplate(_presentationCore, activation.Window);
         }
 
         private void AssertSameActivation(object activation)

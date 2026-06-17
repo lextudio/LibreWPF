@@ -163,6 +163,8 @@ public partial class MainWindow : Window
 
         public ObservableCollection<SmokeItem> Items { get; } = new();
 
+        public SmokeDetail Detail { get; } = new("detail from implicit template");
+
         public SmokeItem? SelectedItem
         {
             get => _selectedItem;
@@ -235,6 +237,16 @@ public sealed class SmokeItem
     }
 
     public string Name { get; }
+}
+
+public sealed class SmokeDetail
+{
+    public SmokeDetail(string title)
+    {
+        Title = title;
+    }
+
+    public string Title { get; }
 }
 
 public sealed class SmokeItemTemplateSelector : DataTemplateSelector

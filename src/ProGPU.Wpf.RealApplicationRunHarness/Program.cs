@@ -148,11 +148,7 @@ internal static class Program
         object foundInputBox = Invoke(window, "FindName", "InputBox");
         AssertSame(inputBox, foundInputBox, "compiled namescope lookup");
 
-        object richTextBox = GetCollectionItem(children, 2);
-        AssertType(richTextBox, "System.Windows.Controls.RichTextBox", "compiled RichTextBox");
-        object flowDocument = GetProperty(richTextBox, "Document");
-        AssertType(flowDocument, "System.Windows.Documents.FlowDocument", "compiled FlowDocument");
-        AssertCollectionCount(GetProperty(flowDocument, "Blocks"), expected: 1, "compiled FlowDocument blocks");
+        ValidateRichFlowDocument(window);
 
         ValidateBindingAndCommand(window);
         ValidateMergedResourceDictionary(window, application);
@@ -177,6 +173,62 @@ internal static class Program
         AssertEqual(9, GetProperty(inputBox, "SelectionStart"), "compiled TextBox replacement selection start");
         AssertEqual(9, GetProperty(inputBox, "SelectionLength"), "compiled TextBox replacement selection length");
         AssertEqual("selection", GetProperty(inputBox, "SelectedText"), "compiled TextBox replacement selected text");
+    }
+
+    private static void ValidateRichFlowDocument(object window)
+    {
+        object richTextBox = GetField(window, "DocumentBox");
+        AssertType(richTextBox, "System.Windows.Controls.RichTextBox", "compiled RichTextBox");
+
+        object flowDocument = GetProperty(richTextBox, "Document");
+        AssertType(flowDocument, "System.Windows.Documents.FlowDocument", "compiled FlowDocument");
+
+        object blocks = GetProperty(flowDocument, "Blocks");
+        AssertCollectionCount(blocks, expected: 2, "compiled FlowDocument blocks");
+
+        object introParagraph = GetCollectionItem(blocks, 0);
+        AssertType(introParagraph, "System.Windows.Documents.Paragraph", "compiled FlowDocument intro paragraph");
+
+        object inlines = GetProperty(introParagraph, "Inlines");
+
+        object bold = GetFirstCollectionItemOfType(inlines, "System.Windows.Documents.Bold", "compiled FlowDocument bold inline");
+        object boldRun = GetFirstCollectionItemOfType(GetProperty(bold, "Inlines"), "System.Windows.Documents.Run", "compiled FlowDocument bold run");
+        AssertEqual("rich", GetProperty(boldRun, "Text"), "compiled FlowDocument bold run text");
+
+        object hyperlink = GetFirstCollectionItemOfType(inlines, "System.Windows.Documents.Hyperlink", "compiled FlowDocument hyperlink");
+        AssertEqual("https://example.test/progpu-wpf", GetProperty(hyperlink, "NavigateUri").ToString(), "compiled FlowDocument hyperlink URI");
+        object hyperlinkRun = GetFirstCollectionItemOfType(GetProperty(hyperlink, "Inlines"), "System.Windows.Documents.Run", "compiled FlowDocument hyperlink run");
+        AssertEqual("link", GetProperty(hyperlinkRun, "Text"), "compiled FlowDocument hyperlink run text");
+
+        object list = GetCollectionItem(blocks, 1);
+        AssertType(list, "System.Windows.Documents.List", "compiled FlowDocument list");
+        AssertEqual("Decimal", GetProperty(list, "MarkerStyle").ToString(), "compiled FlowDocument marker style");
+        object listItems = GetProperty(list, "ListItems");
+        AssertCollectionCount(listItems, expected: 2, "compiled FlowDocument list items");
+        AssertFlowDocumentListItemText(GetCollectionItem(listItems, 0), "first document item", "first");
+        AssertFlowDocumentListItemText(GetCollectionItem(listItems, 1), "second document item", "second");
+
+        object textRange = Create(
+            flowDocument.GetType().Assembly,
+            "System.Windows.Documents.TextRange",
+            GetProperty(flowDocument, "ContentStart"),
+            GetProperty(flowDocument, "ContentEnd"));
+        string text = GetProperty(textRange, "Text").ToString() ?? string.Empty;
+        AssertContains("compiled", text, "compiled FlowDocument TextRange paragraph text");
+        AssertContains("rich", text, "compiled FlowDocument TextRange bold text");
+        AssertContains("FlowDocument", text, "compiled FlowDocument TextRange document text");
+        AssertContains("link", text, "compiled FlowDocument TextRange hyperlink text");
+        AssertContains("first document item", text, "compiled FlowDocument TextRange first list item");
+        AssertContains("second document item", text, "compiled FlowDocument TextRange second list item");
+    }
+
+    private static void AssertFlowDocumentListItemText(object listItem, string expectedText, string description)
+    {
+        AssertType(listItem, "System.Windows.Documents.ListItem", $"compiled FlowDocument {description} list item");
+        object paragraph = GetCollectionItem(GetProperty(listItem, "Blocks"), 0);
+        AssertType(paragraph, "System.Windows.Documents.Paragraph", $"compiled FlowDocument {description} list paragraph");
+        object run = GetFirstCollectionItemOfType(GetProperty(paragraph, "Inlines"), "System.Windows.Documents.Run", $"compiled FlowDocument {description} list run");
+        AssertEqual(expectedText, GetProperty(run, "Text"), $"compiled FlowDocument {description} list text");
     }
 
     private static void ValidateBindingAndCommand(object window)
@@ -496,7 +548,38 @@ internal static class Program
                 ?? throw new InvalidOperationException($"Collection item {index} had a null value.");
         }
 
+        if (collection is IEnumerable enumerable)
+        {
+            int currentIndex = 0;
+            foreach (object? item in enumerable)
+            {
+                if (currentIndex == index)
+                {
+                    return item
+                        ?? throw new InvalidOperationException($"Collection item {index} had a null value.");
+                }
+
+                currentIndex++;
+            }
+        }
+
         return Invoke(collection, "get_Item", index);
+    }
+
+    private static object GetFirstCollectionItemOfType(object collection, string expectedFullName, string description)
+    {
+        if (collection is IEnumerable enumerable)
+        {
+            foreach (object? item in enumerable)
+            {
+                if (item != null && string.Equals(item.GetType().FullName, expectedFullName, StringComparison.Ordinal))
+                {
+                    return item;
+                }
+            }
+        }
+
+        throw new InvalidOperationException($"Expected {description} to contain '{expectedFullName}'.");
     }
 
     private static object GetDependencyPropertyValue(object dependencyObject, Type ownerType, string dependencyPropertyFieldName)
@@ -636,6 +719,14 @@ internal static class Program
         if (!Equals(expected, actual))
         {
             throw new InvalidOperationException($"Expected {description} to be '{expected}', got '{actual}'.");
+        }
+    }
+
+    private static void AssertContains(string expectedSubstring, string actual, string description)
+    {
+        if (!actual.Contains(expectedSubstring, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException($"Expected {description} to contain '{expectedSubstring}', got '{actual}'.");
         }
     }
 

@@ -21,11 +21,34 @@
             x:Name="InputBox"
             Style="{StaticResource SmokeTextBoxStyle}"
             Text="compiled TextBox" />
-        <RichTextBox Margin="0,8,0,0">
-            <FlowDocument>
-                <Paragraph>
-                    <Run Text="compiled FlowDocument" />
+        <RichTextBox
+            x:Name="DocumentBox"
+            Margin="0,8,0,0">
+            <FlowDocument x:Name="CompiledDocument">
+                <Paragraph x:Name="IntroParagraph">
+                    <Run Text="compiled " />
+                    <Bold>
+                        <Run Text="rich" />
+                    </Bold>
+                    <Run Text=" FlowDocument " />
+                    <Hyperlink
+                        x:Name="DocumentLink"
+                        NavigateUri="https://example.test/progpu-wpf">
+                        <Run Text="link" />
+                    </Hyperlink>
                 </Paragraph>
+                <List MarkerStyle="Decimal">
+                    <ListItem>
+                        <Paragraph>
+                            <Run Text="first document item" />
+                        </Paragraph>
+                    </ListItem>
+                    <ListItem>
+                        <Paragraph>
+                            <Run Text="second document item" />
+                        </Paragraph>
+                    </ListItem>
+                </List>
             </FlowDocument>
         </RichTextBox>
         <TextBlock

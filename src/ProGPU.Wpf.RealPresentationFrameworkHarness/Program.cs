@@ -200,6 +200,7 @@ internal static class Program
         Type brushType = GetRequiredType(presentationCore, "System.Windows.Media.Brush");
         Type penType = GetRequiredType(presentationCore, "System.Windows.Media.Pen");
         Type geometryType = GetRequiredType(presentationCore, "System.Windows.Media.Geometry");
+        Type transformType = GetRequiredType(presentationCore, "System.Windows.Media.Transform");
         Type pointType = GetRequiredType(windowsBase, "System.Windows.Point");
         Type rectType = GetRequiredType(windowsBase, "System.Windows.Rect");
 
@@ -221,6 +222,10 @@ internal static class Program
         object geometryRect = Activator.CreateInstance(rectType, 10.0, 28.0, 18.0, 11.0)
             ?? throw new InvalidOperationException("Failed to create System.Windows.Rect.");
         object rectangleGeometry = Create(presentationCore, "System.Windows.Media.RectangleGeometry", geometryRect);
+        object clipRect = Activator.CreateInstance(rectType, 1.0, 1.0, 42.0, 34.0)
+            ?? throw new InvalidOperationException("Failed to create System.Windows.Rect.");
+        object clipGeometry = Create(presentationCore, "System.Windows.Media.RectangleGeometry", clipRect);
+        object transform = Create(presentationCore, "System.Windows.Media.TranslateTransform", 6.0, 7.0);
 
         InvokeDrawing(
             drawingContext,
@@ -252,6 +257,54 @@ internal static class Program
             purpleBrush,
             null,
             rectangleGeometry);
+        InvokeDrawing(
+            drawingContext,
+            "PushOpacity",
+            new[] { typeof(double) },
+            0.5);
+        InvokeDrawing(
+            drawingContext,
+            "DrawRectangle",
+            new[] { brushType, penType, rectType },
+            greenBrush,
+            null,
+            rect);
+        InvokeDrawing(
+            drawingContext,
+            "Pop",
+            Type.EmptyTypes);
+        InvokeDrawing(
+            drawingContext,
+            "PushClip",
+            new[] { geometryType },
+            clipGeometry);
+        InvokeDrawing(
+            drawingContext,
+            "DrawRectangle",
+            new[] { brushType, penType, rectType },
+            blueBrush,
+            null,
+            rect);
+        InvokeDrawing(
+            drawingContext,
+            "Pop",
+            Type.EmptyTypes);
+        InvokeDrawing(
+            drawingContext,
+            "PushTransform",
+            new[] { transformType },
+            transform);
+        InvokeDrawing(
+            drawingContext,
+            "DrawLine",
+            new[] { penType, pointType, pointType },
+            bluePen,
+            lineStart,
+            lineEnd);
+        InvokeDrawing(
+            drawingContext,
+            "Pop",
+            Type.EmptyTypes);
         Invoke(drawingContext, "Close");
     }
 
@@ -275,7 +328,14 @@ internal static class Program
             ProGpuRenderCommandType.DrawRect,
             ProGpuRenderCommandType.DrawLine,
             ProGpuRenderCommandType.DrawEllipse,
-            ProGpuRenderCommandType.DrawPath
+            ProGpuRenderCommandType.DrawPath,
+            ProGpuRenderCommandType.PushOpacity,
+            ProGpuRenderCommandType.DrawRect,
+            ProGpuRenderCommandType.PopOpacity,
+            ProGpuRenderCommandType.PushGeometryClip,
+            ProGpuRenderCommandType.DrawRect,
+            ProGpuRenderCommandType.PopGeometryClip,
+            ProGpuRenderCommandType.DrawLine
         };
         if (commands.Count != expectedCommandTypes.Length)
         {
@@ -291,6 +351,10 @@ internal static class Program
                     $"Expected retained DrawingVisual command {i} to be {expectedCommandTypes[i]}, got {commands[i].Type}.");
             }
         }
+
+        AssertEqual(0.5f, commands[4].FontSize, "real DrawingVisual retained opacity value");
+        AssertEqual(6f, commands[10].Transform.M41, "real DrawingVisual transformed line X offset");
+        AssertEqual(7f, commands[10].Transform.M42, "real DrawingVisual transformed line Y offset");
     }
 
     private static ProGpuContainerVisual GetSingleContainerChild(ProGpuContainerVisual parent, string description)

@@ -622,10 +622,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"DrawLine\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"DrawEllipse\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"DrawGeometry\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"PushOpacity\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"PushClip\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"PushTransform\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("VerifyRetainedDrawingVisualBranch(target)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.DrawLine", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.DrawEllipse", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.DrawPath", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGpuRenderCommandType.PushOpacity", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGpuRenderCommandType.PushGeometryClip", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("real DrawingVisual transformed line X offset", harnessProgram, StringComparison.Ordinal);
     }
 
     [Fact]

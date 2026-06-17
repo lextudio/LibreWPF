@@ -882,6 +882,9 @@
 - Advanced the ProGPU submodule to `24429a9` (`skia: Preserve snapshot texture format`) and replied to ProGPU PR #17 review thread `discussion_r3424522620`.
 - Skia `SKSurface.Snapshot()` now preserves the backing `GpuTexture.Format` instead of forcing RGBA, so BGRA backend render targets snapshot without hidden channel swaps or WebGPU texture-copy format mismatches.
 - Verified the ProGPU snapshot-format slice with `git diff --check` and focused `SkSurfaceBackendRenderTargetTests`; 9 focused tests passed with existing warnings only.
+- Advanced the ProGPU submodule to `c76586b` (`skia: Apply SaveLayer image filters`) and replied to ProGPU PR #17 review thread `discussion_r3424268159`.
+- Skia `SaveLayer` restore now consumes `SKPaint.ImageFilter`: blur filters route the isolated layer texture through the native `ImageEffect` extension, and drop-shadow filters render through a native ProGPU `DropShadowEffect` offscreen pass before compositing.
+- Verified the ProGPU SaveLayer image-filter slice with `git diff --check` and focused `SkCanvasStateTests|ImageEffectRenderTests`; 38 focused tests passed with existing warnings only.
 
 ## Open Porting Items
 

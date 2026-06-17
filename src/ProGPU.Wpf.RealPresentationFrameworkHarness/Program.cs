@@ -321,6 +321,15 @@ internal static class Program
             drawingContext,
             "Pop",
             Type.EmptyTypes);
+        InvokeDrawing(
+            drawingContext,
+            "DrawRoundedRectangle",
+            new[] { brushType, penType, rectType, typeof(double), typeof(double) },
+            purpleBrush,
+            null,
+            rect,
+            4.0,
+            6.0);
         Invoke(drawingContext, "Close");
     }
 
@@ -354,7 +363,8 @@ internal static class Program
             ProGpuRenderCommandType.DrawLine,
             ProGpuRenderCommandType.PushOpacityMask,
             ProGpuRenderCommandType.DrawRect,
-            ProGpuRenderCommandType.PopOpacityMask
+            ProGpuRenderCommandType.PopOpacityMask,
+            ProGpuRenderCommandType.DrawRoundedRect
         };
         if (commands.Count != expectedCommandTypes.Length)
         {
@@ -378,6 +388,9 @@ internal static class Program
         {
             throw new InvalidOperationException("Expected real DrawingVisual retained opacity mask to carry a native brush.");
         }
+
+        AssertEqual(4f, commands[14].RadiusX, "real DrawingVisual retained rounded rectangle radius X");
+        AssertEqual(6f, commands[14].RadiusY, "real DrawingVisual retained rounded rectangle radius Y");
     }
 
     private static ProGpuContainerVisual GetSingleContainerChild(ProGpuContainerVisual parent, string description)

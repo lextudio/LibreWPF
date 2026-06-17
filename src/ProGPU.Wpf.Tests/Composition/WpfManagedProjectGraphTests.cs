@@ -621,6 +621,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("System.Windows.Controls.ControlTemplate", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Media.DrawingVisual", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"DrawLine\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"DrawRoundedRectangle\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"DrawEllipse\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"DrawGeometry\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"PushOpacity\"", harnessProgram, StringComparison.Ordinal);
@@ -629,12 +630,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"PushOpacityMask\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("VerifyRetainedDrawingVisualBranch(target)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.DrawLine", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGpuRenderCommandType.DrawRoundedRect", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.DrawEllipse", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.DrawPath", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.PushOpacity", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.PushGeometryClip", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuRenderCommandType.PushOpacityMask", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("real DrawingVisual retained opacity mask", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("real DrawingVisual retained rounded rectangle radius X", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("real DrawingVisual transformed line X offset", harnessProgram, StringComparison.Ordinal);
     }
 

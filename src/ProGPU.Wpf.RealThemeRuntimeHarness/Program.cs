@@ -120,7 +120,9 @@ internal static class Program
     {
         object windowStyle = GetDictionaryValue(themeDictionary, "DefaultWindowStyle");
         object buttonStyle = GetDictionaryValue(themeDictionary, "AccentButtonStyle");
+        object calendarStyle = GetDictionaryValue(themeDictionary, "DefaultCalendarStyle");
         object comboBoxStyle = GetDictionaryValue(themeDictionary, "DefaultComboBoxStyle");
+        object datePickerStyle = GetDictionaryValue(themeDictionary, "DefaultDatePickerStyle");
         object listViewStyle = GetDictionaryValue(themeDictionary, "DefaultListViewStyle");
         object listViewItemStyle = GetDictionaryValue(themeDictionary, "DefaultListViewItemStyle");
         object passwordBoxStyle = GetDictionaryValue(themeDictionary, "DefaultPasswordBoxStyle");
@@ -130,7 +132,9 @@ internal static class Program
         object treeViewStyle = GetDictionaryValue(themeDictionary, "DefaultTreeViewStyle");
         object treeViewItemStyle = GetDictionaryValue(themeDictionary, "DefaultTreeViewItemStyle");
         object richTextBoxStyle = GetDictionaryValue(themeDictionary, "DefaultRichTextBoxStyle");
+        Type calendarType = GetRequiredType(presentationFramework, "System.Windows.Controls.Calendar");
         Type comboBoxType = GetRequiredType(presentationFramework, "System.Windows.Controls.ComboBox");
+        Type datePickerType = GetRequiredType(presentationFramework, "System.Windows.Controls.DatePicker");
         Type listViewType = GetRequiredType(presentationFramework, "System.Windows.Controls.ListView");
         Type passwordBoxType = GetRequiredType(presentationFramework, "System.Windows.Controls.PasswordBox");
         Type sliderType = GetRequiredType(presentationFramework, "System.Windows.Controls.Slider");
@@ -202,6 +206,21 @@ internal static class Program
         SetProperty(treeView, "Style", treeViewStyle);
         AddToCollection(children, treeView);
 
+        DateTime themeDate = new(2026, 1, 7);
+
+        object calendar = Create(presentationFramework, "System.Windows.Controls.Calendar");
+        SetProperty(calendar, "DisplayDate", themeDate);
+        SetProperty(calendar, "SelectedDate", themeDate);
+        SetEnumProperty(calendar, "FirstDayOfWeek", "Monday");
+        SetProperty(calendar, "Style", calendarStyle);
+        AddToCollection(children, calendar);
+
+        object datePicker = Create(presentationFramework, "System.Windows.Controls.DatePicker");
+        SetProperty(datePicker, "DisplayDate", themeDate);
+        SetProperty(datePicker, "SelectedDate", themeDate);
+        SetProperty(datePicker, "Style", datePickerStyle);
+        AddToCollection(children, datePicker);
+
         object comboBox = Create(presentationFramework, "System.Windows.Controls.ComboBox");
         object comboBoxItems = GetProperty(comboBox, "Items");
         AddToCollection(comboBoxItems, "theme item one");
@@ -235,6 +254,8 @@ internal static class Program
         AssertSame(tabControlStyle, GetProperty(tabControl, "Style"), "TabControl Fluent style");
         AssertSame(listViewStyle, GetProperty(listView, "Style"), "ListView Fluent style");
         AssertSame(treeViewStyle, GetProperty(treeView, "Style"), "TreeView Fluent style");
+        AssertSame(calendarStyle, GetProperty(calendar, "Style"), "Calendar Fluent style");
+        AssertSame(datePickerStyle, GetProperty(datePicker, "Style"), "DatePicker Fluent style");
         AssertSame(comboBoxStyle, GetProperty(comboBox, "Style"), "ComboBox Fluent style");
         AssertSame(passwordBoxStyle, GetProperty(passwordBox, "Style"), "PasswordBox Fluent style");
         AssertSame(sliderStyle, GetProperty(slider, "Style"), "Slider Fluent style");
@@ -242,9 +263,13 @@ internal static class Program
         AssertSame(richTextBoxStyle, GetProperty(richTextBox, "Style"), "RichTextBox Fluent style");
         AssertSame(buttonStyle, Invoke(application, "TryFindResource", "AccentButtonStyle"), "application Fluent resource lookup");
         AssertSame(textBoxStyle, Invoke(application, "TryFindResource", "DefaultTextBoxStyle"), "application Fluent TextBox resource lookup");
+        AssertSame(calendarStyle, Invoke(application, "TryFindResource", "DefaultCalendarStyle"), "application Fluent Calendar resource lookup");
         AssertSame(comboBoxStyle, Invoke(application, "TryFindResource", "DefaultComboBoxStyle"), "application Fluent ComboBox resource lookup");
+        AssertSame(datePickerStyle, Invoke(application, "TryFindResource", "DefaultDatePickerStyle"), "application Fluent DatePicker resource lookup");
+        AssertType(Invoke(application, "TryFindResource", calendarType), "System.Windows.Style", "application Fluent Calendar implicit style lookup");
         AssertSame(passwordBoxStyle, Invoke(application, "TryFindResource", "DefaultPasswordBoxStyle"), "application Fluent PasswordBox resource lookup");
         AssertType(Invoke(application, "TryFindResource", comboBoxType), "System.Windows.Style", "application Fluent ComboBox implicit style lookup");
+        AssertType(Invoke(application, "TryFindResource", datePickerType), "System.Windows.Style", "application Fluent DatePicker implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", listViewType), "System.Windows.Style", "application Fluent ListView implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", passwordBoxType), "System.Windows.Style", "application Fluent PasswordBox implicit style lookup");
         AssertSame(sliderStyle, Invoke(application, "TryFindResource", sliderType), "application Fluent Slider implicit style lookup");
@@ -257,24 +282,29 @@ internal static class Program
     {
         object content = GetProperty(window, "Content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expectedMinimum: 22, "themed stack panel children");
+        AssertCollectionCount(children, expectedMinimum: 24, "themed stack panel children");
 
         int childCount = GetCollectionCount(children);
-        object button = GetCollectionItem(children, childCount - 9);
-        object textBox = GetCollectionItem(children, childCount - 8);
-        object tabControl = GetCollectionItem(children, childCount - 7);
-        object listView = GetCollectionItem(children, childCount - 6);
-        object treeView = GetCollectionItem(children, childCount - 5);
+        object button = GetCollectionItem(children, childCount - 11);
+        object textBox = GetCollectionItem(children, childCount - 10);
+        object tabControl = GetCollectionItem(children, childCount - 9);
+        object listView = GetCollectionItem(children, childCount - 8);
+        object treeView = GetCollectionItem(children, childCount - 7);
+        object calendar = GetCollectionItem(children, childCount - 6);
+        object datePicker = GetCollectionItem(children, childCount - 5);
         object comboBox = GetCollectionItem(children, childCount - 4);
         object passwordBox = GetCollectionItem(children, childCount - 3);
         object slider = GetCollectionItem(children, childCount - 2);
         object progressBar = GetCollectionItem(children, childCount - 1);
         object richTextBox = Invoke(window, "FindName", "DocumentBox");
+        DateTime themeDate = new(2026, 1, 7);
         AssertType(richTextBox, "System.Windows.Controls.RichTextBox", "compiled themed RichTextBox");
         AssertType(textBox, "System.Windows.Controls.TextBox", "created themed TextBox");
         AssertType(tabControl, "System.Windows.Controls.TabControl", "created themed TabControl");
         AssertType(listView, "System.Windows.Controls.ListView", "created themed ListView");
         AssertType(treeView, "System.Windows.Controls.TreeView", "created themed TreeView");
+        AssertType(calendar, "System.Windows.Controls.Calendar", "created themed Calendar");
+        AssertType(datePicker, "System.Windows.Controls.DatePicker", "created themed DatePicker");
         AssertType(comboBox, "System.Windows.Controls.ComboBox", "created themed ComboBox");
         AssertType(passwordBox, "System.Windows.Controls.PasswordBox", "created themed PasswordBox");
         AssertType(slider, "System.Windows.Controls.Slider", "created themed Slider");
@@ -282,12 +312,19 @@ internal static class Program
 
         AssertType(GetDictionaryValue(themeDictionary, "DefaultWindowStyle"), "System.Windows.Style", "DefaultWindowStyle");
         AssertType(GetDictionaryValue(themeDictionary, "AccentButtonStyle"), "System.Windows.Style", "AccentButtonStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultCalendarStyle"), "System.Windows.Style", "DefaultCalendarStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultCalendarButtonStyle"), "System.Windows.Style", "DefaultCalendarButtonStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultCalendarDayButtonStyle"), "System.Windows.Style", "DefaultCalendarDayButtonStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultCalendarItemStyle"), "System.Windows.Style", "DefaultCalendarItemStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxStyle"), "System.Windows.Style", "DefaultComboBoxStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxItemStyle"), "System.Windows.Style", "DefaultComboBoxItemStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxTextBoxStyle"), "System.Windows.Style", "DefaultComboBoxTextBoxStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxToggleButtonStyle"), "System.Windows.Style", "DefaultComboBoxToggleButtonStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxTemplate"), "System.Windows.Controls.ControlTemplate", "DefaultComboBoxTemplate");
         AssertType(GetDictionaryValue(themeDictionary, "EditableComboBoxTemplate"), "System.Windows.Controls.ControlTemplate", "EditableComboBoxTemplate");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultDatePickerStyle"), "System.Windows.Style", "DefaultDatePickerStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DatePickerCalendarStyle"), "System.Windows.Style", "DatePickerCalendarStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultDatePickerTextBoxStyle"), "System.Windows.Style", "DefaultDatePickerTextBoxStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultListViewStyle"), "System.Windows.Style", "DefaultListViewStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultListViewItemStyle"), "System.Windows.Style", "DefaultListViewItemStyle");
         AssertType(GetDictionaryValue(themeDictionary, "ListViewTemplate"), "System.Windows.Controls.ControlTemplate", "ListViewTemplate");
@@ -304,7 +341,9 @@ internal static class Program
         AssertType(GetDictionaryValue(themeDictionary, "DefaultTreeViewStyle"), "System.Windows.Style", "DefaultTreeViewStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultTreeViewItemStyle"), "System.Windows.Style", "DefaultTreeViewItemStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultRichTextBoxStyle"), "System.Windows.Style", "DefaultRichTextBoxStyle");
+        AssertType(GetDictionaryValue(themeDictionary, calendar.GetType()), "System.Windows.Style", "implicit Calendar Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, comboBox.GetType()), "System.Windows.Style", "implicit ComboBox Fluent style");
+        AssertType(GetDictionaryValue(themeDictionary, datePicker.GetType()), "System.Windows.Style", "implicit DatePicker Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, listView.GetType()), "System.Windows.Style", "implicit ListView Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, passwordBox.GetType()), "System.Windows.Style", "implicit PasswordBox Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, slider.GetType()), "System.Windows.Style", "implicit Slider Fluent style");
@@ -324,6 +363,8 @@ internal static class Program
         AssertStyleTarget(GetProperty(tabControl, "Style"), "System.Windows.Controls.TabControl", "TabControl Fluent style target");
         AssertStyleTarget(GetProperty(listView, "Style"), "System.Windows.Controls.ListView", "ListView Fluent style target");
         AssertStyleTarget(GetProperty(treeView, "Style"), "System.Windows.Controls.TreeView", "TreeView Fluent style target");
+        AssertStyleTarget(GetProperty(calendar, "Style"), "System.Windows.Controls.Calendar", "Calendar Fluent style target");
+        AssertStyleTarget(GetProperty(datePicker, "Style"), "System.Windows.Controls.DatePicker", "DatePicker Fluent style target");
         AssertStyleTarget(GetProperty(comboBox, "Style"), "System.Windows.Controls.ComboBox", "ComboBox Fluent style target");
         AssertStyleTarget(GetProperty(passwordBox, "Style"), "System.Windows.Controls.PasswordBox", "PasswordBox Fluent style target");
         AssertStyleTarget(GetProperty(slider, "Style"), "System.Windows.Controls.Slider", "Slider Fluent style target");
@@ -339,6 +380,8 @@ internal static class Program
         ApplyItemsTemplates(listView, "themed ListView items");
         Invoke(treeView, "ApplyTemplate");
         ApplyItemsTemplates(treeView, "themed TreeView root items");
+        Invoke(calendar, "ApplyTemplate");
+        Invoke(datePicker, "ApplyTemplate");
         Invoke(comboBox, "ApplyTemplate");
         Invoke(passwordBox, "ApplyTemplate");
         Invoke(slider, "ApplyTemplate");
@@ -351,6 +394,8 @@ internal static class Program
         AssertType(GetProperty(tabControl, "Template"), "System.Windows.Controls.ControlTemplate", "TabControl template");
         AssertType(GetProperty(listView, "Template"), "System.Windows.Controls.ControlTemplate", "ListView template");
         AssertType(GetProperty(treeView, "Template"), "System.Windows.Controls.ControlTemplate", "TreeView template");
+        AssertType(GetProperty(calendar, "Template"), "System.Windows.Controls.ControlTemplate", "Calendar template");
+        AssertType(GetProperty(datePicker, "Template"), "System.Windows.Controls.ControlTemplate", "DatePicker template");
         AssertType(GetProperty(comboBox, "Template"), "System.Windows.Controls.ControlTemplate", "ComboBox template");
         AssertType(GetProperty(passwordBox, "Template"), "System.Windows.Controls.ControlTemplate", "PasswordBox template");
         AssertType(GetProperty(slider, "Template"), "System.Windows.Controls.ControlTemplate", "Slider template");
@@ -359,6 +404,8 @@ internal static class Program
         AssertStyleHasSetter(GetProperty(tabControl, "Style"), "Template", "TabControl Fluent template setter");
         AssertStyleHasSetter(GetProperty(listView, "Style"), "Template", "ListView Fluent template setter");
         AssertStyleHasSetter(GetProperty(treeView, "Style"), "Template", "TreeView Fluent template setter");
+        AssertStyleHasSetter(GetProperty(calendar, "Style"), "Template", "Calendar Fluent template setter");
+        AssertStyleHasSetter(GetProperty(datePicker, "Style"), "Template", "DatePicker Fluent template setter");
         AssertStyleHasSetter(GetProperty(comboBox, "Style"), "Template", "ComboBox Fluent template setter");
         AssertStyleHasSetter(GetProperty(passwordBox, "Style"), "Template", "PasswordBox Fluent template setter");
         AssertStyleHasSetter(GetProperty(textBox, "Style"), "Template", "TextBox Fluent template setter");
@@ -377,6 +424,11 @@ internal static class Program
         AssertEqual("Theme tree root", GetProperty(rootTreeViewItem, "Header"), "themed TreeViewItem root header");
         AssertEqual(true, GetProperty(rootTreeViewItem, "IsExpanded"), "themed TreeViewItem expanded state");
         AssertEqual("Theme tree child", GetProperty(GetCollectionItem(GetProperty(rootTreeViewItem, "Items"), 0), "Header"), "themed TreeViewItem child header");
+        AssertEqual(themeDate, GetProperty(calendar, "DisplayDate"), "themed Calendar display date");
+        AssertEqual(themeDate, GetProperty(calendar, "SelectedDate"), "themed Calendar selected date");
+        AssertEqual("Monday", GetProperty(calendar, "FirstDayOfWeek").ToString(), "themed Calendar first day");
+        AssertEqual(themeDate, GetProperty(datePicker, "DisplayDate"), "themed DatePicker display date");
+        AssertEqual(themeDate, GetProperty(datePicker, "SelectedDate"), "themed DatePicker selected date");
         AssertEqual(2, GetCollectionCount(GetProperty(comboBox, "Items")), "themed ComboBox item count");
         AssertEqual(1, GetProperty(comboBox, "SelectedIndex"), "themed ComboBox selected index");
         AssertEqual("theme item two", GetProperty(comboBox, "SelectedItem"), "themed ComboBox selected item");

@@ -51,6 +51,18 @@
             x:Key="SmokeDetailTemplateSelector"
             FallbackTemplate="{StaticResource FallbackDetailTemplate}"
             SelectedTemplate="{StaticResource SelectedDetailTemplate}" />
+        <DataTemplate x:Key="ExpanderHeaderTemplate" DataType="{x:Type local:SmokeDetail}">
+            <TextBlock
+                x:Name="ExpanderHeaderTextBlock"
+                Tag="expander header template"
+                Text="{Binding Title}" />
+        </DataTemplate>
+        <DataTemplate x:Key="GroupBoxHeaderTemplate" DataType="{x:Type local:SmokeDetail}">
+            <TextBlock
+                x:Name="GroupBoxHeaderTextBlock"
+                Tag="group box header template"
+                Text="{Binding Title}" />
+        </DataTemplate>
         <HierarchicalDataTemplate
             x:Key="SmokeNodeTemplate"
             DataType="{x:Type local:SmokeNode}"
@@ -528,5 +540,26 @@
                     Text="beta tab content" />
             </TabItem>
         </TabControl>
+        <Expander
+            x:Name="SmokeExpander"
+            Header="{Binding Detail}"
+            HeaderTemplate="{StaticResource ExpanderHeaderTemplate}"
+            IsExpanded="True"
+            Margin="0,8,0,0">
+            <TextBlock
+                x:Name="ExpanderContentText"
+                Tag="expander content"
+                Text="{Binding Greeting}" />
+        </Expander>
+        <GroupBox
+            x:Name="SmokeGroupBox"
+            Header="{Binding Detail}"
+            HeaderTemplate="{StaticResource GroupBoxHeaderTemplate}"
+            Margin="0,8,0,0">
+            <TextBlock
+                x:Name="GroupBoxContentText"
+                Tag="group box content"
+                Text="{Binding ButtonText}" />
+        </GroupBox>
     </StackPanel>
 </Window>

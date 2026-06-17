@@ -150,7 +150,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 41, "stack panel children");
+        AssertCollectionCount(children, expected: 43, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -205,6 +205,7 @@ internal static class Program
         ValidateContentTemplateSelector(window);
         ValidateHierarchicalDataTemplate(window);
         ValidateTabControl(window);
+        ValidateSectionControls(window);
     }
 
     private static void ValidateTextBoxSelection(object inputBox)
@@ -757,6 +758,47 @@ internal static class Program
 
         SetProperty(tabControl, "SelectedIndex", 1);
         Invoke(tabControl, "UpdateLayout");
+    }
+
+    private static void ValidatePostShowSectionControls(Assembly presentationCore, object window)
+    {
+        object expander = GetField(window, "SmokeExpander");
+        Invoke(expander, "ApplyTemplate");
+        Invoke(expander, "UpdateLayout");
+
+        object expanderHeader = FindVisualDescendantByName(presentationCore, expander, "ExpanderHeaderTextBlock")
+            ?? throw new InvalidOperationException("Expected Expander to generate ExpanderHeaderTextBlock.");
+        AssertType(expanderHeader, "System.Windows.Controls.TextBlock", "compiled Expander generated header");
+        AssertEqual("detail from implicit template", GetProperty(expanderHeader, "Text"), "compiled Expander generated header binding");
+        AssertEqual("expander header template", GetProperty(expanderHeader, "Tag"), "compiled Expander generated header tag");
+
+        object expanderContent = FindVisualDescendantByName(presentationCore, expander, "ExpanderContentText")
+            ?? throw new InvalidOperationException("Expected expanded Expander to generate ExpanderContentText.");
+        AssertType(expanderContent, "System.Windows.Controls.TextBlock", "compiled Expander generated content");
+        AssertEqual("updated greeting from property change", GetProperty(expanderContent, "Text"), "compiled Expander generated content binding");
+        AssertEqual("expander content", GetProperty(expanderContent, "Tag"), "compiled Expander generated content tag");
+
+        SetProperty(expander, "IsExpanded", false);
+        AssertEqual(false, GetProperty(expander, "IsExpanded"), "compiled Expander collapsed state");
+        SetProperty(expander, "IsExpanded", true);
+        Invoke(expander, "UpdateLayout");
+        AssertEqual(true, GetProperty(expander, "IsExpanded"), "compiled Expander restored expanded state");
+
+        object groupBox = GetField(window, "SmokeGroupBox");
+        Invoke(groupBox, "ApplyTemplate");
+        Invoke(groupBox, "UpdateLayout");
+
+        object groupHeader = FindVisualDescendantByName(presentationCore, groupBox, "GroupBoxHeaderTextBlock")
+            ?? throw new InvalidOperationException("Expected GroupBox to generate GroupBoxHeaderTextBlock.");
+        AssertType(groupHeader, "System.Windows.Controls.TextBlock", "compiled GroupBox generated header");
+        AssertEqual("detail from implicit template", GetProperty(groupHeader, "Text"), "compiled GroupBox generated header binding");
+        AssertEqual("group box header template", GetProperty(groupHeader, "Tag"), "compiled GroupBox generated header tag");
+
+        object groupContent = FindVisualDescendantByName(presentationCore, groupBox, "GroupBoxContentText")
+            ?? throw new InvalidOperationException("Expected GroupBox to generate GroupBoxContentText.");
+        AssertType(groupContent, "System.Windows.Controls.TextBlock", "compiled GroupBox generated content");
+        AssertEqual("run bound command", GetProperty(groupContent, "Text"), "compiled GroupBox generated content binding");
+        AssertEqual("group box content", GetProperty(groupContent, "Tag"), "compiled GroupBox generated content tag");
     }
 
     private static void ValidateObjectDataProvider(object window)
@@ -1486,6 +1528,49 @@ internal static class Program
         AssertSame(betaContent, GetProperty(tabControl, "SelectedContent"), "compiled TabControl selected content");
     }
 
+    private static void ValidateSectionControls(object window)
+    {
+        object dataContext = GetProperty(window, "DataContext");
+        object detail = GetProperty(dataContext, "Detail");
+
+        object expanderHeaderTemplate = Invoke(window, "TryFindResource", "ExpanderHeaderTemplate");
+        AssertType(expanderHeaderTemplate, "System.Windows.DataTemplate", "compiled Expander HeaderTemplate resource");
+        object expanderHeaderRoot = Invoke(expanderHeaderTemplate, "LoadContent");
+        AssertType(expanderHeaderRoot, "System.Windows.Controls.TextBlock", "compiled Expander HeaderTemplate root");
+        AssertEqual("ExpanderHeaderTextBlock", GetProperty(expanderHeaderRoot, "Name"), "compiled Expander HeaderTemplate named root");
+        AssertEqual("expander header template", GetProperty(expanderHeaderRoot, "Tag"), "compiled Expander HeaderTemplate root tag");
+        AssertBindingPath(expanderHeaderRoot, "TextProperty", "Title", "compiled Expander HeaderTemplate binding path");
+
+        object groupBoxHeaderTemplate = Invoke(window, "TryFindResource", "GroupBoxHeaderTemplate");
+        AssertType(groupBoxHeaderTemplate, "System.Windows.DataTemplate", "compiled GroupBox HeaderTemplate resource");
+        object groupBoxHeaderRoot = Invoke(groupBoxHeaderTemplate, "LoadContent");
+        AssertType(groupBoxHeaderRoot, "System.Windows.Controls.TextBlock", "compiled GroupBox HeaderTemplate root");
+        AssertEqual("GroupBoxHeaderTextBlock", GetProperty(groupBoxHeaderRoot, "Name"), "compiled GroupBox HeaderTemplate named root");
+        AssertEqual("group box header template", GetProperty(groupBoxHeaderRoot, "Tag"), "compiled GroupBox HeaderTemplate root tag");
+        AssertBindingPath(groupBoxHeaderRoot, "TextProperty", "Title", "compiled GroupBox HeaderTemplate binding path");
+
+        object expander = GetField(window, "SmokeExpander");
+        AssertType(expander, "System.Windows.Controls.Expander", "compiled Expander");
+        AssertSame(detail, GetProperty(expander, "Header"), "compiled Expander header binding");
+        AssertSame(expanderHeaderTemplate, GetProperty(expander, "HeaderTemplate"), "compiled Expander HeaderTemplate binding");
+        AssertEqual(true, GetProperty(expander, "IsExpanded"), "compiled Expander expanded state");
+        object expanderContent = GetProperty(expander, "Content");
+        AssertType(expanderContent, "System.Windows.Controls.TextBlock", "compiled Expander content");
+        AssertEqual("ExpanderContentText", GetProperty(expanderContent, "Name"), "compiled Expander content name");
+        AssertEqual("expander content", GetProperty(expanderContent, "Tag"), "compiled Expander content tag");
+        AssertBindingPath(expanderContent, "TextProperty", "Greeting", "compiled Expander content binding path");
+
+        object groupBox = GetField(window, "SmokeGroupBox");
+        AssertType(groupBox, "System.Windows.Controls.GroupBox", "compiled GroupBox");
+        AssertSame(detail, GetProperty(groupBox, "Header"), "compiled GroupBox header binding");
+        AssertSame(groupBoxHeaderTemplate, GetProperty(groupBox, "HeaderTemplate"), "compiled GroupBox HeaderTemplate binding");
+        object groupContent = GetProperty(groupBox, "Content");
+        AssertType(groupContent, "System.Windows.Controls.TextBlock", "compiled GroupBox content");
+        AssertEqual("GroupBoxContentText", GetProperty(groupContent, "Name"), "compiled GroupBox content name");
+        AssertEqual("group box content", GetProperty(groupContent, "Tag"), "compiled GroupBox content tag");
+        AssertBindingPath(groupContent, "TextProperty", "ButtonText", "compiled GroupBox content binding path");
+    }
+
     private static ActivationRecorder RegisterPortableActivation(
         Assembly presentationFramework,
         Assembly presentationCore,
@@ -2172,6 +2257,7 @@ internal static class Program
             ValidatePostShowContentTemplateSelector(_presentationCore, typedActivation.Window);
             ValidatePostShowHierarchicalDataTemplate(_presentationCore, typedActivation.Window);
             ValidatePostShowTabControl(_presentationCore, typedActivation.Window);
+            ValidatePostShowSectionControls(_presentationCore, typedActivation.Window);
             ValidatePortableInputBindingActivation(typedActivation.Window);
             ValidatePortableTextInputActivation(typedActivation.Window);
             ValidatePortableMouseClickActivation(typedActivation.Window);
@@ -2221,6 +2307,7 @@ internal static class Program
             ValidatePostShowContentTemplateSelector(_presentationCore, activation.Window);
             ValidatePostShowHierarchicalDataTemplate(_presentationCore, activation.Window);
             ValidateTabControl(activation.Window);
+            ValidateSectionControls(activation.Window);
             AssertEqual("input binding payload", GetProperty(activation.Window, "LastRoutedCommandParameter"), "portable input KeyBinding persisted command parameter");
             AssertEqual("portable x", GetProperty(GetField(activation.Window, "InputBox"), "Text"), "portable text input persisted TextBox text");
             AssertAtLeast(2, GetProperty(activation.Window, "XamlClickCount"), "portable mouse routed Click persisted count");

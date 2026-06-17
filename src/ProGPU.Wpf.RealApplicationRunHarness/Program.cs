@@ -2104,7 +2104,7 @@ internal static class Program
         AssertContains("SmokePage.xaml", GetProperty(frame, "Source")?.ToString() ?? string.Empty, "compiled Frame source");
     }
 
-    private static void ValidatePostShowNavigationFrame(object window)
+    private static void ValidatePostShowNavigationFrame(object window, Action flushDispatcherOperations)
     {
         object frame = GetField(window, "SourceNavigationFrame");
         Invoke(frame, "UpdateLayout");
@@ -2135,6 +2135,47 @@ internal static class Program
         AssertEqual(1, GetProperty(page, "PageClickCount"), "compiled source Page click handler count");
         AssertEqual("SourceNavigationPageButton", GetProperty(page, "LastPageClickSenderName"), "compiled source Page click sender");
         AssertEqual("Click", GetProperty(page, "LastPageClickRoutedEventName"), "compiled source Page click routed event");
+
+        ValidateFrameJournalNavigation(frame, flushDispatcherOperations);
+    }
+
+    private static void ValidateFrameJournalNavigation(object frame, Action flushDispatcherOperations)
+    {
+        SetProperty(frame, "Source", new Uri("SmokeSecondPage.xaml", UriKind.Relative));
+        flushDispatcherOperations();
+        Invoke(frame, "UpdateLayout");
+
+        object secondPage = GetProperty(frame, "Content");
+        AssertType(secondPage, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeSecondPage", "compiled second Page content");
+        AssertEqual("compiled second page", GetProperty(secondPage, "Title"), "compiled second Page title");
+        object secondPagePanel = Invoke(secondPage, "FindName", "SourceNavigationSecondPagePanel");
+        AssertType(secondPagePanel, "System.Windows.Controls.StackPanel", "compiled second Page content panel");
+        AssertSame(secondPagePanel, GetProperty(secondPage, "Content"), "compiled second Page content");
+        AssertCollectionCount(GetProperty(secondPagePanel, "Children"), expected: 1, "compiled second Page content panel children");
+        object secondPageText = Invoke(secondPage, "FindName", "SourceNavigationSecondPageText");
+        AssertType(secondPageText, "System.Windows.Controls.TextBlock", "compiled second Page content text");
+        AssertSame(secondPageText, GetCollectionItem(GetProperty(secondPagePanel, "Children"), 0), "compiled second Page content text child");
+        AssertEqual("second page content", GetProperty(secondPageText, "Tag"), "compiled second Page content text tag");
+        AssertEqual("compiled second page content", GetProperty(secondPageText, "Text"), "compiled second Page content text");
+
+        AssertEqual(true, GetProperty(frame, "CanGoBack"), "compiled Frame journal can go back");
+        AssertEqual(false, GetProperty(frame, "CanGoForward"), "compiled Frame journal cannot go forward before back");
+
+        Invoke(frame, "GoBack");
+        flushDispatcherOperations();
+        Invoke(frame, "UpdateLayout");
+        object firstPageAgain = GetProperty(frame, "Content");
+        AssertType(firstPageAgain, "ProGPU.Wpf.RealXamlCompilerHarness.SmokePage", "compiled Frame journal back content");
+        AssertEqual("compiled source page", GetProperty(firstPageAgain, "Title"), "compiled Frame journal back title");
+        AssertEqual(false, GetProperty(frame, "CanGoBack"), "compiled Frame journal cannot go back after returning");
+        AssertEqual(true, GetProperty(frame, "CanGoForward"), "compiled Frame journal can go forward");
+
+        Invoke(frame, "GoForward");
+        flushDispatcherOperations();
+        Invoke(frame, "UpdateLayout");
+        object secondPageAgain = GetProperty(frame, "Content");
+        AssertType(secondPageAgain, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeSecondPage", "compiled Frame journal forward content");
+        AssertEqual("compiled second page", GetProperty(secondPageAgain, "Title"), "compiled Frame journal forward title");
     }
 
     private static ActivationRecorder RegisterPortableActivation(
@@ -2838,7 +2879,9 @@ internal static class Program
             ValidatePostShowHierarchicalDataTemplate(_presentationCore, typedActivation.Window);
             ValidatePostShowTabControl(_presentationCore, typedActivation.Window);
             ValidatePostShowSectionControls(_presentationCore, typedActivation.Window);
-            ValidatePostShowNavigationFrame(typedActivation.Window);
+            ValidatePostShowNavigationFrame(
+                typedActivation.Window,
+                () => FlushDispatcherOperations(typedActivation.Window, "Render"));
             ValidatePostShowScrollingControls(typedActivation.Window);
             ValidatePortableInputBindingActivation(typedActivation.Window);
             ValidatePortableTextInputActivation(typedActivation.Window);

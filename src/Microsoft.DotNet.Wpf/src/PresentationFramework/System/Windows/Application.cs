@@ -2345,6 +2345,11 @@ namespace System.Windows
         /// <returns>true if a sound was successfully played</returns>
         private void PlaySound(string soundName)
         {
+            if (!global::System.OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
             string soundFile = GetSystemSound(soundName);
 
             if (!string.IsNullOrEmpty(soundFile))

@@ -697,6 +697,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.RealXamlCompilerHarness",
             "SmokePage.xaml");
+        var smokeSecondPageXamlPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealXamlCompilerHarness",
+            "SmokeSecondPage.xaml");
         var appCodeBehindPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.RealXamlCompilerHarness",
@@ -713,6 +717,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.RealXamlCompilerHarness",
             "SmokePage.xaml.cs");
+        var smokeSecondPageCodeBehindPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealXamlCompilerHarness",
+            "SmokeSecondPage.xaml.cs");
 
         var harnessProject = XDocument.Load(harnessProjectPath);
         var appXaml = File.ReadAllText(appXamlPath);
@@ -720,10 +728,12 @@ public sealed class WpfManagedProjectGraphTests
         var mainWindowXaml = File.ReadAllText(mainWindowXamlPath);
         var smokeUserControlXaml = File.ReadAllText(smokeUserControlXamlPath);
         var smokePageXaml = File.ReadAllText(smokePageXamlPath);
+        var smokeSecondPageXaml = File.ReadAllText(smokeSecondPageXamlPath);
         var appCodeBehind = File.ReadAllText(appCodeBehindPath);
         var mainWindowCodeBehind = File.ReadAllText(mainWindowCodeBehindPath);
         var smokeUserControlCodeBehind = File.ReadAllText(smokeUserControlCodeBehindPath);
         var smokePageCodeBehind = File.ReadAllText(smokePageCodeBehindPath);
+        var smokeSecondPageCodeBehind = File.ReadAllText(smokeSecondPageCodeBehindPath);
 
         Assert.Equal("true", Assert.Single(harnessProject.Descendants("InternalMarkupCompilation")).Value);
 
@@ -746,6 +756,11 @@ public sealed class WpfManagedProjectGraphTests
             item => item.Attribute("Include")?.Value == "SmokePage.xaml");
         Assert.Equal("MSBuild:Compile", smokePage.Element("Generator")?.Value);
 
+        var smokeSecondPage = Assert.Single(
+            harnessProject.Descendants("Page"),
+            item => item.Attribute("Include")?.Value == "SmokeSecondPage.xaml");
+        Assert.Equal("MSBuild:Compile", smokeSecondPage.Element("Generator")?.Value);
+
         var page = Assert.Single(
             harnessProject.Descendants("Page"),
             item => item.Attribute("Include")?.Value == "MainWindow.xaml");
@@ -755,6 +770,7 @@ public sealed class WpfManagedProjectGraphTests
         AssertCompileInclude(harnessProject, "App.xaml.cs");
         AssertCompileInclude(harnessProject, "MainWindow.xaml.cs");
         AssertCompileInclude(harnessProject, "SmokePage.xaml.cs");
+        AssertCompileInclude(harnessProject, "SmokeSecondPage.xaml.cs");
         AssertCompileInclude(harnessProject, "SmokeUserControl.xaml.cs");
         AssertProjectReference(harnessProject, @"Microsoft.DotNet.Wpf\src\System.Xaml\System.Xaml.csproj");
         AssertProjectReference(harnessProject, @"Microsoft.DotNet.Wpf\src\WindowsBase\WindowsBase.csproj");
@@ -1159,6 +1175,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"SourceNavigationPageButton\"", smokePageXaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"OnPageButtonClick\"", smokePageXaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"compiled page button\"", smokePageXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Class=\"ProGPU.Wpf.RealXamlCompilerHarness.SmokeSecondPage\"", smokeSecondPageXaml, StringComparison.Ordinal);
+        Assert.Contains("Title=\"compiled second page\"", smokeSecondPageXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SourceNavigationSecondPagePanel\"", smokeSecondPageXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SourceNavigationSecondPageText\"", smokeSecondPageXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"compiled second page content\"", smokeSecondPageXaml, StringComparison.Ordinal);
         Assert.Contains("ListBox.ItemContainerStyle", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style TargetType=\"{x:Type ListBoxItem}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Setter Property=\"Tag\" Value=\"container trigger inactive\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1282,6 +1303,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public int PageClickCount", smokePageCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnPageButtonClick", smokePageCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastPageClickRoutedEventName = e.RoutedEvent?.Name", smokePageCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public partial class SmokeSecondPage : Page", smokeSecondPageCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("InitializeComponent();", smokeSecondPageCodeBehind, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -1536,13 +1559,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Expander content binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GroupBox HeaderTemplate resource", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GroupBox content binding path", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("ValidatePostShowNavigationFrame(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowNavigationFrame(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Frame", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Page content", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Page content text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Page content button", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Page click handler count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Page click routed event", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateFrameJournalNavigation(frame, flushDispatcherOperations)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled second Page content", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Frame journal can go back", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Frame journal forward content", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox ItemsSource binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox item container style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ItemContainerStyle setter property", harnessProgram, StringComparison.Ordinal);
@@ -1897,13 +1924,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Expander content binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GroupBox HeaderTemplate resource", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GroupBox content binding path", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("ValidatePostShowNavigationFrame(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowNavigationFrame(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Frame", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Page content", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Page content text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Page content button", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Page click handler count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Page click routed event", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateFrameJournalNavigation(frame, flushDispatcherOperations)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled second Page content", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Frame journal can go back", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Frame journal forward content", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox two-way selected item binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox item container style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ItemContainerStyle setter property", harnessProgram, StringComparison.Ordinal);
@@ -2192,6 +2223,14 @@ public sealed class WpfManagedProjectGraphTests
             "MS",
             "Win32",
             "SafeNativeMethodsOther.cs"));
+        var safeNativeMethodsClr = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "Shared",
+            "MS",
+            "Win32",
+            "SafeNativeMethodsCLR.cs"));
         var textServicesLoader = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -2200,6 +2239,14 @@ public sealed class WpfManagedProjectGraphTests
             "MS",
             "Internal",
             "TextServicesLoader.cs"));
+        var dataStreams = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "MS",
+            "Internal",
+            "DataStreams.cs"));
         var fontCacheUtil = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -2345,8 +2392,13 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(textSelection, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetLocaleInfoW");
         Assert.Contains("return cultureInfo.TextInfo.IsRightToLeft", textSelection, StringComparison.Ordinal);
         AssertGuardBefore(safeNativeMethodsOther, "if (!OperatingSystem.IsWindows())", "SafeNativeMethodsPrivate.GetCaretBlinkTime()");
+        AssertGuardBefore(safeNativeMethodsClr, "if (!OperatingSystem.IsWindows())", "SafeNativeMethodsPrivate.GetTickCount()");
+        Assert.Contains("return Environment.TickCount;", safeNativeMethodsClr, StringComparison.Ordinal);
         AssertGuardBefore(textServicesLoader, "if (!OperatingSystem.IsWindows())", "Invariant.Assert(Thread.CurrentThread.GetApartmentState() == ApartmentState.STA");
         Assert.Contains("return null;", textServicesLoader, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.Private.Windows.BinaryFormat", dataStreams, StringComparison.Ordinal);
+        Assert.DoesNotContain("System.Private.Windows.Core", dataStreams, StringComparison.Ordinal);
+        Assert.Contains("this.Formatter.Serialize(byteStream, currentValue)", dataStreams, StringComparison.Ordinal);
         Assert.Contains("private static bool IsNativePtsFormatterAvailable", flowDocumentView, StringComparison.Ordinal);
         Assert.Contains("global::System.OperatingSystem.IsWindows()", flowDocumentView, StringComparison.Ordinal);
         Assert.Contains("if (!IsNativePtsFormatterAvailable)", flowDocumentView, StringComparison.Ordinal);
@@ -2388,6 +2440,8 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(uiaCoreTypesApi, "if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))", "LoadLibraryHelper.SecureLoadLibraryEx(DllImport.UIAutomationCore");
         Assert.Contains("s_reservedNotSupportedValue", uiaCoreTypesApi, StringComparison.Ordinal);
         Assert.Contains("s_reservedMixedAttributeValue", uiaCoreTypesApi, StringComparison.Ordinal);
+        AssertGuardBefore(application, "if (!global::System.OperatingSystem.IsWindows())", "UnsafeNativeMethods.PlaySound(soundFile");
+        AssertGuardBefore(application, "if (!global::System.OperatingSystem.IsWindows())", "Registry.CurrentUser.OpenSubKey(regPath)");
         AssertGuardBefore(application, "if (!WindowsInternal.HasItem(wnd))", "wnd.Visibility = Visibility.Visible");
         AssertGuardBefore(application, "if (MainWindow == null)", "wnd.Visibility = Visibility.Visible");
         Assert.Contains("_useWin32MessagePump = OperatingSystem.IsWindows();", dispatcher, StringComparison.Ordinal);

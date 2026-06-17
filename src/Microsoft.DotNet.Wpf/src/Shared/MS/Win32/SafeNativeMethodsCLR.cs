@@ -218,6 +218,11 @@ namespace MS.Win32
 #if FRAMEWORK_NATIVEMETHODS || CORE_NATIVEMETHODS || BASE_NATIVEMETHODS
         public static int GetTickCount()
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return Environment.TickCount;
+            }
+
             return SafeNativeMethodsPrivate.GetTickCount();
         }
 #endif

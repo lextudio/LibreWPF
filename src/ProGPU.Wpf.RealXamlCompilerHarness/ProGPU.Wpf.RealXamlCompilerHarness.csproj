@@ -29,6 +29,9 @@
     <Page Include="SmokePage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="SmokeSecondPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -38,6 +41,7 @@
     <Compile Include="App.xaml.cs" />
     <Compile Include="MainWindow.xaml.cs" />
     <Compile Include="SmokePage.xaml.cs" />
+    <Compile Include="SmokeSecondPage.xaml.cs" />
     <Compile Include="SmokeUserControl.xaml.cs" />
   </ItemGroup>
 

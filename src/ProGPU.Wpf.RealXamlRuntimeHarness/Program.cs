@@ -233,7 +233,7 @@ internal static class Program
         AssertType(flowDocument, "System.Windows.Documents.FlowDocument", "compiled FlowDocument");
 
         object blocks = GetProperty(flowDocument, "Blocks");
-        AssertCollectionCount(blocks, expected: 2, "compiled FlowDocument blocks");
+        AssertCollectionCount(blocks, expected: 4, "compiled FlowDocument blocks");
 
         object introParagraph = GetCollectionItem(blocks, 0);
         AssertType(introParagraph, "System.Windows.Documents.Paragraph", "compiled FlowDocument intro paragraph");
@@ -249,7 +249,34 @@ internal static class Program
         object hyperlinkRun = GetFirstCollectionItemOfType(GetProperty(hyperlink, "Inlines"), "System.Windows.Documents.Run", "compiled FlowDocument hyperlink run");
         AssertEqual("link", GetProperty(hyperlinkRun, "Text"), "compiled FlowDocument hyperlink run text");
 
-        object list = GetCollectionItem(blocks, 1);
+        object inlineContainer = GetFirstCollectionItemOfType(inlines, "System.Windows.Documents.InlineUIContainer", "compiled FlowDocument inline UI container");
+        object inlineButton = GetProperty(inlineContainer, "Child");
+        AssertType(inlineButton, "System.Windows.Controls.Button", "compiled FlowDocument inline Button");
+        AssertEqual("inline document button", GetProperty(inlineButton, "Content"), "compiled FlowDocument inline Button content");
+
+        object selection = GetProperty(richTextBox, "Selection");
+        Invoke(selection, "Select", GetProperty(boldRun, "ContentStart"), GetProperty(boldRun, "ContentEnd"));
+        AssertEqual("rich", (GetProperty(selection, "Text").ToString() ?? string.Empty).Trim(), "compiled RichTextBox selection text");
+
+        object section = GetCollectionItem(blocks, 1);
+        AssertType(section, "System.Windows.Documents.Section", "compiled FlowDocument section");
+        object sectionBlocks = GetProperty(section, "Blocks");
+        AssertCollectionCount(sectionBlocks, expected: 1, "compiled FlowDocument section blocks");
+        AssertFlowDocumentParagraphText(GetCollectionItem(sectionBlocks, 0), "section block text", "section");
+
+        object table = GetCollectionItem(blocks, 2);
+        AssertType(table, "System.Windows.Documents.Table", "compiled FlowDocument table");
+        AssertCollectionCount(GetProperty(table, "Columns"), expected: 2, "compiled FlowDocument table columns");
+        object rowGroups = GetProperty(table, "RowGroups");
+        AssertCollectionCount(rowGroups, expected: 1, "compiled FlowDocument table row groups");
+        object rows = GetProperty(GetCollectionItem(rowGroups, 0), "Rows");
+        AssertCollectionCount(rows, expected: 1, "compiled FlowDocument table rows");
+        object cells = GetProperty(GetCollectionItem(rows, 0), "Cells");
+        AssertCollectionCount(cells, expected: 2, "compiled FlowDocument table cells");
+        AssertFlowDocumentTableCellText(GetCollectionItem(cells, 0), "table alpha", "first");
+        AssertFlowDocumentTableCellText(GetCollectionItem(cells, 1), "table beta", "second");
+
+        object list = GetCollectionItem(blocks, 3);
         AssertType(list, "System.Windows.Documents.List", "compiled FlowDocument list");
         AssertEqual("Decimal", GetProperty(list, "MarkerStyle").ToString(), "compiled FlowDocument marker style");
         object listItems = GetProperty(list, "ListItems");
@@ -267,8 +294,27 @@ internal static class Program
         AssertContains("rich", text, "compiled FlowDocument TextRange bold text");
         AssertContains("FlowDocument", text, "compiled FlowDocument TextRange document text");
         AssertContains("link", text, "compiled FlowDocument TextRange hyperlink text");
+        AssertContains("section block text", text, "compiled FlowDocument TextRange section text");
+        AssertContains("table alpha", text, "compiled FlowDocument TextRange first table cell");
+        AssertContains("table beta", text, "compiled FlowDocument TextRange second table cell");
         AssertContains("first document item", text, "compiled FlowDocument TextRange first list item");
         AssertContains("second document item", text, "compiled FlowDocument TextRange second list item");
+    }
+
+    private static void AssertFlowDocumentParagraphText(object paragraph, string expectedText, string description)
+    {
+        AssertType(paragraph, "System.Windows.Documents.Paragraph", $"compiled FlowDocument {description} paragraph");
+        object run = GetFirstCollectionItemOfType(GetProperty(paragraph, "Inlines"), "System.Windows.Documents.Run", $"compiled FlowDocument {description} run");
+        AssertEqual(expectedText, GetProperty(run, "Text"), $"compiled FlowDocument {description} text");
+    }
+
+    private static void AssertFlowDocumentTableCellText(object tableCell, string expectedText, string description)
+    {
+        AssertType(tableCell, "System.Windows.Documents.TableCell", $"compiled FlowDocument {description} table cell");
+        AssertFlowDocumentParagraphText(
+            GetCollectionItem(GetProperty(tableCell, "Blocks"), 0),
+            expectedText,
+            $"{description} table cell");
     }
 
     private static void AssertFlowDocumentListItemText(object listItem, string expectedText, string description)

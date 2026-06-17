@@ -121,7 +121,39 @@
                         NavigateUri="https://example.test/progpu-wpf">
                         <Run Text="link" />
                     </Hyperlink>
+                    <InlineUIContainer x:Name="InlineActionContainer">
+                        <Button
+                            x:Name="DocumentInlineButton"
+                            Content="inline document button" />
+                    </InlineUIContainer>
                 </Paragraph>
+                <Section x:Name="DocumentSection">
+                    <Paragraph>
+                        <Run Text="section block text" />
+                    </Paragraph>
+                </Section>
+                <Table
+                    x:Name="DocumentTable"
+                    CellSpacing="2">
+                    <Table.Columns>
+                        <TableColumn Width="80" />
+                        <TableColumn Width="120" />
+                    </Table.Columns>
+                    <TableRowGroup>
+                        <TableRow>
+                            <TableCell>
+                                <Paragraph>
+                                    <Run Text="table alpha" />
+                                </Paragraph>
+                            </TableCell>
+                            <TableCell>
+                                <Paragraph>
+                                    <Run Text="table beta" />
+                                </Paragraph>
+                            </TableCell>
+                        </TableRow>
+                    </TableRowGroup>
+                </Table>
                 <List MarkerStyle="Decimal">
                     <ListItem>
                         <Paragraph>

@@ -48,6 +48,14 @@ public partial class MainWindow : Window
 
     public string? LastXamlLostMouseCaptureRoutedEventName { get; private set; }
 
+    public int XamlMouseWheelCount { get; private set; }
+
+    public int LastXamlMouseWheelDelta { get; private set; }
+
+    public string? LastXamlMouseWheelSenderName { get; private set; }
+
+    public string? LastXamlMouseWheelRoutedEventName { get; private set; }
+
     public int StyledClickCount { get; private set; }
 
     public string? LastStyledClickSenderName { get; private set; }
@@ -96,6 +104,15 @@ public partial class MainWindow : Window
         XamlLostMouseCaptureCount++;
         LastXamlLostMouseCaptureSenderName = sender is FrameworkElement element ? element.Name : null;
         LastXamlLostMouseCaptureRoutedEventName = e.RoutedEvent?.Name;
+    }
+
+    private void OnXamlMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        XamlMouseWheelCount++;
+        LastXamlMouseWheelDelta = e.Delta;
+        LastXamlMouseWheelSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastXamlMouseWheelRoutedEventName = e.RoutedEvent?.Name;
+        e.Handled = true;
     }
 
     private void OnStyledButtonClick(object sender, RoutedEventArgs e)

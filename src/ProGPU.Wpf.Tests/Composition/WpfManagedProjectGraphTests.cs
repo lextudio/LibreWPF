@@ -890,6 +890,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Click=\"OnXamlClick\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("GotMouseCapture=\"OnXamlGotMouseCapture\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("LostMouseCapture=\"OnXamlLostMouseCapture\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("MouseWheel=\"OnXamlMouseWheel\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"StyledEventButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style=\"{StaticResource EventSetterButtonStyle}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"CommandButton\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1016,6 +1017,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public int XamlLostMouseCaptureCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnXamlLostMouseCapture", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastXamlLostMouseCaptureRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int XamlMouseWheelCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnXamlMouseWheel", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastXamlMouseWheelDelta = e.Delta", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastXamlMouseWheelRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int StyledClickCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnStyledButtonClick", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastStyledClickRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1248,6 +1253,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("portable mouse GotMouseCapture count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable mouse LostMouseCapture count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable mouse routed Click count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableMouseWheelActivation(presentationCore, activation, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("WpfInputEventKind.MouseWheel", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable mouse wheel routed event count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable mouse wheel routed event delta", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetTransformToDevice(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTemplateAndDynamicResource(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button control template", harnessProgram, StringComparison.Ordinal);
@@ -1518,6 +1527,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("portable mouse routed Click persisted count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable mouse GotMouseCapture persisted count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable mouse LostMouseCapture persisted count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableMouseWheelActivation(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CreatePortableInputEvent(\"MouseWheel\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run mouse wheel routed event count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable mouse wheel persisted count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTemplateAndDynamicResource(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ControlTemplate named part", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled VisualStateManager group collection", harnessProgram, StringComparison.Ordinal);

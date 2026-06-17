@@ -1973,6 +1973,7 @@ internal static class Program
             ValidatePortableInputBindingActivation(typedActivation.Window);
             ValidatePortableTextInputActivation(typedActivation.Window);
             ValidatePortableMouseClickActivation(typedActivation.Window);
+            ValidatePortableMouseWheelActivation(typedActivation.Window);
         }
 
         public void Dispose(object activation)
@@ -2022,6 +2023,10 @@ internal static class Program
             AssertEqual("Click", GetProperty(activation.Window, "LastXamlClickRoutedEventName"), "portable mouse routed Click persisted event name");
             AssertAtLeast(1, GetProperty(activation.Window, "XamlGotMouseCaptureCount"), "portable mouse GotMouseCapture persisted count");
             AssertAtLeast(1, GetProperty(activation.Window, "XamlLostMouseCaptureCount"), "portable mouse LostMouseCapture persisted count");
+            AssertAtLeast(1, GetProperty(activation.Window, "XamlMouseWheelCount"), "portable mouse wheel persisted count");
+            AssertEqual(120, GetProperty(activation.Window, "LastXamlMouseWheelDelta"), "portable mouse wheel persisted delta");
+            AssertEqual("EventButton", GetProperty(activation.Window, "LastXamlMouseWheelSenderName"), "portable mouse wheel persisted sender name");
+            AssertEqual("MouseWheel", GetProperty(activation.Window, "LastXamlMouseWheelRoutedEventName"), "portable mouse wheel persisted event name");
         }
 
         private void AssertSameActivation(object activation)
@@ -2212,6 +2217,22 @@ internal static class Program
             AssertEqual(initialClickCount + 1, GetProperty(window, "XamlClickCount"), "portable Application.Run mouse routed Click count");
             AssertEqual("EventButton", GetProperty(window, "LastXamlClickSenderName"), "portable Application.Run mouse routed Click sender name");
             AssertEqual("Click", GetProperty(window, "LastXamlClickRoutedEventName"), "portable Application.Run mouse routed Click event name");
+        }
+
+        private void ValidatePortableMouseWheelActivation(object window)
+        {
+            object eventButton = GetField(window, "EventButton");
+            Invoke(window, "UpdateLayout");
+            Invoke(eventButton, "UpdateLayout");
+            (double x, double y) = GetElementCenterInWindow(_presentationCore, eventButton, window);
+
+            int initialWheelCount = Convert.ToInt32(GetProperty(window, "XamlMouseWheelCount"));
+            Invoke(window, "HandlePortableInput", CreatePortableInputEvent("MouseWheel", x: x, y: y, deltaY: 1));
+
+            AssertEqual(initialWheelCount + 1, GetProperty(window, "XamlMouseWheelCount"), "portable Application.Run mouse wheel routed event count");
+            AssertEqual(120, GetProperty(window, "LastXamlMouseWheelDelta"), "portable Application.Run mouse wheel routed event delta");
+            AssertEqual("EventButton", GetProperty(window, "LastXamlMouseWheelSenderName"), "portable Application.Run mouse wheel sender name");
+            AssertEqual("MouseWheel", GetProperty(window, "LastXamlMouseWheelRoutedEventName"), "portable Application.Run mouse wheel routed event name");
         }
 
         private object CreatePortableInputEvent(

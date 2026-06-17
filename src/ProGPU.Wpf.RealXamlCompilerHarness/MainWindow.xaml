@@ -119,6 +119,7 @@
             Click="OnXamlClick"
             GotMouseCapture="OnXamlGotMouseCapture"
             LostMouseCapture="OnXamlLostMouseCapture"
+            MouseWheel="OnXamlMouseWheel"
             Content="run xaml event" />
         <Button
             x:Name="StyledEventButton"

@@ -66,6 +66,7 @@ internal static class Program
                 out activationServiceType,
                 out activation);
             ValidatePostShowBindingFeatures(window);
+            ValidatePostShowItemTemplateTriggerActivation(presentationCore, window);
             ValidatePortableKeyboardFocus(presentationCore, window);
         }
         finally
@@ -396,6 +397,28 @@ internal static class Program
         AssertType(relativeSourceBlock, "System.Windows.Controls.TextBlock", "compiled RelativeSource TextBlock");
         AssertEqual("ancestor binding source", GetProperty(relativeSourceBlock, "Text"), "compiled RelativeSource ancestor binding value");
         AssertBindingPath(relativeSourceBlock, "TextProperty", "Tag", "compiled RelativeSource binding path");
+    }
+
+    private static void ValidatePostShowItemTemplateTriggerActivation(Assembly presentationCore, object window)
+    {
+        object itemsList = GetField(window, "ItemsList");
+        object sourceItems = GetProperty(GetProperty(window, "DataContext"), "Items");
+        object betaItem = GetCollectionItem(sourceItems, 1);
+
+        Invoke(itemsList, "ScrollIntoView", betaItem);
+        Invoke(itemsList, "UpdateLayout");
+
+        object itemContainerGenerator = GetProperty(itemsList, "ItemContainerGenerator");
+        object betaContainer = Invoke(itemContainerGenerator, "ContainerFromItem", betaItem);
+        AssertType(betaContainer, "System.Windows.Controls.ListBoxItem", "compiled DataTemplate generated item container");
+        Invoke(betaContainer, "ApplyTemplate");
+        Invoke(betaContainer, "UpdateLayout");
+
+        object betaTextBlock = FindVisualDescendantByName(presentationCore, betaContainer, "ItemTextBlock")
+            ?? throw new InvalidOperationException("Expected generated item container to contain ItemTextBlock.");
+        AssertType(betaTextBlock, "System.Windows.Controls.TextBlock", "compiled DataTemplate generated TextBlock");
+        AssertEqual("item beta", GetProperty(betaTextBlock, "Text"), "compiled DataTemplate generated TextBlock binding");
+        AssertEqual("template trigger active", GetProperty(betaTextBlock, "Tag"), "compiled DataTemplate trigger active generated value");
     }
 
     private static void ValidateObjectDataProvider(object window)
@@ -829,6 +852,28 @@ internal static class Program
 
         object? parent = method.Invoke(null, new[] { visual });
         return parent == null ? "<null>" : parent.GetType().FullName ?? parent.ToString() ?? "<parent>";
+    }
+
+    private static object? FindVisualDescendantByName(Assembly presentationCore, object root, string name)
+    {
+        if (string.Equals(DescribeOptionalProperty(root, "Name"), name, StringComparison.Ordinal))
+        {
+            return root;
+        }
+
+        Type visualTreeHelperType = GetRequiredType(presentationCore, "System.Windows.Media.VisualTreeHelper");
+        int count = Convert.ToInt32(InvokeStatic(visualTreeHelperType, "GetChildrenCount", root));
+        for (int i = 0; i < count; i++)
+        {
+            object child = InvokeStatic(visualTreeHelperType, "GetChild", root, i);
+            object? match = FindVisualDescendantByName(presentationCore, child, name);
+            if (match != null)
+            {
+                return match;
+            }
+        }
+
+        return null;
     }
 
     private static object? TryGetStaticProperty(Type type, string propertyName)

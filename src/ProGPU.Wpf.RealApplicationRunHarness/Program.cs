@@ -41,6 +41,7 @@ internal static class Program
             presentationFrameworkPath,
             presentationCorePath,
             compilerHarnessPath);
+        Assembly presentationCore = loadContext.LoadFromAssemblyPath(presentationCorePath);
         Assembly presentationFramework = loadContext.LoadFromAssemblyPath(presentationFrameworkPath);
         Assembly compilerHarness = loadContext.LoadFromAssemblyPath(compilerHarnessPath);
 
@@ -55,6 +56,7 @@ internal static class Program
 
             ActivationRecorder recorder = RegisterPortableActivation(
                 presentationFramework,
+                presentationCore,
                 compilerHarness,
                 application,
                 out activationServiceType);
@@ -334,6 +336,28 @@ internal static class Program
         AssertType(relativeSourceBlock, "System.Windows.Controls.TextBlock", "compiled RelativeSource TextBlock");
         AssertEqual("ancestor binding source", GetProperty(relativeSourceBlock, "Text"), "compiled RelativeSource ancestor binding value");
         AssertBindingPath(relativeSourceBlock, "TextProperty", "Tag", "compiled RelativeSource binding path");
+    }
+
+    private static void ValidatePostShowItemTemplateTriggerActivation(Assembly presentationCore, object window)
+    {
+        object itemsList = GetField(window, "ItemsList");
+        object sourceItems = GetProperty(GetProperty(window, "DataContext"), "Items");
+        object betaItem = GetCollectionItem(sourceItems, 1);
+
+        Invoke(itemsList, "ScrollIntoView", betaItem);
+        Invoke(itemsList, "UpdateLayout");
+
+        object itemContainerGenerator = GetProperty(itemsList, "ItemContainerGenerator");
+        object betaContainer = Invoke(itemContainerGenerator, "ContainerFromItem", betaItem);
+        AssertType(betaContainer, "System.Windows.Controls.ListBoxItem", "compiled DataTemplate generated item container");
+        Invoke(betaContainer, "ApplyTemplate");
+        Invoke(betaContainer, "UpdateLayout");
+
+        object betaTextBlock = FindVisualDescendantByName(presentationCore, betaContainer, "ItemTextBlock")
+            ?? throw new InvalidOperationException("Expected generated item container to contain ItemTextBlock.");
+        AssertType(betaTextBlock, "System.Windows.Controls.TextBlock", "compiled DataTemplate generated TextBlock");
+        AssertEqual("item beta", GetProperty(betaTextBlock, "Text"), "compiled DataTemplate generated TextBlock binding");
+        AssertEqual("template trigger active", GetProperty(betaTextBlock, "Tag"), "compiled DataTemplate trigger active generated value");
     }
 
     private static void ValidateObjectDataProvider(object window)
@@ -640,6 +664,7 @@ internal static class Program
 
     private static ActivationRecorder RegisterPortableActivation(
         Assembly presentationFramework,
+        Assembly presentationCore,
         Assembly compilerHarness,
         object application,
         out Type activationServiceType)
@@ -650,7 +675,7 @@ internal static class Program
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
             ?? throw new MissingMethodException(activationServiceType.FullName, "Register");
 
-        var recorder = new ActivationRecorder(compilerHarness, application);
+        var recorder = new ActivationRecorder(presentationCore, compilerHarness, application);
         register.Invoke(
             null,
             new object?[]
@@ -704,6 +729,28 @@ internal static class Program
         return instance.GetType().GetProperty(
             propertyName,
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(instance);
+    }
+
+    private static object? FindVisualDescendantByName(Assembly presentationCore, object root, string name)
+    {
+        if (string.Equals(TryGetProperty(root, "Name")?.ToString(), name, StringComparison.Ordinal))
+        {
+            return root;
+        }
+
+        Type visualTreeHelperType = GetRequiredType(presentationCore, "System.Windows.Media.VisualTreeHelper");
+        int count = Convert.ToInt32(InvokeStatic(visualTreeHelperType, "GetChildrenCount", root));
+        for (int i = 0; i < count; i++)
+        {
+            object child = InvokeStatic(visualTreeHelperType, "GetChild", root, i);
+            object? match = FindVisualDescendantByName(presentationCore, child, name);
+            if (match != null)
+            {
+                return match;
+            }
+        }
+
+        return null;
     }
 
     private static void SetProperty(object instance, string propertyName, object? value)
@@ -910,6 +957,25 @@ internal static class Program
         return method.Invoke(instance, parameters) ?? new object();
     }
 
+    private static object InvokeStatic(Type type, string methodName, params object?[] parameters)
+    {
+        MethodInfo method = type.GetMethods(
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            .FirstOrDefault(candidate =>
+            {
+                if (!string.Equals(candidate.Name, methodName, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                ParameterInfo[] candidateParameters = candidate.GetParameters();
+                return candidateParameters.Length == parameters.Length;
+            })
+            ?? throw new MissingMethodException(type.FullName, methodName);
+
+        return method.Invoke(null, parameters) ?? new object();
+    }
+
     private static object InvokeTwoArgumentCommand(object command, string methodName, object? parameter, object target)
     {
         MethodInfo method = command.GetType().GetMethods(
@@ -1063,12 +1129,14 @@ internal static class Program
 
     private sealed class ActivationRecorder
     {
+        private readonly Assembly _presentationCore;
         private readonly Assembly _compilerHarness;
         private readonly object _application;
         private object? _activation;
 
-        public ActivationRecorder(Assembly compilerHarness, object application)
+        public ActivationRecorder(Assembly presentationCore, Assembly compilerHarness, object application)
         {
+            _presentationCore = presentationCore;
             _compilerHarness = compilerHarness;
             _application = application;
         }
@@ -1152,6 +1220,8 @@ internal static class Program
             AssertEqual("ProGPU WPF XAML smoke", typedActivation.Title, "activated window title");
             AssertEqual(420.0, typedActivation.Width, "activated window width");
             AssertEqual(260.0, typedActivation.Height, "activated window height");
+            Invoke(typedActivation.Window, "UpdateLayout");
+            ValidatePostShowItemTemplateTriggerActivation(_presentationCore, typedActivation.Window);
         }
 
         public void Dispose(object activation)
@@ -1182,6 +1252,7 @@ internal static class Program
             AssertEqual(true, activation.IsClosed, "recorded activation close state");
             AssertEqual(true, activation.IsDisposed, "recorded activation dispose state");
             ValidatePostShowBindingFeatures(activation.Window);
+            ValidatePostShowItemTemplateTriggerActivation(_presentationCore, activation.Window);
         }
 
         private void AssertSameActivation(object activation)

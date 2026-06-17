@@ -956,6 +956,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Canvas.Top=\"6\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"WrapPanelSmoke\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemWidth=\"64\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ScrollingSmokePanel\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ScrollViewerSmoke\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("VerticalScrollBarVisibility=\"Visible\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CanContentScroll=\"False\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ScrollViewerSixthItem\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"VerticalScrollBarSmoke\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ViewportSize=\"2\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ImplicitStyleCheckBox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("IsChecked=\"True\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"EventButton\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1400,6 +1407,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled DockPanel left attached Dock", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Canvas top attached property", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled WrapPanel item width", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateScrollingControls(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ScrollViewer content children", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ScrollBar updated value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateImplicitMergedStyle(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled implicit CheckBox style tag", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateXamlEventHandler(window)", harnessProgram, StringComparison.Ordinal);
@@ -1517,6 +1527,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePostShowItemTemplateTriggerActivation(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowTabControl(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowSectionControls(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowScrollingControls(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ScrollViewer vertical offset", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateGeneratedItemTemplateTextBlock(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate inactive generated item container", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TabControl beta generated content text", harnessProgram, StringComparison.Ordinal);
@@ -1746,6 +1758,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled DockPanel right attached Dock", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Canvas left attached property", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled WrapPanel item height", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateScrollingControls(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ScrollViewer horizontal visibility", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ScrollBar viewport size", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateImplicitMergedStyle(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled implicit CheckBox style margin top", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateXamlEventHandler(window)", harnessProgram, StringComparison.Ordinal);
@@ -1862,6 +1877,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePostShowItemTemplateTriggerActivation(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowTabControl(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowSectionControls(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowScrollingControls(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ScrollViewer vertical offset", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateGeneratedItemTemplateTextBlock(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate inactive generated item container", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TabControl beta generated content text", harnessProgram, StringComparison.Ordinal);

@@ -150,7 +150,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 54, "stack panel children");
+        AssertCollectionCount(children, expected: 55, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -195,6 +195,7 @@ internal static class Program
         ValidateNestedUserControl(window);
         ValidateReadOnlyGridCollectionsAndAttachedProperties(window);
         ValidateLayoutPanels(window);
+        ValidateScrollingControls(window);
         ValidateImplicitMergedStyle(window, application);
         ValidateXamlEventHandler(window);
         ValidateStyleEventSetter(window);
@@ -1142,6 +1143,62 @@ internal static class Program
         object wrapSecond = GetField(window, "WrapSecondChild");
         AssertType(wrapSecond, "System.Windows.Controls.TextBlock", "compiled WrapPanel second child");
         AssertEqual("wrap two", GetProperty(wrapSecond, "Text"), "compiled WrapPanel second child text");
+    }
+
+    private static void ValidateScrollingControls(object window)
+    {
+        object scrollingPanel = GetField(window, "ScrollingSmokePanel");
+        AssertType(scrollingPanel, "System.Windows.Controls.StackPanel", "compiled scrolling panel host");
+        AssertCollectionCount(GetProperty(scrollingPanel, "Children"), expected: 2, "compiled scrolling panel host children");
+
+        object scrollViewer = GetField(window, "ScrollViewerSmoke");
+        AssertType(scrollViewer, "System.Windows.Controls.ScrollViewer", "compiled ScrollViewer");
+        AssertEqual(160.0, GetProperty(scrollViewer, "Width"), "compiled ScrollViewer width");
+        AssertEqual(48.0, GetProperty(scrollViewer, "Height"), "compiled ScrollViewer height");
+        AssertEqual(false, GetProperty(scrollViewer, "CanContentScroll"), "compiled ScrollViewer CanContentScroll");
+        AssertEqual("Disabled", GetProperty(scrollViewer, "HorizontalScrollBarVisibility").ToString(), "compiled ScrollViewer horizontal visibility");
+        AssertEqual("Visible", GetProperty(scrollViewer, "VerticalScrollBarVisibility").ToString(), "compiled ScrollViewer vertical visibility");
+
+        object scrollContent = GetField(window, "ScrollViewerContent");
+        AssertType(scrollContent, "System.Windows.Controls.StackPanel", "compiled ScrollViewer content");
+        AssertSame(scrollContent, GetProperty(scrollViewer, "Content"), "compiled ScrollViewer content object");
+        AssertCollectionCount(GetProperty(scrollContent, "Children"), expected: 6, "compiled ScrollViewer content children");
+        object firstItem = GetField(window, "ScrollViewerFirstItem");
+        AssertType(firstItem, "System.Windows.Controls.TextBlock", "compiled ScrollViewer first item");
+        AssertEqual("scroll first", GetProperty(firstItem, "Text"), "compiled ScrollViewer first item text");
+        object sixthItem = GetField(window, "ScrollViewerSixthItem");
+        AssertType(sixthItem, "System.Windows.Controls.TextBlock", "compiled ScrollViewer sixth item");
+        AssertEqual("scroll sixth", GetProperty(sixthItem, "Text"), "compiled ScrollViewer sixth item text");
+
+        object scrollBar = GetField(window, "VerticalScrollBarSmoke");
+        AssertType(scrollBar, "System.Windows.Controls.Primitives.ScrollBar", "compiled vertical ScrollBar");
+        AssertEqual("Vertical", GetProperty(scrollBar, "Orientation").ToString(), "compiled ScrollBar orientation");
+        AssertEqual(0.0, GetProperty(scrollBar, "Minimum"), "compiled ScrollBar minimum");
+        AssertEqual(10.0, GetProperty(scrollBar, "Maximum"), "compiled ScrollBar maximum");
+        AssertEqual(4.0, GetProperty(scrollBar, "Value"), "compiled ScrollBar initial value");
+        AssertEqual(1.0, GetProperty(scrollBar, "SmallChange"), "compiled ScrollBar small change");
+        AssertEqual(3.0, GetProperty(scrollBar, "LargeChange"), "compiled ScrollBar large change");
+        AssertEqual(2.0, GetProperty(scrollBar, "ViewportSize"), "compiled ScrollBar viewport size");
+
+        SetProperty(scrollBar, "Value", 7.0);
+        AssertEqual(7.0, GetProperty(scrollBar, "Value"), "compiled ScrollBar updated value");
+    }
+
+    private static void ValidatePostShowScrollingControls(object window)
+    {
+        object scrollViewer = GetField(window, "ScrollViewerSmoke");
+        Invoke(scrollViewer, "UpdateLayout");
+        double scrollableHeight = Convert.ToDouble(GetProperty(scrollViewer, "ScrollableHeight"));
+        if (scrollableHeight <= 0)
+        {
+            throw new InvalidOperationException($"Expected compiled ScrollViewer scrollable height to be positive, got '{scrollableHeight}'.");
+        }
+
+        double targetOffset = Math.Min(12.0, scrollableHeight);
+        Invoke(scrollViewer, "ScrollToVerticalOffset", targetOffset);
+        Invoke(window, "UpdateLayout");
+
+        AssertEqual(targetOffset, GetProperty(scrollViewer, "VerticalOffset"), "compiled ScrollViewer vertical offset");
     }
 
     private static void ValidateImplicitMergedStyle(object window, object application)
@@ -2684,6 +2741,7 @@ internal static class Program
             ValidatePostShowHierarchicalDataTemplate(_presentationCore, typedActivation.Window);
             ValidatePostShowTabControl(_presentationCore, typedActivation.Window);
             ValidatePostShowSectionControls(_presentationCore, typedActivation.Window);
+            ValidatePostShowScrollingControls(typedActivation.Window);
             ValidatePortableInputBindingActivation(typedActivation.Window);
             ValidatePortableTextInputActivation(typedActivation.Window);
             ValidatePortableMouseClickActivation(typedActivation.Window);

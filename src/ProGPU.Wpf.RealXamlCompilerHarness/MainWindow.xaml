@@ -263,8 +263,49 @@
                     Text="wrap one" />
                 <TextBlock
                     x:Name="WrapSecondChild"
-                    Text="wrap two" />
+                Text="wrap two" />
             </WrapPanel>
+        </StackPanel>
+        <StackPanel
+            x:Name="ScrollingSmokePanel"
+            Margin="0,8,0,0">
+            <ScrollViewer
+                x:Name="ScrollViewerSmoke"
+                Width="160"
+                Height="48"
+                CanContentScroll="False"
+                HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Visible">
+                <StackPanel x:Name="ScrollViewerContent">
+                    <TextBlock
+                        x:Name="ScrollViewerFirstItem"
+                        Text="scroll first" />
+                    <TextBlock
+                        x:Name="ScrollViewerSecondItem"
+                        Text="scroll second" />
+                    <TextBlock
+                        x:Name="ScrollViewerThirdItem"
+                        Text="scroll third" />
+                    <TextBlock
+                        x:Name="ScrollViewerFourthItem"
+                        Text="scroll fourth" />
+                    <TextBlock
+                        x:Name="ScrollViewerFifthItem"
+                        Text="scroll fifth" />
+                    <TextBlock
+                        x:Name="ScrollViewerSixthItem"
+                        Text="scroll sixth" />
+                </StackPanel>
+            </ScrollViewer>
+            <ScrollBar
+                x:Name="VerticalScrollBarSmoke"
+                LargeChange="3"
+                Maximum="10"
+                Minimum="0"
+                Orientation="Vertical"
+                SmallChange="1"
+                Value="4"
+                ViewportSize="2" />
         </StackPanel>
         <Button
             x:Name="StyledEventButton"

@@ -935,7 +935,10 @@ namespace System.Windows
                     System.Xaml.XamlObjectWriterSettings owSettings = XamlReader.CreateObjectWriterSettingsForBaml();
                     if (assembly != null)
                     {
-                        owSettings.AccessLevel = XamlAccessLevel.AssemblyAccessTo(assembly);
+                        if (OperatingSystem.IsWindows())
+                        {
+                            owSettings.AccessLevel = XamlAccessLevel.AssemblyAccessTo(assembly);
+                        }
 
                         AssemblyName asemblyName = new AssemblyName(assembly.FullName);
                         Uri streamUri = null;

@@ -195,21 +195,46 @@ internal static class Program
 
     private static void ValidatePortableKeyboardFocus(Assembly presentationCore, object window)
     {
-        Type keyboardType = GetRequiredType(presentationCore, "System.Windows.Input.Keyboard");
-        object focused = InvokeStatic(keyboardType, "Focus", window);
-        if (!ReferenceEquals(window, focused))
+        object inputBox = GetField(window, "InputBox");
+        if (!Equals(true, GetProperty(inputBox, "IsVisible")))
         {
+            object content = GetProperty(window, "Content");
             throw new InvalidOperationException(
-                "Keyboard.Focus did not return the shown portable root window. " +
-                $"Focused={focused.GetType().FullName}; " +
-                $"IsVisible={GetProperty(window, "IsVisible")}; " +
-                $"Focusable={GetProperty(window, "Focusable")}; " +
-                $"IsEnabled={GetProperty(window, "IsEnabled")}.");
+                "Expected compiled TextBox visible after portable show. " +
+                $"WindowTemplate={DescribeOptionalProperty(window, "Template")}; " +
+                $"WindowStyle={DescribeOptionalProperty(window, "Style")}; " +
+                $"WindowThemeStyle={DescribeOptionalProperty(window, "ThemeStyle")}; " +
+                $"WindowVisualChildren={DescribeOptionalProperty(window, "VisualChildrenCount")}; " +
+                $"WindowVisibility={DescribeOptionalProperty(window, "Visibility")}; " +
+                $"WindowIsVisible={DescribeOptionalProperty(window, "IsVisible")}; " +
+                $"WindowSource={DescribePresentationSource(presentationCore, window)}; " +
+                $"ContentType={content.GetType().FullName}; " +
+                $"ContentIsVisible={DescribeOptionalProperty(content, "IsVisible")}; " +
+                $"ContentParent={DescribeOptionalProperty(content, "Parent")}; " +
+                $"ContentVisualParent={DescribeVisualParent(presentationCore, content)}; " +
+                $"ContentSource={DescribePresentationSource(presentationCore, content)}; " +
+                $"InputParent={DescribeOptionalProperty(inputBox, "Parent")}; " +
+                $"InputVisualParent={DescribeVisualParent(presentationCore, inputBox)}; " +
+                $"InputSource={DescribePresentationSource(presentationCore, inputBox)}; " +
+                $"InputTemplatedParent={DescribeOptionalProperty(inputBox, "TemplatedParent")}.");
         }
 
-        AssertSame(window, focused, "portable root Keyboard.Focus return value");
-        AssertSame(window, GetStaticProperty(keyboardType, "FocusedElement"), "portable root Keyboard focused element");
-        AssertEqual(true, GetProperty(window, "IsKeyboardFocused"), "portable root keyboard focus state");
+        Type keyboardType = GetRequiredType(presentationCore, "System.Windows.Input.Keyboard");
+        object focused = InvokeStatic(keyboardType, "Focus", inputBox);
+        if (!ReferenceEquals(inputBox, focused))
+        {
+            throw new InvalidOperationException(
+                "Keyboard.Focus did not return the compiled TextBox. " +
+                $"Focused={focused.GetType().FullName}; " +
+                $"IsVisible={GetProperty(inputBox, "IsVisible")}; " +
+                $"Focusable={GetProperty(inputBox, "Focusable")}; " +
+                $"IsEnabled={GetProperty(inputBox, "IsEnabled")}; " +
+                $"WindowIsVisible={GetProperty(window, "IsVisible")}.");
+        }
+
+        AssertSame(inputBox, focused, "compiled TextBox Keyboard.Focus return value");
+        AssertSame(inputBox, GetStaticProperty(keyboardType, "FocusedElement"), "compiled TextBox Keyboard focused element");
+        AssertEqual(true, GetProperty(inputBox, "IsKeyboardFocused"), "compiled TextBox keyboard focus state");
 
         InvokeStatic(keyboardType, "ClearFocus");
         AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable Keyboard clear focus");
@@ -476,6 +501,65 @@ internal static class Program
             ?? throw new InvalidOperationException($"Expected '{type.FullName}.{propertyName}' to have a value.");
     }
 
+    private static string DescribeOptionalProperty(object instance, string propertyName)
+    {
+        for (Type? type = instance.GetType(); type != null; type = type.BaseType)
+        {
+            PropertyInfo? property = type.GetProperty(
+                propertyName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+            if (property == null)
+            {
+                continue;
+            }
+
+            object? value = property.GetValue(instance);
+            return value == null ? "<null>" : value.ToString() ?? value.GetType().FullName ?? "<value>";
+        }
+
+        return "<missing>";
+    }
+
+    private static string DescribePresentationSource(Assembly presentationCore, object visual)
+    {
+        Type presentationSourceType = GetRequiredType(presentationCore, "System.Windows.PresentationSource");
+        MethodInfo method = presentationSourceType.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            .FirstOrDefault(candidate =>
+            {
+                if (!string.Equals(candidate.Name, "FromVisual", StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                ParameterInfo[] parameters = candidate.GetParameters();
+                return parameters.Length == 1 && parameters[0].ParameterType.IsAssignableFrom(visual.GetType());
+            })
+            ?? throw new MissingMethodException(presentationSourceType.FullName, "FromVisual");
+
+        object? source = method.Invoke(null, new[] { visual });
+        return source == null ? "<null>" : source.GetType().FullName ?? source.ToString() ?? "<source>";
+    }
+
+    private static string DescribeVisualParent(Assembly presentationCore, object visual)
+    {
+        Type visualTreeHelperType = GetRequiredType(presentationCore, "System.Windows.Media.VisualTreeHelper");
+        MethodInfo method = visualTreeHelperType.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            .FirstOrDefault(candidate =>
+            {
+                if (!string.Equals(candidate.Name, "GetParent", StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                ParameterInfo[] parameters = candidate.GetParameters();
+                return parameters.Length == 1 && parameters[0].ParameterType.IsAssignableFrom(visual.GetType());
+            })
+            ?? throw new MissingMethodException(visualTreeHelperType.FullName, "GetParent");
+
+        object? parent = method.Invoke(null, new[] { visual });
+        return parent == null ? "<null>" : parent.GetType().FullName ?? parent.ToString() ?? "<parent>";
+    }
+
     private static object? TryGetStaticProperty(Type type, string propertyName)
     {
         return type.GetProperty(
@@ -603,21 +687,28 @@ internal static class Program
 
     private static object Invoke(object instance, string methodName, params object?[] parameters)
     {
-        MethodInfo method = instance.GetType().GetMethods(
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-            .FirstOrDefault(candidate =>
-            {
-                if (!string.Equals(candidate.Name, methodName, StringComparison.Ordinal))
+        for (Type? type = instance.GetType(); type != null; type = type.BaseType)
+        {
+            MethodInfo? method = type.GetMethods(
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
+                .FirstOrDefault(candidate =>
                 {
-                    return false;
-                }
+                    if (!string.Equals(candidate.Name, methodName, StringComparison.Ordinal))
+                    {
+                        return false;
+                    }
 
-                ParameterInfo[] candidateParameters = candidate.GetParameters();
-                return candidateParameters.Length == parameters.Length;
-            })
-            ?? throw new MissingMethodException(instance.GetType().FullName, methodName);
+                    ParameterInfo[] candidateParameters = candidate.GetParameters();
+                    return candidateParameters.Length == parameters.Length;
+                });
 
-        return method.Invoke(instance, parameters) ?? new object();
+            if (method != null)
+            {
+                return method.Invoke(instance, parameters) ?? new object();
+            }
+        }
+
+        throw new MissingMethodException(instance.GetType().FullName, methodName);
     }
 
     private static object InvokeStatic(Type type, string methodName, params object?[] parameters)

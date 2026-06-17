@@ -1910,6 +1910,12 @@ namespace System.Windows
                         // so we should not apply the ConvertPixel adjustment.
                         // Call SPI in "unaware" mode;  this ensures we won't break
                         // if the OS decides to "fix" their anomalous behavior.
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _caretWidth = 1.0;
+                            continue;
+                        }
+
                         using (DpiUtil.WithDpiAwarenessContext(MS.Utility.DpiAwarenessContextValue.Unaware))
                         {
                             if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETCARETWIDTH, 0, ref caretWidth, 0))
@@ -2638,7 +2644,7 @@ namespace System.Windows
                     while (!_cacheValid[(int)CacheSlot.HorizontalScrollBarButtonWidth])
                     {
                         _cacheValid[(int)CacheSlot.HorizontalScrollBarButtonWidth] = true;
-                        _horizontalScrollBarButtonWidth = SystemParameters.ConvertPixel(UnsafeNativeMethods.GetSystemMetrics(SM.CXHSCROLL));
+                        _horizontalScrollBarButtonWidth = GetSystemMetricPixel(SM.CXHSCROLL, DefaultScrollBarMetric);
                     }
                 }
 
@@ -2658,7 +2664,7 @@ namespace System.Windows
                     while (!_cacheValid[(int)CacheSlot.HorizontalScrollBarHeight])
                     {
                         _cacheValid[(int)CacheSlot.HorizontalScrollBarHeight] = true;
-                        _horizontalScrollBarHeight = SystemParameters.ConvertPixel(UnsafeNativeMethods.GetSystemMetrics(SM.CYHSCROLL));
+                        _horizontalScrollBarHeight = GetSystemMetricPixel(SM.CYHSCROLL, DefaultScrollBarMetric);
                     }
                 }
 
@@ -2678,7 +2684,7 @@ namespace System.Windows
                     while (!_cacheValid[(int)CacheSlot.HorizontalScrollBarThumbWidth])
                     {
                         _cacheValid[(int)CacheSlot.HorizontalScrollBarThumbWidth] = true;
-                        _horizontalScrollBarThumbWidth = SystemParameters.ConvertPixel(UnsafeNativeMethods.GetSystemMetrics(SM.CXHTHUMB));
+                        _horizontalScrollBarThumbWidth = GetSystemMetricPixel(SM.CXHTHUMB, DefaultScrollBarMetric);
                     }
                 }
 
@@ -3380,7 +3386,7 @@ namespace System.Windows
                     while (!_cacheValid[(int)CacheSlot.VerticalScrollBarWidth])
                     {
                         _cacheValid[(int)CacheSlot.VerticalScrollBarWidth] = true;
-                        _verticalScrollBarWidth = SystemParameters.ConvertPixel(UnsafeNativeMethods.GetSystemMetrics(SM.CXVSCROLL));
+                        _verticalScrollBarWidth = GetSystemMetricPixel(SM.CXVSCROLL, DefaultScrollBarMetric);
                     }
                 }
 
@@ -3400,7 +3406,7 @@ namespace System.Windows
                     while (!_cacheValid[(int)CacheSlot.VerticalScrollBarButtonHeight])
                     {
                         _cacheValid[(int)CacheSlot.VerticalScrollBarButtonHeight] = true;
-                        _verticalScrollBarButtonHeight = SystemParameters.ConvertPixel(UnsafeNativeMethods.GetSystemMetrics(SM.CYVSCROLL));
+                        _verticalScrollBarButtonHeight = GetSystemMetricPixel(SM.CYVSCROLL, DefaultScrollBarMetric);
                     }
                 }
 
@@ -3490,7 +3496,7 @@ namespace System.Windows
                     while (!_cacheValid[(int)CacheSlot.VerticalScrollBarThumbHeight])
                     {
                         _cacheValid[(int)CacheSlot.VerticalScrollBarThumbHeight] = true;
-                        _verticalScrollBarThumbHeight = SystemParameters.ConvertPixel(UnsafeNativeMethods.GetSystemMetrics(SM.CYVTHUMB));
+                        _verticalScrollBarThumbHeight = GetSystemMetricPixel(SM.CYVTHUMB, DefaultScrollBarMetric);
                     }
                 }
 
@@ -5854,6 +5860,15 @@ namespace System.Windows
             }
 
             return pixel;
+        }
+
+        private const int DefaultScrollBarMetric = 17;
+
+        private static double GetSystemMetricPixel(SM metric, int fallbackPixel)
+        {
+            return ConvertPixel(OperatingSystem.IsWindows()
+                ? UnsafeNativeMethods.GetSystemMetrics(metric)
+                : fallbackPixel);
         }
 
         private static NativeMethods.ICONMETRICS CreateDefaultIconMetrics()

@@ -126,7 +126,7 @@ namespace MS.Win32
 
             _themeState = OperatingSystem.IsWindows()
                 ? new ThemeState(!SystemParameters.HighContrast && SafeNativeMethods.IsUxThemeActive(), null, null)
-                : new ThemeState(false, null, null);
+                : new ThemeState(true, "Aero2", "NormalColor");
         }
 
         internal static bool IsActive
@@ -463,4 +463,3 @@ namespace MS.Win32
         #endregion Compatibility
     }
 }
-

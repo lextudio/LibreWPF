@@ -421,6 +421,32 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableWindowActivationService.SetClientSize(_portableWindowActivation, Width, height)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.SetClientSize(_portableWindowActivation, width, Height)", window, StringComparison.Ordinal);
         Assert.Contains("ClosePortableWindowActivation();", window, StringComparison.Ordinal);
+        Assert.Contains("private bool IsPortableWindowActive", window, StringComparison.Ordinal);
+        Assert.Contains("private bool IsLayoutSourceUnavailable", window, StringComparison.Ordinal);
+        Assert.Contains("return !IsPortableWindowActive && (IsSourceWindowNull || IsCompositionTargetInvalid)", window, StringComparison.Ordinal);
+        Assert.Contains("private Size GetWindowFrameSizeInMeasureUnits()", window, StringComparison.Ordinal);
+        Assert.Contains("private Size GetWindowSizeInMeasureUnits()", window, StringComparison.Ordinal);
+        Assert.Contains("if (IsPortableWindowActive)", window, StringComparison.Ordinal);
+        Assert.Contains("mm.maxWidth = MinWidth > MaxWidth ? MinWidth : MaxWidth", window, StringComparison.Ordinal);
+        Assert.Contains("mm.maxHeight = MinHeight > MaxHeight ? MinHeight : MaxHeight", window, StringComparison.Ordinal);
+        Assert.Contains("return IsPortableWindowActive ? new Size(0, 0) : GetHwndNonClientAreaSizeInMeasureUnits()", window, StringComparison.Ordinal);
+        Assert.Contains("return new Size(ToNonNegativeFiniteSize(width), ToNonNegativeFiniteSize(height))", window, StringComparison.Ordinal);
+        Assert.Contains("private void RefreshPortableRootVisualState()", window, StringComparison.Ordinal);
+        Assert.Contains("ApplyTemplate();", window, StringComparison.Ordinal);
+        Assert.Contains("UpdateIsVisibleCache();", window, StringComparison.Ordinal);
+        Assert.Contains("InvalidateForceInheritPropertyOnChildren(IsVisibleProperty);", window, StringComparison.Ordinal);
+        Assert.Contains("Size windowSize = GetWindowSizeInMeasureUnits();", window, StringComparison.Ordinal);
+        Assert.Contains("Measure(windowSize);", window, StringComparison.Ordinal);
+        Assert.Contains("Arrange(new Rect(windowSize));", window, StringComparison.Ordinal);
+        Assert.Contains("UpdateLayout();", window, StringComparison.Ordinal);
+        Assert.Contains("private void RefreshPortableInheritedVisibility()", window, StringComparison.Ordinal);
+        Assert.Contains("if (Content is UIElement contentElement)", window, StringComparison.Ordinal);
+        Assert.Contains("UIElement.SynchronizeForceInheritProperties(contentElement, null, null, this)", window, StringComparison.Ordinal);
+        Assert.Contains("contentElement.InvalidateForceInheritPropertyOnChildren(IsVisibleProperty)", window, StringComparison.Ordinal);
+        Assert.True(
+            window.IndexOf("RefreshPortableRootVisualState();", StringComparison.Ordinal)
+                < window.IndexOf("PortableWindowActivationService.Show(_portableWindowActivation)", StringComparison.Ordinal),
+            "Portable Window.Show must refresh the WPF root template, inherited visibility, and layout before showing the native host.");
         Assert.True(
             window.IndexOf("if (TryCreatePortableWindowDuringShow())", StringComparison.Ordinal)
                 < window.IndexOf("CreateSourceWindow(true);", StringComparison.Ordinal),
@@ -781,6 +807,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Equal("false", GetItemMetadata(presentationFrameworkReference, "ReferenceOutputAssembly"));
         Assert.Equal("all", GetItemMetadata(presentationFrameworkReference, "PrivateAssets"));
 
+        var aero2Reference = AssertProjectReference(
+            harnessProject,
+            @"Microsoft.DotNet.Wpf\src\Themes\PresentationFramework.Aero2\PresentationFramework.Aero2.csproj");
+        Assert.Equal("false", GetItemMetadata(aero2Reference, "ReferenceOutputAssembly"));
+        Assert.Equal("all", GetItemMetadata(aero2Reference, "PrivateAssets"));
+
         Assert.Contains("CompilerHarnessAssemblyName = \"ProGPU.Wpf.RealXamlCompilerHarness\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loadContext.LoadFromAssemblyPath(compilerHarnessPath)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(application, \"InitializeComponent\")", harnessProgram, StringComparison.Ordinal);
@@ -829,8 +861,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetProperty(window, \"PortableWindowActivation\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable window visible state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableKeyboardFocus(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("InvokeStatic(keyboardType, \"Focus\", window)", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("portable root Keyboard.Focus return value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled TextBox visible after portable show", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("InvokeStatic(keyboardType, \"Focus\", inputBox)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled TextBox Keyboard.Focus return value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("IsKeyboardFocused", harnessProgram, StringComparison.Ordinal);
     }
 
@@ -1017,6 +1050,15 @@ public sealed class WpfManagedProjectGraphTests
             "System",
             "Windows",
             "UIElement.cs"));
+        var pathGeometry = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "PathGeometry.cs"));
         var systemResources = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -1042,6 +1084,23 @@ public sealed class WpfManagedProjectGraphTests
             "Internal",
             "Documents",
             "FlowDocumentView.cs"));
+        var textSelection = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "windows",
+            "Documents",
+            "TextSelection.cs"));
+        var textServicesLoader = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "Shared",
+            "MS",
+            "Internal",
+            "TextServicesLoader.cs"));
         var fontCacheUtil = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -1133,8 +1192,24 @@ public sealed class WpfManagedProjectGraphTests
 
         AssertGuardBefore(compositionExports, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.MilCoreApi.EnterCompositionEngineLock()");
         AssertGuardBefore(uiElement, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetDC(desktopWnd)");
+        AssertGuardBefore(pathGeometry, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.MilCoreApi.MilUtility_PathGeometryBounds");
+        Assert.Contains("private static MilRectD GetManagedPathBoundsAsRB", pathGeometry, StringComparison.Ordinal);
+        Assert.Contains("ParsePathGeometryData(pathData, context)", pathGeometry, StringComparison.Ordinal);
+        Assert.Contains("PathStreamGeometryContext", pathGeometry, StringComparison.Ordinal);
         AssertGuardBefore(systemResources, "if (!OperatingSystem.IsWindows())", "new HwndWrapper(");
+        AssertGuardBefore(systemResources, "if (OperatingSystem.IsWindows())", "XamlAccessLevel.AssemblyAccessTo(assembly)");
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETHIGHCONTRAST");
+        Assert.Contains("private const int DefaultScrollBarMetric = 17", systemParameters, StringComparison.Ordinal);
+        Assert.Contains("private static double GetSystemMetricPixel(SM metric, int fallbackPixel)", systemParameters, StringComparison.Ordinal);
+        Assert.Contains("OperatingSystem.IsWindows()", systemParameters, StringComparison.Ordinal);
+        Assert.Contains("_verticalScrollBarWidth = GetSystemMetricPixel(SM.CXVSCROLL, DefaultScrollBarMetric)", systemParameters, StringComparison.Ordinal);
+        Assert.Contains("_horizontalScrollBarHeight = GetSystemMetricPixel(SM.CYHSCROLL, DefaultScrollBarMetric)", systemParameters, StringComparison.Ordinal);
+        Assert.Contains("_caretWidth = 1.0", systemParameters, StringComparison.Ordinal);
+        AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETCARETWIDTH");
+        AssertGuardBefore(textSelection, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetLocaleInfoW");
+        Assert.Contains("return cultureInfo.TextInfo.IsRightToLeft", textSelection, StringComparison.Ordinal);
+        AssertGuardBefore(textServicesLoader, "if (!OperatingSystem.IsWindows())", "Invariant.Assert(Thread.CurrentThread.GetApartmentState() == ApartmentState.STA");
+        Assert.Contains("return null;", textServicesLoader, StringComparison.Ordinal);
         Assert.Contains("private static bool IsNativePtsFormatterAvailable", flowDocumentView, StringComparison.Ordinal);
         Assert.Contains("global::System.OperatingSystem.IsWindows()", flowDocumentView, StringComparison.Ordinal);
         Assert.Contains("if (!IsNativePtsFormatterAvailable)", flowDocumentView, StringComparison.Ordinal);
@@ -1161,6 +1236,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("the existing null-glyph unshaped GlyphRun path", typeface, StringComparison.Ordinal);
         AssertGuardBefore(typeface, "if (!OperatingSystem.IsWindows())", "TypographyAvailabilities typography");
         AssertGuardBefore(uxThemeWrapper, "_themeState = OperatingSystem.IsWindows()", "SafeNativeMethods.IsUxThemeActive()");
+        Assert.Contains("new ThemeState(true, \"Aero2\", \"NormalColor\")", uxThemeWrapper, StringComparison.Ordinal);
         AssertGuardBefore(dpiAwareness, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetWindowDpiAwarenessContext(hWnd)");
         AssertGuardBefore(osVersionHelper, "if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))", "IsWindows10RS5OrGreater()");
         AssertGuardBefore(osVersionHelper, "return OperatingSystemVersion.WindowsXPSP2;", "throw new Exception(\"OSVersionHelper.GetOsVersion Could not detect OS!\")");

@@ -2469,6 +2469,11 @@ namespace System.Windows.Documents
         /// </returns>
         private static bool IsBidiInputLanguage(CultureInfo cultureInfo)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return cultureInfo.TextInfo.IsRightToLeft;
+            }
+
             bool bidiInput;
             string fontSignature;
 
@@ -2782,4 +2787,3 @@ namespace System.Windows.Documents
         #endregion Private Fields
     }
 }
-

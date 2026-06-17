@@ -749,6 +749,11 @@ namespace System.Windows.Media
             // return Rect.Empty. Callers should do their own check.
             Debug.Assert(!pathData.IsEmpty());
 
+            if (!OperatingSystem.IsWindows())
+            {
+                return GetManagedPathBoundsAsRB(pathData, pen, worldMatrix);
+            }
+
             unsafe
             {
                 MIL_PEN_DATA penData;
@@ -797,6 +802,148 @@ namespace System.Windows.Media
 
                     return bounds;
                 }
+            }
+        }
+
+        private static MilRectD GetManagedPathBoundsAsRB(
+            PathGeometryData pathData,
+            Pen pen,
+            Matrix worldMatrix)
+        {
+            PathStreamGeometryContext context = new PathStreamGeometryContext();
+            ParsePathGeometryData(pathData, context);
+
+            PathGeometry pathGeometry = context.GetPathGeometry();
+            Matrix geometryMatrix = CompositionResourceManager.MilMatrix3x2DToMatrix(ref pathData.Matrix);
+            geometryMatrix.Append(worldMatrix);
+
+            Rect bounds = Rect.Empty;
+            foreach (PathFigure figure in pathGeometry.Figures)
+            {
+                AddTransformedPointToBounds(ref bounds, figure.StartPoint, geometryMatrix);
+
+                Point currentPoint = figure.StartPoint;
+                foreach (PathSegment segment in figure.Segments)
+                {
+                    AddSegmentToManagedBounds(ref bounds, ref currentPoint, segment, geometryMatrix);
+                }
+
+                if (figure.IsClosed)
+                {
+                    AddTransformedPointToBounds(ref bounds, figure.StartPoint, geometryMatrix);
+                }
+            }
+
+            if (!bounds.IsEmpty && Pen.ContributesToBounds(pen))
+            {
+                bounds.Inflate(pen.Thickness / 2.0, pen.Thickness / 2.0);
+            }
+
+            return bounds.IsEmpty
+                ? MilRectD.Empty
+                : new MilRectD(bounds.Left, bounds.Top, bounds.Right, bounds.Bottom);
+        }
+
+        private static void AddSegmentToManagedBounds(
+            ref Rect bounds,
+            ref Point currentPoint,
+            PathSegment segment,
+            Matrix transform)
+        {
+            switch (segment)
+            {
+                case LineSegment line:
+                    AddTransformedPointToBounds(ref bounds, line.Point, transform);
+                    currentPoint = line.Point;
+                    break;
+                case PolyLineSegment polyLine:
+                    AddPointsToManagedBounds(ref bounds, ref currentPoint, polyLine.Points, transform);
+                    break;
+                case BezierSegment bezier:
+                    AddTransformedPointToBounds(ref bounds, bezier.Point1, transform);
+                    AddTransformedPointToBounds(ref bounds, bezier.Point2, transform);
+                    AddTransformedPointToBounds(ref bounds, bezier.Point3, transform);
+                    currentPoint = bezier.Point3;
+                    break;
+                case PolyBezierSegment polyBezier:
+                    AddPointsToManagedBounds(ref bounds, ref currentPoint, polyBezier.Points, transform);
+                    break;
+                case QuadraticBezierSegment quadratic:
+                    AddTransformedPointToBounds(ref bounds, quadratic.Point1, transform);
+                    AddTransformedPointToBounds(ref bounds, quadratic.Point2, transform);
+                    currentPoint = quadratic.Point2;
+                    break;
+                case PolyQuadraticBezierSegment polyQuadratic:
+                    AddPointsToManagedBounds(ref bounds, ref currentPoint, polyQuadratic.Points, transform);
+                    break;
+                case ArcSegment arc:
+                    AddArcToManagedBounds(ref bounds, currentPoint, arc, transform);
+                    currentPoint = arc.Point;
+                    break;
+            }
+        }
+
+        private static void AddPointsToManagedBounds(
+            ref Rect bounds,
+            ref Point currentPoint,
+            PointCollection points,
+            Matrix transform)
+        {
+            foreach (Point point in points)
+            {
+                AddTransformedPointToBounds(ref bounds, point, transform);
+                currentPoint = point;
+            }
+        }
+
+        private static void AddArcToManagedBounds(
+            ref Rect bounds,
+            Point startPoint,
+            ArcSegment arc,
+            Matrix transform)
+        {
+            AddTransformedPointToBounds(ref bounds, startPoint, transform);
+            AddTransformedPointToBounds(ref bounds, arc.Point, transform);
+
+            double radiusX = Math.Abs(arc.Size.Width);
+            double radiusY = Math.Abs(arc.Size.Height);
+            AddArcEndpointRadiusToManagedBounds(ref bounds, startPoint, radiusX, radiusY, transform);
+            AddArcEndpointRadiusToManagedBounds(ref bounds, arc.Point, radiusX, radiusY, transform);
+        }
+
+        private static void AddArcEndpointRadiusToManagedBounds(
+            ref Rect bounds,
+            Point point,
+            double radiusX,
+            double radiusY,
+            Matrix transform)
+        {
+            AddTransformedPointToBounds(ref bounds, new Point(point.X - radiusX, point.Y - radiusY), transform);
+            AddTransformedPointToBounds(ref bounds, new Point(point.X + radiusX, point.Y - radiusY), transform);
+            AddTransformedPointToBounds(ref bounds, new Point(point.X + radiusX, point.Y + radiusY), transform);
+            AddTransformedPointToBounds(ref bounds, new Point(point.X - radiusX, point.Y + radiusY), transform);
+        }
+
+        private static void AddTransformedPointToBounds(ref Rect bounds, Point point, Matrix transform)
+        {
+            if (!double.IsFinite(point.X) || !double.IsFinite(point.Y))
+            {
+                return;
+            }
+
+            Point transformedPoint = transform.Transform(point);
+            if (!double.IsFinite(transformedPoint.X) || !double.IsFinite(transformedPoint.Y))
+            {
+                return;
+            }
+
+            if (bounds.IsEmpty)
+            {
+                bounds = new Rect(transformedPoint, transformedPoint);
+            }
+            else
+            {
+                bounds.Union(transformedPoint);
             }
         }
 
@@ -1055,4 +1202,3 @@ namespace System.Windows.Media
     }
     #endregion
 }
-

@@ -1848,7 +1848,7 @@ namespace System.Windows
             //      3) No Child visual      -- don't do anything
 
             // Adding check for IsCompositionTargetInvalid
-            if (IsSourceWindowNull || IsCompositionTargetInvalid)
+            if (IsLayoutSourceUnavailable)
             {
                 return arrangeBounds;
             }
@@ -1861,7 +1861,7 @@ namespace System.Windows
                     // Find out the size of the window frame x.
                     // (constraint - x) is the size we pass onto
                     // our child
-                    Size frameSize = GetHwndNonClientAreaSizeInMeasureUnits();
+                    Size frameSize = GetWindowFrameSizeInMeasureUnits();
 
                     // In some instances (constraint size - frame size) can be negative. One instance
                     // is when window is set to minimized before layout has happened.  Apparently, Win32
@@ -2115,6 +2115,11 @@ namespace System.Windows
         #region Internal Methods
         internal Point DeviceToLogicalUnits(Point ptDeviceUnits)
         {
+            if (IsPortableWindowActive)
+            {
+                return ptDeviceUnits;
+            }
+
             Invariant.Assert(!IsCompositionTargetInvalid, "IsCompositionTargetInvalid is supposed to be false here");
             Point ptLogicalUnits = _swh.CompositionTarget.TransformFromDevice.Transform(ptDeviceUnits);
             return ptLogicalUnits;
@@ -2122,6 +2127,11 @@ namespace System.Windows
 
         internal Point LogicalToDeviceUnits(Point ptLogicalUnits)
         {
+            if (IsPortableWindowActive)
+            {
+                return ptLogicalUnits;
+            }
+
             Invariant.Assert(!IsCompositionTargetInvalid, "IsCompositionTargetInvalid is supposed to be false here");
             Point ptDeviceUnits = _swh.CompositionTarget.TransformToDevice.Transform(ptLogicalUnits);
             return ptDeviceUnits;
@@ -3390,7 +3400,7 @@ namespace System.Windows
             //                                  as the one passed into MeasureOverride for our framework)
 
             // Adding check for IsCompositionTargetInvalid
-            if (IsSourceWindowNull || IsCompositionTargetInvalid)
+            if (IsLayoutSourceUnavailable)
             {
                 // No need to use CompositionTarget.TransformFromDevice
                 // since size is 0,0
@@ -3406,7 +3416,7 @@ namespace System.Windows
                     // (constraint - x) is the size we pass onto
                     // our child
 
-                    Size frameSize = GetHwndNonClientAreaSizeInMeasureUnits();
+                    Size frameSize = GetWindowFrameSizeInMeasureUnits();
 
                     // In some instances (constraint size - frame size) can be negative. One instance
                     // is when window is set to minimized before layout has happened.  Apparently, Win32
@@ -3429,7 +3439,7 @@ namespace System.Windows
             }
 
             // if we reach here, we return the input size
-            return _swh.GetSizeFromHwndInMeasureUnits();
+            return GetWindowSizeInMeasureUnits();
         }
 
         // Similar logic as in FE.MinMax and takes care of max/min size allowed by win32 for the hwnd.  However, we
@@ -3454,6 +3464,15 @@ namespace System.Windows
         internal virtual WindowMinMax GetWindowMinMax()
         {
             WindowMinMax mm = new WindowMinMax( );
+
+            if (IsPortableWindowActive)
+            {
+                mm.minWidth = MinWidth;
+                mm.maxWidth = MinWidth > MaxWidth ? MinWidth : MaxWidth;
+                mm.minHeight = MinHeight;
+                mm.maxHeight = MinHeight > MaxHeight ? MinHeight : MaxHeight;
+                return mm;
+            }
 
             Invariant.Assert(!IsCompositionTargetInvalid, "IsCompositionTargetInvalid is supposed to be false here");
 
@@ -5583,11 +5602,13 @@ namespace System.Windows
             {
                 if (value)
                 {
+                    RefreshPortableRootVisualState();
                     PortableWindowActivationService.Show(_portableWindowActivation);
                 }
                 else
                 {
                     PortableWindowActivationService.Hide(_portableWindowActivation);
+                    RefreshPortableRootVisualState();
                 }
             }
 
@@ -6924,9 +6945,98 @@ namespace System.Windows
         //     you may get inconsistent results.
         private Size GetHwndNonClientAreaSizeInMeasureUnits()
         {
+            if (IsPortableWindowActive)
+            {
+                return new Size(0, 0);
+            }
+
             // HwndSource expands the client area to cover the entire window when it is in UsesPerPixelOpacity mode,
             // So non client area is (0,0)
             return AllowsTransparency ? new Size(0, 0) : _swh.GetHwndNonClientAreaSizeInMeasureUnits();
+        }
+
+        private bool IsPortableWindowActive
+        {
+            get
+            {
+                return _portableWindowActivation != null;
+            }
+        }
+
+        private bool IsLayoutSourceUnavailable
+        {
+            get
+            {
+                return !IsPortableWindowActive && (IsSourceWindowNull || IsCompositionTargetInvalid);
+            }
+        }
+
+        private Size GetWindowFrameSizeInMeasureUnits()
+        {
+            return IsPortableWindowActive ? new Size(0, 0) : GetHwndNonClientAreaSizeInMeasureUnits();
+        }
+
+        private Size GetWindowSizeInMeasureUnits()
+        {
+            if (!IsPortableWindowActive)
+            {
+                return _swh.GetSizeFromHwndInMeasureUnits();
+            }
+
+            double width = Width;
+            if (double.IsNaN(width))
+            {
+                width = ActualWidth;
+            }
+
+            double height = Height;
+            if (double.IsNaN(height))
+            {
+                height = ActualHeight;
+            }
+
+            return new Size(ToNonNegativeFiniteSize(width), ToNonNegativeFiniteSize(height));
+        }
+
+        private static double ToNonNegativeFiniteSize(double value)
+        {
+            return double.IsNaN(value) || double.IsInfinity(value)
+                ? 0
+                : Math.Max(0, value);
+        }
+
+        private void RefreshPortableRootVisualState()
+        {
+            if (!IsPortableWindowActive)
+            {
+                return;
+            }
+
+            ApplyTemplate();
+            RefreshPortableInheritedVisibility();
+            InvalidateMeasure();
+            InvalidateArrange();
+            Size windowSize = GetWindowSizeInMeasureUnits();
+            if (!DoubleUtil.IsZero(windowSize.Width) || !DoubleUtil.IsZero(windowSize.Height))
+            {
+                Measure(windowSize);
+                Arrange(new Rect(windowSize));
+            }
+
+            UpdateLayout();
+            RefreshPortableInheritedVisibility();
+        }
+
+        private void RefreshPortableInheritedVisibility()
+        {
+            UpdateIsVisibleCache();
+            InvalidateForceInheritPropertyOnChildren(IsVisibleProperty);
+
+            if (Content is UIElement contentElement)
+            {
+                UIElement.SynchronizeForceInheritProperties(contentElement, null, null, this);
+                contentElement.InvalidateForceInheritPropertyOnChildren(IsVisibleProperty);
+            }
         }
 
         private void ClearSourceWindow()

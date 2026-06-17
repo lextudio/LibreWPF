@@ -92,6 +92,11 @@ namespace MS.Internal
         internal static UnsafeNativeMethods.ITfThreadMgr Load()
         {
             UnsafeNativeMethods.ITfThreadMgr threadManager;
+
+            if (!OperatingSystem.IsWindows())
+            {
+                return null;
+            }
             
             Invariant.Assert(Thread.CurrentThread.GetApartmentState() == ApartmentState.STA, "Load called on MTA thread!");
 

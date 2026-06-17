@@ -20,5 +20,6 @@
     <ProjectReference Include="..\ProGPU.Wpf.RealXamlCompilerHarness\ProGPU.Wpf.RealXamlCompilerHarness.csproj" ReferenceOutputAssembly="false" PrivateAssets="all" />
     <ProjectReference Include="..\Microsoft.DotNet.Wpf\src\PresentationCore\PresentationCore.csproj" ReferenceOutputAssembly="false" PrivateAssets="all" />
     <ProjectReference Include="..\Microsoft.DotNet.Wpf\src\PresentationFramework\PresentationFramework.csproj" ReferenceOutputAssembly="false" PrivateAssets="all" />
+    <ProjectReference Include="..\Microsoft.DotNet.Wpf\src\Themes\PresentationFramework.Aero2\PresentationFramework.Aero2.csproj" ReferenceOutputAssembly="false" PrivateAssets="all" />
   </ItemGroup>
 </Project>

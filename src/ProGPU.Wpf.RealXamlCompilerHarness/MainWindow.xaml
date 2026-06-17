@@ -802,6 +802,14 @@
                 Tag="group box content"
                 Text="{Binding ButtonText}" />
         </GroupBox>
+        <AdornerDecorator
+            x:Name="SmokeAdornerDecorator"
+            Margin="0,8,0,0">
+            <Button
+                x:Name="AdornedButton"
+                Content="adorned button"
+                Tag="adorned button" />
+        </AdornerDecorator>
         <Frame
             x:Name="SourceNavigationFrame"
             Margin="0,8,0,0"

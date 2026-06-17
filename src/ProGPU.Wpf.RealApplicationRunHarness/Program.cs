@@ -150,7 +150,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 57, "stack panel children");
+        AssertCollectionCount(children, expected: 58, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -216,6 +216,7 @@ internal static class Program
         ValidateHierarchicalDataTemplate(window);
         ValidateTabControl(window);
         ValidateSectionControls(window);
+        ValidateAdornerDecorator(window);
         ValidateNavigationFrame(window);
     }
 
@@ -2096,6 +2097,38 @@ internal static class Program
         AssertBindingPath(groupContent, "TextProperty", "ButtonText", "compiled GroupBox content binding path");
     }
 
+    private static void ValidateAdornerDecorator(object window)
+    {
+        object decorator = GetField(window, "SmokeAdornerDecorator");
+        AssertType(decorator, "System.Windows.Documents.AdornerDecorator", "compiled AdornerDecorator");
+
+        object adornedButton = GetField(window, "AdornedButton");
+        AssertType(adornedButton, "System.Windows.Controls.Button", "compiled adorned Button");
+        AssertSame(adornedButton, GetProperty(decorator, "Child"), "compiled AdornerDecorator child");
+        AssertEqual("adorned button", GetProperty(adornedButton, "Content"), "compiled adorned Button content");
+        AssertEqual("adorned button", GetProperty(adornedButton, "Tag"), "compiled adorned Button tag");
+    }
+
+    private static void ValidatePostShowAdornerLayer(Assembly presentationFramework, Assembly compilerHarness, object window)
+    {
+        object adornedButton = GetField(window, "AdornedButton");
+        Type adornerLayerType = GetRequiredType(presentationFramework, "System.Windows.Documents.AdornerLayer");
+        object adornerLayer = InvokeStatic(adornerLayerType, "GetAdornerLayer", adornedButton);
+        AssertType(adornerLayer, "System.Windows.Documents.AdornerLayer", "compiled AdornerLayer");
+
+        object adorner = Create(compilerHarness, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeAdorner", adornedButton);
+        AssertType(adorner, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeAdorner", "compiled SmokeAdorner");
+        AssertSame(adornedButton, GetProperty(adorner, "AdornedElement"), "compiled SmokeAdorner adorned element");
+        AssertEqual(false, GetProperty(adorner, "IsHitTestVisible"), "compiled SmokeAdorner hit testing");
+
+        Invoke(adornerLayer, "Add", adorner);
+        object adorners = Invoke(adornerLayer, "GetAdorners", adornedButton);
+        AssertCollectionCount(adorners, expected: 1, "compiled AdornerLayer adorners");
+        AssertSame(adorner, GetCollectionItem(adorners, 0), "compiled AdornerLayer added adorner");
+
+        Invoke(adornerLayer, "Remove", adorner);
+    }
+
     private static void ValidateNavigationFrame(object window)
     {
         object frame = GetField(window, "SourceNavigationFrame");
@@ -2191,7 +2224,7 @@ internal static class Program
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
             ?? throw new MissingMethodException(activationServiceType.FullName, "Register");
 
-        var recorder = new ActivationRecorder(presentationCore, compilerHarness, application, activationServiceType);
+        var recorder = new ActivationRecorder(presentationFramework, presentationCore, compilerHarness, application, activationServiceType);
         register.Invoke(
             null,
             new object?[]
@@ -2756,6 +2789,7 @@ internal static class Program
 
     private sealed class ActivationRecorder : IDisposable
     {
+        private readonly Assembly _presentationFramework;
         private readonly Assembly _presentationCore;
         private readonly Assembly _compilerHarness;
         private readonly object _application;
@@ -2766,11 +2800,13 @@ internal static class Program
         private bool _isFlushingWpfDispatcher;
 
         public ActivationRecorder(
+            Assembly presentationFramework,
             Assembly presentationCore,
             Assembly compilerHarness,
             object application,
             Type activationServiceType)
         {
+            _presentationFramework = presentationFramework;
             _presentationCore = presentationCore;
             _compilerHarness = compilerHarness;
             _application = application;
@@ -2879,6 +2915,7 @@ internal static class Program
             ValidatePostShowHierarchicalDataTemplate(_presentationCore, typedActivation.Window);
             ValidatePostShowTabControl(_presentationCore, typedActivation.Window);
             ValidatePostShowSectionControls(_presentationCore, typedActivation.Window);
+            ValidatePostShowAdornerLayer(_presentationFramework, _compilerHarness, typedActivation.Window);
             ValidatePostShowNavigationFrame(
                 typedActivation.Window,
                 () => FlushDispatcherOperations(typedActivation.Window, "Render"));

@@ -1164,6 +1164,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"GroupBoxContentText\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Tag=\"group box content\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding ButtonText}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SmokeAdornerDecorator\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"AdornedButton\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"adorned button\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SourceNavigationFrame\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("NavigationUIVisibility=\"Hidden\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Source=\"SmokePage.xaml\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1202,6 +1205,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public sealed class SmokeTextExtension : MarkupExtension", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public override object ProvideValue(IServiceProvider serviceProvider)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("return $\"{Prefix} {Value} extension\";", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokeAdorner : Adorner", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("protected override void OnRender(DrawingContext drawingContext)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("drawingContext.DrawRectangle(null, new Pen(Brushes.LimeGreen, 1.0), adornedBounds)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnSmokeCommandCanExecute", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnSmokeCommandExecuted", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RoutedCommandExecutionCount++", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1559,6 +1565,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Expander content binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GroupBox HeaderTemplate resource", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GroupBox content binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateAdornerDecorator(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowAdornerLayer(presentationFramework, compilerHarness, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled AdornerDecorator", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled SmokeAdorner adorned element", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled AdornerLayer added adorner", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowNavigationFrame(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Frame", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Page content", harnessProgram, StringComparison.Ordinal);
@@ -1924,6 +1935,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Expander content binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GroupBox HeaderTemplate resource", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GroupBox content binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateAdornerDecorator(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowAdornerLayer(_presentationFramework, _compilerHarness, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled AdornerDecorator", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled SmokeAdorner adorned element", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled AdornerLayer added adorner", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowNavigationFrame(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Frame", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Page content", harnessProgram, StringComparison.Ordinal);

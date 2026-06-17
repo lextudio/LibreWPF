@@ -6,8 +6,10 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Markup;
+using System.Windows.Media;
 
 namespace ProGPU.Wpf.RealXamlCompilerHarness;
 
@@ -598,5 +600,22 @@ public sealed class SmokeDetailTemplateSelector : DataTemplateSelector
         }
 
         return FallbackTemplate ?? base.SelectTemplate(item, container);
+    }
+}
+
+public sealed class SmokeAdorner : Adorner
+{
+    public SmokeAdorner(UIElement adornedElement)
+        : base(adornedElement)
+    {
+        IsHitTestVisible = false;
+    }
+
+    protected override void OnRender(DrawingContext drawingContext)
+    {
+        base.OnRender(drawingContext);
+
+        var adornedBounds = new Rect(AdornedElement.RenderSize);
+        drawingContext.DrawRectangle(null, new Pen(Brushes.LimeGreen, 1.0), adornedBounds);
     }
 }

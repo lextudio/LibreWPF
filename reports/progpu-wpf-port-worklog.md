@@ -1030,6 +1030,7 @@
 - The frame journal smoke exposed `DataStreams.SaveSubStreams(...)` loading the Windows-private binary writer while saving journaled dependency-property state. `DataStreams` now uses WPF's existing managed formatter path directly for saved journaled dependency-property values, keeping journal entry creation in WPF without referencing `System.Private.Windows.Core`.
 - The same journal path exposed a `kernel32.dll` `GetTickCount()` call used by WPF's journal timing. `SafeNativeMethods.GetTickCount()` now returns `Environment.TickCount` outside Windows and preserves the native call on Windows.
 - WPF journal back/forward also runs the `Application` navigation sound path. `Application.PlaySound(...)` now no-ops outside Windows before registry lookup and native `PlaySound`, preserving navigation events without trying to access Win32 sound services.
+- Extended the compiled XAML app smoke through WPF's real adorner manager. `MainWindow.xaml` now declares an `AdornerDecorator` with an adorned button, the compiler harness contributes a managed `SmokeAdorner` subclass, and both real-WPF harnesses validate `AdornerLayer.GetAdornerLayer(...)`, `Add(...)`, `GetAdorners(...)`, and `Remove(...)` without a ProGPU-side adorner shim.
 
 ## Open Porting Items
 

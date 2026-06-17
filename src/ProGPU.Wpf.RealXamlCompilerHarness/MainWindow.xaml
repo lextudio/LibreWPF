@@ -810,6 +810,22 @@
                 Content="adorned button"
                 Tag="adorned button" />
         </AdornerDecorator>
+        <StackPanel
+            x:Name="AccessKeyFocusScope"
+            FocusManager.FocusedElement="{Binding ElementName=AccessTargetBox}"
+            FocusManager.IsFocusScope="True"
+            Margin="0,8,0,0">
+            <Label
+                x:Name="AccessTargetLabel"
+                Content="_Access target"
+                Target="{Binding ElementName=AccessTargetBox}" />
+            <TextBox
+                x:Name="AccessTargetBox"
+                Text="access target" />
+            <AccessText
+                x:Name="StandaloneAccessText"
+                Text="_Standalone access text" />
+        </StackPanel>
         <Frame
             x:Name="SourceNavigationFrame"
             Margin="0,8,0,0"

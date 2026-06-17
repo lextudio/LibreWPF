@@ -946,6 +946,11 @@ namespace System.Windows.Documents
         // Win32 application have the compatibility to handle the caret event which is Magnifier or Tablet Tip.
         private void Win32CreateCaret()
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
             if (!_isSelectionActive)
             {
                 // We do not want to interfere with Win32 caret
@@ -962,9 +967,9 @@ namespace System.Windows.Documents
                 IntPtr hwnd = IntPtr.Zero;
                 PresentationSource source = PresentationSource.CriticalFromVisual(this);
 
-                if (source != null)
+                if (source is IWin32Window win32Window)
                 {
-                        hwnd = (source as IWin32Window).Handle;
+                    hwnd = win32Window.Handle;
                 }
 
                 if (hwnd != IntPtr.Zero)
@@ -1005,6 +1010,11 @@ namespace System.Windows.Documents
         // Destroy Win32 caret if we create it with checking Win32 error.
         private void Win32DestroyCaret()
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
             if (!_isSelectionActive)
             {
                 // We do not want to interfere with Win32 caret
@@ -1035,6 +1045,11 @@ namespace System.Windows.Documents
         // Set Win32 caret position with checking Win32 error.
         private void Win32SetCaretPos()
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
             if (!_isSelectionActive)
             {
                 // We do not want to interfere with Win32 caret
@@ -1293,4 +1308,3 @@ namespace System.Windows.Documents
         #endregion Private Fields
     }
 }
-

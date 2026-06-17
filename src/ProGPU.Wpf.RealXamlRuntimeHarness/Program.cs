@@ -59,7 +59,7 @@ internal static class Program
             ValidateApplication(application);
 
             window = Create(compilerHarness, MainWindowTypeName);
-            ValidateMainWindow(window, application);
+            ValidateMainWindow(presentationCore, window, application);
 
             ShowPortableActivation(
                 presentationFramework,
@@ -84,6 +84,7 @@ internal static class Program
             ValidatePostShowTabControl(presentationCore, window);
             ValidatePostShowSectionControls(presentationCore, window);
             ValidatePostShowAdornerLayer(presentationFramework, compilerHarness, window);
+            ValidatePostShowAccessKeyFocusScope(presentationCore, window);
             ValidatePostShowNavigationFrame(
                 window,
                 () => FlushDispatcherOperations(activationServiceType, window, "Render"));
@@ -174,7 +175,7 @@ internal static class Program
         AssertEqual(8.0, GetProperty(mergedBlockMargin, "Top"), "merged block margin top");
     }
 
-    private static void ValidateMainWindow(object window, object application)
+    private static void ValidateMainWindow(Assembly presentationCore, object window, object application)
     {
         AssertType(window, "ProGPU.Wpf.RealXamlCompilerHarness.MainWindow", "main window");
         AssertEqual("ProGPU WPF XAML smoke", GetProperty(window, "Title"), "window title");
@@ -184,7 +185,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 58, "stack panel children");
+        AssertCollectionCount(children, expected: 59, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -251,6 +252,7 @@ internal static class Program
         ValidateTabControl(window);
         ValidateSectionControls(window);
         ValidateAdornerDecorator(window);
+        ValidateAccessKeyFocusScope(presentationCore, window);
         ValidateNavigationFrame(window);
     }
 
@@ -2413,6 +2415,51 @@ internal static class Program
         AssertSame(adorner, GetCollectionItem(adorners, 0), "compiled AdornerLayer added adorner");
 
         Invoke(adornerLayer, "Remove", adorner);
+    }
+
+    private static void ValidateAccessKeyFocusScope(Assembly presentationCore, object window)
+    {
+        object focusScope = GetField(window, "AccessKeyFocusScope");
+        AssertType(focusScope, "System.Windows.Controls.StackPanel", "compiled access-key focus scope");
+
+        object accessLabel = GetField(window, "AccessTargetLabel");
+        AssertType(accessLabel, "System.Windows.Controls.Label", "compiled access-key Label");
+        AssertEqual("_Access target", GetProperty(accessLabel, "Content"), "compiled access-key Label content");
+
+        object accessTarget = GetField(window, "AccessTargetBox");
+        AssertType(accessTarget, "System.Windows.Controls.TextBox", "compiled access-key target TextBox");
+        AssertEqual("access target", GetProperty(accessTarget, "Text"), "compiled access-key target text");
+
+        object accessText = GetField(window, "StandaloneAccessText");
+        AssertType(accessText, "System.Windows.Controls.AccessText", "compiled standalone AccessText");
+        AssertEqual("_Standalone access text", GetProperty(accessText, "Text"), "compiled standalone AccessText text");
+
+        Type focusManagerType = GetRequiredType(presentationCore, "System.Windows.Input.FocusManager");
+        AssertEqual(true, InvokeStatic(focusManagerType, "GetIsFocusScope", focusScope), "compiled FocusManager focus scope");
+    }
+
+    private static void ValidatePostShowAccessKeyFocusScope(Assembly presentationCore, object window)
+    {
+        Invoke(window, "UpdateLayout");
+
+        object focusScope = GetField(window, "AccessKeyFocusScope");
+        object accessLabel = GetField(window, "AccessTargetLabel");
+        object accessTarget = GetField(window, "AccessTargetBox");
+        AssertSame(accessTarget, GetProperty(accessLabel, "Target"), "compiled access-key Label target");
+
+        Type focusManagerType = GetRequiredType(presentationCore, "System.Windows.Input.FocusManager");
+        AssertSame(accessTarget, InvokeStatic(focusManagerType, "GetFocusedElement", focusScope), "compiled FocusManager focused element");
+
+        Type presentationSourceType = GetRequiredType(presentationCore, "System.Windows.PresentationSource");
+        object source = InvokeStatic(presentationSourceType, "FromVisual", window);
+        Type accessKeyManagerType = GetRequiredType(presentationCore, "System.Windows.Input.AccessKeyManager");
+
+        AssertEqual(true, InvokeStatic(accessKeyManagerType, "IsKeyRegistered", source, "A"), "compiled Label access key registered");
+        InvokeStatic(accessKeyManagerType, "ProcessKey", source, "A", false);
+
+        Type keyboardType = GetRequiredType(presentationCore, "System.Windows.Input.Keyboard");
+        AssertSame(accessTarget, GetStaticProperty(keyboardType, "FocusedElement"), "compiled Label access key focused target");
+        InvokeStatic(keyboardType, "ClearFocus");
     }
 
     private static void ValidateNavigationFrame(object window)

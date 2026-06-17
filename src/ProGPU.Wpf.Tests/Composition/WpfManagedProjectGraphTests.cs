@@ -1167,6 +1167,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"SmokeAdornerDecorator\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"AdornedButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"adorned button\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"AccessKeyFocusScope\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("FocusManager.IsFocusScope=\"True\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("FocusManager.FocusedElement=\"{Binding ElementName=AccessTargetBox}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"AccessTargetLabel\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"_Access target\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Target=\"{Binding ElementName=AccessTargetBox}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"AccessTargetBox\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"StandaloneAccessText\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"_Standalone access text\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SourceNavigationFrame\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("NavigationUIVisibility=\"Hidden\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Source=\"SmokePage.xaml\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1570,6 +1579,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled AdornerDecorator", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled SmokeAdorner adorned element", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled AdornerLayer added adorner", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateAccessKeyFocusScope(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowAccessKeyFocusScope(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled access-key Label target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Label access key registered", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Label access key focused target", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowNavigationFrame(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Frame", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Page content", harnessProgram, StringComparison.Ordinal);
@@ -1737,7 +1751,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableWindowActivationServiceTypeName = \"System.Windows.PortableWindowActivationService\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("new Func<object, object>(recorder.Activate)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("new Action<object>(recorder.Run)", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("ValidateMainWindow(window, _application)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateMainWindow(_presentationCore, window, _application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(resources, \"BasedOnTextBoxStyle\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TextBox BasedOn style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TextBox BasedOn local setter", harnessProgram, StringComparison.Ordinal);
@@ -1940,6 +1954,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled AdornerDecorator", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled SmokeAdorner adorned element", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled AdornerLayer added adorner", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateAccessKeyFocusScope(", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowAccessKeyFocusScope(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled access-key Label target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Label access key registered", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Label access key focused target", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowNavigationFrame(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Frame", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Page content", harnessProgram, StringComparison.Ordinal);
@@ -2231,6 +2250,15 @@ public sealed class WpfManagedProjectGraphTests
             "windows",
             "Documents",
             "TextSelection.cs"));
+        var caretElement = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "windows",
+            "Documents",
+            "CaretElement.cs"));
         var safeNativeMethodsOther = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -2407,6 +2435,10 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETCARETWIDTH");
         AssertGuardBefore(textSelection, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetLocaleInfoW");
         Assert.Contains("return cultureInfo.TextInfo.IsRightToLeft", textSelection, StringComparison.Ordinal);
+        AssertGuardBefore(caretElement, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.CreateBitmap");
+        AssertGuardBefore(caretElement, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.DestroyCaret()");
+        AssertGuardBefore(caretElement, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.SetCaretPos");
+        Assert.Contains("source is IWin32Window win32Window", caretElement, StringComparison.Ordinal);
         AssertGuardBefore(safeNativeMethodsOther, "if (!OperatingSystem.IsWindows())", "SafeNativeMethodsPrivate.GetCaretBlinkTime()");
         AssertGuardBefore(safeNativeMethodsClr, "if (!OperatingSystem.IsWindows())", "SafeNativeMethodsPrivate.GetTickCount()");
         Assert.Contains("return Environment.TickCount;", safeNativeMethodsClr, StringComparison.Ordinal);

@@ -42,6 +42,21 @@
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
+            <Style x:Key="MultiTriggeredButtonStyle" TargetType="{x:Type Button}">
+                <Setter Property="Margin" Value="0,8,0,0" />
+                <Setter Property="Tag" Value="multi trigger inactive" />
+                <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+                <Style.Triggers>
+                    <MultiDataTrigger>
+                        <MultiDataTrigger.Conditions>
+                            <Condition Binding="{Binding IsWarning}" Value="True" />
+                            <Condition Binding="{Binding IsCritical}" Value="True" />
+                        </MultiDataTrigger.Conditions>
+                        <Setter Property="Tag" Value="multi trigger active" />
+                        <Setter Property="Background" Value="{StaticResource ReplacementAccentBrush}" />
+                    </MultiDataTrigger>
+                </Style.Triggers>
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

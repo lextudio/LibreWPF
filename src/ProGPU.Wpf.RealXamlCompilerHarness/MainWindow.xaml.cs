@@ -73,6 +73,7 @@ public partial class MainWindow : Window
     {
         private string _greeting = "bound greeting from real WPF";
         private bool _isWarning;
+        private bool _isCritical;
         private SmokeItem? _selectedItem;
         private string _validatedText = "valid binding text";
 
@@ -131,6 +132,19 @@ public partial class MainWindow : Window
                 if (_isWarning != value)
                 {
                     _isWarning = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public bool IsCritical
+        {
+            get => _isCritical;
+            set
+            {
+                if (_isCritical != value)
+                {
+                    _isCritical = value;
                     OnPropertyChanged();
                 }
             }

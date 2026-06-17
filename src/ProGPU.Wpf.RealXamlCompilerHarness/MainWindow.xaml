@@ -191,6 +191,10 @@
             x:Name="TriggeredButton"
             Content="{Binding TriggerButtonText}"
             Style="{StaticResource TriggeredButtonStyle}" />
+        <Button
+            x:Name="MultiTriggeredButton"
+            Content="{Binding TriggerButtonText}"
+            Style="{StaticResource MultiTriggeredButtonStyle}" />
         <ListBox
             x:Name="ItemsList"
             Margin="0,8,0,0"

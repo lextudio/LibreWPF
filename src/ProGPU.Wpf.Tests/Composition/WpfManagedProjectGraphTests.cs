@@ -762,6 +762,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Style.Triggers", appXaml, StringComparison.Ordinal);
         Assert.Contains("DataTrigger Binding=\"{Binding IsWarning}\" Value=\"True\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("Setter Property=\"Tag\" Value=\"trigger active\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("Style x:Key=\"MultiTriggeredButtonStyle\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("MultiDataTrigger", appXaml, StringComparison.Ordinal);
+        Assert.Contains("Condition Binding=\"{Binding IsWarning}\" Value=\"True\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("Condition Binding=\"{Binding IsCritical}\" Value=\"True\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("Setter Property=\"Tag\" Value=\"multi trigger active\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("public partial class App : Application", appCodeBehind, StringComparison.Ordinal);
 
         Assert.Contains("ResourceDictionary", smokeResourcesXaml, StringComparison.Ordinal);
@@ -855,6 +860,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"TriggeredButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"{Binding TriggerButtonText}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style=\"{StaticResource TriggeredButtonStyle}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MultiTriggeredButton\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Style=\"{StaticResource MultiTriggeredButtonStyle}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ItemsList\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Items}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SelectedItem=\"{Binding SelectedItem, Mode=TwoWay}\"", mainWindowXaml, StringComparison.Ordinal);
@@ -890,6 +897,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public string ValidatedText", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidatedText is required", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public bool IsWarning", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public bool IsCritical", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public SmokeItem? SelectedItem", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnPropertyChanged();", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeItem", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1027,6 +1035,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateStyleAndDataTrigger(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button triggered style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTrigger active value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Button MultiDataTrigger style", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MultiDataTrigger partial-condition value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MultiDataTrigger active brush", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetField(window, \"ItemsList\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateItemsBindingAndTemplate(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox ItemsSource binding", harnessProgram, StringComparison.Ordinal);
@@ -1154,6 +1165,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateStyleAndDataTrigger(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTrigger inactive value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTrigger active brush", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Button MultiDataTrigger style", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MultiDataTrigger partial-condition brush", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MultiDataTrigger active value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateItemsBindingAndTemplate(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox two-way selected item binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTemplate text binding path", harnessProgram, StringComparison.Ordinal);

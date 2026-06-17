@@ -83,7 +83,7 @@ internal static class Program
         AssertEqual("MainWindow.xaml", GetProperty(application, "StartupUri").ToString(), "startup URI");
 
         object resources = GetProperty(application, "Resources");
-        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 6, "application resource keys");
+        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 7, "application resource keys");
         object mergedDictionaries = GetProperty(resources, "MergedDictionaries");
         AssertCollectionCount(mergedDictionaries, expected: 1, "application merged dictionaries");
         object smokeResources = GetCollectionItem(mergedDictionaries, 0);
@@ -114,6 +114,10 @@ internal static class Program
         AssertType(triggeredButtonStyle, "System.Windows.Style", "triggered Button style");
         AssertEqual("System.Windows.Controls.Button", GetProperty(triggeredButtonStyle, "TargetType").ToString(), "triggered Button style target");
 
+        object multiTriggeredButtonStyle = GetDictionaryValue(resources, "MultiTriggeredButtonStyle");
+        AssertType(multiTriggeredButtonStyle, "System.Windows.Style", "multi-triggered Button style");
+        AssertEqual("System.Windows.Controls.Button", GetProperty(multiTriggeredButtonStyle, "TargetType").ToString(), "multi-triggered Button style target");
+
         object mergedAccentBrush = Invoke(application, "TryFindResource", "MergedAccentBrush");
         AssertType(mergedAccentBrush, "System.Windows.Media.SolidColorBrush", "merged accent brush");
         AssertEqual("#FF547A48", GetProperty(mergedAccentBrush, "Color").ToString(), "merged accent brush color");
@@ -133,7 +137,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 23, "stack panel children");
+        AssertCollectionCount(children, expected: 24, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -491,6 +495,7 @@ internal static class Program
         object accentBrush = GetDictionaryValue(resources, "AccentBrush");
         object replacementAccentBrush = GetDictionaryValue(resources, "ReplacementAccentBrush");
         object expectedStyle = GetDictionaryValue(resources, "TriggeredButtonStyle");
+        object expectedMultiStyle = GetDictionaryValue(resources, "MultiTriggeredButtonStyle");
         object dataContext = GetProperty(window, "DataContext");
 
         object triggeredButton = GetField(window, "TriggeredButton");
@@ -498,13 +503,28 @@ internal static class Program
         AssertSame(expectedStyle, GetProperty(triggeredButton, "Style"), "compiled Button triggered style");
         AssertEqual("style trigger target", GetProperty(triggeredButton, "Content"), "compiled Button trigger content binding");
         AssertEqual(false, GetProperty(dataContext, "IsWarning"), "style trigger initial view-model state");
+        AssertEqual(false, GetProperty(dataContext, "IsCritical"), "multi trigger initial critical view-model state");
         AssertEqual("trigger inactive", GetProperty(triggeredButton, "Tag"), "compiled DataTrigger inactive value");
         AssertSame(accentBrush, GetProperty(triggeredButton, "Background"), "compiled DataTrigger inactive brush");
+
+        object multiTriggeredButton = GetField(window, "MultiTriggeredButton");
+        AssertType(multiTriggeredButton, "System.Windows.Controls.Button", "compiled multi-triggered Button");
+        AssertSame(expectedMultiStyle, GetProperty(multiTriggeredButton, "Style"), "compiled Button MultiDataTrigger style");
+        AssertEqual("style trigger target", GetProperty(multiTriggeredButton, "Content"), "compiled Button MultiDataTrigger content binding");
+        AssertEqual("multi trigger inactive", GetProperty(multiTriggeredButton, "Tag"), "compiled MultiDataTrigger inactive value");
+        AssertSame(accentBrush, GetProperty(multiTriggeredButton, "Background"), "compiled MultiDataTrigger inactive brush");
 
         SetProperty(dataContext, "IsWarning", true);
         AssertEqual(true, GetProperty(dataContext, "IsWarning"), "style trigger updated view-model state");
         AssertEqual("trigger active", GetProperty(triggeredButton, "Tag"), "compiled DataTrigger active value");
         AssertSame(replacementAccentBrush, GetProperty(triggeredButton, "Background"), "compiled DataTrigger active brush");
+        AssertEqual("multi trigger inactive", GetProperty(multiTriggeredButton, "Tag"), "compiled MultiDataTrigger partial-condition value");
+        AssertSame(accentBrush, GetProperty(multiTriggeredButton, "Background"), "compiled MultiDataTrigger partial-condition brush");
+
+        SetProperty(dataContext, "IsCritical", true);
+        AssertEqual(true, GetProperty(dataContext, "IsCritical"), "multi trigger updated critical view-model state");
+        AssertEqual("multi trigger active", GetProperty(multiTriggeredButton, "Tag"), "compiled MultiDataTrigger active value");
+        AssertSame(replacementAccentBrush, GetProperty(multiTriggeredButton, "Background"), "compiled MultiDataTrigger active brush");
     }
 
     private static void ValidateRoutedCommand(object window)

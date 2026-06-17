@@ -461,16 +461,29 @@ internal static class Program
             ?? throw new TypeLoadException("System.Windows.Controls.Validation");
         AssertEqual(false, GetDependencyPropertyValue(validatedBox, validationType, "HasErrorProperty"), "compiled validation initial error state");
 
+        int initialValidatedBoxErrorCount = Convert.ToInt32(GetProperty(window, "ValidatedBoxValidationErrorCount"));
         SetProperty(validatedBox, "Text", string.Empty);
         object bindingExpression = GetBindingExpression(validatedBox, "TextProperty");
         Invoke(bindingExpression, "UpdateSource");
         AssertEqual(string.Empty, GetProperty(dataContext, "ValidatedText"), "compiled validation invalid source value");
         AssertEqual(true, GetDependencyPropertyValue(validatedBox, validationType, "HasErrorProperty"), "compiled validation error state");
+        AssertEqual(initialValidatedBoxErrorCount + 1, GetProperty(window, "ValidatedBoxValidationErrorCount"), "compiled validation Error added count");
+        AssertEqual("ValidatedBox", GetProperty(window, "LastValidatedBoxValidationErrorSenderName"), "compiled validation Error added sender");
+        AssertEqual("ValidationError", GetProperty(window, "LastValidatedBoxValidationErrorRoutedEventName"), "compiled validation Error added routed event");
+        AssertEqual("Added", GetProperty(window, "LastValidatedBoxValidationErrorAction"), "compiled validation Error added action");
+        AssertEqual("ValidatedText is required", GetProperty(window, "LastValidatedBoxValidationErrorContent"), "compiled validation Error added content");
+        AssertEqual("DataErrorValidationRule", GetProperty(window, "LastValidatedBoxValidationErrorRuleName"), "compiled validation Error added rule");
 
         SetProperty(validatedBox, "Text", "valid binding text restored");
         Invoke(bindingExpression, "UpdateSource");
         AssertEqual("valid binding text restored", GetProperty(dataContext, "ValidatedText"), "compiled validation restored source value");
         AssertEqual(false, GetDependencyPropertyValue(validatedBox, validationType, "HasErrorProperty"), "compiled validation restored error state");
+        AssertEqual(initialValidatedBoxErrorCount + 2, GetProperty(window, "ValidatedBoxValidationErrorCount"), "compiled validation Error removed count");
+        AssertEqual("ValidatedBox", GetProperty(window, "LastValidatedBoxValidationErrorSenderName"), "compiled validation Error removed sender");
+        AssertEqual("ValidationError", GetProperty(window, "LastValidatedBoxValidationErrorRoutedEventName"), "compiled validation Error removed routed event");
+        AssertEqual("Removed", GetProperty(window, "LastValidatedBoxValidationErrorAction"), "compiled validation Error removed action");
+        AssertEqual("ValidatedText is required", GetProperty(window, "LastValidatedBoxValidationErrorContent"), "compiled validation Error removed content");
+        AssertEqual("DataErrorValidationRule", GetProperty(window, "LastValidatedBoxValidationErrorRuleName"), "compiled validation Error removed rule");
 
         object ruleValidatedBox = GetField(window, "RuleValidatedBox");
         AssertType(ruleValidatedBox, "System.Windows.Controls.TextBox", "compiled ValidationRule TextBox");
@@ -486,15 +499,28 @@ internal static class Program
         AssertEqual("rule:", GetProperty(validationRule, "RequiredPrefix"), "compiled custom ValidationRule parameter");
         AssertEqual(false, GetDependencyPropertyValue(ruleValidatedBox, validationType, "HasErrorProperty"), "compiled ValidationRule initial error state");
 
+        int initialRuleValidatedBoxErrorCount = Convert.ToInt32(GetProperty(window, "RuleValidatedBoxValidationErrorCount"));
         SetProperty(ruleValidatedBox, "Text", "invalid rule text");
         Invoke(ruleBindingExpression, "UpdateSource");
         AssertEqual("rule: valid binding text", GetProperty(dataContext, "RuleValidatedText"), "compiled ValidationRule rejected source value");
         AssertEqual(true, GetDependencyPropertyValue(ruleValidatedBox, validationType, "HasErrorProperty"), "compiled ValidationRule error state");
+        AssertEqual(initialRuleValidatedBoxErrorCount + 1, GetProperty(window, "RuleValidatedBoxValidationErrorCount"), "compiled ValidationRule Error added count");
+        AssertEqual("RuleValidatedBox", GetProperty(window, "LastRuleValidatedBoxValidationErrorSenderName"), "compiled ValidationRule Error added sender");
+        AssertEqual("ValidationError", GetProperty(window, "LastRuleValidatedBoxValidationErrorRoutedEventName"), "compiled ValidationRule Error added routed event");
+        AssertEqual("Added", GetProperty(window, "LastRuleValidatedBoxValidationErrorAction"), "compiled ValidationRule Error added action");
+        AssertEqual("Value must start with 'rule:'.", GetProperty(window, "LastRuleValidatedBoxValidationErrorContent"), "compiled ValidationRule Error added content");
+        AssertEqual("SmokePrefixValidationRule", GetProperty(window, "LastRuleValidatedBoxValidationErrorRuleName"), "compiled ValidationRule Error added rule");
 
         SetProperty(ruleValidatedBox, "Text", "rule: restored binding text");
         Invoke(ruleBindingExpression, "UpdateSource");
         AssertEqual("rule: restored binding text", GetProperty(dataContext, "RuleValidatedText"), "compiled ValidationRule restored source value");
         AssertEqual(false, GetDependencyPropertyValue(ruleValidatedBox, validationType, "HasErrorProperty"), "compiled ValidationRule restored error state");
+        AssertEqual(initialRuleValidatedBoxErrorCount + 2, GetProperty(window, "RuleValidatedBoxValidationErrorCount"), "compiled ValidationRule Error removed count");
+        AssertEqual("RuleValidatedBox", GetProperty(window, "LastRuleValidatedBoxValidationErrorSenderName"), "compiled ValidationRule Error removed sender");
+        AssertEqual("ValidationError", GetProperty(window, "LastRuleValidatedBoxValidationErrorRoutedEventName"), "compiled ValidationRule Error removed routed event");
+        AssertEqual("Removed", GetProperty(window, "LastRuleValidatedBoxValidationErrorAction"), "compiled ValidationRule Error removed action");
+        AssertEqual("Value must start with 'rule:'.", GetProperty(window, "LastRuleValidatedBoxValidationErrorContent"), "compiled ValidationRule Error removed content");
+        AssertEqual("SmokePrefixValidationRule", GetProperty(window, "LastRuleValidatedBoxValidationErrorRuleName"), "compiled ValidationRule Error removed rule");
 
         ValidateBindingTransferEvents(window, dataContext);
         ValidateBindingGroup(window, dataContext, validationType);

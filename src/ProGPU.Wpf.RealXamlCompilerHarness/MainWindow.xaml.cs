@@ -179,6 +179,30 @@ public partial class MainWindow : Window
 
     public string? LastBindingTransferSourceObjectName { get; private set; }
 
+    public int ValidatedBoxValidationErrorCount { get; private set; }
+
+    public string? LastValidatedBoxValidationErrorSenderName { get; private set; }
+
+    public string? LastValidatedBoxValidationErrorRoutedEventName { get; private set; }
+
+    public string? LastValidatedBoxValidationErrorAction { get; private set; }
+
+    public string? LastValidatedBoxValidationErrorContent { get; private set; }
+
+    public string? LastValidatedBoxValidationErrorRuleName { get; private set; }
+
+    public int RuleValidatedBoxValidationErrorCount { get; private set; }
+
+    public string? LastRuleValidatedBoxValidationErrorSenderName { get; private set; }
+
+    public string? LastRuleValidatedBoxValidationErrorRoutedEventName { get; private set; }
+
+    public string? LastRuleValidatedBoxValidationErrorAction { get; private set; }
+
+    public string? LastRuleValidatedBoxValidationErrorContent { get; private set; }
+
+    public string? LastRuleValidatedBoxValidationErrorRuleName { get; private set; }
+
     public int StoryboardTargetLoadedCount { get; private set; }
 
     public string? LastStoryboardTargetLoadedSenderName { get; private set; }
@@ -370,6 +394,26 @@ public partial class MainWindow : Window
         LastBindingTransferSourceRoutedEventName = e.RoutedEvent?.Name;
         LastBindingTransferSourcePropertyName = e.Property.Name;
         LastBindingTransferSourceObjectName = DescribeElementName(e.TargetObject);
+    }
+
+    private void OnValidatedBoxValidationError(object sender, ValidationErrorEventArgs e)
+    {
+        ValidatedBoxValidationErrorCount++;
+        LastValidatedBoxValidationErrorSenderName = DescribeElementName(sender);
+        LastValidatedBoxValidationErrorRoutedEventName = e.RoutedEvent?.Name;
+        LastValidatedBoxValidationErrorAction = e.Action.ToString();
+        LastValidatedBoxValidationErrorContent = e.Error.ErrorContent?.ToString();
+        LastValidatedBoxValidationErrorRuleName = e.Error.RuleInError?.GetType().Name;
+    }
+
+    private void OnRuleValidatedBoxValidationError(object sender, ValidationErrorEventArgs e)
+    {
+        RuleValidatedBoxValidationErrorCount++;
+        LastRuleValidatedBoxValidationErrorSenderName = DescribeElementName(sender);
+        LastRuleValidatedBoxValidationErrorRoutedEventName = e.RoutedEvent?.Name;
+        LastRuleValidatedBoxValidationErrorAction = e.Action.ToString();
+        LastRuleValidatedBoxValidationErrorContent = e.Error.ErrorContent?.ToString();
+        LastRuleValidatedBoxValidationErrorRuleName = e.Error.RuleInError?.GetType().Name;
     }
 
     private static string? DescribeElementName(object? value)

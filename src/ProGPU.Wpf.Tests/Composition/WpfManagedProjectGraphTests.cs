@@ -929,8 +929,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TargetUpdated=\"OnBindingTransferTargetUpdated\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("BindingTransferText, Mode=TwoWay, UpdateSourceTrigger=Explicit, NotifyOnSourceUpdated=True, NotifyOnTargetUpdated=True", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ValidatedBox\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Validation.Error=\"OnValidatedBoxValidationError\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ValidatedText, UpdateSourceTrigger=Explicit, ValidatesOnDataErrors=True, NotifyOnValidationError=True", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"RuleValidatedBox\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Validation.Error=\"OnRuleValidatedBoxValidationError\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Path=\"RuleValidatedText\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Binding.ValidationRules", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("local:SmokePrefixValidationRule RequiredPrefix=\"rule:\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1303,6 +1305,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public int BindingTransferSourceUpdatedCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnBindingTransferSourceUpdated", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private static string? DescribeElementName", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int ValidatedBoxValidationErrorCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnValidatedBoxValidationError", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int RuleValidatedBoxValidationErrorCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnRuleValidatedBoxValidationError", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastRuleValidatedBoxValidationErrorRuleName = e.Error.RuleInError?.GetType().Name", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int StoryboardTargetLoadedCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnStoryboardTargetLoaded", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastStoryboardTargetLoadedRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1490,6 +1497,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Binding ValidationRules", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled custom ValidationRule parameter", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ValidationRule rejected source value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled validation Error added action", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled validation Error removed rule", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ValidationRule Error added content", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ValidationRule Error removed action", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ValidationRule restored error state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateBindingTransferEvents(window, dataContext)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled binding transfer NotifyOnSourceUpdated", harnessProgram, StringComparison.Ordinal);
@@ -1871,6 +1882,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Binding ValidationRules", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled custom ValidationRule parameter", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ValidationRule rejected source value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled validation Error added sender", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled validation Error removed content", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ValidationRule Error added rule", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ValidationRule Error removed routed event", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ValidationRule restored error state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateBindingTransferEvents(window, dataContext)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled binding transfer NotifyOnTargetUpdated", harnessProgram, StringComparison.Ordinal);

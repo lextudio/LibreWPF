@@ -488,10 +488,12 @@
         <TextBox
             x:Name="ValidatedBox"
             Margin="0,8,0,0"
+            Validation.Error="OnValidatedBoxValidationError"
             Text="{Binding ValidatedText, UpdateSourceTrigger=Explicit, ValidatesOnDataErrors=True, NotifyOnValidationError=True}" />
         <TextBox
             x:Name="RuleValidatedBox"
-            Margin="0,8,0,0">
+            Margin="0,8,0,0"
+            Validation.Error="OnRuleValidatedBoxValidationError">
             <TextBox.Text>
                 <Binding
                     NotifyOnValidationError="True"

@@ -263,7 +263,7 @@
                     Text="wrap one" />
                 <TextBlock
                     x:Name="WrapSecondChild"
-                Text="wrap two" />
+                    Text="wrap two" />
             </WrapPanel>
         </StackPanel>
         <StackPanel
@@ -306,6 +306,29 @@
                 SmallChange="1"
                 Value="4"
                 ViewportSize="2" />
+        </StackPanel>
+        <StackPanel
+            x:Name="DateSelectionSmokePanel"
+            Margin="0,8,0,0">
+            <Calendar
+                x:Name="CalendarSmoke"
+                DisplayDate="2026-06-01"
+                DisplayDateEnd="2026-12-31"
+                DisplayDateStart="2026-01-01"
+                DisplayMode="Month"
+                FirstDayOfWeek="Monday"
+                IsTodayHighlighted="False"
+                SelectedDate="2026-06-17"
+                SelectionMode="SingleDate" />
+            <DatePicker
+                x:Name="DatePickerSmoke"
+                Width="160"
+                DisplayDateEnd="2026-12-31"
+                DisplayDateStart="2026-01-01"
+                FirstDayOfWeek="Monday"
+                IsTodayHighlighted="False"
+                SelectedDate="2026-06-18"
+                SelectedDateFormat="Short" />
         </StackPanel>
         <Button
             x:Name="StyledEventButton"

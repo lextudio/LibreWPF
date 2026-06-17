@@ -180,7 +180,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 55, "stack panel children");
+        AssertCollectionCount(children, expected: 56, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -226,6 +226,7 @@ internal static class Program
         ValidateReadOnlyGridCollectionsAndAttachedProperties(window);
         ValidateLayoutPanels(window);
         ValidateScrollingControls(window);
+        ValidateDateSelectionControls(window);
         ValidateImplicitMergedStyle(window, application);
         ValidateXamlEventHandler(window);
         ValidateStyleEventSetter(window);
@@ -1481,6 +1482,46 @@ internal static class Program
         Invoke(window, "UpdateLayout");
 
         AssertEqual(targetOffset, GetProperty(scrollViewer, "VerticalOffset"), "compiled ScrollViewer vertical offset");
+    }
+
+    private static void ValidateDateSelectionControls(object window)
+    {
+        object datePanel = GetField(window, "DateSelectionSmokePanel");
+        AssertType(datePanel, "System.Windows.Controls.StackPanel", "compiled date-selection panel host");
+        AssertCollectionCount(GetProperty(datePanel, "Children"), expected: 2, "compiled date-selection panel children");
+
+        object calendar = GetField(window, "CalendarSmoke");
+        AssertType(calendar, "System.Windows.Controls.Calendar", "compiled Calendar");
+        AssertEqual("Month", GetProperty(calendar, "DisplayMode").ToString(), "compiled Calendar display mode");
+        AssertEqual("SingleDate", GetProperty(calendar, "SelectionMode").ToString(), "compiled Calendar selection mode");
+        AssertEqual("Monday", GetProperty(calendar, "FirstDayOfWeek").ToString(), "compiled Calendar first day of week");
+        AssertEqual(false, GetProperty(calendar, "IsTodayHighlighted"), "compiled Calendar today highlight");
+        AssertDate(GetProperty(calendar, "DisplayDateStart"), 2026, 1, 1, "compiled Calendar display start");
+        AssertDate(GetProperty(calendar, "DisplayDateEnd"), 2026, 12, 31, "compiled Calendar display end");
+        AssertDate(GetProperty(calendar, "DisplayDate"), 2026, 6, 1, "compiled Calendar display date");
+        AssertDate(GetProperty(calendar, "SelectedDate"), 2026, 6, 17, "compiled Calendar selected date");
+        object selectedDates = GetProperty(calendar, "SelectedDates");
+        AssertCollectionCount(selectedDates, expected: 1, "compiled Calendar selected dates");
+        AssertDate(GetCollectionItem(selectedDates, 0), 2026, 6, 17, "compiled Calendar selected date collection item");
+
+        SetProperty(calendar, "SelectedDate", new DateTime(2026, 6, 21));
+        AssertDate(GetProperty(calendar, "SelectedDate"), 2026, 6, 21, "compiled Calendar updated selected date");
+        AssertCollectionCount(selectedDates, expected: 1, "compiled Calendar updated selected dates");
+        AssertDate(GetCollectionItem(selectedDates, 0), 2026, 6, 21, "compiled Calendar updated selected date collection item");
+
+        object datePicker = GetField(window, "DatePickerSmoke");
+        AssertType(datePicker, "System.Windows.Controls.DatePicker", "compiled DatePicker");
+        AssertEqual(160.0, GetProperty(datePicker, "Width"), "compiled DatePicker width");
+        AssertEqual("Monday", GetProperty(datePicker, "FirstDayOfWeek").ToString(), "compiled DatePicker first day of week");
+        AssertEqual(false, GetProperty(datePicker, "IsTodayHighlighted"), "compiled DatePicker today highlight");
+        AssertEqual("Short", GetProperty(datePicker, "SelectedDateFormat").ToString(), "compiled DatePicker selected date format");
+        AssertEqual(false, GetProperty(datePicker, "IsDropDownOpen"), "compiled DatePicker initial drop-down state");
+        AssertDate(GetProperty(datePicker, "DisplayDateStart"), 2026, 1, 1, "compiled DatePicker display start");
+        AssertDate(GetProperty(datePicker, "DisplayDateEnd"), 2026, 12, 31, "compiled DatePicker display end");
+        AssertDate(GetProperty(datePicker, "SelectedDate"), 2026, 6, 18, "compiled DatePicker selected date");
+
+        SetProperty(datePicker, "SelectedDate", new DateTime(2026, 7, 4));
+        AssertDate(GetProperty(datePicker, "SelectedDate"), 2026, 7, 4, "compiled DatePicker updated selected date");
     }
 
     private static void ValidateImplicitMergedStyle(object window, object application)
@@ -2939,6 +2980,20 @@ internal static class Program
         if (!Equals(expected, actual))
         {
             throw new InvalidOperationException($"Expected {description} to be '{expected}', got '{actual}'.");
+        }
+    }
+
+    private static void AssertDate(object? actual, int expectedYear, int expectedMonth, int expectedDay, string description)
+    {
+        if (actual is not DateTime actualDate)
+        {
+            throw new InvalidOperationException($"Expected {description} to be a DateTime, got '{actual}'.");
+        }
+
+        if (actualDate.Year != expectedYear || actualDate.Month != expectedMonth || actualDate.Day != expectedDay)
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to be '{expectedYear:D4}-{expectedMonth:D2}-{expectedDay:D2}', got '{actualDate:yyyy-MM-dd}'.");
         }
     }
 

@@ -172,7 +172,12 @@ namespace System.Windows.Controls
 
             // We must ignore TextAlignment here since formatWidth does not
             // necessarilly equal paragraphWidth.  We'll adjust on later calls.
-            lineProperties.IgnoreTextAlignment = (lineProperties.TextAlignment != TextAlignment.Justify);
+            // The native LineServices fallback is unavailable in the portable bring-up.
+            // Ignore justification so TextBox-hosted controls can stay on the managed
+            // SimpleTextLine path until a cross-platform full formatter is available.
+            lineProperties.IgnoreTextAlignment =
+                !global::System.OperatingSystem.IsWindows() ||
+                lineProperties.TextAlignment != TextAlignment.Justify;
             try
             {
                 _line = formatter.FormatLine(this, dcp, formatWidth, lineProperties, null, textRunCache);

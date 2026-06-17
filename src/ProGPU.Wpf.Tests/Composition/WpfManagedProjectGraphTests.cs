@@ -963,6 +963,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"ScrollViewerSixthItem\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"VerticalScrollBarSmoke\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ViewportSize=\"2\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"DateSelectionSmokePanel\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"CalendarSmoke\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SelectedDate=\"2026-06-17\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SelectionMode=\"SingleDate\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"DatePickerSmoke\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Width=\"160\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SelectedDate=\"2026-06-18\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SelectedDateFormat=\"Short\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ImplicitStyleCheckBox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("IsChecked=\"True\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"EventButton\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1410,6 +1418,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateScrollingControls(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ScrollViewer content children", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ScrollBar updated value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateDateSelectionControls(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Calendar updated selected date", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DatePicker updated selected date", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateImplicitMergedStyle(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled implicit CheckBox style tag", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateXamlEventHandler(window)", harnessProgram, StringComparison.Ordinal);
@@ -1761,6 +1772,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateScrollingControls(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ScrollViewer horizontal visibility", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ScrollBar viewport size", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateDateSelectionControls(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Calendar selected date collection item", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DatePicker selected date format", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateImplicitMergedStyle(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled implicit CheckBox style margin top", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateXamlEventHandler(window)", harnessProgram, StringComparison.Ordinal);
@@ -2164,6 +2178,15 @@ public sealed class WpfManagedProjectGraphTests
             "Internal",
             "TextFormatting",
             "LineServices.cs"));
+        var textBoxLine = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "MS",
+            "Internal",
+            "documents",
+            "TextBoxLine.cs"));
         var typeface = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -2287,6 +2310,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ManagedPrivateUseClass => CreateManagedAttribute", classification, StringComparison.Ordinal);
         AssertGuardBefore(lineServices, "if (OperatingSystem.IsWindows())", "LoGetEscStringImpl(ref escStringInfo)");
         Assert.Contains("s_managedObjectReplacement", lineServices, StringComparison.Ordinal);
+        Assert.Contains("native LineServices fallback is unavailable in the portable bring-up", textBoxLine, StringComparison.Ordinal);
+        Assert.Contains("!global::System.OperatingSystem.IsWindows() ||", textBoxLine, StringComparison.Ordinal);
+        Assert.Contains("lineProperties.TextAlignment != TextAlignment.Justify", textBoxLine, StringComparison.Ordinal);
         Assert.Contains("The full WPF LineServices path is still native.", typeface, StringComparison.Ordinal);
         Assert.Contains("ContainsOnlyPrivateUseCharacters", typeface, StringComparison.Ordinal);
         Assert.Contains("IsPrivateUseCharacter", typeface, StringComparison.Ordinal);

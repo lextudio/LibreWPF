@@ -1055,6 +1055,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SelectedValue=\"{Binding SelectedCategory, Mode=TwoWay}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ItemsComboBox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SelectedValue=\"{Binding ComboSelectedCategory, Mode=TwoWay}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"GridItemsListView\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<ListView.View>", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("GridView AllowsColumnReorder=\"False\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Header=\"Name\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DisplayMemberBinding=\"{Binding Name}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Header=\"Category\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DisplayMemberBinding=\"{Binding Category}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"NodeTree\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemTemplate=\"{StaticResource SmokeNodeTemplate}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Nodes}\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1466,6 +1473,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ComboBox SelectedValue binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ComboBox collection-change items", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ComboBox two-way selected value source update", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateListViewGridView(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled GridView ListView collection-change items", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled GridView name DisplayMemberBinding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled GridView ListView selected index after update", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowItemTemplateTriggerActivation(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowTabControl(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowSectionControls(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
@@ -1795,6 +1806,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ComboBox SelectedValue binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ComboBox collection-change items", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ComboBox two-way selected value source update", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateListViewGridView(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled GridView ListView collection-change items", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled GridView category DisplayMemberBinding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled GridView ListView selected index after update", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowItemTemplateTriggerActivation(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowTabControl(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowSectionControls(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
@@ -2065,6 +2080,15 @@ public sealed class WpfManagedProjectGraphTests
             "MS",
             "Internal",
             "Classification.cs"));
+        var cursor = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Input",
+            "Cursor.cs"));
         var lineServices = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -2186,6 +2210,9 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(fontCacheUtil, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.CreateFile(");
         Assert.Contains("OpenManagedFile(fileName)", fontCacheUtil, StringComparison.Ordinal);
         Assert.Contains("File.ReadAllBytes(fileName)", fontCacheUtil, StringComparison.Ordinal);
+        AssertGuardBefore(cursor, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.LoadImageCursor");
+        Assert.Contains("LoadPortableCursorFallback()", cursor, StringComparison.Ordinal);
+        Assert.Contains("_cursorType = CursorType.Arrow", cursor, StringComparison.Ordinal);
         AssertGuardBefore(classification, "if (OperatingSystem.IsWindows())", "MILGetClassificationTables(out ct)");
         Assert.Contains("GetManagedUnicodeClass", classification, StringComparison.Ordinal);
         Assert.Contains("ManagedCharAttributeOf", classification, StringComparison.Ordinal);

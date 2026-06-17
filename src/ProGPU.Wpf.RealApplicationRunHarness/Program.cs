@@ -150,7 +150,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 49, "stack panel children");
+        AssertCollectionCount(children, expected: 50, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -205,6 +205,7 @@ internal static class Program
         ValidateTemplateAndDynamicResource(window, application);
         ValidateItemsBindingAndTemplate(window);
         ValidateComboBox(window);
+        ValidateListViewGridView(window);
         ValidateImplicitDataTemplate(window);
         ValidateContentTemplateSelector(window);
         ValidateHierarchicalDataTemplate(window);
@@ -1706,6 +1707,42 @@ internal static class Program
         AssertEqual("primary group", GetProperty(comboBox, "SelectedValue"), "compiled ComboBox updated selected value");
         AssertSame(GetCollectionItem(sourceItems, 0), GetProperty(comboBox, "SelectedItem"), "compiled ComboBox selected item after selected value update");
         AssertEqual(0, GetProperty(comboBox, "SelectedIndex"), "compiled ComboBox updated selected index");
+    }
+
+    private static void ValidateListViewGridView(object window)
+    {
+        object dataContext = GetProperty(window, "DataContext");
+        object sourceItems = GetProperty(dataContext, "Items");
+
+        object listView = GetField(window, "GridItemsListView");
+        AssertType(listView, "System.Windows.Controls.ListView", "compiled GridView ListView");
+        AssertSame(sourceItems, GetProperty(listView, "ItemsSource"), "compiled GridView ListView ItemsSource binding");
+        AssertCollectionCount(GetProperty(listView, "Items"), expected: 3, "compiled GridView ListView collection-change items");
+        AssertSame(GetCollectionItem(sourceItems, 1), GetProperty(listView, "SelectedItem"), "compiled GridView ListView selected item");
+        AssertEqual(1, GetProperty(listView, "SelectedIndex"), "compiled GridView ListView selected index");
+
+        object gridView = GetProperty(listView, "View");
+        AssertType(gridView, "System.Windows.Controls.GridView", "compiled GridView view");
+        AssertEqual(false, GetProperty(gridView, "AllowsColumnReorder"), "compiled GridView column reorder setting");
+        object columns = GetProperty(gridView, "Columns");
+        AssertCollectionCount(columns, expected: 2, "compiled GridView columns");
+
+        object nameColumn = GetCollectionItem(columns, 0);
+        AssertType(nameColumn, "System.Windows.Controls.GridViewColumn", "compiled GridView name column");
+        AssertEqual("Name", GetProperty(nameColumn, "Header"), "compiled GridView name column header");
+        AssertEqual(120.0, GetProperty(nameColumn, "Width"), "compiled GridView name column width");
+        AssertBindingObjectPath(GetProperty(nameColumn, "DisplayMemberBinding"), "Name", "compiled GridView name DisplayMemberBinding path");
+
+        object categoryColumn = GetCollectionItem(columns, 1);
+        AssertType(categoryColumn, "System.Windows.Controls.GridViewColumn", "compiled GridView category column");
+        AssertEqual("Category", GetProperty(categoryColumn, "Header"), "compiled GridView category column header");
+        AssertEqual(140.0, GetProperty(categoryColumn, "Width"), "compiled GridView category column width");
+        AssertBindingObjectPath(GetProperty(categoryColumn, "DisplayMemberBinding"), "Category", "compiled GridView category DisplayMemberBinding path");
+
+        SetProperty(listView, "SelectedIndex", 0);
+
+        AssertSame(GetCollectionItem(sourceItems, 0), GetProperty(listView, "SelectedItem"), "compiled GridView ListView selected item after index update");
+        AssertEqual(0, GetProperty(listView, "SelectedIndex"), "compiled GridView ListView selected index after update");
     }
 
     private static void ValidateImplicitDataTemplate(object window)

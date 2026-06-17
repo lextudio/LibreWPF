@@ -159,6 +159,12 @@ namespace System.Windows.Input
 
         private void LoadFromFile(string fileName)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                LoadPortableCursorFallback();
+                return;
+            }
+
             // Load a Custom Cursor
             _cursorHandle = UnsafeNativeMethods.LoadImageCursor(IntPtr.Zero,
                                                                 fileName,
@@ -202,6 +208,12 @@ namespace System.Windows.Input
 
         private void LegacyLoadFromStream(Stream cursorStream)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                LoadPortableCursorFallback();
+                return;
+            }
+
             //Generate a temporal file based on the memory stream.
 
             // GetTempFileName requires unrestricted Environment permission
@@ -266,6 +278,12 @@ namespace System.Windows.Input
 
         private void LoadFromStream(Stream cursorStream)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                LoadPortableCursorFallback();
+                return;
+            }
+
             if (MS.Internal.CoreAppContextSwitches.AllowExternalProcessToBlockAccessToTemporaryFiles)
             {
                 LegacyLoadFromStream(cursorStream);
@@ -299,6 +317,12 @@ namespace System.Windows.Input
             {
                 FileHelper.DeleteTemporaryFile(filePath);
             }
+        }
+
+        private void LoadPortableCursorFallback()
+        {
+            // Keep custom cursor objects constructible until a platform cursor service owns .cur/.ani decoding.
+            _cursorType = CursorType.Arrow;
         }
 
         private void LoadCursorHelper(CursorType cursorType)

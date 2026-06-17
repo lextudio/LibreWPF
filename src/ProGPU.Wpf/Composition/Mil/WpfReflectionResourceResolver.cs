@@ -731,7 +731,7 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
         var geometry = new PathGeometry();
         var figure = new PathFigure
         {
-            StartPoint = new Vector2((float)startPoint.X, (float)startPoint.Y),
+            StartPoint = startPoint,
             IsClosed = false,
             IsFilled = false
         };
@@ -747,7 +747,7 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
         var geometry = new PathGeometry();
         var figure = new PathFigure
         {
-            StartPoint = new Vector2((float)rectangle.X, (float)rectangle.Y),
+            StartPoint = new Point(rectangle.X, rectangle.Y),
             IsClosed = true,
             IsFilled = true
         };
@@ -778,7 +778,7 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
 
         var figure = new PathFigure
         {
-            StartPoint = new Vector2((float)(cx + rx), (float)cy),
+            StartPoint = new Point(cx + rx, cy),
             IsClosed = true,
             IsFilled = true
         };
@@ -926,7 +926,7 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
             return false;
         }
 
-        figure.StartPoint = ToVector2(startPoint);
+        figure.StartPoint = startPoint;
 
         if (TryReadBoolProperty(figureValue, "IsClosed", out var isClosed))
         {
@@ -1048,14 +1048,14 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
         {
             var arc = new ArcSegment
             {
-                Point = ToVector2(arcPoint),
-                Size = arcSize,
+                Point = arcPoint,
+                Size = ToSize(arcSize),
                 IsSmoothJoin = isSmoothJoin
             };
 
             if (TryReadDoubleProperty(segmentValue, "RotationAngle", out var rotationAngle))
             {
-                arc.RotationAngle = (float)rotationAngle;
+                arc.RotationAngle = rotationAngle;
             }
 
             if (TryReadBoolProperty(segmentValue, "IsLargeArc", out var isLargeArc))
@@ -1193,6 +1193,21 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
         return new Vector2((float)point.X, (float)point.Y);
     }
 
+    private static Vector2 ToVector2(Size size)
+    {
+        return new Vector2((float)size.Width, (float)size.Height);
+    }
+
+    private static Point ToPoint(Vector2 point)
+    {
+        return new Point(point.X, point.Y);
+    }
+
+    private static Size ToSize(Vector2 size)
+    {
+        return new Size(Math.Abs(size.X), Math.Abs(size.Y));
+    }
+
     private static PathFigure CloneFigure(PathFigure source)
     {
         return CloneFigure(source, Matrix4x4.Identity);
@@ -1200,10 +1215,10 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
 
     private static PathFigure CloneFigure(PathFigure source, Matrix4x4 transform)
     {
-        var sourceCurrentPoint = source.StartPoint;
+        var sourceCurrentPoint = ToVector2(source.StartPoint);
         var target = new PathFigure
         {
-            StartPoint = Vector2.Transform(source.StartPoint, transform),
+            StartPoint = ToPoint(Vector2.Transform(ToVector2(source.StartPoint), transform)),
             IsClosed = source.IsClosed,
             IsFilled = source.IsFilled
         };
@@ -1213,23 +1228,23 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
             switch (segment)
             {
                 case LineSegment line:
-                    target.Segments.Add(new LineSegment(Vector2.Transform(line.Point, transform), line.IsSmoothJoin));
-                    sourceCurrentPoint = line.Point;
+                    target.Segments.Add(new LineSegment(Vector2.Transform(ToVector2(line.Point), transform), line.IsSmoothJoin));
+                    sourceCurrentPoint = ToVector2(line.Point);
                     break;
                 case QuadraticBezierSegment quadratic:
                     target.Segments.Add(new QuadraticBezierSegment(
-                        Vector2.Transform(quadratic.Point1, transform),
-                        Vector2.Transform(quadratic.Point2, transform),
+                        Vector2.Transform(ToVector2(quadratic.Point1), transform),
+                        Vector2.Transform(ToVector2(quadratic.Point2), transform),
                         quadratic.IsSmoothJoin));
-                    sourceCurrentPoint = quadratic.Point2;
+                    sourceCurrentPoint = ToVector2(quadratic.Point2);
                     break;
                 case BezierSegment bezier:
                     target.Segments.Add(new BezierSegment(
-                        Vector2.Transform(bezier.Point1, transform),
-                        Vector2.Transform(bezier.Point2, transform),
-                        Vector2.Transform(bezier.Point3, transform),
+                        Vector2.Transform(ToVector2(bezier.Point1), transform),
+                        Vector2.Transform(ToVector2(bezier.Point2), transform),
+                        Vector2.Transform(ToVector2(bezier.Point3), transform),
                         bezier.IsSmoothJoin));
-                    sourceCurrentPoint = bezier.Point3;
+                    sourceCurrentPoint = ToVector2(bezier.Point3);
                     break;
                 case ArcSegment arc:
                     if (TryTransformArcSegment(sourceCurrentPoint, arc, transform, out var transformedArc))
@@ -1238,10 +1253,10 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
                     }
                     else
                     {
-                        target.Segments.Add(new LineSegment(Vector2.Transform(arc.Point, transform), arc.IsSmoothJoin));
+                        target.Segments.Add(new LineSegment(Vector2.Transform(ToVector2(arc.Point), transform), arc.IsSmoothJoin));
                     }
 
-                    sourceCurrentPoint = arc.Point;
+                    sourceCurrentPoint = ToVector2(arc.Point);
                     break;
             }
         }
@@ -1260,9 +1275,9 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
         if (!global::ProGPU.Vector.ArcSegmentGeometry.TryTransformArcSegment(
                 startPoint,
                 new global::ProGPU.Vector.ArcSegment(
-                    arc.Point,
-                    arc.Size,
-                    arc.RotationAngle,
+                    ToVector2(arc.Point),
+                    ToVector2(arc.Size),
+                    (float)arc.RotationAngle,
                     arc.IsLargeArc,
                     (global::ProGPU.Vector.SweepDirection)(int)arc.SweepDirection,
                     arc.IsSmoothJoin),
@@ -1275,8 +1290,8 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
 
         transformedArc = new ArcSegment
         {
-            Point = vectorArc.Point,
-            Size = vectorArc.Size,
+            Point = ToPoint(vectorArc.Point),
+            Size = ToSize(vectorArc.Size),
             RotationAngle = vectorArc.RotationAngle,
             IsLargeArc = vectorArc.IsLargeArc,
             SweepDirection = (SweepDirection)(int)vectorArc.SweepDirection,

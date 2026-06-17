@@ -1755,10 +1755,10 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
 
         foreach (var figure in geometry.Figures)
         {
-            var sourceCurrentPoint = figure.StartPoint;
+            var sourceCurrentPoint = ToVector2(figure.StartPoint);
             var nativeFigure = new VectorPathFigure
             {
-                StartPoint = Vector2.Transform(figure.StartPoint, combinedTransform),
+                StartPoint = Vector2.Transform(ToVector2(figure.StartPoint), combinedTransform),
                 IsClosed = figure.IsClosed,
                 IsFilled = figure.IsFilled
             };
@@ -1769,37 +1769,37 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
                 {
                     case LineSegment line:
                         nativeFigure.Segments.Add(new VectorLineSegment(
-                            Vector2.Transform(line.Point, combinedTransform),
+                            Vector2.Transform(ToVector2(line.Point), combinedTransform),
                             line.IsSmoothJoin,
                             line.IsStroked));
-                        sourceCurrentPoint = line.Point;
+                        sourceCurrentPoint = ToVector2(line.Point);
                         break;
 
                     case QuadraticBezierSegment quadratic:
                         nativeFigure.Segments.Add(new VectorQuadraticBezierSegment(
-                            Vector2.Transform(quadratic.Point1, combinedTransform),
-                            Vector2.Transform(quadratic.Point2, combinedTransform),
+                            Vector2.Transform(ToVector2(quadratic.Point1), combinedTransform),
+                            Vector2.Transform(ToVector2(quadratic.Point2), combinedTransform),
                             quadratic.IsSmoothJoin,
                             quadratic.IsStroked));
-                        sourceCurrentPoint = quadratic.Point2;
+                        sourceCurrentPoint = ToVector2(quadratic.Point2);
                         break;
 
                     case BezierSegment cubic:
                         nativeFigure.Segments.Add(new VectorCubicBezierSegment(
-                            Vector2.Transform(cubic.Point1, combinedTransform),
-                            Vector2.Transform(cubic.Point2, combinedTransform),
-                            Vector2.Transform(cubic.Point3, combinedTransform),
+                            Vector2.Transform(ToVector2(cubic.Point1), combinedTransform),
+                            Vector2.Transform(ToVector2(cubic.Point2), combinedTransform),
+                            Vector2.Transform(ToVector2(cubic.Point3), combinedTransform),
                             cubic.IsSmoothJoin,
                             cubic.IsStroked));
-                        sourceCurrentPoint = cubic.Point3;
+                        sourceCurrentPoint = ToVector2(cubic.Point3);
                         break;
 
                     case ArcSegment arc:
                         if (TryTransformArcSegment(
                             sourceCurrentPoint,
-                            arc.Point,
-                            arc.Size,
-                            arc.RotationAngle,
+                            ToVector2(arc.Point),
+                            ToVector2(arc.Size),
+                            (float)arc.RotationAngle,
                             arc.IsLargeArc,
                             arc.SweepDirection == MediaSweepDirection.Clockwise
                                 ? VectorSweepDirection.Clockwise
@@ -1814,12 +1814,12 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
                         else
                         {
                             nativeFigure.Segments.Add(new VectorLineSegment(
-                                Vector2.Transform(arc.Point, combinedTransform),
+                                Vector2.Transform(ToVector2(arc.Point), combinedTransform),
                                 arc.IsSmoothJoin,
                                 arc.IsStroked));
                         }
 
-                        sourceCurrentPoint = arc.Point;
+                        sourceCurrentPoint = ToVector2(arc.Point);
                         break;
                 }
             }
@@ -1828,6 +1828,16 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         }
 
         return path;
+    }
+
+    private static Vector2 ToVector2(Point point)
+    {
+        return new Vector2((float)point.X, (float)point.Y);
+    }
+
+    private static Vector2 ToVector2(Size size)
+    {
+        return new Vector2((float)size.Width, (float)size.Height);
     }
 
     private static bool TryTransformArcSegment(

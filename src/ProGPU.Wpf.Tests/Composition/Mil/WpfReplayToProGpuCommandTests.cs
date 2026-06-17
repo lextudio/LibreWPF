@@ -599,7 +599,7 @@ public sealed class WpfReplayToProGpuCommandTests
         var geometry = new PathGeometry();
         var figure = new PathFigure
         {
-            StartPoint = new Vector2(0, 0),
+            StartPoint = new Point(0, 0),
             IsClosed = false
         };
         figure.Segments.Add(new LineSegment(new Vector2(10, 0)));
@@ -930,7 +930,7 @@ public sealed class WpfReplayToProGpuCommandTests
         var geometry = new PathGeometry();
         var figure = new PathFigure
         {
-            StartPoint = new Vector2(0, 0),
+            StartPoint = new Point(0, 0),
             IsClosed = true,
             IsFilled = true
         };
@@ -989,14 +989,14 @@ public sealed class WpfReplayToProGpuCommandTests
         var geometry = new PathGeometry();
         var figure = new PathFigure
         {
-            StartPoint = new Vector2(0, 0),
+            StartPoint = new Point(0, 0),
             IsClosed = false,
             IsFilled = true
         };
         figure.Segments.Add(new ArcSegment
         {
-            Point = new Vector2(30, 0),
-            Size = new Vector2(15, 15),
+            Point = new Point(30, 0),
+            Size = new Size(15, 15),
             RotationAngle = 0,
             IsLargeArc = false,
             SweepDirection = SweepDirection.Clockwise
@@ -1230,13 +1230,13 @@ public sealed class WpfReplayToProGpuCommandTests
         var geometry = new PathGeometry();
         var figure = new PathFigure
         {
-            StartPoint = new Vector2(0, 0),
+            StartPoint = new Point(0, 0),
             IsClosed = false
         };
         figure.Segments.Add(new ArcSegment
         {
-            Point = new Vector2(30, 40),
-            Size = new Vector2(10, 20),
+            Point = new Point(30, 40),
+            Size = new Size(10, 20),
             RotationAngle = 45,
             IsLargeArc = true,
             SweepDirection = SweepDirection.Clockwise
@@ -1277,7 +1277,7 @@ public sealed class WpfReplayToProGpuCommandTests
         var geometry = new PathGeometry();
         var figure = new PathFigure
         {
-            StartPoint = new Vector2(0, 0),
+            StartPoint = new Point(0, 0),
             IsClosed = false
         };
         figure.Segments.Add(new LineSegment(new Vector2(10, 0)) { IsSmoothJoin = true });
@@ -1285,8 +1285,8 @@ public sealed class WpfReplayToProGpuCommandTests
         figure.Segments.Add(new BezierSegment(new Vector2(25, 5), new Vector2(30, 5), new Vector2(35, 0)) { IsSmoothJoin = true });
         figure.Segments.Add(new ArcSegment
         {
-            Point = new Vector2(45, 0),
-            Size = new Vector2(4, 8),
+            Point = new Point(45, 0),
+            Size = new Size(4, 8),
             RotationAngle = 0,
             IsLargeArc = false,
             SweepDirection = SweepDirection.Clockwise,
@@ -1322,7 +1322,7 @@ public sealed class WpfReplayToProGpuCommandTests
         };
         var figure = new PathFigure
         {
-            StartPoint = new Vector2(0, 0),
+            StartPoint = new Point(0, 0),
             IsClosed = false
         };
         figure.Segments.Add(new LineSegment(new Vector2(10, 0)) { IsStroked = false });
@@ -1330,8 +1330,8 @@ public sealed class WpfReplayToProGpuCommandTests
         figure.Segments.Add(new BezierSegment(new Vector2(25, 5), new Vector2(30, 5), new Vector2(35, 0)) { IsStroked = false });
         figure.Segments.Add(new ArcSegment
         {
-            Point = new Vector2(45, 0),
-            Size = new Vector2(4, 8),
+            Point = new Point(45, 0),
+            Size = new Size(4, 8),
             RotationAngle = 0,
             IsLargeArc = false,
             SweepDirection = SweepDirection.Clockwise,
@@ -1670,7 +1670,7 @@ public sealed class WpfReplayToProGpuCommandTests
         var clip = new PathGeometry();
         var figure = new PathFigure
         {
-            StartPoint = new Vector2(0, 0),
+            StartPoint = new Point(0, 0),
             IsClosed = true
         };
         figure.Segments.Add(new LineSegment(new Vector2(40, 0)));
@@ -1962,7 +1962,7 @@ public sealed class WpfReplayToProGpuCommandTests
         var geometry = new PathGeometry();
         var figure = new PathFigure
         {
-            StartPoint = new Vector2(0, 0),
+            StartPoint = new Point(0, 0),
             IsClosed = true
         };
         figure.Segments.Add(new LineSegment(new Vector2(10, 0)));
@@ -2357,13 +2357,13 @@ public sealed class WpfReplayToProGpuCommandTests
         var geometry = new PathGeometry();
         var figure = new PathFigure
         {
-            StartPoint = new Vector2(0, 0),
+            StartPoint = new Point(0, 0),
             IsClosed = false
         };
         figure.Segments.Add(new ArcSegment
         {
-            Point = new Vector2(30, 40),
-            Size = new Vector2(10, 20),
+            Point = new Point(30, 40),
+            Size = new Size(10, 20),
             RotationAngle = rotationAngle,
             IsLargeArc = true,
             SweepDirection = SweepDirection.Clockwise

@@ -2537,10 +2537,10 @@ public sealed class WpfReflectionResourceResolverTests
         var adaptedGeometry = Assert.IsType<PathGeometry>(WpfReflectionResourceResolver.AdaptGeometry(group));
 
         Assert.Equal(new Rect(5, 7, 27, 10), adaptedGeometry.Bounds);
-        Assert.Equal(new Vector2(5, 7), adaptedGeometry.Figures[0].StartPoint);
-        Assert.Equal(new Vector2(22, 8), adaptedGeometry.Figures[1].StartPoint);
+        Assert.Equal(new Point(5, 7), adaptedGeometry.Figures[0].StartPoint);
+        Assert.Equal(new Point(22, 8), adaptedGeometry.Figures[1].StartPoint);
         var line = Assert.IsType<LineSegment>(Assert.Single(adaptedGeometry.Figures[1].Segments));
-        Assert.Equal(new Vector2(32, 8), line.Point);
+        Assert.Equal(new Point(32, 8), line.Point);
     }
 
     [Fact]
@@ -2579,9 +2579,9 @@ public sealed class WpfReflectionResourceResolverTests
         Assert.Equal(expectedStart.Y, figure.StartPoint.Y, 4);
         Assert.Equal(expectedEnd.X, arc.Point.X, 4);
         Assert.Equal(expectedEnd.Y, arc.Point.Y, 4);
-        Assert.True(arc.Size.X > 0);
-        Assert.True(arc.Size.Y > 0);
-        Assert.True(float.IsFinite(arc.RotationAngle));
+        Assert.True(arc.Size.Width > 0);
+        Assert.True(arc.Size.Height > 0);
+        Assert.True(double.IsFinite(arc.RotationAngle));
         Assert.Equal(SweepDirection.Clockwise, arc.SweepDirection);
     }
 
@@ -2628,9 +2628,9 @@ public sealed class WpfReflectionResourceResolverTests
         var arc = Assert.IsType<ArcSegment>(figure.Segments[7]);
         Assert.Equal(100f, arc.Point.X);
         Assert.Equal(100f, arc.Point.Y);
-        Assert.Equal(3f, arc.Size.X);
-        Assert.Equal(4f, arc.Size.Y);
-        Assert.Equal(45f, arc.RotationAngle);
+        Assert.Equal(3, arc.Size.Width);
+        Assert.Equal(4, arc.Size.Height);
+        Assert.Equal(45, arc.RotationAngle);
         Assert.True(arc.IsLargeArc);
         Assert.Equal(SweepDirection.Clockwise, arc.SweepDirection);
     }

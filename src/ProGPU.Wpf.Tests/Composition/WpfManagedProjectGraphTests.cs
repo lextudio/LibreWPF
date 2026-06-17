@@ -1165,6 +1165,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled DoubleAnimation target value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DoubleAnimation fill behavior", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowLoadedEvent(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Storyboard target post-Loaded opacity", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Storyboard target Loaded handler count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Storyboard target Loaded routed event name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMarkupExtension(window)", harnessProgram, StringComparison.Ordinal);
@@ -1397,10 +1398,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePostShowLoadedEvent(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLoadedEventHandlerState(activation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("FlushDispatcherOperations(typedActivation.Window, \"Loaded\", \"Render\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PortableMediaContextRenderServiceTypeName", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("_mediaContextRenderRegistration = RegisterMediaContextRenderService()", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RequestRenderFromMediaContext", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable MediaContext render request count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortablePresentationSourceTypeName", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreatePortablePresentationSource(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("SetProperty(source, \"RootVisual\", window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("typedActivation.DisposePresentationSource()", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Storyboard target post-Loaded opacity", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Storyboard target Loaded handler count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Storyboard target Loaded routed event name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMarkupExtension(window)", harnessProgram, StringComparison.Ordinal);

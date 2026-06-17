@@ -7,6 +7,7 @@ internal static class Program
     private const string CompilerHarnessAssemblyName = "ProGPU.Wpf.RealXamlCompilerHarness";
     private const string AppTypeName = "ProGPU.Wpf.RealXamlCompilerHarness.App";
     private const string MainWindowTypeName = "ProGPU.Wpf.RealXamlCompilerHarness.MainWindow";
+    private const string PortableMediaContextRenderServiceTypeName = "System.Windows.Media.PortableMediaContextRenderService";
     private const string PortablePresentationSourceTypeName = "System.Windows.PortablePresentationSource";
     private const string PortableWindowActivationServiceTypeName = "System.Windows.PortableWindowActivationService";
 
@@ -47,6 +48,7 @@ internal static class Program
         Assembly compilerHarness = loadContext.LoadFromAssemblyPath(compilerHarnessPath);
 
         object? application = null;
+        ActivationRecorder? recorder = null;
         Type? activationServiceType = null;
 
         try
@@ -55,7 +57,7 @@ internal static class Program
             Invoke(application, "InitializeComponent");
             ValidateApplication(application);
 
-            ActivationRecorder recorder = RegisterPortableActivation(
+            recorder = RegisterPortableActivation(
                 presentationFramework,
                 presentationCore,
                 compilerHarness,
@@ -68,6 +70,8 @@ internal static class Program
         }
         finally
         {
+            recorder?.Dispose();
+
             activationServiceType?.GetMethod(
                 "Clear",
                 BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.Invoke(null, null);
@@ -444,6 +448,7 @@ internal static class Program
     {
         object storyboardTargetBlock = GetField(window, "StoryboardTargetBlock");
         AssertEqual(true, GetProperty(storyboardTargetBlock, "IsLoaded"), "compiled Storyboard target loaded state");
+        AssertEqual(0.37, GetProperty(storyboardTargetBlock, "Opacity"), "compiled Storyboard target post-Loaded opacity");
         ValidateLoadedEventHandlerState(window);
     }
 
@@ -1620,13 +1625,16 @@ internal static class Program
         throw new DirectoryNotFoundException("Could not locate the WPF repository root.");
     }
 
-    private sealed class ActivationRecorder
+    private sealed class ActivationRecorder : IDisposable
     {
         private readonly Assembly _presentationCore;
         private readonly Assembly _compilerHarness;
         private readonly object _application;
         private readonly Type _activationServiceType;
+        private readonly IDisposable? _mediaContextRenderRegistration;
         private object? _activation;
+        private bool _isDisposed;
+        private bool _isFlushingWpfDispatcher;
 
         public ActivationRecorder(
             Assembly presentationCore,
@@ -1638,6 +1646,7 @@ internal static class Program
             _compilerHarness = compilerHarness;
             _application = application;
             _activationServiceType = activationServiceType;
+            _mediaContextRenderRegistration = RegisterMediaContextRenderService();
         }
 
         public int ActivateCount { get; private set; }
@@ -1645,6 +1654,8 @@ internal static class Program
         public int ShowCount { get; private set; }
 
         public int RunCount { get; private set; }
+
+        public int RenderRequestCount { get; private set; }
 
         public int CloseCount { get; private set; }
 
@@ -1753,6 +1764,7 @@ internal static class Program
                     $"Expected portable run-loop count to be '1', got '{RunCount}'. " +
                     $"MainWindow={DescribeMainWindow()}, Activation={DescribeActivation()}.");
             }
+            AssertEqual(true, RenderRequestCount > 0, "portable MediaContext render request count");
             AssertEqual(1, CloseCount, "startup window close count");
             AssertEqual(1, DisposeCount, "startup window dispose count");
 
@@ -1782,6 +1794,24 @@ internal static class Program
 
         private void FlushDispatcherOperations(object window, params string[] markerPriorityNames)
         {
+            if (_isFlushingWpfDispatcher)
+            {
+                return;
+            }
+
+            _isFlushingWpfDispatcher = true;
+            try
+            {
+                FlushDispatcherOperationsCore(window, markerPriorityNames);
+            }
+            finally
+            {
+                _isFlushingWpfDispatcher = false;
+            }
+        }
+
+        private void FlushDispatcherOperationsCore(object window, params string[] markerPriorityNames)
+        {
             MethodInfo flushMethod = _activationServiceType.GetMethod(
                 "FlushDispatcherOperations",
                 BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
@@ -1793,6 +1823,61 @@ internal static class Program
                 object markerPriority = Enum.Parse(dispatcherPriorityType, markerPriorityName);
                 flushMethod.Invoke(null, new[] { window, markerPriority });
             }
+        }
+
+        private IDisposable? RegisterMediaContextRenderService()
+        {
+            Type serviceType = GetRequiredType(_presentationCore, PortableMediaContextRenderServiceTypeName);
+
+            MethodInfo? register = serviceType.GetMethod(
+                "Register",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: new[] { typeof(Action<TimeSpan>) },
+                modifiers: null);
+            if (register != null)
+            {
+                return (IDisposable?)register.Invoke(null, new object[] { (Action<TimeSpan>)RequestRenderFromMediaContext });
+            }
+
+            register = serviceType.GetMethod(
+                "Register",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: new[] { typeof(Action) },
+                modifiers: null);
+            if (register == null)
+            {
+                throw new MissingMethodException(serviceType.FullName, "Register");
+            }
+
+            return (IDisposable?)register.Invoke(null, new object[] { (Action)RequestRenderFromMediaContext });
+        }
+
+        private void RequestRenderFromMediaContext()
+        {
+            RequestRenderFromMediaContext(TimeSpan.Zero);
+        }
+
+        private void RequestRenderFromMediaContext(TimeSpan delay)
+        {
+            if (_isDisposed || _activation is not RecordingActivation)
+            {
+                return;
+            }
+
+            RenderRequestCount++;
+        }
+
+        public void Dispose()
+        {
+            if (_isDisposed)
+            {
+                return;
+            }
+
+            _mediaContextRenderRegistration?.Dispose();
+            _isDisposed = true;
         }
 
         private object CreatePortablePresentationSource(object window)

@@ -509,6 +509,7 @@ internal static class Program
     {
         object storyboardTargetBlock = GetField(window, "StoryboardTargetBlock");
         AssertEqual(true, GetProperty(storyboardTargetBlock, "IsLoaded"), "compiled Storyboard target loaded state");
+        AssertEqual(0.37, GetProperty(storyboardTargetBlock, "Opacity"), "compiled Storyboard target post-Loaded opacity");
         AssertEqual(1, GetProperty(window, "StoryboardTargetLoadedCount"), "compiled Storyboard target Loaded handler count");
         AssertEqual("StoryboardTargetBlock", GetProperty(window, "LastStoryboardTargetLoadedSenderName"), "compiled Storyboard target Loaded sender name");
         AssertEqual("Loaded", GetProperty(window, "LastStoryboardTargetLoadedRoutedEventName"), "compiled Storyboard target Loaded routed event name");

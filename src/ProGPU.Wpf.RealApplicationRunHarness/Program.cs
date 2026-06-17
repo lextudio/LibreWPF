@@ -139,7 +139,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 33, "stack panel children");
+        AssertCollectionCount(children, expected: 34, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -176,6 +176,7 @@ internal static class Program
         ValidateAdvancedBindingFeatures(window);
         ValidateObjectDataProvider(window);
         ValidateXmlDataProvider(window);
+        ValidateStoryboardEventTrigger(window);
         ValidateMarkupExtension(window);
         ValidateMergedResourceDictionary(window, application);
         ValidateNestedUserControl(window);
@@ -612,6 +613,35 @@ internal static class Program
         object parentBinding = GetProperty(bindingExpression, "ParentBinding");
         AssertSame(provider, GetProperty(parentBinding, "Source"), "compiled XmlDataProvider binding source");
         AssertEqual("@Text", GetProperty(parentBinding, "XPath"), "compiled XmlDataProvider binding XPath");
+    }
+
+    private static void ValidateStoryboardEventTrigger(object window)
+    {
+        object storyboardTargetBlock = GetField(window, "StoryboardTargetBlock");
+        AssertType(storyboardTargetBlock, "System.Windows.Controls.TextBlock", "compiled Storyboard target TextBlock");
+        AssertEqual("compiled storyboard target", GetProperty(storyboardTargetBlock, "Text"), "compiled Storyboard target text");
+        AssertEqual(1.0, GetProperty(storyboardTargetBlock, "Opacity"), "compiled Storyboard target initial opacity");
+
+        object triggers = GetProperty(storyboardTargetBlock, "Triggers");
+        AssertCollectionCount(triggers, expected: 1, "compiled EventTrigger collection");
+        object eventTrigger = GetCollectionItem(triggers, 0);
+        AssertType(eventTrigger, "System.Windows.EventTrigger", "compiled EventTrigger");
+        AssertEqual("Loaded", GetProperty(GetProperty(eventTrigger, "RoutedEvent"), "Name"), "compiled EventTrigger routed event");
+
+        object actions = GetProperty(eventTrigger, "Actions");
+        AssertCollectionCount(actions, expected: 1, "compiled EventTrigger actions");
+        object beginStoryboard = GetCollectionItem(actions, 0);
+        AssertType(beginStoryboard, "System.Windows.Media.Animation.BeginStoryboard", "compiled BeginStoryboard action");
+
+        object storyboard = GetProperty(beginStoryboard, "Storyboard");
+        AssertType(storyboard, "System.Windows.Media.Animation.Storyboard", "compiled Storyboard");
+        object children = GetProperty(storyboard, "Children");
+        AssertCollectionCount(children, expected: 1, "compiled Storyboard children");
+        object doubleAnimation = GetCollectionItem(children, 0);
+        AssertType(doubleAnimation, "System.Windows.Media.Animation.DoubleAnimation", "compiled DoubleAnimation");
+        AssertEqual(0.37, GetProperty(doubleAnimation, "To"), "compiled DoubleAnimation target value");
+        AssertEqual("00:00:00", GetProperty(doubleAnimation, "Duration").ToString(), "compiled DoubleAnimation duration");
+        AssertEqual("HoldEnd", GetProperty(doubleAnimation, "FillBehavior").ToString(), "compiled DoubleAnimation fill behavior");
     }
 
     private static void ValidateMarkupExtension(object window)

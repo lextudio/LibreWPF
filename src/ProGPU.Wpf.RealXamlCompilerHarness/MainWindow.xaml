@@ -211,6 +211,26 @@
             Margin="0,8,0,0"
             Text="{Binding Source={StaticResource ProviderXml}, XPath=@Text}" />
         <TextBlock
+            x:Name="StoryboardTargetBlock"
+            Margin="0,8,0,0"
+            Opacity="1"
+            Text="compiled storyboard target">
+            <TextBlock.Triggers>
+                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation
+                                Storyboard.TargetName="StoryboardTargetBlock"
+                                Storyboard.TargetProperty="Opacity"
+                                To="0.37"
+                                Duration="0:0:0"
+                                FillBehavior="HoldEnd" />
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </TextBlock.Triggers>
+        </TextBlock>
+        <TextBlock
             x:Name="MarkupExtensionBlock"
             Margin="0,8,0,0"
             Text="{local:SmokeText Prefix=compiled, Value=markup}" />

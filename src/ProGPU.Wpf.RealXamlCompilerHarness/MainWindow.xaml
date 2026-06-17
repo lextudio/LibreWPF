@@ -22,6 +22,13 @@
             x:Key="FilteredItemsView"
             Filter="OnFilteredItemsViewFilter"
             Source="{Binding Items}" />
+        <CollectionViewSource
+            x:Key="GroupedItemsView"
+            Source="{Binding Items}">
+            <CollectionViewSource.GroupDescriptions>
+                <PropertyGroupDescription PropertyName="Category" />
+            </CollectionViewSource.GroupDescriptions>
+        </CollectionViewSource>
         <DataTemplate DataType="{x:Type local:SmokeDetail}">
             <TextBlock
                 x:Name="ImplicitDetailTextBlock"
@@ -263,6 +270,10 @@
             x:Name="FilteredItemsList"
             Margin="0,8,0,0"
             ItemsSource="{Binding Source={StaticResource FilteredItemsView}}" />
+        <ListBox
+            x:Name="GroupedItemsList"
+            Margin="0,8,0,0"
+            ItemsSource="{Binding Source={StaticResource GroupedItemsView}}" />
         <ListBox
             x:Name="SelectorItemsList"
             Margin="0,8,0,0"

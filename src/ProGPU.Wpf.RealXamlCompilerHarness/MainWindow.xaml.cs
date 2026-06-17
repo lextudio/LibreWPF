@@ -234,9 +234,14 @@ public sealed class SmokeItem
     public SmokeItem(string name)
     {
         Name = name;
+        Category = string.Equals(name, "item beta", StringComparison.Ordinal)
+            ? "secondary group"
+            : "primary group";
     }
 
     public string Name { get; }
+
+    public string Category { get; }
 }
 
 public sealed class SmokeDetail

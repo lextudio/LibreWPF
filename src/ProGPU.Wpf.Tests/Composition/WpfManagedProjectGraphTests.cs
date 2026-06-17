@@ -843,6 +843,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PropertyName=\"Name\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"FilteredItemsView\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Filter=\"OnFilteredItemsViewFilter\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"GroupedItemsView\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CollectionViewSource.GroupDescriptions", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("PropertyGroupDescription PropertyName=\"Category\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DataTemplate DataType=\"{x:Type local:SmokeDetail}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ImplicitDetailTextBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Tag=\"implicit data template\"", mainWindowXaml, StringComparison.Ordinal);
@@ -887,6 +890,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ItemsSource=\"{Binding Source={StaticResource SortedItemsView}}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"FilteredItemsList\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Source={StaticResource FilteredItemsView}}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"GroupedItemsList\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding Source={StaticResource GroupedItemsView}}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SelectorItemsList\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemTemplateSelector=\"{StaticResource SmokeItemTemplateSelector}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ImplicitTemplateHost\"", mainWindowXaml, StringComparison.Ordinal);
@@ -938,6 +943,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public SmokeItem? SelectedItem", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnPropertyChanged();", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeItem", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public string Category", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeDetail", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeItemTemplateSelector : DataTemplateSelector", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public DataTemplate? AlphaTemplate", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1130,6 +1136,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ListBox filtered CollectionViewSource binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource filtered item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("FilteredItemsFilterCount", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CollectionViewSource group descriptions", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CollectionViewSource group property", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox grouped CollectionViewSource binding", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateCollectionViewGroup(", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CollectionViewSource collection-change groups", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled filtered CollectionViewSource collection-change item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource collection-change first item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(window, \"FindName\", \"InputBox\")", harnessProgram, StringComparison.Ordinal);
@@ -1300,6 +1311,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ListBox filtered CollectionViewSource binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource filtered item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("FilteredItemsFilterCount", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CollectionViewSource group descriptions", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CollectionViewSource group property", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox grouped CollectionViewSource binding", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateCollectionViewGroup(", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CollectionViewSource collection-change groups", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled filtered CollectionViewSource collection-change item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource collection-change first item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("recorder.ValidateAfterRun()", harnessProgram, StringComparison.Ordinal);

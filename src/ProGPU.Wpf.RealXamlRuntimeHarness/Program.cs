@@ -155,7 +155,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 27, "stack panel children");
+        AssertCollectionCount(children, expected: 28, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -890,6 +890,23 @@ internal static class Program
             throw new InvalidOperationException("Expected compiled CollectionViewSource Filter handler to run.");
         }
 
+        object groupedItemsViewSource = Invoke(window, "TryFindResource", "GroupedItemsView");
+        AssertType(groupedItemsViewSource, "System.Windows.Data.CollectionViewSource", "compiled grouped CollectionViewSource resource");
+        object groupDescriptions = GetProperty(groupedItemsViewSource, "GroupDescriptions");
+        AssertCollectionCount(groupDescriptions, expected: 1, "compiled CollectionViewSource group descriptions");
+        object groupDescription = GetCollectionItem(groupDescriptions, 0);
+        AssertType(groupDescription, "System.Windows.Data.PropertyGroupDescription", "compiled CollectionViewSource group description");
+        AssertEqual("Category", GetProperty(groupDescription, "PropertyName"), "compiled CollectionViewSource group property");
+
+        object groupedItemsList = GetField(window, "GroupedItemsList");
+        AssertType(groupedItemsList, "System.Windows.Controls.ListBox", "compiled grouped ListBox");
+        object groupedItemsView = GetProperty(groupedItemsViewSource, "View");
+        AssertSame(groupedItemsView, GetProperty(groupedItemsList, "ItemsSource"), "compiled ListBox grouped CollectionViewSource binding");
+        object groups = GetProperty(groupedItemsView, "Groups");
+        AssertCollectionCount(groups, expected: 2, "compiled CollectionViewSource initial groups");
+        ValidateCollectionViewGroup(GetCollectionItem(groups, 0), "primary group", expectedItemCount: 1, "initial primary");
+        ValidateCollectionViewGroup(GetCollectionItem(groups, 1), "secondary group", expectedItemCount: 1, "initial secondary");
+
         object thirdItem = Create(window.GetType().Assembly, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeItem", "item gamma");
         AddToCollection(sourceItems, thirdItem);
         AssertCollectionCount(GetProperty(itemsList, "Items"), expected: 3, "compiled ListBox collection-change items");
@@ -897,6 +914,21 @@ internal static class Program
         AssertEqual("item gamma", GetProperty(GetCollectionItem(sortedItems, 0), "Name"), "compiled CollectionViewSource collection-change first item");
         AssertCollectionCount(filteredItems, expected: 1, "compiled filtered CollectionViewSource collection-change items");
         AssertEqual("item beta", GetProperty(GetCollectionItem(filteredItems, 0), "Name"), "compiled filtered CollectionViewSource collection-change item");
+        groups = GetProperty(groupedItemsView, "Groups");
+        AssertCollectionCount(groups, expected: 2, "compiled CollectionViewSource collection-change groups");
+        ValidateCollectionViewGroup(GetCollectionItem(groups, 0), "primary group", expectedItemCount: 2, "collection-change primary");
+        ValidateCollectionViewGroup(GetCollectionItem(groups, 1), "secondary group", expectedItemCount: 1, "collection-change secondary");
+    }
+
+    private static void ValidateCollectionViewGroup(
+        object group,
+        string expectedName,
+        int expectedItemCount,
+        string description)
+    {
+        AssertEqual(expectedName, GetProperty(group, "Name"), $"compiled CollectionViewSource {description} group name");
+        AssertEqual(expectedItemCount, GetProperty(group, "ItemCount"), $"compiled CollectionViewSource {description} group item count");
+        AssertCollectionCount(GetProperty(group, "Items"), expected: expectedItemCount, $"compiled CollectionViewSource {description} group items");
     }
 
     private static void ValidateImplicitDataTemplate(object window)

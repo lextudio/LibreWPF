@@ -615,6 +615,27 @@
         <CheckBox
             x:Name="ImplicitStyleCheckBox"
             IsChecked="True" />
+        <StackPanel
+            x:Name="ToggleChoicePanel"
+            Margin="0,8,0,0">
+            <CheckBox
+                x:Name="ToggleChoiceCheckBox"
+                Checked="OnToggleChoiceChecked"
+                Content="toggle choice"
+                Unchecked="OnToggleChoiceUnchecked" />
+            <RadioButton
+                x:Name="RadioChoiceAlpha"
+                Checked="OnChoiceRadioChecked"
+                Content="choice alpha"
+                GroupName="SmokeChoiceGroup"
+                Unchecked="OnChoiceRadioUnchecked" />
+            <RadioButton
+                x:Name="RadioChoiceBeta"
+                Checked="OnChoiceRadioChecked"
+                Content="choice beta"
+                GroupName="SmokeChoiceGroup"
+                Unchecked="OnChoiceRadioUnchecked" />
+        </StackPanel>
         <Button
             x:Name="CommandButton"
             Margin="0,8,0,0"

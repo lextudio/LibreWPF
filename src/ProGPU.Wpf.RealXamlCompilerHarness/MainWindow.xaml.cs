@@ -82,6 +82,30 @@ public partial class MainWindow : Window
 
     public string? LastPasswordChangedRoutedEventName { get; private set; }
 
+    public int ToggleChoiceCheckedCount { get; private set; }
+
+    public int ToggleChoiceUncheckedCount { get; private set; }
+
+    public string? LastToggleChoiceCheckedSenderName { get; private set; }
+
+    public string? LastToggleChoiceCheckedRoutedEventName { get; private set; }
+
+    public string? LastToggleChoiceUncheckedSenderName { get; private set; }
+
+    public string? LastToggleChoiceUncheckedRoutedEventName { get; private set; }
+
+    public int ChoiceRadioCheckedCount { get; private set; }
+
+    public int ChoiceRadioUncheckedCount { get; private set; }
+
+    public string? LastChoiceRadioCheckedSenderName { get; private set; }
+
+    public string? LastChoiceRadioCheckedRoutedEventName { get; private set; }
+
+    public string? LastChoiceRadioUncheckedSenderName { get; private set; }
+
+    public string? LastChoiceRadioUncheckedRoutedEventName { get; private set; }
+
     public int StoryboardTargetLoadedCount { get; private set; }
 
     public string? LastStoryboardTargetLoadedSenderName { get; private set; }
@@ -165,6 +189,34 @@ public partial class MainWindow : Window
         LastPasswordChangedSenderName = sender is FrameworkElement element ? element.Name : null;
         LastPasswordChangedRoutedEventName = e.RoutedEvent?.Name;
         e.Handled = true;
+    }
+
+    private void OnToggleChoiceChecked(object sender, RoutedEventArgs e)
+    {
+        ToggleChoiceCheckedCount++;
+        LastToggleChoiceCheckedSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastToggleChoiceCheckedRoutedEventName = e.RoutedEvent?.Name;
+    }
+
+    private void OnToggleChoiceUnchecked(object sender, RoutedEventArgs e)
+    {
+        ToggleChoiceUncheckedCount++;
+        LastToggleChoiceUncheckedSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastToggleChoiceUncheckedRoutedEventName = e.RoutedEvent?.Name;
+    }
+
+    private void OnChoiceRadioChecked(object sender, RoutedEventArgs e)
+    {
+        ChoiceRadioCheckedCount++;
+        LastChoiceRadioCheckedSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastChoiceRadioCheckedRoutedEventName = e.RoutedEvent?.Name;
+    }
+
+    private void OnChoiceRadioUnchecked(object sender, RoutedEventArgs e)
+    {
+        ChoiceRadioUncheckedCount++;
+        LastChoiceRadioUncheckedSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastChoiceRadioUncheckedRoutedEventName = e.RoutedEvent?.Name;
     }
 
     private void OnStoryboardTargetLoaded(object sender, RoutedEventArgs e)

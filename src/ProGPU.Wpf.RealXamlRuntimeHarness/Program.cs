@@ -185,7 +185,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 59, "stack panel children");
+        AssertCollectionCount(children, expected: 60, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -233,6 +233,7 @@ internal static class Program
         ValidateScrollingControls(window);
         ValidateDateSelectionControls(window);
         ValidateImplicitMergedStyle(window, application);
+        ValidateToggleChoiceControls(window);
         ValidateXamlEventHandler(window);
         ValidateStyleEventSetter(window);
         ValidateRoutedCommand(window);
@@ -1546,6 +1547,61 @@ internal static class Program
         object expectedMargin = Invoke(application, "TryFindResource", "MergedBlockMargin");
         object actualMargin = GetProperty(implicitStyleCheckBox, "Margin");
         AssertEqual(GetProperty(expectedMargin, "Top"), GetProperty(actualMargin, "Top"), "compiled implicit CheckBox style margin top");
+    }
+
+    private static void ValidateToggleChoiceControls(object window)
+    {
+        object panel = GetField(window, "ToggleChoicePanel");
+        AssertType(panel, "System.Windows.Controls.StackPanel", "compiled toggle/radio panel");
+        AssertCollectionCount(GetProperty(panel, "Children"), expected: 3, "compiled toggle/radio panel children");
+
+        object checkBox = GetField(window, "ToggleChoiceCheckBox");
+        AssertType(checkBox, "System.Windows.Controls.CheckBox", "compiled ToggleButton CheckBox");
+        AssertEqual("toggle choice", GetProperty(checkBox, "Content"), "compiled ToggleButton CheckBox content");
+        AssertEqual(false, GetProperty(checkBox, "IsChecked"), "compiled ToggleButton CheckBox initial checked state");
+        AssertEqual(0, GetProperty(window, "ToggleChoiceCheckedCount"), "compiled ToggleButton initial Checked count");
+        AssertEqual(0, GetProperty(window, "ToggleChoiceUncheckedCount"), "compiled ToggleButton initial Unchecked count");
+
+        Invoke(checkBox, "OnClick");
+        AssertEqual(true, GetProperty(checkBox, "IsChecked"), "compiled ToggleButton CheckBox checked state");
+        AssertEqual(1, GetProperty(window, "ToggleChoiceCheckedCount"), "compiled ToggleButton Checked count");
+        AssertEqual("ToggleChoiceCheckBox", GetProperty(window, "LastToggleChoiceCheckedSenderName"), "compiled ToggleButton Checked sender");
+        AssertEqual("Checked", GetProperty(window, "LastToggleChoiceCheckedRoutedEventName"), "compiled ToggleButton Checked routed event");
+
+        Invoke(checkBox, "OnClick");
+        AssertEqual(false, GetProperty(checkBox, "IsChecked"), "compiled ToggleButton CheckBox unchecked state");
+        AssertEqual(1, GetProperty(window, "ToggleChoiceUncheckedCount"), "compiled ToggleButton Unchecked count");
+        AssertEqual("ToggleChoiceCheckBox", GetProperty(window, "LastToggleChoiceUncheckedSenderName"), "compiled ToggleButton Unchecked sender");
+        AssertEqual("Unchecked", GetProperty(window, "LastToggleChoiceUncheckedRoutedEventName"), "compiled ToggleButton Unchecked routed event");
+
+        object alpha = GetField(window, "RadioChoiceAlpha");
+        object beta = GetField(window, "RadioChoiceBeta");
+        AssertType(alpha, "System.Windows.Controls.RadioButton", "compiled alpha RadioButton");
+        AssertType(beta, "System.Windows.Controls.RadioButton", "compiled beta RadioButton");
+        AssertEqual("choice alpha", GetProperty(alpha, "Content"), "compiled alpha RadioButton content");
+        AssertEqual("choice beta", GetProperty(beta, "Content"), "compiled beta RadioButton content");
+        AssertEqual("SmokeChoiceGroup", GetProperty(alpha, "GroupName"), "compiled alpha RadioButton group");
+        AssertEqual("SmokeChoiceGroup", GetProperty(beta, "GroupName"), "compiled beta RadioButton group");
+        AssertEqual(false, GetProperty(alpha, "IsChecked"), "compiled alpha RadioButton initial checked state");
+        AssertEqual(false, GetProperty(beta, "IsChecked"), "compiled beta RadioButton initial checked state");
+        AssertEqual(0, GetProperty(window, "ChoiceRadioCheckedCount"), "compiled RadioButton initial Checked count");
+        AssertEqual(0, GetProperty(window, "ChoiceRadioUncheckedCount"), "compiled RadioButton initial Unchecked count");
+
+        Invoke(alpha, "OnClick");
+        AssertEqual(true, GetProperty(alpha, "IsChecked"), "compiled alpha RadioButton checked state");
+        AssertEqual(false, GetProperty(beta, "IsChecked"), "compiled beta RadioButton unchecked after alpha click");
+        AssertEqual(1, GetProperty(window, "ChoiceRadioCheckedCount"), "compiled RadioButton alpha Checked count");
+        AssertEqual("RadioChoiceAlpha", GetProperty(window, "LastChoiceRadioCheckedSenderName"), "compiled RadioButton alpha Checked sender");
+        AssertEqual("Checked", GetProperty(window, "LastChoiceRadioCheckedRoutedEventName"), "compiled RadioButton alpha Checked routed event");
+
+        Invoke(beta, "OnClick");
+        AssertEqual(false, GetProperty(alpha, "IsChecked"), "compiled alpha RadioButton unchecked by group manager");
+        AssertEqual(true, GetProperty(beta, "IsChecked"), "compiled beta RadioButton checked state");
+        AssertEqual(2, GetProperty(window, "ChoiceRadioCheckedCount"), "compiled RadioButton beta Checked count");
+        AssertEqual(1, GetProperty(window, "ChoiceRadioUncheckedCount"), "compiled RadioButton alpha Unchecked count");
+        AssertEqual("RadioChoiceBeta", GetProperty(window, "LastChoiceRadioCheckedSenderName"), "compiled RadioButton beta Checked sender");
+        AssertEqual("RadioChoiceAlpha", GetProperty(window, "LastChoiceRadioUncheckedSenderName"), "compiled RadioButton alpha Unchecked sender");
+        AssertEqual("Unchecked", GetProperty(window, "LastChoiceRadioUncheckedRoutedEventName"), "compiled RadioButton alpha Unchecked routed event");
     }
 
     private static void ValidateXamlEventHandler(object window)

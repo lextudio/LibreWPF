@@ -2393,19 +2393,31 @@ internal static class Program
         Invoke(frame, "UpdateLayout");
 
         object page = GetProperty(frame, "Content");
-        AssertType(page, "System.Windows.Controls.Page", "compiled source Page content");
+        AssertType(page, "ProGPU.Wpf.RealXamlCompilerHarness.SmokePage", "compiled source Page content");
         AssertEqual("compiled source page", GetProperty(page, "Title"), "compiled source Page title");
+        AssertEqual(0, GetProperty(page, "PageClickCount"), "compiled source Page initial click count");
 
         object pagePanel = Invoke(page, "FindName", "SourceNavigationPagePanel");
         AssertType(pagePanel, "System.Windows.Controls.StackPanel", "compiled Page content panel");
         AssertSame(pagePanel, GetProperty(page, "Content"), "compiled Page content");
-        AssertCollectionCount(GetProperty(pagePanel, "Children"), expected: 1, "compiled Page content panel children");
+        AssertCollectionCount(GetProperty(pagePanel, "Children"), expected: 2, "compiled Page content panel children");
 
         object pageText = Invoke(page, "FindName", "SourceNavigationPageText");
         AssertType(pageText, "System.Windows.Controls.TextBlock", "compiled Page content text");
         AssertSame(pageText, GetCollectionItem(GetProperty(pagePanel, "Children"), 0), "compiled Page content text child");
         AssertEqual("source page content", GetProperty(pageText, "Tag"), "compiled Page content text tag");
         AssertEqual("compiled source page content", GetProperty(pageText, "Text"), "compiled Page content text");
+
+        object pageButton = Invoke(page, "FindName", "SourceNavigationPageButton");
+        AssertType(pageButton, "System.Windows.Controls.Button", "compiled Page content button");
+        AssertSame(pageButton, GetCollectionItem(GetProperty(pagePanel, "Children"), 1), "compiled Page content button child");
+        AssertEqual("source page button", GetProperty(pageButton, "Tag"), "compiled Page content button tag");
+        AssertEqual("compiled page button", GetProperty(pageButton, "Content"), "compiled Page content button content");
+
+        Invoke(pageButton, "OnClick");
+        AssertEqual(1, GetProperty(page, "PageClickCount"), "compiled source Page click handler count");
+        AssertEqual("SourceNavigationPageButton", GetProperty(page, "LastPageClickSenderName"), "compiled source Page click sender");
+        AssertEqual("Click", GetProperty(page, "LastPageClickRoutedEventName"), "compiled source Page click routed event");
     }
 
     private static void ShowPortableActivation(

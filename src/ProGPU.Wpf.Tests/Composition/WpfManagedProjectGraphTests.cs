@@ -709,6 +709,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.RealXamlCompilerHarness",
             "SmokeUserControl.xaml.cs");
+        var smokePageCodeBehindPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealXamlCompilerHarness",
+            "SmokePage.xaml.cs");
 
         var harnessProject = XDocument.Load(harnessProjectPath);
         var appXaml = File.ReadAllText(appXamlPath);
@@ -719,6 +723,7 @@ public sealed class WpfManagedProjectGraphTests
         var appCodeBehind = File.ReadAllText(appCodeBehindPath);
         var mainWindowCodeBehind = File.ReadAllText(mainWindowCodeBehindPath);
         var smokeUserControlCodeBehind = File.ReadAllText(smokeUserControlCodeBehindPath);
+        var smokePageCodeBehind = File.ReadAllText(smokePageCodeBehindPath);
 
         Assert.Equal("true", Assert.Single(harnessProject.Descendants("InternalMarkupCompilation")).Value);
 
@@ -749,6 +754,7 @@ public sealed class WpfManagedProjectGraphTests
 
         AssertCompileInclude(harnessProject, "App.xaml.cs");
         AssertCompileInclude(harnessProject, "MainWindow.xaml.cs");
+        AssertCompileInclude(harnessProject, "SmokePage.xaml.cs");
         AssertCompileInclude(harnessProject, "SmokeUserControl.xaml.cs");
         AssertProjectReference(harnessProject, @"Microsoft.DotNet.Wpf\src\System.Xaml\System.Xaml.csproj");
         AssertProjectReference(harnessProject, @"Microsoft.DotNet.Wpf\src\WindowsBase\WindowsBase.csproj");
@@ -1145,10 +1151,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"SourceNavigationFrame\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("NavigationUIVisibility=\"Hidden\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Source=\"SmokePage.xaml\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Class=\"ProGPU.Wpf.RealXamlCompilerHarness.SmokePage\"", smokePageXaml, StringComparison.Ordinal);
         Assert.Contains("Title=\"compiled source page\"", smokePageXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SourceNavigationPagePanel\"", smokePageXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SourceNavigationPageText\"", smokePageXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"compiled source page content\"", smokePageXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SourceNavigationPageButton\"", smokePageXaml, StringComparison.Ordinal);
+        Assert.Contains("Click=\"OnPageButtonClick\"", smokePageXaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"compiled page button\"", smokePageXaml, StringComparison.Ordinal);
         Assert.Contains("ListBox.ItemContainerStyle", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style TargetType=\"{x:Type ListBoxItem}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Setter Property=\"Tag\" Value=\"container trigger inactive\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1267,6 +1277,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("InitializeComponent();", smokeUserControlCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int ControlClickCount", smokeUserControlCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnControlButtonClick", smokeUserControlCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public partial class SmokePage : Page", smokePageCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("InitializeComponent();", smokePageCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int PageClickCount", smokePageCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnPageButtonClick", smokePageCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastPageClickRoutedEventName = e.RoutedEvent?.Name", smokePageCodeBehind, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -1525,6 +1540,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled source Frame", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Page content", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Page content text", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Page content button", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled source Page click handler count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled source Page click routed event", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox ItemsSource binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox item container style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ItemContainerStyle setter property", harnessProgram, StringComparison.Ordinal);
@@ -1883,6 +1901,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled source Frame", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Page content", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Page content text", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Page content button", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled source Page click handler count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled source Page click routed event", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox two-way selected item binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox item container style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ItemContainerStyle setter property", harnessProgram, StringComparison.Ordinal);

@@ -37,6 +37,7 @@
   <ItemGroup>
     <Compile Include="App.xaml.cs" />
     <Compile Include="MainWindow.xaml.cs" />
+    <Compile Include="SmokePage.xaml.cs" />
     <Compile Include="SmokeUserControl.xaml.cs" />
   </ItemGroup>
 

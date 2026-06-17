@@ -105,6 +105,10 @@
             Margin="0,8,0,0"
             Text="{Binding Source={StaticResource ProviderGreeting}}" />
         <TextBlock
+            x:Name="MarkupExtensionBlock"
+            Margin="0,8,0,0"
+            Text="{local:SmokeText Prefix=compiled, Value=markup}" />
+        <TextBlock
             x:Name="MergedResourceBlock"
             Foreground="{StaticResource MergedAccentBrush}"
             Margin="{StaticResource MergedBlockMargin}"

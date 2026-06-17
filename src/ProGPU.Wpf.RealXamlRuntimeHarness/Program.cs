@@ -143,7 +143,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 19, "stack panel children");
+        AssertCollectionCount(children, expected: 20, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -168,6 +168,7 @@ internal static class Program
         ValidateBindingAndCommand(window);
         ValidateAdvancedBindingFeatures(window);
         ValidateObjectDataProvider(window);
+        ValidateMarkupExtension(window);
         ValidateMergedResourceDictionary(window, application);
         ValidateNestedUserControl(window);
         ValidateReadOnlyGridCollectionsAndAttachedProperties(window);
@@ -387,6 +388,13 @@ internal static class Program
         object bindingExpression = GetBindingExpression(providerGreetingBlock, "TextProperty");
         object parentBinding = GetProperty(bindingExpression, "ParentBinding");
         AssertSame(provider, GetProperty(parentBinding, "Source"), "compiled ObjectDataProvider binding source");
+    }
+
+    private static void ValidateMarkupExtension(object window)
+    {
+        object markupExtensionBlock = GetField(window, "MarkupExtensionBlock");
+        AssertType(markupExtensionBlock, "System.Windows.Controls.TextBlock", "compiled MarkupExtension TextBlock");
+        AssertEqual("compiled markup extension", GetProperty(markupExtensionBlock, "Text"), "compiled MarkupExtension provided text");
     }
 
     private static void ValidateMergedResourceDictionary(object window, object application)

@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Markup;
 
 namespace ProGPU.Wpf.RealXamlCompilerHarness;
 
@@ -172,6 +173,18 @@ public sealed class ProviderDataFactory
     public string CreateProviderGreeting(string prefix, string value)
     {
         return $"{prefix} data {value}";
+    }
+}
+
+public sealed class SmokeTextExtension : MarkupExtension
+{
+    public string Prefix { get; set; } = string.Empty;
+
+    public string Value { get; set; } = string.Empty;
+
+    public override object ProvideValue(IServiceProvider serviceProvider)
+    {
+        return $"{Prefix} {Value} extension";
     }
 }
 

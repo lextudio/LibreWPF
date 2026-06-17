@@ -753,6 +753,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatedText, UpdateSourceTrigger=Explicit, ValidatesOnDataErrors=True, NotifyOnValidationError=True", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ProviderGreetingBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding Source={StaticResource ProviderGreeting}}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MarkupExtensionBlock\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{local:SmokeText Prefix=compiled, Value=markup}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MergedResourceBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Foreground=\"{StaticResource MergedAccentBrush}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Margin=\"{StaticResource MergedBlockMargin}\"", mainWindowXaml, StringComparison.Ordinal);
@@ -814,6 +816,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public sealed class ProviderDataFactory", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string CreateProviderGreeting", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("return $\"{prefix} data {value}\";", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokeTextExtension : MarkupExtension", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public override object ProvideValue(IServiceProvider serviceProvider)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("return $\"{Prefix} {Value} extension\";", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnSmokeCommandCanExecute", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnSmokeCommandExecuted", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RoutedCommandExecutionCount++", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -927,6 +932,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ObjectDataProvider method parameters", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ObjectDataProvider bound text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ObjectDataProvider binding source", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateMarkupExtension(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MarkupExtension TextBlock", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MarkupExtension provided text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMergedResourceDictionary(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled merged-resource foreground", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateNestedUserControl(window)", harnessProgram, StringComparison.Ordinal);
@@ -1045,6 +1053,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ObjectDataProvider object instance", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ObjectDataProvider second parameter", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ObjectDataProvider binding source", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateMarkupExtension(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MarkupExtension TextBlock", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MarkupExtension provided text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMergedResourceDictionary(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled merged-resource margin top", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateNestedUserControl(window)", harnessProgram, StringComparison.Ordinal);

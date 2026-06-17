@@ -216,6 +216,7 @@ internal static class Program
 
         object foundInputBox = Invoke(window, "FindName", "InputBox");
         AssertSame(inputBox, foundInputBox, "compiled namescope lookup");
+        ValidateRuntimeNameScope(window, inputBox);
 
         ValidateRichFlowDocument(window);
 
@@ -299,6 +300,38 @@ internal static class Program
         securePassword = GetProperty(passwordBox, "SecurePassword");
         AssertEqual(0, GetProperty(securePassword, "Length"), "compiled PasswordBox cleared secure password length");
         AssertEqual(2, GetProperty(window, "PasswordChangedCount"), "compiled PasswordBox clear changed count");
+    }
+
+    private static void ValidateRuntimeNameScope(object window, object frameworkElement)
+    {
+        Assembly presentationFramework = frameworkElement.GetType().Assembly;
+        object registeredButton = Create(presentationFramework, "System.Windows.Controls.Button");
+        SetProperty(registeredButton, "Name", "RuntimeRegisteredButton");
+        SetProperty(registeredButton, "Content", "runtime registered");
+
+        Invoke(window, "RegisterName", "RuntimeRegisteredButton", registeredButton);
+        AssertSame(registeredButton, Invoke(window, "FindName", "RuntimeRegisteredButton"), "compiled namescope runtime registered lookup");
+
+        object duplicateButton = Create(presentationFramework, "System.Windows.Controls.Button");
+        SetProperty(duplicateButton, "Name", "RuntimeRegisteredButton");
+        try
+        {
+            Invoke(window, "RegisterName", "RuntimeRegisteredButton", duplicateButton);
+            throw new InvalidOperationException("Expected duplicate runtime name registration to throw.");
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException is ArgumentException)
+        {
+        }
+
+        AssertSame(registeredButton, Invoke(window, "FindName", "RuntimeRegisteredButton"), "compiled namescope duplicate preserves original");
+        Invoke(window, "UnregisterName", "RuntimeRegisteredButton");
+
+        object replacementButton = Create(presentationFramework, "System.Windows.Controls.Button");
+        SetProperty(replacementButton, "Name", "RuntimeRegisteredButton");
+        SetProperty(replacementButton, "Content", "runtime replacement");
+        Invoke(window, "RegisterName", "RuntimeRegisteredButton", replacementButton);
+        AssertSame(replacementButton, Invoke(window, "FindName", "RuntimeRegisteredButton"), "compiled namescope runtime re-register after unregister");
+        Invoke(window, "UnregisterName", "RuntimeRegisteredButton");
     }
 
     private static void ValidateRichFlowDocument(object window)

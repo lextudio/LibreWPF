@@ -1452,6 +1452,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled PasswordBox PasswordChanged count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled PasswordBox secure password length", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled PasswordBox clear changed count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateRuntimeNameScope(window, inputBox)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Invoke(window, \"RegisterName\", \"RuntimeRegisteredButton\", registeredButton)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled namescope runtime registered lookup", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled namescope duplicate preserves original", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled namescope runtime re-register after unregister", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateRichFlowDocument(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetField(window, \"DocumentBox\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Documents.Bold", harnessProgram, StringComparison.Ordinal);
@@ -1848,6 +1853,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled PasswordBox PasswordChanged count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled PasswordBox secure password length", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled PasswordBox clear changed count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateRuntimeNameScope(window, inputBox)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Invoke(window, \"RegisterName\", \"RuntimeRegisteredButton\", registeredButton)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled namescope runtime registered lookup", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled namescope duplicate preserves original", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled namescope runtime re-register after unregister", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateRichFlowDocument(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument TextRange paragraph text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument list items", harnessProgram, StringComparison.Ordinal);
@@ -2509,8 +2519,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private static MilRectD GetManagedPathBoundsAsRB", pathGeometry, StringComparison.Ordinal);
         Assert.Contains("ParsePathGeometryData(pathData, context)", pathGeometry, StringComparison.Ordinal);
         Assert.Contains("PathStreamGeometryContext", pathGeometry, StringComparison.Ordinal);
-        Assert.Contains("!OperatingSystem.IsWindows() && pen == null", rectangleGeometry, StringComparison.Ordinal);
+        Assert.Contains("if (!OperatingSystem.IsWindows())", rectangleGeometry, StringComparison.Ordinal);
         Assert.Contains("FillContainsManaged(rect, radiusX, radiusY, hitPoint)", rectangleGeometry, StringComparison.Ordinal);
+        Assert.Contains("StrokeContainsManaged(rect, radiusX, radiusY, pen, hitPoint, tolerance, type)", rectangleGeometry, StringComparison.Ordinal);
         Assert.Contains("GeneralTransform inverse = transform.Inverse", rectangleGeometry, StringComparison.Ordinal);
         Assert.Contains("return OperatingSystem.IsWindows() && !CoreAppContextSwitches.DisableStylusAndTouchSupport", stylusLogic, StringComparison.Ordinal);
         AssertGuardBefore(stylusLogic, "if (!OperatingSystem.IsWindows())", "Registry.CurrentUser.OpenSubKey");

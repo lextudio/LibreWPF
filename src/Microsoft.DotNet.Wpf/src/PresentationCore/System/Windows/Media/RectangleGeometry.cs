@@ -238,9 +238,11 @@ namespace System.Windows.Media
             double radiusY = RadiusY;
             Rect rect = Rect;
 
-            if (!OperatingSystem.IsWindows() && pen == null)
+            if (!OperatingSystem.IsWindows())
             {
-                return FillContainsManaged(rect, radiusX, radiusY, hitPoint);
+                return pen == null
+                    ? FillContainsManaged(rect, radiusX, radiusY, hitPoint)
+                    : StrokeContainsManaged(rect, radiusX, radiusY, pen, hitPoint, tolerance, type);
             }
 
             uint pointCount = GetPointCount(rect, radiusX, radiusY);
@@ -305,6 +307,46 @@ namespace System.Windows.Media
             double normalizedX = (hitPoint.X - centerX) / radiusX;
             double normalizedY = (hitPoint.Y - centerY) / radiusY;
             return (normalizedX * normalizedX) + (normalizedY * normalizedY) <= 1.0;
+        }
+
+        private bool StrokeContainsManaged(Rect rect, double radiusX, double radiusY, Pen pen, Point hitPoint, double tolerance, ToleranceType type)
+        {
+            if (pen.Brush == null || pen.Thickness <= 0.0)
+            {
+                return false;
+            }
+
+            double tolerancePadding = Math.Max(0.0, tolerance);
+            if (type == ToleranceType.Relative)
+            {
+                tolerancePadding *= Math.Max(Math.Abs(rect.Width), Math.Abs(rect.Height));
+            }
+
+            double halfStroke = (Math.Abs(pen.Thickness) / 2.0) + tolerancePadding;
+            if (halfStroke <= 0.0)
+            {
+                return false;
+            }
+
+            Rect outer = rect;
+            outer.Inflate(halfStroke, halfStroke);
+            if (!FillContainsManaged(outer, Math.Abs(radiusX) + halfStroke, Math.Abs(radiusY) + halfStroke, hitPoint))
+            {
+                return false;
+            }
+
+            Rect inner = rect;
+            inner.Inflate(-halfStroke, -halfStroke);
+            if (inner.IsEmpty || inner.Width <= 0.0 || inner.Height <= 0.0)
+            {
+                return true;
+            }
+
+            return !FillContainsManaged(
+                inner,
+                Math.Max(0.0, Math.Abs(radiusX) - halfStroke),
+                Math.Max(0.0, Math.Abs(radiusY) - halfStroke),
+                hitPoint);
         }
 
         /// <summary>

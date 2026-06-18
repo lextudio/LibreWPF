@@ -2716,6 +2716,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetDictionaryValue(themeDictionary, \"DefaultCalendarItemStyle\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(themeDictionary, \"DefaultCheckBoxStyle\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(themeDictionary, \"DefaultComboBoxStyle\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetDictionaryValue(themeDictionary, \"DefaultContextMenuStyle\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(themeDictionary, \"DefaultComboBoxItemStyle\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(themeDictionary, \"DefaultComboBoxTextBoxStyle\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(themeDictionary, \"DefaultComboBoxToggleButtonStyle\")", harnessProgram, StringComparison.Ordinal);
@@ -2769,6 +2770,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetDictionaryValue(themeDictionary, \"DefaultTextBoxControlTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(themeDictionary, \"DefaultThumbStyle\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(themeDictionary, \"DefaultToggleButtonStyle\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetDictionaryValue(themeDictionary, \"DefaultToolTipStyle\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(themeDictionary, \"DefaultTreeViewStyle\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(themeDictionary, \"DefaultTreeViewItemStyle\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(themeDictionary, \"DefaultRichTextBoxStyle\")", harnessProgram, StringComparison.Ordinal);
@@ -2776,6 +2778,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("System.Windows.Controls.Calendar", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Controls.CheckBox", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Controls.ComboBox", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Controls.ContextMenu", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Controls.DataGrid", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Controls.DataGridTextColumn", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Controls.DataGridCheckBoxColumn", harnessProgram, StringComparison.Ordinal);
@@ -2801,6 +2804,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("System.Windows.Controls.Separator", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Controls.Slider", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Controls.Primitives.StatusBar", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Controls.ToolTip", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Controls.ToolBar", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Controls.ToolBarTray", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Controls.Primitives.Thumb", harnessProgram, StringComparison.Ordinal);
@@ -2812,6 +2816,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryFindResource\", calendarType", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindResource\", checkBoxType", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindResource\", comboBoxType", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("TryFindResource\", contextMenuType", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindResource\", dataGridType", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindResource\", dataGridColumnHeaderType", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindResource\", dataGridColumnHeadersPresenterType", harnessProgram, StringComparison.Ordinal);
@@ -2835,6 +2840,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryFindResource\", statusBarType", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindResource\", tabControlType", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindResource\", textBoxType", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("TryFindResource\", toolTipType", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindResource\", thumbType", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindResource\", toggleButtonType", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindResource\", toolBarType", harnessProgram, StringComparison.Ordinal);
@@ -2864,8 +2870,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("implicit TextBox Fluent BasedOn default TextBox style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("DatePicker Calendar Fluent BasedOn default Calendar style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("DataGrid CheckBox editing Fluent BasedOn element style", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SetProperty(button, \"ContextMenu\", contextMenu)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SetProperty(button, \"ToolTip\", toolTip)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(window, \"FindName\", \"DocumentBox\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled themed RichTextBox", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("created themed ContextMenu", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("created themed ToolTip", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("created themed TextBox", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("created themed TabControl", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("created themed ListView", harnessProgram, StringComparison.Ordinal);
@@ -2898,6 +2908,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("created themed DataGrid", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(window, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(button, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Invoke(buttonContextMenu, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ApplyItemsTemplates(buttonContextMenu, \"themed ContextMenu items\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Invoke(buttonToolTip, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(textBox, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(tabControl, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ApplyItemsTemplates(tabControl, \"themed TabControl items\")", harnessProgram, StringComparison.Ordinal);
@@ -2965,6 +2978,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AssertType(GetProperty(progressBar, \"Template\"), \"System.Windows.Controls.ControlTemplate\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertType(GetProperty(dataGrid, \"Template\"), \"System.Windows.Controls.ControlTemplate\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertType(GetProperty(richTextBox, \"Template\"), \"System.Windows.Controls.ControlTemplate\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertType(GetProperty(buttonContextMenu, \"Template\"), \"System.Windows.Controls.ControlTemplate\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertType(GetProperty(buttonToolTip, \"Template\"), \"System.Windows.Controls.ControlTemplate\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertStyleHasSetter(GetProperty(tabControl, \"Style\"), \"Template\", \"TabControl Fluent template setter\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertStyleHasSetter(GetProperty(listView, \"Style\"), \"Template\", \"ListView Fluent template setter\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertStyleHasSetter(GetProperty(treeView, \"Style\"), \"Template\", \"TreeView Fluent template setter\")", harnessProgram, StringComparison.Ordinal);
@@ -2972,6 +2987,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AssertStyleHasSetter(GetProperty(datePicker, \"Style\"), \"Template\", \"DatePicker Fluent template setter\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertStyleHasSetter(GetProperty(datePicker, \"Style\"), \"CalendarStyle\", \"DatePicker Fluent calendar-style setter\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertStyleHasSetter(GetProperty(menu, \"Style\"), \"Template\", \"Menu Fluent template setter\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertStyleHasSetter(GetProperty(buttonContextMenu, \"Style\"), \"Template\", \"ContextMenu Fluent template setter\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertStyleHasSetter(GetProperty(buttonToolTip, \"Style\"), \"Template\", \"ToolTip Fluent template setter\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertStyleHasSetter(GetProperty(themedToolBar, \"Style\"), \"Template\", \"ToolBar Fluent template setter\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("StatusBarItem Fluent template setter", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertStyleHasSetter(GetProperty(checkBox, \"Style\"), \"Template\", \"CheckBox Fluent template setter\")", harnessProgram, StringComparison.Ordinal);
@@ -3002,6 +3019,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AssertStyleHasSetter(GetProperty(dataGrid, \"Style\"), \"ColumnHeaderStyle\", \"DataGrid Fluent column-header-style setter\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertStyleHasSetter(GetProperty(dataGrid, \"Style\"), \"DropLocationIndicatorStyle\", \"DataGrid Fluent drop-location-style setter\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertStyleHasSetter(GetProperty(dataGrid, \"Style\"), \"DragIndicatorStyle\", \"DataGrid Fluent drag-indicator-style setter\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("themed ContextMenu item count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("themed ToolTip content", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("themed TextBox text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("themed TabControl selected index", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("themed TabItem header", harnessProgram, StringComparison.Ordinal);

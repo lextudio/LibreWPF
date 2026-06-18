@@ -124,6 +124,7 @@ internal static class Program
         object calendarStyle = GetDictionaryValue(themeDictionary, "DefaultCalendarStyle");
         object checkBoxStyle = GetDictionaryValue(themeDictionary, "DefaultCheckBoxStyle");
         object comboBoxStyle = GetDictionaryValue(themeDictionary, "DefaultComboBoxStyle");
+        object contextMenuStyle = GetDictionaryValue(themeDictionary, "DefaultContextMenuStyle");
         object datePickerStyle = GetDictionaryValue(themeDictionary, "DefaultDatePickerStyle");
         object datePickerCalendarStyle = GetDictionaryValue(themeDictionary, "DatePickerCalendarStyle");
         object dataGridStyle = GetDictionaryValue(themeDictionary, "DefaultDataGridStyle");
@@ -161,6 +162,7 @@ internal static class Program
         object textBoxStyle = GetDictionaryValue(themeDictionary, "DefaultTextBoxStyle");
         object thumbStyle = GetDictionaryValue(themeDictionary, "DefaultThumbStyle");
         object toggleButtonStyle = GetDictionaryValue(themeDictionary, "DefaultToggleButtonStyle");
+        object toolTipStyle = GetDictionaryValue(themeDictionary, "DefaultToolTipStyle");
         object treeViewStyle = GetDictionaryValue(themeDictionary, "DefaultTreeViewStyle");
         object treeViewItemStyle = GetDictionaryValue(themeDictionary, "DefaultTreeViewItemStyle");
         object richTextBoxStyle = GetDictionaryValue(themeDictionary, "DefaultRichTextBoxStyle");
@@ -168,6 +170,7 @@ internal static class Program
         Type calendarType = GetRequiredType(presentationFramework, "System.Windows.Controls.Calendar");
         Type checkBoxType = GetRequiredType(presentationFramework, "System.Windows.Controls.CheckBox");
         Type comboBoxType = GetRequiredType(presentationFramework, "System.Windows.Controls.ComboBox");
+        Type contextMenuType = GetRequiredType(presentationFramework, "System.Windows.Controls.ContextMenu");
         Type dataGridType = GetRequiredType(presentationFramework, "System.Windows.Controls.DataGrid");
         Type dataGridColumnHeaderType = GetRequiredType(presentationFramework, "System.Windows.Controls.Primitives.DataGridColumnHeader");
         Type dataGridColumnHeadersPresenterType = GetRequiredType(presentationFramework, "System.Windows.Controls.Primitives.DataGridColumnHeadersPresenter");
@@ -192,6 +195,7 @@ internal static class Program
         Type sliderType = GetRequiredType(presentationFramework, "System.Windows.Controls.Slider");
         Type statusBarType = GetRequiredType(presentationFramework, "System.Windows.Controls.Primitives.StatusBar");
         Type textBoxType = GetRequiredType(presentationFramework, "System.Windows.Controls.TextBox");
+        Type toolTipType = GetRequiredType(presentationFramework, "System.Windows.Controls.ToolTip");
         Type toolBarType = GetRequiredType(presentationFramework, "System.Windows.Controls.ToolBar");
         Type toolBarTrayType = GetRequiredType(presentationFramework, "System.Windows.Controls.ToolBarTray");
         Type tabControlType = GetRequiredType(presentationFramework, "System.Windows.Controls.TabControl");
@@ -225,6 +229,17 @@ internal static class Program
         object button = Create(presentationFramework, "System.Windows.Controls.Button");
         SetProperty(button, "Content", "themed button smoke");
         SetProperty(button, "Style", buttonStyle);
+        object contextMenu = Create(presentationFramework, "System.Windows.Controls.ContextMenu");
+        SetProperty(contextMenu, "Style", contextMenuStyle);
+        object contextMenuItem = Create(presentationFramework, "System.Windows.Controls.MenuItem");
+        SetProperty(contextMenuItem, "Header", "Theme context action");
+        SetProperty(contextMenuItem, "Style", menuItemStyle);
+        AddToCollection(GetProperty(contextMenu, "Items"), contextMenuItem);
+        SetProperty(button, "ContextMenu", contextMenu);
+        object toolTip = Create(presentationFramework, "System.Windows.Controls.ToolTip");
+        SetProperty(toolTip, "Content", "Theme tooltip smoke");
+        SetProperty(toolTip, "Style", toolTipStyle);
+        SetProperty(button, "ToolTip", toolTip);
         AddToCollection(children, button);
 
         object textBox = Create(presentationFramework, "System.Windows.Controls.TextBox");
@@ -496,6 +511,8 @@ internal static class Program
 
         AssertSame(windowStyle, GetProperty(window, "Style"), "Window Fluent style");
         AssertSame(buttonStyle, GetProperty(button, "Style"), "Button Fluent style");
+        AssertSame(contextMenuStyle, GetProperty(contextMenu, "Style"), "ContextMenu Fluent style");
+        AssertSame(toolTipStyle, GetProperty(toolTip, "Style"), "ToolTip Fluent style");
         AssertSame(textBoxStyle, GetProperty(textBox, "Style"), "TextBox Fluent style");
         AssertSame(tabControlStyle, GetProperty(tabControl, "Style"), "TabControl Fluent style");
         AssertSame(listViewStyle, GetProperty(listView, "Style"), "ListView Fluent style");
@@ -543,6 +560,7 @@ internal static class Program
         AssertSame(textBoxStyle, Invoke(application, "TryFindResource", "DefaultTextBoxStyle"), "application Fluent TextBox resource lookup");
         AssertSame(calendarStyle, Invoke(application, "TryFindResource", "DefaultCalendarStyle"), "application Fluent Calendar resource lookup");
         AssertSame(comboBoxStyle, Invoke(application, "TryFindResource", "DefaultComboBoxStyle"), "application Fluent ComboBox resource lookup");
+        AssertSame(contextMenuStyle, Invoke(application, "TryFindResource", "DefaultContextMenuStyle"), "application Fluent ContextMenu resource lookup");
         AssertSame(datePickerStyle, Invoke(application, "TryFindResource", "DefaultDatePickerStyle"), "application Fluent DatePicker resource lookup");
         AssertSame(dataGridStyle, Invoke(application, "TryFindResource", "DefaultDataGridStyle"), "application Fluent DataGrid resource lookup");
         AssertSame(dataGridCellStyle, Invoke(application, "TryFindResource", "DefaultDataGridCellStyle"), "application Fluent DataGridCell resource lookup");
@@ -575,10 +593,12 @@ internal static class Program
         AssertSame(separatorStyle, Invoke(application, "TryFindResource", "DefaultSeparatorStyle"), "application Fluent Separator resource lookup");
         AssertSame(thumbStyle, Invoke(application, "TryFindResource", "DefaultThumbStyle"), "application Fluent Thumb resource lookup");
         AssertSame(toggleButtonStyle, Invoke(application, "TryFindResource", "DefaultToggleButtonStyle"), "application Fluent ToggleButton resource lookup");
+        AssertSame(toolTipStyle, Invoke(application, "TryFindResource", "DefaultToolTipStyle"), "application Fluent ToolTip resource lookup");
         AssertSame(implicitButtonStyle, Invoke(application, "TryFindResource", buttonType), "application Fluent Button implicit style lookup");
         AssertSame(implicitCalendarStyle, Invoke(application, "TryFindResource", calendarType), "application Fluent Calendar implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", checkBoxType), "System.Windows.Style", "application Fluent CheckBox implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", comboBoxType), "System.Windows.Style", "application Fluent ComboBox implicit style lookup");
+        AssertType(Invoke(application, "TryFindResource", contextMenuType), "System.Windows.Style", "application Fluent ContextMenu implicit style lookup");
         AssertSame(implicitDataGridStyle, Invoke(application, "TryFindResource", dataGridType), "application Fluent DataGrid implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", dataGridColumnHeaderType), "System.Windows.Style", "application Fluent DataGridColumnHeader implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", dataGridColumnHeadersPresenterType), "System.Windows.Style", "application Fluent DataGridColumnHeadersPresenter implicit style lookup");
@@ -603,6 +623,7 @@ internal static class Program
         AssertType(Invoke(application, "TryFindResource", statusBarType), "System.Windows.Style", "application Fluent StatusBar implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", tabControlType), "System.Windows.Style", "application Fluent TabControl implicit style lookup");
         AssertSame(implicitTextBoxStyle, Invoke(application, "TryFindResource", textBoxType), "application Fluent TextBox implicit style lookup");
+        AssertType(Invoke(application, "TryFindResource", toolTipType), "System.Windows.Style", "application Fluent ToolTip implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", thumbType), "System.Windows.Style", "application Fluent Thumb implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", toggleButtonType), "System.Windows.Style", "application Fluent ToggleButton implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", toolBarType), "System.Windows.Style", "application Fluent ToolBar implicit style lookup");
@@ -650,11 +671,15 @@ internal static class Program
         object progressBar = GetCollectionItem(children, childCount - 2);
         object dataGrid = GetCollectionItem(children, childCount - 1);
         object richTextBox = Invoke(window, "FindName", "DocumentBox");
+        object buttonContextMenu = GetProperty(button, "ContextMenu");
+        object buttonToolTip = GetProperty(button, "ToolTip");
         object themedToolBar = GetCollectionItem(GetProperty(toolBarTray, "ToolBars"), 0);
         Type menuItemType = GetRequiredType(menu.GetType().Assembly, "System.Windows.Controls.MenuItem");
         Type toolBarType = GetRequiredType(themedToolBar.GetType().Assembly, "System.Windows.Controls.ToolBar");
         DateTime themeDate = new(2026, 1, 7);
         AssertType(richTextBox, "System.Windows.Controls.RichTextBox", "compiled themed RichTextBox");
+        AssertType(buttonContextMenu, "System.Windows.Controls.ContextMenu", "created themed ContextMenu");
+        AssertType(buttonToolTip, "System.Windows.Controls.ToolTip", "created themed ToolTip");
         AssertType(textBox, "System.Windows.Controls.TextBox", "created themed TextBox");
         AssertType(tabControl, "System.Windows.Controls.TabControl", "created themed TabControl");
         AssertType(listView, "System.Windows.Controls.ListView", "created themed ListView");
@@ -695,6 +720,7 @@ internal static class Program
         AssertType(GetDictionaryValue(themeDictionary, "DefaultCalendarItemStyle"), "System.Windows.Style", "DefaultCalendarItemStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultCheckBoxStyle"), "System.Windows.Style", "DefaultCheckBoxStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxStyle"), "System.Windows.Style", "DefaultComboBoxStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultContextMenuStyle"), "System.Windows.Style", "DefaultContextMenuStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxItemStyle"), "System.Windows.Style", "DefaultComboBoxItemStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxTextBoxStyle"), "System.Windows.Style", "DefaultComboBoxTextBoxStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxToggleButtonStyle"), "System.Windows.Style", "DefaultComboBoxToggleButtonStyle");
@@ -749,6 +775,7 @@ internal static class Program
         AssertType(GetDictionaryValue(themeDictionary, "DefaultTextBoxControlTemplate"), "System.Windows.Controls.ControlTemplate", "DefaultTextBoxControlTemplate");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultThumbStyle"), "System.Windows.Style", "DefaultThumbStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultToggleButtonStyle"), "System.Windows.Style", "DefaultToggleButtonStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultToolTipStyle"), "System.Windows.Style", "DefaultToolTipStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultTreeViewStyle"), "System.Windows.Style", "DefaultTreeViewStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultTreeViewItemStyle"), "System.Windows.Style", "DefaultTreeViewItemStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultRichTextBoxStyle"), "System.Windows.Style", "DefaultRichTextBoxStyle");
@@ -763,6 +790,7 @@ internal static class Program
         AssertType(GetDictionaryValue(themeDictionary, calendar.GetType()), "System.Windows.Style", "implicit Calendar Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, checkBox.GetType()), "System.Windows.Style", "implicit CheckBox Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, comboBox.GetType()), "System.Windows.Style", "implicit ComboBox Fluent style");
+        AssertType(GetDictionaryValue(themeDictionary, buttonContextMenu.GetType()), "System.Windows.Style", "implicit ContextMenu Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, dataGrid.GetType()), "System.Windows.Style", "implicit DataGrid Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, datePicker.GetType()), "System.Windows.Style", "implicit DatePicker Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, expander.GetType()), "System.Windows.Style", "implicit Expander Fluent style");
@@ -786,6 +814,7 @@ internal static class Program
         AssertType(GetDictionaryValue(themeDictionary, tabControl.GetType()), "System.Windows.Style", "implicit TabControl Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, thumb.GetType()), "System.Windows.Style", "implicit Thumb Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, toggleButton.GetType()), "System.Windows.Style", "implicit ToggleButton Fluent style");
+        AssertType(GetDictionaryValue(themeDictionary, buttonToolTip.GetType()), "System.Windows.Style", "implicit ToolTip Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, treeView.GetType()), "System.Windows.Style", "implicit TreeView Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, progressBar.GetType()), "System.Windows.Style", "implicit ProgressBar Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, "HorizontalSliderTemplate"), "System.Windows.Controls.ControlTemplate", "HorizontalSliderTemplate");
@@ -797,6 +826,8 @@ internal static class Program
 
         AssertStyleTarget(GetProperty(window, "Style"), "System.Windows.Window", "Window Fluent style target");
         AssertStyleTarget(GetProperty(button, "Style"), "System.Windows.Controls.Button", "Button Fluent style target");
+        AssertStyleTarget(GetProperty(buttonContextMenu, "Style"), "System.Windows.Controls.ContextMenu", "ContextMenu Fluent style target");
+        AssertStyleTarget(GetProperty(buttonToolTip, "Style"), "System.Windows.Controls.ToolTip", "ToolTip Fluent style target");
         AssertStyleTarget(GetProperty(textBox, "Style"), "System.Windows.Controls.TextBox", "TextBox Fluent style target");
         AssertStyleTarget(GetProperty(tabControl, "Style"), "System.Windows.Controls.TabControl", "TabControl Fluent style target");
         AssertStyleTarget(GetProperty(listView, "Style"), "System.Windows.Controls.ListView", "ListView Fluent style target");
@@ -839,6 +870,9 @@ internal static class Program
 
         Invoke(window, "ApplyTemplate");
         Invoke(button, "ApplyTemplate");
+        Invoke(buttonContextMenu, "ApplyTemplate");
+        ApplyItemsTemplates(buttonContextMenu, "themed ContextMenu items");
+        Invoke(buttonToolTip, "ApplyTemplate");
         Invoke(textBox, "ApplyTemplate");
         Invoke(tabControl, "ApplyTemplate");
         ApplyItemsTemplates(tabControl, "themed TabControl items");
@@ -880,6 +914,8 @@ internal static class Program
 
         AssertType(GetProperty(window, "Template"), "System.Windows.Controls.ControlTemplate", "Window template");
         AssertType(GetProperty(button, "Template"), "System.Windows.Controls.ControlTemplate", "Button template");
+        AssertType(GetProperty(buttonContextMenu, "Template"), "System.Windows.Controls.ControlTemplate", "ContextMenu template");
+        AssertType(GetProperty(buttonToolTip, "Template"), "System.Windows.Controls.ControlTemplate", "ToolTip template");
         AssertType(GetProperty(textBox, "Template"), "System.Windows.Controls.ControlTemplate", "TextBox template");
         AssertType(GetProperty(tabControl, "Template"), "System.Windows.Controls.ControlTemplate", "TabControl template");
         AssertType(GetProperty(listView, "Template"), "System.Windows.Controls.ControlTemplate", "ListView template");
@@ -916,6 +952,8 @@ internal static class Program
         AssertStyleHasSetter(GetProperty(datePicker, "Style"), "Template", "DatePicker Fluent template setter");
         AssertStyleHasSetter(GetProperty(datePicker, "Style"), "CalendarStyle", "DatePicker Fluent calendar-style setter");
         AssertStyleHasSetter(GetProperty(menu, "Style"), "Template", "Menu Fluent template setter");
+        AssertStyleHasSetter(GetProperty(buttonContextMenu, "Style"), "Template", "ContextMenu Fluent template setter");
+        AssertStyleHasSetter(GetProperty(buttonToolTip, "Style"), "Template", "ToolTip Fluent template setter");
         AssertStyleHasSetter(GetProperty(themedToolBar, "Style"), "Template", "ToolBar Fluent template setter");
         AssertStyleHasSetter(GetProperty(GetCollectionItem(GetProperty(statusBar, "Items"), 0), "Style"), "Template", "StatusBarItem Fluent template setter");
         AssertStyleHasSetter(GetProperty(checkBox, "Style"), "Template", "CheckBox Fluent template setter");
@@ -948,6 +986,9 @@ internal static class Program
         AssertStyleHasSetter(GetProperty(dataGrid, "Style"), "DragIndicatorStyle", "DataGrid Fluent drag-indicator-style setter");
         AssertStyleHasSetter(GetProperty(richTextBox, "Style"), "ContextMenu", "RichTextBox Fluent context-menu setter");
         AssertEqual("themed button smoke", GetProperty(button, "Content"), "themed button content");
+        AssertEqual(1, GetCollectionCount(GetProperty(buttonContextMenu, "Items")), "themed ContextMenu item count");
+        AssertEqual("Theme context action", GetProperty(GetCollectionItem(GetProperty(buttonContextMenu, "Items"), 0), "Header"), "themed ContextMenu item header");
+        AssertEqual("Theme tooltip smoke", GetProperty(buttonToolTip, "Content"), "themed ToolTip content");
         AssertEqual("themed text box smoke", GetProperty(textBox, "Text"), "themed TextBox text");
         AssertEqual(2, GetCollectionCount(GetProperty(tabControl, "Items")), "themed TabControl item count");
         AssertEqual(1, GetProperty(tabControl, "SelectedIndex"), "themed TabControl selected index");

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Windows;
+using MediaBrush = System.Windows.Media.Brush;
 using ProGpuVisual = global::ProGPU.Scene.Visual;
 
 namespace System.Windows.Media.ProGPU.Composition;
@@ -431,7 +432,9 @@ internal readonly struct WpfRetainedVisualState
         Vector2? size = null,
         global::ProGPU.Scene.EffectBase? effect = null,
         bool cacheAsLayer = false,
-        Rect? contentBounds = null)
+        Rect? contentBounds = null,
+        MediaBrush? opacityMask = null,
+        Rect? opacityMaskBounds = null)
     {
         Offset = offset;
         Transform = transform;
@@ -441,6 +444,8 @@ internal readonly struct WpfRetainedVisualState
         Effect = effect;
         CacheAsLayer = cacheAsLayer;
         ContentBounds = contentBounds;
+        OpacityMask = opacityMask;
+        OpacityMaskBounds = opacityMaskBounds;
     }
 
     public Vector2 Offset { get; }
@@ -458,6 +463,12 @@ internal readonly struct WpfRetainedVisualState
     public bool CacheAsLayer { get; }
 
     public Rect? ContentBounds { get; }
+
+    public MediaBrush? OpacityMask { get; }
+
+    public Rect? OpacityMaskBounds { get; }
+
+    public bool RequiresInlineChildReplay => OpacityMask != null;
 }
 
 internal interface IWpfRetainedVisualStateSink

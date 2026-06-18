@@ -131,9 +131,13 @@ public sealed class WpfVisualTreeReflectionRenderer
         RegisterRetainedVisualStateDependencies(visual, sink);
         retainedVisualStateSink.ApplyVisualState(visualState);
 
-        var popCount = PushRetainedVisualStateContentTransform(visualState, sink);
+        var commandScopePopCount = 0;
+        var contentTransformPopCount = 0;
         try
         {
+            commandScopePopCount = PushRetainedVisualStateCommandScopes(visualState, sink);
+            contentTransformPopCount = PushRetainedVisualStateContentTransform(visualState, sink);
+
             if (!ReplayViewport3DVisual(visual, sink, stats))
             {
                 ReplayVisualContent(visual, sink, resources, imageSourceAdapter, stats);
@@ -141,13 +145,20 @@ public sealed class WpfVisualTreeReflectionRenderer
                 foreach (var child in ExtractChildren(visual))
                 {
                     stats.ChildEdgeCount++;
-                    ReplaySubtreeCore(child, sink, resources, imageSourceAdapter, stats, allowRetainedVisualOwnerScopes: true);
+                    ReplaySubtreeCore(
+                        child,
+                        sink,
+                        resources,
+                        imageSourceAdapter,
+                        stats,
+                        allowRetainedVisualOwnerScopes: !visualState.RequiresInlineChildReplay);
                 }
             }
         }
         finally
         {
-            PopRetainedVisualStateContentTransform(popCount, sink);
+            PopRetainedVisualStateContentTransform(contentTransformPopCount, sink);
+            PopRetainedVisualStateCommandScopes(commandScopePopCount, sink);
         }
 
         return true;
@@ -178,9 +189,13 @@ public sealed class WpfVisualTreeReflectionRenderer
             RegisterRetainedVisualStateDependencies(visual, sink);
             retainedVisualStateSink.ApplyVisualState(visualState);
 
-            var popCount = PushRetainedVisualStateContentTransform(visualState, sink);
+            var commandScopePopCount = 0;
+            var contentTransformPopCount = 0;
             try
             {
+                commandScopePopCount = PushRetainedVisualStateCommandScopes(visualState, sink);
+                contentTransformPopCount = PushRetainedVisualStateContentTransform(visualState, sink);
+
                 if (!ReplayViewport3DVisual(visual, sink, stats))
                 {
                     ReplayVisualContent(visual, sink, resources, imageSourceAdapter, stats);
@@ -188,13 +203,20 @@ public sealed class WpfVisualTreeReflectionRenderer
                     foreach (var child in ExtractChildren(visual))
                     {
                         stats.ChildEdgeCount++;
-                        ReplaySubtreeCore(child, sink, resources, imageSourceAdapter, stats, allowRetainedVisualOwnerScopes: true);
+                        ReplaySubtreeCore(
+                            child,
+                            sink,
+                            resources,
+                            imageSourceAdapter,
+                            stats,
+                            allowRetainedVisualOwnerScopes: !visualState.RequiresInlineChildReplay);
                     }
                 }
             }
             finally
             {
-                PopRetainedVisualStateContentTransform(popCount, sink);
+                PopRetainedVisualStateContentTransform(contentTransformPopCount, sink);
+                PopRetainedVisualStateCommandScopes(commandScopePopCount, sink);
             }
 
             replayed = true;
@@ -287,6 +309,10 @@ public sealed class WpfVisualTreeReflectionRenderer
         var transform = Matrix4x4.Identity;
         var opacity = 1f;
         Rect? clipBounds = null;
+        if (!TryCreateRetainedOpacityMaskState(visual, out var opacityMask, out var opacityMaskBounds))
+        {
+            return false;
+        }
 
         if (TryGetPropertyValue(visual, "Transform", out var transformValue) && transformValue != null)
         {
@@ -357,6 +383,8 @@ public sealed class WpfVisualTreeReflectionRenderer
                 transform,
                 opacity,
                 clipBounds,
+                opacityMask,
+                opacityMaskBounds,
                 imageSourceAdapter,
                 out state))
         {
@@ -368,8 +396,35 @@ public sealed class WpfVisualTreeReflectionRenderer
             return false;
         }
 
-        state = new WpfRetainedVisualState(offset, transform, opacity, clipBounds);
+        state = new WpfRetainedVisualState(
+            offset,
+            transform,
+            opacity,
+            clipBounds,
+            opacityMask: opacityMask,
+            opacityMaskBounds: opacityMaskBounds);
         return true;
+    }
+
+    private static int PushRetainedVisualStateCommandScopes(
+        in WpfRetainedVisualState state,
+        IWpfCompositionCommandSink sink)
+    {
+        if (state.OpacityMask == null || !state.OpacityMaskBounds.HasValue)
+        {
+            return 0;
+        }
+
+        sink.PushOpacityMask(state.OpacityMask, state.OpacityMaskBounds.Value);
+        return 1;
+    }
+
+    private static void PopRetainedVisualStateCommandScopes(int popCount, IWpfCompositionCommandSink sink)
+    {
+        for (var i = 0; i < popCount; i++)
+        {
+            sink.Pop();
+        }
     }
 
     private static int PushRetainedVisualStateContentTransform(
@@ -403,8 +458,7 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static bool HasUnsupportedRetainedVisualOwnerState(object visual)
     {
-        if (HasNonNullProperty(visual, "OpacityMask")
-            || HasVisualGuidelines(visual))
+        if (HasVisualGuidelines(visual))
         {
             return true;
         }
@@ -451,6 +505,8 @@ public sealed class WpfVisualTreeReflectionRenderer
         Matrix4x4 transform,
         float opacity,
         Rect? clipBounds,
+        MediaBrush? opacityMask,
+        Rect? opacityMaskBounds,
         IWpfImageSourceAdapter? imageSourceAdapter,
         out WpfRetainedVisualState state)
     {
@@ -505,12 +561,16 @@ public sealed class WpfVisualTreeReflectionRenderer
         var retainedOffset = offset;
         var retainedTransform = transform;
         var retainedClipBounds = clipBounds;
+        var retainedOpacityMaskBounds = opacityMaskBounds;
         if (TryReadOpacityMaskBounds(visual, out var bounds))
         {
             size = new Vector2((float)bounds.Width, (float)bounds.Height);
             contentBounds = bounds;
             retainedClipBounds = clipBounds.HasValue
                 ? OffsetBounds(clipBounds.Value, -bounds.X, -bounds.Y)
+                : null;
+            retainedOpacityMaskBounds = opacityMaskBounds.HasValue
+                ? OffsetBounds(opacityMaskBounds.Value, -bounds.X, -bounds.Y)
                 : null;
 
             var boundsOffset = new Vector2((float)bounds.X, (float)bounds.Y);
@@ -532,7 +592,33 @@ public sealed class WpfVisualTreeReflectionRenderer
             size,
             effect,
             cacheAsLayer,
-            contentBounds);
+            contentBounds,
+            opacityMask,
+            retainedOpacityMaskBounds);
+        return true;
+    }
+
+    private static bool TryCreateRetainedOpacityMaskState(
+        object visual,
+        out MediaBrush? opacityMask,
+        out Rect? opacityMaskBounds)
+    {
+        opacityMask = null;
+        opacityMaskBounds = null;
+
+        if (!TryGetPropertyValue(visual, "OpacityMask", out var opacityMaskValue) || opacityMaskValue == null)
+        {
+            return true;
+        }
+
+        opacityMask = WpfReflectionResourceResolver.AdaptBrush(opacityMaskValue);
+        if (opacityMask == null || !TryReadOpacityMaskBounds(visual, out var bounds))
+        {
+            opacityMask = null;
+            return false;
+        }
+
+        opacityMaskBounds = bounds;
         return true;
     }
 

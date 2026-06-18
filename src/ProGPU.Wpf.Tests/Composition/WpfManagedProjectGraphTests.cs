@@ -1677,6 +1677,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateScrollingControls(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ScrollViewer content children", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ScrollBar updated value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExecuteScrollBarCommand(scrollBar, \"LineDownCommand\", 5.0, \"SmallIncrement\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExecuteScrollBarCommand(scrollBar, \"ScrollToBottomCommand\", 10.0, \"Last\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("scrollRecorder.AssertLast(expectedScrollEventType, expectedValue", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateDateSelectionControls(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Calendar updated selected date", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DatePicker updated selected date", harnessProgram, StringComparison.Ordinal);
@@ -2141,6 +2144,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateScrollingControls(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ScrollViewer horizontal visibility", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ScrollBar viewport size", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExecuteScrollBarCommand(scrollBar, \"LineDownCommand\", 5.0, \"SmallIncrement\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExecuteScrollBarCommand(scrollBar, \"ScrollToTopCommand\", 0.0, \"First\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("scrollRecorder.AssertLast(expectedScrollEventType, expectedValue", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateDateSelectionControls(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Calendar selected date collection item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DatePicker selected date format", harnessProgram, StringComparison.Ordinal);

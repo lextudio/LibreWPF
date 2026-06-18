@@ -1865,6 +1865,70 @@ internal static class Program
 
         SetProperty(scrollBar, "Value", 7.0);
         AssertEqual(7.0, GetProperty(scrollBar, "Value"), "compiled ScrollBar updated value");
+
+        SetProperty(scrollBar, "Value", 4.0);
+        EventInfo scrollEvent = scrollBar.GetType().GetEvent(
+            "Scroll",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(scrollBar.GetType().FullName, "Scroll");
+        var scrollRecorder = new ScrollEventRecorder();
+        Delegate scrollHandler = CreateScrollEventHandler(scrollEvent, scrollRecorder);
+        scrollEvent.AddEventHandler(scrollBar, scrollHandler);
+        try
+        {
+            ExecuteScrollBarCommand(scrollBar, "LineDownCommand", 5.0, "SmallIncrement", scrollRecorder, "compiled ScrollBar LineDown command");
+            ExecuteScrollBarCommand(scrollBar, "LineUpCommand", 4.0, "SmallDecrement", scrollRecorder, "compiled ScrollBar LineUp command");
+            ExecuteScrollBarCommand(scrollBar, "PageDownCommand", 7.0, "LargeIncrement", scrollRecorder, "compiled ScrollBar PageDown command");
+            ExecuteScrollBarCommand(scrollBar, "PageUpCommand", 4.0, "LargeDecrement", scrollRecorder, "compiled ScrollBar PageUp command");
+            ExecuteScrollBarCommand(scrollBar, "ScrollToBottomCommand", 10.0, "Last", scrollRecorder, "compiled ScrollBar ScrollToBottom command");
+            ExecuteScrollBarCommand(scrollBar, "ScrollToTopCommand", 0.0, "First", scrollRecorder, "compiled ScrollBar ScrollToTop command");
+        }
+        finally
+        {
+            scrollEvent.RemoveEventHandler(scrollBar, scrollHandler);
+        }
+    }
+
+    private static void ExecuteScrollBarCommand(
+        object scrollBar,
+        string commandFieldName,
+        double expectedValue,
+        string expectedScrollEventType,
+        ScrollEventRecorder scrollRecorder,
+        string description)
+    {
+        object command = GetStaticField(scrollBar.GetType(), commandFieldName);
+        AssertEqual(true, InvokeTwoArgumentCommand(command, "CanExecute", null, scrollBar), $"{description} CanExecute");
+        InvokeTwoArgumentCommand(command, "Execute", null, scrollBar);
+        AssertEqual(expectedValue, GetProperty(scrollBar, "Value"), $"{description} value");
+        scrollRecorder.AssertLast(expectedScrollEventType, expectedValue, $"{description} ScrollEvent");
+    }
+
+    private static Delegate CreateScrollEventHandler(EventInfo scrollEvent, ScrollEventRecorder recorder)
+    {
+        Type handlerType = scrollEvent.EventHandlerType
+            ?? throw new InvalidOperationException($"Expected '{scrollEvent.Name}' to expose a handler type.");
+        MethodInfo invoke = handlerType.GetMethod("Invoke")
+            ?? throw new MissingMethodException(handlerType.FullName, "Invoke");
+        ParameterInfo[] parameters = invoke.GetParameters();
+        if (parameters.Length != 2)
+        {
+            throw new InvalidOperationException($"Expected '{handlerType.FullName}' to be a two-argument event handler.");
+        }
+
+        MethodInfo recordMethod = typeof(ScrollEventRecorder).GetMethod(
+            nameof(ScrollEventRecorder.Record),
+            BindingFlags.Instance | BindingFlags.Public)
+            ?? throw new MissingMethodException(typeof(ScrollEventRecorder).FullName, nameof(ScrollEventRecorder.Record));
+        var senderParameter = System.Linq.Expressions.Expression.Parameter(parameters[0].ParameterType, "sender");
+        var argsParameter = System.Linq.Expressions.Expression.Parameter(parameters[1].ParameterType, "args");
+        var call = System.Linq.Expressions.Expression.Call(
+            System.Linq.Expressions.Expression.Constant(recorder),
+            recordMethod,
+            System.Linq.Expressions.Expression.Convert(senderParameter, typeof(object)),
+            System.Linq.Expressions.Expression.Convert(argsParameter, typeof(EventArgs)));
+
+        return System.Linq.Expressions.Expression.Lambda(handlerType, call, senderParameter, argsParameter).Compile();
     }
 
     private static void ValidatePostShowScrollingControls(object window)
@@ -3388,6 +3452,30 @@ internal static class Program
             (x * m12) + (y * m22) + offsetY);
     }
 
+    private sealed class ScrollEventRecorder
+    {
+        private readonly List<string> _eventTypes = new();
+        private readonly List<double> _newValues = new();
+
+        public void Record(object sender, EventArgs args)
+        {
+            _eventTypes.Add(GetProperty(args, "ScrollEventType").ToString() ?? string.Empty);
+            _newValues.Add(Convert.ToDouble(GetProperty(args, "NewValue")));
+        }
+
+        public void AssertLast(string expectedEventType, double expectedNewValue, string description)
+        {
+            if (_eventTypes.Count == 0)
+            {
+                throw new InvalidOperationException($"Expected {description} to record a Scroll event.");
+            }
+
+            int index = _eventTypes.Count - 1;
+            AssertEqual(expectedEventType, _eventTypes[index], $"{description} type");
+            AssertEqual(expectedNewValue, _newValues[index], $"{description} new value");
+        }
+    }
+
     private static object Create(Assembly assembly, string typeName, params object?[] parameters)
     {
         Type type = GetRequiredType(assembly, typeName);
@@ -3424,6 +3512,14 @@ internal static class Program
             propertyName,
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(null)
             ?? throw new InvalidOperationException($"Expected '{type.FullName}.{propertyName}' to have a value.");
+    }
+
+    private static object GetStaticField(Type type, string fieldName)
+    {
+        return type.GetField(
+            fieldName,
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(null)
+            ?? throw new InvalidOperationException($"Expected '{type.FullName}.{fieldName}' to have a value.");
     }
 
     private static string DescribeOptionalProperty(object instance, string propertyName)

@@ -122,6 +122,7 @@ internal static class Program
             ValidatePostShowAdornerLayer(presentationFramework, compilerHarness, window);
             ValidatePostShowAccessKeyFocusScope(presentationCore, window);
             ValidatePortableAccessKeyActivation(presentationCore, activation, window);
+            ValidatePortableKeyboardNavigationActivation(presentationCore, activation, window);
             ValidatePostShowNavigationFrame(
                 window,
                 () => FlushDispatcherOperations(activationServiceType, window, "Render"));
@@ -1722,6 +1723,60 @@ internal static class Program
 
         InvokeStatic(keyboardType, "ClearFocus");
         AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable access key clear focus");
+    }
+
+    private static void ValidatePortableKeyboardNavigationActivation(Assembly presentationCore, object activation, object window)
+    {
+        if (activation is not WpfPortableWindowActivation portableActivation)
+        {
+            throw new InvalidOperationException(
+                $"Expected a ProGPU portable activation for keyboard navigation, got '{activation.GetType().FullName}'.");
+        }
+
+        object accessTarget = GetField(window, "AccessTargetBox");
+        object alternateAccessTarget = GetField(window, "AlternateAccessTargetBox");
+        Type keyboardType = GetRequiredType(presentationCore, "System.Windows.Input.Keyboard");
+
+        AssertSame(accessTarget, InvokeStatic(keyboardType, "Focus", accessTarget), "portable Tab navigation initial focus");
+
+        var tabDown = new WpfInputEventArgs(
+            WpfInputEventKind.KeyDown,
+            key: "Tab",
+            scanCode: 0,
+            modifiers: WpfInputModifiers.None);
+        RaiseHostInput(portableActivation.Host, tabDown);
+
+        AssertEqual(true, tabDown.Handled, "portable Tab navigation handled state");
+        AssertSame(alternateAccessTarget, GetStaticProperty(keyboardType, "FocusedElement"), "portable Tab navigation focused target");
+
+        RaiseHostInput(
+            portableActivation.Host,
+            new WpfInputEventArgs(
+                WpfInputEventKind.KeyUp,
+                key: "Tab",
+                scanCode: 0,
+                modifiers: WpfInputModifiers.None));
+
+        var shiftTabDown = new WpfInputEventArgs(
+            WpfInputEventKind.KeyDown,
+            key: "Tab",
+            scanCode: 0,
+            modifiers: WpfInputModifiers.Shift);
+        RaiseHostInput(portableActivation.Host, shiftTabDown);
+
+        AssertEqual(true, shiftTabDown.Handled, "portable Shift+Tab navigation handled state");
+        AssertSame(accessTarget, GetStaticProperty(keyboardType, "FocusedElement"), "portable Shift+Tab navigation focused target");
+
+        RaiseHostInput(
+            portableActivation.Host,
+            new WpfInputEventArgs(
+                WpfInputEventKind.KeyUp,
+                key: "Tab",
+                scanCode: 0,
+                modifiers: WpfInputModifiers.None));
+
+        InvokeStatic(keyboardType, "ClearFocus");
+        AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable Tab navigation clear focus");
     }
 
     private static void ValidatePortableMouseBindingActivation(Assembly presentationCore, object activation, object window)

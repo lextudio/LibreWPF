@@ -5818,6 +5818,7 @@ internal static class Program
             ValidatePostShowAdornerLayer(_presentationFramework, _compilerHarness, typedActivation.Window);
             ValidatePostShowAccessKeyFocusScope(_presentationCore, typedActivation.Window);
             ValidatePortableAccessKeyActivation(typedActivation.Window);
+            ValidatePortableKeyboardNavigationActivation(typedActivation.Window);
             ValidatePostShowNavigationFrame(
                 typedActivation.Window,
                 () => FlushDispatcherOperations(typedActivation.Window, "Render"));
@@ -6055,6 +6056,34 @@ internal static class Program
 
             InvokeStatic(keyboardType, "ClearFocus");
             AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable Application.Run access key clear focus");
+        }
+
+        private void ValidatePortableKeyboardNavigationActivation(object window)
+        {
+            object accessTarget = GetField(window, "AccessTargetBox");
+            object alternateAccessTarget = GetField(window, "AlternateAccessTargetBox");
+            Type keyboardType = GetRequiredType(_presentationCore, "System.Windows.Input.Keyboard");
+
+            AssertSame(accessTarget, InvokeStatic(keyboardType, "Focus", accessTarget), "portable Application.Run Tab navigation initial focus");
+
+            object tabDown = CreatePortableInputEvent("KeyDown", "Tab", scanCode: 0, modifiersName: "None");
+            Invoke(window, "HandlePortableInput", tabDown);
+
+            AssertEqual(true, GetProperty(tabDown, "Handled"), "portable Application.Run Tab navigation handled state");
+            AssertSame(alternateAccessTarget, GetStaticProperty(keyboardType, "FocusedElement"), "portable Application.Run Tab navigation focused target");
+
+            Invoke(window, "HandlePortableInput", CreatePortableInputEvent("KeyUp", "Tab", scanCode: 0, modifiersName: "None"));
+
+            object shiftTabDown = CreatePortableInputEvent("KeyDown", "Tab", scanCode: 0, modifiersName: "Shift");
+            Invoke(window, "HandlePortableInput", shiftTabDown);
+
+            AssertEqual(true, GetProperty(shiftTabDown, "Handled"), "portable Application.Run Shift+Tab navigation handled state");
+            AssertSame(accessTarget, GetStaticProperty(keyboardType, "FocusedElement"), "portable Application.Run Shift+Tab navigation focused target");
+
+            Invoke(window, "HandlePortableInput", CreatePortableInputEvent("KeyUp", "Tab", scanCode: 0, modifiersName: "None"));
+
+            InvokeStatic(keyboardType, "ClearFocus");
+            AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable Application.Run Tab navigation clear focus");
         }
 
         private void ValidatePortableMouseBindingActivation(object window)

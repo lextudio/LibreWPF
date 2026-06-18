@@ -2159,6 +2159,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("portable access key handled state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable access key focused target", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable access key clear focus", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableKeyboardNavigationActivation(presentationCore, activation, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Tab navigation handled state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Tab navigation focused target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Shift+Tab navigation focused target", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowNavigationFrame(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Frame", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Page content", harnessProgram, StringComparison.Ordinal);
@@ -2877,6 +2881,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("portable Application.Run access key handled state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable Application.Run access key focused target", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable Application.Run access key clear focus", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableKeyboardNavigationActivation(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run Tab navigation handled state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run Tab navigation focused target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run Shift+Tab navigation focused target", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowNavigationFrame(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Frame", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Page content", harnessProgram, StringComparison.Ordinal);

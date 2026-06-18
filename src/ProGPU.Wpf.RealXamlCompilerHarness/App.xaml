@@ -26,9 +26,14 @@
                 <GradientStop Color="#FF356D9E" Offset="1" />
             </LinearGradientBrush>
             <ControlTemplate x:Key="SmokeButtonTemplate" TargetType="{x:Type Button}">
+                <ControlTemplate.Resources>
+                    <SolidColorBrush x:Key="TemplateBorderBrush" Color="#6B4E9B" />
+                </ControlTemplate.Resources>
                 <Border
                     x:Name="TemplateBorder"
                     Background="{DynamicResource AccentBrush}"
+                    BorderBrush="{StaticResource TemplateBorderBrush}"
+                    BorderThickness="2"
                     Padding="4">
                     <VisualStateManager.VisualStateGroups>
                         <VisualStateGroup x:Name="CommonStates">

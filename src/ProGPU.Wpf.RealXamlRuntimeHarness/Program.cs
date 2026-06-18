@@ -2322,11 +2322,23 @@ internal static class Program
         AssertType(templatedButton, "System.Windows.Controls.Button", "compiled templated Button");
         AssertEqual("templated button", GetProperty(templatedButton, "Content"), "compiled templated Button content");
         AssertSame(expectedTemplate, GetProperty(templatedButton, "Template"), "compiled Button control template");
+
+        object templateResources = GetProperty(expectedTemplate, "Resources");
+        object templateBorderBrush = GetDictionaryValue(templateResources, "TemplateBorderBrush");
+        AssertType(templateBorderBrush, "System.Windows.Media.SolidColorBrush", "compiled ControlTemplate scoped resource brush");
+        AssertEqual("#FF6B4E9B", GetProperty(templateBorderBrush, "Color").ToString(), "compiled ControlTemplate scoped resource brush color");
+
         AssertEqual(true, Invoke(templatedButton, "ApplyTemplate"), "compiled Button template application");
 
         object templateBorder = Invoke(expectedTemplate, "FindName", "TemplateBorder", templatedButton);
         AssertType(templateBorder, "System.Windows.Controls.Border", "compiled ControlTemplate named part");
         AssertSame(accentBrush, GetProperty(templateBorder, "Background"), "compiled ControlTemplate dynamic resource initial value");
+        AssertSame(templateBorderBrush, GetProperty(templateBorder, "BorderBrush"), "compiled ControlTemplate scoped BorderBrush");
+        object templateBorderThickness = GetProperty(templateBorder, "BorderThickness");
+        AssertEqual(2.0, GetProperty(templateBorderThickness, "Left"), "compiled ControlTemplate scoped BorderThickness left");
+        AssertEqual(2.0, GetProperty(templateBorderThickness, "Top"), "compiled ControlTemplate scoped BorderThickness top");
+        AssertEqual(2.0, GetProperty(templateBorderThickness, "Right"), "compiled ControlTemplate scoped BorderThickness right");
+        AssertEqual(2.0, GetProperty(templateBorderThickness, "Bottom"), "compiled ControlTemplate scoped BorderThickness bottom");
         AssertEqual(1.0, GetProperty(templateBorder, "Opacity"), "compiled ControlTemplate trigger initial opacity");
         ValidateTemplateVisualStateManager(templateBorder);
 

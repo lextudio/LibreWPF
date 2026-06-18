@@ -807,7 +807,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GradientStop Color=\"#FF2F6B54\" Offset=\"0\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("GradientStop Color=\"#FFB15E3B\" Offset=\"0.5\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("ControlTemplate x:Key=\"SmokeButtonTemplate\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("ControlTemplate.Resources", appXaml, StringComparison.Ordinal);
+        Assert.Contains("SolidColorBrush x:Key=\"TemplateBorderBrush\" Color=\"#6B4E9B\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("Background=\"{DynamicResource AccentBrush}\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("BorderBrush=\"{StaticResource TemplateBorderBrush}\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("BorderThickness=\"2\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"{TemplateBinding Content}\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("VisualStateManager.VisualStateGroups", appXaml, StringComparison.Ordinal);
         Assert.Contains("VisualStateGroup x:Name=\"CommonStates\"", appXaml, StringComparison.Ordinal);
@@ -1704,6 +1708,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePostShowTemplateVisualStateManager(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled VisualStateManager Pressed opacity", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ControlTemplate dynamic resource update", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ControlTemplate scoped resource brush", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ControlTemplate scoped BorderBrush", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ControlTemplate scoped BorderThickness", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ControlTemplate trigger disabled opacity", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateStyleAndDataTrigger(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button triggered style", harnessProgram, StringComparison.Ordinal);
@@ -2149,6 +2156,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePostShowTemplateVisualStateManager(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled VisualStateManager Pressed opacity", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ControlTemplate dynamic resource update", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ControlTemplate scoped resource brush", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ControlTemplate scoped BorderBrush", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ControlTemplate scoped BorderThickness", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ControlTemplate trigger source state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateStyleAndDataTrigger(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataTrigger inactive value", harnessProgram, StringComparison.Ordinal);

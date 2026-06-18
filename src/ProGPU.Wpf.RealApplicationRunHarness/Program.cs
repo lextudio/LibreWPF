@@ -985,7 +985,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 75, "stack panel children");
+        AssertCollectionCount(children, expected: 76, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -1813,6 +1813,48 @@ internal static class Program
             "compiled DataTemplate active generated TextBlock",
             "compiled DataTemplate active generated TextBlock binding",
             "compiled DataTemplate trigger active generated value");
+    }
+
+    private static void ValidatePostShowItemContainerAlternation(object window)
+    {
+        object alternationItemsList = GetField(window, "AlternationItemsList");
+        object sourceItems = GetProperty(GetProperty(window, "DataContext"), "Items");
+        Type itemsControlType = GetRequiredType(alternationItemsList.GetType().Assembly, "System.Windows.Controls.ItemsControl");
+
+        ValidateGeneratedAlternationContainer(
+            alternationItemsList,
+            GetCollectionItem(sourceItems, 0),
+            itemsControlType,
+            expectedIndex: 0,
+            "compiled alternation first item container index");
+        ValidateGeneratedAlternationContainer(
+            alternationItemsList,
+            GetCollectionItem(sourceItems, 1),
+            itemsControlType,
+            expectedIndex: 1,
+            "compiled alternation second item container index");
+        ValidateGeneratedAlternationContainer(
+            alternationItemsList,
+            GetCollectionItem(sourceItems, 2),
+            itemsControlType,
+            expectedIndex: 0,
+            "compiled alternation third item container index");
+    }
+
+    private static void ValidateGeneratedAlternationContainer(
+        object alternationItemsList,
+        object item,
+        Type itemsControlType,
+        int expectedIndex,
+        string description)
+    {
+        Invoke(alternationItemsList, "ScrollIntoView", item);
+        Invoke(alternationItemsList, "UpdateLayout");
+
+        object itemContainerGenerator = GetProperty(alternationItemsList, "ItemContainerGenerator");
+        object itemContainer = Invoke(itemContainerGenerator, "ContainerFromItem", item);
+        AssertType(itemContainer, "System.Windows.Controls.ListBoxItem", description);
+        AssertEqual(expectedIndex, GetDependencyPropertyValue(itemContainer, itemsControlType, "AlternationIndexProperty"), description);
     }
 
     private static void ValidatePostShowGroupStyleHeader(Assembly presentationCore, object window)
@@ -3884,6 +3926,12 @@ internal static class Program
         AssertEqual("item beta", GetProperty(GetCollectionItem(compositeItems, 2), "Name"), "compiled CompositeCollection initial second collection item");
         AssertEqual("composite footer", GetCollectionItem(compositeItems, 3), "compiled CompositeCollection footer item");
 
+        object alternationItemsList = GetField(window, "AlternationItemsList");
+        AssertType(alternationItemsList, "System.Windows.Controls.ListBox", "compiled alternation ListBox");
+        AssertSame(sourceItems, GetProperty(alternationItemsList, "ItemsSource"), "compiled alternation ListBox ItemsSource binding");
+        AssertEqual(2, GetProperty(alternationItemsList, "AlternationCount"), "compiled ListBox AlternationCount");
+        AssertCollectionCount(GetProperty(alternationItemsList, "Items"), expected: 2, "compiled alternation ListBox generated items");
+
         object filteredItemsViewSource = Invoke(window, "TryFindResource", "FilteredItemsView");
         AssertType(filteredItemsViewSource, "System.Windows.Data.CollectionViewSource", "compiled filtered CollectionViewSource resource");
         object filteredItemsList = GetField(window, "FilteredItemsList");
@@ -3943,6 +3991,7 @@ internal static class Program
         object thirdItem = Create(window.GetType().Assembly, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeItem", "item gamma");
         AddToCollection(sourceItems, thirdItem);
         AssertCollectionCount(GetProperty(itemsList, "Items"), expected: 3, "compiled ListBox collection-change items");
+        AssertCollectionCount(GetProperty(alternationItemsList, "Items"), expected: 3, "compiled alternation ListBox collection-change items");
         AssertCollectionCount(sortedItems, expected: 3, "compiled sorted ListBox collection-change items");
         AssertEqual("item gamma", GetProperty(GetCollectionItem(sortedItems, 0), "Name"), "compiled CollectionViewSource collection-change first item");
         object compositeThirdItem = Create(window.GetType().Assembly, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeItem", "item gamma");
@@ -5421,6 +5470,7 @@ internal static class Program
                 typedActivation.Window,
                 () => FlushDispatcherOperations(typedActivation.Window, "Render"));
             ValidatePostShowItemTemplateTriggerActivation(_presentationCore, typedActivation.Window);
+            ValidatePostShowItemContainerAlternation(typedActivation.Window);
             ValidatePostShowGroupStyleHeader(_presentationCore, typedActivation.Window);
             ValidatePostShowItemTemplateSelector(_presentationCore, typedActivation.Window);
             ValidatePostShowItemContainerStyleSelector(_presentationCore, typedActivation.Window);
@@ -5481,6 +5531,7 @@ internal static class Program
             ValidatePostShowBindingFeatures(activation.Window);
             ValidateLoadedEventHandlerState(activation.Window);
             ValidatePostShowItemTemplateTriggerActivation(_presentationCore, activation.Window);
+            ValidatePostShowItemContainerAlternation(activation.Window);
             ValidatePostShowGroupStyleHeader(_presentationCore, activation.Window);
             ValidatePostShowItemTemplateSelector(_presentationCore, activation.Window);
             ValidatePostShowItemContainerStyleSelector(_presentationCore, activation.Window);

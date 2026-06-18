@@ -906,6 +906,11 @@
             </ListBox.ItemsSource>
         </ListBox>
         <ListBox
+            x:Name="AlternationItemsList"
+            AlternationCount="2"
+            Margin="0,8,0,0"
+            ItemsSource="{Binding Items}" />
+        <ListBox
             x:Name="DisplayMemberItemsList"
             Margin="0,8,0,0"
             DisplayMemberPath="Name"

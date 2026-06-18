@@ -1277,6 +1277,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CollectionContainer Collection=\"{x:Static local:SmokeCompositeItemsProvider.Items}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("composite header", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("composite footer", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"AlternationItemsList\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("AlternationCount=\"2\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"DisplayMemberItemsList\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DisplayMemberPath=\"Name\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SelectedValuePath=\"Category\"", mainWindowXaml, StringComparison.Ordinal);
@@ -2122,6 +2124,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled DataGrid generated active cell content", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataGrid generated active cell value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowItemTemplateTriggerActivation(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowItemContainerAlternation(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled alternation ListBox", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox AlternationCount", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled alternation ListBox collection-change items", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled alternation third item container index", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowTabControl(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowSectionControls(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowScrollingControls(window)", harnessProgram, StringComparison.Ordinal);
@@ -2768,6 +2775,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled DataGrid generated active cell content", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataGrid generated active cell value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowItemTemplateTriggerActivation(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowItemContainerAlternation(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowItemContainerAlternation(activation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled alternation ListBox", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox AlternationCount", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled alternation ListBox collection-change items", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled alternation third item container index", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowTabControl(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowSectionControls(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowScrollingControls(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);

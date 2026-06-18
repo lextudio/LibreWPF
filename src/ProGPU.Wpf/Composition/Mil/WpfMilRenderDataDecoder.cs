@@ -21,6 +21,16 @@ public sealed class WpfMilRenderDataDecoder
         IWpfCompositionCommandSink sink,
         IWpfMilResourceResolver resources)
     {
+        return sink is IWpfNativePrimitiveCommandSink nativeSink
+            ? DecodeNative(renderData, sink, nativeSink, resources)
+            : DecodeTyped(renderData, sink, resources);
+    }
+
+    private WpfMilDecodeResult DecodeTyped(
+        ReadOnlySpan<byte> renderData,
+        IWpfCompositionCommandSink sink,
+        IWpfMilResourceResolver resources)
+    {
         ArgumentNullException.ThrowIfNull(sink);
         ArgumentNullException.ThrowIfNull(resources);
 
@@ -332,6 +342,324 @@ public sealed class WpfMilRenderDataDecoder
         return new WpfMilDecodeResult(recordCount, appliedCount, skippedCount, unsupportedCount);
     }
 
+    private static WpfMilDecodeResult DecodeNative(
+        ReadOnlySpan<byte> renderData,
+        IWpfCompositionCommandSink sink,
+        IWpfNativePrimitiveCommandSink nativeSink,
+        IWpfMilResourceResolver resources)
+    {
+        ArgumentNullException.ThrowIfNull(sink);
+        ArgumentNullException.ThrowIfNull(nativeSink);
+        ArgumentNullException.ThrowIfNull(resources);
+
+        var pushStack = new Stack<bool>();
+        var recordCount = 0;
+        var appliedCount = 0;
+        var skippedCount = 0;
+        var unsupportedCount = 0;
+        var offset = 0;
+
+        while (offset < renderData.Length)
+        {
+            if (renderData.Length - offset < RecordHeaderSize)
+            {
+                throw new InvalidOperationException("Truncated WPF MIL render data record header.");
+            }
+
+            var recordSize = ReadInt32(renderData, offset);
+            var commandId = (WpfMilCommandId)ReadInt32(renderData, offset + 4);
+
+            if (recordSize < RecordHeaderSize || recordSize % 8 != 0)
+            {
+                throw new InvalidOperationException($"Invalid WPF MIL render data record size {recordSize} at offset {offset}.");
+            }
+
+            if (recordSize > renderData.Length - offset)
+            {
+                throw new InvalidOperationException($"Truncated WPF MIL render data record at offset {offset}.");
+            }
+
+            var payload = renderData.Slice(offset + RecordHeaderSize, recordSize - RecordHeaderSize);
+            recordCount++;
+            var unsupportedStateBefore = GetUnsupportedStateCount(sink);
+
+            switch (commandId)
+            {
+                case WpfMilCommandId.DrawLine:
+                case WpfMilCommandId.DrawLineAnimate:
+                    nativeSink.DrawNativeLine(
+                        ResolveOptionalPen(resources, ReadUInt32(payload, 32)),
+                        ReadReplayPoint(payload, 0),
+                        ReadReplayPoint(payload, 16));
+                    appliedCount++;
+                    if (commandId == WpfMilCommandId.DrawLineAnimate)
+                    {
+                        unsupportedCount += CountUnsupportedAnimationHandles(payload, 36, 40);
+                    }
+
+                    break;
+
+                case WpfMilCommandId.DrawRectangle:
+                case WpfMilCommandId.DrawRectangleAnimate:
+                    nativeSink.DrawNativeRectangle(
+                        ResolveOptionalBrush(resources, ReadUInt32(payload, 32)),
+                        ResolveOptionalPen(resources, ReadUInt32(payload, 36)),
+                        ReadReplayRect(payload, 0));
+                    appliedCount++;
+                    if (commandId == WpfMilCommandId.DrawRectangleAnimate)
+                    {
+                        unsupportedCount += CountUnsupportedAnimationHandles(payload, 40);
+                    }
+
+                    break;
+
+                case WpfMilCommandId.DrawRoundedRectangle:
+                case WpfMilCommandId.DrawRoundedRectangleAnimate:
+                    nativeSink.DrawNativeRoundedRectangle(
+                        ResolveOptionalBrush(resources, ReadUInt32(payload, 48)),
+                        ResolveOptionalPen(resources, ReadUInt32(payload, 52)),
+                        ReadReplayRect(payload, 0),
+                        ReadDouble(payload, 32),
+                        ReadDouble(payload, 40));
+                    appliedCount++;
+                    if (commandId == WpfMilCommandId.DrawRoundedRectangleAnimate)
+                    {
+                        unsupportedCount += CountUnsupportedAnimationHandles(payload, 56, 60, 64);
+                    }
+
+                    break;
+
+                case WpfMilCommandId.DrawEllipse:
+                case WpfMilCommandId.DrawEllipseAnimate:
+                    nativeSink.DrawNativeEllipse(
+                        ResolveOptionalBrush(resources, ReadUInt32(payload, 32)),
+                        ResolveOptionalPen(resources, ReadUInt32(payload, 36)),
+                        ReadReplayPoint(payload, 0),
+                        ReadDouble(payload, 16),
+                        ReadDouble(payload, 24));
+                    appliedCount++;
+                    if (commandId == WpfMilCommandId.DrawEllipseAnimate)
+                    {
+                        unsupportedCount += CountUnsupportedAnimationHandles(payload, 40, 44, 48);
+                    }
+
+                    break;
+
+                case WpfMilCommandId.DrawGeometry:
+                    if (TryResolveGeometry(resources, ReadUInt32(payload, 8), out var geometry))
+                    {
+                        sink.DrawGeometry(
+                            ResolveOptionalBrush(resources, ReadUInt32(payload, 0)),
+                            ResolveOptionalPen(resources, ReadUInt32(payload, 4)),
+                            geometry);
+                        appliedCount++;
+                    }
+                    else
+                    {
+                        skippedCount++;
+                    }
+                    break;
+
+                case WpfMilCommandId.DrawImage:
+                case WpfMilCommandId.DrawImageAnimate:
+                    if (TryResolveImageSource(resources, ReadUInt32(payload, 32), out var imageSource))
+                    {
+                        nativeSink.DrawNativeImage(imageSource, ReadReplayRect(payload, 0));
+                        appliedCount++;
+                        if (commandId == WpfMilCommandId.DrawImageAnimate)
+                        {
+                            unsupportedCount += CountUnsupportedAnimationHandles(payload, 36);
+                        }
+                    }
+                    else
+                    {
+                        skippedCount++;
+                    }
+                    break;
+
+                case WpfMilCommandId.DrawGlyphRun:
+                    if (TryResolveRawResource(resources, ReadUInt32(payload, 4), out var glyphRun))
+                    {
+                        nativeSink.DrawNativeGlyphRun(
+                            ResolveOptionalBrush(resources, ReadUInt32(payload, 0)),
+                            glyphRun);
+                        appliedCount++;
+                    }
+                    else
+                    {
+                        skippedCount++;
+                    }
+                    break;
+
+                case WpfMilCommandId.DrawDrawing:
+                    switch (ReplayDrawing(resources, ReadUInt32(payload, 0), sink))
+                    {
+                        case WpfDrawingReplayStatus.Applied:
+                            appliedCount++;
+                            break;
+                        case WpfDrawingReplayStatus.PartiallyApplied:
+                            appliedCount++;
+                            unsupportedCount++;
+                            break;
+                        case WpfDrawingReplayStatus.Unsupported:
+                            unsupportedCount++;
+                            break;
+                        default:
+                            skippedCount++;
+                            break;
+                    }
+                    break;
+
+                case WpfMilCommandId.PushClip:
+                    var clipToken = ReadUInt32(payload, 0);
+                    if (clipToken == 0)
+                    {
+                        sink.PushNoOpScope();
+                        pushStack.Push(true);
+                        appliedCount++;
+                    }
+                    else if (TryResolveGeometry(resources, clipToken, out var clipGeometry))
+                    {
+                        sink.PushClip(clipGeometry);
+                        pushStack.Push(true);
+                        appliedCount++;
+                    }
+                    else
+                    {
+                        pushStack.Push(false);
+                        skippedCount++;
+                    }
+                    break;
+
+                case WpfMilCommandId.PushOpacityMask:
+                    var opacityMaskToken = ReadUInt32(payload, 16);
+                    if (opacityMaskToken == 0)
+                    {
+                        sink.PushNoOpScope();
+                        pushStack.Push(true);
+                        appliedCount++;
+                    }
+                    else if (TryResolveBrush(resources, opacityMaskToken, out var opacityMask))
+                    {
+                        nativeSink.PushNativeOpacityMask(opacityMask, ReadReplayRectF(payload, 0));
+                        pushStack.Push(true);
+                        appliedCount++;
+                    }
+                    else
+                    {
+                        pushStack.Push(false);
+                        skippedCount++;
+                    }
+                    break;
+
+                case WpfMilCommandId.PushOpacity:
+                case WpfMilCommandId.PushOpacityAnimate:
+                    sink.PushOpacity(ReadDouble(payload, 0));
+                    pushStack.Push(true);
+                    appliedCount++;
+                    if (commandId == WpfMilCommandId.PushOpacityAnimate)
+                    {
+                        unsupportedCount += CountUnsupportedAnimationHandles(payload, 8);
+                    }
+
+                    break;
+
+                case WpfMilCommandId.PushTransform:
+                    var transformToken = ReadUInt32(payload, 0);
+                    if (transformToken == 0)
+                    {
+                        sink.PushNoOpScope();
+                        pushStack.Push(true);
+                        appliedCount++;
+                    }
+                    else if (TryResolveTransform(resources, transformToken, out var transform))
+                    {
+                        sink.PushTransform(transform);
+                        pushStack.Push(true);
+                        appliedCount++;
+                    }
+                    else
+                    {
+                        pushStack.Push(false);
+                        skippedCount++;
+                    }
+                    break;
+
+                case WpfMilCommandId.PushGuidelineSet:
+                    if (TryResolveGuidelineSet(resources, ReadUInt32(payload, 0), out var guidelineSet))
+                    {
+                        sink.PushGuidelineSet(guidelineSet);
+                    }
+                    else
+                    {
+                        sink.PushGuidelineSet();
+                    }
+
+                    pushStack.Push(true);
+                    appliedCount++;
+                    break;
+
+                case WpfMilCommandId.PushGuidelineY1:
+                    sink.PushGuidelineY1(ReadDouble(payload, 0));
+                    pushStack.Push(true);
+                    appliedCount++;
+                    break;
+
+                case WpfMilCommandId.PushGuidelineY2:
+                    sink.PushGuidelineY2(ReadDouble(payload, 0), ReadDouble(payload, 8));
+                    pushStack.Push(true);
+                    appliedCount++;
+                    break;
+
+                case WpfMilCommandId.Pop:
+                    if (pushStack.Count == 0 || pushStack.Pop())
+                    {
+                        sink.Pop();
+                        appliedCount++;
+                    }
+                    else
+                    {
+                        skippedCount++;
+                    }
+                    break;
+
+                case WpfMilCommandId.DrawVideo:
+                case WpfMilCommandId.DrawVideoAnimate:
+                case WpfMilCommandId.PushEffect:
+                    if (IsPushCommand(commandId))
+                    {
+                        pushStack.Push(false);
+                    }
+
+                    unsupportedCount++;
+                    break;
+
+                default:
+                    unsupportedCount++;
+                    break;
+            }
+
+            var unsupportedStateDelta = GetUnsupportedStateCount(sink) - unsupportedStateBefore;
+            if (unsupportedStateDelta > 0)
+            {
+                unsupportedCount += unsupportedStateDelta;
+            }
+
+            offset += recordSize;
+        }
+
+        while (pushStack.Count > 0)
+        {
+            if (pushStack.Pop())
+            {
+                sink.Pop();
+                unsupportedCount++;
+            }
+        }
+
+        return new WpfMilDecodeResult(recordCount, appliedCount, skippedCount, unsupportedCount);
+    }
+
     private static int GetUnsupportedStateCount(IWpfCompositionCommandSink sink)
     {
         return sink is IWpfCompositionCommandSinkDiagnostics diagnostics
@@ -392,6 +720,14 @@ public sealed class WpfMilRenderDataDecoder
         return glyphRun != null;
     }
 
+    private static bool TryResolveRawResource(IWpfMilResourceResolver resources, uint resourceToken, out object resource)
+    {
+        resource = null!;
+        return resourceToken != 0
+            && resources is IWpfRawMilResourceResolver rawResources
+            && rawResources.TryResolveRawResource(resourceToken, out resource);
+    }
+
     private static bool TryResolveTransform(IWpfMilResourceResolver resources, uint resourceToken, out MediaTransform transform)
     {
         transform = resourceToken == 0 ? null! : resources.ResolveTransform(resourceToken)!;
@@ -437,6 +773,31 @@ public sealed class WpfMilRenderDataDecoder
     private static Rect ReadRectF(ReadOnlySpan<byte> payload, int offset)
     {
         return new Rect(
+            ReadSingle(payload, offset),
+            ReadSingle(payload, offset + 4),
+            ReadSingle(payload, offset + 8),
+            ReadSingle(payload, offset + 12));
+    }
+
+    private static WpfReplayPoint ReadReplayPoint(ReadOnlySpan<byte> payload, int offset)
+    {
+        return new WpfReplayPoint(
+            ReadDouble(payload, offset),
+            ReadDouble(payload, offset + 8));
+    }
+
+    private static WpfReplayRect ReadReplayRect(ReadOnlySpan<byte> payload, int offset)
+    {
+        return new WpfReplayRect(
+            ReadDouble(payload, offset),
+            ReadDouble(payload, offset + 8),
+            ReadDouble(payload, offset + 16),
+            ReadDouble(payload, offset + 24));
+    }
+
+    private static WpfReplayRect ReadReplayRectF(ReadOnlySpan<byte> payload, int offset)
+    {
+        return new WpfReplayRect(
             ReadSingle(payload, offset),
             ReadSingle(payload, offset + 4),
             ReadSingle(payload, offset + 8),

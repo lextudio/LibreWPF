@@ -245,7 +245,7 @@ public sealed class ProGpuWpfDrawingFrameTests
             new Vector2(10, 20),
             transform,
             0.5f,
-            new Rect(1, 2, 30, 40)));
+            new WpfReplayRect(1, 2, 30, 40)));
         branchSink.PopVisualOwner();
 
         var retainedRootVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
@@ -283,7 +283,7 @@ public sealed class ProGpuWpfDrawingFrameTests
             1f,
             clipBounds: null,
             opacityMask: Brushes.White,
-            opacityMaskBounds: new Rect(1, 2, 30, 40)));
+            opacityMaskBounds: new WpfReplayRect(1, 2, 30, 40)));
         branchSink.PopVisualOwner();
 
         var retainedRootVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
@@ -320,7 +320,7 @@ public sealed class ProGpuWpfDrawingFrameTests
             new Vector2(70, 80),
             blur,
             cacheAsLayer: true,
-            contentBounds: new Rect(5, 6, 70, 80)));
+            contentBounds: new WpfReplayRect(5, 6, 70, 80)));
         branchSink.PopVisualOwner();
 
         var retainedRootVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));

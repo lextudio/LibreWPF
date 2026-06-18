@@ -20,7 +20,50 @@ using MediaTransform = System.Windows.Media.Transform;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
 
-public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWpfDrawingResourceResolver, IWpfGuidelineSetResourceResolver
+internal readonly struct WpfNativeGlyphRun
+{
+    public WpfNativeGlyphRun(
+        ushort[] glyphIndices,
+        Vector2[] glyphPositions,
+        TtfFont font,
+        float fontSize,
+        Vector2 position,
+        Matrix4x4 transform,
+        bool isBold,
+        bool isItalic)
+    {
+        GlyphIndices = glyphIndices;
+        GlyphPositions = glyphPositions;
+        Font = font;
+        FontSize = fontSize;
+        Position = position;
+        Transform = transform;
+        IsBold = isBold;
+        IsItalic = isItalic;
+    }
+
+    public ushort[] GlyphIndices { get; }
+
+    public Vector2[] GlyphPositions { get; }
+
+    public TtfFont Font { get; }
+
+    public float FontSize { get; }
+
+    public Vector2 Position { get; }
+
+    public Matrix4x4 Transform { get; }
+
+    public bool IsBold { get; }
+
+    public bool IsItalic { get; }
+}
+
+public sealed class WpfReflectionResourceResolver :
+    IWpfMilResourceResolver,
+    IWpfDrawingResourceResolver,
+    IWpfGuidelineSetResourceResolver,
+    IWpfRawMilResourceResolver
 {
     private const BindingFlags MemberFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
     private const int UnionPathOperation = 2;
@@ -114,6 +157,17 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
             : null;
     }
 
+    bool IWpfRawMilResourceResolver.TryResolveRawResource(uint resourceToken, out object resource)
+    {
+        if (resourceToken != 0 && _resources.TryGetValue(resourceToken, out resource!))
+        {
+            return true;
+        }
+
+        resource = null!;
+        return false;
+    }
+
     public bool TryReplayDrawing(uint resourceToken, IWpfCompositionCommandSink sink)
     {
         var status = ReplayDrawing(resourceToken, sink);
@@ -171,49 +225,23 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
             && TryGetPropertyValue(resource, "EndPoint", out var endPointValue)
             && startPointValue != null
             && endPointValue != null
-            && TryReadPoint(startPointValue, out var startPoint)
-            && TryReadPoint(endPointValue, out var endPoint)
+            && TryReadReplayPoint(startPointValue, out var startPoint)
+            && TryReadReplayPoint(endPointValue, out var endPoint)
             && TryReadGradientStops(resource, out var linearStops, out var linearStopsTruncated))
         {
-            var nativeBrush = new global::ProGPU.Vector.LinearGradientBrush(
-                new Vector2((float)startPoint.X, (float)startPoint.Y),
-                new Vector2((float)endPoint.X, (float)endPoint.Y),
-                linearStops);
-            nativeBrush.SpreadMethod = ReadGradientSpreadMethod(resource);
-            nativeBrush.ColorInterpolationMode = ReadGradientColorInterpolationMode(resource, out var linearUnsupportedColorInterpolationMode);
-            ApplyBrushOpacity(resource, nativeBrush);
-            return new ProGpuNativeBrush(
-                nativeBrush,
-                ReadBrushMappingMode(resource),
-                ReadBrushTransform(resource, "Transform"),
-                ReadBrushTransform(resource, "RelativeTransform"),
-                CountUnsupportedGradientState(linearStopsTruncated, linearUnsupportedColorInterpolationMode));
+            return CreateLinearGradientBrush(resource, startPoint, endPoint, linearStops, linearStopsTruncated);
         }
 
         if (TypeNameEndsWith(resource, "RadialGradientBrush")
             && TryGetPropertyValue(resource, "Center", out var centerValue)
             && centerValue != null
-            && TryReadPoint(centerValue, out var center)
-            && TryGetOptionalPointProperty(resource, "GradientOrigin", center, out var gradientOrigin)
+            && TryReadReplayPoint(centerValue, out var center)
+            && TryGetOptionalReplayPointProperty(resource, "GradientOrigin", center, out var gradientOrigin)
             && TryReadDoubleProperty(resource, "RadiusX", out var radiusX)
             && TryReadDoubleProperty(resource, "RadiusY", out var radiusY)
             && TryReadGradientStops(resource, out var radialStops, out var radialStopsTruncated))
         {
-            var nativeBrush = new global::ProGPU.Vector.RadialGradientBrush(
-                new Vector2((float)center.X, (float)center.Y),
-                new Vector2((float)gradientOrigin.X, (float)gradientOrigin.Y),
-                (float)radiusX,
-                (float)radiusY,
-                radialStops);
-            nativeBrush.SpreadMethod = ReadGradientSpreadMethod(resource);
-            nativeBrush.ColorInterpolationMode = ReadGradientColorInterpolationMode(resource, out var radialUnsupportedColorInterpolationMode);
-            ApplyBrushOpacity(resource, nativeBrush);
-            return new ProGpuNativeBrush(
-                nativeBrush,
-                ReadBrushMappingMode(resource),
-                ReadBrushTransform(resource, "Transform"),
-                ReadBrushTransform(resource, "RelativeTransform"),
-                CountUnsupportedGradientState(radialStopsTruncated, radialUnsupportedColorInterpolationMode));
+            return CreateRadialGradientBrush(resource, center, gradientOrigin, radiusX, radiusY, radialStops, radialStopsTruncated);
         }
 
         if (!TypeNameEndsWith(resource, "SolidColorBrush")
@@ -230,6 +258,360 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
         }
 
         return new SolidColorBrush(color);
+    }
+
+    private static MediaBrush CreateLinearGradientBrush(
+        object resource,
+        WpfReplayPoint startPoint,
+        WpfReplayPoint endPoint,
+        global::ProGPU.Vector.GradientStop[] stops,
+        bool stopsTruncated)
+    {
+        var nativeBrush = new global::ProGPU.Vector.LinearGradientBrush(
+            new Vector2((float)startPoint.X, (float)startPoint.Y),
+            new Vector2((float)endPoint.X, (float)endPoint.Y),
+            stops);
+        nativeBrush.SpreadMethod = ReadGradientSpreadMethod(resource);
+        nativeBrush.ColorInterpolationMode = ReadGradientColorInterpolationMode(resource, out var unsupportedColorInterpolationMode);
+        ApplyBrushOpacity(resource, nativeBrush);
+        return new ProGpuNativeBrush(
+            nativeBrush,
+            ReadBrushMappingMode(resource),
+            ReadBrushTransform(resource, "Transform"),
+            ReadBrushTransform(resource, "RelativeTransform"),
+            CountUnsupportedGradientState(stopsTruncated, unsupportedColorInterpolationMode));
+    }
+
+    private static MediaBrush CreateRadialGradientBrush(
+        object resource,
+        WpfReplayPoint center,
+        WpfReplayPoint gradientOrigin,
+        double radiusX,
+        double radiusY,
+        global::ProGPU.Vector.GradientStop[] stops,
+        bool stopsTruncated)
+    {
+        var nativeBrush = new global::ProGPU.Vector.RadialGradientBrush(
+            new Vector2((float)center.X, (float)center.Y),
+            new Vector2((float)gradientOrigin.X, (float)gradientOrigin.Y),
+            (float)radiusX,
+            (float)radiusY,
+            stops);
+        nativeBrush.SpreadMethod = ReadGradientSpreadMethod(resource);
+        nativeBrush.ColorInterpolationMode = ReadGradientColorInterpolationMode(resource, out var unsupportedColorInterpolationMode);
+        ApplyBrushOpacity(resource, nativeBrush);
+        return new ProGpuNativeBrush(
+            nativeBrush,
+            ReadBrushMappingMode(resource),
+            ReadBrushTransform(resource, "Transform"),
+            ReadBrushTransform(resource, "RelativeTransform"),
+            CountUnsupportedGradientState(stopsTruncated, unsupportedColorInterpolationMode));
+    }
+
+    internal static global::ProGPU.Vector.Brush? AdaptNativeBrush(
+        object? resource,
+        WpfReplayRect bounds,
+        out int unsupportedStateCount)
+    {
+        unsupportedStateCount = 0;
+        if (resource == null)
+        {
+            return null;
+        }
+
+        if (TryInvokeNativeBrush(resource, bounds, out var directBrush))
+        {
+            return directBrush;
+        }
+
+        if (TypeNameEndsWith(resource, "LinearGradientBrush")
+            && TryGetPropertyValue(resource, "StartPoint", out var startPointValue)
+            && TryGetPropertyValue(resource, "EndPoint", out var endPointValue)
+            && startPointValue != null
+            && endPointValue != null
+            && TryReadReplayPoint(startPointValue, out var startPoint)
+            && TryReadReplayPoint(endPointValue, out var endPoint)
+            && TryReadGradientStops(resource, out var linearStops, out var linearStopsTruncated))
+        {
+            var mappingMode = ReadBrushMappingMode(resource);
+            var nativeBrush = new global::ProGPU.Vector.LinearGradientBrush(
+                MapBrushPoint(startPoint, mappingMode, bounds),
+                MapBrushPoint(endPoint, mappingMode, bounds),
+                linearStops);
+            nativeBrush.SpreadMethod = ReadGradientSpreadMethod(resource);
+            nativeBrush.ColorInterpolationMode = ReadGradientColorInterpolationMode(resource, out var unsupportedColorInterpolationMode);
+            ApplyBrushOpacity(resource, nativeBrush);
+            unsupportedStateCount += CountUnsupportedGradientState(linearStopsTruncated, unsupportedColorInterpolationMode);
+            unsupportedStateCount += CountUnsupportedBrushTransforms(resource);
+            return nativeBrush;
+        }
+
+        if (TypeNameEndsWith(resource, "RadialGradientBrush")
+            && TryGetPropertyValue(resource, "Center", out var centerValue)
+            && centerValue != null
+            && TryReadReplayPoint(centerValue, out var center)
+            && TryGetOptionalReplayPointProperty(resource, "GradientOrigin", center, out var gradientOrigin)
+            && TryReadDoubleProperty(resource, "RadiusX", out var radiusX)
+            && TryReadDoubleProperty(resource, "RadiusY", out var radiusY)
+            && TryReadGradientStops(resource, out var radialStops, out var radialStopsTruncated))
+        {
+            var mappingMode = ReadBrushMappingMode(resource);
+            var hasUsableBounds = mappingMode == ProGpuBrushMappingMode.RelativeToBoundingBox && IsUsable(bounds);
+            var nativeBrush = new global::ProGPU.Vector.RadialGradientBrush(
+                MapBrushPoint(center, mappingMode, bounds),
+                MapBrushPoint(gradientOrigin, mappingMode, bounds),
+                hasUsableBounds ? (float)(radiusX * bounds.Width) : (float)radiusX,
+                hasUsableBounds ? (float)(radiusY * bounds.Height) : (float)radiusY,
+                radialStops);
+            nativeBrush.SpreadMethod = ReadGradientSpreadMethod(resource);
+            nativeBrush.ColorInterpolationMode = ReadGradientColorInterpolationMode(resource, out var unsupportedColorInterpolationMode);
+            ApplyBrushOpacity(resource, nativeBrush);
+            unsupportedStateCount += CountUnsupportedGradientState(radialStopsTruncated, unsupportedColorInterpolationMode);
+            unsupportedStateCount += CountUnsupportedBrushTransforms(resource);
+            return nativeBrush;
+        }
+
+        if (TypeNameEndsWith(resource, "SolidColorBrush")
+            && TryGetPropertyValue(resource, "Color", out var colorValue)
+            && colorValue != null
+            && TryReadColor(colorValue, out var color))
+        {
+            if (TryReadDoubleProperty(resource, "Opacity", out var opacity))
+            {
+                color.A = ClampToByte(color.A * opacity);
+            }
+
+            return new global::ProGPU.Vector.SolidColorBrush(
+                new Vector4(color.R / 255f, color.G / 255f, color.B / 255f, color.A / 255f));
+        }
+
+        return null;
+    }
+
+    internal static global::ProGPU.Vector.Pen? AdaptNativePen(
+        object? resource,
+        WpfReplayRect bounds,
+        out int unsupportedStateCount)
+    {
+        unsupportedStateCount = 0;
+        if (resource == null)
+        {
+            return null;
+        }
+
+        if (TryInvokeNativePen(resource, out var directPen))
+        {
+            return directPen;
+        }
+
+        if (!TryGetPropertyValue(resource, "Brush", out var brushValue)
+            || brushValue == null
+            || !TryReadDoubleProperty(resource, "Thickness", out var thickness))
+        {
+            return null;
+        }
+
+        var nativeBrush = AdaptNativeBrush(brushValue, bounds, out var brushUnsupportedStateCount);
+        unsupportedStateCount += brushUnsupportedStateCount;
+        if (nativeBrush == null)
+        {
+            return null;
+        }
+
+        var dashArray = Array.Empty<double>();
+        var dashOffset = 0.0;
+        if (TryReadSupportedDashStyle(resource, thickness, out var reflectedDashArray, out var reflectedDashOffset))
+        {
+            dashArray = reflectedDashArray;
+            dashOffset = reflectedDashOffset;
+        }
+
+        return new global::ProGPU.Vector.Pen(
+            nativeBrush,
+            (float)Math.Max(0, thickness),
+            ReadVectorLineJoin(resource),
+            (float)ReadMiterLimit(resource),
+            ReadVectorLineCap(resource, "StartLineCap"),
+            ReadVectorLineCap(resource, "EndLineCap"),
+            ReadVectorLineCap(resource, "DashCap"),
+            dashArray,
+            dashOffset);
+    }
+
+    private static bool TryInvokeNativeBrush(
+        object resource,
+        WpfReplayRect bounds,
+        out global::ProGPU.Vector.Brush? brush)
+    {
+        brush = null;
+
+        var boundsAwareMethod = resource.GetType().GetMethod(
+            "ToNative",
+            MemberFlags,
+            binder: null,
+            types: new[] { typeof(WpfReplayRect) },
+            modifiers: null);
+        if (TryInvokeNativeBrushMethod(resource, boundsAwareMethod, new object[] { bounds }, out brush))
+        {
+            return true;
+        }
+
+        var parameterlessMethod = resource.GetType().GetMethod(
+            "ToNative",
+            MemberFlags,
+            binder: null,
+            types: Type.EmptyTypes,
+            modifiers: null);
+        return TryInvokeNativeBrushMethod(resource, parameterlessMethod, Array.Empty<object>(), out brush);
+    }
+
+    private static bool TryInvokeNativeBrushMethod(
+        object resource,
+        MethodInfo? method,
+        object[] arguments,
+        out global::ProGPU.Vector.Brush? brush)
+    {
+        brush = null;
+        if (method == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            brush = method.Invoke(resource, arguments) as global::ProGPU.Vector.Brush;
+            return brush != null;
+        }
+        catch (TargetInvocationException)
+        {
+            return false;
+        }
+        catch (TypeLoadException)
+        {
+            return false;
+        }
+        catch (MissingMethodException)
+        {
+            return false;
+        }
+    }
+
+    private static bool TryInvokeNativePen(object resource, out global::ProGPU.Vector.Pen? pen)
+    {
+        pen = null;
+        var method = resource.GetType().GetMethod(
+            "ToNative",
+            MemberFlags,
+            binder: null,
+            types: Type.EmptyTypes,
+            modifiers: null);
+        if (method == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            pen = method.Invoke(resource, Array.Empty<object>()) as global::ProGPU.Vector.Pen;
+            return pen != null;
+        }
+        catch (TargetInvocationException)
+        {
+            return false;
+        }
+        catch (TypeLoadException)
+        {
+            return false;
+        }
+        catch (MissingMethodException)
+        {
+            return false;
+        }
+    }
+
+    private static Vector2 MapBrushPoint(
+        WpfReplayPoint point,
+        ProGpuBrushMappingMode mappingMode,
+        WpfReplayRect bounds)
+    {
+        if (mappingMode != ProGpuBrushMappingMode.RelativeToBoundingBox || !IsUsable(bounds))
+        {
+            return new Vector2((float)point.X, (float)point.Y);
+        }
+
+        return new Vector2(
+            (float)(bounds.X + point.X * bounds.Width),
+            (float)(bounds.Y + point.Y * bounds.Height));
+    }
+
+    private static int CountUnsupportedBrushTransforms(object resource)
+    {
+        var count = 0;
+        if (HasNonIdentityBrushTransform(resource, "Transform"))
+        {
+            count++;
+        }
+
+        if (HasNonIdentityBrushTransform(resource, "RelativeTransform"))
+        {
+            count++;
+        }
+
+        return count;
+    }
+
+    private static bool HasNonIdentityBrushTransform(object resource, string propertyName)
+    {
+        if (!TryGetPropertyValue(resource, propertyName, out var transformValue) || transformValue == null)
+        {
+            return false;
+        }
+
+        var text = transformValue.ToString();
+        return !string.IsNullOrWhiteSpace(text)
+            && !string.Equals(text, "Identity", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(text, transformValue.GetType().FullName, StringComparison.Ordinal);
+    }
+
+    private static global::ProGPU.Vector.PenLineJoin ReadVectorLineJoin(object pen)
+    {
+        if (!TryGetPropertyValue(pen, "LineJoin", out var joinValue) || joinValue == null)
+        {
+            return global::ProGPU.Vector.PenLineJoin.Miter;
+        }
+
+        return joinValue.ToString() switch
+        {
+            "Bevel" => global::ProGPU.Vector.PenLineJoin.Bevel,
+            "Round" => global::ProGPU.Vector.PenLineJoin.Round,
+            _ => global::ProGPU.Vector.PenLineJoin.Miter
+        };
+    }
+
+    private static global::ProGPU.Vector.PenLineCap ReadVectorLineCap(object pen, string propertyName)
+    {
+        if (!TryGetPropertyValue(pen, propertyName, out var capValue) || capValue == null)
+        {
+            return global::ProGPU.Vector.PenLineCap.Flat;
+        }
+
+        return capValue.ToString() switch
+        {
+            "Square" => global::ProGPU.Vector.PenLineCap.Square,
+            "Round" => global::ProGPU.Vector.PenLineCap.Round,
+            "Triangle" => global::ProGPU.Vector.PenLineCap.Triangle,
+            _ => global::ProGPU.Vector.PenLineCap.Flat
+        };
+    }
+
+    private static bool IsUsable(WpfReplayRect bounds)
+    {
+        return bounds.Width > 0
+            && bounds.Height > 0
+            && double.IsFinite(bounds.X)
+            && double.IsFinite(bounds.Y)
+            && double.IsFinite(bounds.Width)
+            && double.IsFinite(bounds.Height);
     }
 
     private static void ApplyBrushOpacity(object resource, global::ProGPU.Vector.Brush nativeBrush)
@@ -294,7 +676,11 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
         return true;
     }
 
-    private static bool TryGetOptionalPointProperty(object resource, string propertyName, Point fallback, out Point point)
+    private static bool TryGetOptionalReplayPointProperty(
+        object resource,
+        string propertyName,
+        WpfReplayPoint fallback,
+        out WpfReplayPoint point)
     {
         point = fallback;
         if (!TryGetPropertyValue(resource, propertyName, out var value) || value == null)
@@ -302,7 +688,7 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
             return true;
         }
 
-        return TryReadPoint(value, out point);
+        return TryReadReplayPoint(value, out point);
     }
 
     private static global::ProGPU.Vector.GradientSpreadMethod ReadGradientSpreadMethod(object resource)
@@ -575,6 +961,53 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
         return new MatrixTransform(matrix);
     }
 
+    internal static bool TryAdaptNativeGlyphRun(object? resource, out WpfNativeGlyphRun glyphRun)
+    {
+        glyphRun = default;
+        if (resource == null)
+        {
+            return false;
+        }
+
+        if (!TryGetPropertyValue(resource, "GlyphIndices", out var glyphIndicesValue)
+            || glyphIndicesValue == null
+            || !TryReadUShortList(glyphIndicesValue, out var glyphIndices)
+            || glyphIndices.Length == 0
+            || !TryReadDoubleProperty(resource, "FontRenderingEmSize", out var fontSize)
+            || fontSize <= 0
+            || TryResolveGlyphRunFont(resource) is not { } font)
+        {
+            return false;
+        }
+
+        TryGetPropertyValue(resource, "AdvanceWidths", out var advanceWidthsValue);
+        TryReadDoubleList(advanceWidthsValue, out var advanceWidths);
+
+        TryGetPropertyValue(resource, "GlyphOffsets", out var glyphOffsetsValue);
+        TryReadReplayPointList(glyphOffsetsValue, out var glyphOffsets);
+
+        var baseline = new WpfReplayPoint(0, 0);
+        if (TryGetPropertyValue(resource, "BaselineOrigin", out var baselineValue)
+            && baselineValue != null
+            && TryReadReplayPoint(baselineValue, out var baselineOrigin))
+        {
+            baseline = baselineOrigin;
+        }
+
+        var glyphPositions = CreateNativeGlyphPositions(glyphIndices.Length, advanceWidths, glyphOffsets);
+        var styleSimulations = ReadGlyphTypefaceStyleSimulations(resource);
+        glyphRun = new WpfNativeGlyphRun(
+            glyphIndices,
+            glyphPositions,
+            font,
+            (float)fontSize,
+            new Vector2((float)baseline.X, (float)baseline.Y),
+            Matrix4x4.Identity,
+            styleSimulations.IsBold,
+            styleSimulations.IsItalic);
+        return true;
+    }
+
     public static MediaGlyphRun? AdaptGlyphRun(object? resource)
     {
         if (resource == null)
@@ -744,17 +1177,27 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
 
     internal static PathGeometry CreateRectanglePath(Rect rectangle)
     {
+        return CreateRectanglePath(rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height);
+    }
+
+    internal static PathGeometry CreateRectanglePath(WpfReplayRect rectangle)
+    {
+        return CreateRectanglePath(rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height);
+    }
+
+    private static PathGeometry CreateRectanglePath(double x, double y, double width, double height)
+    {
         var geometry = new PathGeometry();
         var figure = new PathFigure
         {
-            StartPoint = new Point(rectangle.X, rectangle.Y),
+            StartPoint = new Point(x, y),
             IsClosed = true,
             IsFilled = true
         };
 
-        figure.Segments.Add(new LineSegment(new Vector2((float)(rectangle.X + rectangle.Width), (float)rectangle.Y)));
-        figure.Segments.Add(new LineSegment(new Vector2((float)(rectangle.X + rectangle.Width), (float)(rectangle.Y + rectangle.Height))));
-        figure.Segments.Add(new LineSegment(new Vector2((float)rectangle.X, (float)(rectangle.Y + rectangle.Height))));
+        figure.Segments.Add(new LineSegment(new Vector2((float)(x + width), (float)y)));
+        figure.Segments.Add(new LineSegment(new Vector2((float)(x + width), (float)(y + height))));
+        figure.Segments.Add(new LineSegment(new Vector2((float)x, (float)(y + height))));
         geometry.Figures.Add(figure);
 
         return geometry;
@@ -1630,6 +2073,25 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
         return false;
     }
 
+    private static bool TryReadReplayPoint(object pointValue, out WpfReplayPoint point)
+    {
+        if (pointValue is WpfReplayPoint replayPoint)
+        {
+            point = replayPoint;
+            return true;
+        }
+
+        if (TryReadDoubleProperty(pointValue, "X", out var x)
+            && TryReadDoubleProperty(pointValue, "Y", out var y))
+        {
+            point = new WpfReplayPoint(x, y);
+            return true;
+        }
+
+        point = default;
+        return false;
+    }
+
     private static Vector2[] CreateGlyphPositions(int glyphCount, double[] advanceWidths, Point[] glyphOffsets)
     {
         var positions = new Vector2[glyphCount];
@@ -1638,6 +2100,25 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
         for (var i = 0; i < glyphCount; i++)
         {
             var offset = i < glyphOffsets.Length ? glyphOffsets[i] : new Point();
+            positions[i] = new Vector2((float)(x + offset.X), (float)offset.Y);
+
+            if (i < advanceWidths.Length)
+            {
+                x += advanceWidths[i];
+            }
+        }
+
+        return positions;
+    }
+
+    private static Vector2[] CreateNativeGlyphPositions(int glyphCount, double[] advanceWidths, WpfReplayPoint[] glyphOffsets)
+    {
+        var positions = new Vector2[glyphCount];
+        double x = 0;
+
+        for (var i = 0; i < glyphCount; i++)
+        {
+            var offset = i < glyphOffsets.Length ? glyphOffsets[i] : new WpfReplayPoint(0, 0);
             positions[i] = new Vector2((float)(x + offset.X), (float)offset.Y);
 
             if (i < advanceWidths.Length)
@@ -1921,6 +2402,11 @@ public sealed class WpfReflectionResourceResolver : IWpfMilResourceResolver, IWp
     private static bool TryReadPointList(object? listValue, out Point[] values)
     {
         return TryReadList(listValue, TryReadPoint, out values);
+    }
+
+    private static bool TryReadReplayPointList(object? listValue, out WpfReplayPoint[] values)
+    {
+        return TryReadList(listValue, TryReadReplayPoint, out values);
     }
 
     private static bool TryReadList<T>(

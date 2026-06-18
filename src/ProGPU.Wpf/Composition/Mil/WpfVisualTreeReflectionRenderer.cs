@@ -302,7 +302,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         var offset = Vector2.Zero;
         var transform = Matrix4x4.Identity;
         var opacity = 1f;
-        Rect? clipBounds = null;
+        WpfReplayRect? clipBounds = null;
         if (!TryCreateRetainedOpacityMaskState(visual, out var opacityMask, out var opacityMaskBounds))
         {
             return false;
@@ -415,9 +415,15 @@ public sealed class WpfVisualTreeReflectionRenderer
             return 0;
         }
 
-        var matrix = Matrix.Identity;
-        matrix.Translate(-bounds.X, -bounds.Y);
-        sink.PushTransform(new MatrixTransform(matrix));
+        if (sink is IWpfNativeTransformCommandSink nativeTransformSink)
+        {
+            nativeTransformSink.PushNativeTransform(Matrix4x4.CreateTranslation((float)-bounds.X, (float)-bounds.Y, 0f));
+        }
+        else
+        {
+            sink.PushNoOpScope();
+        }
+
         return 1;
     }
 
@@ -477,9 +483,9 @@ public sealed class WpfVisualTreeReflectionRenderer
         Vector2 offset,
         Matrix4x4 transform,
         float opacity,
-        Rect? clipBounds,
+        WpfReplayRect? clipBounds,
         MediaBrush? opacityMask,
-        Rect? opacityMaskBounds,
+        WpfReplayRect? opacityMaskBounds,
         IWpfImageSourceAdapter? imageSourceAdapter,
         out WpfRetainedVisualState state)
     {
@@ -530,7 +536,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
 
         Vector2? size = null;
-        Rect? contentBounds = null;
+        WpfReplayRect? contentBounds = null;
         var retainedOffset = offset;
         var retainedTransform = transform;
         var retainedClipBounds = clipBounds;
@@ -574,7 +580,7 @@ public sealed class WpfVisualTreeReflectionRenderer
     private static bool TryCreateRetainedOpacityMaskState(
         object visual,
         out MediaBrush? opacityMask,
-        out Rect? opacityMaskBounds)
+        out WpfReplayRect? opacityMaskBounds)
     {
         opacityMask = null;
         opacityMaskBounds = null;
@@ -595,7 +601,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         return true;
     }
 
-    private static bool TryReadRectangleClipBounds(object clip, out Rect bounds)
+    private static bool TryReadRectangleClipBounds(object clip, out WpfReplayRect bounds)
     {
         if (TryReadRect(clip, out bounds) && IsUsableBounds(bounds))
         {
@@ -631,7 +637,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         return true;
     }
 
-    private static Rect CombineClipBounds(Rect? current, Rect next)
+    private static WpfReplayRect CombineClipBounds(WpfReplayRect? current, WpfReplayRect next)
     {
         if (!current.HasValue)
         {
@@ -643,13 +649,13 @@ public sealed class WpfVisualTreeReflectionRenderer
         var x2 = Math.Min(current.Value.X + current.Value.Width, next.X + next.Width);
         var y2 = Math.Min(current.Value.Y + current.Value.Height, next.Y + next.Height);
         return x2 <= x1 || y2 <= y1
-            ? Rect.Empty
-            : new Rect(x1, y1, x2 - x1, y2 - y1);
+            ? WpfReplayRect.Empty
+            : new WpfReplayRect(x1, y1, x2 - x1, y2 - y1);
     }
 
-    private static Rect OffsetBounds(Rect bounds, double offsetX, double offsetY)
+    private static WpfReplayRect OffsetBounds(WpfReplayRect bounds, double offsetX, double offsetY)
     {
-        return new Rect(bounds.X + offsetX, bounds.Y + offsetY, bounds.Width, bounds.Height);
+        return new WpfReplayRect(bounds.X + offsetX, bounds.Y + offsetY, bounds.Width, bounds.Height);
     }
 
     private static Matrix4x4 ToMatrix4x4(MediaTransform transform)
@@ -729,9 +735,15 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         if (TryReadOffset(visual, out var offsetX, out var offsetY) && (offsetX != 0 || offsetY != 0))
         {
-            var matrix = Matrix.Identity;
-            matrix.Translate(offsetX, offsetY);
-            sink.PushTransform(new MatrixTransform(matrix));
+            if (sink is IWpfNativeTransformCommandSink nativeTransformSink)
+            {
+                nativeTransformSink.PushNativeTransform(Matrix4x4.CreateTranslation((float)offsetX, (float)offsetY, 0f));
+            }
+            else
+            {
+                sink.PushNoOpScope();
+            }
+
             popCount++;
         }
 
@@ -775,7 +787,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             var mediaOpacityMask = WpfReflectionResourceResolver.AdaptBrush(opacityMask);
             if (mediaOpacityMask != null && TryReadOpacityMaskBounds(visual, out var opacityMaskBounds))
             {
-                sink.PushOpacityMask(mediaOpacityMask, opacityMaskBounds);
+                sink.PushOpacityMask(mediaOpacityMask, ToMediaRect(opacityMaskBounds));
                 popCount++;
             }
             else
@@ -790,7 +802,7 @@ public sealed class WpfVisualTreeReflectionRenderer
                 && sink is IWpfVisualEffectCommandSink effectSink
                 && effectSink.PushVisualEffect(
                     proGpuEffect,
-                    TryReadOpacityMaskBounds(visual, out var effectBounds) ? effectBounds : null))
+                    TryReadOpacityMaskBounds(visual, out var effectBounds) ? ToMediaRect(effectBounds) : null))
             {
                 popCount++;
             }
@@ -807,7 +819,7 @@ public sealed class WpfVisualTreeReflectionRenderer
                 && sink is IWpfVisualEffectCommandSink effectSink
                 && effectSink.PushVisualEffect(
                     proGpuBitmapEffect,
-                    TryReadOpacityMaskBounds(visual, out var bitmapEffectBounds) ? bitmapEffectBounds : null))
+                    TryReadOpacityMaskBounds(visual, out var bitmapEffectBounds) ? ToMediaRect(bitmapEffectBounds) : null))
             {
                 popCount++;
             }
@@ -825,7 +837,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         {
             if (sink is IWpfVisualCacheCommandSink cacheSink
                 && cacheSink.PushVisualCache(
-                    TryReadOpacityMaskBounds(visual, out var cacheBounds) ? cacheBounds : null))
+                    TryReadOpacityMaskBounds(visual, out var cacheBounds) ? ToMediaRect(cacheBounds) : null))
             {
                 popCount++;
             }
@@ -1051,7 +1063,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             && TryReadDoubleProperty(offset, "Y", out y);
     }
 
-    private static bool TryReadOpacityMaskBounds(object visual, out Rect bounds)
+    private static bool TryReadOpacityMaskBounds(object visual, out WpfReplayRect bounds)
     {
         foreach (var propertyName in new[] { "Bounds", "DescendantBounds", "VisualContentBounds", "ContentBounds" })
         {
@@ -1070,7 +1082,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             && width > 0
             && height > 0)
         {
-            bounds = new Rect(0, 0, width, height);
+            bounds = new WpfReplayRect(0, 0, width, height);
             return true;
         }
 
@@ -1079,7 +1091,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             && width > 0
             && height > 0)
         {
-            bounds = new Rect(0, 0, width, height);
+            bounds = new WpfReplayRect(0, 0, width, height);
             return true;
         }
 
@@ -1092,7 +1104,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         return false;
     }
 
-    private static bool TryInferVisualContentBounds(object visual, out Rect bounds)
+    private static bool TryInferVisualContentBounds(object visual, out WpfReplayRect bounds)
     {
         bounds = default;
         var hasBounds = false;
@@ -1132,7 +1144,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         return hasBounds && IsUsableBounds(bounds);
     }
 
-    private static bool TryProjectChildBoundsIntoParent(object child, Rect childBounds, out Rect parentBounds)
+    private static bool TryProjectChildBoundsIntoParent(object child, WpfReplayRect childBounds, out WpfReplayRect parentBounds)
     {
         parentBounds = default;
         if (!TryClipChildBounds(child, childBounds, out var clippedBounds))
@@ -1161,7 +1173,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         return IsUsableBounds(parentBounds);
     }
 
-    private static bool TryClipChildBounds(object child, Rect childBounds, out Rect clippedBounds)
+    private static bool TryClipChildBounds(object child, WpfReplayRect childBounds, out WpfReplayRect clippedBounds)
     {
         clippedBounds = childBounds;
         if (!IsUsableBounds(clippedBounds))
@@ -1169,7 +1181,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             return false;
         }
 
-        Rect? clipBounds = null;
+        WpfReplayRect? clipBounds = null;
         if (TryGetPropertyValue(child, "Clip", out var clip) && clip != null)
         {
             if (!TryReadRectangleClipBounds(clip, out var childClipBounds))
@@ -1201,20 +1213,14 @@ public sealed class WpfVisualTreeReflectionRenderer
         return IsUsableBounds(clippedBounds);
     }
 
-    private static bool TryReadRect(object rectValue, out Rect bounds)
+    private static bool TryReadRect(object rectValue, out WpfReplayRect bounds)
     {
-        if (rectValue is Rect mediaRect)
-        {
-            bounds = mediaRect;
-            return true;
-        }
-
         if (TryReadDoubleProperty(rectValue, "X", out var x)
             && TryReadDoubleProperty(rectValue, "Y", out var y)
             && TryReadDoubleProperty(rectValue, "Width", out var width)
             && TryReadDoubleProperty(rectValue, "Height", out var height))
         {
-            bounds = new Rect(x, y, width, height);
+            bounds = new WpfReplayRect(x, y, width, height);
             return true;
         }
 
@@ -1239,10 +1245,9 @@ public sealed class WpfVisualTreeReflectionRenderer
         return hasWidth && hasHeight;
     }
 
-    private static bool IsUsableBounds(Rect bounds)
+    private static bool IsUsableBounds(WpfReplayRect bounds)
     {
-        return !bounds.IsEmpty
-            && double.IsFinite(bounds.X)
+        return double.IsFinite(bounds.X)
             && double.IsFinite(bounds.Y)
             && double.IsFinite(bounds.Width)
             && double.IsFinite(bounds.Height)
@@ -1250,17 +1255,17 @@ public sealed class WpfVisualTreeReflectionRenderer
             && bounds.Height > 0;
     }
 
-    private static Rect UnionBounds(Rect left, Rect right)
+    private static WpfReplayRect UnionBounds(WpfReplayRect left, WpfReplayRect right)
     {
         var x1 = Math.Min(left.X, right.X);
         var y1 = Math.Min(left.Y, right.Y);
         var x2 = Math.Max(left.X + left.Width, right.X + right.Width);
         var y2 = Math.Max(left.Y + left.Height, right.Y + right.Height);
 
-        return new Rect(x1, y1, x2 - x1, y2 - y1);
+        return new WpfReplayRect(x1, y1, x2 - x1, y2 - y1);
     }
 
-    private static Rect IntersectBounds(Rect left, Rect right)
+    private static WpfReplayRect IntersectBounds(WpfReplayRect left, WpfReplayRect right)
     {
         var x1 = Math.Max(left.X, right.X);
         var y1 = Math.Max(left.Y, right.Y);
@@ -1268,11 +1273,11 @@ public sealed class WpfVisualTreeReflectionRenderer
         var y2 = Math.Min(left.Y + left.Height, right.Y + right.Height);
 
         return x2 <= x1 || y2 <= y1
-            ? Rect.Empty
-            : new Rect(x1, y1, x2 - x1, y2 - y1);
+            ? WpfReplayRect.Empty
+            : new WpfReplayRect(x1, y1, x2 - x1, y2 - y1);
     }
 
-    private static Rect TransformBounds(Rect bounds, System.Numerics.Matrix4x4 transform)
+    private static WpfReplayRect TransformBounds(WpfReplayRect bounds, System.Numerics.Matrix4x4 transform)
     {
         if (transform.IsIdentity)
         {
@@ -1289,10 +1294,10 @@ public sealed class WpfVisualTreeReflectionRenderer
         var maxX = Math.Max(Math.Max(p1.X, p2.X), Math.Max(p3.X, p4.X));
         var maxY = Math.Max(Math.Max(p1.Y, p2.Y), Math.Max(p3.Y, p4.Y));
 
-        return new Rect(minX, minY, maxX - minX, maxY - minY);
+        return new WpfReplayRect(minX, minY, maxX - minX, maxY - minY);
     }
 
-    private static Rect? ApplyClip(Rect bounds, Rect? clip)
+    private static WpfReplayRect? ApplyClip(WpfReplayRect bounds, WpfReplayRect? clip)
     {
         if (!IsUsableBounds(bounds))
         {
@@ -1306,6 +1311,11 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         var clipped = IntersectBounds(bounds, clip.Value);
         return IsUsableBounds(clipped) ? clipped : null;
+    }
+
+    private static Rect ToMediaRect(WpfReplayRect bounds)
+    {
+        return new Rect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
     }
 
     private static bool TryReadDoubleProperty(object instance, string propertyName, out double value)
@@ -1457,8 +1467,8 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         private readonly Stack<PushKind> _pushStack = new();
         private readonly Stack<System.Numerics.Matrix4x4> _transformStack = new();
-        private readonly Stack<Rect?> _clipStack = new();
-        private Rect _bounds;
+        private readonly Stack<WpfReplayRect?> _clipStack = new();
+        private WpfReplayRect _bounds;
         private bool _hasBounds;
 
         public BoundsAccumulatingSink()
@@ -1469,7 +1479,7 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         public MediaDrawingContext DrawingContext => null!;
 
-        public bool TryGetBounds(out Rect bounds)
+        public bool TryGetBounds(out WpfReplayRect bounds)
         {
             bounds = _bounds;
             return _hasBounds && IsUsableBounds(_bounds);
@@ -1482,37 +1492,37 @@ public sealed class WpfVisualTreeReflectionRenderer
             var minY = Math.Min(point0.Y, point1.Y) - thickness / 2;
             var maxX = Math.Max(point0.X, point1.X) + thickness / 2;
             var maxY = Math.Max(point0.Y, point1.Y) + thickness / 2;
-            AddBounds(new Rect(minX, minY, maxX - minX, maxY - minY));
+            AddBounds(new WpfReplayRect(minX, minY, maxX - minX, maxY - minY));
         }
 
         public void DrawRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle)
         {
-            AddBounds(InflateForPen(rectangle, pen));
+            AddBounds(InflateForPen(FromMediaRect(rectangle), pen));
         }
 
         public void DrawRoundedRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle, double radiusX, double radiusY)
         {
-            AddBounds(InflateForPen(rectangle, pen));
+            AddBounds(InflateForPen(FromMediaRect(rectangle), pen));
         }
 
         public void DrawEllipse(MediaBrush? brush, MediaPen? pen, Point center, double radiusX, double radiusY)
         {
-            AddBounds(InflateForPen(new Rect(center.X - radiusX, center.Y - radiusY, radiusX * 2, radiusY * 2), pen));
+            AddBounds(InflateForPen(new WpfReplayRect(center.X - radiusX, center.Y - radiusY, radiusX * 2, radiusY * 2), pen));
         }
 
         public void DrawGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
         {
-            AddBounds(InflateForPen(geometry.Bounds, pen));
+            AddBounds(InflateForPen(FromMediaRect(geometry.Bounds), pen));
         }
 
         public void DrawImage(MediaImageSource imageSource, Rect rectangle)
         {
-            AddBounds(rectangle);
+            AddBounds(FromMediaRect(rectangle));
         }
 
         public void DrawImage(MediaImageSource imageSource, Rect rectangle, Rect sourceRectangle)
         {
-            AddBounds(rectangle);
+            AddBounds(FromMediaRect(rectangle));
         }
 
         public void DrawText(MediaFormattedText formattedText, Point origin)
@@ -1529,7 +1539,7 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         public void PushClip(MediaGeometry clipGeometry)
         {
-            var clip = TransformBounds(clipGeometry.Bounds, _transformStack.Peek());
+            var clip = TransformBounds(FromMediaRect(clipGeometry.Bounds), _transformStack.Peek());
             var currentClip = _clipStack.Peek();
             _clipStack.Push(currentClip.HasValue ? IntersectBounds(currentClip.Value, clip) : clip);
             _pushStack.Push(PushKind.Clip);
@@ -1597,7 +1607,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         {
         }
 
-        private void AddBounds(Rect bounds)
+        private void AddBounds(WpfReplayRect bounds)
         {
             var transformed = TransformBounds(bounds, _transformStack.Peek());
             var clipped = ApplyClip(transformed, _clipStack.Peek());
@@ -1610,7 +1620,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             _hasBounds = true;
         }
 
-        private static Rect InflateForPen(Rect bounds, MediaPen? pen)
+        private static WpfReplayRect InflateForPen(WpfReplayRect bounds, MediaPen? pen)
         {
             if (pen == null || !IsUsableBounds(bounds))
             {
@@ -1618,14 +1628,14 @@ public sealed class WpfVisualTreeReflectionRenderer
             }
 
             var halfThickness = Math.Max(0, pen.Thickness) / 2;
-            return new Rect(
+            return new WpfReplayRect(
                 bounds.X - halfThickness,
                 bounds.Y - halfThickness,
                 bounds.Width + halfThickness * 2,
                 bounds.Height + halfThickness * 2);
         }
 
-        private static bool TryGetGlyphRunBounds(MediaGlyphRun glyphRun, out Rect bounds)
+        private static bool TryGetGlyphRunBounds(MediaGlyphRun glyphRun, out WpfReplayRect bounds)
         {
             bounds = default;
 
@@ -1655,9 +1665,14 @@ public sealed class WpfVisualTreeReflectionRenderer
             }
 
             bounds = TransformBounds(
-                new Rect(minX, minY, Math.Max(0, maxX - minX), Math.Max(0, maxY - minY)),
+                new WpfReplayRect(minX, minY, Math.Max(0, maxX - minX), Math.Max(0, maxY - minY)),
                 glyphRun.Transform);
             return IsUsableBounds(bounds);
+        }
+
+        private static WpfReplayRect FromMediaRect(Rect bounds)
+        {
+            return new WpfReplayRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
         }
     }
 

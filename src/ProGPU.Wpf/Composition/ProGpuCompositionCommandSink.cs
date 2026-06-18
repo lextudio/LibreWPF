@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using MediaBrush = System.Windows.Media.Brush;
@@ -34,7 +35,12 @@ using VectorSweepDirection = ProGPU.Vector.SweepDirection;
 
 namespace System.Windows.Media.ProGPU.Composition;
 
-public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, IWpfViewport3DCommandSink, IWpfCompositionCommandSinkDiagnostics
+public sealed class ProGpuCompositionCommandSink :
+    IWpfCompositionCommandSink,
+    IWpfViewport3DCommandSink,
+    IWpfCompositionCommandSinkDiagnostics,
+    IWpfNativeTransformCommandSink,
+    IWpfNativePrimitiveCommandSink
 {
     private const float TransformEpsilon = 0.0001f;
 
@@ -656,6 +662,177 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         _pushStack.Push(PushKind.Transform);
     }
 
+    public void PushNativeTransform(Matrix4x4 transform)
+    {
+        ThrowIfClosed();
+        _transformStack.Push(transform * _transformStack.Peek());
+        _pushStack.Push(PushKind.Transform);
+    }
+
+    void IWpfNativePrimitiveCommandSink.DrawNativeLine(MediaPen? pen, WpfReplayPoint point0, WpfReplayPoint point1)
+    {
+        ThrowIfClosed();
+
+        var nativePen = ToNativePen(pen, CreateLineBounds(point0, point1));
+        if (nativePen == null)
+        {
+            return;
+        }
+
+        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        {
+            Type = global::ProGPU.Scene.RenderCommandType.DrawLine,
+            Pen = nativePen,
+            Position = new Vector2((float)point0.X, (float)point0.Y),
+            Position2 = new Vector2((float)point1.X, (float)point1.Y),
+            Transform = _transformStack.Peek(),
+            IsEdgeAliased = _edgeModeStack.Peek()
+        });
+    }
+
+    void IWpfNativePrimitiveCommandSink.DrawNativeRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle)
+    {
+        ThrowIfClosed();
+
+        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        {
+            Type = global::ProGPU.Scene.RenderCommandType.DrawRect,
+            Brush = ToNativeBrush(brush, rectangle),
+            Pen = ToNativePen(pen, rectangle),
+            Rect = ToNativeRect(rectangle),
+            Transform = _transformStack.Peek(),
+            IsEdgeAliased = _edgeModeStack.Peek()
+        });
+    }
+
+    void IWpfNativePrimitiveCommandSink.DrawNativeRoundedRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle, double radiusX, double radiusY)
+    {
+        ThrowIfClosed();
+
+        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        {
+            Type = global::ProGPU.Scene.RenderCommandType.DrawRoundedRect,
+            Brush = ToNativeBrush(brush, rectangle),
+            Pen = ToNativePen(pen, rectangle),
+            Rect = ToNativeRect(rectangle),
+            RadiusX = (float)radiusX,
+            RadiusY = (float)radiusY,
+            Transform = _transformStack.Peek(),
+            IsEdgeAliased = _edgeModeStack.Peek()
+        });
+    }
+
+    void IWpfNativePrimitiveCommandSink.DrawNativeEllipse(MediaBrush? brush, MediaPen? pen, WpfReplayPoint center, double radiusX, double radiusY)
+    {
+        ThrowIfClosed();
+
+        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        {
+            Type = global::ProGPU.Scene.RenderCommandType.DrawEllipse,
+            Brush = ToNativeBrush(brush, new WpfReplayRect(center.X - radiusX, center.Y - radiusY, radiusX * 2, radiusY * 2)),
+            Pen = ToNativePen(pen, new WpfReplayRect(center.X - radiusX, center.Y - radiusY, radiusX * 2, radiusY * 2)),
+            Position2 = new Vector2((float)center.X, (float)center.Y),
+            RadiusX = (float)radiusX,
+            RadiusY = (float)radiusY,
+            Transform = _transformStack.Peek(),
+            IsEdgeAliased = _edgeModeStack.Peek()
+        });
+    }
+
+    void IWpfNativePrimitiveCommandSink.DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle)
+    {
+        ThrowIfClosed();
+
+        if (imageSource is MediaBitmapSource bitmapSource)
+        {
+            NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+            {
+                Type = global::ProGPU.Scene.RenderCommandType.DrawTexture,
+                Texture = bitmapSource.GpuTexture,
+                Rect = ToNativeRect(rectangle),
+                Transform = _transformStack.Peek(),
+                TextureSamplingMode = _bitmapScalingModeStack.Peek()
+            });
+            return;
+        }
+
+        UnsupportedStateCount++;
+    }
+
+    void IWpfNativePrimitiveCommandSink.DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle, WpfReplayRect sourceRectangle)
+    {
+        ThrowIfClosed();
+
+        if (imageSource is MediaBitmapSource bitmapSource)
+        {
+            NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+            {
+                Type = global::ProGPU.Scene.RenderCommandType.DrawTexture,
+                Texture = bitmapSource.GpuTexture,
+                Rect = ToNativeRect(rectangle),
+                SrcRect = ToNativeRect(sourceRectangle),
+                Transform = _transformStack.Peek(),
+                TextureSamplingMode = _bitmapScalingModeStack.Peek()
+            });
+            return;
+        }
+
+        UnsupportedStateCount++;
+    }
+
+    void IWpfNativePrimitiveCommandSink.DrawNativeGlyphRun(MediaBrush? foregroundBrush, object glyphRunResource)
+    {
+        ThrowIfClosed();
+
+        if (foregroundBrush == null
+            || !WpfReflectionResourceResolver.TryAdaptNativeGlyphRun(glyphRunResource, out var glyphRun))
+        {
+            return;
+        }
+
+        var nativeBrush = ToNativeBrush(foregroundBrush, CreateGlyphRunBounds(glyphRun));
+        if (nativeBrush == null)
+        {
+            return;
+        }
+
+        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        {
+            Type = global::ProGPU.Scene.RenderCommandType.DrawGlyphRun,
+            GlyphIndices = glyphRun.GlyphIndices,
+            GlyphPositions = glyphRun.GlyphPositions,
+            Font = glyphRun.Font,
+            FontSize = glyphRun.FontSize,
+            Brush = nativeBrush,
+            Position = glyphRun.Position,
+            Transform = glyphRun.Transform * _transformStack.Peek(),
+            IsBold = glyphRun.IsBold,
+            IsItalic = glyphRun.IsItalic,
+            TextRenderingMode = _textRenderingModeStack.Peek(),
+            TextHintingMode = _textHintingModeStack.Peek()
+        });
+    }
+
+    void IWpfNativePrimitiveCommandSink.PushNativeOpacityMask(MediaBrush? opacityMask, WpfReplayRect bounds)
+    {
+        ThrowIfClosed();
+
+        if (opacityMask == null)
+        {
+            PushNoOpScope();
+            return;
+        }
+
+        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        {
+            Type = global::ProGPU.Scene.RenderCommandType.PushOpacityMask,
+            Brush = ToNativeBrush(opacityMask, bounds),
+            Rect = ToNativeRect(bounds),
+            Transform = _transformStack.Peek()
+        });
+        _pushStack.Push(PushKind.OpacityMask);
+    }
+
     public void PushNoOpScope()
     {
         ThrowIfClosed();
@@ -894,6 +1071,62 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             (float)rectangle.Y,
             (float)rectangle.Width,
             (float)rectangle.Height);
+    }
+
+    private static global::ProGPU.Scene.Rect ToNativeRect(WpfReplayRect rectangle)
+    {
+        return new global::ProGPU.Scene.Rect(
+            (float)rectangle.X,
+            (float)rectangle.Y,
+            (float)rectangle.Width,
+            (float)rectangle.Height);
+    }
+
+    private VectorBrush? ToNativeBrush(MediaBrush? brush, WpfReplayRect bounds)
+    {
+        var nativeBrush = WpfReflectionResourceResolver.AdaptNativeBrush(brush, bounds, out var unsupportedStateCount);
+        UnsupportedStateCount += unsupportedStateCount;
+        return nativeBrush;
+    }
+
+    private VectorPen? ToNativePen(MediaPen? pen, WpfReplayRect bounds)
+    {
+        var nativePen = WpfReflectionResourceResolver.AdaptNativePen(pen, bounds, out var unsupportedStateCount);
+        UnsupportedStateCount += unsupportedStateCount;
+        return nativePen;
+    }
+
+    private static WpfReplayRect CreateLineBounds(WpfReplayPoint point0, WpfReplayPoint point1)
+    {
+        var x1 = Math.Min(point0.X, point1.X);
+        var y1 = Math.Min(point0.Y, point1.Y);
+        var x2 = Math.Max(point0.X, point1.X);
+        var y2 = Math.Max(point0.Y, point1.Y);
+        return new WpfReplayRect(x1, y1, x2 - x1, y2 - y1);
+    }
+
+    private static WpfReplayRect CreateGlyphRunBounds(WpfNativeGlyphRun glyphRun)
+    {
+        if (glyphRun.GlyphPositions.Length == 0)
+        {
+            return new WpfReplayRect(glyphRun.Position.X, glyphRun.Position.Y - glyphRun.FontSize, glyphRun.FontSize, glyphRun.FontSize);
+        }
+
+        var minX = double.PositiveInfinity;
+        var minY = double.PositiveInfinity;
+        var maxX = double.NegativeInfinity;
+        var maxY = double.NegativeInfinity;
+        foreach (var position in glyphRun.GlyphPositions)
+        {
+            var x = glyphRun.Position.X + position.X;
+            var y = glyphRun.Position.Y + position.Y;
+            minX = Math.Min(minX, x);
+            minY = Math.Min(minY, y - glyphRun.FontSize);
+            maxX = Math.Max(maxX, x + glyphRun.FontSize);
+            maxY = Math.Max(maxY, y);
+        }
+
+        return new WpfReplayRect(minX, minY, Math.Max(0, maxX - minX), Math.Max(0, maxY - minY));
     }
 
     private bool TryDrawDashedRectangle(VectorPen nativePen, ProGpuWpfPen pen, Rect rectangle)

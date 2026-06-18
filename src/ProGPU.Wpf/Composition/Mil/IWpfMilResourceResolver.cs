@@ -26,3 +26,8 @@ public interface IWpfGuidelineSetResourceResolver
 {
     object? ResolveGuidelineSet(uint resourceToken);
 }
+
+internal interface IWpfRawMilResourceResolver
+{
+    bool TryResolveRawResource(uint resourceToken, out object resource);
+}

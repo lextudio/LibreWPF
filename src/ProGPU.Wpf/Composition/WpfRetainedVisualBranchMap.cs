@@ -422,19 +422,71 @@ internal interface IWpfRetainedVisualBranchSink
     void PopVisualOwner();
 }
 
+internal readonly struct WpfReplayRect : IEquatable<WpfReplayRect>
+{
+    public WpfReplayRect(double x, double y, double width, double height)
+    {
+        X = x;
+        Y = y;
+        Width = width;
+        Height = height;
+    }
+
+    public static WpfReplayRect Empty { get; } = new(0, 0, 0, 0);
+
+    public double X { get; }
+
+    public double Y { get; }
+
+    public double Width { get; }
+
+    public double Height { get; }
+
+    public bool Equals(WpfReplayRect other)
+    {
+        return X.Equals(other.X)
+            && Y.Equals(other.Y)
+            && Width.Equals(other.Width)
+            && Height.Equals(other.Height);
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return obj is WpfReplayRect other && Equals(other);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(X, Y, Width, Height);
+    }
+}
+
+internal readonly struct WpfReplayPoint
+{
+    public WpfReplayPoint(double x, double y)
+    {
+        X = x;
+        Y = y;
+    }
+
+    public double X { get; }
+
+    public double Y { get; }
+}
+
 internal readonly struct WpfRetainedVisualState
 {
     public WpfRetainedVisualState(
         Vector2 offset,
         Matrix4x4 transform,
         float opacity,
-        Rect? clipBounds,
+        WpfReplayRect? clipBounds,
         Vector2? size = null,
         global::ProGPU.Scene.EffectBase? effect = null,
         bool cacheAsLayer = false,
-        Rect? contentBounds = null,
+        WpfReplayRect? contentBounds = null,
         MediaBrush? opacityMask = null,
-        Rect? opacityMaskBounds = null)
+        WpfReplayRect? opacityMaskBounds = null)
     {
         Offset = offset;
         Transform = transform;
@@ -456,17 +508,17 @@ internal readonly struct WpfRetainedVisualState
 
     public float Opacity { get; }
 
-    public Rect? ClipBounds { get; }
+    public WpfReplayRect? ClipBounds { get; }
 
     public global::ProGPU.Scene.EffectBase? Effect { get; }
 
     public bool CacheAsLayer { get; }
 
-    public Rect? ContentBounds { get; }
+    public WpfReplayRect? ContentBounds { get; }
 
     public MediaBrush? OpacityMask { get; }
 
-    public Rect? OpacityMaskBounds { get; }
+    public WpfReplayRect? OpacityMaskBounds { get; }
 }
 
 internal interface IWpfRetainedVisualStateSink

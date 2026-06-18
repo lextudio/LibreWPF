@@ -123,7 +123,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.Equal(0.5f, rootState.Opacity);
         Assert.Equal(3, rootState.Transform.M41);
         Assert.Equal(4, rootState.Transform.M42);
-        Assert.Equal(new Rect(0, 0, 100, 50), rootState.ClipBounds);
+        AssertReplayRect(0, 0, 100, 50, rootState.ClipBounds);
         var childState = sink.RetainedVisualStates[1];
         Assert.Equal(Vector2.Zero, childState.Offset);
         Assert.Equal(1f, childState.Opacity);
@@ -193,10 +193,10 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.Equal(new Vector2(12, 23), state.Offset);
         Assert.Equal(new Vector2(30, 40), state.Size);
         Assert.Equal(0.6f, state.Opacity);
-        Assert.Equal(new Rect(10, 20, 30, 40), state.ContentBounds);
-        var transform = Assert.IsType<MatrixTransform>(Assert.Single(sink.Transforms));
-        Assert.Equal(-10, transform.Matrix.OffsetX);
-        Assert.Equal(-20, transform.Matrix.OffsetY);
+        AssertReplayRect(10, 20, 30, 40, state.ContentBounds);
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(-10, transform.M41);
+        Assert.Equal(-20, transform.M42);
         Assert.Equal(1, result.VisualCount);
         Assert.Equal(1, result.ContentCount);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
@@ -221,12 +221,12 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var state = Assert.Single(sink.RetainedVisualStates);
         Assert.IsType<ProGpuBlurEffect>(state.Effect);
         Assert.Same(Brushes.White, state.OpacityMask);
-        Assert.Equal(new Rect(0, 0, 30, 40), state.OpacityMaskBounds);
-        Assert.Equal(new Rect(10, 20, 30, 40), state.ContentBounds);
+        AssertReplayRect(0, 0, 30, 40, state.OpacityMaskBounds);
+        AssertReplayRect(10, 20, 30, 40, state.ContentBounds);
         Assert.Empty(sink.OpacityMasks);
-        var transform = Assert.IsType<MatrixTransform>(Assert.Single(sink.Transforms));
-        Assert.Equal(-10, transform.Matrix.OffsetX);
-        Assert.Equal(-20, transform.Matrix.OffsetY);
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(-10, transform.M41);
+        Assert.Equal(-20, transform.M42);
         Assert.Equal(1, result.VisualCount);
         Assert.Equal(1, result.ContentCount);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
@@ -262,11 +262,11 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.Equal(new Vector2(7, 9), state.Offset);
         Assert.Equal(new Vector2(70, 80), state.Size);
         Assert.Equal(0.35f, state.Opacity);
-        Assert.Equal(new Rect(5, 5, 20, 30), state.ClipBounds);
-        Assert.Equal(new Rect(5, 6, 70, 80), state.ContentBounds);
-        var transform = Assert.IsType<MatrixTransform>(Assert.Single(sink.Transforms));
-        Assert.Equal(-5, transform.Matrix.OffsetX);
-        Assert.Equal(-6, transform.Matrix.OffsetY);
+        AssertReplayRect(5, 5, 20, 30, state.ClipBounds);
+        AssertReplayRect(5, 6, 70, 80, state.ContentBounds);
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(-5, transform.M41);
+        Assert.Equal(-6, transform.M42);
         Assert.Equal(1, result.VisualCount);
         Assert.Equal(1, result.ContentCount);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
@@ -303,12 +303,12 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.Equal(new Vector2(11, 13), state.Offset);
         Assert.Equal(8, state.Transform.M41);
         Assert.Equal(10, state.Transform.M42);
-        Assert.Equal(new Rect(5, 6, 20, 25), state.ClipBounds);
+        AssertReplayRect(5, 6, 20, 25, state.ClipBounds);
         Assert.Equal(new Vector2(70, 80), state.Size);
-        Assert.Equal(new Rect(5, 6, 70, 80), state.ContentBounds);
-        var transform = Assert.IsType<MatrixTransform>(Assert.Single(sink.Transforms));
-        Assert.Equal(-5, transform.Matrix.OffsetX);
-        Assert.Equal(-6, transform.Matrix.OffsetY);
+        AssertReplayRect(5, 6, 70, 80, state.ContentBounds);
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(-5, transform.M41);
+        Assert.Equal(-6, transform.M42);
         Assert.Equal(1, result.VisualCount);
         Assert.Equal(1, result.ContentCount);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
@@ -364,7 +364,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.Equal(2, sink.RetainedVisualStates.Count);
         var state = sink.RetainedVisualStates[0];
         Assert.Same(Brushes.White, state.OpacityMask);
-        Assert.Equal(new Rect(1, 2, 100, 50), state.OpacityMaskBounds);
+        AssertReplayRect(1, 2, 100, 50, state.OpacityMaskBounds);
         Assert.Empty(sink.OpacityMasks);
         Assert.Equal(2, result.VisualCount);
         Assert.Equal(1, result.ContentCount);
@@ -508,7 +508,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.Equal(2, sink.RetainedVisualStates.Count);
         var state = sink.RetainedVisualStates[0];
         Assert.Same(Brushes.White, state.OpacityMask);
-        Assert.Equal(new Rect(1, 2, 100, 50), state.OpacityMaskBounds);
+        AssertReplayRect(1, 2, 100, 50, state.OpacityMaskBounds);
         Assert.Empty(sink.OpacityMasks);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
@@ -571,9 +571,9 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushTransform", "PushOpacity", "DrawRectangle", "Pop", "Pop" }, sink.Operations);
-        Assert.Single(sink.Transforms);
-        Assert.Equal(10, sink.Transforms[0].Value.M41);
-        Assert.Equal(20, sink.Transforms[0].Value.M42);
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(10, transform.M41);
+        Assert.Equal(20, transform.M42);
         Assert.Equal(new[] { 0.5 }, sink.Opacities);
         Assert.Equal(2, result.VisualCount);
         Assert.Equal(1, result.ContentCount);
@@ -1327,6 +1327,15 @@ public sealed class WpfVisualTreeReflectionRendererTests
         BinaryPrimitives.WriteInt64LittleEndian(target.AsSpan(offset, 8), BitConverter.DoubleToInt64Bits(value));
     }
 
+    private static void AssertReplayRect(double x, double y, double width, double height, WpfReplayRect? actual)
+    {
+        var bounds = Assert.NotNull(actual);
+        Assert.Equal(x, bounds.X);
+        Assert.Equal(y, bounds.Y);
+        Assert.Equal(width, bounds.Width);
+        Assert.Equal(height, bounds.Height);
+    }
+
     private class FakeVisual
     {
         public FakeVisualCollection Children { get; } = new();
@@ -1722,7 +1731,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
         IWpfVisualEffectCommandSink,
         IWpfVisualCacheCommandSink,
         IWpfRetainedVisualBranchSink,
-        IWpfRetainedVisualStateSink
+        IWpfRetainedVisualStateSink,
+        IWpfNativeTransformCommandSink
     {
         public List<string> Operations { get; } = new();
 
@@ -1737,6 +1747,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public List<(MediaImageSource ImageSource, Rect Rectangle)> Images { get; } = new();
 
         public List<MediaTransform> Transforms { get; } = new();
+
+        public List<Matrix4x4> NativeTransforms { get; } = new();
 
         public List<MediaGeometry> Clips { get; } = new();
 
@@ -1855,6 +1867,12 @@ public sealed class WpfVisualTreeReflectionRendererTests
         {
             Operations.Add("PushTransform");
             Transforms.Add(transform);
+        }
+
+        public void PushNativeTransform(Matrix4x4 transform)
+        {
+            Operations.Add("PushTransform");
+            NativeTransforms.Add(transform);
         }
 
         public void PushGuidelineSet()

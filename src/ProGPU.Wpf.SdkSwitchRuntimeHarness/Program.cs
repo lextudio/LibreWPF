@@ -259,7 +259,7 @@ internal static class Program
         AssertAssignableTo(window, "System.Windows.Window", "SDK smoke main window");
         AssertEqual("ProGPU WPF SDK Smoke", GetProperty(window, "Title"), "window title");
         AssertEqual(420.0, GetProperty(window, "Width"), "window width");
-        AssertEqual(360.0, GetProperty(window, "Height"), "window height");
+        AssertEqual(430.0, GetProperty(window, "Height"), "window height");
 
         InvokeVoid(window, "UpdateLayout");
 
@@ -274,6 +274,10 @@ internal static class Program
         AssertType(actionButton, "System.Windows.Controls.Button", "action button");
         AssertEqual("ProGPU WPF SDK switch managed subsystem smoke", GetProperty(actionButton, "Content"), "button bound content");
         AssertType(GetProperty(actionButton, "Style"), "System.Windows.Style", "action button explicit style");
+        object actionButtonTemplate = GetProperty(actionButton, "Template");
+        AssertType(actionButtonTemplate, "System.Windows.Controls.ControlTemplate", "action button control template");
+        object actionButtonTemplateRoot = Invoke(actionButtonTemplate, "LoadContent");
+        AssertType(actionButtonTemplateRoot, "System.Windows.Controls.Border", "action button control template root");
         object actionButtonBackground = GetProperty(actionButton, "Background");
         AssertType(actionButtonBackground, "System.Windows.Media.SolidColorBrush", "action button dynamic resource background");
         AssertEqual("#FF356D9E", GetProperty(actionButtonBackground, "Color").ToString() ?? string.Empty, "action button background color");
@@ -325,6 +329,20 @@ internal static class Program
         AssertAtLeast(1, GetProperty(window, "SmokeCommandExecutionCount"), "window routed command execution count");
         AssertEqual("routed command payload", GetProperty(window, "LastSmokeCommandParameter"), "window routed command executed parameter");
         AssertEqual("routed command payload", GetProperty(commandStatus, "Text"), "command status after routed command");
+
+        object propertyTriggerStatus = Invoke(window, "FindName", "PropertyTriggerStatus");
+        AssertType(propertyTriggerStatus, "System.Windows.Controls.TextBlock", "property trigger status element");
+        AssertEqual("property trigger active", GetProperty(propertyTriggerStatus, "Text"), "property trigger text");
+        object propertyTriggerForeground = GetProperty(propertyTriggerStatus, "Foreground");
+        AssertType(propertyTriggerForeground, "System.Windows.Media.SolidColorBrush", "property trigger foreground");
+        AssertEqual("#FF356D9E", GetProperty(propertyTriggerForeground, "Color").ToString() ?? string.Empty, "property trigger foreground color");
+
+        object dataTriggerStatus = Invoke(window, "FindName", "DataTriggerStatus");
+        AssertType(dataTriggerStatus, "System.Windows.Controls.TextBlock", "data trigger status element");
+        AssertEqual("data trigger active", GetProperty(dataTriggerStatus, "Text"), "data trigger text");
+        object dataTriggerForeground = GetProperty(dataTriggerStatus, "Foreground");
+        AssertType(dataTriggerForeground, "System.Windows.Media.SolidColorBrush", "data trigger foreground");
+        AssertEqual("#FF6B8F3A", GetProperty(dataTriggerForeground, "Color").ToString() ?? string.Empty, "data trigger foreground color");
 
         object inputBox = Invoke(window, "FindName", "InputBox");
         AssertType(inputBox, "System.Windows.Controls.TextBox", "input box");
@@ -832,7 +850,7 @@ internal static class Program
             AssertEqual(true, typedActivation.IsVisible, "SDK startup window visible before run");
             AssertEqual("ProGPU WPF SDK Smoke", typedActivation.Title, "activated SDK window title");
             AssertEqual(420.0, typedActivation.Width, "activated SDK window width");
-            AssertEqual(360.0, typedActivation.Height, "activated SDK window height");
+            AssertEqual(430.0, typedActivation.Height, "activated SDK window height");
             AssertSame(typedActivation.Window, GetProperty(_application, "MainWindow"), "SDK Application.MainWindow");
             InvokeVoid(typedActivation.Window, "UpdateLayout");
             FlushDispatcherOperations(typedActivation.Window, "Loaded", "Render", "ApplicationIdle");

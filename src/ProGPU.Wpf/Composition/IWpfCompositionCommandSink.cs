@@ -1,4 +1,5 @@
 using System;
+using System.Numerics;
 using System.Windows;
 using MediaBrush = System.Windows.Media.Brush;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
@@ -88,4 +89,28 @@ public interface IWpfCompositionCommandSink : IDisposable
     void Pop();
 
     void Close();
+}
+
+internal interface IWpfNativeTransformCommandSink
+{
+    void PushNativeTransform(Matrix4x4 transform);
+}
+
+internal interface IWpfNativePrimitiveCommandSink
+{
+    void DrawNativeLine(MediaPen? pen, WpfReplayPoint point0, WpfReplayPoint point1);
+
+    void DrawNativeRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle);
+
+    void DrawNativeRoundedRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle, double radiusX, double radiusY);
+
+    void DrawNativeEllipse(MediaBrush? brush, MediaPen? pen, WpfReplayPoint center, double radiusX, double radiusY);
+
+    void DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle);
+
+    void DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle, WpfReplayRect sourceRectangle);
+
+    void DrawNativeGlyphRun(MediaBrush? foregroundBrush, object glyphRun);
+
+    void PushNativeOpacityMask(MediaBrush? opacityMask, WpfReplayRect bounds);
 }

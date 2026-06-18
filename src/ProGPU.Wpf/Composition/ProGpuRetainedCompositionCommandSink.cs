@@ -24,7 +24,9 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
     IWpfVisualCacheCommandSink,
     IWpfDrawingCacheCommandSink,
     IWpfRetainedVisualBranchSink,
-    IWpfRetainedVisualStateSink
+    IWpfRetainedVisualStateSink,
+    IWpfNativeTransformCommandSink,
+    IWpfNativePrimitiveCommandSink
 {
     private enum ScopeKind
     {
@@ -162,24 +164,30 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         visual.Transform = state.Transform;
         visual.Opacity = state.Opacity;
         visual.ClipBounds = state.ClipBounds.HasValue
-            ? new global::ProGPU.Scene.Rect(
-                (float)state.ClipBounds.Value.X,
-                (float)state.ClipBounds.Value.Y,
-                (float)state.ClipBounds.Value.Width,
-                (float)state.ClipBounds.Value.Height)
+            ? ToNativeRect(state.ClipBounds.Value)
             : null;
         visual.OpacityMask = state.OpacityMask != null && state.OpacityMaskBounds.HasValue
-            ? ProGpuCompositionCommandSink.AdaptNativeBrush(state.OpacityMask, state.OpacityMaskBounds.Value)
+            ? ToNativeBrush(state.OpacityMask, state.OpacityMaskBounds.Value)
             : null;
         visual.OpacityMaskBounds = state.OpacityMask != null && state.OpacityMaskBounds.HasValue
-            ? new global::ProGPU.Scene.Rect(
-                (float)state.OpacityMaskBounds.Value.X,
-                (float)state.OpacityMaskBounds.Value.Y,
-                (float)state.OpacityMaskBounds.Value.Width,
-                (float)state.OpacityMaskBounds.Value.Height)
+            ? ToNativeRect(state.OpacityMaskBounds.Value)
             : null;
         visual.Effect = state.Effect;
         visual.CacheAsLayer = state.CacheAsLayer;
+    }
+
+    private static global::ProGPU.Vector.Brush? ToNativeBrush(MediaBrush brush, WpfReplayRect bounds)
+    {
+        return WpfReflectionResourceResolver.AdaptNativeBrush(brush, bounds, out _);
+    }
+
+    private static global::ProGPU.Scene.Rect ToNativeRect(WpfReplayRect bounds)
+    {
+        return new global::ProGPU.Scene.Rect(
+            (float)bounds.X,
+            (float)bounds.Y,
+            (float)bounds.Width,
+            (float)bounds.Height);
     }
 
     private VisualScope Current
@@ -196,9 +204,19 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         Current.Sink.DrawLine(pen, point0, point1);
     }
 
+    public void DrawNativeLine(MediaPen? pen, WpfReplayPoint point0, WpfReplayPoint point1)
+    {
+        ((IWpfNativePrimitiveCommandSink)Current.Sink).DrawNativeLine(pen, point0, point1);
+    }
+
     public void DrawRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle)
     {
         Current.Sink.DrawRectangle(brush, pen, rectangle);
+    }
+
+    public void DrawNativeRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle)
+    {
+        ((IWpfNativePrimitiveCommandSink)Current.Sink).DrawNativeRectangle(brush, pen, rectangle);
     }
 
     public void DrawRoundedRectangle(MediaBrush? brush, MediaPen? pen, Rect rectangle, double radiusX, double radiusY)
@@ -206,9 +224,19 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         Current.Sink.DrawRoundedRectangle(brush, pen, rectangle, radiusX, radiusY);
     }
 
+    public void DrawNativeRoundedRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle, double radiusX, double radiusY)
+    {
+        ((IWpfNativePrimitiveCommandSink)Current.Sink).DrawNativeRoundedRectangle(brush, pen, rectangle, radiusX, radiusY);
+    }
+
     public void DrawEllipse(MediaBrush? brush, MediaPen? pen, Point center, double radiusX, double radiusY)
     {
         Current.Sink.DrawEllipse(brush, pen, center, radiusX, radiusY);
+    }
+
+    public void DrawNativeEllipse(MediaBrush? brush, MediaPen? pen, WpfReplayPoint center, double radiusX, double radiusY)
+    {
+        ((IWpfNativePrimitiveCommandSink)Current.Sink).DrawNativeEllipse(brush, pen, center, radiusX, radiusY);
     }
 
     public void DrawGeometry(MediaBrush? brush, MediaPen? pen, MediaGeometry geometry)
@@ -221,9 +249,19 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         Current.Sink.DrawImage(imageSource, rectangle);
     }
 
+    public void DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle)
+    {
+        ((IWpfNativePrimitiveCommandSink)Current.Sink).DrawNativeImage(imageSource, rectangle);
+    }
+
     public void DrawImage(MediaImageSource imageSource, Rect rectangle, Rect sourceRectangle)
     {
         Current.Sink.DrawImage(imageSource, rectangle, sourceRectangle);
+    }
+
+    public void DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle, WpfReplayRect sourceRectangle)
+    {
+        ((IWpfNativePrimitiveCommandSink)Current.Sink).DrawNativeImage(imageSource, rectangle, sourceRectangle);
     }
 
     public void DrawText(MediaFormattedText formattedText, Point origin)
@@ -234,6 +272,11 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
     public void DrawGlyphRun(MediaBrush? foregroundBrush, MediaGlyphRun glyphRun)
     {
         Current.Sink.DrawGlyphRun(foregroundBrush, glyphRun);
+    }
+
+    public void DrawNativeGlyphRun(MediaBrush? foregroundBrush, object glyphRun)
+    {
+        ((IWpfNativePrimitiveCommandSink)Current.Sink).DrawNativeGlyphRun(foregroundBrush, glyphRun);
     }
 
     public bool DrawViewport3D(object viewportVisual)
@@ -259,9 +302,21 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         _scopeStack.Push(ScopeKind.Delegate);
     }
 
+    public void PushNativeOpacityMask(MediaBrush? opacityMask, WpfReplayRect bounds)
+    {
+        ((IWpfNativePrimitiveCommandSink)Current.Sink).PushNativeOpacityMask(opacityMask, bounds);
+        _scopeStack.Push(ScopeKind.Delegate);
+    }
+
     public void PushTransform(MediaTransform transform)
     {
         Current.Sink.PushTransform(transform);
+        _scopeStack.Push(ScopeKind.Delegate);
+    }
+
+    public void PushNativeTransform(Matrix4x4 transform)
+    {
+        Current.Sink.PushNativeTransform(transform);
         _scopeStack.Push(ScopeKind.Delegate);
     }
 
@@ -439,9 +494,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         var scope = new VisualScope(visual, Current.Context, Current.Viewport3DTextureCache, visualScopeKind, _scopeStack.Count);
         if (bounds.X != 0 || bounds.Y != 0)
         {
-            var matrix = Matrix.Identity;
-            matrix.Translate(-bounds.X, -bounds.Y);
-            scope.Sink.PushTransform(new MatrixTransform(matrix));
+            scope.Sink.PushNativeTransform(Matrix4x4.CreateTranslation((float)-bounds.X, (float)-bounds.Y, 0f));
             scope.HasBoundsTransform = true;
         }
 

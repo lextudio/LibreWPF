@@ -4437,6 +4437,23 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf",
             "ProGPU.Wpf.csproj");
+        var proGpuWpfCommandSinkPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "ProGpuCompositionCommandSink.cs");
+        var wpfMilRenderDataDecoderPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfMilRenderDataDecoder.cs");
+        var wpfReflectionResourceResolverPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfReflectionResourceResolver.cs");
         var wpfTransportTargetsPath = FindRepoPath(
             "packaging",
             "Microsoft.DotNet.Wpf.GitHub",
@@ -4467,6 +4484,9 @@ public sealed class WpfManagedProjectGraphTests
         var smokeMainWindowXaml = File.ReadAllText(smokeMainWindowXamlPath);
         var smokeMainWindowCodeBehind = File.ReadAllText(smokeMainWindowCodeBehindPath);
         var proGpuWpfProject = File.ReadAllText(proGpuWpfProjectPath);
+        var proGpuWpfCommandSink = File.ReadAllText(proGpuWpfCommandSinkPath);
+        var wpfMilRenderDataDecoder = File.ReadAllText(wpfMilRenderDataDecoderPath);
+        var wpfReflectionResourceResolver = File.ReadAllText(wpfReflectionResourceResolverPath);
         var wpfTransportTargets = File.ReadAllText(wpfTransportTargetsPath);
         var wpfTransportArchNeutralProject = File.ReadAllText(wpfTransportArchNeutralProjectPath);
         var runtimeHarnessProject = File.ReadAllText(runtimeHarnessProjectPath);
@@ -4575,6 +4595,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("MergedAccentBrush", smokeResourcesXaml, StringComparison.Ordinal);
         Assert.Contains("SmokePanelMargin", smokeResourcesXaml, StringComparison.Ordinal);
         Assert.Contains("SmokeListTextStyle", smokeResourcesXaml, StringComparison.Ordinal);
+        Assert.Contains("Height=\"430\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<ControlTemplate TargetType=\"{x:Type Button}\">", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<ControlTemplate.Triggers>", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"PropertyTriggeredTextStyle\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<Trigger Property=\"Tag\" Value=\"Active\">", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"DataTriggeredTextStyle\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<DataTrigger Binding=\"{Binding IsHighlighted}\" Value=\"True\">", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding Title}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<Window.CommandBindings>", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{x:Static local:MainWindow.SmokeCommand}\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -4585,6 +4612,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Click=\"OnActionButtonClick\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"CommandButton\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CommandParameter=\"routed command payload\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"PropertyTriggerStatus\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"DataTriggerStatus\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Items}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemTemplate=\"{StaticResource SmokeItemTemplate}\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -4598,9 +4627,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void OnSmokeCommandCanExecute", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnSmokeCommandExecuted", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SmokeCommandExecutionCount++", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public bool IsHighlighted", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ObservableCollection<SmokeItem>", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>", proGpuWpfProject, StringComparison.Ordinal);
         Assert.Contains("PresentationCore\\PresentationCore.csproj\" PrivateAssets=\"all\"", proGpuWpfProject, StringComparison.Ordinal);
+        Assert.Contains("ReadReplayPoint", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("ReadReplayRect", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("DrawNativeGlyphRun", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("TryResolveRawResource", wpfMilRenderDataDecoder, StringComparison.Ordinal);
+        Assert.Contains("TryAdaptNativeGlyphRun", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("AdaptNativeBrush", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("AdaptNativePen", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("CreateGlyphRunBounds", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("$([MSBuild]::IsOSPlatform('Windows'))", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("<_PowerShellExe Condition=\"'$(_PowerShellExe)' == ''\">pwsh</_PowerShellExe>", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("<IncludeAssembliesInArchNeutralPackage>true</IncludeAssembliesInArchNeutralPackage>", wpfTransportArchNeutralProject, StringComparison.Ordinal);
@@ -4645,6 +4683,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("window key binding command parameter", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("command button routed command CanExecute", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window routed command execution count", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("action button control template", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("property trigger text", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("data trigger text", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"InputBox\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"ItemsList\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"SelectedItemPresenter\"", runtimeHarnessProgram, StringComparison.Ordinal);

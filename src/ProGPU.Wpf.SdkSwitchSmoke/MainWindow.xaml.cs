@@ -60,6 +60,8 @@ public sealed class SmokeViewModel
 
     public string InputText { get; set; } = "editable package text";
 
+    public bool IsHighlighted { get; } = true;
+
     public ObservableCollection<SmokeItem> Items { get; }
 }
 

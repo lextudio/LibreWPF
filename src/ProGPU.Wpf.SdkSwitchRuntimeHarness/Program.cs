@@ -152,7 +152,7 @@ internal static class Program
             ValidateApp(app);
 
             object window = Create(smokeAssembly, MainWindowTypeName);
-            ValidateWindow(window, validateFrameContent: false);
+            ValidateWindow(window, validateFrameContent: false, flushDispatcherOperations: null);
         }
         finally
         {
@@ -262,7 +262,10 @@ internal static class Program
         AssertAtLeast(1, GetCount(GetProperty(resources, "Keys")), "application resource key count");
     }
 
-    private static void ValidateWindow(object window, bool validateFrameContent)
+    private static void ValidateWindow(
+        object window,
+        bool validateFrameContent,
+        Action<object>? flushDispatcherOperations)
     {
         AssertAssignableTo(window, "System.Windows.Window", "SDK smoke main window");
         AssertEqual("ProGPU WPF SDK Smoke", GetProperty(window, "Title"), "window title");
@@ -390,6 +393,16 @@ internal static class Program
         object inputBox = Invoke(window, "FindName", "InputBox");
         AssertType(inputBox, "System.Windows.Controls.TextBox", "input box");
         AssertEqual("editable package text", GetProperty(inputBox, "Text"), "input box bound text");
+        object mutableStatusText = Invoke(window, "FindName", "MutableStatusText");
+        AssertType(mutableStatusText, "System.Windows.Controls.TextBlock", "mutable status text element");
+        AssertEqual("initial binding status", GetProperty(mutableStatusText, "Text"), "mutable status initial binding text");
+        if (validateFrameContent)
+        {
+            object viewModel = GetProperty(window, "DataContext");
+            SetProperty(viewModel, "MutableStatus", "updated binding status");
+            flushDispatcherOperations?.Invoke(window);
+            AssertEqual("updated binding status", GetProperty(mutableStatusText, "Text"), "mutable status property changed binding text");
+        }
 
         object itemsList = Invoke(window, "FindName", "ItemsList");
         AssertType(itemsList, "System.Windows.Controls.ListBox", "items list");
@@ -933,7 +946,7 @@ internal static class Program
             }
 
             AssertType(window, MainWindowTypeName, "activated SDK startup window");
-            ValidateWindow(window, validateFrameContent: false);
+            ValidateWindow(window, validateFrameContent: false, flushDispatcherOperations: null);
 
             object presentationSource = CreatePortablePresentationSource(window);
             ActivateCount++;
@@ -998,7 +1011,10 @@ internal static class Program
             AssertSame(typedActivation.Window, GetProperty(_application, "MainWindow"), "SDK Application.MainWindow");
             InvokeVoid(typedActivation.Window, "UpdateLayout");
             FlushDispatcherOperations(typedActivation.Window, "Loaded", "Render", "ApplicationIdle");
-            ValidateWindow(typedActivation.Window, validateFrameContent: true);
+            ValidateWindow(
+                typedActivation.Window,
+                validateFrameContent: true,
+                flushDispatcherOperations: window => FlushDispatcherOperations(window, "DataBind", "Loaded", "Render", "ApplicationIdle"));
         }
 
         public void Dispose(object activation)

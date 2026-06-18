@@ -4687,6 +4687,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"UnsharedBrushBorder\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Background=\"{StaticResource UnsharedAccentBrush}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MutableStatusText\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding MutableStatus}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Items}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemTemplate=\"{StaticResource SmokeItemTemplate}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"{Binding SelectedItem, ElementName=ItemsList}\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -4767,6 +4769,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void OnSmokeCommandCanExecute", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnSmokeCommandExecuted", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SmokeCommandExecutionCount++", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SmokeViewModel : INotifyPropertyChanged", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private string _mutableStatus = \"initial binding status\";", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public string MutableStatus", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("OnPropertyChanged();", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PropertyChanged?.Invoke", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public bool IsHighlighted", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public bool IsCritical", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ObservableCollection<SmokeItem>", smokeMainWindowCodeBehind, StringComparison.Ordinal);
@@ -4852,6 +4859,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("FindName\", \"UnsharedBrushBorder\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("unshared border brush color", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"InputBox\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"MutableStatusText\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("mutable status initial binding text", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("MutableStatus\", \"updated binding status\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("mutable status property changed binding text", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"ItemsList\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"SelectedItemPresenter\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"LayoutGrid\"", runtimeHarnessProgram, StringComparison.Ordinal);

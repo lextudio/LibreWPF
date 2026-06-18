@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 
@@ -44,8 +46,10 @@ public partial class MainWindow : Window
     }
 }
 
-public sealed class SmokeViewModel
+public sealed class SmokeViewModel : INotifyPropertyChanged
 {
+    private string _mutableStatus = "initial binding status";
+
     public SmokeViewModel()
     {
         Items = new ObservableCollection<SmokeItem>
@@ -60,11 +64,33 @@ public sealed class SmokeViewModel
 
     public string InputText { get; set; } = "editable package text";
 
+    public string MutableStatus
+    {
+        get => _mutableStatus;
+        set
+        {
+            if (_mutableStatus == value)
+            {
+                return;
+            }
+
+            _mutableStatus = value;
+            OnPropertyChanged();
+        }
+    }
+
     public bool IsHighlighted { get; } = true;
 
     public bool IsCritical { get; } = true;
 
     public ObservableCollection<SmokeItem> Items { get; }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
 }
 
 public sealed class SmokeItem

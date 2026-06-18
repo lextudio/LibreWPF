@@ -82,6 +82,17 @@
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
+            <Style x:Key="PropertyTriggeredButtonStyle" TargetType="{x:Type Button}">
+                <Setter Property="Margin" Value="0,8,0,0" />
+                <Setter Property="Tag" Value="property trigger inactive" />
+                <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+                <Style.Triggers>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Tag" Value="property trigger active" />
+                        <Setter Property="Background" Value="{StaticResource ReplacementAccentBrush}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
             <Style x:Key="MultiTriggeredButtonStyle" TargetType="{x:Type Button}">
                 <Setter Property="Margin" Value="0,8,0,0" />
                 <Setter Property="Tag" Value="multi trigger inactive" />

@@ -131,7 +131,7 @@ internal static class Program
         AssertEqual("MainWindow.xaml", GetProperty(application, "StartupUri").ToString(), "startup URI");
 
         object resources = GetProperty(application, "Resources");
-        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 11, "application resource keys");
+        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 12, "application resource keys");
         object mergedDictionaries = GetProperty(resources, "MergedDictionaries");
         AssertCollectionCount(mergedDictionaries, expected: 1, "application merged dictionaries");
         object smokeResources = GetCollectionItem(mergedDictionaries, 0);
@@ -170,6 +170,10 @@ internal static class Program
         object triggeredButtonStyle = GetDictionaryValue(resources, "TriggeredButtonStyle");
         AssertType(triggeredButtonStyle, "System.Windows.Style", "triggered Button style");
         AssertEqual("System.Windows.Controls.Button", GetProperty(triggeredButtonStyle, "TargetType").ToString(), "triggered Button style target");
+
+        object propertyTriggeredButtonStyle = GetDictionaryValue(resources, "PropertyTriggeredButtonStyle");
+        AssertType(propertyTriggeredButtonStyle, "System.Windows.Style", "property-triggered Button style");
+        AssertEqual("System.Windows.Controls.Button", GetProperty(propertyTriggeredButtonStyle, "TargetType").ToString(), "property-triggered Button style target");
 
         object multiTriggeredButtonStyle = GetDictionaryValue(resources, "MultiTriggeredButtonStyle");
         AssertType(multiTriggeredButtonStyle, "System.Windows.Style", "multi-triggered Button style");
@@ -319,7 +323,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 67, "stack panel children");
+        AssertCollectionCount(children, expected: 68, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -2582,6 +2586,7 @@ internal static class Program
         object accentBrush = GetDictionaryValue(resources, "AccentBrush");
         object replacementAccentBrush = GetDictionaryValue(resources, "ReplacementAccentBrush");
         object expectedStyle = GetDictionaryValue(resources, "TriggeredButtonStyle");
+        object expectedPropertyStyle = GetDictionaryValue(resources, "PropertyTriggeredButtonStyle");
         object expectedMultiStyle = GetDictionaryValue(resources, "MultiTriggeredButtonStyle");
         object dataContext = GetProperty(window, "DataContext");
 
@@ -2593,6 +2598,27 @@ internal static class Program
         AssertEqual(false, GetProperty(dataContext, "IsCritical"), "multi trigger initial critical view-model state");
         AssertEqual("trigger inactive", GetProperty(triggeredButton, "Tag"), "compiled DataTrigger inactive value");
         AssertSame(accentBrush, GetProperty(triggeredButton, "Background"), "compiled DataTrigger inactive brush");
+
+        object propertyTriggeredButton = GetField(window, "PropertyTriggeredButton");
+        AssertType(propertyTriggeredButton, "System.Windows.Controls.Button", "compiled property-triggered Button");
+        AssertSame(expectedPropertyStyle, GetProperty(propertyTriggeredButton, "Style"), "compiled Button property Trigger style");
+        AssertEqual("property trigger target", GetProperty(propertyTriggeredButton, "Content"), "compiled Button property Trigger content");
+        AssertEqual("property trigger inactive", GetProperty(propertyTriggeredButton, "Tag"), "compiled property Trigger inactive value");
+        AssertSame(accentBrush, GetProperty(propertyTriggeredButton, "Background"), "compiled property Trigger inactive brush");
+        object propertyTriggers = GetProperty(expectedPropertyStyle, "Triggers");
+        AssertCollectionCount(propertyTriggers, expected: 1, "compiled property Trigger count");
+        object propertyTrigger = GetCollectionItem(propertyTriggers, 0);
+        AssertType(propertyTrigger, "System.Windows.Trigger", "compiled property Trigger metadata");
+        AssertEqual("IsEnabled", GetProperty(GetProperty(propertyTrigger, "Property"), "Name"), "compiled property Trigger source property");
+        AssertEqual(false, GetProperty(propertyTrigger, "Value"), "compiled property Trigger value");
+        object propertyTriggerSetters = GetProperty(propertyTrigger, "Setters");
+        AssertCollectionCount(propertyTriggerSetters, expected: 2, "compiled property Trigger setters");
+        SetProperty(propertyTriggeredButton, "IsEnabled", false);
+        AssertEqual("property trigger active", GetProperty(propertyTriggeredButton, "Tag"), "compiled property Trigger active value");
+        AssertSame(replacementAccentBrush, GetProperty(propertyTriggeredButton, "Background"), "compiled property Trigger active brush");
+        SetProperty(propertyTriggeredButton, "IsEnabled", true);
+        AssertEqual("property trigger inactive", GetProperty(propertyTriggeredButton, "Tag"), "compiled property Trigger restored value");
+        AssertSame(accentBrush, GetProperty(propertyTriggeredButton, "Background"), "compiled property Trigger restored brush");
 
         object multiTriggeredButton = GetField(window, "MultiTriggeredButton");
         AssertType(multiTriggeredButton, "System.Windows.Controls.Button", "compiled multi-triggered Button");

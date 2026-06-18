@@ -798,6 +798,10 @@
             Content="{Binding TriggerButtonText}"
             Style="{StaticResource TriggeredButtonStyle}" />
         <Button
+            x:Name="PropertyTriggeredButton"
+            Content="property trigger target"
+            Style="{StaticResource PropertyTriggeredButtonStyle}" />
+        <Button
             x:Name="MultiTriggeredButton"
             Content="{Binding TriggerButtonText}"
             Style="{StaticResource MultiTriggeredButtonStyle}" />

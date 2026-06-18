@@ -1674,6 +1674,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled GridSplitter columns to be measured", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GridSplitter dragged left column width", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GridSplitter dragged right column width", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowSliderThumbDrag(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Slider template Thumb", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Slider thumb drag value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateScrollingControls(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ScrollViewer content children", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ScrollBar updated value", harnessProgram, StringComparison.Ordinal);
@@ -2143,6 +2146,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled GridSplitter dragged right column width", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GridSplitter resize behavior", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GridSplitter keyboard increment", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowSliderThumbDrag(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Slider template Thumb", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Slider thumb drag value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateScrollingControls(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ScrollViewer horizontal visibility", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ScrollBar viewport size", harnessProgram, StringComparison.Ordinal);

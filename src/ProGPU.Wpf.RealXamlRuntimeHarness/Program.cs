@@ -91,6 +91,7 @@ internal static class Program
                 () => FlushDispatcherOperations(activationServiceType, window, "Render"));
             ValidatePostShowSharedSizeGridLayout(window);
             ValidatePostShowGridSplitterDrag(window);
+            ValidatePostShowSliderThumbDrag(window);
             ValidatePostShowScrollingControls(window);
             ValidatePortableKeyboardFocus(presentationCore, window);
             ValidatePortableInputBindingActivation(presentationCore, activation, window);
@@ -1826,6 +1827,44 @@ internal static class Program
         AssertClose(leftBefore + 12.0, leftAfter, 0.001, "compiled GridSplitter dragged left column width");
         AssertClose(rightBefore - 12.0, rightAfter, 0.001, "compiled GridSplitter dragged right column width");
         SetProperty(splitter, "ShowsPreview", true);
+    }
+
+    private static void ValidatePostShowSliderThumbDrag(object window)
+    {
+        object dataContext = GetProperty(window, "DataContext");
+        object slider = GetField(window, "RangeValueSlider");
+        object progress = GetField(window, "RangeValueProgress");
+
+        Invoke(slider, "ApplyTemplate");
+        Invoke(slider, "UpdateLayout");
+        Invoke(window, "UpdateLayout");
+
+        object track = GetProperty(slider, "Track");
+        AssertType(track, "System.Windows.Controls.Primitives.Track", "compiled Slider template Track");
+        object thumb = GetProperty(track, "Thumb");
+        AssertType(thumb, "System.Windows.Controls.Primitives.Thumb", "compiled Slider template Thumb");
+
+        double dragDelta = 14.0;
+        SetProperty(slider, "Value", 40.0);
+        Invoke(slider, "UpdateLayout");
+        double valueDelta = Convert.ToDouble(Invoke(track, "ValueFromDistance", dragDelta, 0.0));
+        double expectedValue = Math.Max(
+            Convert.ToDouble(GetProperty(slider, "Minimum")),
+            Math.Min(Convert.ToDouble(GetProperty(slider, "Maximum")), 40.0 + valueDelta));
+
+        Assembly presentationFramework = slider.GetType().Assembly;
+        object started = Create(presentationFramework, "System.Windows.Controls.Primitives.DragStartedEventArgs", 0.0, 0.0);
+        object delta = Create(presentationFramework, "System.Windows.Controls.Primitives.DragDeltaEventArgs", dragDelta, 0.0);
+        object completed = Create(presentationFramework, "System.Windows.Controls.Primitives.DragCompletedEventArgs", dragDelta, 0.0, false);
+
+        Invoke(thumb, "RaiseEvent", started);
+        Invoke(thumb, "RaiseEvent", delta);
+        Invoke(thumb, "RaiseEvent", completed);
+        Invoke(slider, "UpdateLayout");
+
+        AssertClose(expectedValue, Convert.ToDouble(GetProperty(slider, "Value")), 0.0001, "compiled Slider thumb drag value");
+        AssertClose(expectedValue, Convert.ToDouble(GetProperty(dataContext, "RangeValue")), 0.0001, "compiled Slider thumb drag source value");
+        AssertClose(expectedValue, Convert.ToDouble(GetProperty(progress, "Value")), 0.0001, "compiled Slider thumb drag progress value");
     }
 
     private static void ValidateScrollingControls(object window)

@@ -78,7 +78,7 @@ internal static class Program
             ValidatePostShowGroupStyleHeader(presentationCore, window);
             ValidatePostShowItemTemplateSelector(presentationCore, window);
             ValidatePostShowItemContainerStyleSelector(presentationCore, window);
-            ValidatePostShowDataGridRows(window);
+            ValidatePostShowDataGridRows(presentationCore, window);
             ValidatePostShowImplicitDataTemplate(presentationCore, window);
             ValidatePostShowContentTemplateSelector(presentationCore, window);
             ValidatePostShowHierarchicalDataTemplate(presentationCore, window);
@@ -2761,14 +2761,17 @@ internal static class Program
         AssertSame(GetCollectionItem(sourceItems, 1), GetProperty(dataContext, "SelectedItem"), "compiled DataGrid two-way selected item source update");
     }
 
-    private static void ValidatePostShowDataGridRows(object window)
+    private static void ValidatePostShowDataGridRows(Assembly presentationCore, object window)
     {
         object dataGrid = GetField(window, "ItemsDataGrid");
         object sourceItems = GetProperty(GetProperty(window, "DataContext"), "Items");
         object item = GetCollectionItem(sourceItems, 1);
+        object columns = GetProperty(dataGrid, "Columns");
+        object nameColumn = GetCollectionItem(columns, 0);
+        object activeColumn = GetCollectionItem(columns, 2);
 
         Invoke(dataGrid, "ApplyTemplate");
-        Invoke(dataGrid, "ScrollIntoView", item);
+        Invoke(dataGrid, "ScrollIntoView", item, activeColumn);
         Invoke(dataGrid, "UpdateLayout");
 
         object itemContainerGenerator = GetProperty(dataGrid, "ItemContainerGenerator");
@@ -2779,6 +2782,23 @@ internal static class Program
         Invoke(row, "ApplyTemplate");
         Invoke(row, "UpdateLayout");
         Invoke(dataGrid, "UpdateLayout");
+
+        object cellsPresenter = FindVisualDescendantByTypeName(
+                presentationCore,
+                row,
+                "System.Windows.Controls.Primitives.DataGridCellsPresenter")
+            ?? throw new InvalidOperationException("Expected compiled DataGrid row to generate a DataGridCellsPresenter.");
+        Invoke(cellsPresenter, "ApplyTemplate");
+        Invoke(cellsPresenter, "UpdateLayout");
+        Invoke(dataGrid, "UpdateLayout");
+
+        object nameCellContent = InvokeDataGridColumnGetCellContent(nameColumn, row);
+        AssertType(nameCellContent, "System.Windows.Controls.TextBlock", "compiled DataGrid generated name cell content");
+        AssertEqual("item beta", GetProperty(nameCellContent, "Text"), "compiled DataGrid generated name cell text");
+
+        object activeCellContent = InvokeDataGridColumnGetCellContent(activeColumn, row);
+        AssertType(activeCellContent, "System.Windows.Controls.CheckBox", "compiled DataGrid generated active cell content");
+        AssertEqual(true, GetProperty(activeCellContent, "IsChecked"), "compiled DataGrid generated active cell value");
     }
 
     private static void ValidateImplicitDataTemplate(object window)
@@ -3377,6 +3397,28 @@ internal static class Program
         return null;
     }
 
+    private static object? FindVisualDescendantByTypeName(Assembly presentationCore, object root, string typeName)
+    {
+        if (string.Equals(root.GetType().FullName, typeName, StringComparison.Ordinal))
+        {
+            return root;
+        }
+
+        Type visualTreeHelperType = GetRequiredType(presentationCore, "System.Windows.Media.VisualTreeHelper");
+        int count = Convert.ToInt32(InvokeStatic(visualTreeHelperType, "GetChildrenCount", root));
+        for (int i = 0; i < count; i++)
+        {
+            object child = InvokeStatic(visualTreeHelperType, "GetChild", root, i);
+            object? match = FindVisualDescendantByTypeName(presentationCore, child, typeName);
+            if (match != null)
+            {
+                return match;
+            }
+        }
+
+        return null;
+    }
+
     private static object? TryGetStaticProperty(Type type, string propertyName)
     {
         return type.GetProperty(
@@ -3621,6 +3663,44 @@ internal static class Program
         }
 
         throw new MissingMethodException(instance.GetType().FullName, methodName);
+    }
+
+    private static object InvokeDataGridColumnGetCellContent(object column, object row)
+    {
+        MethodInfo method = column.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .Where(candidate =>
+            {
+                if (!string.Equals(candidate.Name, "GetCellContent", StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                ParameterInfo[] parameters = candidate.GetParameters();
+                return parameters.Length == 1 && parameters[0].ParameterType.IsAssignableFrom(row.GetType());
+            })
+            .OrderBy(candidate => GetTypeDistance(row.GetType(), candidate.GetParameters()[0].ParameterType))
+            .FirstOrDefault()
+            ?? throw new MissingMethodException(column.GetType().FullName, "GetCellContent");
+
+        return method.Invoke(column, new[] { row })
+            ?? throw new InvalidOperationException(
+                $"Expected '{column.GetType().FullName}.GetCellContent(...)' to return generated cell content.");
+    }
+
+    private static int GetTypeDistance(Type concreteType, Type targetType)
+    {
+        var distance = 0;
+        for (Type? current = concreteType; current != null; current = current.BaseType)
+        {
+            if (current == targetType)
+            {
+                return distance;
+            }
+
+            distance++;
+        }
+
+        return int.MaxValue;
     }
 
     private static object? InvokeNullable(object instance, string methodName, params object?[] parameters)

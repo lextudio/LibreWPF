@@ -893,6 +893,8 @@
             Margin="0,8,0,0"
             AutoGenerateColumns="False"
             CanUserAddRows="False"
+            EnableColumnVirtualization="False"
+            EnableRowVirtualization="False"
             GridLinesVisibility="Horizontal"
             HeadersVisibility="Column"
             IsReadOnly="True"

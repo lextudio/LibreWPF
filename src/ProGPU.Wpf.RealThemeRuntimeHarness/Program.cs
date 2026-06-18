@@ -125,6 +125,7 @@ internal static class Program
         object checkBoxStyle = GetDictionaryValue(themeDictionary, "DefaultCheckBoxStyle");
         object comboBoxStyle = GetDictionaryValue(themeDictionary, "DefaultComboBoxStyle");
         object datePickerStyle = GetDictionaryValue(themeDictionary, "DefaultDatePickerStyle");
+        object datePickerCalendarStyle = GetDictionaryValue(themeDictionary, "DatePickerCalendarStyle");
         object dataGridStyle = GetDictionaryValue(themeDictionary, "DefaultDataGridStyle");
         object dataGridCellStyle = GetDictionaryValue(themeDictionary, "DefaultDataGridCellStyle");
         object dataGridCheckBoxElementStyle = GetDictionaryValue(themeDictionary, "DataGridCheckBoxElementDefaultStyle");
@@ -190,6 +191,7 @@ internal static class Program
         Type separatorType = GetRequiredType(presentationFramework, "System.Windows.Controls.Separator");
         Type sliderType = GetRequiredType(presentationFramework, "System.Windows.Controls.Slider");
         Type statusBarType = GetRequiredType(presentationFramework, "System.Windows.Controls.Primitives.StatusBar");
+        Type textBoxType = GetRequiredType(presentationFramework, "System.Windows.Controls.TextBox");
         Type toolBarType = GetRequiredType(presentationFramework, "System.Windows.Controls.ToolBar");
         Type toolBarTrayType = GetRequiredType(presentationFramework, "System.Windows.Controls.ToolBarTray");
         Type tabControlType = GetRequiredType(presentationFramework, "System.Windows.Controls.TabControl");
@@ -197,6 +199,11 @@ internal static class Program
         Type toggleButtonType = GetRequiredType(presentationFramework, "System.Windows.Controls.Primitives.ToggleButton");
         Type treeViewType = GetRequiredType(presentationFramework, "System.Windows.Controls.TreeView");
         Type progressBarType = GetRequiredType(presentationFramework, "System.Windows.Controls.ProgressBar");
+        object implicitButtonStyle = GetDictionaryValue(themeDictionary, buttonType);
+        object implicitCalendarStyle = GetDictionaryValue(themeDictionary, calendarType);
+        object implicitDataGridStyle = GetDictionaryValue(themeDictionary, dataGridType);
+        object implicitDatePickerStyle = GetDictionaryValue(themeDictionary, datePickerType);
+        object implicitTextBoxStyle = GetDictionaryValue(themeDictionary, textBoxType);
         object sliderStyle = GetDictionaryValue(themeDictionary, sliderType);
         object progressBarStyle = GetDictionaryValue(themeDictionary, progressBarType);
         object statusBarStyle = GetDictionaryValue(themeDictionary, statusBarType);
@@ -521,6 +528,16 @@ internal static class Program
         AssertSame(progressBarStyle, GetProperty(progressBar, "Style"), "ProgressBar Fluent style");
         AssertSame(dataGridStyle, GetProperty(dataGrid, "Style"), "DataGrid Fluent style");
         AssertSame(richTextBoxStyle, GetProperty(richTextBox, "Style"), "RichTextBox Fluent style");
+        AssertStyleBasedOn(implicitButtonStyle, defaultButtonStyle, "implicit Button Fluent BasedOn default Button style");
+        AssertStyleBasedOn(implicitCalendarStyle, calendarStyle, "implicit Calendar Fluent BasedOn default Calendar style");
+        AssertStyleBasedOn(implicitDataGridStyle, dataGridStyle, "implicit DataGrid Fluent BasedOn default DataGrid style");
+        AssertStyleBasedOn(implicitDatePickerStyle, datePickerStyle, "implicit DatePicker Fluent BasedOn default DatePicker style");
+        AssertStyleBasedOn(implicitTextBoxStyle, textBoxStyle, "implicit TextBox Fluent BasedOn default TextBox style");
+        AssertStyleBasedOn(datePickerCalendarStyle, calendarStyle, "DatePicker Calendar Fluent BasedOn default Calendar style");
+        AssertStyleBasedOn(
+            dataGridCheckBoxEditingElementStyle,
+            dataGridCheckBoxElementStyle,
+            "DataGrid CheckBox editing Fluent BasedOn element style");
         AssertSame(defaultButtonStyle, Invoke(application, "TryFindResource", "DefaultButtonStyle"), "application Fluent default Button resource lookup");
         AssertSame(buttonStyle, Invoke(application, "TryFindResource", "AccentButtonStyle"), "application Fluent resource lookup");
         AssertSame(textBoxStyle, Invoke(application, "TryFindResource", "DefaultTextBoxStyle"), "application Fluent TextBox resource lookup");
@@ -538,7 +555,6 @@ internal static class Program
         AssertSame(dataGridHeaderDropSeparatorStyle, Invoke(application, "TryFindResource", "DefaultDataGridHeaderDropSeparatorStyle"), "application Fluent DataGrid drop separator resource lookup");
         AssertSame(dataGridRowHeaderStyle, Invoke(application, "TryFindResource", "DefaultDataGridRowHeaderStyle"), "application Fluent DataGrid row header resource lookup");
         AssertSame(dataGridRowStyle, Invoke(application, "TryFindResource", "DefaultDataGridRowStyle"), "application Fluent DataGrid row resource lookup");
-        AssertType(Invoke(application, "TryFindResource", calendarType), "System.Windows.Style", "application Fluent Calendar implicit style lookup");
         AssertSame(checkBoxStyle, Invoke(application, "TryFindResource", "DefaultCheckBoxStyle"), "application Fluent CheckBox resource lookup");
         AssertSame(expanderStyle, Invoke(application, "TryFindResource", "DefaultExpanderStyle"), "application Fluent Expander resource lookup");
         AssertSame(groupBoxStyle, Invoke(application, "TryFindResource", "DefaultGroupBoxStyle"), "application Fluent GroupBox resource lookup");
@@ -559,13 +575,14 @@ internal static class Program
         AssertSame(separatorStyle, Invoke(application, "TryFindResource", "DefaultSeparatorStyle"), "application Fluent Separator resource lookup");
         AssertSame(thumbStyle, Invoke(application, "TryFindResource", "DefaultThumbStyle"), "application Fluent Thumb resource lookup");
         AssertSame(toggleButtonStyle, Invoke(application, "TryFindResource", "DefaultToggleButtonStyle"), "application Fluent ToggleButton resource lookup");
-        AssertType(Invoke(application, "TryFindResource", buttonType), "System.Windows.Style", "application Fluent Button implicit style lookup");
+        AssertSame(implicitButtonStyle, Invoke(application, "TryFindResource", buttonType), "application Fluent Button implicit style lookup");
+        AssertSame(implicitCalendarStyle, Invoke(application, "TryFindResource", calendarType), "application Fluent Calendar implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", checkBoxType), "System.Windows.Style", "application Fluent CheckBox implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", comboBoxType), "System.Windows.Style", "application Fluent ComboBox implicit style lookup");
-        AssertType(Invoke(application, "TryFindResource", dataGridType), "System.Windows.Style", "application Fluent DataGrid implicit style lookup");
+        AssertSame(implicitDataGridStyle, Invoke(application, "TryFindResource", dataGridType), "application Fluent DataGrid implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", dataGridColumnHeaderType), "System.Windows.Style", "application Fluent DataGridColumnHeader implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", dataGridColumnHeadersPresenterType), "System.Windows.Style", "application Fluent DataGridColumnHeadersPresenter implicit style lookup");
-        AssertType(Invoke(application, "TryFindResource", datePickerType), "System.Windows.Style", "application Fluent DatePicker implicit style lookup");
+        AssertSame(implicitDatePickerStyle, Invoke(application, "TryFindResource", datePickerType), "application Fluent DatePicker implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", expanderType), "System.Windows.Style", "application Fluent Expander implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", gridSplitterType), "System.Windows.Style", "application Fluent GridSplitter implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", groupBoxType), "System.Windows.Style", "application Fluent GroupBox implicit style lookup");
@@ -585,6 +602,7 @@ internal static class Program
         AssertSame(sliderStyle, Invoke(application, "TryFindResource", sliderType), "application Fluent Slider implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", statusBarType), "System.Windows.Style", "application Fluent StatusBar implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", tabControlType), "System.Windows.Style", "application Fluent TabControl implicit style lookup");
+        AssertSame(implicitTextBoxStyle, Invoke(application, "TryFindResource", textBoxType), "application Fluent TextBox implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", thumbType), "System.Windows.Style", "application Fluent Thumb implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", toggleButtonType), "System.Windows.Style", "application Fluent ToggleButton implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", toolBarType), "System.Windows.Style", "application Fluent ToolBar implicit style lookup");
@@ -694,7 +712,8 @@ internal static class Program
         AssertType(GetDictionaryValue(themeDictionary, "DefaultDataGridRowHeaderStyle"), "System.Windows.Style", "DefaultDataGridRowHeaderStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultDataGridRowStyle"), "System.Windows.Style", "DefaultDataGridRowStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultDatePickerStyle"), "System.Windows.Style", "DefaultDatePickerStyle");
-        AssertType(GetDictionaryValue(themeDictionary, "DatePickerCalendarStyle"), "System.Windows.Style", "DatePickerCalendarStyle");
+        object datePickerCalendarStyle = GetDictionaryValue(themeDictionary, "DatePickerCalendarStyle");
+        AssertType(datePickerCalendarStyle, "System.Windows.Style", "DatePickerCalendarStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultDatePickerTextBoxStyle"), "System.Windows.Style", "DefaultDatePickerTextBoxStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultExpanderStyle"), "System.Windows.Style", "DefaultExpanderStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultExpanderToggleButtonDownStyle"), "System.Windows.Controls.ControlTemplate", "DefaultExpanderToggleButtonDownStyle");
@@ -895,6 +914,7 @@ internal static class Program
         AssertStyleHasSetter(GetProperty(treeView, "Style"), "Template", "TreeView Fluent template setter");
         AssertStyleHasSetter(GetProperty(calendar, "Style"), "Template", "Calendar Fluent template setter");
         AssertStyleHasSetter(GetProperty(datePicker, "Style"), "Template", "DatePicker Fluent template setter");
+        AssertStyleHasSetter(GetProperty(datePicker, "Style"), "CalendarStyle", "DatePicker Fluent calendar-style setter");
         AssertStyleHasSetter(GetProperty(menu, "Style"), "Template", "Menu Fluent template setter");
         AssertStyleHasSetter(GetProperty(themedToolBar, "Style"), "Template", "ToolBar Fluent template setter");
         AssertStyleHasSetter(GetProperty(GetCollectionItem(GetProperty(statusBar, "Items"), 0), "Style"), "Template", "StatusBarItem Fluent template setter");
@@ -945,6 +965,7 @@ internal static class Program
         AssertEqual("Monday", GetProperty(calendar, "FirstDayOfWeek").ToString(), "themed Calendar first day");
         AssertEqual(themeDate, GetProperty(datePicker, "DisplayDate"), "themed DatePicker display date");
         AssertEqual(themeDate, GetProperty(datePicker, "SelectedDate"), "themed DatePicker selected date");
+        AssertSame(datePickerCalendarStyle, GetProperty(datePicker, "CalendarStyle"), "themed DatePicker calendar-style dynamic resource");
         AssertEqual(1, GetCollectionCount(GetProperty(menu, "Items")), "themed Menu root item count");
         AssertEqual("_Theme", GetProperty(GetCollectionItem(GetProperty(menu, "Items"), 0), "Header"), "themed MenuItem root header");
         AssertEqual("_Open", GetProperty(GetCollectionItem(GetProperty(GetCollectionItem(GetProperty(menu, "Items"), 0), "Items"), 0), "Header"), "themed MenuItem child header");
@@ -1247,6 +1268,11 @@ internal static class Program
     {
         object targetType = GetProperty(style, "TargetType");
         AssertEqual(expectedTargetTypeName, targetType.ToString(), description);
+    }
+
+    private static void AssertStyleBasedOn(object style, object expectedBasedOn, string description)
+    {
+        AssertSame(expectedBasedOn, GetProperty(style, "BasedOn"), description);
     }
 
     private static void AssertStyleHasSetter(object style, string dependencyPropertyName, string description)

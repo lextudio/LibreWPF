@@ -4412,6 +4412,14 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
             "NuGet.config");
+        var runtimeHarnessProjectPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchRuntimeHarness",
+            "ProGPU.Wpf.SdkSwitchRuntimeHarness.csproj");
+        var runtimeHarnessProgramPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchRuntimeHarness",
+            "Program.cs");
 
         var sdkProject = XDocument.Load(sdkProjectPath);
         var sdkProps = File.ReadAllText(sdkPropsPath);
@@ -4420,6 +4428,8 @@ public sealed class WpfManagedProjectGraphTests
         var portableTargets = File.ReadAllText(portableTargetsPath);
         var smokeProject = File.ReadAllText(smokeProjectPath);
         var smokeNuGetConfig = File.ReadAllText(smokeNuGetConfigPath);
+        var runtimeHarnessProject = File.ReadAllText(runtimeHarnessProjectPath);
+        var runtimeHarnessProgram = File.ReadAllText(runtimeHarnessProgramPath);
 
         Assert.Contains("ProGPU/Silk.NET SDK for portable WPF applications", sdkProject.ToString(), StringComparison.Ordinal);
         Assert.Contains("MSBuildProjectName.Replace('.ArchNeutral','')", sdkProject.ToString(), StringComparison.Ordinal);
@@ -4479,6 +4489,26 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("Compile Include", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuWpfReferenceMode", smokeProject, StringComparison.Ordinal);
         Assert.Contains("artifacts/packages/Release/NonShipping", smokeNuGetConfig, StringComparison.Ordinal);
+
+        Assert.Contains("<Project Sdk=\"Microsoft.NET.Sdk\">", runtimeHarnessProject, StringComparison.Ordinal);
+        Assert.Contains("<OutputType>Exe</OutputType>", runtimeHarnessProject, StringComparison.Ordinal);
+        Assert.Contains("<TargetFramework>net11.0</TargetFramework>", runtimeHarnessProject, StringComparison.Ordinal);
+        Assert.Contains("<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>", runtimeHarnessProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("Microsoft.NET.Sdk.WindowsDesktop", runtimeHarnessProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProGPU.Wpf.Sdk", runtimeHarnessProject, StringComparison.Ordinal);
+
+        Assert.Contains("ProGPU.Wpf.SdkSwitchSmoke", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"artifacts\",", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"progpu-wpf-sdk-smoke\", \"wpf\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"progpu-wpf-sdk-smoke\", \"progpu\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("InvokeVoid(app, \"InitializeComponent\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertEqual(\"MainWindow.xaml\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("TryFindResource\", \"SmokeAccentBrush\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertEqual(\"#FF356D9E\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertAssignableTo(window, \"System.Windows.Window\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"Message\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"ActionButton\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.DoesNotContain(".Show()", runtimeHarnessProgram, StringComparison.Ordinal);
     }
 
     [Fact]

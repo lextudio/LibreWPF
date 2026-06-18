@@ -573,6 +573,14 @@ internal static class Program
         AssertSame(secondListItem, GetCollectionItem(restoredListItems, 1), "compiled RichTextBox DecreaseIndentation second list item");
         AssertCollectionCount(GetProperty(firstListItem, "Blocks"), expected: 1, "compiled RichTextBox DecreaseIndentation leading list item blocks");
         AssertFlowDocumentListItemText(secondListItem, "second document item", "restored second");
+
+        Invoke(selection, "Select", GetProperty(firstListParagraph, "ContentStart"), GetProperty(secondListParagraph, "ContentEnd"));
+        object removeListMarkersCommand = GetStaticProperty(editingCommandsType, "RemoveListMarkers");
+        AssertEqual(true, InvokeTwoArgumentCommand(removeListMarkersCommand, "CanExecute", null, richTextBox), "compiled RichTextBox RemoveListMarkers CanExecute");
+        InvokeTwoArgumentCommand(removeListMarkersCommand, "Execute", null, richTextBox);
+        AssertCollectionCount(blocks, expected: 6, "compiled RichTextBox RemoveListMarkers document blocks");
+        AssertFlowDocumentParagraphText(GetCollectionItem(blocks, 4), "first document item", "list marker removed first");
+        AssertFlowDocumentParagraphText(GetCollectionItem(blocks, 5), "second document item", "list marker removed second");
     }
 
     private static void AssertFlowDocumentParagraphText(object paragraph, string expectedText, string description)

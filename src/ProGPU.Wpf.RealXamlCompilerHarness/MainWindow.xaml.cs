@@ -250,6 +250,30 @@ public partial class MainWindow : Window
 
     public string? LastComboBoxSelectionRemovedItem { get; private set; }
 
+    public int FrameNavigatingCount { get; private set; }
+
+    public string? LastFrameNavigatingSenderName { get; private set; }
+
+    public string? LastFrameNavigatingUri { get; private set; }
+
+    public string? LastFrameNavigatingNavigationMode { get; private set; }
+
+    public int FrameNavigatedCount { get; private set; }
+
+    public string? LastFrameNavigatedSenderName { get; private set; }
+
+    public string? LastFrameNavigatedUri { get; private set; }
+
+    public string? LastFrameNavigatedContentType { get; private set; }
+
+    public int FrameLoadCompletedCount { get; private set; }
+
+    public string? LastFrameLoadCompletedSenderName { get; private set; }
+
+    public string? LastFrameLoadCompletedUri { get; private set; }
+
+    public string? LastFrameLoadCompletedContentType { get; private set; }
+
     public int DataGridClipboardRowEventCount { get; private set; }
 
     public int DataGridClipboardHeaderEventCount { get; private set; }
@@ -560,6 +584,30 @@ public partial class MainWindow : Window
         LastComboBoxSelectionRemovedCount = e.RemovedItems.Count;
         LastComboBoxSelectionAddedItem = DescribeSelectionItem(e.AddedItems);
         LastComboBoxSelectionRemovedItem = DescribeSelectionItem(e.RemovedItems);
+    }
+
+    private void OnSourceNavigationFrameNavigating(object sender, NavigatingCancelEventArgs e)
+    {
+        FrameNavigatingCount++;
+        LastFrameNavigatingSenderName = DescribeElementName(sender);
+        LastFrameNavigatingUri = e.Uri?.ToString();
+        LastFrameNavigatingNavigationMode = e.NavigationMode.ToString();
+    }
+
+    private void OnSourceNavigationFrameNavigated(object sender, NavigationEventArgs e)
+    {
+        FrameNavigatedCount++;
+        LastFrameNavigatedSenderName = DescribeElementName(sender);
+        LastFrameNavigatedUri = e.Uri?.ToString();
+        LastFrameNavigatedContentType = e.Content?.GetType().FullName;
+    }
+
+    private void OnSourceNavigationFrameLoadCompleted(object sender, NavigationEventArgs e)
+    {
+        FrameLoadCompletedCount++;
+        LastFrameLoadCompletedSenderName = DescribeElementName(sender);
+        LastFrameLoadCompletedUri = e.Uri?.ToString();
+        LastFrameLoadCompletedContentType = e.Content?.GetType().FullName;
     }
 
     private static string? DescribeSelectionItem(IList items)

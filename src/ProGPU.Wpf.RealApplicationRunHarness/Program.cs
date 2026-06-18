@@ -5003,6 +5003,16 @@ internal static class Program
         AssertType(page, "ProGPU.Wpf.RealXamlCompilerHarness.SmokePage", "compiled source Page content");
         AssertEqual("compiled source page", GetProperty(page, "Title"), "compiled source Page title");
         AssertEqual(0, GetProperty(page, "PageClickCount"), "compiled source Page initial click count");
+        AssertAtLeast(1, GetProperty(window, "FrameNavigatingCount"), "compiled Frame initial Navigating event count");
+        AssertAtLeast(1, GetProperty(window, "FrameNavigatedCount"), "compiled Frame initial Navigated event count");
+        AssertAtLeast(1, GetProperty(window, "FrameLoadCompletedCount"), "compiled Frame initial LoadCompleted event count");
+        AssertFrameNavigationEventState(
+            window,
+            Convert.ToInt32(GetProperty(window, "FrameLoadCompletedCount")),
+            "New",
+            "ProGPU.Wpf.RealXamlCompilerHarness.SmokePage",
+            "SmokePage.xaml",
+            "compiled Frame initial navigation events");
 
         object pagePanel = Invoke(page, "FindName", "SourceNavigationPagePanel");
         AssertType(pagePanel, "System.Windows.Controls.StackPanel", "compiled Page content panel");
@@ -5026,14 +5036,23 @@ internal static class Program
         AssertEqual("SourceNavigationPageButton", GetProperty(page, "LastPageClickSenderName"), "compiled source Page click sender");
         AssertEqual("Click", GetProperty(page, "LastPageClickRoutedEventName"), "compiled source Page click routed event");
 
-        ValidateFrameJournalNavigation(frame, flushDispatcherOperations);
+        ValidateFrameJournalNavigation(window, frame, flushDispatcherOperations);
     }
 
-    private static void ValidateFrameJournalNavigation(object frame, Action flushDispatcherOperations)
+    private static void ValidateFrameJournalNavigation(object window, object frame, Action flushDispatcherOperations)
     {
+        int navigationCount = Convert.ToInt32(GetProperty(window, "FrameLoadCompletedCount"));
+
         SetProperty(frame, "Source", new Uri("SmokeSecondPage.xaml", UriKind.Relative));
         flushDispatcherOperations();
         Invoke(frame, "UpdateLayout");
+        AssertFrameNavigationEventState(
+            window,
+            ++navigationCount,
+            "New",
+            "ProGPU.Wpf.RealXamlCompilerHarness.SmokeSecondPage",
+            "SmokeSecondPage.xaml",
+            "compiled Frame second navigation events");
 
         object secondPage = GetProperty(frame, "Content");
         AssertType(secondPage, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeSecondPage", "compiled second Page content");
@@ -5054,6 +5073,13 @@ internal static class Program
         Invoke(frame, "GoBack");
         flushDispatcherOperations();
         Invoke(frame, "UpdateLayout");
+        AssertFrameNavigationEventState(
+            window,
+            ++navigationCount,
+            "Back",
+            "ProGPU.Wpf.RealXamlCompilerHarness.SmokePage",
+            null,
+            "compiled Frame journal back navigation events");
         object firstPageAgain = GetProperty(frame, "Content");
         AssertType(firstPageAgain, "ProGPU.Wpf.RealXamlCompilerHarness.SmokePage", "compiled Frame journal back content");
         AssertEqual("compiled source page", GetProperty(firstPageAgain, "Title"), "compiled Frame journal back title");
@@ -5063,9 +5089,51 @@ internal static class Program
         Invoke(frame, "GoForward");
         flushDispatcherOperations();
         Invoke(frame, "UpdateLayout");
+        AssertFrameNavigationEventState(
+            window,
+            ++navigationCount,
+            "Forward",
+            "ProGPU.Wpf.RealXamlCompilerHarness.SmokeSecondPage",
+            null,
+            "compiled Frame journal forward navigation events");
         object secondPageAgain = GetProperty(frame, "Content");
         AssertType(secondPageAgain, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeSecondPage", "compiled Frame journal forward content");
         AssertEqual("compiled second page", GetProperty(secondPageAgain, "Title"), "compiled Frame journal forward title");
+    }
+
+    private static void AssertFrameNavigationEventState(
+        object window,
+        int expectedCount,
+        string expectedMode,
+        string expectedContentType,
+        string? expectedUriSubstring,
+        string description)
+    {
+        AssertEqual(expectedCount, GetProperty(window, "FrameNavigatingCount"), $"{description} Navigating count");
+        AssertEqual(expectedCount, GetProperty(window, "FrameNavigatedCount"), $"{description} Navigated count");
+        AssertEqual(expectedCount, GetProperty(window, "FrameLoadCompletedCount"), $"{description} LoadCompleted count");
+        AssertEqual("SourceNavigationFrame", GetProperty(window, "LastFrameNavigatingSenderName"), $"{description} Navigating sender");
+        AssertEqual("SourceNavigationFrame", GetProperty(window, "LastFrameNavigatedSenderName"), $"{description} Navigated sender");
+        AssertEqual("SourceNavigationFrame", GetProperty(window, "LastFrameLoadCompletedSenderName"), $"{description} LoadCompleted sender");
+        AssertEqual(expectedMode, GetProperty(window, "LastFrameNavigatingNavigationMode"), $"{description} Navigating mode");
+        AssertEqual(expectedContentType, GetProperty(window, "LastFrameNavigatedContentType"), $"{description} Navigated content type");
+        AssertEqual(expectedContentType, GetProperty(window, "LastFrameLoadCompletedContentType"), $"{description} LoadCompleted content type");
+
+        if (expectedUriSubstring != null)
+        {
+            AssertContains(
+                expectedUriSubstring,
+                GetProperty(window, "LastFrameNavigatingUri")?.ToString() ?? string.Empty,
+                $"{description} Navigating URI");
+            AssertContains(
+                expectedUriSubstring,
+                GetProperty(window, "LastFrameNavigatedUri")?.ToString() ?? string.Empty,
+                $"{description} Navigated URI");
+            AssertContains(
+                expectedUriSubstring,
+                GetProperty(window, "LastFrameLoadCompletedUri")?.ToString() ?? string.Empty,
+                $"{description} LoadCompleted URI");
+        }
     }
 
     private static ActivationRecorder RegisterPortableActivation(

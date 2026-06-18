@@ -1041,6 +1041,7 @@ internal static class Program
         ValidateStyleEventSetter(window);
         ValidateRoutedCommand(window);
         ValidateInputBinding(window);
+        ValidateMouseBinding(window);
         ValidateMenuItems(window);
         ValidateContextMenuAndToolTip(window);
         ValidateToolBarAndStatusBar(window);
@@ -3564,6 +3565,30 @@ internal static class Program
         AssertEqual("input binding payload", GetProperty(window, "LastRoutedCommandParameter"), "compiled KeyBinding command executed parameter");
     }
 
+    private static void ValidateMouseBinding(object window)
+    {
+        object mouseBindingSurface = GetField(window, "MouseBindingSurface");
+        AssertType(mouseBindingSurface, "System.Windows.Controls.TextBlock", "compiled MouseBinding surface");
+        AssertEqual("mouse binding surface", GetProperty(mouseBindingSurface, "Tag"), "compiled MouseBinding surface tag");
+
+        object inputBindings = GetProperty(mouseBindingSurface, "InputBindings");
+        AssertCollectionCount(inputBindings, expected: 1, "compiled MouseBinding surface input bindings");
+
+        object mouseBinding = GetCollectionItem(inputBindings, 0);
+        AssertType(mouseBinding, "System.Windows.Input.MouseBinding", "compiled MouseBinding");
+        AssertEqual("RightClick", GetProperty(mouseBinding, "MouseAction").ToString(), "compiled MouseBinding action");
+        AssertEqual("mouse binding payload", GetProperty(mouseBinding, "CommandParameter"), "compiled MouseBinding command parameter");
+
+        object mouseGesture = GetProperty(mouseBinding, "Gesture");
+        AssertType(mouseGesture, "System.Windows.Input.MouseGesture", "compiled MouseGesture");
+        AssertEqual("RightClick", GetProperty(mouseGesture, "MouseAction").ToString(), "compiled MouseGesture action");
+        AssertEqual("None", GetProperty(mouseGesture, "Modifiers").ToString(), "compiled MouseGesture modifiers");
+
+        object command = GetProperty(mouseBinding, "Command");
+        AssertType(command, "System.Windows.Input.RoutedUICommand", "compiled MouseBinding routed command");
+        AssertEqual("SmokeRoutedCommand", GetProperty(command, "Name"), "compiled MouseBinding routed command name");
+    }
+
     private static void ValidateMenuItems(object window)
     {
         object menu = GetField(window, "SmokeMenu");
@@ -5014,6 +5039,15 @@ internal static class Program
 
     private static (double X, double Y) GetElementCenterInWindow(Assembly presentationCore, object element, object window)
     {
+        object windowPoint = GetElementCenterPointInWindow(element, window);
+        object transformToDevice = GetTransformToDevice(presentationCore, window);
+        (double x, double y) = TransformPoint(transformToDevice, windowPoint);
+
+        return (x, y);
+    }
+
+    private static object GetElementCenterPointInWindow(object element, object window)
+    {
         double width = Convert.ToDouble(GetProperty(element, "ActualWidth"));
         double height = Convert.ToDouble(GetProperty(element, "ActualHeight"));
         object renderSize = GetProperty(element, "RenderSize");
@@ -5037,11 +5071,7 @@ internal static class Program
             ?? throw new TypeLoadException("Could not load 'System.Windows.Point'.");
         object center = Activator.CreateInstance(pointType, width / 2d, height / 2d)
             ?? throw new InvalidOperationException("Failed to create a WPF Point for portable mouse input.");
-        object windowPoint = Invoke(element, "TranslatePoint", center, window);
-        object transformToDevice = GetTransformToDevice(presentationCore, window);
-        (double x, double y) = TransformPoint(transformToDevice, windowPoint);
-
-        return (x, y);
+        return Invoke(element, "TranslatePoint", center, window);
     }
 
     private static object GetTransformToDevice(Assembly presentationCore, object visual)
@@ -5795,6 +5825,7 @@ internal static class Program
             ValidatePostShowSliderThumbDrag(typedActivation.Window);
             ValidatePostShowScrollingControls(typedActivation.Window);
             ValidatePortableInputBindingActivation(typedActivation.Window);
+            ValidatePortableMouseBindingActivation(typedActivation.Window);
             ValidatePortableTextInputActivation(typedActivation.Window);
             ValidatePortableMouseClickActivation(typedActivation.Window);
             ValidatePortableMouseWheelActivation(typedActivation.Window);
@@ -5846,7 +5877,7 @@ internal static class Program
             ValidatePostShowHierarchicalDataTemplate(_presentationCore, activation.Window);
             ValidateTabControl(activation.Window);
             ValidateSectionControls(activation.Window);
-            AssertEqual("input binding payload", GetProperty(activation.Window, "LastRoutedCommandParameter"), "portable input KeyBinding persisted command parameter");
+            AssertEqual("mouse binding payload", GetProperty(activation.Window, "LastRoutedCommandParameter"), "portable mouse MouseBinding persisted command parameter");
             AssertEqual("portable x", GetProperty(GetField(activation.Window, "InputBox"), "Text"), "portable text input persisted TextBox text");
             AssertAtLeast(2, GetProperty(activation.Window, "XamlClickCount"), "portable mouse routed Click persisted count");
             AssertEqual("EventButton", GetProperty(activation.Window, "LastXamlClickSenderName"), "portable mouse routed Click persisted sender name");
@@ -6007,6 +6038,82 @@ internal static class Program
 
             InvokeStatic(keyboardType, "ClearFocus");
             AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable Application.Run input KeyBinding clear focus");
+        }
+
+        private void ValidatePortableMouseBindingActivation(object window)
+        {
+            object mouseBindingSurface = GetField(window, "MouseBindingSurface");
+            Invoke(window, "UpdateLayout");
+            Invoke(mouseBindingSurface, "UpdateLayout");
+            (double x, double y) = GetElementCenterInWindow(_presentationCore, mouseBindingSurface, window);
+            object? directHit = InvokeNullable(window, "InputHitTest", GetElementCenterPointInWindow(mouseBindingSurface, window));
+
+            int initialExecutionCount = Convert.ToInt32(GetProperty(window, "RoutedCommandExecutionCount"));
+            object mouseMove = CreatePortableInputEvent("MouseMove", x: x, y: y);
+            Invoke(window, "HandlePortableInput", mouseMove);
+
+            Type mouseType = GetRequiredType(_presentationCore, "System.Windows.Input.Mouse");
+            object? directlyOverAfterMove = TryGetStaticProperty(mouseType, "DirectlyOver");
+            if (directlyOverAfterMove == null)
+            {
+                throw new InvalidOperationException(
+                    $"Expected portable Application.Run mouse move to update Mouse.DirectlyOver for MouseBinding. " +
+                    $"MoveHandled={GetProperty(mouseMove, "Handled")}, Input=({x}, {y}), InputHitTest={DescribeInputElement(directHit)}.");
+            }
+
+            object rightDown = CreatePortableInputEvent("MouseDown", x: x, y: y, buttonName: "Right");
+            Invoke(window, "HandlePortableInput", rightDown);
+
+            AssertPortableMouseBindingCommand(
+                window,
+                mouseBindingSurface,
+                directHit,
+                initialExecutionCount + 1,
+                x,
+                y,
+                "portable Application.Run mouse MouseBinding command execution count");
+            AssertEqual("mouse binding payload", GetProperty(window, "LastRoutedCommandParameter"), "portable Application.Run mouse MouseBinding command parameter");
+
+            Invoke(window, "HandlePortableInput", CreatePortableInputEvent("MouseUp", x: x, y: y, buttonName: "Right"));
+            AssertEqual(initialExecutionCount + 1, GetProperty(window, "RoutedCommandExecutionCount"), "portable Application.Run mouse MouseBinding ignores mouse up");
+        }
+
+        private void AssertPortableMouseBindingCommand(
+            object window,
+            object mouseBindingSurface,
+            object? directHit,
+            int expectedExecutionCount,
+            double x,
+            double y,
+            string description)
+        {
+            object actualExecutionCount = GetProperty(window, "RoutedCommandExecutionCount");
+            if (Equals(expectedExecutionCount, actualExecutionCount))
+            {
+                return;
+            }
+
+            Type mouseType = GetRequiredType(_presentationCore, "System.Windows.Input.Mouse");
+            object? directlyOver = TryGetStaticProperty(mouseType, "DirectlyOver");
+            object? captured = TryGetStaticProperty(mouseType, "Captured");
+            throw new InvalidOperationException(
+                $"Expected {description} to be '{expectedExecutionCount}', got '{actualExecutionCount}'. " +
+                $"Input=({x}, {y}), DirectlyOver={DescribeInputElement(directlyOver)}, " +
+                $"InputHitTest={DescribeInputElement(directHit)}, " +
+                $"Captured={DescribeInputElement(captured)}, " +
+                $"Surface.IsMouseOver={GetProperty(mouseBindingSurface, "IsMouseOver")}, " +
+                $"Surface.IsMouseDirectlyOver={GetProperty(mouseBindingSurface, "IsMouseDirectlyOver")}.");
+        }
+
+        private static string DescribeInputElement(object? element)
+        {
+            if (element == null)
+            {
+                return "<null>";
+            }
+
+            object? name = TryGetProperty(element, "Name");
+            return $"{element.GetType().FullName}(Name={name ?? "<null>"})";
         }
 
         private void ValidatePortableTextInputActivation(object window)

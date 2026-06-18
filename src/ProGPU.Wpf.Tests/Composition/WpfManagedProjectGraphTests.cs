@@ -1405,6 +1405,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"AccessTargetBox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"StandaloneAccessText\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"_Standalone access text\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MouseBindingSurface\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<TextBlock.InputBindings>", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<MouseBinding", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CommandParameter=\"mouse binding payload\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("MouseAction=\"RightClick\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SourceNavigationFrame\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("NavigationUIVisibility=\"Hidden\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Source=\"SmokePage.xaml\"", mainWindowXaml, StringComparison.Ordinal);
@@ -2027,6 +2032,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Window input bindings", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled KeyGesture", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled KeyBinding command executed parameter", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateMouseBinding(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MouseBinding surface", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MouseGesture action", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MouseBinding routed command name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable class input KeyBinding focused target", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable class input KeyBinding handled state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable class input KeyBinding command execution count", harnessProgram, StringComparison.Ordinal);
@@ -2055,6 +2064,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePortableInputBindingActivation(presentationCore, activation, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("RaiseHostInput(portableActivation.Host, keyDown)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable input KeyBinding handled state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableMouseBindingActivation(presentationCore, activation, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("WpfInputEventKind.MouseDown", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable mouse MouseBinding command execution count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable mouse MouseBinding command parameter", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable mouse MouseBinding ignores mouse up", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableTextInputActivation(presentationCore, activation, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable text input TextBox text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable text input caret index", harnessProgram, StringComparison.Ordinal);
@@ -2730,6 +2744,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Window input bindings", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled KeyGesture", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled KeyBinding command executed parameter", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateMouseBinding(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MouseBinding surface", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MouseGesture action", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MouseBinding routed command name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable Application.Run class input KeyBinding focused target", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable Application.Run class input KeyBinding handled state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable Application.Run class input KeyBinding command execution count", harnessProgram, StringComparison.Ordinal);
@@ -2758,6 +2776,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePortableInputBindingActivation(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreatePortableInputEvent(\"KeyDown\", \"F6\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable Application.Run input KeyBinding handled state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableMouseBindingActivation(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CreatePortableInputEvent(\"MouseDown\", x: x, y: y, buttonName: \"Right\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run mouse MouseBinding command execution count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run mouse MouseBinding command parameter", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run mouse MouseBinding ignores mouse up", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable mouse MouseBinding persisted command parameter", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableTextInputActivation(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreatePortableInputEvent(\"TextInput\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable Application.Run text input TextBox text", harnessProgram, StringComparison.Ordinal);

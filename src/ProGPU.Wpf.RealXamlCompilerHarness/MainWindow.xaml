@@ -184,9 +184,18 @@
         Margin="16"
         primitives:Thumb.DragDelta="OnBubbledThumbDragDelta">
         <TextBlock
+            x:Name="MouseBindingSurface"
             FontSize="18"
             Foreground="{StaticResource AccentBrush}"
-            Text="Real WPF XAML compiler smoke" />
+            Tag="mouse binding surface"
+            Text="Real WPF XAML compiler smoke">
+            <TextBlock.InputBindings>
+                <MouseBinding
+                    Command="{x:Static local:MainWindow.SmokeRoutedCommand}"
+                    CommandParameter="mouse binding payload"
+                    MouseAction="RightClick" />
+            </TextBlock.InputBindings>
+        </TextBlock>
         <Menu x:Name="SmokeMenu" Margin="0,8,0,0">
             <MenuItem
                 x:Name="FileMenuItem"

@@ -62,6 +62,7 @@ internal static class Program
             ValidateLooseXamlReader(presentationFramework);
             ValidateLooseXamlWriterRoundTrip(presentationFramework);
             ValidateLooseXamlWriterSystemResourceKeyRoundTrip(presentationFramework);
+            ValidatePortableSystemParameters(presentationFramework);
             ValidateLooseXamlWriterStyleRoundTrip(presentationFramework);
             ValidateLooseXamlWriterControlTemplateRoundTrip(presentationFramework);
             ValidateLooseXamlWriterDataTemplateRoundTrip(presentationFramework);
@@ -307,6 +308,32 @@ internal static class Program
         object roundTrippedStyle = GetDictionaryValue(roundTrippedDictionary, systemKey);
         AssertType(roundTrippedStyle, "System.Windows.Style", "loose XamlWriter round-trip system-key style");
         AssertEqual(menuItemType, GetProperty(roundTrippedStyle, "TargetType"), "loose XamlWriter round-trip system-key style target");
+    }
+
+    private static void ValidatePortableSystemParameters(Assembly presentationFramework)
+    {
+        Type systemParametersType = GetRequiredType(presentationFramework, "System.Windows.SystemParameters");
+
+        AssertPortableSystemParameterMetric(systemParametersType, "FocusBorderWidth");
+        AssertPortableSystemParameterMetric(systemParametersType, "FocusBorderHeight");
+        AssertPortableSystemParameterMetric(systemParametersType, "FocusHorizontalBorderHeight");
+        AssertPortableSystemParameterMetric(systemParametersType, "FocusVerticalBorderWidth");
+    }
+
+    private static void AssertPortableSystemParameterMetric(Type systemParametersType, string propertyName)
+    {
+        double value = Convert.ToDouble(GetStaticProperty(systemParametersType, propertyName));
+        if (OperatingSystem.IsWindows())
+        {
+            if (value < 0)
+            {
+                throw new InvalidOperationException($"Expected SystemParameters.{propertyName} to be non-negative, got '{value}'.");
+            }
+
+            return;
+        }
+
+        AssertClose(1.0, value, 0.0001, $"portable SystemParameters.{propertyName}");
     }
 
     private static void ValidateLooseXamlWriterStyleRoundTrip(Assembly presentationFramework)

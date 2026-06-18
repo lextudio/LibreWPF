@@ -105,7 +105,11 @@ namespace System.Windows
 
                         int focusBorderWidth = 0;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETFOCUSBORDERWIDTH, 0, ref focusBorderWidth, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _focusBorderWidth = ConvertPixel(DefaultFocusBorderMetric);
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETFOCUSBORDERWIDTH, 0, ref focusBorderWidth, 0))
                         {
                             _focusBorderWidth = ConvertPixel(focusBorderWidth);
                         }
@@ -136,7 +140,11 @@ namespace System.Windows
 
                         int focusBorderHeight = 0;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETFOCUSBORDERHEIGHT, 0, ref focusBorderHeight, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _focusBorderHeight = ConvertPixel(DefaultFocusBorderMetric);
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETFOCUSBORDERHEIGHT, 0, ref focusBorderHeight, 0))
                         {
                             _focusBorderHeight = ConvertPixel(focusBorderHeight);
                         }
@@ -2573,7 +2581,7 @@ namespace System.Windows
                     while (!_cacheValid[(int)CacheSlot.FocusHorizontalBorderHeight])
                     {
                         _cacheValid[(int)CacheSlot.FocusHorizontalBorderHeight] = true;
-                        _focusHorizontalBorderHeight = SystemParameters.ConvertPixel(UnsafeNativeMethods.GetSystemMetrics(SM.CXFOCUSBORDER));
+                        _focusHorizontalBorderHeight = GetSystemMetricPixel(SM.CXFOCUSBORDER, DefaultFocusBorderMetric);
                     }
                 }
 
@@ -2593,7 +2601,7 @@ namespace System.Windows
                     while(!_cacheValid[(int)CacheSlot.FocusVerticalBorderWidth])
                     {
                         _cacheValid[(int)CacheSlot.FocusVerticalBorderWidth] = true;
-                        _focusVerticalBorderWidth = SystemParameters.ConvertPixel(UnsafeNativeMethods.GetSystemMetrics(SM.CYFOCUSBORDER));
+                        _focusVerticalBorderWidth = GetSystemMetricPixel(SM.CYFOCUSBORDER, DefaultFocusBorderMetric);
                     }
                 }
 
@@ -5879,6 +5887,7 @@ namespace System.Windows
         }
 
         private const int DefaultScrollBarMetric = 17;
+        private const int DefaultFocusBorderMetric = 1;
         private const int DefaultPrimaryScreenWidth = 1024;
         private const int DefaultPrimaryScreenHeight = 768;
 

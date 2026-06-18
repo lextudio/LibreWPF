@@ -199,11 +199,12 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
-    public void RetainedSinkRejectsOwnerPopWhileDrawingScopesAreOpen()
+    public void RetainedSinkClosesOwnerLocalDrawingScopesOnOwnerPop()
     {
+        var retainedRoot = new ProGpuContainerVisual();
         var frame = new ProGpuWpfDrawingFrame(
             new ProGpuContainerVisual(),
-            new ProGpuContainerVisual(),
+            retainedRoot,
             new ProGpuDrawingVisual(),
             200,
             100);
@@ -212,11 +213,13 @@ public sealed class ProGpuWpfDrawingFrameTests
 
         Assert.True(branchSink.PushVisualOwner(new object()));
         sink.PushOpacity(0.5);
-
-        Assert.Throws<InvalidOperationException>(branchSink.PopVisualOwner);
-
-        sink.Pop();
         branchSink.PopVisualOwner();
+
+        var retainedRootVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
+        var ownerVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRootVisual.Children));
+        Assert.Equal(
+            new[] { ProGpuRenderCommandType.PushOpacity, ProGpuRenderCommandType.PopOpacity },
+            ownerVisual.Context.Commands.Select(command => command.Type));
     }
 
     [Fact]

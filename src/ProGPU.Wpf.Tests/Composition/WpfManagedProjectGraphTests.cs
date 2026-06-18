@@ -3298,6 +3298,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("created themed Slider", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("created themed ProgressBar", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("created themed DataGrid", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Theme implicit button", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Theme implicit text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(window, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(button, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(buttonContextMenu, \"ApplyTemplate\")", harnessProgram, StringComparison.Ordinal);
@@ -3437,7 +3439,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("themed ScrollViewer vertical visibility", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("themed ScrollBar viewport size", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("themed default Button content", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertEqual(4, GetCollectionCount(GetProperty(itemsControl, \"Items\")), \"themed ItemsControl item count\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("themed ItemsControl item content", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("runtime implicit themed Button item", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("runtime implicit themed TextBox item", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("runtime implicit Button Fluent style", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("runtime implicit TextBox Fluent style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("themed ListBox selected index", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("themed ListBoxItem content", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("themed Label focusable", harnessProgram, StringComparison.Ordinal);

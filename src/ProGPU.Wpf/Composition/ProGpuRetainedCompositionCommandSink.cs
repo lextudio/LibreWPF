@@ -135,9 +135,14 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
             throw new InvalidOperationException("The current retained visual scope is not a source owner scope.");
         }
 
-        if (_scopeStack.Count != current.ScopeStackDepth)
+        if (_scopeStack.Count < current.ScopeStackDepth)
         {
-            throw new InvalidOperationException("Cannot pop a retained source owner visual scope while drawing scopes are still open.");
+            throw new InvalidOperationException("Cannot pop a retained source owner visual scope after its parent drawing scopes changed.");
+        }
+
+        while (_scopeStack.Count > current.ScopeStackDepth)
+        {
+            Pop();
         }
 
         PopVisualScope();

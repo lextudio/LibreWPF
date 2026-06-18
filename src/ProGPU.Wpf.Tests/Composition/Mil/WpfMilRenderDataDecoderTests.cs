@@ -66,6 +66,23 @@ public sealed class WpfMilRenderDataDecoderTests
     }
 
     [Fact]
+    public void DecodeUnwindsAppliedPushesAtEndOfRenderData()
+    {
+        var opacityPayload = new byte[8];
+        WriteDouble(opacityPayload, 0, 0.5);
+
+        var sink = new TestSink();
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.PushOpacity, opacityPayload),
+            sink,
+            new TestResolver());
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 1), result);
+        Assert.Equal(new[] { 0.5 }, sink.Opacities);
+        Assert.Equal(1, sink.PopCount);
+    }
+
+    [Fact]
     public void DecodeNullResourcePushesAsNoOpScopes()
     {
         var pushClipPayload = new byte[8];
@@ -166,13 +183,14 @@ public sealed class WpfMilRenderDataDecoderTests
         var sink = new TestSink();
         var result = new WpfMilRenderDataDecoder().Decode(renderData, sink, resolver);
 
-        Assert.Equal(new WpfMilDecodeResult(6, 6, 0, 9), result);
+        Assert.Equal(new WpfMilDecodeResult(6, 6, 0, 10), result);
         Assert.Equal(1, sink.LineCount);
         Assert.Single(sink.DrawRectangles);
         Assert.Equal(1, sink.RoundedRectangleCount);
         Assert.Equal(1, sink.EllipseCount);
         Assert.Same(imageSource, Assert.Single(sink.Images));
         Assert.Equal(new[] { 0.5 }, sink.Opacities);
+        Assert.Equal(1, sink.PopCount);
     }
 
     [Fact]

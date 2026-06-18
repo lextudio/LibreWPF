@@ -148,6 +148,8 @@ Visual-level opacity masks are supported when the mask brush can be adapted and 
 
 Video records and byte-record generated effect scopes are counted as unsupported until `PushEffect` resources are available to the decoder. Source/object generated `PushEffect` can already lower supported context-bound legacy bitmap effects to native retained ProGPU effect scopes, while unresolved effects use no-op scopes to preserve stack balance and report partial unsupported state. Visual effect execution lowers to ProGPU-native descriptors such as `WpfShaderEffect` rather than managed CPU pixel loops; registered `ShaderEffect` replacements provide native WGSL for reflected WPF shader effects while Direct3D bytecode translation/import remains pending. Non-axis-aligned guideline snapping and exact WPF guideline semantics remain pending; supported guideline records now snap basic primitive coordinates while preserving render-data stack balance. Drawing resources that cannot be adapted are skipped rather than silently rendered incorrectly.
 
+If a decoded byte stream ends with applied push scopes still open, the decoder now pops those scopes before returning and counts each unwind as unsupported state. Retained source-owner replay then closes only drawing scopes opened inside that owner branch before leaving the branch, preserving parent replay state while making malformed or partial render-data scope leaks visible to tests and diagnostics.
+
 ## Verification
 
 `src/ProGPU.Wpf.Tests` validates:

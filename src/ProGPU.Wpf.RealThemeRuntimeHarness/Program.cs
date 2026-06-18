@@ -418,6 +418,12 @@ internal static class Program
         object itemsControlItems = GetProperty(itemsControl, "Items");
         AddToCollection(itemsControlItems, "Theme items one");
         AddToCollection(itemsControlItems, "Theme items two");
+        object implicitButton = Create(presentationFramework, "System.Windows.Controls.Button");
+        SetProperty(implicitButton, "Content", "Theme implicit button");
+        AddToCollection(itemsControlItems, implicitButton);
+        object implicitTextBox = Create(presentationFramework, "System.Windows.Controls.TextBox");
+        SetProperty(implicitTextBox, "Text", "Theme implicit text");
+        AddToCollection(itemsControlItems, implicitTextBox);
         SetProperty(itemsControl, "Style", itemsControlStyle);
         AddToCollection(children, itemsControl);
 
@@ -545,6 +551,8 @@ internal static class Program
         AssertSame(progressBarStyle, GetProperty(progressBar, "Style"), "ProgressBar Fluent style");
         AssertSame(dataGridStyle, GetProperty(dataGrid, "Style"), "DataGrid Fluent style");
         AssertSame(richTextBoxStyle, GetProperty(richTextBox, "Style"), "RichTextBox Fluent style");
+        AssertSame(implicitButtonStyle, GetProperty(implicitButton, "Style"), "runtime implicit Button Fluent style");
+        AssertSame(implicitTextBoxStyle, GetProperty(implicitTextBox, "Style"), "runtime implicit TextBox Fluent style");
         AssertStyleBasedOn(implicitButtonStyle, defaultButtonStyle, "implicit Button Fluent BasedOn default Button style");
         AssertStyleBasedOn(implicitCalendarStyle, calendarStyle, "implicit Calendar Fluent BasedOn default Calendar style");
         AssertStyleBasedOn(implicitDataGridStyle, dataGridStyle, "implicit DataGrid Fluent BasedOn default DataGrid style");
@@ -1036,8 +1044,16 @@ internal static class Program
         AssertEqual(25.0, GetProperty(scrollBar, "ViewportSize"), "themed ScrollBar viewport size");
         AssertEqual(33.0, GetProperty(scrollBar, "Value"), "themed ScrollBar value");
         AssertEqual("Theme default button", GetProperty(defaultButton, "Content"), "themed default Button content");
-        AssertEqual(2, GetCollectionCount(GetProperty(itemsControl, "Items")), "themed ItemsControl item count");
+        AssertEqual(4, GetCollectionCount(GetProperty(itemsControl, "Items")), "themed ItemsControl item count");
         AssertEqual("Theme items two", GetCollectionItem(GetProperty(itemsControl, "Items"), 1), "themed ItemsControl item content");
+        object implicitItemsButton = GetCollectionItem(GetProperty(itemsControl, "Items"), 2);
+        object implicitItemsTextBox = GetCollectionItem(GetProperty(itemsControl, "Items"), 3);
+        AssertType(implicitItemsButton, "System.Windows.Controls.Button", "runtime implicit themed Button item");
+        AssertType(implicitItemsTextBox, "System.Windows.Controls.TextBox", "runtime implicit themed TextBox item");
+        AssertEqual("Theme implicit button", GetProperty(implicitItemsButton, "Content"), "runtime implicit themed Button content");
+        AssertEqual("Theme implicit text", GetProperty(implicitItemsTextBox, "Text"), "runtime implicit themed TextBox text");
+        AssertSame(GetDictionaryValue(themeDictionary, implicitItemsButton.GetType()), GetProperty(implicitItemsButton, "Style"), "runtime implicit Button Fluent style");
+        AssertSame(GetDictionaryValue(themeDictionary, implicitItemsTextBox.GetType()), GetProperty(implicitItemsTextBox, "Style"), "runtime implicit TextBox Fluent style");
         AssertEqual(2, GetCollectionCount(GetProperty(listBox, "Items")), "themed ListBox item count");
         AssertEqual(1, GetProperty(listBox, "SelectedIndex"), "themed ListBox selected index");
         AssertEqual("Theme list box two", GetProperty(GetCollectionItem(GetProperty(listBox, "Items"), 1), "Content"), "themed ListBoxItem content");

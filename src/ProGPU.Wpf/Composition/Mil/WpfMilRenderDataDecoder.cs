@@ -320,6 +320,15 @@ public sealed class WpfMilRenderDataDecoder
             offset += recordSize;
         }
 
+        while (pushStack.Count > 0)
+        {
+            if (pushStack.Pop())
+            {
+                sink.Pop();
+                unsupportedCount++;
+            }
+        }
+
         return new WpfMilDecodeResult(recordCount, appliedCount, skippedCount, unsupportedCount);
     }
 

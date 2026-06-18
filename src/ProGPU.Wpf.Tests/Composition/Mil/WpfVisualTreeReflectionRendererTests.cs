@@ -51,6 +51,26 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeRecursesThroughProtectedVisualChildren()
+    {
+        var root = new FakeVisualChildrenVisual();
+        var childBrush = Brushes.Blue;
+        root.AddChild(new FakeDrawingVisual(CreateRenderData(childBrush)));
+        var sink = new TestSink();
+
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(2, result.VisualCount);
+        Assert.Equal(1, result.ContentCount);
+        Assert.Equal(1, result.ChildEdgeCount);
+        Assert.Equal(0, result.UnsupportedContentCount);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+        var rectangle = Assert.Single(sink.DrawRectangles);
+        Assert.Same(childBrush, rectangle.Brush);
+    }
+
+    [Fact]
     public void ReplaySubtreeReadsUiElementDrawingContent()
     {
         var brush = Brushes.Green;
@@ -1312,6 +1332,27 @@ public sealed class WpfVisualTreeReflectionRendererTests
         {
             _children.Add(child);
         }
+    }
+
+    private abstract class FakeProtectedVisualChildrenBase
+    {
+        private readonly List<object> _children = new();
+
+        protected int VisualChildrenCount => _children.Count;
+
+        public void AddChild(object child)
+        {
+            _children.Add(child);
+        }
+
+        protected object GetVisualChild(int index)
+        {
+            return _children[index];
+        }
+    }
+
+    private sealed class FakeVisualChildrenVisual : FakeProtectedVisualChildrenBase
+    {
     }
 
     private sealed class FakeDoubleCollection

@@ -922,16 +922,45 @@ public sealed class WpfVisualTreeReflectionRenderer
     {
         if (!TryGetPropertyValue(visual, "Children", out var children) || children == null)
         {
-            return Array.Empty<object>();
+            return ExtractVisualChildren(visual);
         }
 
         if (!TryReadIntProperty(children, "Count", out var count) || count <= 0)
         {
-            return Array.Empty<object>();
+            return ExtractVisualChildren(visual);
         }
 
         var getChild = FindIndexer(children.GetType());
         if (getChild == null)
+        {
+            return ExtractVisualChildren(visual);
+        }
+
+        var result = new List<object>(count);
+        for (var i = 0; i < count; i++)
+        {
+            var child = getChild(children, i);
+            if (child != null)
+            {
+                result.Add(child);
+            }
+        }
+
+        return result;
+    }
+
+    private static IReadOnlyList<object> ExtractVisualChildren(object visual)
+    {
+        if (!TryReadIntProperty(visual, "VisualChildrenCount", out var count) || count <= 0)
+        {
+            return Array.Empty<object>();
+        }
+
+        var getVisualChild = FindMethod(
+            visual.GetType(),
+            "GetVisualChild",
+            typeof(int));
+        if (getVisualChild == null)
         {
             return Array.Empty<object>();
         }
@@ -939,7 +968,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         var result = new List<object>(count);
         for (var i = 0; i < count; i++)
         {
-            var child = getChild(children, i);
+            var child = getVisualChild.Invoke(visual, new object[] { i });
             if (child != null)
             {
                 result.Add(child);
@@ -1255,7 +1284,7 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static bool TryGetPropertyValue(object instance, string propertyName, out object? value)
     {
-        var property = instance.GetType().GetProperty(propertyName, MemberFlags);
+        var property = FindProperty(instance.GetType(), propertyName);
         if (property == null || property.GetIndexParameters().Length != 0)
         {
             value = null;
@@ -1278,6 +1307,34 @@ public sealed class WpfVisualTreeReflectionRenderer
         if (getter != null)
         {
             return (instance, index) => getter.Invoke(instance, new object[] { index });
+        }
+
+        return null;
+    }
+
+    private static PropertyInfo? FindProperty(Type type, string name)
+    {
+        for (var current = type; current != null; current = current.BaseType)
+        {
+            var property = current.GetProperty(name, MemberFlags);
+            if (property != null)
+            {
+                return property;
+            }
+        }
+
+        return null;
+    }
+
+    private static MethodInfo? FindMethod(Type type, string name, params Type[] parameterTypes)
+    {
+        for (var current = type; current != null; current = current.BaseType)
+        {
+            var method = current.GetMethod(name, MemberFlags, binder: null, types: parameterTypes, modifiers: null);
+            if (method != null)
+            {
+                return method;
+            }
         }
 
         return null;

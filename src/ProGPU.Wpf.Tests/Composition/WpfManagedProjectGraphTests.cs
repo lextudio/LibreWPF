@@ -4417,6 +4417,22 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
             "NuGet.config");
+        var smokeAppXamlPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchSmoke",
+            "App.xaml");
+        var smokeResourcesXamlPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchSmoke",
+            "SmokeResources.xaml");
+        var smokeMainWindowXamlPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchSmoke",
+            "MainWindow.xaml");
+        var smokeMainWindowCodeBehindPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchSmoke",
+            "MainWindow.xaml.cs");
         var proGpuWpfProjectPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -4446,6 +4462,10 @@ public sealed class WpfManagedProjectGraphTests
         var portableBootstrap = File.ReadAllText(portableBootstrapPath);
         var smokeProject = File.ReadAllText(smokeProjectPath);
         var smokeNuGetConfig = File.ReadAllText(smokeNuGetConfigPath);
+        var smokeAppXaml = File.ReadAllText(smokeAppXamlPath);
+        var smokeResourcesXaml = File.ReadAllText(smokeResourcesXamlPath);
+        var smokeMainWindowXaml = File.ReadAllText(smokeMainWindowXamlPath);
+        var smokeMainWindowCodeBehind = File.ReadAllText(smokeMainWindowCodeBehindPath);
         var proGpuWpfProject = File.ReadAllText(proGpuWpfProjectPath);
         var wpfTransportTargets = File.ReadAllText(wpfTransportTargetsPath);
         var wpfTransportArchNeutralProject = File.ReadAllText(wpfTransportArchNeutralProjectPath);
@@ -4550,6 +4570,23 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("ProGpuWpfReferenceMode", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("GenerateDependencyFile", smokeProject, StringComparison.Ordinal);
         Assert.Contains("artifacts/packages/Release/NonShipping", smokeNuGetConfig, StringComparison.Ordinal);
+        Assert.Contains("ResourceDictionary Source=\"SmokeResources.xaml\"", smokeAppXaml, StringComparison.Ordinal);
+        Assert.Contains("SmokeAccentBrush", smokeAppXaml, StringComparison.Ordinal);
+        Assert.Contains("MergedAccentBrush", smokeResourcesXaml, StringComparison.Ordinal);
+        Assert.Contains("SmokePanelMargin", smokeResourcesXaml, StringComparison.Ordinal);
+        Assert.Contains("SmokeListTextStyle", smokeResourcesXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding Title}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Click=\"OnActionButtonClick\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding Items}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemTemplate=\"{StaticResource SmokeItemTemplate}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"{Binding SelectedItem, ElementName=ItemsList}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<RichTextBox", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<FlowDocument>", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DataContext = new SmokeViewModel();", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnActionButtonClick", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ClickStatus.Text = \"clicked\";", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ObservableCollection<SmokeItem>", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>", proGpuWpfProject, StringComparison.Ordinal);
         Assert.Contains("PresentationCore\\PresentationCore.csproj\" PrivateAssets=\"all\"", proGpuWpfProject, StringComparison.Ordinal);
         Assert.Contains("$([MSBuild]::IsOSPlatform('Windows'))", wpfTransportTargets, StringComparison.Ordinal);
@@ -4568,6 +4605,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"Microsoft.DotNet.Wpf.GitHub.Debug\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"UIAutomationTypes\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"System.Windows.Primitives\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"PresentationFramework.Fluent\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"PresentationFramework.Aero2\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"Silk.NET.Windowing.Common\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"Silk.NET.WebGPU\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetNativeAssetCandidates(\"wgpu\")", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -4582,10 +4621,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SDK portable bootstrap loaded ProGPU.Wpf", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(\"MainWindow.xaml\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindResource\", \"SmokeAccentBrush\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("TryFindResource\", \"MergedAccentBrush\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("TryFindResource\", \"SmokePanelMargin\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(\"#FF356D9E\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertAssignableTo(window, \"System.Windows.Window\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"Message\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"ActionButton\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"InputBox\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"ItemsList\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"SelectedItemPresenter\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"DocumentBox\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("InvokeVoid(actionButton, \"OnClick\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RunApplicationRunSmoke", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortablePresentationSource", runtimeHarnessProgram, StringComparison.Ordinal);

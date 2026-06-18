@@ -4,6 +4,12 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     StartupUri="MainWindow.xaml">
     <Application.Resources>
-        <SolidColorBrush x:Key="SmokeAccentBrush" Color="#356D9E" />
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="SmokeResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <SolidColorBrush x:Key="SmokeAccentBrush" Color="#356D9E" />
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -17,10 +17,14 @@ internal static class Program
         "System.Xaml",
         "PresentationCore",
         "PresentationFramework",
+        "PresentationUI",
+        "ReachFramework",
         "UIAutomationTypes",
         "UIAutomationProvider",
         "System.Windows.Input.Manipulations",
-        "System.Windows.Primitives"
+        "System.Windows.Primitives",
+        "PresentationFramework.Aero2",
+        "PresentationFramework.Fluent"
     ];
     private static readonly string[] ProGpuRuntimeAssemblies =
     [
@@ -242,6 +246,11 @@ internal static class Program
         object accentBrush = Invoke(app, "TryFindResource", "SmokeAccentBrush");
         AssertType(accentBrush, "System.Windows.Media.SolidColorBrush", "application accent brush");
         AssertEqual("#FF356D9E", GetProperty(accentBrush, "Color").ToString() ?? string.Empty, "application accent brush color");
+        object mergedAccentBrush = Invoke(app, "TryFindResource", "MergedAccentBrush");
+        AssertType(mergedAccentBrush, "System.Windows.Media.SolidColorBrush", "application merged accent brush");
+        AssertEqual("#FF6B8F3A", GetProperty(mergedAccentBrush, "Color").ToString() ?? string.Empty, "application merged accent brush color");
+        object smokePanelMargin = Invoke(app, "TryFindResource", "SmokePanelMargin");
+        AssertType(smokePanelMargin, "System.Windows.Thickness", "application merged panel margin");
         AssertAtLeast(1, GetCount(GetProperty(resources, "Keys")), "application resource key count");
     }
 
@@ -249,16 +258,59 @@ internal static class Program
     {
         AssertAssignableTo(window, "System.Windows.Window", "SDK smoke main window");
         AssertEqual("ProGPU WPF SDK Smoke", GetProperty(window, "Title"), "window title");
-        AssertEqual(320.0, GetProperty(window, "Width"), "window width");
-        AssertEqual(180.0, GetProperty(window, "Height"), "window height");
+        AssertEqual(420.0, GetProperty(window, "Width"), "window width");
+        AssertEqual(360.0, GetProperty(window, "Height"), "window height");
+
+        InvokeVoid(window, "UpdateLayout");
 
         object message = Invoke(window, "FindName", "Message");
         AssertType(message, "System.Windows.Controls.TextBlock", "message element");
-        AssertEqual("ProGPU WPF SDK switch smoke", GetProperty(message, "Text"), "message text");
+        AssertEqual("ProGPU WPF SDK switch managed subsystem smoke", GetProperty(message, "Text"), "message text");
+        object messageForeground = GetProperty(message, "Foreground");
+        AssertType(messageForeground, "System.Windows.Media.SolidColorBrush", "message dynamic resource foreground");
+        AssertEqual("#FF6B8F3A", GetProperty(messageForeground, "Color").ToString() ?? string.Empty, "message foreground color");
 
         object actionButton = Invoke(window, "FindName", "ActionButton");
         AssertType(actionButton, "System.Windows.Controls.Button", "action button");
-        AssertEqual("ProGPU WPF SDK switch smoke", GetProperty(actionButton, "Content"), "button bound content");
+        AssertEqual("ProGPU WPF SDK switch managed subsystem smoke", GetProperty(actionButton, "Content"), "button bound content");
+        AssertType(GetProperty(actionButton, "Style"), "System.Windows.Style", "action button explicit style");
+        object actionButtonBackground = GetProperty(actionButton, "Background");
+        AssertType(actionButtonBackground, "System.Windows.Media.SolidColorBrush", "action button dynamic resource background");
+        AssertEqual("#FF356D9E", GetProperty(actionButtonBackground, "Color").ToString() ?? string.Empty, "action button background color");
+
+        object clickStatus = Invoke(window, "FindName", "ClickStatus");
+        AssertType(clickStatus, "System.Windows.Controls.TextBlock", "click status element");
+        object clickStatusText = GetProperty(clickStatus, "Text");
+        if (object.Equals("not clicked", clickStatusText))
+        {
+            InvokeVoid(actionButton, "OnClick");
+        }
+
+        AssertEqual("clicked", GetProperty(clickStatus, "Text"), "click status after generated event");
+
+        object inputBox = Invoke(window, "FindName", "InputBox");
+        AssertType(inputBox, "System.Windows.Controls.TextBox", "input box");
+        AssertEqual("editable package text", GetProperty(inputBox, "Text"), "input box bound text");
+
+        object itemsList = Invoke(window, "FindName", "ItemsList");
+        AssertType(itemsList, "System.Windows.Controls.ListBox", "items list");
+        AssertEqual(1, GetProperty(itemsList, "SelectedIndex"), "items list selected index");
+        AssertType(GetProperty(itemsList, "ItemTemplate"), "System.Windows.DataTemplate", "items list item template");
+        AssertAtLeast(3, GetCount(GetProperty(itemsList, "Items")), "items list count");
+        object selectedItem = GetProperty(itemsList, "SelectedItem");
+        AssertEqual("Scene", GetProperty(selectedItem, "Name"), "selected item name");
+        AssertEqual("ProGPU", GetProperty(selectedItem, "Value"), "selected item value");
+
+        object selectedItemPresenter = Invoke(window, "FindName", "SelectedItemPresenter");
+        AssertType(selectedItemPresenter, "System.Windows.Controls.ContentControl", "selected item presenter");
+        AssertSame(selectedItem, GetProperty(selectedItemPresenter, "Content"), "selected item presenter content");
+        AssertType(GetProperty(selectedItemPresenter, "ContentTemplate"), "System.Windows.DataTemplate", "selected item presenter template");
+
+        object documentBox = Invoke(window, "FindName", "DocumentBox");
+        AssertType(documentBox, "System.Windows.Controls.RichTextBox", "rich text box");
+        object document = GetProperty(documentBox, "Document");
+        AssertType(document, "System.Windows.Documents.FlowDocument", "rich text document");
+        AssertAtLeast(2, GetCount(GetProperty(document, "Blocks")), "rich text block count");
     }
 
     private static SdkApplicationRunRecorder RegisterPortableActivation(
@@ -725,8 +777,8 @@ internal static class Program
             RunCount++;
             AssertEqual(true, typedActivation.IsVisible, "SDK startup window visible before run");
             AssertEqual("ProGPU WPF SDK Smoke", typedActivation.Title, "activated SDK window title");
-            AssertEqual(320.0, typedActivation.Width, "activated SDK window width");
-            AssertEqual(180.0, typedActivation.Height, "activated SDK window height");
+            AssertEqual(420.0, typedActivation.Width, "activated SDK window width");
+            AssertEqual(360.0, typedActivation.Height, "activated SDK window height");
             AssertSame(typedActivation.Window, GetProperty(_application, "MainWindow"), "SDK Application.MainWindow");
             InvokeVoid(typedActivation.Window, "UpdateLayout");
             FlushDispatcherOperations(typedActivation.Window, "Loaded", "Render", "ApplicationIdle");

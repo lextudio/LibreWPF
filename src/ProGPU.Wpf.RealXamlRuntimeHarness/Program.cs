@@ -561,6 +561,17 @@ internal static class Program
         AssertType(GetCollectionItem(insertedCells, 1), "System.Windows.Documents.TableCell", "compiled RichTextBox InsertRows second inserted cell");
         AssertFlowDocumentTableCellText(firstTableCell, "table alpha", "first after row insert");
         AssertFlowDocumentTableCellText(secondTableCell, "table beta", "second after row insert");
+        Invoke(selection, "Select", GetProperty(firstTableCellParagraph, "ContentStart"), GetProperty(firstTableCellParagraph, "ContentEnd"));
+        object insertColumnsCommand = GetStaticProperty(editingCommandsType, "InsertColumns");
+        AssertEqual(true, InvokeTwoArgumentCommand(insertColumnsCommand, "CanExecute", null, richTextBox), "compiled RichTextBox InsertColumns CanExecute");
+        InvokeTwoArgumentCommand(insertColumnsCommand, "Execute", null, richTextBox);
+        AssertCollectionCount(cells, expected: 3, "compiled RichTextBox InsertColumns first row cells");
+        AssertSame(firstTableCell, GetCollectionItem(cells, 0), "compiled RichTextBox InsertColumns preserved first cell");
+        AssertSame(secondTableCell, GetCollectionItem(cells, 2), "compiled RichTextBox InsertColumns preserved second cell");
+        AssertCollectionCount(insertedCells, expected: 3, "compiled RichTextBox InsertColumns copied row cells");
+        AssertType(GetCollectionItem(insertedCells, 1), "System.Windows.Documents.TableCell", "compiled RichTextBox InsertColumns copied inserted-row cell");
+        AssertFlowDocumentTableCellText(firstTableCell, "table alpha", "first after column insert");
+        AssertFlowDocumentTableCellText(secondTableCell, "table beta", "second after column insert");
 
         object list = GetCollectionItem(blocks, 4);
         AssertType(list, "System.Windows.Documents.List", "compiled FlowDocument list");

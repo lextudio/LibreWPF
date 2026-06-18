@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.Loader;
 using System.Windows.Media.ProGPU;
@@ -46,6 +47,7 @@ internal static class Program
         Assembly presentationCore = loadContext.LoadFromAssemblyPath(presentationCorePath);
         Assembly presentationFramework = loadContext.LoadFromAssemblyPath(presentationFrameworkPath);
         Assembly compilerHarness = loadContext.LoadFromAssemblyPath(compilerHarnessPath);
+        Assembly systemXaml = loadContext.LoadFromAssemblyName(new AssemblyName("System.Xaml"));
 
         object? application = null;
         object? activation = null;
@@ -56,6 +58,7 @@ internal static class Program
         {
             application = Create(compilerHarness, AppTypeName);
             Invoke(application, "InitializeComponent");
+            ValidateSystemXamlNameScopeDictionary(systemXaml);
             ValidateLooseXamlReader(presentationFramework);
             ValidateLooseXamlWriterRoundTrip(presentationFramework);
             ValidateApplication(application);
@@ -343,6 +346,88 @@ internal static class Program
 
         return save.Invoke(null, new[] { value }) as string
             ?? throw new InvalidOperationException("Loose XamlWriter.Save returned null.");
+    }
+
+    private static void ValidateSystemXamlNameScopeDictionary(Assembly systemXaml)
+    {
+        Type dictionaryType = GetRequiredType(systemXaml, "System.Xaml.NameScopeDictionary");
+        object standaloneDictionary = CreateInternal(dictionaryType);
+        ValidateNameScopeDictionaryContract(standaloneDictionary, "standalone System.Xaml NameScopeDictionary");
+
+        Type nameScopeType = GetRequiredType(systemXaml, "System.Xaml.NameScope");
+        object underlyingNameScope = CreateInternal(nameScopeType);
+        object wrappedDictionary = CreateInternal(dictionaryType, underlyingNameScope);
+        object externalOnlyValue = new object();
+        Invoke(underlyingNameScope, "RegisterName", "ExternalOnlyName", externalOnlyValue);
+        AssertSame(externalOnlyValue, Invoke(wrappedDictionary, "FindName", "ExternalOnlyName"), "wrapped System.Xaml NameScopeDictionary external FindName");
+        AssertEqual(false, ((IDictionary<string, object>)wrappedDictionary).ContainsKey("ExternalOnlyName"), "wrapped System.Xaml NameScopeDictionary external key stays out of dictionary view");
+        ValidateNameScopeDictionaryContract(wrappedDictionary, "wrapped System.Xaml NameScopeDictionary");
+        AssertSame(externalOnlyValue, Invoke(wrappedDictionary, "FindName", "ExternalOnlyName"), "wrapped System.Xaml NameScopeDictionary clear preserves external name");
+        Invoke(underlyingNameScope, "UnregisterName", "ExternalOnlyName");
+
+        var wrapped = (IDictionary<string, object>)wrappedDictionary;
+        object finalValue = new object();
+        wrapped.Add("FinalName", finalValue);
+        AssertSame(finalValue, Invoke(underlyingNameScope, "FindName", "FinalName"), "wrapped System.Xaml NameScopeDictionary underlying registration");
+        wrapped.Clear();
+        AssertEqual(null, InvokeNullable(underlyingNameScope, "FindName", "FinalName"), "wrapped System.Xaml NameScopeDictionary clear unregisters underlying name");
+    }
+
+    private static void ValidateNameScopeDictionaryContract(object nameScopeDictionary, string description)
+    {
+        var dictionary = (IDictionary<string, object>)nameScopeDictionary;
+        var collection = (ICollection<KeyValuePair<string, object>>)nameScopeDictionary;
+
+        AssertEqual(0, collection.Count, $"{description} initial count");
+        AssertEqual(false, collection.IsReadOnly, $"{description} read/write flag");
+
+        object first = new object();
+        dictionary.Add("FirstName", first);
+        AssertEqual(1, collection.Count, $"{description} add count");
+        AssertEqual(true, dictionary.ContainsKey("FirstName"), $"{description} contains key");
+        AssertSame(first, dictionary["FirstName"], $"{description} indexer getter");
+        AssertEqual(true, dictionary.TryGetValue("FirstName", out object? foundFirst), $"{description} try-get result");
+        AssertSame(first, foundFirst!, $"{description} try-get value");
+        AssertCollectionCount(dictionary.Keys, expected: 1, $"{description} keys");
+        AssertCollectionCount(dictionary.Values, expected: 1, $"{description} values");
+
+        var copied = new KeyValuePair<string, object>[2];
+        collection.CopyTo(copied, 1);
+        AssertEqual("FirstName", copied[1].Key, $"{description} copied key");
+        AssertSame(first, copied[1].Value, $"{description} copied value");
+        AssertEqual(true, collection.Contains(new KeyValuePair<string, object>("FirstName", first)), $"{description} key/value contains");
+        AssertEqual(false, collection.Contains(new KeyValuePair<string, object>("FirstName", new object())), $"{description} mismatched key/value contains");
+
+        object second = new object();
+        collection.Add(new KeyValuePair<string, object>("SecondName", second));
+        AssertEqual(2, collection.Count, $"{description} collection add count");
+        AssertEqual(true, dictionary.Remove("SecondName"), $"{description} key remove");
+        AssertEqual(false, dictionary.Remove("MissingName"), $"{description} missing key remove");
+        AssertEqual(false, dictionary.TryGetValue("SecondName", out object? missing), $"{description} removed try-get result");
+        AssertEqual(null, missing, $"{description} removed try-get value");
+
+        AssertEqual(false, collection.Remove(new KeyValuePair<string, object>("FirstName", new object())), $"{description} mismatched key/value remove");
+        AssertEqual(true, collection.Remove(new KeyValuePair<string, object>("FirstName", first)), $"{description} key/value remove");
+        AssertEqual(0, collection.Count, $"{description} empty count after remove");
+
+        object third = new object();
+        dictionary["ThirdName"] = third;
+        dictionary["ThirdName"] = third;
+        AssertEqual(1, collection.Count, $"{description} duplicate same-object registration count");
+        AssertSame(third, dictionary["ThirdName"], $"{description} duplicate same-object registration value");
+
+        try
+        {
+            dictionary["ThirdName"] = new object();
+            throw new InvalidOperationException($"Expected {description} duplicate replacement to throw.");
+        }
+        catch (ArgumentException)
+        {
+        }
+
+        collection.Clear();
+        AssertEqual(0, collection.Count, $"{description} clear count");
+        AssertEqual(false, dictionary.ContainsKey("ThirdName"), $"{description} clear removed name");
     }
 
     private static void ValidateMainWindow(Assembly presentationCore, object window, object application)
@@ -4266,6 +4351,17 @@ internal static class Program
         Type type = GetRequiredType(assembly, typeName);
         return Activator.CreateInstance(type, parameters)
             ?? throw new InvalidOperationException($"Failed to create '{typeName}'.");
+    }
+
+    private static object CreateInternal(Type type, params object?[] parameters)
+    {
+        return Activator.CreateInstance(
+                type,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                args: parameters,
+                culture: null)
+            ?? throw new InvalidOperationException($"Failed to create '{type.FullName}'.");
     }
 
     private static Type GetRequiredType(Assembly assembly, string typeName)

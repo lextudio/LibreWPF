@@ -72,6 +72,32 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void SystemXamlNameScopeDictionaryImplementsDictionaryContract()
+    {
+        var sourcePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "System.Xaml",
+            "System",
+            "Xaml",
+            "NameScopeDictionary.cs");
+        var source = File.ReadAllText(sourcePath);
+
+        Assert.DoesNotContain("throw new NotImplementedException", source, StringComparison.Ordinal);
+        Assert.Contains("int ICollection<KeyValuePair<string, object>>.Count", source, StringComparison.Ordinal);
+        Assert.Contains("void ICollection<KeyValuePair<string, object>>.Clear()", source, StringComparison.Ordinal);
+        Assert.Contains("void ICollection<KeyValuePair<string, object>>.CopyTo", source, StringComparison.Ordinal);
+        Assert.Contains("bool ICollection<KeyValuePair<string, object>>.Remove", source, StringComparison.Ordinal);
+        Assert.Contains("object IDictionary<string, object>.this[string key]", source, StringComparison.Ordinal);
+        Assert.Contains("bool IDictionary<string, object>.TryGetValue", source, StringComparison.Ordinal);
+        Assert.Contains("ICollection<string> IDictionary<string, object>.Keys", source, StringComparison.Ordinal);
+        Assert.Contains("_underlyingNameScope.RegisterName(name, scopedElement)", source, StringComparison.Ordinal);
+        Assert.Contains("_underlyingNameScope.UnregisterName(name)", source, StringComparison.Ordinal);
+        Assert.Contains("return _underlyingNameScope is not null", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MediaContextUsesPortableClockOutsideWindows()
     {
         var sourcePath = FindRepoPath(
@@ -1552,6 +1578,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CompilerHarnessAssemblyName = \"ProGPU.Wpf.RealXamlCompilerHarness\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loadContext.LoadFromAssemblyPath(compilerHarnessPath)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(application, \"InitializeComponent\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateSystemXamlNameScopeDictionary(systemXaml)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Xaml.NameScopeDictionary", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("standalone System.Xaml NameScopeDictionary", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("wrapped System.Xaml NameScopeDictionary external key stays out of dictionary view", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("wrapped System.Xaml NameScopeDictionary clear preserves external name", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("wrapped System.Xaml NameScopeDictionary underlying registration", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("wrapped System.Xaml NameScopeDictionary clear unregisters underlying name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlReader(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlWriterRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Markup.XamlReader", harnessProgram, StringComparison.Ordinal);
@@ -2136,6 +2169,13 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("CompilerHarnessAssemblyName = \"ProGPU.Wpf.RealXamlCompilerHarness\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(application, \"InitializeComponent\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateSystemXamlNameScopeDictionary(systemXaml)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Xaml.NameScopeDictionary", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("standalone System.Xaml NameScopeDictionary", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("wrapped System.Xaml NameScopeDictionary external key stays out of dictionary view", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("wrapped System.Xaml NameScopeDictionary clear preserves external name", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("wrapped System.Xaml NameScopeDictionary underlying registration", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("wrapped System.Xaml NameScopeDictionary clear unregisters underlying name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlReader(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlWriterRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Markup.XamlReader", harnessProgram, StringComparison.Ordinal);

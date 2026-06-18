@@ -385,6 +385,11 @@ internal static class Program
         object providerGreetingText = Invoke(window, "FindName", "ProviderGreetingText");
         AssertType(providerGreetingText, "System.Windows.Controls.TextBlock", "provider greeting text element");
         AssertEqual("provider:7", GetProperty(providerGreetingText, "Text"), "provider greeting text");
+        object xmlSmokeData = Invoke(window, "FindResource", "XmlSmokeData");
+        AssertType(xmlSmokeData, "System.Windows.Data.XmlDataProvider", "window XML data provider");
+        object xmlProviderText = Invoke(window, "FindName", "XmlProviderText");
+        AssertType(xmlProviderText, "System.Windows.Controls.TextBlock", "XML provider text element");
+        AssertEqual("xml", GetProperty(xmlProviderText, "Text"), "XML provider XPath binding text");
 
         object unsharedBrushBorder = Invoke(window, "FindName", "UnsharedBrushBorder");
         AssertType(unsharedBrushBorder, "System.Windows.Controls.Border", "unshared brush border");

@@ -139,6 +139,17 @@
         <local:SmokeItemDisplayConverter x:Key="SmokeItemDisplayConverter" />
         <local:SmokeItemSummaryConverter x:Key="SmokeItemSummaryConverter" />
 
+        <XmlDataProvider
+            x:Key="XmlSmokeData"
+            IsAsynchronous="False"
+            XPath="/smoke/item">
+            <x:XData>
+                <smoke xmlns="">
+                    <item name="xml" value="provider" />
+                </smoke>
+            </x:XData>
+        </XmlDataProvider>
+
         <CollectionViewSource x:Key="GroupedItems" Source="{Binding Items}">
             <CollectionViewSource.SortDescriptions>
                 <componentModel:SortDescription PropertyName="Name" Direction="Ascending" />
@@ -206,6 +217,10 @@
             x:Name="ProviderGreetingText"
             Margin="0,6,0,0"
             Text="{Binding Source={StaticResource ProviderGreeting}}" />
+        <TextBlock
+            x:Name="XmlProviderText"
+            Margin="0,6,0,0"
+            Text="{Binding Source={StaticResource XmlSmokeData}, XPath=@name}" />
         <Border
             x:Name="UnsharedBrushBorder"
             Height="4"

@@ -4686,6 +4686,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Style=\"{StaticResource BasedOnSmokeTextStyle}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ProviderGreetingText\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding Source={StaticResource ProviderGreeting}}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<XmlDataProvider", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"XmlSmokeData\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("IsAsynchronous=\"False\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<x:XData>", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<item name=\"xml\" value=\"provider\" />", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"XmlProviderText\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("XPath=@name", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"UnsharedBrushBorder\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Background=\"{StaticResource UnsharedAccentBrush}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -4906,6 +4913,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("based-on resource inherited font weight", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"ProviderGreetingText\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("provider greeting text", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindResource\", \"XmlSmokeData\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("window XML data provider", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"XmlProviderText\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("XML provider XPath binding text", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"UnsharedBrushBorder\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("unshared border brush color", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"InputBox\"", runtimeHarnessProgram, StringComparison.Ordinal);

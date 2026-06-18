@@ -7,39 +7,18 @@ internal static class Program
     private const string SmokeAssemblyName = "ProGPU.Wpf.SdkSwitchSmoke";
     private const string AppTypeName = "ProGPU.Wpf.SdkSwitchSmoke.App";
     private const string MainWindowTypeName = "ProGPU.Wpf.SdkSwitchSmoke.MainWindow";
+    private const string PortableMediaContextRenderServiceTypeName = "System.Windows.Media.PortableMediaContextRenderService";
+    private const string PortablePresentationSourceTypeName = "System.Windows.PortablePresentationSource";
+    private const string PortableWindowActivationServiceTypeName = "System.Windows.PortableWindowActivationService";
 
     [STAThread]
     private static int Main()
     {
         try
         {
-            string repoRoot = FindRepoRoot();
-            string smokeAssemblyPath = Path.Combine(
-                repoRoot,
-                "artifacts",
-                "bin",
-                SmokeAssemblyName,
-                "Debug",
-                "net11.0",
-                SmokeAssemblyName + ".dll");
-            string wpfRoot = Path.Combine(repoRoot, "artifacts", "progpu-wpf-sdk-smoke", "wpf");
-            string proGpuRoot = Path.Combine(repoRoot, "artifacts", "progpu-wpf-sdk-smoke", "progpu");
-
-            RequireFile(smokeAssemblyPath, "SDK switch smoke assembly");
-            RequireDirectory(wpfRoot, "ported WPF artifact root");
-            RequireDirectory(proGpuRoot, "ProGPU artifact root");
-
-            using var loadContext = new SdkSmokeLoadContext(repoRoot, smokeAssemblyPath, wpfRoot, proGpuRoot);
-            Assembly smokeAssembly = loadContext.LoadFromAssemblyPath(smokeAssemblyPath);
-
-            object app = Create(smokeAssembly, AppTypeName);
-            InvokeVoid(app, "InitializeComponent");
-            ValidateApp(app);
-
-            object window = Create(smokeAssembly, MainWindowTypeName);
-            ValidateWindow(window);
-
-            TryInvoke(app, "Shutdown");
+            SmokeInputs inputs = ResolveSmokeInputs();
+            RunObjectGraphSmoke(inputs);
+            RunApplicationRunSmoke(inputs);
 
             Console.WriteLine("ProGPU WPF SDK switch runtime smoke succeeded.");
             return 0;
@@ -49,6 +28,97 @@ internal static class Program
             Console.Error.WriteLine(ex);
             return 1;
         }
+    }
+
+    private static SmokeInputs ResolveSmokeInputs()
+    {
+        string repoRoot = FindRepoRoot();
+        string smokeAssemblyPath = Path.Combine(
+            repoRoot,
+            "artifacts",
+            "bin",
+            SmokeAssemblyName,
+            "Debug",
+            "net11.0",
+            SmokeAssemblyName + ".dll");
+        string wpfRoot = Path.Combine(repoRoot, "artifacts", "progpu-wpf-sdk-smoke", "wpf");
+        string proGpuRoot = Path.Combine(repoRoot, "artifacts", "progpu-wpf-sdk-smoke", "progpu");
+
+        RequireFile(smokeAssemblyPath, "SDK switch smoke assembly");
+        RequireDirectory(wpfRoot, "ported WPF artifact root");
+        RequireDirectory(proGpuRoot, "ProGPU artifact root");
+
+        return new SmokeInputs(repoRoot, smokeAssemblyPath, wpfRoot, proGpuRoot);
+    }
+
+    private static void RunObjectGraphSmoke(SmokeInputs inputs)
+    {
+        using var loadContext = CreateLoadContext(inputs);
+        Assembly smokeAssembly = loadContext.LoadFromAssemblyPath(inputs.SmokeAssemblyPath);
+
+        object app = Create(smokeAssembly, AppTypeName);
+        try
+        {
+            InvokeVoid(app, "InitializeComponent");
+            ValidateApp(app);
+
+            object window = Create(smokeAssembly, MainWindowTypeName);
+            ValidateWindow(window);
+        }
+        finally
+        {
+            TryInvoke(app, "Shutdown");
+        }
+    }
+
+    private static void RunApplicationRunSmoke(SmokeInputs inputs)
+    {
+        using var loadContext = CreateLoadContext(inputs);
+        Assembly smokeAssembly = loadContext.LoadFromAssemblyPath(inputs.SmokeAssemblyPath);
+        Assembly presentationCore = loadContext.LoadFromAssemblyName(new AssemblyName("PresentationCore"));
+        Assembly presentationFramework = loadContext.LoadFromAssemblyName(new AssemblyName("PresentationFramework"));
+
+        object? app = null;
+        SdkApplicationRunRecorder? recorder = null;
+        Type? activationServiceType = null;
+        bool runCompleted = false;
+
+        try
+        {
+            app = Create(smokeAssembly, AppTypeName);
+            InvokeVoid(app, "InitializeComponent");
+            ValidateApp(app);
+
+            recorder = RegisterPortableActivation(
+                presentationFramework,
+                presentationCore,
+                app,
+                out activationServiceType);
+
+            object exitCode = Invoke(app, "Run");
+            runCompleted = true;
+            AssertEqual(0, exitCode, "Application.Run exit code");
+            recorder.ValidateAfterRun();
+        }
+        finally
+        {
+            recorder?.Dispose();
+            ClearPortableActivation(activationServiceType);
+
+            if (!runCompleted && app is not null)
+            {
+                TryInvoke(app, "Shutdown");
+            }
+        }
+    }
+
+    private static SdkSmokeLoadContext CreateLoadContext(SmokeInputs inputs)
+    {
+        return new SdkSmokeLoadContext(
+            inputs.RepoRoot,
+            inputs.SmokeAssemblyPath,
+            inputs.WpfRoot,
+            inputs.ProGpuRoot);
     }
 
     private static void ValidateApp(object app)
@@ -78,11 +148,72 @@ internal static class Program
         AssertEqual("ProGPU WPF SDK switch smoke", GetProperty(actionButton, "Content"), "button bound content");
     }
 
+    private static SdkApplicationRunRecorder RegisterPortableActivation(
+        Assembly presentationFramework,
+        Assembly presentationCore,
+        object application,
+        out Type activationServiceType)
+    {
+        activationServiceType = GetRequiredType(presentationFramework, PortableWindowActivationServiceTypeName);
+        MethodInfo register = activationServiceType.GetMethod(
+            "Register",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMethodException(activationServiceType.FullName, "Register");
+
+        var recorder = new SdkApplicationRunRecorder(
+            presentationCore,
+            application,
+            activationServiceType);
+        recorder.RegisterMediaContextRenderService();
+
+        register.Invoke(
+            null,
+            new object?[]
+            {
+                new Func<object, object>(recorder.Activate),
+                new Action<object>(recorder.Show),
+                new Action<object>(recorder.Hide),
+                new Action<object, object>(recorder.SetWindowState),
+                new Action<object, string>(recorder.SetTitle),
+                new Action<object, double, double>(recorder.SetClientSize),
+                new Action<object>(recorder.Close),
+                new Action<object>(recorder.Run),
+                new Action<object>(recorder.Dispose)
+            });
+
+        AssertEqual(true, GetStaticProperty(activationServiceType, "IsEnabled"), "portable activation enabled");
+        return recorder;
+    }
+
+    private static void ClearPortableActivation(Type? activationServiceType)
+    {
+        activationServiceType?.GetMethod(
+            "Clear",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.Invoke(null, null);
+    }
+
     private static object Create(Assembly assembly, string typeName)
     {
         Type type = assembly.GetType(typeName, throwOnError: true)!;
         return Activator.CreateInstance(type)
             ?? throw new InvalidOperationException($"Could not create '{typeName}'.");
+    }
+
+    private static object Create(Type type, params object?[] args)
+    {
+        return Activator.CreateInstance(
+            type,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            args,
+            culture: null)
+            ?? throw new InvalidOperationException($"Could not create '{type.FullName}'.");
+    }
+
+    private static Type GetRequiredType(Assembly assembly, string typeName)
+    {
+        return assembly.GetType(typeName, throwOnError: true)!
+            ?? throw new TypeLoadException(typeName);
     }
 
     private static object Invoke(object instance, string methodName, params object?[] args)
@@ -119,7 +250,45 @@ internal static class Program
     private static void TryInvoke(object instance, string methodName)
     {
         MethodInfo? method = GetCompatibleMethod(instance.GetType(), methodName, Array.Empty<object?>());
-        method?.Invoke(instance, null);
+        try
+        {
+            method?.Invoke(instance, null);
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException is not null)
+        {
+            throw ex.InnerException;
+        }
+    }
+
+    private static object InvokeStatic(Type type, string methodName, params object?[] args)
+    {
+        MethodInfo method = GetCompatibleStaticMethod(type, methodName, args)
+            ?? throw new MissingMethodException(type.FullName, methodName);
+
+        try
+        {
+            return method.Invoke(null, args)
+                ?? throw new InvalidOperationException($"Method '{methodName}' returned null.");
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException is not null)
+        {
+            throw ex.InnerException;
+        }
+    }
+
+    private static void InvokeStaticVoid(Type type, string methodName, params object?[] args)
+    {
+        MethodInfo method = GetCompatibleStaticMethod(type, methodName, args)
+            ?? throw new MissingMethodException(type.FullName, methodName);
+
+        try
+        {
+            method.Invoke(null, args);
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException is not null)
+        {
+            throw ex.InnerException;
+        }
     }
 
     private static MethodInfo? GetCompatibleMethod(Type type, string methodName, object?[] args)
@@ -128,6 +297,14 @@ internal static class Program
             .Where(method => string.Equals(method.Name, methodName, StringComparison.Ordinal))
             .Where(method => ParametersMatch(method.GetParameters(), args))
             .OrderBy(method => GetDeclaringTypeDistance(type, method.DeclaringType))
+            .FirstOrDefault();
+    }
+
+    private static MethodInfo? GetCompatibleStaticMethod(Type type, string methodName, object?[] args)
+    {
+        return type.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            .Where(method => string.Equals(method.Name, methodName, StringComparison.Ordinal))
+            .Where(method => ParametersMatch(method.GetParameters(), args))
             .FirstOrDefault();
     }
 
@@ -187,6 +364,25 @@ internal static class Program
             ?? throw new InvalidOperationException($"Property '{propertyName}' returned null.");
     }
 
+    private static object GetStaticProperty(Type type, string propertyName)
+    {
+        PropertyInfo property = type.GetProperty(
+            propertyName,
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(type.FullName, propertyName);
+        return property.GetValue(null)
+            ?? throw new InvalidOperationException($"Property '{propertyName}' returned null.");
+    }
+
+    private static void SetProperty(object instance, string propertyName, object? value)
+    {
+        PropertyInfo property = instance.GetType().GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(instance.GetType().FullName, propertyName);
+        property.SetValue(instance, value);
+    }
+
     private static int GetCount(object collection)
     {
         if (collection is ICollection nonGenericCollection)
@@ -236,6 +432,14 @@ internal static class Program
         }
     }
 
+    private static void AssertSame(object expected, object actual, string description)
+    {
+        if (!ReferenceEquals(expected, actual))
+        {
+            throw new InvalidOperationException($"{description}: expected same instance.");
+        }
+    }
+
     private static void AssertAtLeast(int expectedMinimum, object actualValue, string description)
     {
         int actual = Convert.ToInt32(actualValue);
@@ -276,6 +480,247 @@ internal static class Program
         }
 
         throw new DirectoryNotFoundException("Could not find the WPF repository root.");
+    }
+
+    private sealed record SmokeInputs(
+        string RepoRoot,
+        string SmokeAssemblyPath,
+        string WpfRoot,
+        string ProGpuRoot);
+
+    private sealed class SdkApplicationRunRecorder : IDisposable
+    {
+        private readonly Assembly _presentationCore;
+        private readonly object _application;
+        private readonly Type _activationServiceType;
+        private IDisposable? _mediaContextRenderRegistration;
+        private RecordingActivation? _activation;
+
+        public SdkApplicationRunRecorder(
+            Assembly presentationCore,
+            object application,
+            Type activationServiceType)
+        {
+            _presentationCore = presentationCore;
+            _application = application;
+            _activationServiceType = activationServiceType;
+        }
+
+        public int ActivateCount { get; private set; }
+
+        public int ShowCount { get; private set; }
+
+        public int HideCount { get; private set; }
+
+        public int RunCount { get; private set; }
+
+        public int RenderRequestCount { get; private set; }
+
+        public int CloseCount { get; private set; }
+
+        public int DisposeCount { get; private set; }
+
+        public void RegisterMediaContextRenderService()
+        {
+            Type serviceType = GetRequiredType(_presentationCore, PortableMediaContextRenderServiceTypeName);
+            object registration = InvokeStatic(serviceType, "Register", new Action<TimeSpan>(RequestRender));
+            _mediaContextRenderRegistration = registration as IDisposable
+                ?? throw new InvalidOperationException("PortableMediaContextRenderService.Register did not return IDisposable.");
+            AssertEqual(true, GetStaticProperty(serviceType, "IsEnabled"), "portable MediaContext render service enabled");
+        }
+
+        public object Activate(object window)
+        {
+            if (ActivateCount != 0)
+            {
+                throw new InvalidOperationException("Expected exactly one SDK startup window activation.");
+            }
+
+            AssertType(window, MainWindowTypeName, "activated SDK startup window");
+            ValidateWindow(window);
+
+            object presentationSource = CreatePortablePresentationSource(window);
+            ActivateCount++;
+            _activation = new RecordingActivation(window, presentationSource)
+            {
+                Title = GetProperty(window, "Title").ToString() ?? string.Empty,
+                Width = Convert.ToDouble(GetProperty(window, "Width")),
+                Height = Convert.ToDouble(GetProperty(window, "Height"))
+            };
+            return _activation;
+        }
+
+        public void Show(object activation)
+        {
+            var typedActivation = AssertSameActivation(activation);
+            ShowCount++;
+            typedActivation.IsVisible = true;
+            FlushDispatcherOperations(typedActivation.Window, "Loaded", "Render");
+        }
+
+        public void Hide(object activation)
+        {
+            var typedActivation = AssertSameActivation(activation);
+            HideCount++;
+            typedActivation.IsVisible = false;
+        }
+
+        public void SetWindowState(object activation, object windowState)
+        {
+            var typedActivation = AssertSameActivation(activation);
+            typedActivation.WindowState = windowState;
+        }
+
+        public void SetTitle(object activation, string title)
+        {
+            var typedActivation = AssertSameActivation(activation);
+            typedActivation.Title = title;
+        }
+
+        public void SetClientSize(object activation, double width, double height)
+        {
+            var typedActivation = AssertSameActivation(activation);
+            typedActivation.Width = width;
+            typedActivation.Height = height;
+        }
+
+        public void Close(object activation)
+        {
+            var typedActivation = AssertSameActivation(activation);
+            CloseCount++;
+            typedActivation.IsClosed = true;
+        }
+
+        public void Run(object activation)
+        {
+            var typedActivation = AssertSameActivation(activation);
+            RunCount++;
+            AssertEqual(true, typedActivation.IsVisible, "SDK startup window visible before run");
+            AssertEqual("ProGPU WPF SDK Smoke", typedActivation.Title, "activated SDK window title");
+            AssertEqual(320.0, typedActivation.Width, "activated SDK window width");
+            AssertEqual(180.0, typedActivation.Height, "activated SDK window height");
+            AssertSame(typedActivation.Window, GetProperty(_application, "MainWindow"), "SDK Application.MainWindow");
+            InvokeVoid(typedActivation.Window, "UpdateLayout");
+            FlushDispatcherOperations(typedActivation.Window, "Loaded", "Render", "ApplicationIdle");
+            ValidateWindow(typedActivation.Window);
+        }
+
+        public void Dispose(object activation)
+        {
+            var typedActivation = AssertSameActivation(activation);
+            DisposeCount++;
+            typedActivation.DisposePresentationSource();
+        }
+
+        public void ValidateAfterRun()
+        {
+            AssertEqual(1, ActivateCount, "SDK startup window activation count");
+            AssertEqual(1, ShowCount, "SDK startup window show count");
+            AssertEqual(1, RunCount, "SDK startup window run count");
+            AssertEqual(true, RenderRequestCount > 0, "SDK portable MediaContext render request count");
+            AssertEqual(1, CloseCount, "SDK startup window close count");
+            AssertEqual(1, DisposeCount, "SDK startup window dispose count");
+
+            if (_activation is null)
+            {
+                throw new InvalidOperationException("Application.Run did not create an SDK recording activation.");
+            }
+
+            AssertEqual(true, _activation.IsClosed, "SDK recording activation close state");
+            AssertEqual(true, _activation.IsDisposed, "SDK recording activation dispose state");
+            AssertEqual(0, HideCount, "SDK startup window hide count");
+        }
+
+        public void Dispose()
+        {
+            _mediaContextRenderRegistration?.Dispose();
+            _mediaContextRenderRegistration = null;
+            _activation?.DisposePresentationSource();
+        }
+
+        private void RequestRender(TimeSpan delay)
+        {
+            RenderRequestCount++;
+        }
+
+        private object CreatePortablePresentationSource(object window)
+        {
+            Type presentationSourceType = GetRequiredType(_presentationCore, PortablePresentationSourceTypeName);
+            object presentationSource = Create(presentationSourceType);
+            SetProperty(presentationSource, "RootVisual", window);
+            return presentationSource;
+        }
+
+        private void FlushDispatcherOperations(object window, params string[] priorities)
+        {
+            MethodInfo method = _activationServiceType.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                .Single(candidate =>
+                    string.Equals(candidate.Name, "FlushDispatcherOperations", StringComparison.Ordinal) &&
+                    candidate.GetParameters().Length == 2);
+            Type priorityType = method.GetParameters()[1].ParameterType;
+
+            foreach (string priority in priorities)
+            {
+                object markerPriority = Enum.Parse(priorityType, priority);
+                InvokeStaticVoid(_activationServiceType, "FlushDispatcherOperations", window, markerPriority);
+            }
+        }
+
+        private RecordingActivation AssertSameActivation(object activation)
+        {
+            if (!ReferenceEquals(_activation, activation) || _activation is null)
+            {
+                throw new InvalidOperationException("Unexpected SDK portable window activation instance.");
+            }
+
+            return _activation;
+        }
+    }
+
+    private sealed class RecordingActivation
+    {
+        public RecordingActivation(object window, object presentationSource)
+        {
+            Window = window;
+            PresentationSource = presentationSource;
+        }
+
+        public object Window { get; }
+
+        public object PresentationSource { get; }
+
+        public bool IsVisible { get; set; }
+
+        public bool IsClosed { get; set; }
+
+        public bool IsDisposed { get; private set; }
+
+        public object? WindowState { get; set; }
+
+        public string Title { get; set; } = string.Empty;
+
+        public double Width { get; set; }
+
+        public double Height { get; set; }
+
+        public void DisposePresentationSource()
+        {
+            if (IsDisposed)
+            {
+                return;
+            }
+
+            if (PresentationSource is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+            else
+            {
+                InvokeVoid(PresentationSource, "Dispose");
+            }
+
+            IsDisposed = true;
+        }
     }
 
     private sealed class SdkSmokeLoadContext : AssemblyLoadContext, IDisposable

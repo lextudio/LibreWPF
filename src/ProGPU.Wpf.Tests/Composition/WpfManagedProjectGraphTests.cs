@@ -4508,6 +4508,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AssertAssignableTo(window, \"System.Windows.Window\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"Message\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"ActionButton\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RunApplicationRunSmoke", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PortablePresentationSource", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PortableMediaContextRenderService", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("object exitCode = Invoke(app, \"Run\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertEqual(0, exitCode", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertSame(typedActivation.Window, GetProperty(_application, \"MainWindow\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FlushDispatcherOperations", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.DoesNotContain(".Show()", runtimeHarnessProgram, StringComparison.Ordinal);
     }
 

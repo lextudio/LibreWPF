@@ -1203,6 +1203,11 @@
             <local:SmokeDependencyPropertyControl
                 x:Name="DependencyPropertyTarget"
                 CoercedLevel="15" />
+            <local:SmokeDependencyPropertyOwnerControl
+                x:Name="DependencyPropertyOwnerTarget"
+                OwnerLevel="35" />
+            <local:SmokeOverrideMetadataControl
+                x:Name="DependencyPropertyMetadataTarget" />
         </StackPanel>
         <StackPanel
             x:Name="CustomRoutedEventScopePanel"

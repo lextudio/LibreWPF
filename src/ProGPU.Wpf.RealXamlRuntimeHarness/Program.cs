@@ -5468,7 +5468,7 @@ internal static class Program
     {
         object scope = GetField(window, "DependencyPropertyScopePanel");
         AssertType(scope, "System.Windows.Controls.StackPanel", "compiled dependency-property scope panel");
-        AssertEqual(1, GetProperty(GetProperty(scope, "Children"), "Count"), "compiled dependency-property scope child count");
+        AssertEqual(3, GetProperty(GetProperty(scope, "Children"), "Count"), "compiled dependency-property scope child count");
 
         object target = GetField(window, "DependencyPropertyTarget");
         AssertType(target, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeDependencyPropertyControl", "compiled dependency-property target");
@@ -5503,6 +5503,42 @@ internal static class Program
         AssertEqual(3, GetProperty(target, "CoercedLevelChangedCount"), "compiled coerced dependency property mid change count");
         AssertEqual(0, GetProperty(target, "LastOldCoercedLevel"), "compiled coerced dependency property mid old value");
         AssertEqual(7, GetProperty(target, "LastNewCoercedLevel"), "compiled coerced dependency property mid new value");
+
+        object ownerTarget = GetField(window, "DependencyPropertyOwnerTarget");
+        AssertType(ownerTarget, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeDependencyPropertyOwnerControl", "compiled dependency-property owner target");
+        AssertSame(ownerTarget, GetCollectionItem(GetProperty(scope, "Children"), 1), "compiled dependency-property owner child");
+        AssertEqual(30, GetProperty(ownerTarget, "OwnerLevel"), "compiled AddOwner dependency property coerced value");
+        AssertEqual(1, GetProperty(ownerTarget, "OwnerLevelChangedCount"), "compiled AddOwner dependency property initial change count");
+        AssertEqual(24, GetProperty(ownerTarget, "LastOldOwnerLevel"), "compiled AddOwner dependency property initial old value");
+        AssertEqual(30, GetProperty(ownerTarget, "LastNewOwnerLevel"), "compiled AddOwner dependency property initial new value");
+        AssertEqual(true, GetProperty(ownerTarget, "HasOwnerLevelLocalValue"), "compiled AddOwner dependency property local value");
+        AssertEqual("Local", GetProperty(ownerTarget, "OwnerLevelBaseValueSource"), "compiled AddOwner dependency property local value source");
+        AssertEqual(true, GetProperty(ownerTarget, "IsOwnerLevelCoerced"), "compiled AddOwner dependency property coerced source");
+        AssertEqual(false, GetProperty(ownerTarget, "IsOwnerLevelCurrent"), "compiled AddOwner dependency property current source before SetCurrentValue");
+
+        Invoke(ownerTarget, "ClearOwnerLevelValue");
+        AssertEqual(24, GetProperty(ownerTarget, "OwnerLevel"), "compiled ClearValue dependency property metadata default");
+        AssertEqual(2, GetProperty(ownerTarget, "OwnerLevelChangedCount"), "compiled ClearValue dependency property change count");
+        AssertEqual(30, GetProperty(ownerTarget, "LastOldOwnerLevel"), "compiled ClearValue dependency property old value");
+        AssertEqual(24, GetProperty(ownerTarget, "LastNewOwnerLevel"), "compiled ClearValue dependency property new value");
+        AssertEqual(false, GetProperty(ownerTarget, "HasOwnerLevelLocalValue"), "compiled ClearValue dependency property local value removed");
+        AssertEqual("Default", GetProperty(ownerTarget, "OwnerLevelBaseValueSource"), "compiled ClearValue dependency property default source");
+        AssertEqual(false, GetProperty(ownerTarget, "IsOwnerLevelCoerced"), "compiled ClearValue dependency property coerced source");
+
+        Invoke(ownerTarget, "SetCurrentOwnerLevel", 28);
+        AssertEqual(28, GetProperty(ownerTarget, "OwnerLevel"), "compiled SetCurrentValue dependency property value");
+        AssertEqual(3, GetProperty(ownerTarget, "OwnerLevelChangedCount"), "compiled SetCurrentValue dependency property change count");
+        AssertEqual(24, GetProperty(ownerTarget, "LastOldOwnerLevel"), "compiled SetCurrentValue dependency property old value");
+        AssertEqual(28, GetProperty(ownerTarget, "LastNewOwnerLevel"), "compiled SetCurrentValue dependency property new value");
+        AssertEqual(true, GetProperty(ownerTarget, "HasOwnerLevelLocalValue"), "compiled SetCurrentValue dependency property local value");
+        AssertEqual("Default", GetProperty(ownerTarget, "OwnerLevelBaseValueSource"), "compiled SetCurrentValue dependency property base source");
+        AssertEqual(true, GetProperty(ownerTarget, "IsOwnerLevelCurrent"), "compiled SetCurrentValue dependency property current source");
+
+        object metadataTarget = GetField(window, "DependencyPropertyMetadataTarget");
+        AssertType(metadataTarget, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeOverrideMetadataControl", "compiled dependency-property metadata target");
+        AssertSame(metadataTarget, GetCollectionItem(GetProperty(scope, "Children"), 2), "compiled dependency-property metadata child");
+        AssertEqual("override metadata label", GetProperty(metadataTarget, "ModeLabel"), "compiled OverrideMetadata dependency property default");
+        AssertEqual("Default", GetProperty(metadataTarget, "ModeLabelBaseValueSource"), "compiled OverrideMetadata dependency property value source");
     }
 
     private static void ValidateCustomRoutedEvent(object window)

@@ -1503,6 +1503,90 @@ public sealed class SmokeDependencyPropertyControl : Control
     }
 }
 
+public sealed class SmokeDependencyPropertyOwnerControl : Control
+{
+    public static readonly DependencyProperty OwnerLevelProperty =
+        SmokeDependencyPropertyControl.CoercedLevelProperty.AddOwner(
+            typeof(SmokeDependencyPropertyOwnerControl),
+            new FrameworkPropertyMetadata(
+                24,
+                OnOwnerLevelChanged,
+                CoerceOwnerLevel));
+
+    public int OwnerLevel
+    {
+        get => (int)GetValue(OwnerLevelProperty);
+        set => SetValue(OwnerLevelProperty, value);
+    }
+
+    public int OwnerLevelChangedCount { get; private set; }
+
+    public int LastOldOwnerLevel { get; private set; }
+
+    public int LastNewOwnerLevel { get; private set; }
+
+    public bool HasOwnerLevelLocalValue => !ReferenceEquals(ReadLocalValue(OwnerLevelProperty), DependencyProperty.UnsetValue);
+
+    public string OwnerLevelBaseValueSource => DependencyPropertyHelper.GetValueSource(this, OwnerLevelProperty).BaseValueSource.ToString();
+
+    public bool IsOwnerLevelCoerced => DependencyPropertyHelper.GetValueSource(this, OwnerLevelProperty).IsCoerced;
+
+    public bool IsOwnerLevelCurrent => DependencyPropertyHelper.GetValueSource(this, OwnerLevelProperty).IsCurrent;
+
+    public void ClearOwnerLevelValue()
+    {
+        ClearValue(OwnerLevelProperty);
+    }
+
+    public void SetCurrentOwnerLevel(int value)
+    {
+        SetCurrentValue(OwnerLevelProperty, value);
+    }
+
+    private static object CoerceOwnerLevel(DependencyObject dependencyObject, object baseValue)
+    {
+        int value = (int)baseValue;
+        return Math.Max(20, Math.Min(30, value));
+    }
+
+    private static void OnOwnerLevelChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
+    {
+        if (dependencyObject is SmokeDependencyPropertyOwnerControl control)
+        {
+            control.OwnerLevelChangedCount++;
+            control.LastOldOwnerLevel = (int)e.OldValue;
+            control.LastNewOwnerLevel = (int)e.NewValue;
+        }
+    }
+}
+
+public class SmokeMetadataBaseControl : Control
+{
+    public static readonly DependencyProperty ModeLabelProperty = DependencyProperty.Register(
+        nameof(ModeLabel),
+        typeof(string),
+        typeof(SmokeMetadataBaseControl),
+        new FrameworkPropertyMetadata("base metadata label"));
+
+    public string ModeLabel
+    {
+        get => (string)GetValue(ModeLabelProperty);
+        set => SetValue(ModeLabelProperty, value);
+    }
+}
+
+public sealed class SmokeOverrideMetadataControl : SmokeMetadataBaseControl
+{
+    static SmokeOverrideMetadataControl()
+    {
+        ModeLabelProperty.OverrideMetadata(
+            typeof(SmokeOverrideMetadataControl),
+            new FrameworkPropertyMetadata("override metadata label"));
+    }
+
+    public string ModeLabelBaseValueSource => DependencyPropertyHelper.GetValueSource(this, ModeLabelProperty).BaseValueSource.ToString();
+}
+
 public sealed class SmokeItem : INotifyPropertyChanged
 {
     private string _name;

@@ -4433,6 +4433,14 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
             "MainWindow.xaml.cs");
+        var smokePanelXamlPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchSmoke",
+            "SmokePanel.xaml");
+        var smokePanelCodeBehindPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchSmoke",
+            "SmokePanel.xaml.cs");
         var proGpuWpfProjectPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -4483,6 +4491,8 @@ public sealed class WpfManagedProjectGraphTests
         var smokeResourcesXaml = File.ReadAllText(smokeResourcesXamlPath);
         var smokeMainWindowXaml = File.ReadAllText(smokeMainWindowXamlPath);
         var smokeMainWindowCodeBehind = File.ReadAllText(smokeMainWindowCodeBehindPath);
+        var smokePanelXaml = File.ReadAllText(smokePanelXamlPath);
+        var smokePanelCodeBehind = File.ReadAllText(smokePanelCodeBehindPath);
         var proGpuWpfProject = File.ReadAllText(proGpuWpfProjectPath);
         var proGpuWpfCommandSink = File.ReadAllText(proGpuWpfCommandSinkPath);
         var wpfMilRenderDataDecoder = File.ReadAllText(wpfMilRenderDataDecoderPath);
@@ -4596,7 +4606,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SmokePanelMargin", smokeResourcesXaml, StringComparison.Ordinal);
         Assert.Contains("SmokeListTextStyle", smokeResourcesXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:componentModel=\"clr-namespace:System.ComponentModel;assembly=WindowsBase\"", smokeMainWindowXaml, StringComparison.Ordinal);
-        Assert.Contains("Height=\"560\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Height=\"640\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<ControlTemplate TargetType=\"{x:Type Button}\">", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<VisualStateManager.VisualStateGroups>", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<VisualStateGroup x:Name=\"CommonStates\">", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -4634,8 +4644,25 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"GroupedItemsControl\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Source={StaticResource GroupedItems}}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<GroupStyle HeaderTemplate=\"{StaticResource SmokeGroupHeaderTemplate}\" />", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("local:SmokePanel", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"CompiledSmokePanel\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Caption=\"Compiled user control\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("PanelContent=\"{Binding SelectedItem.Value, ElementName=ItemsList}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<RichTextBox", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<FlowDocument>", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Class=\"ProGPU.Wpf.SdkSwitchSmoke.SmokePanel\"", smokePanelXaml, StringComparison.Ordinal);
+        Assert.Contains("Tag=\"{Binding Caption, ElementName=Root}\"", smokePanelXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"PanelCaption\"", smokePanelXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding Caption, ElementName=Root}\"", smokePanelXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"PanelRelativeCaption\"", smokePanelXaml, StringComparison.Ordinal);
+        Assert.Contains("Tag=\"{Binding Caption, ElementName=Root}\"", smokePanelXaml, StringComparison.Ordinal);
+        Assert.Contains("RelativeSource={RelativeSource Self}", smokePanelXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"PanelContentPresenter\"", smokePanelXaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"{Binding PanelContent, ElementName=Root}\"", smokePanelXaml, StringComparison.Ordinal);
+        Assert.Contains("public partial class SmokePanel : UserControl", smokePanelCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DependencyProperty CaptionProperty", smokePanelCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DependencyProperty PanelContentProperty", smokePanelCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("InitializeComponent();", smokePanelCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DataContext = new SmokeViewModel();", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public static RoutedUICommand SmokeCommand", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnActionButtonClick", smokeMainWindowCodeBehind, StringComparison.Ordinal);
@@ -4716,6 +4743,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("grouped items view group count", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"GroupedItemsControl\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("grouped items group header template", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"CompiledSmokePanel\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled user control dependency property", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled user control bound dependency property", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"PanelCaption\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled user control element-name binding", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"PanelRelativeCaption\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled user control relative-source binding", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"PanelContentPresenter\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled user control content binding", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"DocumentBox\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("InvokeVoid(actionButton, \"OnClick\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RunApplicationRunSmoke", runtimeHarnessProgram, StringComparison.Ordinal);

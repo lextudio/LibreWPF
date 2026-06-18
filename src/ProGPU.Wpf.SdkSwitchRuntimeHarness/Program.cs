@@ -259,7 +259,7 @@ internal static class Program
         AssertAssignableTo(window, "System.Windows.Window", "SDK smoke main window");
         AssertEqual("ProGPU WPF SDK Smoke", GetProperty(window, "Title"), "window title");
         AssertEqual(420.0, GetProperty(window, "Width"), "window width");
-        AssertEqual(560.0, GetProperty(window, "Height"), "window height");
+        AssertEqual(640.0, GetProperty(window, "Height"), "window height");
 
         InvokeVoid(window, "UpdateLayout");
 
@@ -393,6 +393,21 @@ internal static class Program
             ?? throw new InvalidOperationException("Expected a grouped items GroupStyle entry.");
         AssertType(groupedItemsGroupStyle, "System.Windows.Controls.GroupStyle", "grouped items group style");
         AssertType(GetProperty(groupedItemsGroupStyle, "HeaderTemplate"), "System.Windows.DataTemplate", "grouped items group header template");
+
+        object compiledSmokePanel = Invoke(window, "FindName", "CompiledSmokePanel");
+        AssertType(compiledSmokePanel, "ProGPU.Wpf.SdkSwitchSmoke.SmokePanel", "compiled user control");
+        AssertAssignableTo(compiledSmokePanel, "System.Windows.Controls.UserControl", "compiled user control base type");
+        AssertEqual("Compiled user control", GetProperty(compiledSmokePanel, "Caption"), "compiled user control dependency property");
+        AssertEqual("ProGPU", GetProperty(compiledSmokePanel, "PanelContent"), "compiled user control bound dependency property");
+        object panelCaption = Invoke(compiledSmokePanel, "FindName", "PanelCaption");
+        AssertType(panelCaption, "System.Windows.Controls.TextBlock", "compiled user control caption element");
+        AssertEqual("Compiled user control", GetProperty(panelCaption, "Text"), "compiled user control element-name binding");
+        object panelRelativeCaption = Invoke(compiledSmokePanel, "FindName", "PanelRelativeCaption");
+        AssertType(panelRelativeCaption, "System.Windows.Controls.TextBlock", "compiled user control relative-source element");
+        AssertEqual("Compiled user control", GetProperty(panelRelativeCaption, "Text"), "compiled user control relative-source binding");
+        object panelContentPresenter = Invoke(compiledSmokePanel, "FindName", "PanelContentPresenter");
+        AssertType(panelContentPresenter, "System.Windows.Controls.ContentPresenter", "compiled user control content presenter");
+        AssertEqual("ProGPU", GetProperty(panelContentPresenter, "Content"), "compiled user control content binding");
 
         object documentBox = Invoke(window, "FindName", "DocumentBox");
         AssertType(documentBox, "System.Windows.Controls.RichTextBox", "rich text box");
@@ -882,7 +897,7 @@ internal static class Program
             AssertEqual(true, typedActivation.IsVisible, "SDK startup window visible before run");
             AssertEqual("ProGPU WPF SDK Smoke", typedActivation.Title, "activated SDK window title");
             AssertEqual(420.0, typedActivation.Width, "activated SDK window width");
-            AssertEqual(560.0, typedActivation.Height, "activated SDK window height");
+            AssertEqual(640.0, typedActivation.Height, "activated SDK window height");
             AssertSame(typedActivation.Window, GetProperty(_application, "MainWindow"), "SDK Application.MainWindow");
             InvokeVoid(typedActivation.Window, "UpdateLayout");
             FlushDispatcherOperations(typedActivation.Window, "Loaded", "Render", "ApplicationIdle");

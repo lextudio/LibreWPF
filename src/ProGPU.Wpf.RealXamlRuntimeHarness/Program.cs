@@ -4135,7 +4135,7 @@ internal static class Program
         AssertType(fileMenuItem, "System.Windows.Controls.MenuItem", "compiled parent MenuItem");
         AssertEqual("_File", GetProperty(fileMenuItem, "Header"), "compiled parent MenuItem header");
         object fileMenuItems = GetProperty(fileMenuItem, "Items");
-        AssertCollectionCount(fileMenuItems, expected: 3, "compiled parent MenuItem children");
+        AssertCollectionCount(fileMenuItems, expected: 4, "compiled parent MenuItem children");
 
         object commandItem = GetField(window, "MenuCommandItem");
         AssertType(commandItem, "System.Windows.Controls.MenuItem", "compiled command MenuItem");
@@ -4161,6 +4161,28 @@ internal static class Program
         AssertEqual(1, GetProperty(window, "MenuClickCount"), "compiled MenuItem Click handler count");
         AssertEqual("MenuClickItem", GetProperty(window, "LastMenuClickSenderName"), "compiled MenuItem Click sender name");
         AssertEqual("Click", GetProperty(window, "LastMenuClickRoutedEventName"), "compiled MenuItem Click routed event name");
+        object checkableItem = GetField(window, "MenuCheckableItem");
+        AssertType(checkableItem, "System.Windows.Controls.MenuItem", "compiled checkable MenuItem");
+        AssertEqual("_Checkable", GetProperty(checkableItem, "Header"), "compiled checkable MenuItem header");
+        AssertEqual(true, GetProperty(checkableItem, "IsCheckable"), "compiled checkable MenuItem is checkable");
+        AssertEqual(false, GetProperty(checkableItem, "IsChecked"), "compiled checkable MenuItem initial checked state");
+        AssertSame(checkableItem, GetCollectionItem(fileMenuItems, 3), "compiled checkable MenuItem collection position");
+        AssertEqual(0, GetProperty(window, "MenuCheckableCheckedCount"), "compiled checkable MenuItem initial checked count");
+        AssertEqual(0, GetProperty(window, "MenuCheckableUncheckedCount"), "compiled checkable MenuItem initial unchecked count");
+
+        Invoke(checkableItem, "OnClick");
+
+        AssertEqual(true, GetProperty(checkableItem, "IsChecked"), "compiled checkable MenuItem checked state");
+        AssertEqual(1, GetProperty(window, "MenuCheckableCheckedCount"), "compiled checkable MenuItem Checked handler count");
+        AssertEqual("MenuCheckableItem", GetProperty(window, "LastMenuCheckableCheckedSenderName"), "compiled checkable MenuItem Checked sender name");
+        AssertEqual("Checked", GetProperty(window, "LastMenuCheckableCheckedRoutedEventName"), "compiled checkable MenuItem Checked routed event name");
+
+        Invoke(checkableItem, "OnClick");
+
+        AssertEqual(false, GetProperty(checkableItem, "IsChecked"), "compiled checkable MenuItem unchecked state");
+        AssertEqual(1, GetProperty(window, "MenuCheckableUncheckedCount"), "compiled checkable MenuItem Unchecked handler count");
+        AssertEqual("MenuCheckableItem", GetProperty(window, "LastMenuCheckableUncheckedSenderName"), "compiled checkable MenuItem Unchecked sender name");
+        AssertEqual("Unchecked", GetProperty(window, "LastMenuCheckableUncheckedRoutedEventName"), "compiled checkable MenuItem Unchecked routed event name");
         AssertEqual(2, GetProperty(window, "RoutedCommandExecutionCount"), "compiled command MenuItem initial routed command count");
 
         object commandCanExecute = InvokeTwoArgumentCommand(

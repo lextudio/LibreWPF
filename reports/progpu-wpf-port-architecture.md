@@ -12,6 +12,8 @@ The compiled-XAML smoke harness now explicitly treats `ResourceDictionary` insta
 
 Collection-view shaping follows the same reuse rule. Compiled `CollectionViewSource` resources, sort/filter/group descriptions, current-item currency, composite collections, item string formatting, and live `ICollectionViewLiveShaping` sorting/filtering/grouping stay in WPF's managed collection-view, binding, dispatcher, and notification managers. The ProGPU boundary should only see the resulting realized item visuals and render them; it should not duplicate live item shaping or selector/list-manager policy in native or bridge code.
 
+Menu state follows the same reuse rule. Menu hierarchy, separator resources, command items, click routing, and checkable `MenuItem` `IsChecked`/`Checked`/`Unchecked` behavior stay in WPF's managed control/event/command managers. ProGPU should render the resulting visual state and provide native input/window services; it should not own menu item state machines.
+
 ## Current WPF Rendering Boundary
 
 WPF managed rendering persists content in `RenderData`, `Drawing`, `DrawingVisual`, and `Visual` objects. Those objects are marshalled into `DUCE.Channel` command streams and consumed by MIL/native rendering. The Windows-only seams include:

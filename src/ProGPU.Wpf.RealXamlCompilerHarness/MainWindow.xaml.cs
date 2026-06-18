@@ -127,6 +127,18 @@ public partial class MainWindow : Window
 
     public string? LastMenuClickRoutedEventName { get; private set; }
 
+    public int MenuCheckableCheckedCount { get; private set; }
+
+    public int MenuCheckableUncheckedCount { get; private set; }
+
+    public string? LastMenuCheckableCheckedSenderName { get; private set; }
+
+    public string? LastMenuCheckableUncheckedSenderName { get; private set; }
+
+    public string? LastMenuCheckableCheckedRoutedEventName { get; private set; }
+
+    public string? LastMenuCheckableUncheckedRoutedEventName { get; private set; }
+
     public int ContextMenuClickCount { get; private set; }
 
     public string? LastContextMenuClickSenderName { get; private set; }
@@ -392,6 +404,20 @@ public partial class MainWindow : Window
         LastMenuClickSenderName = sender is FrameworkElement element ? element.Name : null;
         LastMenuClickRoutedEventName = e.RoutedEvent?.Name;
         e.Handled = true;
+    }
+
+    private void OnMenuCheckableChecked(object sender, RoutedEventArgs e)
+    {
+        MenuCheckableCheckedCount++;
+        LastMenuCheckableCheckedSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastMenuCheckableCheckedRoutedEventName = e.RoutedEvent?.Name;
+    }
+
+    private void OnMenuCheckableUnchecked(object sender, RoutedEventArgs e)
+    {
+        MenuCheckableUncheckedCount++;
+        LastMenuCheckableUncheckedSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastMenuCheckableUncheckedRoutedEventName = e.RoutedEvent?.Name;
     }
 
     private void OnContextMenuClick(object sender, RoutedEventArgs e)

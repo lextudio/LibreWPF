@@ -1009,6 +1009,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"MenuClickItem\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"OnMenuClick\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Header=\"_Click\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MenuCheckableItem\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("IsCheckable=\"True\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Checked=\"OnMenuCheckableChecked\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Unchecked=\"OnMenuCheckableUnchecked\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Header=\"_Checkable\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SmokeToolBarTray\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ToolBar x:Name=\"SmokeToolBar\" Header=\"Smoke tools\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ToolBarCommandButton\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1584,6 +1589,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public int MenuClickCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnMenuClick", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastMenuClickRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int MenuCheckableCheckedCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnMenuCheckableChecked", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int MenuCheckableUncheckedCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnMenuCheckableUnchecked", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int ContextMenuClickCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnContextMenuClick", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastContextMenuClickRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -2138,6 +2147,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled command MenuItem routed command", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled command MenuItem CanExecute result", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MenuItem Click handler count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled checkable MenuItem Checked handler count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled checkable MenuItem Unchecked handler count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled command MenuItem routed command count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateContextMenuAndToolTip(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ContextMenu Click handler count", harnessProgram, StringComparison.Ordinal);
@@ -2865,6 +2876,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled command MenuItem routed command", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled command MenuItem CanExecute result", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MenuItem Click handler count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled checkable MenuItem Checked handler count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled checkable MenuItem Unchecked handler count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled command MenuItem routed command count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateContextMenuAndToolTip(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ContextMenu Click handler count", harnessProgram, StringComparison.Ordinal);

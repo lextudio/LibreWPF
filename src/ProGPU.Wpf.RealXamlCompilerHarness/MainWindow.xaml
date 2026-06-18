@@ -211,6 +211,12 @@
                     x:Name="MenuClickItem"
                     Click="OnMenuClick"
                     Header="_Click" />
+                <MenuItem
+                    x:Name="MenuCheckableItem"
+                    Checked="OnMenuCheckableChecked"
+                    Header="_Checkable"
+                    IsCheckable="True"
+                    Unchecked="OnMenuCheckableUnchecked" />
             </MenuItem>
         </Menu>
         <ToolBarTray

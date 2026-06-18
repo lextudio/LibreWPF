@@ -538,6 +538,8 @@ public partial class MainWindow : Window
         private bool _isWarning;
         private bool _isCritical;
         private bool _isTriggerActionActive;
+        private bool _isMultiTriggerActionReady;
+        private bool _isMultiTriggerActionArmed;
         private SmokeItem? _selectedItem;
         private string _selectedCategory = "secondary group";
         private string _comboSelectedCategory = "secondary group";
@@ -685,6 +687,32 @@ public partial class MainWindow : Window
                 if (_isTriggerActionActive != value)
                 {
                     _isTriggerActionActive = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public bool IsMultiTriggerActionReady
+        {
+            get => _isMultiTriggerActionReady;
+            set
+            {
+                if (_isMultiTriggerActionReady != value)
+                {
+                    _isMultiTriggerActionReady = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public bool IsMultiTriggerActionArmed
+        {
+            get => _isMultiTriggerActionArmed;
+            set
+            {
+                if (_isMultiTriggerActionArmed != value)
+                {
+                    _isMultiTriggerActionArmed = value;
                     OnPropertyChanged();
                 }
             }

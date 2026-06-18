@@ -249,8 +249,16 @@ internal static class Program
         object mergedAccentBrush = Invoke(app, "TryFindResource", "MergedAccentBrush");
         AssertType(mergedAccentBrush, "System.Windows.Media.SolidColorBrush", "application merged accent brush");
         AssertEqual("#FF6B8F3A", GetProperty(mergedAccentBrush, "Color").ToString() ?? string.Empty, "application merged accent brush color");
+        object unsharedAccentBrush = Invoke(app, "TryFindResource", "UnsharedAccentBrush");
+        object secondUnsharedAccentBrush = Invoke(app, "TryFindResource", "UnsharedAccentBrush");
+        AssertType(unsharedAccentBrush, "System.Windows.Media.SolidColorBrush", "application unshared accent brush");
+        AssertEqual("#FFC45A2B", GetProperty(unsharedAccentBrush, "Color").ToString() ?? string.Empty, "application unshared accent brush color");
+        AssertNotSame(unsharedAccentBrush, secondUnsharedAccentBrush, "application x:Shared=false resource instance");
         object smokePanelMargin = Invoke(app, "TryFindResource", "SmokePanelMargin");
         AssertType(smokePanelMargin, "System.Windows.Thickness", "application merged panel margin");
+        object providerGreeting = Invoke(app, "TryFindResource", "ProviderGreeting");
+        AssertType(providerGreeting, "System.Windows.Data.ObjectDataProvider", "application object data provider");
+        AssertEqual("provider:7", GetProperty(providerGreeting, "Data"), "application object data provider result");
         AssertAtLeast(1, GetCount(GetProperty(resources, "Keys")), "application resource key count");
     }
 
@@ -259,7 +267,7 @@ internal static class Program
         AssertAssignableTo(window, "System.Windows.Window", "SDK smoke main window");
         AssertEqual("ProGPU WPF SDK Smoke", GetProperty(window, "Title"), "window title");
         AssertEqual(420.0, GetProperty(window, "Width"), "window width");
-        AssertEqual(640.0, GetProperty(window, "Height"), "window height");
+        AssertEqual(700.0, GetProperty(window, "Height"), "window height");
 
         InvokeVoid(window, "UpdateLayout");
 
@@ -360,6 +368,24 @@ internal static class Program
         object multiDataTriggerForeground = GetProperty(multiDataTriggerStatus, "Foreground");
         AssertType(multiDataTriggerForeground, "System.Windows.Media.SolidColorBrush", "multi data trigger foreground");
         AssertEqual("#FF6B8F3A", GetProperty(multiDataTriggerForeground, "Color").ToString() ?? string.Empty, "multi data trigger foreground color");
+
+        object basedOnResourceText = Invoke(window, "FindName", "BasedOnResourceText");
+        AssertType(basedOnResourceText, "System.Windows.Controls.TextBlock", "based-on resource text element");
+        AssertEqual("based-on resource style", GetProperty(basedOnResourceText, "Text"), "based-on resource text");
+        AssertEqual("SemiBold", GetProperty(basedOnResourceText, "FontWeight").ToString() ?? string.Empty, "based-on resource inherited font weight");
+        object basedOnResourceForeground = GetProperty(basedOnResourceText, "Foreground");
+        AssertType(basedOnResourceForeground, "System.Windows.Media.SolidColorBrush", "based-on resource foreground");
+        AssertEqual("#FF356D9E", GetProperty(basedOnResourceForeground, "Color").ToString() ?? string.Empty, "based-on resource foreground color");
+
+        object providerGreetingText = Invoke(window, "FindName", "ProviderGreetingText");
+        AssertType(providerGreetingText, "System.Windows.Controls.TextBlock", "provider greeting text element");
+        AssertEqual("provider:7", GetProperty(providerGreetingText, "Text"), "provider greeting text");
+
+        object unsharedBrushBorder = Invoke(window, "FindName", "UnsharedBrushBorder");
+        AssertType(unsharedBrushBorder, "System.Windows.Controls.Border", "unshared brush border");
+        object unsharedBorderBrush = GetProperty(unsharedBrushBorder, "Background");
+        AssertType(unsharedBorderBrush, "System.Windows.Media.SolidColorBrush", "unshared border brush");
+        AssertEqual("#FFC45A2B", GetProperty(unsharedBorderBrush, "Color").ToString() ?? string.Empty, "unshared border brush color");
 
         object inputBox = Invoke(window, "FindName", "InputBox");
         AssertType(inputBox, "System.Windows.Controls.TextBox", "input box");
@@ -724,6 +750,14 @@ internal static class Program
         }
     }
 
+    private static void AssertNotSame(object unexpected, object actual, string description)
+    {
+        if (ReferenceEquals(unexpected, actual))
+        {
+            throw new InvalidOperationException($"{description}: expected different instances.");
+        }
+    }
+
     private static void AssertAtLeast(int expectedMinimum, object actualValue, string description)
     {
         int actual = Convert.ToInt32(actualValue);
@@ -897,7 +931,7 @@ internal static class Program
             AssertEqual(true, typedActivation.IsVisible, "SDK startup window visible before run");
             AssertEqual("ProGPU WPF SDK Smoke", typedActivation.Title, "activated SDK window title");
             AssertEqual(420.0, typedActivation.Width, "activated SDK window width");
-            AssertEqual(640.0, typedActivation.Height, "activated SDK window height");
+            AssertEqual(700.0, typedActivation.Height, "activated SDK window height");
             AssertSame(typedActivation.Window, GetProperty(_application, "MainWindow"), "SDK Application.MainWindow");
             InvokeVoid(typedActivation.Window, "UpdateLayout");
             FlushDispatcherOperations(typedActivation.Window, "Loaded", "Render", "ApplicationIdle");

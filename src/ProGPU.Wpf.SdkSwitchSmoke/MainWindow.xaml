@@ -7,7 +7,7 @@
     x:Name="RootWindow"
     Title="ProGPU WPF SDK Smoke"
     Width="420"
-    Height="640">
+    Height="700">
     <Window.CommandBindings>
         <CommandBinding
             CanExecute="OnSmokeCommandCanExecute"
@@ -176,6 +176,20 @@
             x:Name="MultiDataTriggerStatus"
             Margin="0,6,0,0"
             Style="{StaticResource MultiDataTriggeredTextStyle}" />
+        <TextBlock
+            x:Name="BasedOnResourceText"
+            Margin="0,6,0,0"
+            Style="{StaticResource BasedOnSmokeTextStyle}"
+            Text="based-on resource style" />
+        <TextBlock
+            x:Name="ProviderGreetingText"
+            Margin="0,6,0,0"
+            Text="{Binding Source={StaticResource ProviderGreeting}}" />
+        <Border
+            x:Name="UnsharedBrushBorder"
+            Height="4"
+            Margin="0,6,0,0"
+            Background="{StaticResource UnsharedAccentBrush}" />
         <TextBox
             x:Name="InputBox"
             Margin="{StaticResource SmokePanelMargin}"

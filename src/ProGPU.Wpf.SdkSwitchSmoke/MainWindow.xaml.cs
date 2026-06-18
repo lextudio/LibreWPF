@@ -82,3 +82,11 @@ public sealed class SmokeItem
 
     public string Category { get; }
 }
+
+public static class SmokeResourceFactory
+{
+    public static string CreateGreeting(string prefix, int value)
+    {
+        return $"{prefix}:{value}";
+    }
+}

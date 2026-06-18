@@ -4676,6 +4676,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Click=\"OnActionButtonClick\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"CommandButton\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CommandParameter=\"routed command payload\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"RootPanel\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("local:SmokeRoutedEventSource.SmokeBubbled=\"OnSmokeBubbled\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"PropertyTriggerStatus\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"DataTriggerStatus\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MultiTriggerStatus\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -4689,6 +4691,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Text=\"{Binding InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MutableStatusText\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding MutableStatus}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("local:SmokeRoutedEventSource", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"RoutedEventSource\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"RoutedEventStatus\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"routed event not raised\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Items}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemTemplate=\"{StaticResource SmokeItemTemplate}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"{Binding SelectedItem, ElementName=ItemsList}\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -4769,6 +4775,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void OnSmokeCommandCanExecute", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnSmokeCommandExecuted", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SmokeCommandExecutionCount++", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SmokeRoutedEventCount++", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnSmokeBubbled", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastSmokeRoutedEventSender = sender;", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastSmokeRoutedEventSource = e.OriginalSource;", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokeRoutedEventSource : FrameworkElement", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("EventManager.RegisterRoutedEvent", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RoutingStrategy.Bubble", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RaiseSmokeBubbled()", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SmokeViewModel : INotifyPropertyChanged", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private string _mutableStatus = \"initial binding status\";", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string MutableStatus", smokeMainWindowCodeBehind, StringComparison.Ordinal);
@@ -4839,6 +4853,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AssertEqual(\"#FF356D9E\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertAssignableTo(window, \"System.Windows.Window\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"Message\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"RootPanel\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"ActionButton\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"CommandButton\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Window.CommandBindings", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -4863,6 +4878,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("mutable status initial binding text", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("MutableStatus\", \"updated binding status\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("mutable status property changed binding text", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"RoutedEventSource\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RaiseSmokeBubbled", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("custom routed event count", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("custom routed event bubbled sender", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("custom routed event original source", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("custom routed event status text", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"ItemsList\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"SelectedItemPresenter\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"LayoutGrid\"", runtimeHarnessProgram, StringComparison.Ordinal);

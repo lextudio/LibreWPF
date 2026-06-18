@@ -25,6 +25,12 @@ public partial class MainWindow : Window
 
     public string? LastSmokeCommandParameter { get; private set; }
 
+    public int SmokeRoutedEventCount { get; private set; }
+
+    public object? LastSmokeRoutedEventSender { get; private set; }
+
+    public object? LastSmokeRoutedEventSource { get; private set; }
+
     private void OnActionButtonClick(object sender, RoutedEventArgs e)
     {
         ClickStatus.Text = "clicked";
@@ -42,6 +48,15 @@ public partial class MainWindow : Window
         SmokeCommandExecutionCount++;
         LastSmokeCommandParameter = e.Parameter?.ToString();
         CommandStatus.Text = LastSmokeCommandParameter ?? "executed";
+        e.Handled = true;
+    }
+
+    private void OnSmokeBubbled(object sender, RoutedEventArgs e)
+    {
+        SmokeRoutedEventCount++;
+        LastSmokeRoutedEventSender = sender;
+        LastSmokeRoutedEventSource = e.OriginalSource;
+        RoutedEventStatus.Text = e.RoutedEvent.Name;
         e.Handled = true;
     }
 }
@@ -107,6 +122,26 @@ public sealed class SmokeItem
     public string Value { get; }
 
     public string Category { get; }
+}
+
+public sealed class SmokeRoutedEventSource : FrameworkElement
+{
+    public static readonly RoutedEvent SmokeBubbledEvent = EventManager.RegisterRoutedEvent(
+        "SmokeBubbled",
+        RoutingStrategy.Bubble,
+        typeof(RoutedEventHandler),
+        typeof(SmokeRoutedEventSource));
+
+    public event RoutedEventHandler SmokeBubbled
+    {
+        add => AddHandler(SmokeBubbledEvent, value);
+        remove => RemoveHandler(SmokeBubbledEvent, value);
+    }
+
+    public void RaiseSmokeBubbled()
+    {
+        RaiseEvent(new RoutedEventArgs(SmokeBubbledEvent, this));
+    }
 }
 
 public static class SmokeResourceFactory

@@ -280,6 +280,8 @@ internal static class Program
         object messageForeground = GetProperty(message, "Foreground");
         AssertType(messageForeground, "System.Windows.Media.SolidColorBrush", "message dynamic resource foreground");
         AssertEqual("#FF6B8F3A", GetProperty(messageForeground, "Color").ToString() ?? string.Empty, "message foreground color");
+        object rootPanel = Invoke(window, "FindName", "RootPanel");
+        AssertType(rootPanel, "System.Windows.Controls.StackPanel", "root panel element");
 
         object actionButton = Invoke(window, "FindName", "ActionButton");
         AssertType(actionButton, "System.Windows.Controls.Button", "action button");
@@ -403,6 +405,20 @@ internal static class Program
             flushDispatcherOperations?.Invoke(window);
             AssertEqual("updated binding status", GetProperty(mutableStatusText, "Text"), "mutable status property changed binding text");
         }
+        object routedEventSource = Invoke(window, "FindName", "RoutedEventSource");
+        AssertType(routedEventSource, "ProGPU.Wpf.SdkSwitchSmoke.SmokeRoutedEventSource", "custom routed event source");
+        AssertAssignableTo(routedEventSource, "System.Windows.FrameworkElement", "custom routed event source base type");
+        object routedEventStatus = Invoke(window, "FindName", "RoutedEventStatus");
+        AssertType(routedEventStatus, "System.Windows.Controls.TextBlock", "custom routed event status element");
+        if (object.Equals("routed event not raised", GetProperty(routedEventStatus, "Text")))
+        {
+            InvokeVoid(routedEventSource, "RaiseSmokeBubbled");
+        }
+
+        AssertAtLeast(1, GetProperty(window, "SmokeRoutedEventCount"), "custom routed event count");
+        AssertSame(rootPanel, GetProperty(window, "LastSmokeRoutedEventSender"), "custom routed event bubbled sender");
+        AssertSame(routedEventSource, GetProperty(window, "LastSmokeRoutedEventSource"), "custom routed event original source");
+        AssertEqual("SmokeBubbled", GetProperty(routedEventStatus, "Text"), "custom routed event status text");
 
         object itemsList = Invoke(window, "FindName", "ItemsList");
         AssertType(itemsList, "System.Windows.Controls.ListBox", "items list");

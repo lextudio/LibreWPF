@@ -133,7 +133,10 @@
         </CollectionViewSource>
     </Window.Resources>
 
-    <StackPanel Margin="16">
+    <StackPanel
+        x:Name="RootPanel"
+        Margin="16"
+        local:SmokeRoutedEventSource.SmokeBubbled="OnSmokeBubbled">
         <TextBlock
             x:Name="Message"
             Foreground="{DynamicResource MergedAccentBrush}"
@@ -200,6 +203,14 @@
             x:Name="MutableStatusText"
             Margin="0,6,0,0"
             Text="{Binding MutableStatus}" />
+        <local:SmokeRoutedEventSource
+            x:Name="RoutedEventSource"
+            Width="1"
+            Height="1" />
+        <TextBlock
+            x:Name="RoutedEventStatus"
+            Margin="0,6,0,0"
+            Text="routed event not raised" />
         <ListBox
             x:Name="ItemsList"
             Height="82"

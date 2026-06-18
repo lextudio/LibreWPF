@@ -1040,6 +1040,14 @@
                 <ComboBoxItem Content="combo alpha" />
                 <ComboBoxItem Content="combo beta" />
             </ComboBox>
+            <ListBox
+                x:Name="MultiSelectionEventListBox"
+                SelectionChanged="OnMultiSelectionEventListBoxChanged"
+                SelectionMode="Multiple">
+                <ListBoxItem Content="multi alpha" />
+                <ListBoxItem Content="multi beta" />
+                <ListBoxItem Content="multi gamma" />
+            </ListBox>
         </StackPanel>
         <ListView
             x:Name="GridItemsListView"

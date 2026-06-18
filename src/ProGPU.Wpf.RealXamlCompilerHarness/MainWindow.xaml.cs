@@ -213,6 +213,20 @@ public partial class MainWindow : Window
 
     public string? LastListBoxSelectionRemovedItem { get; private set; }
 
+    public int MultiListBoxSelectionChangedCount { get; private set; }
+
+    public string? LastMultiListBoxSelectionSenderName { get; private set; }
+
+    public string? LastMultiListBoxSelectionRoutedEventName { get; private set; }
+
+    public int LastMultiListBoxSelectionAddedCount { get; private set; }
+
+    public int LastMultiListBoxSelectionRemovedCount { get; private set; }
+
+    public string? LastMultiListBoxSelectionAddedItem { get; private set; }
+
+    public string? LastMultiListBoxSelectionRemovedItem { get; private set; }
+
     public int ComboBoxSelectionChangedCount { get; private set; }
 
     public string? LastComboBoxSelectionSenderName { get; private set; }
@@ -501,6 +515,17 @@ public partial class MainWindow : Window
         LastListBoxSelectionRemovedCount = e.RemovedItems.Count;
         LastListBoxSelectionAddedItem = DescribeSelectionItem(e.AddedItems);
         LastListBoxSelectionRemovedItem = DescribeSelectionItem(e.RemovedItems);
+    }
+
+    private void OnMultiSelectionEventListBoxChanged(object sender, SelectionChangedEventArgs e)
+    {
+        MultiListBoxSelectionChangedCount++;
+        LastMultiListBoxSelectionSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastMultiListBoxSelectionRoutedEventName = e.RoutedEvent?.Name;
+        LastMultiListBoxSelectionAddedCount = e.AddedItems.Count;
+        LastMultiListBoxSelectionRemovedCount = e.RemovedItems.Count;
+        LastMultiListBoxSelectionAddedItem = DescribeSelectionItem(e.AddedItems);
+        LastMultiListBoxSelectionRemovedItem = DescribeSelectionItem(e.RemovedItems);
     }
 
     private void OnSelectionEventComboBoxChanged(object sender, SelectionChangedEventArgs e)

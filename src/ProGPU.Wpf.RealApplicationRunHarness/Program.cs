@@ -4438,7 +4438,7 @@ internal static class Program
     {
         object panel = GetField(window, "SelectorEventPanel");
         AssertType(panel, "System.Windows.Controls.StackPanel", "compiled selector event panel");
-        AssertCollectionCount(GetProperty(panel, "Children"), expected: 2, "compiled selector event panel children");
+        AssertCollectionCount(GetProperty(panel, "Children"), expected: 3, "compiled selector event panel children");
 
         object listBox = GetField(window, "SelectionEventListBox");
         AssertType(listBox, "System.Windows.Controls.ListBox", "compiled SelectionChanged ListBox");
@@ -4495,6 +4495,48 @@ internal static class Program
         AssertEqual(1, GetProperty(window, "LastComboBoxSelectionRemovedCount"), "compiled ComboBox SelectionChanged beta removed count");
         AssertEqual("combo beta", GetProperty(window, "LastComboBoxSelectionAddedItem"), "compiled ComboBox SelectionChanged beta added item");
         AssertEqual("combo alpha", GetProperty(window, "LastComboBoxSelectionRemovedItem"), "compiled ComboBox SelectionChanged alpha removed item");
+
+        object multiListBox = GetField(window, "MultiSelectionEventListBox");
+        AssertType(multiListBox, "System.Windows.Controls.ListBox", "compiled multi-selection ListBox");
+        AssertEqual("Multiple", GetProperty(multiListBox, "SelectionMode").ToString(), "compiled multi-selection ListBox mode");
+        object multiItems = GetProperty(multiListBox, "Items");
+        AssertCollectionCount(multiItems, expected: 3, "compiled multi-selection ListBox items");
+        object multiAlpha = GetCollectionItem(multiItems, 0);
+        object multiBeta = GetCollectionItem(multiItems, 1);
+        object multiGamma = GetCollectionItem(multiItems, 2);
+        AssertEqual("multi alpha", GetProperty(multiAlpha, "Content"), "compiled multi-selection alpha content");
+        AssertEqual("multi beta", GetProperty(multiBeta, "Content"), "compiled multi-selection beta content");
+        AssertEqual("multi gamma", GetProperty(multiGamma, "Content"), "compiled multi-selection gamma content");
+        object selectedItems = GetProperty(multiListBox, "SelectedItems");
+        AssertCollectionCount(selectedItems, expected: 0, "compiled multi-selection initial selected items");
+        AssertEqual(0, GetProperty(window, "MultiListBoxSelectionChangedCount"), "compiled multi-selection initial count");
+
+        SetProperty(multiAlpha, "IsSelected", true);
+        AssertCollectionCount(selectedItems, expected: 1, "compiled multi-selection alpha selected items");
+        AssertSame(multiAlpha, GetCollectionItem(selectedItems, 0), "compiled multi-selection alpha selected item");
+        AssertEqual(1, GetProperty(window, "MultiListBoxSelectionChangedCount"), "compiled multi-selection alpha count");
+        AssertEqual("MultiSelectionEventListBox", GetProperty(window, "LastMultiListBoxSelectionSenderName"), "compiled multi-selection sender");
+        AssertEqual("SelectionChanged", GetProperty(window, "LastMultiListBoxSelectionRoutedEventName"), "compiled multi-selection routed event");
+        AssertEqual(1, GetProperty(window, "LastMultiListBoxSelectionAddedCount"), "compiled multi-selection alpha added count");
+        AssertEqual(0, GetProperty(window, "LastMultiListBoxSelectionRemovedCount"), "compiled multi-selection alpha removed count");
+        AssertEqual("multi alpha", GetProperty(window, "LastMultiListBoxSelectionAddedItem"), "compiled multi-selection alpha added item");
+
+        SetProperty(multiBeta, "IsSelected", true);
+        AssertCollectionCount(selectedItems, expected: 2, "compiled multi-selection beta selected items");
+        AssertSame(multiAlpha, GetCollectionItem(selectedItems, 0), "compiled multi-selection retained alpha selected item");
+        AssertSame(multiBeta, GetCollectionItem(selectedItems, 1), "compiled multi-selection beta selected item");
+        AssertEqual(2, GetProperty(window, "MultiListBoxSelectionChangedCount"), "compiled multi-selection beta count");
+        AssertEqual(1, GetProperty(window, "LastMultiListBoxSelectionAddedCount"), "compiled multi-selection beta added count");
+        AssertEqual(0, GetProperty(window, "LastMultiListBoxSelectionRemovedCount"), "compiled multi-selection beta removed count");
+        AssertEqual("multi beta", GetProperty(window, "LastMultiListBoxSelectionAddedItem"), "compiled multi-selection beta added item");
+
+        SetProperty(multiAlpha, "IsSelected", false);
+        AssertCollectionCount(selectedItems, expected: 1, "compiled multi-selection alpha removed selected items");
+        AssertSame(multiBeta, GetCollectionItem(selectedItems, 0), "compiled multi-selection beta remains selected item");
+        AssertEqual(3, GetProperty(window, "MultiListBoxSelectionChangedCount"), "compiled multi-selection alpha removed count");
+        AssertEqual(0, GetProperty(window, "LastMultiListBoxSelectionAddedCount"), "compiled multi-selection alpha removed added count");
+        AssertEqual(1, GetProperty(window, "LastMultiListBoxSelectionRemovedCount"), "compiled multi-selection alpha removed removed count");
+        AssertEqual("multi alpha", GetProperty(window, "LastMultiListBoxSelectionRemovedItem"), "compiled multi-selection alpha removed item");
     }
 
     private static void ValidateListViewGridView(object window)

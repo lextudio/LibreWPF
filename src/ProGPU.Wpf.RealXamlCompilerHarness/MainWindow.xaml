@@ -544,7 +544,8 @@
                     <Run Text=" FlowDocument " />
                     <Hyperlink
                         x:Name="DocumentLink"
-                        NavigateUri="https://example.test/progpu-wpf">
+                        NavigateUri="https://example.test/progpu-wpf"
+                        RequestNavigate="OnDocumentLinkRequestNavigate">
                         <Run Text="link" />
                     </Hyperlink>
                     <Figure x:Name="DocumentFigure">

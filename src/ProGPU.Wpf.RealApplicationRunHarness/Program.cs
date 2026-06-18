@@ -1211,6 +1211,12 @@ internal static class Program
         AssertEqual("https://example.test/progpu-wpf", GetProperty(hyperlink, "NavigateUri").ToString(), "compiled FlowDocument hyperlink URI");
         object hyperlinkRun = GetFirstCollectionItemOfType(GetProperty(hyperlink, "Inlines"), "System.Windows.Documents.Run", "compiled FlowDocument hyperlink run");
         AssertEqual("link", GetProperty(hyperlinkRun, "Text"), "compiled FlowDocument hyperlink run text");
+        AssertEqual(0, GetProperty(window, "DocumentLinkRequestNavigateCount"), "compiled Hyperlink initial RequestNavigate count");
+        Invoke(hyperlink, "DoClick");
+        AssertEqual(1, GetProperty(window, "DocumentLinkRequestNavigateCount"), "compiled Hyperlink RequestNavigate handler count");
+        AssertEqual("DocumentLink", GetProperty(window, "LastDocumentLinkRequestNavigateSenderName"), "compiled Hyperlink RequestNavigate sender");
+        AssertEqual("https://example.test/progpu-wpf", GetProperty(window, "LastDocumentLinkRequestNavigateUri"), "compiled Hyperlink RequestNavigate URI");
+        AssertEqual("RequestNavigate", GetProperty(window, "LastDocumentLinkRequestNavigateRoutedEventName"), "compiled Hyperlink RequestNavigate routed event");
 
         object figure = GetFirstCollectionItemOfType(inlines, "System.Windows.Documents.Figure", "compiled FlowDocument figure inline");
         AssertFlowDocumentAnchoredBlockText(figure, "figure anchored text", "figure");

@@ -1259,6 +1259,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("after line break", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"DocumentLink\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("NavigateUri=\"https://example.test/progpu-wpf\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("RequestNavigate=\"OnDocumentLinkRequestNavigate\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Figure x:Name=\"DocumentFigure\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("figure anchored text", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Floater x:Name=\"DocumentFloater\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1769,6 +1770,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void OnRepeatButtonClick", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastRepeatButtonClickRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Controls.Primitives;", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("using System.Windows.Navigation;", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int ThumbDragStartedCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int ThumbDragDeltaCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int ThumbDragCompletedCount", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1778,6 +1780,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void OnDragManagerThumbDragCompleted(object sender, DragCompletedEventArgs e)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnBubbledThumbDragDelta(object sender, DragDeltaEventArgs e)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastBubbledThumbDragDeltaOriginalSourceName = e.OriginalSource is FrameworkElement source ? source.Name : null", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int DocumentLinkRequestNavigateCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnDocumentLinkRequestNavigate(object sender, RequestNavigateEventArgs e)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastDocumentLinkRequestNavigateSenderName = sender switch", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastDocumentLinkRequestNavigateUri = e.Uri?.ToString()", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastDocumentLinkRequestNavigateRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int StyledClickCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnStyledButtonClick", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastStyledClickRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -2060,6 +2067,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("System.Windows.Documents.LineBreak", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Documents.Hyperlink", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("https://example.test/progpu-wpf", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Invoke(hyperlink, \"DoClick\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Hyperlink RequestNavigate handler count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Hyperlink RequestNavigate routed event", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Documents.Figure", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertFlowDocumentAnchoredBlockText(figure, \"figure anchored text\", \"figure\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Documents.Floater", harnessProgram, StringComparison.Ordinal);

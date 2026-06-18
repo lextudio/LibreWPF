@@ -12,6 +12,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Markup;
 using System.Windows.Media;
+using System.Windows.Navigation;
 
 namespace ProGPU.Wpf.RealXamlCompilerHarness;
 
@@ -114,6 +115,14 @@ public partial class MainWindow : Window
     public double LastBubbledThumbDragDeltaHorizontalChange { get; private set; }
 
     public double LastBubbledThumbDragDeltaVerticalChange { get; private set; }
+
+    public int DocumentLinkRequestNavigateCount { get; private set; }
+
+    public string? LastDocumentLinkRequestNavigateSenderName { get; private set; }
+
+    public string? LastDocumentLinkRequestNavigateUri { get; private set; }
+
+    public string? LastDocumentLinkRequestNavigateRoutedEventName { get; private set; }
 
     public int StyledClickCount { get; private set; }
 
@@ -402,6 +411,20 @@ public partial class MainWindow : Window
         LastBubbledThumbDragDeltaRoutedEventName = e.RoutedEvent?.Name;
         LastBubbledThumbDragDeltaHorizontalChange = e.HorizontalChange;
         LastBubbledThumbDragDeltaVerticalChange = e.VerticalChange;
+    }
+
+    private void OnDocumentLinkRequestNavigate(object sender, RequestNavigateEventArgs e)
+    {
+        DocumentLinkRequestNavigateCount++;
+        LastDocumentLinkRequestNavigateSenderName = sender switch
+        {
+            FrameworkContentElement contentElement => contentElement.Name,
+            FrameworkElement element => element.Name,
+            _ => null,
+        };
+        LastDocumentLinkRequestNavigateUri = e.Uri?.ToString();
+        LastDocumentLinkRequestNavigateRoutedEventName = e.RoutedEvent?.Name;
+        e.Handled = true;
     }
 
     private void OnStyledButtonClick(object sender, RoutedEventArgs e)

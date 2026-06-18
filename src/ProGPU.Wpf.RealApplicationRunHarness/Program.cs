@@ -531,6 +531,7 @@ internal static class Program
         AssertContains("second document item", text, "compiled FlowDocument TextRange second list item");
 
         object firstListItem = GetCollectionItem(listItems, 0);
+        object secondListItem = GetCollectionItem(listItems, 1);
         object firstListParagraph = GetCollectionItem(GetProperty(firstListItem, "Blocks"), 0);
         Invoke(selection, "Select", GetProperty(firstListParagraph, "ContentStart"), GetProperty(firstListParagraph, "ContentEnd"));
         AssertContains("first document item", GetProperty(selection, "Text").ToString() ?? string.Empty, "compiled RichTextBox list command selection text");
@@ -542,6 +543,36 @@ internal static class Program
         AssertEqual(true, InvokeTwoArgumentCommand(toggleNumberingCommand, "CanExecute", null, richTextBox), "compiled RichTextBox ToggleNumbering CanExecute");
         InvokeTwoArgumentCommand(toggleNumberingCommand, "Execute", null, richTextBox);
         AssertEqual("Decimal", GetProperty(list, "MarkerStyle").ToString(), "compiled RichTextBox ToggleNumbering marker style");
+
+        object secondListParagraph = GetCollectionItem(GetProperty(secondListItem, "Blocks"), 0);
+        Invoke(selection, "Select", GetProperty(secondListParagraph, "ContentStart"), GetProperty(secondListParagraph, "ContentEnd"));
+        SetProperty(richTextBox, "AcceptsTab", true);
+        object increaseIndentationCommand = GetStaticProperty(editingCommandsType, "IncreaseIndentation");
+        AssertEqual(true, InvokeTwoArgumentCommand(increaseIndentationCommand, "CanExecute", null, richTextBox), "compiled RichTextBox IncreaseIndentation CanExecute");
+        InvokeTwoArgumentCommand(increaseIndentationCommand, "Execute", null, richTextBox);
+        AssertCollectionCount(listItems, expected: 1, "compiled RichTextBox IncreaseIndentation top-level list items");
+        AssertSame(firstListItem, GetCollectionItem(listItems, 0), "compiled RichTextBox IncreaseIndentation leading list item");
+        object firstListItemBlocks = GetProperty(firstListItem, "Blocks");
+        AssertCollectionCount(firstListItemBlocks, expected: 2, "compiled RichTextBox IncreaseIndentation leading list item blocks");
+        object nestedList = GetCollectionItem(firstListItemBlocks, 1);
+        AssertType(nestedList, "System.Windows.Documents.List", "compiled RichTextBox IncreaseIndentation nested list");
+        AssertSame(firstListItem, GetProperty(nestedList, "Parent"), "compiled RichTextBox IncreaseIndentation nested list parent");
+        AssertEqual("Decimal", GetProperty(nestedList, "MarkerStyle").ToString(), "compiled RichTextBox IncreaseIndentation nested marker style");
+        object nestedListItems = GetProperty(nestedList, "ListItems");
+        AssertCollectionCount(nestedListItems, expected: 1, "compiled RichTextBox IncreaseIndentation nested list items");
+        AssertSame(secondListItem, GetCollectionItem(nestedListItems, 0), "compiled RichTextBox IncreaseIndentation nested list item");
+        AssertFlowDocumentListItemText(secondListItem, "second document item", "indented second");
+
+        Invoke(selection, "Select", GetProperty(secondListParagraph, "ContentStart"), GetProperty(secondListParagraph, "ContentEnd"));
+        object decreaseIndentationCommand = GetStaticProperty(editingCommandsType, "DecreaseIndentation");
+        AssertEqual(true, InvokeTwoArgumentCommand(decreaseIndentationCommand, "CanExecute", null, richTextBox), "compiled RichTextBox DecreaseIndentation CanExecute");
+        InvokeTwoArgumentCommand(decreaseIndentationCommand, "Execute", null, richTextBox);
+        object restoredListItems = GetProperty(list, "ListItems");
+        AssertCollectionCount(restoredListItems, expected: 2, "compiled RichTextBox DecreaseIndentation top-level list items");
+        AssertSame(firstListItem, GetCollectionItem(restoredListItems, 0), "compiled RichTextBox DecreaseIndentation first list item");
+        AssertSame(secondListItem, GetCollectionItem(restoredListItems, 1), "compiled RichTextBox DecreaseIndentation second list item");
+        AssertCollectionCount(GetProperty(firstListItem, "Blocks"), expected: 1, "compiled RichTextBox DecreaseIndentation leading list item blocks");
+        AssertFlowDocumentListItemText(secondListItem, "second document item", "restored second");
     }
 
     private static void AssertFlowDocumentParagraphText(object paragraph, string expectedText, string description)

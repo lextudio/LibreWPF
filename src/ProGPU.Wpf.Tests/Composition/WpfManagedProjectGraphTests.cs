@@ -4441,6 +4441,20 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
             "SmokePanel.xaml.cs");
+        var smokeThemedControlPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchSmoke",
+            "SmokeThemedControl.cs");
+        var smokeGenericThemeXamlPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchSmoke",
+            "Themes",
+            "Generic.xaml");
+        var smokeAssemblyInfoPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchSmoke",
+            "Properties",
+            "AssemblyInfo.cs");
         var proGpuWpfProjectPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -4493,6 +4507,9 @@ public sealed class WpfManagedProjectGraphTests
         var smokeMainWindowCodeBehind = File.ReadAllText(smokeMainWindowCodeBehindPath);
         var smokePanelXaml = File.ReadAllText(smokePanelXamlPath);
         var smokePanelCodeBehind = File.ReadAllText(smokePanelCodeBehindPath);
+        var smokeThemedControl = File.ReadAllText(smokeThemedControlPath);
+        var smokeGenericThemeXaml = File.ReadAllText(smokeGenericThemeXamlPath);
+        var smokeAssemblyInfo = File.ReadAllText(smokeAssemblyInfoPath);
         var proGpuWpfProject = File.ReadAllText(proGpuWpfProjectPath);
         var proGpuWpfCommandSink = File.ReadAllText(proGpuWpfCommandSinkPath);
         var wpfMilRenderDataDecoder = File.ReadAllText(wpfMilRenderDataDecoderPath);
@@ -4615,7 +4632,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<sys:String>provider</sys:String>", smokeResourcesXaml, StringComparison.Ordinal);
         Assert.Contains("<sys:Int32>7</sys:Int32>", smokeResourcesXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:componentModel=\"clr-namespace:System.ComponentModel;assembly=WindowsBase\"", smokeMainWindowXaml, StringComparison.Ordinal);
-        Assert.Contains("Height=\"700\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Height=\"760\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<ControlTemplate TargetType=\"{x:Type Button}\">", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<VisualStateManager.VisualStateGroups>", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<VisualStateGroup x:Name=\"CommonStates\">", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -4663,6 +4680,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"CompiledSmokePanel\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Caption=\"Compiled user control\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("PanelContent=\"{Binding SelectedItem.Value, ElementName=ItemsList}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("local:SmokeThemedControl", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ThemedSmokeControl\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"Generic theme default style\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<RichTextBox", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<FlowDocument>", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Class=\"ProGPU.Wpf.SdkSwitchSmoke.SmokePanel\"", smokePanelXaml, StringComparison.Ordinal);
@@ -4678,6 +4698,19 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DependencyProperty CaptionProperty", smokePanelCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DependencyProperty PanelContentProperty", smokePanelCodeBehind, StringComparison.Ordinal);
         Assert.Contains("InitializeComponent();", smokePanelCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("[assembly: ThemeInfo(ResourceDictionaryLocation.None, ResourceDictionaryLocation.SourceAssembly)]", smokeAssemblyInfo, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokeThemedControl : Control", smokeThemedControl, StringComparison.Ordinal);
+        Assert.Contains("DependencyProperty TextProperty", smokeThemedControl, StringComparison.Ordinal);
+        Assert.Contains("DefaultStyleKeyProperty.OverrideMetadata", smokeThemedControl, StringComparison.Ordinal);
+        Assert.Contains("new FrameworkPropertyMetadata(typeof(SmokeThemedControl))", smokeThemedControl, StringComparison.Ordinal);
+        Assert.Contains("TargetType=\"{x:Type local:SmokeThemedControl}\"", smokeGenericThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("DynamicResource MergedAccentBrush", smokeGenericThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("DynamicResource SmokeAccentBrush", smokeGenericThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("<ControlTemplate TargetType=\"{x:Type local:SmokeThemedControl}\">", smokeGenericThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ThemeRoot\"", smokeGenericThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("Background=\"{TemplateBinding Background}\"", smokeGenericThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ThemeText\"", smokeGenericThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{TemplateBinding Text}\"", smokeGenericThemeXaml, StringComparison.Ordinal);
         Assert.Contains("DataContext = new SmokeViewModel();", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public static RoutedUICommand SmokeCommand", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnActionButtonClick", smokeMainWindowCodeBehind, StringComparison.Ordinal);
@@ -4780,6 +4813,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled user control relative-source binding", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"PanelContentPresenter\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled user control content binding", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"ThemedSmokeControl\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("themed custom control default template", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"ThemeText\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("themed custom control template binding", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"ThemeRoot\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("themed custom control background color", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"DocumentBox\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("InvokeVoid(actionButton, \"OnClick\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RunApplicationRunSmoke", runtimeHarnessProgram, StringComparison.Ordinal);

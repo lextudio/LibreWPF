@@ -7,7 +7,7 @@
     x:Name="RootWindow"
     Title="ProGPU WPF SDK Smoke"
     Width="420"
-    Height="700">
+    Height="760">
     <Window.CommandBindings>
         <CommandBinding
             CanExecute="OnSmokeCommandCanExecute"
@@ -221,6 +221,10 @@
             Margin="{StaticResource SmokePanelMargin}"
             Caption="Compiled user control"
             PanelContent="{Binding SelectedItem.Value, ElementName=ItemsList}" />
+        <local:SmokeThemedControl
+            x:Name="ThemedSmokeControl"
+            Margin="{StaticResource SmokePanelMargin}"
+            Text="Generic theme default style" />
         <RichTextBox
             x:Name="DocumentBox"
             Height="76"

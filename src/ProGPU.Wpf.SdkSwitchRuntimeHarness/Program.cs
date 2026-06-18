@@ -267,7 +267,7 @@ internal static class Program
         AssertAssignableTo(window, "System.Windows.Window", "SDK smoke main window");
         AssertEqual("ProGPU WPF SDK Smoke", GetProperty(window, "Title"), "window title");
         AssertEqual(420.0, GetProperty(window, "Width"), "window width");
-        AssertEqual(700.0, GetProperty(window, "Height"), "window height");
+        AssertEqual(760.0, GetProperty(window, "Height"), "window height");
 
         InvokeVoid(window, "UpdateLayout");
 
@@ -434,6 +434,25 @@ internal static class Program
         object panelContentPresenter = Invoke(compiledSmokePanel, "FindName", "PanelContentPresenter");
         AssertType(panelContentPresenter, "System.Windows.Controls.ContentPresenter", "compiled user control content presenter");
         AssertEqual("ProGPU", GetProperty(panelContentPresenter, "Content"), "compiled user control content binding");
+
+        object themedSmokeControl = Invoke(window, "FindName", "ThemedSmokeControl");
+        AssertType(themedSmokeControl, "ProGPU.Wpf.SdkSwitchSmoke.SmokeThemedControl", "themed custom control");
+        AssertAssignableTo(themedSmokeControl, "System.Windows.Controls.Control", "themed custom control base type");
+        AssertEqual("Generic theme default style", GetProperty(themedSmokeControl, "Text"), "themed custom control dependency property");
+        Invoke(themedSmokeControl, "ApplyTemplate");
+        object themedControlTemplate = GetProperty(themedSmokeControl, "Template");
+        AssertType(themedControlTemplate, "System.Windows.Controls.ControlTemplate", "themed custom control default template");
+        object themedTemplateText = Invoke(themedControlTemplate, "FindName", "ThemeText", themedSmokeControl);
+        AssertType(themedTemplateText, "System.Windows.Controls.TextBlock", "themed custom control template text");
+        AssertEqual("Generic theme default style", GetProperty(themedTemplateText, "Text"), "themed custom control template binding");
+        object themedTemplateForeground = GetProperty(themedTemplateText, "Foreground");
+        AssertType(themedTemplateForeground, "System.Windows.Media.SolidColorBrush", "themed custom control foreground");
+        AssertEqual("#FF356D9E", GetProperty(themedTemplateForeground, "Color").ToString() ?? string.Empty, "themed custom control foreground color");
+        object themedTemplateRoot = Invoke(themedControlTemplate, "FindName", "ThemeRoot", themedSmokeControl);
+        AssertType(themedTemplateRoot, "System.Windows.Controls.Border", "themed custom control template root");
+        object themedTemplateBackground = GetProperty(themedTemplateRoot, "Background");
+        AssertType(themedTemplateBackground, "System.Windows.Media.SolidColorBrush", "themed custom control background");
+        AssertEqual("#FF6B8F3A", GetProperty(themedTemplateBackground, "Color").ToString() ?? string.Empty, "themed custom control background color");
 
         object documentBox = Invoke(window, "FindName", "DocumentBox");
         AssertType(documentBox, "System.Windows.Controls.RichTextBox", "rich text box");
@@ -931,7 +950,7 @@ internal static class Program
             AssertEqual(true, typedActivation.IsVisible, "SDK startup window visible before run");
             AssertEqual("ProGPU WPF SDK Smoke", typedActivation.Title, "activated SDK window title");
             AssertEqual(420.0, typedActivation.Width, "activated SDK window width");
-            AssertEqual(700.0, typedActivation.Height, "activated SDK window height");
+            AssertEqual(760.0, typedActivation.Height, "activated SDK window height");
             AssertSame(typedActivation.Window, GetProperty(_application, "MainWindow"), "SDK Application.MainWindow");
             InvokeVoid(typedActivation.Window, "UpdateLayout");
             FlushDispatcherOperations(typedActivation.Window, "Loaded", "Render", "ApplicationIdle");

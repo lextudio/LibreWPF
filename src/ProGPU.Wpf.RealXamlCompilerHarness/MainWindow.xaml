@@ -818,6 +818,12 @@
             Command="{Binding SmokeCommand}"
             Content="{Binding ButtonText}" />
         <Button
+            x:Name="CanExecuteCommandButton"
+            Margin="0,8,0,0"
+            Command="{Binding ToggleCommand}"
+            CommandParameter="can execute payload"
+            Content="can execute command" />
+        <Button
             x:Name="RoutedCommandButton"
             Margin="0,8,0,0"
             Command="{x:Static local:MainWindow.SmokeRoutedCommand}"

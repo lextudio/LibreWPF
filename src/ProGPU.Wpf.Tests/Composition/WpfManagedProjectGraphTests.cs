@@ -1152,6 +1152,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Style=\"{StaticResource EventSetterButtonStyle}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"CommandButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{Binding SmokeCommand}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"CanExecuteCommandButton\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{Binding ToggleCommand}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CommandParameter=\"can execute payload\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:componentModel=\"clr-namespace:System.ComponentModel;assembly=WindowsBase\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:local=\"clr-namespace:ProGPU.Wpf.RealXamlCompilerHarness\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:primitives=\"clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1563,6 +1566,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("value is not BindingGroup bindingGroup", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("bindingGroup.GetValue(item, propertyName)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeCommand : ICommand", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public SmokeToggleCommand ToggleCommand { get; } = new();", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokeToggleCommand : ICommand", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public bool CanExecuteValue { get; private set; }", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public void SetCanExecute(bool value)", mainWindowCodeBehind, StringComparison.Ordinal);
 
         Assert.Contains("x:Class=\"ProGPU.Wpf.RealXamlCompilerHarness.SmokeUserControl\"", smokeUserControlXaml, StringComparison.Ordinal);
         Assert.Contains("UserControl.Resources", smokeUserControlXaml, StringComparison.Ordinal);
@@ -1822,6 +1829,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetField(window, \"BindingBlock\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetField(window, \"CommandButton\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateBindingAndCommand(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetField(window, \"CanExecuteCommandButton\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CanExecute command initial button state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CanExecute command enabled button state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CanExecute command button execution count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CanExecute command disabled button state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TextBlock property-change binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button command binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateAdvancedBindingFeatures(window)", harnessProgram, StringComparison.Ordinal);
@@ -2382,6 +2394,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled TextBox BasedOn local setter", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TextBox BasedOn inherited margin top", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateBindingAndCommand(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetField(window, \"CanExecuteCommandButton\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CanExecute command initial button state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CanExecute command enabled button state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CanExecute command button execution count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CanExecute command disabled button state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TextBlock property-change binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTextBoxSelection(inputBox)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TextBox selected text replacement", harnessProgram, StringComparison.Ordinal);

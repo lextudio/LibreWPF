@@ -1041,7 +1041,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 80, "stack panel children");
+        AssertCollectionCount(children, expected: 81, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -1864,6 +1864,27 @@ internal static class Program
         AssertEqual(0, GetProperty(viewModelCommand, "ExecutionCount"), "bound command initial execution count");
         Invoke(buttonCommand, "Execute", new object?[] { null });
         AssertEqual(1, GetProperty(viewModelCommand, "ExecutionCount"), "bound command execution count");
+
+        object canExecuteCommandButton = GetField(window, "CanExecuteCommandButton");
+        AssertType(canExecuteCommandButton, "System.Windows.Controls.Button", "compiled CanExecute command Button");
+        AssertEqual("can execute command", GetProperty(canExecuteCommandButton, "Content"), "compiled CanExecute command Button content");
+        AssertEqual("can execute payload", GetProperty(canExecuteCommandButton, "CommandParameter"), "compiled CanExecute command Button parameter");
+        object toggleCommand = GetProperty(dataContext, "ToggleCommand");
+        AssertSame(toggleCommand, GetProperty(canExecuteCommandButton, "Command"), "compiled CanExecute command binding");
+        AssertEqual(false, GetProperty(toggleCommand, "CanExecuteValue"), "compiled CanExecute command initial state");
+        AssertEqual(false, GetProperty(canExecuteCommandButton, "IsEnabled"), "compiled CanExecute command initial button state");
+
+        Invoke(toggleCommand, "SetCanExecute", true);
+        AssertEqual(true, GetProperty(canExecuteCommandButton, "IsEnabled"), "compiled CanExecute command enabled button state");
+        AssertEqual(1, GetProperty(toggleCommand, "CanExecuteChangedCount"), "compiled CanExecute command change count");
+        AssertAtLeast(1, GetProperty(toggleCommand, "CanExecuteCount"), "compiled CanExecute command query count");
+        Invoke(canExecuteCommandButton, "OnClick");
+        AssertEqual(1, GetProperty(toggleCommand, "ExecutionCount"), "compiled CanExecute command button execution count");
+        AssertEqual("can execute payload", GetProperty(toggleCommand, "LastParameter"), "compiled CanExecute command execution parameter");
+
+        Invoke(toggleCommand, "SetCanExecute", false);
+        AssertEqual(false, GetProperty(canExecuteCommandButton, "IsEnabled"), "compiled CanExecute command disabled button state");
+        AssertEqual(2, GetProperty(toggleCommand, "CanExecuteChangedCount"), "compiled CanExecute command disabled change count");
     }
 
     private static void ValidateAdvancedBindingFeatures(object window)

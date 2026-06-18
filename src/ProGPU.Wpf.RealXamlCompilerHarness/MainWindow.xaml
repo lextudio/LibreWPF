@@ -1058,6 +1058,8 @@
             Margin="0,8,0,0"
             AutoGenerateColumns="False"
             CanUserAddRows="False"
+            ClipboardCopyMode="IncludeHeader"
+            CopyingRowClipboardContent="OnItemsDataGridCopyingRowClipboardContent"
             EnableColumnVirtualization="False"
             EnableRowVirtualization="False"
             GridLinesVisibility="Horizontal"
@@ -1068,12 +1070,15 @@
             <DataGrid.Columns>
                 <DataGridTextColumn
                     Binding="{Binding Name}"
+                    ClipboardContentBinding="{Binding Name}"
                     Header="Name" />
                 <DataGridTextColumn
                     Binding="{Binding Category}"
+                    ClipboardContentBinding="{Binding Category}"
                     Header="Category" />
                 <DataGridCheckBoxColumn
                     Binding="{Binding IsActive}"
+                    ClipboardContentBinding="{Binding IsActive}"
                     Header="Active" />
             </DataGrid.Columns>
         </DataGrid>

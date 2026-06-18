@@ -5002,6 +5002,7 @@ internal static class Program
         AssertEqual(true, GetProperty(dataGrid, "IsReadOnly"), "compiled DataGrid read-only state");
         AssertEqual("Horizontal", GetProperty(dataGrid, "GridLinesVisibility").ToString(), "compiled DataGrid grid-lines visibility");
         AssertEqual("Column", GetProperty(dataGrid, "HeadersVisibility").ToString(), "compiled DataGrid headers visibility");
+        AssertEqual("IncludeHeader", GetProperty(dataGrid, "ClipboardCopyMode").ToString(), "compiled DataGrid clipboard copy mode");
         AssertBindingPath(dataGrid, "SelectedItemProperty", "SelectedItem", "compiled DataGrid SelectedItem binding path");
         AssertSame(GetCollectionItem(sourceItems, 0), GetProperty(dataGrid, "SelectedItem"), "compiled DataGrid initial selected item");
 
@@ -5011,22 +5012,52 @@ internal static class Program
         AssertType(nameColumn, "System.Windows.Controls.DataGridTextColumn", "compiled DataGrid name column");
         AssertEqual("Name", GetProperty(nameColumn, "Header"), "compiled DataGrid name column header");
         AssertBindingObjectPath(GetProperty(nameColumn, "Binding"), "Name", "compiled DataGrid name binding path");
+        AssertBindingObjectPath(GetProperty(nameColumn, "ClipboardContentBinding"), "Name", "compiled DataGrid name clipboard binding path");
 
         object categoryColumn = GetCollectionItem(columns, 1);
         AssertType(categoryColumn, "System.Windows.Controls.DataGridTextColumn", "compiled DataGrid category column");
         AssertEqual("Category", GetProperty(categoryColumn, "Header"), "compiled DataGrid category column header");
         AssertBindingObjectPath(GetProperty(categoryColumn, "Binding"), "Category", "compiled DataGrid category binding path");
+        AssertBindingObjectPath(GetProperty(categoryColumn, "ClipboardContentBinding"), "Category", "compiled DataGrid category clipboard binding path");
 
         object activeColumn = GetCollectionItem(columns, 2);
         AssertType(activeColumn, "System.Windows.Controls.DataGridCheckBoxColumn", "compiled DataGrid active column");
         AssertEqual("Active", GetProperty(activeColumn, "Header"), "compiled DataGrid active column header");
         AssertBindingObjectPath(GetProperty(activeColumn, "Binding"), "IsActive", "compiled DataGrid active binding path");
+        AssertBindingObjectPath(GetProperty(activeColumn, "ClipboardContentBinding"), "IsActive", "compiled DataGrid active clipboard binding path");
         AssertEqual(true, GetProperty(GetCollectionItem(sourceItems, 1), "IsActive"), "compiled DataGrid active item value");
 
         SetProperty(dataGrid, "SelectedIndex", 1);
 
         AssertSame(GetCollectionItem(sourceItems, 1), GetProperty(dataGrid, "SelectedItem"), "compiled DataGrid selected item after index update");
         AssertSame(GetCollectionItem(sourceItems, 1), GetProperty(dataContext, "SelectedItem"), "compiled DataGrid two-way selected item source update");
+        ValidateDataGridClipboardContent(dataGrid, sourceItems, columns, window);
+    }
+
+    private static void ValidateDataGridClipboardContent(object dataGrid, object sourceItems, object columns, object window)
+    {
+        object selectedItem = GetCollectionItem(sourceItems, 1);
+
+        object headerArgs = CreateDataGridRowClipboardEventArgs(dataGrid, item: null, startColumnDisplayIndex: 0, endColumnDisplayIndex: 2, isColumnHeadersRow: true);
+        Invoke(dataGrid, "OnCopyingRowClipboardContent", headerArgs);
+
+        AssertEqual(1, GetProperty(window, "DataGridClipboardRowEventCount"), "compiled DataGrid clipboard header event count");
+        AssertEqual(1, GetProperty(window, "DataGridClipboardHeaderEventCount"), "compiled DataGrid clipboard header-row count");
+        AssertEqual(3, GetProperty(window, "DataGridClipboardLastCellCount"), "compiled DataGrid clipboard header cell count");
+        AssertEqual("Name", GetProperty(window, "LastDataGridClipboardFirstColumnHeader"), "compiled DataGrid clipboard first header");
+        AssertEqual("Name\tCategory\tActive", GetProperty(window, "LastDataGridClipboardHeaderText"), "compiled DataGrid clipboard formatted header row");
+
+        object rowArgs = CreateDataGridRowClipboardEventArgs(dataGrid, selectedItem, startColumnDisplayIndex: 0, endColumnDisplayIndex: 2, isColumnHeadersRow: false);
+        Invoke(dataGrid, "OnCopyingRowClipboardContent", rowArgs);
+
+        AssertEqual(2, GetProperty(window, "DataGridClipboardRowEventCount"), "compiled DataGrid clipboard row event count");
+        AssertEqual(1, GetProperty(window, "DataGridClipboardHeaderEventCount"), "compiled DataGrid clipboard header count after row");
+        AssertEqual(3, GetProperty(window, "DataGridClipboardLastCellCount"), "compiled DataGrid clipboard row cell count");
+        AssertEqual("item beta", GetProperty(window, "LastDataGridClipboardItemName"), "compiled DataGrid clipboard row item");
+        AssertEqual("item beta", GetProperty(window, "LastDataGridClipboardFirstCellContent"), "compiled DataGrid clipboard first cell");
+        AssertEqual("secondary group", GetProperty(window, "LastDataGridClipboardSecondCellContent"), "compiled DataGrid clipboard second cell");
+        AssertEqual("True", GetProperty(window, "LastDataGridClipboardThirdCellContent"), "compiled DataGrid clipboard third cell");
+        AssertEqual("item beta\tsecondary group\tTrue", GetProperty(window, "LastDataGridClipboardRowText"), "compiled DataGrid clipboard formatted row");
     }
 
     private static void ValidatePostShowDataGridRows(Assembly presentationCore, object window)
@@ -6018,6 +6049,27 @@ internal static class Program
         return method.Invoke(column, new[] { row })
             ?? throw new InvalidOperationException(
                 $"Expected '{column.GetType().FullName}.GetCellContent(...)' to return generated cell content.");
+    }
+
+    private static object CreateDataGridRowClipboardEventArgs(
+        object dataGrid,
+        object? item,
+        int startColumnDisplayIndex,
+        int endColumnDisplayIndex,
+        bool isColumnHeadersRow)
+    {
+        Type argsType = dataGrid.GetType().Assembly.GetType(
+            "System.Windows.Controls.DataGridRowClipboardEventArgs",
+            throwOnError: true)
+            ?? throw new TypeLoadException("System.Windows.Controls.DataGridRowClipboardEventArgs");
+
+        return Activator.CreateInstance(
+                argsType,
+                item,
+                startColumnDisplayIndex,
+                endColumnDisplayIndex,
+                isColumnHeadersRow)
+            ?? throw new InvalidOperationException("Expected DataGridRowClipboardEventArgs construction to return a value.");
     }
 
     private static int GetTypeDistance(Type concreteType, Type targetType)

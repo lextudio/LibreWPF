@@ -215,6 +215,26 @@ public partial class MainWindow : Window
 
     public string? LastComboBoxSelectionRemovedItem { get; private set; }
 
+    public int DataGridClipboardRowEventCount { get; private set; }
+
+    public int DataGridClipboardHeaderEventCount { get; private set; }
+
+    public int DataGridClipboardLastCellCount { get; private set; }
+
+    public string? LastDataGridClipboardItemName { get; private set; }
+
+    public string? LastDataGridClipboardHeaderText { get; private set; }
+
+    public string? LastDataGridClipboardRowText { get; private set; }
+
+    public string? LastDataGridClipboardFirstColumnHeader { get; private set; }
+
+    public string? LastDataGridClipboardFirstCellContent { get; private set; }
+
+    public string? LastDataGridClipboardSecondCellContent { get; private set; }
+
+    public string? LastDataGridClipboardThirdCellContent { get; private set; }
+
     public int BindingTransferTargetUpdatedCount { get; private set; }
 
     public string? LastBindingTransferTargetSenderName { get; private set; }
@@ -478,6 +498,39 @@ public partial class MainWindow : Window
         return item is ContentControl contentControl
             ? contentControl.Content?.ToString()
             : item?.ToString();
+    }
+
+    private void OnItemsDataGridCopyingRowClipboardContent(object sender, DataGridRowClipboardEventArgs e)
+    {
+        DataGridClipboardRowEventCount++;
+        DataGridClipboardLastCellCount = e.ClipboardRowContent.Count;
+
+        if (e.IsColumnHeadersRow)
+        {
+            DataGridClipboardHeaderEventCount++;
+            LastDataGridClipboardHeaderText = TrimClipboardRow(e.FormatClipboardCellValues(DataFormats.UnicodeText));
+            LastDataGridClipboardFirstColumnHeader = e.ClipboardRowContent.Count > 0
+                ? e.ClipboardRowContent[0].Column.Header?.ToString()
+                : null;
+            return;
+        }
+
+        LastDataGridClipboardItemName = e.Item is SmokeItem item ? item.Name : e.Item?.ToString();
+        LastDataGridClipboardRowText = TrimClipboardRow(e.FormatClipboardCellValues(DataFormats.UnicodeText));
+        LastDataGridClipboardFirstCellContent = e.ClipboardRowContent.Count > 0
+            ? e.ClipboardRowContent[0].Content?.ToString()
+            : null;
+        LastDataGridClipboardSecondCellContent = e.ClipboardRowContent.Count > 1
+            ? e.ClipboardRowContent[1].Content?.ToString()
+            : null;
+        LastDataGridClipboardThirdCellContent = e.ClipboardRowContent.Count > 2
+            ? e.ClipboardRowContent[2].Content?.ToString()
+            : null;
+    }
+
+    private static string TrimClipboardRow(string value)
+    {
+        return value.TrimEnd('\r', '\n');
     }
 
     private void OnBindingTransferTargetUpdated(object sender, DataTransferEventArgs e)

@@ -1337,6 +1337,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"ItemsDataGrid\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("AutoGenerateColumns=\"False\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CanUserAddRows=\"False\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ClipboardCopyMode=\"IncludeHeader\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CopyingRowClipboardContent=\"OnItemsDataGridCopyingRowClipboardContent\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("GridLinesVisibility=\"Horizontal\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("HeadersVisibility=\"Column\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("IsReadOnly=\"True\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1344,6 +1346,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DataGrid.Columns", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DataGridTextColumn", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DataGridCheckBoxColumn", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ClipboardContentBinding=\"{Binding Name}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ClipboardContentBinding=\"{Binding Category}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ClipboardContentBinding=\"{Binding IsActive}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Binding=\"{Binding IsActive}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Header=\"Active\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"NodeTree\"", mainWindowXaml, StringComparison.Ordinal);
@@ -2216,6 +2221,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled DataGrid name binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataGrid category binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataGrid active binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataGrid clipboard copy mode", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataGrid name clipboard binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateDataGridClipboardContent(dataGrid, sourceItems, columns, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataGrid clipboard formatted row", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataGrid active item value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataGrid two-way selected item source update", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowDataGridRows(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
@@ -2938,6 +2947,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled DataGrid name binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataGrid category binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataGrid active binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataGrid clipboard copy mode", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataGrid name clipboard binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateDataGridClipboardContent(dataGrid, sourceItems, columns, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataGrid clipboard formatted row", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataGrid active item value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataGrid two-way selected item source update", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowDataGridRows(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);

@@ -830,6 +830,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Setter Property=\"Tag\" Value=\"trigger active\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("Style x:Key=\"PropertyTriggeredButtonStyle\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("Setter Property=\"Tag\" Value=\"property trigger active\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("Style x:Key=\"MultiPropertyTriggeredButtonStyle\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("<MultiTrigger>", appXaml, StringComparison.Ordinal);
+        Assert.Contains("Condition Property=\"IsDefault\" Value=\"True\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("Setter Property=\"Tag\" Value=\"multi property trigger active\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("Style x:Key=\"MultiTriggeredButtonStyle\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("MultiDataTrigger", appXaml, StringComparison.Ordinal);
         Assert.Contains("Condition Binding=\"{Binding IsWarning}\" Value=\"True\"", appXaml, StringComparison.Ordinal);
@@ -1172,6 +1176,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Style=\"{StaticResource TriggeredButtonStyle}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"PropertyTriggeredButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style=\"{StaticResource PropertyTriggeredButtonStyle}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MultiPropertyTriggeredButton\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Style=\"{StaticResource MultiPropertyTriggeredButtonStyle}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MultiTriggeredButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style=\"{StaticResource MultiTriggeredButtonStyle}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ItemsList\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1846,6 +1852,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Button property Trigger style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled property Trigger active value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled property Trigger restored brush", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Button MultiTrigger style", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MultiTrigger condition count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MultiTrigger disabled brush", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button MultiDataTrigger style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MultiDataTrigger partial-condition value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MultiDataTrigger active brush", harnessProgram, StringComparison.Ordinal);
@@ -2399,6 +2408,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Button property Trigger style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled property Trigger active value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled property Trigger restored brush", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Button MultiTrigger style", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MultiTrigger condition count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled MultiTrigger disabled brush", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button MultiDataTrigger style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MultiDataTrigger partial-condition brush", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MultiDataTrigger active value", harnessProgram, StringComparison.Ordinal);

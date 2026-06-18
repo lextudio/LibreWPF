@@ -93,6 +93,21 @@
                     </Trigger>
                 </Style.Triggers>
             </Style>
+            <Style x:Key="MultiPropertyTriggeredButtonStyle" TargetType="{x:Type Button}">
+                <Setter Property="Margin" Value="0,8,0,0" />
+                <Setter Property="Tag" Value="multi property trigger inactive" />
+                <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+                <Style.Triggers>
+                    <MultiTrigger>
+                        <MultiTrigger.Conditions>
+                            <Condition Property="IsEnabled" Value="True" />
+                            <Condition Property="IsDefault" Value="True" />
+                        </MultiTrigger.Conditions>
+                        <Setter Property="Tag" Value="multi property trigger active" />
+                        <Setter Property="Background" Value="{StaticResource ReplacementAccentBrush}" />
+                    </MultiTrigger>
+                </Style.Triggers>
+            </Style>
             <Style x:Key="MultiTriggeredButtonStyle" TargetType="{x:Type Button}">
                 <Setter Property="Margin" Value="0,8,0,0" />
                 <Setter Property="Tag" Value="multi trigger inactive" />

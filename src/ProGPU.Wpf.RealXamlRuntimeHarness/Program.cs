@@ -131,7 +131,7 @@ internal static class Program
         AssertEqual("MainWindow.xaml", GetProperty(application, "StartupUri").ToString(), "startup URI");
 
         object resources = GetProperty(application, "Resources");
-        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 12, "application resource keys");
+        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 13, "application resource keys");
         object mergedDictionaries = GetProperty(resources, "MergedDictionaries");
         AssertCollectionCount(mergedDictionaries, expected: 1, "application merged dictionaries");
         object smokeResources = GetCollectionItem(mergedDictionaries, 0);
@@ -174,6 +174,10 @@ internal static class Program
         object propertyTriggeredButtonStyle = GetDictionaryValue(resources, "PropertyTriggeredButtonStyle");
         AssertType(propertyTriggeredButtonStyle, "System.Windows.Style", "property-triggered Button style");
         AssertEqual("System.Windows.Controls.Button", GetProperty(propertyTriggeredButtonStyle, "TargetType").ToString(), "property-triggered Button style target");
+
+        object multiPropertyTriggeredButtonStyle = GetDictionaryValue(resources, "MultiPropertyTriggeredButtonStyle");
+        AssertType(multiPropertyTriggeredButtonStyle, "System.Windows.Style", "multi-property-triggered Button style");
+        AssertEqual("System.Windows.Controls.Button", GetProperty(multiPropertyTriggeredButtonStyle, "TargetType").ToString(), "multi-property-triggered Button style target");
 
         object multiTriggeredButtonStyle = GetDictionaryValue(resources, "MultiTriggeredButtonStyle");
         AssertType(multiTriggeredButtonStyle, "System.Windows.Style", "multi-triggered Button style");
@@ -323,7 +327,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 68, "stack panel children");
+        AssertCollectionCount(children, expected: 69, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -2587,6 +2591,7 @@ internal static class Program
         object replacementAccentBrush = GetDictionaryValue(resources, "ReplacementAccentBrush");
         object expectedStyle = GetDictionaryValue(resources, "TriggeredButtonStyle");
         object expectedPropertyStyle = GetDictionaryValue(resources, "PropertyTriggeredButtonStyle");
+        object expectedMultiPropertyStyle = GetDictionaryValue(resources, "MultiPropertyTriggeredButtonStyle");
         object expectedMultiStyle = GetDictionaryValue(resources, "MultiTriggeredButtonStyle");
         object dataContext = GetProperty(window, "DataContext");
 
@@ -2619,6 +2624,41 @@ internal static class Program
         SetProperty(propertyTriggeredButton, "IsEnabled", true);
         AssertEqual("property trigger inactive", GetProperty(propertyTriggeredButton, "Tag"), "compiled property Trigger restored value");
         AssertSame(accentBrush, GetProperty(propertyTriggeredButton, "Background"), "compiled property Trigger restored brush");
+
+        object multiPropertyTriggeredButton = GetField(window, "MultiPropertyTriggeredButton");
+        AssertType(multiPropertyTriggeredButton, "System.Windows.Controls.Button", "compiled multi-property-triggered Button");
+        AssertSame(expectedMultiPropertyStyle, GetProperty(multiPropertyTriggeredButton, "Style"), "compiled Button MultiTrigger style");
+        AssertEqual("multi property trigger target", GetProperty(multiPropertyTriggeredButton, "Content"), "compiled Button MultiTrigger content");
+        AssertEqual(true, GetProperty(multiPropertyTriggeredButton, "IsEnabled"), "compiled MultiTrigger enabled condition");
+        AssertEqual(true, GetProperty(multiPropertyTriggeredButton, "IsDefault"), "compiled MultiTrigger default condition");
+        AssertEqual("multi property trigger active", GetProperty(multiPropertyTriggeredButton, "Tag"), "compiled MultiTrigger active value");
+        AssertSame(replacementAccentBrush, GetProperty(multiPropertyTriggeredButton, "Background"), "compiled MultiTrigger active brush");
+        object multiPropertyTriggers = GetProperty(expectedMultiPropertyStyle, "Triggers");
+        AssertCollectionCount(multiPropertyTriggers, expected: 1, "compiled MultiTrigger count");
+        object multiPropertyTrigger = GetCollectionItem(multiPropertyTriggers, 0);
+        AssertType(multiPropertyTrigger, "System.Windows.MultiTrigger", "compiled MultiTrigger metadata");
+        object multiPropertyConditions = GetProperty(multiPropertyTrigger, "Conditions");
+        AssertCollectionCount(multiPropertyConditions, expected: 2, "compiled MultiTrigger condition count");
+        object enabledCondition = GetCollectionItem(multiPropertyConditions, 0);
+        object defaultCondition = GetCollectionItem(multiPropertyConditions, 1);
+        AssertEqual("IsEnabled", GetProperty(GetProperty(enabledCondition, "Property"), "Name"), "compiled MultiTrigger first condition property");
+        AssertEqual(true, GetProperty(enabledCondition, "Value"), "compiled MultiTrigger first condition value");
+        AssertEqual("IsDefault", GetProperty(GetProperty(defaultCondition, "Property"), "Name"), "compiled MultiTrigger second condition property");
+        AssertEqual(true, GetProperty(defaultCondition, "Value"), "compiled MultiTrigger second condition value");
+        object multiPropertyTriggerSetters = GetProperty(multiPropertyTrigger, "Setters");
+        AssertCollectionCount(multiPropertyTriggerSetters, expected: 2, "compiled MultiTrigger setters");
+        SetProperty(multiPropertyTriggeredButton, "IsDefault", false);
+        AssertEqual("multi property trigger inactive", GetProperty(multiPropertyTriggeredButton, "Tag"), "compiled MultiTrigger default false value");
+        AssertSame(accentBrush, GetProperty(multiPropertyTriggeredButton, "Background"), "compiled MultiTrigger default false brush");
+        SetProperty(multiPropertyTriggeredButton, "IsDefault", true);
+        AssertEqual("multi property trigger active", GetProperty(multiPropertyTriggeredButton, "Tag"), "compiled MultiTrigger reactivated value");
+        AssertSame(replacementAccentBrush, GetProperty(multiPropertyTriggeredButton, "Background"), "compiled MultiTrigger reactivated brush");
+        SetProperty(multiPropertyTriggeredButton, "IsEnabled", false);
+        AssertEqual("multi property trigger inactive", GetProperty(multiPropertyTriggeredButton, "Tag"), "compiled MultiTrigger disabled value");
+        AssertSame(accentBrush, GetProperty(multiPropertyTriggeredButton, "Background"), "compiled MultiTrigger disabled brush");
+        SetProperty(multiPropertyTriggeredButton, "IsEnabled", true);
+        AssertEqual("multi property trigger active", GetProperty(multiPropertyTriggeredButton, "Tag"), "compiled MultiTrigger enabled restored value");
+        AssertSame(replacementAccentBrush, GetProperty(multiPropertyTriggeredButton, "Background"), "compiled MultiTrigger enabled restored brush");
 
         object multiTriggeredButton = GetField(window, "MultiTriggeredButton");
         AssertType(multiTriggeredButton, "System.Windows.Controls.Button", "compiled multi-triggered Button");

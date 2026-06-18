@@ -225,6 +225,42 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
+    public void EnumerateTrackedDependenciesIncludesPrivateDrawingContentGraph()
+    {
+        var brush = new FakeResource();
+        var content = new FakeRenderContent
+        {
+            Brush = brush
+        };
+        var root = new FakeUiElementVisual(content);
+
+        var dependencies = WpfVisualInvalidationTracker.EnumerateTrackedDependencies(root);
+
+        Assert.Contains(root, dependencies);
+        Assert.Contains(content, dependencies);
+        Assert.Contains(brush, dependencies);
+    }
+
+    [Fact]
+    public void PrivateDrawingContentChangeMarksTrackerDirty()
+    {
+        var brush = new FakeResource();
+        var root = new FakeUiElementVisual(new FakeRenderContent
+        {
+            Brush = brush
+        });
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        brush.RaiseChanged();
+
+        Assert.True(tracker.IsDirty);
+        Assert.Same(brush, tracker.LastDirtySource);
+        Assert.Contains(brush, tracker.DirtySources);
+    }
+
+    [Fact]
     public void EnumerateTrackedDependenciesIncludesGradientStopGraph()
     {
         var firstStop = new GradientStop(Colors.Red, 0);
@@ -387,6 +423,21 @@ public sealed class WpfVisualInvalidationTrackerTests
     private sealed class FakeVisualBrush
     {
         public object? Visual { get; init; }
+    }
+
+    private sealed class FakeUiElementVisual
+    {
+        private readonly object? _drawingContent;
+
+        public FakeUiElementVisual(object? drawingContent)
+        {
+            _drawingContent = drawingContent;
+        }
+    }
+
+    private sealed class FakeRenderContent
+    {
+        public object? Brush { get; init; }
     }
 
     private sealed class FakePathGeometry

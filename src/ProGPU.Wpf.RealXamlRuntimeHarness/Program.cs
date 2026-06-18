@@ -76,6 +76,9 @@ internal static class Program
             ValidatePostShowStyleTriggerActions(
                 window,
                 () => FlushDispatcherOperations(activationServiceType, window, "Render"));
+            ValidatePostShowDataTriggerActions(
+                window,
+                () => FlushDispatcherOperations(activationServiceType, window, "DataBind", "Render"));
             ValidatePostShowTemplateVisualStateManager(
                 window,
                 () => FlushDispatcherOperations(activationServiceType, window, "Render"));
@@ -134,7 +137,7 @@ internal static class Program
         AssertEqual("MainWindow.xaml", GetProperty(application, "StartupUri").ToString(), "startup URI");
 
         object resources = GetProperty(application, "Resources");
-        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 14, "application resource keys");
+        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 15, "application resource keys");
         object mergedDictionaries = GetProperty(resources, "MergedDictionaries");
         AssertCollectionCount(mergedDictionaries, expected: 1, "application merged dictionaries");
         object smokeResources = GetCollectionItem(mergedDictionaries, 0);
@@ -185,6 +188,10 @@ internal static class Program
         object triggerActionButtonStyle = GetDictionaryValue(resources, "TriggerActionButtonStyle");
         AssertType(triggerActionButtonStyle, "System.Windows.Style", "trigger-action Button style");
         AssertEqual("System.Windows.Controls.Button", GetProperty(triggerActionButtonStyle, "TargetType").ToString(), "trigger-action Button style target");
+
+        object dataTriggerActionButtonStyle = GetDictionaryValue(resources, "DataTriggerActionButtonStyle");
+        AssertType(dataTriggerActionButtonStyle, "System.Windows.Style", "data-trigger-action Button style");
+        AssertEqual("System.Windows.Controls.Button", GetProperty(dataTriggerActionButtonStyle, "TargetType").ToString(), "data-trigger-action Button style target");
 
         object multiTriggeredButtonStyle = GetDictionaryValue(resources, "MultiTriggeredButtonStyle");
         AssertType(multiTriggeredButtonStyle, "System.Windows.Style", "multi-triggered Button style");
@@ -334,7 +341,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 70, "stack panel children");
+        AssertCollectionCount(children, expected: 71, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -1832,6 +1839,22 @@ internal static class Program
         AssertClose(1.0, Convert.ToDouble(GetProperty(triggerActionButton, "Opacity")), 0.0001, "compiled style Trigger ExitActions opacity");
     }
 
+    private static void ValidatePostShowDataTriggerActions(object window, Action flushDataBindAndRender)
+    {
+        object dataContext = GetProperty(window, "DataContext");
+        object dataTriggerActionButton = GetField(window, "DataTriggerActionButton");
+        AssertEqual(false, GetProperty(dataContext, "IsTriggerActionActive"), "compiled DataTrigger action initial view-model state");
+        AssertEqual(1.0, GetProperty(dataTriggerActionButton, "Opacity"), "compiled style DataTrigger action initial opacity");
+
+        SetProperty(dataContext, "IsTriggerActionActive", true);
+        flushDataBindAndRender();
+        AssertClose(0.52, Convert.ToDouble(GetProperty(dataTriggerActionButton, "Opacity")), 0.0001, "compiled style DataTrigger EnterActions opacity");
+
+        SetProperty(dataContext, "IsTriggerActionActive", false);
+        flushDataBindAndRender();
+        AssertClose(1.0, Convert.ToDouble(GetProperty(dataTriggerActionButton, "Opacity")), 0.0001, "compiled style DataTrigger ExitActions opacity");
+    }
+
     private static void ValidateMarkupExtension(object window)
     {
         object markupExtensionBlock = GetField(window, "MarkupExtensionBlock");
@@ -2614,6 +2637,7 @@ internal static class Program
         object expectedPropertyStyle = GetDictionaryValue(resources, "PropertyTriggeredButtonStyle");
         object expectedMultiPropertyStyle = GetDictionaryValue(resources, "MultiPropertyTriggeredButtonStyle");
         object expectedTriggerActionStyle = GetDictionaryValue(resources, "TriggerActionButtonStyle");
+        object expectedDataTriggerActionStyle = GetDictionaryValue(resources, "DataTriggerActionButtonStyle");
         object expectedMultiStyle = GetDictionaryValue(resources, "MultiTriggeredButtonStyle");
         object dataContext = GetProperty(window, "DataContext");
 
@@ -2719,6 +2743,44 @@ internal static class Program
         AssertEqual(1.0, GetProperty(exitDoubleAnimation, "To"), "compiled Trigger ExitActions target value");
         AssertEqual("00:00:00", GetProperty(exitDoubleAnimation, "Duration").ToString(), "compiled Trigger ExitActions duration");
         AssertEqual("HoldEnd", GetProperty(exitDoubleAnimation, "FillBehavior").ToString(), "compiled Trigger ExitActions fill behavior");
+
+        object dataTriggerActionButton = GetField(window, "DataTriggerActionButton");
+        AssertType(dataTriggerActionButton, "System.Windows.Controls.Button", "compiled data-trigger-action Button");
+        AssertSame(expectedDataTriggerActionStyle, GetProperty(dataTriggerActionButton, "Style"), "compiled Button DataTrigger action style");
+        AssertEqual("data trigger action target", GetProperty(dataTriggerActionButton, "Content"), "compiled Button DataTrigger action content");
+        object dataTriggerActionTriggers = GetProperty(expectedDataTriggerActionStyle, "Triggers");
+        AssertCollectionCount(dataTriggerActionTriggers, expected: 1, "compiled DataTrigger action trigger count");
+        object dataTriggerActionTrigger = GetCollectionItem(dataTriggerActionTriggers, 0);
+        AssertType(dataTriggerActionTrigger, "System.Windows.DataTrigger", "compiled DataTrigger action metadata");
+        AssertBindingObjectPath(GetProperty(dataTriggerActionTrigger, "Binding"), "IsTriggerActionActive", "compiled DataTrigger action binding path");
+        AssertEqual("True", GetProperty(dataTriggerActionTrigger, "Value").ToString(), "compiled DataTrigger action value");
+        AssertCollectionCount(GetProperty(dataTriggerActionTrigger, "Setters"), expected: 0, "compiled DataTrigger action setter count");
+        object dataEnterActions = GetProperty(dataTriggerActionTrigger, "EnterActions");
+        AssertCollectionCount(dataEnterActions, expected: 1, "compiled DataTrigger EnterActions count");
+        object dataEnterBeginStoryboard = GetCollectionItem(dataEnterActions, 0);
+        AssertType(dataEnterBeginStoryboard, "System.Windows.Media.Animation.BeginStoryboard", "compiled DataTrigger EnterActions BeginStoryboard");
+        object dataEnterStoryboard = GetProperty(dataEnterBeginStoryboard, "Storyboard");
+        AssertType(dataEnterStoryboard, "System.Windows.Media.Animation.Storyboard", "compiled DataTrigger EnterActions Storyboard");
+        object dataEnterStoryboardChildren = GetProperty(dataEnterStoryboard, "Children");
+        AssertCollectionCount(dataEnterStoryboardChildren, expected: 1, "compiled DataTrigger EnterActions Storyboard children");
+        object dataEnterDoubleAnimation = GetCollectionItem(dataEnterStoryboardChildren, 0);
+        AssertType(dataEnterDoubleAnimation, "System.Windows.Media.Animation.DoubleAnimation", "compiled DataTrigger EnterActions DoubleAnimation");
+        AssertEqual(0.52, GetProperty(dataEnterDoubleAnimation, "To"), "compiled DataTrigger EnterActions target value");
+        AssertEqual("00:00:00", GetProperty(dataEnterDoubleAnimation, "Duration").ToString(), "compiled DataTrigger EnterActions duration");
+        AssertEqual("HoldEnd", GetProperty(dataEnterDoubleAnimation, "FillBehavior").ToString(), "compiled DataTrigger EnterActions fill behavior");
+        object dataExitActions = GetProperty(dataTriggerActionTrigger, "ExitActions");
+        AssertCollectionCount(dataExitActions, expected: 1, "compiled DataTrigger ExitActions count");
+        object dataExitBeginStoryboard = GetCollectionItem(dataExitActions, 0);
+        AssertType(dataExitBeginStoryboard, "System.Windows.Media.Animation.BeginStoryboard", "compiled DataTrigger ExitActions BeginStoryboard");
+        object dataExitStoryboard = GetProperty(dataExitBeginStoryboard, "Storyboard");
+        AssertType(dataExitStoryboard, "System.Windows.Media.Animation.Storyboard", "compiled DataTrigger ExitActions Storyboard");
+        object dataExitStoryboardChildren = GetProperty(dataExitStoryboard, "Children");
+        AssertCollectionCount(dataExitStoryboardChildren, expected: 1, "compiled DataTrigger ExitActions Storyboard children");
+        object dataExitDoubleAnimation = GetCollectionItem(dataExitStoryboardChildren, 0);
+        AssertType(dataExitDoubleAnimation, "System.Windows.Media.Animation.DoubleAnimation", "compiled DataTrigger ExitActions DoubleAnimation");
+        AssertEqual(1.0, GetProperty(dataExitDoubleAnimation, "To"), "compiled DataTrigger ExitActions target value");
+        AssertEqual("00:00:00", GetProperty(dataExitDoubleAnimation, "Duration").ToString(), "compiled DataTrigger ExitActions duration");
+        AssertEqual("HoldEnd", GetProperty(dataExitDoubleAnimation, "FillBehavior").ToString(), "compiled DataTrigger ExitActions fill behavior");
 
         object multiTriggeredButton = GetField(window, "MultiTriggeredButton");
         AssertType(multiTriggeredButton, "System.Windows.Controls.Button", "compiled multi-triggered Button");

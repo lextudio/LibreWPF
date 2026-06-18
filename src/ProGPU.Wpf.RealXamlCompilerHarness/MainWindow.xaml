@@ -811,6 +811,10 @@
             Content="trigger action target"
             Style="{StaticResource TriggerActionButtonStyle}" />
         <Button
+            x:Name="DataTriggerActionButton"
+            Content="data trigger action target"
+            Style="{StaticResource DataTriggerActionButtonStyle}" />
+        <Button
             x:Name="MultiTriggeredButton"
             Content="{Binding TriggerButtonText}"
             Style="{StaticResource MultiTriggeredButtonStyle}" />

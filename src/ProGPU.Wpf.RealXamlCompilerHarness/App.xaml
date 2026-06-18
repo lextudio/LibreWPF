@@ -137,6 +137,35 @@
                     </Trigger>
                 </Style.Triggers>
             </Style>
+            <Style x:Key="DataTriggerActionButtonStyle" TargetType="{x:Type Button}">
+                <Setter Property="Margin" Value="0,8,0,0" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsTriggerActionActive}" Value="True">
+                        <DataTrigger.EnterActions>
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation
+                                        Storyboard.TargetProperty="Opacity"
+                                        To="0.52"
+                                        Duration="0:0:0"
+                                        FillBehavior="HoldEnd" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </DataTrigger.EnterActions>
+                        <DataTrigger.ExitActions>
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation
+                                        Storyboard.TargetProperty="Opacity"
+                                        To="1"
+                                        Duration="0:0:0"
+                                        FillBehavior="HoldEnd" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </DataTrigger.ExitActions>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
             <Style x:Key="MultiTriggeredButtonStyle" TargetType="{x:Type Button}">
                 <Setter Property="Margin" Value="0,8,0,0" />
                 <Setter Property="Tag" Value="multi trigger inactive" />

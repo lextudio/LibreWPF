@@ -839,6 +839,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Trigger.ExitActions", appXaml, StringComparison.Ordinal);
         Assert.Contains("Storyboard.TargetProperty=\"Opacity\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("To=\"0.41\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("Style x:Key=\"DataTriggerActionButtonStyle\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("DataTrigger Binding=\"{Binding IsTriggerActionActive}\" Value=\"True\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("DataTrigger.EnterActions", appXaml, StringComparison.Ordinal);
+        Assert.Contains("DataTrigger.ExitActions", appXaml, StringComparison.Ordinal);
+        Assert.Contains("To=\"0.52\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("Style x:Key=\"MultiTriggeredButtonStyle\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("MultiDataTrigger", appXaml, StringComparison.Ordinal);
         Assert.Contains("Condition Binding=\"{Binding IsWarning}\" Value=\"True\"", appXaml, StringComparison.Ordinal);
@@ -1185,6 +1190,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Style=\"{StaticResource MultiPropertyTriggeredButtonStyle}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"TriggerActionButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style=\"{StaticResource TriggerActionButtonStyle}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"DataTriggerActionButton\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Style=\"{StaticResource DataTriggerActionButtonStyle}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MultiTriggeredButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style=\"{StaticResource MultiTriggeredButtonStyle}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ItemsList\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1422,6 +1429,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatedText is required", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public bool IsWarning", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public bool IsCritical", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public bool IsTriggerActionActive", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public SmokeItem? SelectedItem", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string SelectedCategory", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private string _selectedCategory = \"secondary group\"", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1735,6 +1743,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePostShowStyleTriggerActions(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled style Trigger EnterActions opacity", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled style Trigger ExitActions opacity", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowDataTriggerActions(", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FlushDispatcherOperations(activationServiceType, window, \"DataBind\", \"Render\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled style DataTrigger EnterActions opacity", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled style DataTrigger ExitActions opacity", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Storyboard target Loaded handler count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Storyboard target Loaded routed event name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMarkupExtension(window)", harnessProgram, StringComparison.Ordinal);
@@ -1868,6 +1880,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Button Trigger action style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Trigger EnterActions BeginStoryboard", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Trigger ExitActions target value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Button DataTrigger action style", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTrigger action binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTrigger EnterActions BeginStoryboard", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTrigger ExitActions target value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button MultiDataTrigger style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MultiDataTrigger partial-condition value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MultiDataTrigger active brush", harnessProgram, StringComparison.Ordinal);
@@ -2286,6 +2302,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePostShowStyleTriggerActions(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled style Trigger EnterActions opacity", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled style Trigger ExitActions opacity", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowDataTriggerActions(", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FlushDispatcherOperations(typedActivation.Window, \"DataBind\", \"Render\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled style DataTrigger EnterActions opacity", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled style DataTrigger ExitActions opacity", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLoadedEventHandlerState(activation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("FlushDispatcherOperations(typedActivation.Window, \"Loaded\", \"Render\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableMediaContextRenderServiceTypeName", harnessProgram, StringComparison.Ordinal);
@@ -2430,6 +2450,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Button Trigger action style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Trigger EnterActions BeginStoryboard", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Trigger ExitActions target value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Button DataTrigger action style", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTrigger action binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTrigger EnterActions BeginStoryboard", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataTrigger ExitActions target value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button MultiDataTrigger style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MultiDataTrigger partial-condition brush", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled MultiDataTrigger active value", harnessProgram, StringComparison.Ordinal);

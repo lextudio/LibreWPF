@@ -185,11 +185,6 @@ public sealed class ProGpuCompositionCommandSink :
             return;
         }
 
-        if (pen is ProGpuWpfPen wpfPen && TryDrawDashedPolyline(nativePen, wpfPen, new[] { point0, point1 }))
-        {
-            return;
-        }
-
         AddNativeLine(nativePen, point0, point1, pen.StartLineCap, pen.EndLineCap);
     }
 
@@ -312,26 +307,6 @@ public sealed class ProGpuCompositionCommandSink :
         var nativeBrush = ToNativeBrush(brush, rectangle);
         var nativePen = ToNativePen(pen, rectangle);
 
-        if (pen is ProGpuWpfPen dashedPen
-            && nativePen != null)
-        {
-            if (nativeBrush != null)
-            {
-                AddNativeRect(nativeBrush, null, rectangle);
-            }
-
-            if (TryDrawDashedRectangle(nativePen, dashedPen, rectangle))
-            {
-                return;
-            }
-
-            if (nativeBrush != null)
-            {
-                AddNativeRect(null, nativePen, rectangle);
-                return;
-            }
-        }
-
         AddNativeRect(nativeBrush, nativePen, rectangle);
     }
 
@@ -354,26 +329,6 @@ public sealed class ProGpuCompositionCommandSink :
         rectangle = SnapGuidelines(rectangle);
         var nativeBrush = ToNativeBrush(brush, rectangle);
         var nativePen = ToNativePen(pen, rectangle);
-
-        if (pen is ProGpuWpfPen dashedPen
-            && nativePen != null)
-        {
-            if (nativeBrush != null)
-            {
-                AddNativeRoundedRect(nativeBrush, null, rectangle, radiusX, radiusY);
-            }
-
-            if (TryDrawDashedRoundedRectangle(nativePen, dashedPen, rectangle, radiusX, radiusY))
-            {
-                return;
-            }
-
-            if (nativeBrush != null)
-            {
-                AddNativeRoundedRect(null, nativePen, rectangle, radiusX, radiusY);
-                return;
-            }
-        }
 
         AddNativeRoundedRect(nativeBrush, nativePen, rectangle, radiusX, radiusY);
     }
@@ -404,26 +359,6 @@ public sealed class ProGpuCompositionCommandSink :
         var nativeBrush = ToNativeBrush(brush, bounds);
         var nativePen = ToNativePen(pen, bounds);
 
-        if (pen is ProGpuWpfPen dashedPen
-            && nativePen != null)
-        {
-            if (nativeBrush != null)
-            {
-                AddNativeEllipse(nativeBrush, null, center, radiusX, radiusY);
-            }
-
-            if (TryDrawDashedEllipse(nativePen, dashedPen, center, radiusX, radiusY))
-            {
-                return;
-            }
-
-            if (nativeBrush != null)
-            {
-                AddNativeEllipse(null, nativePen, center, radiusX, radiusY);
-                return;
-            }
-        }
-
         AddNativeEllipse(nativeBrush, nativePen, center, radiusX, radiusY);
     }
 
@@ -452,26 +387,6 @@ public sealed class ProGpuCompositionCommandSink :
             var bounds = geometry.Bounds;
             var nativeBrush = ToNativeBrush(brush, bounds);
             var nativePen = ToNativePen(pen, bounds);
-
-            if (pen is ProGpuWpfPen dashedPen
-                && nativePen != null)
-            {
-                if (nativeBrush != null)
-                {
-                    AddNativePath(nativeBrush, null, path);
-                }
-
-                if (TryDrawDashedPath(nativePen, dashedPen, path))
-                {
-                    return;
-                }
-
-                if (nativeBrush != null)
-                {
-                    AddNativePath(null, nativePen, path);
-                    return;
-                }
-            }
 
             AddNativePath(nativeBrush, nativePen, path);
             return;

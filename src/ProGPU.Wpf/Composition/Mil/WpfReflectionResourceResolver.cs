@@ -806,30 +806,37 @@ public sealed class WpfReflectionResourceResolver :
         var miterLimit = ReadMiterLimit(resource);
         var hasSupportedDash = TryReadSupportedDashStyle(resource, thickness, out var dashArray, out var dashOffset);
 
-        if (hasSupportedDash
-            || startLineCap != MediaPenLineCap.Flat
-            || endLineCap != MediaPenLineCap.Flat
-            || dashCap != MediaPenLineCap.Flat
-            || lineJoin != PenLineJoin.Miter
-            || !AreClose(miterLimit, 10.0))
+        var adaptedPen = new MediaPen(brush, thickness)
         {
-            return new ProGpuWpfPen(
-                brush,
-                thickness,
-                dashArray,
-                dashOffset,
-                startLineCap,
-                endLineCap,
-                dashCap,
-                lineJoin,
-                miterLimit);
-        }
-
-        return new MediaPen(brush, thickness)
-        {
+            StartLineCap = startLineCap,
+            EndLineCap = endLineCap,
+            DashCap = dashCap,
             LineJoin = lineJoin,
             MiterLimit = miterLimit
         };
+
+        if (hasSupportedDash)
+        {
+            TryAssignDashStyle(adaptedPen, dashArray, dashOffset);
+        }
+
+        return adaptedPen;
+    }
+
+    private static void TryAssignDashStyle(MediaPen pen, double[] dashArray, double dashOffset)
+    {
+        var dashStyleType = pen.GetType().Assembly.GetType("System.Windows.Media.DashStyle", throwOnError: false);
+        var dashStyleProperty = pen.GetType().GetProperty("DashStyle", MemberFlags);
+        if (dashStyleType == null || dashStyleProperty == null)
+        {
+            return;
+        }
+
+        object? dashStyle = Activator.CreateInstance(dashStyleType, new object[] { dashArray, dashOffset });
+        if (dashStyle != null)
+        {
+            dashStyleProperty.SetValue(pen, dashStyle);
+        }
     }
 
     private static MediaPenLineCap ReadLineCap(object pen, string propertyName)

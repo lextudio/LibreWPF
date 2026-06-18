@@ -152,7 +152,7 @@ internal static class Program
             ValidateApp(app);
 
             object window = Create(smokeAssembly, MainWindowTypeName);
-            ValidateWindow(window);
+            ValidateWindow(window, validateFrameContent: false);
         }
         finally
         {
@@ -262,12 +262,12 @@ internal static class Program
         AssertAtLeast(1, GetCount(GetProperty(resources, "Keys")), "application resource key count");
     }
 
-    private static void ValidateWindow(object window)
+    private static void ValidateWindow(object window, bool validateFrameContent)
     {
         AssertAssignableTo(window, "System.Windows.Window", "SDK smoke main window");
         AssertEqual("ProGPU WPF SDK Smoke", GetProperty(window, "Title"), "window title");
         AssertEqual(420.0, GetProperty(window, "Width"), "window width");
-        AssertEqual(760.0, GetProperty(window, "Height"), "window height");
+        AssertEqual(840.0, GetProperty(window, "Height"), "window height");
 
         InvokeVoid(window, "UpdateLayout");
 
@@ -453,6 +453,28 @@ internal static class Program
         object themedTemplateBackground = GetProperty(themedTemplateRoot, "Background");
         AssertType(themedTemplateBackground, "System.Windows.Media.SolidColorBrush", "themed custom control background");
         AssertEqual("#FF6B8F3A", GetProperty(themedTemplateBackground, "Color").ToString() ?? string.Empty, "themed custom control background color");
+
+        object smokeFrame = Invoke(window, "FindName", "SmokeFrame");
+        AssertType(smokeFrame, "System.Windows.Controls.Frame", "compiled page frame");
+        string smokeFrameSource = GetProperty(smokeFrame, "Source").ToString() ?? string.Empty;
+        AssertEqual(true, smokeFrameSource.Contains("ProGPU.Wpf.SdkSwitchSmoke", StringComparison.Ordinal), "compiled page frame source assembly");
+        AssertEqual(true, smokeFrameSource.EndsWith("component/SmokePage.xaml", StringComparison.Ordinal), "compiled page frame source component path");
+        if (validateFrameContent)
+        {
+            object smokePage = GetProperty(smokeFrame, "Content");
+            AssertType(smokePage, "ProGPU.Wpf.SdkSwitchSmoke.SmokePage", "compiled frame page");
+            AssertAssignableTo(smokePage, "System.Windows.Controls.Page", "compiled frame page base type");
+            AssertEqual("Compiled Smoke Page", GetProperty(smokePage, "Title"), "compiled page title");
+            object pageTitle = Invoke(smokePage, "FindName", "PageTitle");
+            AssertType(pageTitle, "System.Windows.Controls.TextBlock", "compiled page title element");
+            AssertEqual("Compiled page content", GetProperty(pageTitle, "Text"), "compiled page title text");
+            object pageTitleForeground = GetProperty(pageTitle, "Foreground");
+            AssertType(pageTitleForeground, "System.Windows.Media.SolidColorBrush", "compiled page dynamic resource foreground");
+            AssertEqual("#FF356D9E", GetProperty(pageTitleForeground, "Color").ToString() ?? string.Empty, "compiled page dynamic resource foreground color");
+            object pageSubtitle = Invoke(smokePage, "FindName", "PageSubtitle");
+            AssertType(pageSubtitle, "System.Windows.Controls.TextBlock", "compiled page subtitle element");
+            AssertEqual("Frame loaded SDK-built BAML", GetProperty(pageSubtitle, "Text"), "compiled page subtitle text");
+        }
 
         object documentBox = Invoke(window, "FindName", "DocumentBox");
         AssertType(documentBox, "System.Windows.Controls.RichTextBox", "rich text box");
@@ -889,7 +911,7 @@ internal static class Program
             }
 
             AssertType(window, MainWindowTypeName, "activated SDK startup window");
-            ValidateWindow(window);
+            ValidateWindow(window, validateFrameContent: false);
 
             object presentationSource = CreatePortablePresentationSource(window);
             ActivateCount++;
@@ -950,11 +972,11 @@ internal static class Program
             AssertEqual(true, typedActivation.IsVisible, "SDK startup window visible before run");
             AssertEqual("ProGPU WPF SDK Smoke", typedActivation.Title, "activated SDK window title");
             AssertEqual(420.0, typedActivation.Width, "activated SDK window width");
-            AssertEqual(760.0, typedActivation.Height, "activated SDK window height");
+            AssertEqual(840.0, typedActivation.Height, "activated SDK window height");
             AssertSame(typedActivation.Window, GetProperty(_application, "MainWindow"), "SDK Application.MainWindow");
             InvokeVoid(typedActivation.Window, "UpdateLayout");
             FlushDispatcherOperations(typedActivation.Window, "Loaded", "Render", "ApplicationIdle");
-            ValidateWindow(typedActivation.Window);
+            ValidateWindow(typedActivation.Window, validateFrameContent: true);
         }
 
         public void Dispose(object activation)

@@ -2,7 +2,7 @@ using System.Windows.Media;
 
 namespace System.Windows.Media.ProGPU.Composition;
 
-internal sealed class ProGpuWpfPen : Pen
+internal sealed class ProGpuWpfPen
 {
     public ProGpuWpfPen(
         Brush brush,
@@ -14,8 +14,9 @@ internal sealed class ProGpuWpfPen : Pen
         PenLineCap dashCap,
         PenLineJoin lineJoin,
         double miterLimit)
-        : base(brush, thickness)
     {
+        Brush = brush;
+        Thickness = thickness;
         DashArray = dashArray;
         DashOffset = dashOffset;
         StartLineCap = startLineCap;
@@ -25,7 +26,21 @@ internal sealed class ProGpuWpfPen : Pen
         MiterLimit = miterLimit;
     }
 
+    public Brush Brush { get; }
+
+    public double Thickness { get; }
+
     public double[] DashArray { get; }
 
     public double DashOffset { get; }
+
+    public PenLineCap StartLineCap { get; }
+
+    public PenLineCap EndLineCap { get; }
+
+    public PenLineCap DashCap { get; }
+
+    public PenLineJoin LineJoin { get; }
+
+    public double MiterLimit { get; }
 }

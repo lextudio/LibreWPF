@@ -4441,6 +4441,14 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
             "SmokePanel.xaml.cs");
+        var smokePageXamlPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchSmoke",
+            "SmokePage.xaml");
+        var smokePageCodeBehindPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchSmoke",
+            "SmokePage.xaml.cs");
         var smokeThemedControlPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
@@ -4464,6 +4472,11 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "ProGpuCompositionCommandSink.cs");
+        var proGpuWpfPenPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "ProGpuWpfPen.cs");
         var wpfMilRenderDataDecoderPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -4507,11 +4520,14 @@ public sealed class WpfManagedProjectGraphTests
         var smokeMainWindowCodeBehind = File.ReadAllText(smokeMainWindowCodeBehindPath);
         var smokePanelXaml = File.ReadAllText(smokePanelXamlPath);
         var smokePanelCodeBehind = File.ReadAllText(smokePanelCodeBehindPath);
+        var smokePageXaml = File.ReadAllText(smokePageXamlPath);
+        var smokePageCodeBehind = File.ReadAllText(smokePageCodeBehindPath);
         var smokeThemedControl = File.ReadAllText(smokeThemedControlPath);
         var smokeGenericThemeXaml = File.ReadAllText(smokeGenericThemeXamlPath);
         var smokeAssemblyInfo = File.ReadAllText(smokeAssemblyInfoPath);
         var proGpuWpfProject = File.ReadAllText(proGpuWpfProjectPath);
         var proGpuWpfCommandSink = File.ReadAllText(proGpuWpfCommandSinkPath);
+        var proGpuWpfPen = File.ReadAllText(proGpuWpfPenPath);
         var wpfMilRenderDataDecoder = File.ReadAllText(wpfMilRenderDataDecoderPath);
         var wpfReflectionResourceResolver = File.ReadAllText(wpfReflectionResourceResolverPath);
         var wpfTransportTargets = File.ReadAllText(wpfTransportTargetsPath);
@@ -4632,7 +4648,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<sys:String>provider</sys:String>", smokeResourcesXaml, StringComparison.Ordinal);
         Assert.Contains("<sys:Int32>7</sys:Int32>", smokeResourcesXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:componentModel=\"clr-namespace:System.ComponentModel;assembly=WindowsBase\"", smokeMainWindowXaml, StringComparison.Ordinal);
-        Assert.Contains("Height=\"760\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Height=\"840\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<ControlTemplate TargetType=\"{x:Type Button}\">", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<VisualStateManager.VisualStateGroups>", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<VisualStateGroup x:Name=\"CommonStates\">", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -4683,6 +4699,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("local:SmokeThemedControl", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ThemedSmokeControl\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"Generic theme default style\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<Frame", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SmokeFrame\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("NavigationUIVisibility=\"Hidden\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Source=\"SmokePage.xaml\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<RichTextBox", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<FlowDocument>", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Class=\"ProGPU.Wpf.SdkSwitchSmoke.SmokePanel\"", smokePanelXaml, StringComparison.Ordinal);
@@ -4698,6 +4718,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DependencyProperty CaptionProperty", smokePanelCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DependencyProperty PanelContentProperty", smokePanelCodeBehind, StringComparison.Ordinal);
         Assert.Contains("InitializeComponent();", smokePanelCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("x:Class=\"ProGPU.Wpf.SdkSwitchSmoke.SmokePage\"", smokePageXaml, StringComparison.Ordinal);
+        Assert.Contains("Title=\"Compiled Smoke Page\"", smokePageXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"PageTitle\"", smokePageXaml, StringComparison.Ordinal);
+        Assert.Contains("Foreground=\"{DynamicResource SmokeAccentBrush}\"", smokePageXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"Compiled page content\"", smokePageXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"PageSubtitle\"", smokePageXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"Frame loaded SDK-built BAML\"", smokePageXaml, StringComparison.Ordinal);
+        Assert.Contains("public partial class SmokePage : Page", smokePageCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("InitializeComponent();", smokePageCodeBehind, StringComparison.Ordinal);
         Assert.Contains("[assembly: ThemeInfo(ResourceDictionaryLocation.None, ResourceDictionaryLocation.SourceAssembly)]", smokeAssemblyInfo, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeThemedControl : Control", smokeThemedControl, StringComparison.Ordinal);
         Assert.Contains("DependencyProperty TextProperty", smokeThemedControl, StringComparison.Ordinal);
@@ -4735,7 +4764,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryAdaptNativeGlyphRun", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("AdaptNativeBrush", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("AdaptNativePen", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("TryAssignDashStyle", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("GetType(\"System.Windows.Media.DashStyle\"", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("CreateGlyphRunBounds", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("pen is ProGpuWpfPen", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("internal sealed class ProGpuWpfPen", proGpuWpfPen, StringComparison.Ordinal);
+        Assert.DoesNotContain("class ProGpuWpfPen : Pen", proGpuWpfPen, StringComparison.Ordinal);
+        Assert.Contains("public double Thickness", proGpuWpfPen, StringComparison.Ordinal);
         Assert.Contains("$([MSBuild]::IsOSPlatform('Windows'))", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("<_PowerShellExe Condition=\"'$(_PowerShellExe)' == ''\">pwsh</_PowerShellExe>", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("<IncludeAssembliesInArchNeutralPackage>true</IncludeAssembliesInArchNeutralPackage>", wpfTransportArchNeutralProject, StringComparison.Ordinal);
@@ -4819,6 +4854,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("themed custom control template binding", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"ThemeRoot\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("themed custom control background color", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"SmokeFrame\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled page frame source", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.SdkSwitchSmoke.SmokePage", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"PageTitle\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled page dynamic resource foreground", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"PageSubtitle\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled page subtitle text", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"DocumentBox\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("InvokeVoid(actionButton, \"OnClick\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RunApplicationRunSmoke", runtimeHarnessProgram, StringComparison.Ordinal);

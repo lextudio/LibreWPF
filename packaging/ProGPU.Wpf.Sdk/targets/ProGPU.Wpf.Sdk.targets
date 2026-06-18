@@ -28,6 +28,28 @@
     <Reference Include="PresentationUI" HintPath="$(_ProGpuWpfManagedReferenceRoot)PresentationUI.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationUI.dll')" />
     <Reference Include="ReachFramework" HintPath="$(_ProGpuWpfManagedReferenceRoot)ReachFramework.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)ReachFramework.dll')" />
     <Reference Include="System.Printing" HintPath="$(_ProGpuWpfManagedReferenceRoot)System.Printing.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)System.Printing.dll')" />
+    <Reference Include="UIAutomationTypes" HintPath="$(_ProGpuWpfManagedReferenceRoot)UIAutomationTypes.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)UIAutomationTypes.dll')" />
+    <Reference Include="UIAutomationProvider" HintPath="$(_ProGpuWpfManagedReferenceRoot)UIAutomationProvider.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)UIAutomationProvider.dll')" />
+    <Reference Include="System.Windows.Input.Manipulations" HintPath="$(_ProGpuWpfManagedReferenceRoot)System.Windows.Input.Manipulations.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)System.Windows.Input.Manipulations.dll')" />
+    <Reference Include="System.Windows.Primitives" HintPath="$(_ProGpuWpfManagedReferenceRoot)System.Windows.Primitives.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)System.Windows.Primitives.dll')" />
+    <Reference Include="PresentationFramework.Aero2" HintPath="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Aero2.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Aero2.dll')" />
+    <Reference Include="PresentationFramework.Fluent" HintPath="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Fluent.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Fluent.dll')" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'LocalArtifacts' And '$(_ProGpuWpfManagedReferenceRoot)' != ''">
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)WindowsBase.dll" TargetPath="WindowsBase.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)WindowsBase.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)System.Xaml.dll" TargetPath="System.Xaml.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)System.Xaml.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)PresentationCore.dll" TargetPath="PresentationCore.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationCore.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.dll" TargetPath="PresentationFramework.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)PresentationUI.dll" TargetPath="PresentationUI.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationUI.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)ReachFramework.dll" TargetPath="ReachFramework.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)ReachFramework.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)System.Printing.dll" TargetPath="System.Printing.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)System.Printing.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)UIAutomationTypes.dll" TargetPath="UIAutomationTypes.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)UIAutomationTypes.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)UIAutomationProvider.dll" TargetPath="UIAutomationProvider.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)UIAutomationProvider.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)System.Windows.Input.Manipulations.dll" TargetPath="System.Windows.Input.Manipulations.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)System.Windows.Input.Manipulations.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)System.Windows.Primitives.dll" TargetPath="System.Windows.Primitives.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)System.Windows.Primitives.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Aero2.dll" TargetPath="PresentationFramework.Aero2.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Aero2.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Fluent.dll" TargetPath="PresentationFramework.Fluent.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Fluent.dll')" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'LocalArtifacts' And '$(_ProGpuReferenceRoot)' != ''">
@@ -36,6 +58,14 @@
     <Reference Include="ProGPU.Scene" HintPath="$(_ProGpuReferenceRoot)ProGPU.Scene.dll" Private="true" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Scene.dll')" />
     <Reference Include="ProGPU.Vector" HintPath="$(_ProGpuReferenceRoot)ProGPU.Vector.dll" Private="true" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Vector.dll')" />
     <Reference Include="ProGPU.Text" HintPath="$(_ProGpuReferenceRoot)ProGPU.Text.dll" Private="true" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Text.dll')" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'LocalArtifacts' And '$(_ProGpuReferenceRoot)' != ''">
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuReferenceRoot)ProGPU.Wpf.dll" TargetPath="ProGPU.Wpf.dll" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Wpf.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuReferenceRoot)ProGPU.Backend.dll" TargetPath="ProGPU.Backend.dll" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Backend.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuReferenceRoot)ProGPU.Scene.dll" TargetPath="ProGPU.Scene.dll" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Scene.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuReferenceRoot)ProGPU.Vector.dll" TargetPath="ProGPU.Vector.dll" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Vector.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuReferenceRoot)ProGPU.Text.dll" TargetPath="ProGPU.Text.dll" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Text.dll')" />
   </ItemGroup>
 
   <Target Name="_ProGpuWpfSdkValidatePortableReferences"
@@ -51,6 +81,23 @@
           BeforeTargets="PrepareForBuild"
           Condition="'$(ProGpuWpfEnableSdkDiagnostics)' == 'true'">
     <Message Importance="High" Text="ProGPU.Wpf.Sdk platform=$(ProGpuWpfPlatform) backend=$(ProGpuWpfRenderingBackend) referenceMode=$(ProGpuWpfReferenceMode)" />
+  </Target>
+
+  <Target Name="_ProGpuWpfSdkCopyLocalRuntimeAssets"
+          AfterTargets="CopyFilesToOutputDirectory"
+          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'LocalArtifacts' And '@(_ProGpuWpfLocalRuntimeAsset)' != ''">
+    <Copy SourceFiles="@(_ProGpuWpfLocalRuntimeAsset)"
+          DestinationFiles="@(_ProGpuWpfLocalRuntimeAsset->'$(TargetDir)%(TargetPath)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="_ProGpuWpfSdkCopyPackageRuntimeAssets"
+          DependsOnTargets="ResolveLockFileCopyLocalFiles"
+          AfterTargets="CopyFilesToOutputDirectory"
+          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '@(RuntimeCopyLocalItems)' != ''">
+    <Copy SourceFiles="@(RuntimeCopyLocalItems)"
+          DestinationFiles="@(RuntimeCopyLocalItems->'$(TargetDir)%(DestinationSubDirectory)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
   </Target>
 
 </Project>

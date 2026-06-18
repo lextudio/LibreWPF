@@ -7,6 +7,13 @@
     <_ProGpuReferenceRoot Condition="'$(ProGpuReferenceRoot)' != ''">$([MSBuild]::EnsureTrailingSlash('$(ProGpuReferenceRoot)'))</_ProGpuReferenceRoot>
   </PropertyGroup>
 
+  <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'">
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)" />
+    <PackageReference Include="System.Formats.Nrbf" Version="$(ProGpuWpfSystemFormatsNrbfVersion)" />
+    <PackageReference Include="System.IO.Packaging" Version="$(ProGpuWpfSystemIOPackagingVersion)" />
+    <PackageReference Include="System.Windows.Extensions" Version="$(ProGpuWpfSystemWindowsExtensionsVersion)" />
+  </ItemGroup>
+
   <ItemDefinitionGroup Condition="'$(ProGpuWpfUseWpfMarkup)' == 'true'">
     <ApplicationDefinition>
       <Generator>MSBuild:Compile</Generator>

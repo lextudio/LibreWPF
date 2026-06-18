@@ -9,7 +9,6 @@
     <Nullable>enable</Nullable>
     <InternalMarkupCompilation>true</InternalMarkupCompilation>
     <AlwaysCompileMarkupFilesInSeparateDomain>false</AlwaysCompileMarkupFilesInSeparateDomain>
-    <GenerateDependencyFile>false</GenerateDependencyFile>
     <EnableNETAnalyzers>false</EnableNETAnalyzers>
     <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
     <NoWarn>$(NoWarn);IDE0073</NoWarn>

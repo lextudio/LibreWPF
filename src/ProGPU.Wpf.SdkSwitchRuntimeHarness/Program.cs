@@ -10,6 +10,34 @@ internal static class Program
     private const string PortableMediaContextRenderServiceTypeName = "System.Windows.Media.PortableMediaContextRenderService";
     private const string PortablePresentationSourceTypeName = "System.Windows.PortablePresentationSource";
     private const string PortableWindowActivationServiceTypeName = "System.Windows.PortableWindowActivationService";
+    private static readonly string[] RequiredWpfRuntimeAssemblies =
+    [
+        "WindowsBase",
+        "System.Xaml",
+        "PresentationCore",
+        "PresentationFramework",
+        "UIAutomationTypes",
+        "UIAutomationProvider",
+        "System.Windows.Input.Manipulations",
+        "System.Windows.Primitives"
+    ];
+    private static readonly string[] ProGpuRuntimeAssemblies =
+    [
+        "ProGPU.Wpf",
+        "ProGPU.Backend",
+        "ProGPU.Scene",
+        "ProGPU.Vector",
+        "ProGPU.Text"
+    ];
+    private static readonly string[] SupportPackageRuntimeAssemblies =
+    [
+        "System.Configuration.ConfigurationManager",
+        "System.Diagnostics.EventLog",
+        "System.Formats.Nrbf",
+        "System.IO.Packaging",
+        "System.Security.Cryptography.ProtectedData",
+        "System.Windows.Extensions"
+    ];
 
     [STAThread]
     private static int Main()
@@ -33,22 +61,43 @@ internal static class Program
     private static SmokeInputs ResolveSmokeInputs()
     {
         string repoRoot = FindRepoRoot();
-        string smokeAssemblyPath = Path.Combine(
+        string appOutputRoot = Path.Combine(
             repoRoot,
             "artifacts",
             "bin",
             SmokeAssemblyName,
             "Debug",
-            "net11.0",
-            SmokeAssemblyName + ".dll");
-        string wpfRoot = Path.Combine(repoRoot, "artifacts", "progpu-wpf-sdk-smoke", "wpf");
+            "net11.0");
+        string smokeAssemblyPath = Path.Combine(appOutputRoot, SmokeAssemblyName + ".dll");
+        string packagedWpfRoot = Path.Combine(
+            repoRoot,
+            "artifacts",
+            "packaging",
+            "Debug",
+            "Microsoft.DotNet.Wpf.GitHub.Debug",
+            "lib",
+            "net11.0");
+        string wpfRoot = Directory.Exists(packagedWpfRoot)
+            ? packagedWpfRoot
+            : Path.Combine(repoRoot, "artifacts", "progpu-wpf-sdk-smoke", "wpf");
         string proGpuRoot = Path.Combine(repoRoot, "artifacts", "progpu-wpf-sdk-smoke", "progpu");
 
         RequireFile(smokeAssemblyPath, "SDK switch smoke assembly");
+        RequireOutputRuntimeAssets(appOutputRoot);
         RequireDirectory(wpfRoot, "ported WPF artifact root");
         RequireDirectory(proGpuRoot, "ProGPU artifact root");
 
-        return new SmokeInputs(repoRoot, smokeAssemblyPath, wpfRoot, proGpuRoot);
+        return new SmokeInputs(repoRoot, appOutputRoot, smokeAssemblyPath, wpfRoot, proGpuRoot);
+    }
+
+    private static void RequireOutputRuntimeAssets(string appOutputRoot)
+    {
+        foreach (string assemblyName in RequiredWpfRuntimeAssemblies.Concat(ProGpuRuntimeAssemblies).Concat(SupportPackageRuntimeAssemblies))
+        {
+            RequireFile(
+                Path.Combine(appOutputRoot, assemblyName + ".dll"),
+                $"SDK switch output runtime asset '{assemblyName}.dll'");
+        }
     }
 
     private static void RunObjectGraphSmoke(SmokeInputs inputs)
@@ -116,6 +165,7 @@ internal static class Program
     {
         return new SdkSmokeLoadContext(
             inputs.RepoRoot,
+            inputs.AppOutputRoot,
             inputs.SmokeAssemblyPath,
             inputs.WpfRoot,
             inputs.ProGpuRoot);
@@ -484,6 +534,7 @@ internal static class Program
 
     private sealed record SmokeInputs(
         string RepoRoot,
+        string AppOutputRoot,
         string SmokeAssemblyPath,
         string WpfRoot,
         string ProGpuRoot);
@@ -726,15 +777,22 @@ internal static class Program
     private sealed class SdkSmokeLoadContext : AssemblyLoadContext, IDisposable
     {
         private readonly string _repoRoot;
+        private readonly string _appOutputRoot;
         private readonly string _wpfRoot;
         private readonly string _proGpuRoot;
         private readonly string _smokeAssemblyPath;
         private readonly AssemblyDependencyResolver _resolver;
 
-        public SdkSmokeLoadContext(string repoRoot, string smokeAssemblyPath, string wpfRoot, string proGpuRoot)
+        public SdkSmokeLoadContext(
+            string repoRoot,
+            string appOutputRoot,
+            string smokeAssemblyPath,
+            string wpfRoot,
+            string proGpuRoot)
             : base(isCollectible: true)
         {
             _repoRoot = repoRoot;
+            _appOutputRoot = appOutputRoot;
             _smokeAssemblyPath = smokeAssemblyPath;
             _wpfRoot = wpfRoot;
             _proGpuRoot = proGpuRoot;
@@ -753,10 +811,10 @@ internal static class Program
             string? path = assemblyName.Name switch
             {
                 SmokeAssemblyName => _smokeAssemblyPath,
-                "WindowsBase" or "System.Xaml" or "PresentationCore" or "PresentationFramework" or "PresentationUI" or "ReachFramework" or "System.Printing" =>
-                    Path.Combine(_wpfRoot, fileName),
+                "WindowsBase" or "System.Xaml" or "PresentationCore" or "PresentationFramework" or "PresentationUI" or "ReachFramework" or "System.Printing" or "UIAutomationTypes" or "UIAutomationProvider" or "System.Windows.Input.Manipulations" or "System.Windows.Primitives" or "PresentationFramework.Aero2" or "PresentationFramework.Fluent" =>
+                    TryFindAssembly(_appOutputRoot, fileName) ?? Path.Combine(_wpfRoot, fileName),
                 "ProGPU.Wpf" or "ProGPU.Backend" or "ProGPU.Scene" or "ProGPU.Vector" or "ProGPU.Text" =>
-                    Path.Combine(_proGpuRoot, fileName),
+                    TryFindAssembly(_appOutputRoot, fileName) ?? Path.Combine(_proGpuRoot, fileName),
                 _ => null
             };
 
@@ -769,6 +827,12 @@ internal static class Program
                 ?? TryFindArtifactAssembly(assemblyName.Name, "net10.0")
                 ?? _resolver.ResolveAssemblyToPath(assemblyName);
             return path is not null && File.Exists(path) ? path : null;
+        }
+
+        private static string? TryFindAssembly(string root, string fileName)
+        {
+            string path = Path.Combine(root, fileName);
+            return File.Exists(path) ? path : null;
         }
 
         private string? TryFindArtifactAssembly(string? assemblyName, string targetFramework)

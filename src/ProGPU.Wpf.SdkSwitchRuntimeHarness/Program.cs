@@ -524,6 +524,18 @@ internal static class Program
             AssertEqual("items: 4", GetProperty(itemsCountText, "Text"), "items count binding text after collection change");
             AssertSame(frameworkItemTemplate, Invoke(itemTemplateSelector, "SelectTemplate", dynamicItem, selectorItemsControl), "dynamic framework item selected template");
         }
+        object hierarchyTree = Invoke(window, "FindName", "HierarchyTree");
+        AssertType(hierarchyTree, "System.Windows.Controls.TreeView", "hierarchy tree");
+        AssertAtLeast(3, GetCount(GetProperty(hierarchyTree, "Items")), "hierarchy tree root item count");
+        object hierarchyTemplate = GetProperty(hierarchyTree, "ItemTemplate");
+        AssertType(hierarchyTemplate, "System.Windows.HierarchicalDataTemplate", "hierarchy tree item template");
+        AssertType(GetProperty(hierarchyTemplate, "ItemsSource"), "System.Windows.Data.Binding", "hierarchy item source binding");
+        object hierarchyTemplateRoot = Invoke(hierarchyTemplate, "LoadContent");
+        AssertType(hierarchyTemplateRoot, "System.Windows.Controls.TextBlock", "hierarchy template root");
+        object firstItemChildren = GetProperty(firstItem, "Children");
+        AssertAtLeast(1, GetCount(firstItemChildren), "hierarchy first item child count");
+        object firstChild = EnumerateObjects(firstItemChildren).First();
+        AssertEqual("Startup", GetProperty(firstChild, "Name"), "hierarchy first child name");
 
         object compiledSmokePanel = Invoke(window, "FindName", "CompiledSmokePanel");
         AssertType(compiledSmokePanel, "ProGPU.Wpf.SdkSwitchSmoke.SmokePanel", "compiled user control");

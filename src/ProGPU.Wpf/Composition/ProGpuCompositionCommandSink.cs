@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -1926,9 +1927,9 @@ public sealed class ProGpuCompositionCommandSink :
         out VectorPathGeometry path,
         bool allowEmpty = false)
     {
-        if (geometry is ProGpuCombinedGeometry combinedGeometry)
+        if (TryConvertCombinedGeometryToNativePath(geometry, transform, out path))
         {
-            return TryConvertCombinedGeometryToNativePath(combinedGeometry, transform, out path);
+            return true;
         }
 
         if (geometry is MediaPathGeometry pathGeometry)
@@ -1951,14 +1952,27 @@ public sealed class ProGpuCompositionCommandSink :
     }
 
     private static bool TryConvertCombinedGeometryToNativePath(
-        ProGpuCombinedGeometry geometry,
+        MediaGeometry geometry,
         Matrix4x4 transform,
         out VectorPathGeometry path)
     {
-        if (!TryConvertGeometryToNativePath(geometry.Geometry1, Matrix4x4.Identity, out var pathA, allowEmpty: true)
-            || !TryConvertGeometryToNativePath(geometry.Geometry2, Matrix4x4.Identity, out var pathB, allowEmpty: true))
+        path = new VectorPathGeometry();
+        if (!TypeNameEndsWith(geometry, "CombinedGeometry")
+            || !TryGetPropertyValue(geometry, "Geometry1", out var geometry1Value)
+            || !TryGetPropertyValue(geometry, "Geometry2", out var geometry2Value)
+            || !TryGetPropertyValue(geometry, "GeometryCombineMode", out var combineModeValue)
+            || !TryReadGeometryCombinePathOperation(combineModeValue, out var pathOperation))
         {
-            path = new VectorPathGeometry();
+            return false;
+        }
+
+        var geometry1 = geometry1Value as MediaGeometry;
+        var geometry2 = geometry2Value as MediaGeometry;
+        var pathA = new VectorPathGeometry();
+        var pathB = new VectorPathGeometry();
+        if ((geometry1 != null && !TryConvertGeometryToNativePath(geometry1, Matrix4x4.Identity, out pathA, allowEmpty: true))
+            || (geometry2 != null && !TryConvertGeometryToNativePath(geometry2, Matrix4x4.Identity, out pathB, allowEmpty: true)))
+        {
             return false;
         }
 
@@ -1967,7 +1981,7 @@ public sealed class ProGpuCompositionCommandSink :
             IsCombined = true,
             PathA = pathA,
             PathB = pathB,
-            Op = geometry.PathOperation
+            Op = pathOperation
         };
 
         var geometryTransform = geometry.Transform?.Value ?? Matrix4x4.Identity;
@@ -1978,6 +1992,99 @@ public sealed class ProGpuCompositionCommandSink :
         }
 
         return true;
+    }
+
+    private static bool TryReadGeometryCombinePathOperation(object? value, out int pathOperation)
+    {
+        if (value != null)
+        {
+            switch (value.ToString())
+            {
+                case "Union":
+                    pathOperation = 2;
+                    return true;
+                case "Intersect":
+                    pathOperation = 1;
+                    return true;
+                case "Xor":
+                    pathOperation = 3;
+                    return true;
+                case "Exclude":
+                    pathOperation = 0;
+                    return true;
+            }
+        }
+
+        if (TryConvertToInt32(value, out var intValue))
+        {
+            pathOperation = intValue switch
+            {
+                0 => 2,
+                1 => 1,
+                2 => 3,
+                3 => 0,
+                _ => -1
+            };
+            return pathOperation >= 0;
+        }
+
+        pathOperation = -1;
+        return false;
+    }
+
+    private static bool TryConvertToInt32(object? value, out int result)
+    {
+        switch (value)
+        {
+            case int intValue:
+                result = intValue;
+                return true;
+            case Enum enumValue:
+                result = Convert.ToInt32(enumValue, CultureInfo.InvariantCulture);
+                return true;
+            case IConvertible convertible:
+                try
+                {
+                    result = convertible.ToInt32(CultureInfo.InvariantCulture);
+                    return true;
+                }
+                catch (FormatException)
+                {
+                }
+                catch (InvalidCastException)
+                {
+                }
+                catch (OverflowException)
+                {
+                }
+
+                break;
+        }
+
+        result = 0;
+        return false;
+    }
+
+    private static bool TryGetPropertyValue(object instance, string propertyName, out object? value)
+    {
+        var property = instance.GetType().GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        if (property == null)
+        {
+            value = null;
+            return false;
+        }
+
+        value = property.GetValue(instance);
+        return true;
+    }
+
+    private static bool TypeNameEndsWith(object value, string typeName)
+    {
+        var type = value.GetType();
+        return type.Name.EndsWith(typeName, StringComparison.Ordinal)
+            || (type.FullName?.EndsWith("." + typeName, StringComparison.Ordinal) ?? false);
     }
 
     private static VectorPathGeometry ConvertPathGeometry(MediaPathGeometry geometry, Matrix4x4 transform)

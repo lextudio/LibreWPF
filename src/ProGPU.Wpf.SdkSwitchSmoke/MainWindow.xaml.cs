@@ -71,7 +71,11 @@ public sealed class SmokeViewModel : INotifyPropertyChanged
     {
         Items = new ObservableCollection<SmokeItem>
         {
-            new SmokeItem("Window", "portable", "Framework"),
+            new SmokeItem(
+                "Window",
+                "portable",
+                "Framework",
+                new SmokeItem("Startup", "managed", "Framework")),
             new SmokeItem("Scene", "ProGPU", "Rendering"),
             new SmokeItem("XAML", "compiled", "Framework")
         };
@@ -115,10 +119,16 @@ public sealed class SmokeViewModel : INotifyPropertyChanged
 public sealed class SmokeItem
 {
     public SmokeItem(string name, string value, string category)
+        : this(name, value, category, [])
+    {
+    }
+
+    public SmokeItem(string name, string value, string category, params SmokeItem[] children)
     {
         Name = name;
         Value = value;
         Category = category;
+        Children = new ObservableCollection<SmokeItem>(children);
     }
 
     public string Name { get; }
@@ -126,6 +136,8 @@ public sealed class SmokeItem
     public string Value { get; }
 
     public string Category { get; }
+
+    public ObservableCollection<SmokeItem> Children { get; }
 }
 
 public sealed class SmokeItemTemplateSelector : DataTemplateSelector

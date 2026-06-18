@@ -1079,8 +1079,8 @@ public sealed class WpfReflectionResourceResolver :
             && TryGetPropertyValue(resource, "EndPoint", out var endPointValue)
             && startPointValue != null
             && endPointValue != null
-            && TryReadPoint(startPointValue, out var startPoint)
-            && TryReadPoint(endPointValue, out var endPoint))
+            && TryReadReplayPoint(startPointValue, out var startPoint)
+            && TryReadReplayPoint(endPointValue, out var endPoint))
         {
             return ApplyGeometryTransform(resource, CreateLinePath(startPoint, endPoint));
         }
@@ -1088,7 +1088,7 @@ public sealed class WpfReflectionResourceResolver :
         if (TypeNameEndsWith(resource, "RectangleGeometry")
             && TryGetPropertyValue(resource, "Rect", out var rectValue)
             && rectValue != null
-            && TryReadRect(rectValue, out var rectangle))
+            && TryReadReplayRect(rectValue, out var rectangle))
         {
             return ApplyGeometryTransform(resource, CreateRectanglePath(rectangle));
         }
@@ -1096,7 +1096,7 @@ public sealed class WpfReflectionResourceResolver :
         if (TypeNameEndsWith(resource, "EllipseGeometry")
             && TryGetPropertyValue(resource, "Center", out var centerValue)
             && centerValue != null
-            && TryReadPoint(centerValue, out var center)
+            && TryReadReplayPoint(centerValue, out var center)
             && TryReadDoubleProperty(resource, "RadiusX", out var radiusX)
             && TryReadDoubleProperty(resource, "RadiusY", out var radiusY))
         {
@@ -1116,7 +1116,7 @@ public sealed class WpfReflectionResourceResolver :
                 return null;
             }
 
-            return ApplyGeometryTransform(resource, new ProGpuCombinedGeometry(geometry1, geometry2, pathOperation));
+            return ApplyGeometryTransform(resource, CreateCombinedGeometry(geometry1, geometry2, pathOperation));
         }
 
         if (TypeNameEndsWith(resource, "GeometryGroup")
@@ -1134,25 +1134,62 @@ public sealed class WpfReflectionResourceResolver :
         }
 
         var pathText = resource.ToString();
-        if (!string.IsNullOrWhiteSpace(pathText) && !string.Equals(pathText, resource.GetType().FullName, StringComparison.Ordinal))
+        if (!string.IsNullOrWhiteSpace(pathText)
+            && !string.Equals(pathText, resource.GetType().FullName, StringComparison.Ordinal)
+            && TryParseGeometryText(pathText, out var parsedGeometry))
         {
-            try
-            {
-                var pathGeometry = PathGeometry.Parse(pathText);
-                if (pathGeometry.Figures.Count > 0)
-                {
-                    return ApplyGeometryTransform(resource, pathGeometry);
-                }
-            }
-            catch (FormatException)
-            {
-            }
-            catch (InvalidOperationException)
-            {
-            }
+            return ApplyGeometryTransform(resource, parsedGeometry);
         }
 
         return null;
+    }
+
+    private static bool TryParseGeometryText(string pathText, out MediaGeometry geometry)
+    {
+        if (TryParseGeometryText(typeof(MediaGeometry), pathText, out geometry))
+        {
+            return true;
+        }
+
+        return TryParseGeometryText(typeof(PathGeometry), pathText, out geometry);
+    }
+
+    private static bool TryParseGeometryText(Type geometryType, string pathText, out MediaGeometry geometry)
+    {
+        geometry = null!;
+        var parse = geometryType.GetMethod(
+            "Parse",
+            BindingFlags.Public | BindingFlags.Static,
+            binder: null,
+            [typeof(string)],
+            modifiers: null);
+        if (parse == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            if (parse.Invoke(null, [pathText]) is MediaGeometry parsedGeometry)
+            {
+                geometry = parsedGeometry;
+                return true;
+            }
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException is FormatException or InvalidOperationException or ArgumentException)
+        {
+        }
+        catch (FormatException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+        catch (ArgumentException)
+        {
+        }
+
+        return false;
     }
 
     private static T ApplyGeometryTransform<T>(object resource, T geometry)
@@ -1166,12 +1203,12 @@ public sealed class WpfReflectionResourceResolver :
         return geometry;
     }
 
-    private static PathGeometry CreateLinePath(Point startPoint, Point endPoint)
+    private static PathGeometry CreateLinePath(WpfReplayPoint startPoint, WpfReplayPoint endPoint)
     {
         var geometry = new PathGeometry();
         var figure = new PathFigure
         {
-            StartPoint = startPoint,
+            StartPoint = new Point(startPoint.X, startPoint.Y),
             IsClosed = false,
             IsFilled = false
         };
@@ -1210,7 +1247,7 @@ public sealed class WpfReflectionResourceResolver :
         return geometry;
     }
 
-    private static PathGeometry CreateEllipsePath(Point center, double radiusX, double radiusY)
+    private static PathGeometry CreateEllipsePath(WpfReplayPoint center, double radiusX, double radiusY)
     {
         var geometry = new PathGeometry();
         if (radiusX <= 0 || radiusY <= 0)
@@ -1314,10 +1351,26 @@ public sealed class WpfReflectionResourceResolver :
         var combined = children[0];
         for (var i = 1; i < children.Count; i++)
         {
-            combined = new ProGpuCombinedGeometry(combined, children[i], UnionPathOperation);
+            combined = CreateCombinedGeometry(combined, children[i], UnionPathOperation);
         }
 
         return combined;
+    }
+
+    private static MediaGeometry CreateCombinedGeometry(MediaGeometry geometry1, MediaGeometry geometry2, int pathOperation)
+    {
+        return new CombinedGeometry(ToGeometryCombineMode(pathOperation), geometry1, geometry2);
+    }
+
+    private static GeometryCombineMode ToGeometryCombineMode(int pathOperation)
+    {
+        return pathOperation switch
+        {
+            0 => GeometryCombineMode.Exclude,
+            1 => GeometryCombineMode.Intersect,
+            3 => GeometryCombineMode.Xor,
+            _ => GeometryCombineMode.Union
+        };
     }
 
     private static void AppendFigures(PathGeometry target, PathGeometry source)
@@ -2054,6 +2107,27 @@ public sealed class WpfReflectionResourceResolver :
             && TryReadDoubleProperty(rectValue, "Height", out var height))
         {
             rectangle = new Rect(x, y, width, height);
+            return true;
+        }
+
+        rectangle = default;
+        return false;
+    }
+
+    private static bool TryReadReplayRect(object rectValue, out WpfReplayRect rectangle)
+    {
+        if (rectValue is WpfReplayRect replayRect)
+        {
+            rectangle = replayRect;
+            return true;
+        }
+
+        if (TryReadDoubleProperty(rectValue, "X", out var x)
+            && TryReadDoubleProperty(rectValue, "Y", out var y)
+            && TryReadDoubleProperty(rectValue, "Width", out var width)
+            && TryReadDoubleProperty(rectValue, "Height", out var height))
+        {
+            rectangle = new WpfReplayRect(x, y, width, height);
             return true;
         }
 

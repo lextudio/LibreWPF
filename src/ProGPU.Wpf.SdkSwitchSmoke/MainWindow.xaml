@@ -115,6 +115,12 @@
             </StackPanel>
         </DataTemplate>
 
+        <HierarchicalDataTemplate
+            x:Key="SmokeHierarchyTemplate"
+            ItemsSource="{Binding Children}">
+            <TextBlock Text="{Binding Name}" />
+        </HierarchicalDataTemplate>
+
         <DataTemplate x:Key="SmokeGroupHeaderTemplate">
             <TextBlock
                 FontWeight="Bold"
@@ -331,6 +337,12 @@
             Height="48"
             Margin="{StaticResource SmokePanelMargin}"
             ItemTemplateSelector="{StaticResource SmokeItemTemplateSelector}"
+            ItemsSource="{Binding Items}" />
+        <TreeView
+            x:Name="HierarchyTree"
+            Height="72"
+            Margin="{StaticResource SmokePanelMargin}"
+            ItemTemplate="{StaticResource SmokeHierarchyTemplate}"
             ItemsSource="{Binding Items}" />
         <local:SmokePanel
             x:Name="CompiledSmokePanel"

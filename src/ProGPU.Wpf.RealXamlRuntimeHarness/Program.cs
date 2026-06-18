@@ -78,6 +78,7 @@ internal static class Program
             ValidatePostShowGroupStyleHeader(presentationCore, window);
             ValidatePostShowItemTemplateSelector(presentationCore, window);
             ValidatePostShowItemContainerStyleSelector(presentationCore, window);
+            ValidatePostShowDataGridRows(window);
             ValidatePostShowImplicitDataTemplate(presentationCore, window);
             ValidatePostShowContentTemplateSelector(presentationCore, window);
             ValidatePostShowHierarchicalDataTemplate(presentationCore, window);
@@ -2693,6 +2694,26 @@ internal static class Program
 
         AssertSame(GetCollectionItem(sourceItems, 1), GetProperty(dataGrid, "SelectedItem"), "compiled DataGrid selected item after index update");
         AssertSame(GetCollectionItem(sourceItems, 1), GetProperty(dataContext, "SelectedItem"), "compiled DataGrid two-way selected item source update");
+    }
+
+    private static void ValidatePostShowDataGridRows(object window)
+    {
+        object dataGrid = GetField(window, "ItemsDataGrid");
+        object sourceItems = GetProperty(GetProperty(window, "DataContext"), "Items");
+        object item = GetCollectionItem(sourceItems, 1);
+
+        Invoke(dataGrid, "ApplyTemplate");
+        Invoke(dataGrid, "ScrollIntoView", item);
+        Invoke(dataGrid, "UpdateLayout");
+
+        object itemContainerGenerator = GetProperty(dataGrid, "ItemContainerGenerator");
+        object row = Invoke(itemContainerGenerator, "ContainerFromItem", item);
+        AssertType(row, "System.Windows.Controls.DataGridRow", "compiled DataGrid generated row");
+        AssertSame(item, GetProperty(row, "Item"), "compiled DataGrid generated row item");
+        AssertEqual(true, GetProperty(row, "IsSelected"), "compiled DataGrid generated row selected state");
+        Invoke(row, "ApplyTemplate");
+        Invoke(row, "UpdateLayout");
+        Invoke(dataGrid, "UpdateLayout");
     }
 
     private static void ValidateImplicitDataTemplate(object window)

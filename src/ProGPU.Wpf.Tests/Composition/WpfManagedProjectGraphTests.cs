@@ -1768,6 +1768,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled DataGrid active binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataGrid active item value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataGrid two-way selected item source update", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowDataGridRows(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataGrid generated row", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataGrid generated row item", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataGrid generated row selected state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowItemTemplateTriggerActivation(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowTabControl(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowSectionControls(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
@@ -2189,6 +2193,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled DataGrid active binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataGrid active item value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataGrid two-way selected item source update", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowDataGridRows(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataGrid generated row", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataGrid generated row item", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataGrid generated row selected state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowItemTemplateTriggerActivation(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowTabControl(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowSectionControls(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);

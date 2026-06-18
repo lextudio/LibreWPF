@@ -56,6 +56,7 @@ internal static class Program
         {
             application = Create(compilerHarness, AppTypeName);
             Invoke(application, "InitializeComponent");
+            ValidateLooseXamlReader(presentationFramework);
             ValidateApplication(application);
 
             window = Create(compilerHarness, MainWindowTypeName);
@@ -180,6 +181,76 @@ internal static class Program
         object mergedBlockMargin = Invoke(application, "TryFindResource", "MergedBlockMargin");
         AssertType(mergedBlockMargin, "System.Windows.Thickness", "merged block margin");
         AssertEqual(8.0, GetProperty(mergedBlockMargin, "Top"), "merged block margin top");
+    }
+
+    private static void ValidateLooseXamlReader(Assembly presentationFramework)
+    {
+        const string looseXaml = """
+<StackPanel
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Name="LooseRoot">
+    <StackPanel.Resources>
+        <SolidColorBrush x:Key="LooseAccentBrush" Color="#336699" />
+        <Style x:Key="LooseButtonStyle" TargetType="{x:Type Button}">
+            <Setter Property="Tag" Value="loose style tag" />
+            <Setter Property="Background" Value="{StaticResource LooseAccentBrush}" />
+        </Style>
+    </StackPanel.Resources>
+    <Button
+        x:Name="LooseButton"
+        Content="loose button"
+        Style="{StaticResource LooseButtonStyle}" />
+    <TextBox
+        x:Name="LooseTextBox"
+        Tag="loose binding text"
+        Text="{Binding Tag, RelativeSource={RelativeSource Self}}" />
+</StackPanel>
+""";
+
+        object root = ParseLooseXaml(presentationFramework, looseXaml);
+        AssertType(root, "System.Windows.Controls.StackPanel", "loose XamlReader root");
+        AssertEqual("LooseRoot", GetProperty(root, "Name"), "loose XamlReader root name");
+        object children = GetProperty(root, "Children");
+        AssertCollectionCount(children, expected: 2, "loose XamlReader children");
+
+        object resources = GetProperty(root, "Resources");
+        object accentBrush = GetDictionaryValue(resources, "LooseAccentBrush");
+        AssertType(accentBrush, "System.Windows.Media.SolidColorBrush", "loose XamlReader brush resource");
+        AssertEqual("#FF336699", GetProperty(accentBrush, "Color").ToString(), "loose XamlReader brush color");
+        object buttonStyle = GetDictionaryValue(resources, "LooseButtonStyle");
+        AssertType(buttonStyle, "System.Windows.Style", "loose XamlReader style resource");
+        AssertEqual("System.Windows.Controls.Button", GetProperty(buttonStyle, "TargetType").ToString(), "loose XamlReader style target");
+
+        object button = Invoke(root, "FindName", "LooseButton");
+        AssertType(button, "System.Windows.Controls.Button", "loose XamlReader named Button");
+        AssertSame(GetCollectionItem(children, 0), button, "loose XamlReader Button child");
+        AssertSame(buttonStyle, GetProperty(button, "Style"), "loose XamlReader StaticResource style");
+        AssertEqual("loose button", GetProperty(button, "Content"), "loose XamlReader Button content");
+        AssertEqual("loose style tag", GetProperty(button, "Tag"), "loose XamlReader style setter tag");
+        AssertSame(accentBrush, GetProperty(button, "Background"), "loose XamlReader style StaticResource brush");
+
+        object textBox = Invoke(root, "FindName", "LooseTextBox");
+        AssertType(textBox, "System.Windows.Controls.TextBox", "loose XamlReader named TextBox");
+        AssertSame(GetCollectionItem(children, 1), textBox, "loose XamlReader TextBox child");
+        AssertEqual("loose binding text", GetProperty(textBox, "Tag"), "loose XamlReader TextBox tag");
+        AssertEqual("loose binding text", GetProperty(textBox, "Text"), "loose XamlReader RelativeSource binding text");
+        AssertBindingPath(textBox, "TextProperty", "Tag", "loose XamlReader Binding path");
+    }
+
+    private static object ParseLooseXaml(Assembly presentationFramework, string xaml)
+    {
+        Type xamlReaderType = GetRequiredType(presentationFramework, "System.Windows.Markup.XamlReader");
+        MethodInfo parse = xamlReaderType.GetMethod(
+                "Parse",
+                BindingFlags.Static | BindingFlags.Public,
+                binder: null,
+                types: new[] { typeof(string) },
+                modifiers: null)
+            ?? throw new MissingMethodException(xamlReaderType.FullName, "Parse");
+
+        return parse.Invoke(null, new object[] { xaml })
+            ?? throw new InvalidOperationException("Loose XamlReader.Parse returned null.");
     }
 
     private static void ValidateMainWindow(Assembly presentationCore, object window, object application)

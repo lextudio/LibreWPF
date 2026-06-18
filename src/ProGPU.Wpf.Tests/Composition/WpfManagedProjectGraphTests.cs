@@ -1511,6 +1511,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CompilerHarnessAssemblyName = \"ProGPU.Wpf.RealXamlCompilerHarness\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loadContext.LoadFromAssemblyPath(compilerHarnessPath)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(application, \"InitializeComponent\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseXamlReader(presentationFramework)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Markup.XamlReader", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ParseLooseXaml(presentationFramework, looseXaml)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlReader style StaticResource brush", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlReader RelativeSource binding text", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlReader Binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Create(compilerHarness, MainWindowTypeName)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(resources, \"AccentBrush\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateFreezableBrushResource(resources)", harnessProgram, StringComparison.Ordinal);
@@ -2049,6 +2055,12 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("CompilerHarnessAssemblyName = \"ProGPU.Wpf.RealXamlCompilerHarness\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(application, \"InitializeComponent\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseXamlReader(presentationFramework)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Markup.XamlReader", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ParseLooseXaml(presentationFramework, looseXaml)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlReader style StaticResource brush", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlReader RelativeSource binding text", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlReader Binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(application, \"Run\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationServiceTypeName = \"System.Windows.PortableWindowActivationService\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("new Func<object, object>(recorder.Activate)", harnessProgram, StringComparison.Ordinal);

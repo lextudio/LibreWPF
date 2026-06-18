@@ -9,6 +9,7 @@ internal static class Program
     private const string AppTypeName = "ProGPU.Wpf.RealXamlCompilerHarness.App";
     private const string MainWindowTypeName = "ProGPU.Wpf.RealXamlCompilerHarness.MainWindow";
     private const string PortableMediaContextRenderServiceTypeName = "System.Windows.Media.PortableMediaContextRenderService";
+    private const string PortableClipboardServiceTypeName = "System.Windows.PortableClipboardService";
     private const string PortableMessageBoxServiceTypeName = "System.Windows.PortableMessageBoxService";
     private const string PortablePresentationSourceTypeName = "System.Windows.PortablePresentationSource";
     private const string PortableWindowActivationServiceTypeName = "System.Windows.PortableWindowActivationService";
@@ -71,6 +72,7 @@ internal static class Program
             ValidateLooseXamlWriterGroupStyleRoundTrip(presentationFramework);
             ValidateLooseXamlWriterFrameworkElementRoundTrip(presentationFramework);
             ValidateLooseXamlWriterFlowDocumentRoundTrip(presentationFramework);
+            ValidatePortableClipboard(presentationCore);
             ValidateApplication(application);
 
             recorder = RegisterPortableActivation(
@@ -92,6 +94,7 @@ internal static class Program
                 "Clear",
                 BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.Invoke(null, null);
             ClearPortableService(presentationFramework, PortableMessageBoxServiceTypeName);
+            ClearPortableService(presentationCore, PortableClipboardServiceTypeName);
 
             if (application != null)
             {
@@ -5158,6 +5161,39 @@ internal static class Program
                 new[] { window, "portable owner message", "portable owner caption", okCancel, information, noneResult, noneOptions })
             ?? throw new InvalidOperationException("MessageBox.Show returned null.");
         AssertEqual(ok, ownerResult, "portable MessageBox owner fallback result");
+    }
+
+    private static void ValidatePortableClipboard(Assembly presentationCore)
+    {
+        Type serviceType = GetRequiredType(presentationCore, PortableClipboardServiceTypeName);
+        AssertEqual(true, GetStaticProperty(serviceType, "IsEnabled"), "portable Clipboard service enabled");
+
+        Type clipboardType = GetRequiredType(presentationCore, "System.Windows.Clipboard");
+        Type dataFormatsType = GetRequiredType(presentationCore, "System.Windows.DataFormats");
+        Type dataObjectInterfaceType = GetRequiredType(presentationCore, "System.Windows.IDataObject");
+        object unicodeText = GetStaticField(dataFormatsType, "UnicodeText");
+
+        InvokeStatic(clipboardType, "Clear");
+        AssertEqual(false, InvokeStatic(clipboardType, "ContainsText"), "portable Clipboard initial text state");
+
+        InvokeStatic(clipboardType, "SetText", "portable clipboard text");
+        AssertEqual(true, InvokeStatic(clipboardType, "ContainsText"), "portable Clipboard text state after SetText");
+        AssertEqual("portable clipboard text", InvokeStatic(clipboardType, "GetText"), "portable Clipboard GetText");
+
+        object dataObject = InvokeStatic(clipboardType, "GetDataObject");
+        AssertEqual(true, dataObjectInterfaceType.IsInstanceOfType(dataObject), "portable Clipboard data object contract");
+        AssertEqual(
+            "portable clipboard text",
+            Invoke(dataObject, "GetData", unicodeText, false),
+            "portable Clipboard data object unicode text");
+        AssertEqual(true, InvokeStatic(clipboardType, "IsCurrent", dataObject), "portable Clipboard current data object");
+
+        InvokeStatic(clipboardType, "Flush");
+        AssertEqual("portable clipboard text", InvokeStatic(clipboardType, "GetText"), "portable Clipboard flushed text");
+
+        InvokeStatic(clipboardType, "Clear");
+        AssertEqual(false, InvokeStatic(clipboardType, "ContainsText"), "portable Clipboard cleared text state");
+        AssertEqual(string.Empty, InvokeStatic(clipboardType, "GetText"), "portable Clipboard cleared text");
     }
 
     private static void ClearPortableService(Assembly assembly, string typeName)

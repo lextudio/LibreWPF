@@ -619,6 +619,90 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void PresentationCoreClipboardUsesPortableServiceOutsideWindows()
+    {
+        var clipboardPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "clipboard.cs");
+        var clipboardServicePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "PortableClipboardService.cs");
+        var projectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "PresentationCore.csproj");
+        var runtimeHarnessPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealXamlRuntimeHarness",
+            "Program.cs");
+        var applicationRunHarnessPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealApplicationRunHarness",
+            "Program.cs");
+
+        var clipboard = File.ReadAllText(clipboardPath);
+        var clipboardService = File.ReadAllText(clipboardServicePath);
+        var project = File.ReadAllText(projectPath);
+        var runtimeHarness = File.ReadAllText(runtimeHarnessPath);
+        var applicationRunHarness = File.ReadAllText(applicationRunHarnessPath);
+
+        Assert.Contains(@"<Compile Include=""System\Windows\PortableClipboardService.cs"" />", project, StringComparison.Ordinal);
+        Assert.Contains("internal static class PortableClipboardService", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("RuntimeInformation.IsOSPlatform(OSPlatform.Windows)", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("internal static IDisposable Register(Func<string?> getText, Action<string?> setText)", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TryGetDataObject(out IDataObject? dataObject)", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TrySetDataObject(IDataObject dataObject, bool copy)", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TrySetData(string format, object data, bool autoConvert, bool copy)", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TrySetFileDropList(StringCollection fileDropList)", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TrySetObject(object data, bool copy)", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TryIsCurrent(IDataObject data, out bool isCurrent)", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("private sealed class PortableDataObject : ITypedDataObject", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("return !s_isWindows;", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("s_dataObject = dataObject;", clipboardService, StringComparison.Ordinal);
+
+        Assert.Contains("if (PortableClipboardService.TryClear())", clipboard, StringComparison.Ordinal);
+        Assert.Contains("if (PortableClipboardService.TryFlush())", clipboard, StringComparison.Ordinal);
+        Assert.Contains("if (PortableClipboardService.TryGetDataObject(out IDataObject? portableDataObject))", clipboard, StringComparison.Ordinal);
+        Assert.Contains("if (PortableClipboardService.TryIsCurrent(data, out bool isCurrent))", clipboard, StringComparison.Ordinal);
+        Assert.Contains("if (PortableClipboardService.TrySetObject(data, copy))", clipboard, StringComparison.Ordinal);
+        Assert.Contains("if (PortableClipboardService.TrySetFileDropList(fileDropList))", clipboard, StringComparison.Ordinal);
+        Assert.Contains("bool autoConvert = IsDataFormatAutoConvert(format);", clipboard, StringComparison.Ordinal);
+        Assert.Contains("if (PortableClipboardService.TrySetData(format, data, autoConvert, copy: true))", clipboard, StringComparison.Ordinal);
+        Assert.Contains("private static void SetOleDataObject(object data, bool copy)", clipboard, StringComparison.Ordinal);
+        Assert.Contains("private static void SetOleDataInternal(string format, object data, bool autoConvert)", clipboard, StringComparison.Ordinal);
+        Assert.True(
+            clipboard.IndexOf("PortableClipboardService.TryGetDataObject", StringComparison.Ordinal)
+                < clipboard.IndexOf("ClipboardCore.GetDataObject", StringComparison.Ordinal),
+            "Clipboard.GetDataObject must try the portable service before the OLE clipboard path.");
+        Assert.True(
+            clipboard.IndexOf("PortableClipboardService.TrySetObject", StringComparison.Ordinal)
+                < clipboard.IndexOf("ClipboardCore.SetData(dataObject, copy)", StringComparison.Ordinal),
+            "Clipboard.SetDataObject must try the portable service before the OLE clipboard path.");
+
+        Assert.Contains("PortableClipboardServiceTypeName = \"System.Windows.PortableClipboardService\"", runtimeHarness, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableClipboard(presentationCore)", runtimeHarness, StringComparison.Ordinal);
+        Assert.Contains("portable Clipboard data object unicode text", runtimeHarness, StringComparison.Ordinal);
+        Assert.Contains("ClearPortableService(presentationCore, PortableClipboardServiceTypeName)", runtimeHarness, StringComparison.Ordinal);
+
+        Assert.Contains("PortableClipboardServiceTypeName = \"System.Windows.PortableClipboardService\"", applicationRunHarness, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableClipboard(presentationCore)", applicationRunHarness, StringComparison.Ordinal);
+        Assert.Contains("portable Clipboard current data object", applicationRunHarness, StringComparison.Ordinal);
+        Assert.Contains("ClearPortableService(presentationCore, PortableClipboardServiceTypeName)", applicationRunHarness, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ManagedSubsystemBringupReusesRealWpfXamlFrameworkAndThemeProjects()
     {
         var systemXamlProjectPath = FindRepoPath(

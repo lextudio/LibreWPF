@@ -92,7 +92,7 @@ internal static class Program
         AssertEqual("MainWindow.xaml", GetProperty(application, "StartupUri").ToString(), "startup URI");
 
         object resources = GetProperty(application, "Resources");
-        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 16, "application resource keys");
+        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 17, "application resource keys");
         object mergedDictionaries = GetProperty(resources, "MergedDictionaries");
         AssertCollectionCount(mergedDictionaries, expected: 1, "application merged dictionaries");
         object smokeResources = GetCollectionItem(mergedDictionaries, 0);
@@ -151,6 +151,10 @@ internal static class Program
         object multiDataTriggerActionButtonStyle = GetDictionaryValue(resources, "MultiDataTriggerActionButtonStyle");
         AssertType(multiDataTriggerActionButtonStyle, "System.Windows.Style", "multi-data-trigger-action Button style");
         AssertEqual("System.Windows.Controls.Button", GetProperty(multiDataTriggerActionButtonStyle, "TargetType").ToString(), "multi-data-trigger-action Button style target");
+
+        object multiTriggerActionButtonStyle = GetDictionaryValue(resources, "MultiTriggerActionButtonStyle");
+        AssertType(multiTriggerActionButtonStyle, "System.Windows.Style", "multi-trigger-action Button style");
+        AssertEqual("System.Windows.Controls.Button", GetProperty(multiTriggerActionButtonStyle, "TargetType").ToString(), "multi-trigger-action Button style target");
 
         object multiTriggeredButtonStyle = GetDictionaryValue(resources, "MultiTriggeredButtonStyle");
         AssertType(multiTriggeredButtonStyle, "System.Windows.Style", "multi-triggered Button style");
@@ -300,7 +304,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 72, "stack panel children");
+        AssertCollectionCount(children, expected: 73, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -1546,6 +1550,30 @@ internal static class Program
         AssertClose(1.0, Convert.ToDouble(GetProperty(triggerActionButton, "Opacity")), 0.0001, "compiled style Trigger ExitActions opacity");
     }
 
+    private static void ValidatePostShowMultiTriggerActions(object window, Action flushRender)
+    {
+        object multiTriggerActionButton = GetField(window, "MultiTriggerActionButton");
+        AssertEqual(true, GetProperty(multiTriggerActionButton, "IsEnabled"), "compiled MultiTrigger action initial enabled state");
+        AssertEqual(false, GetProperty(multiTriggerActionButton, "IsDefault"), "compiled MultiTrigger action initial default state");
+        AssertEqual(1.0, GetProperty(multiTriggerActionButton, "Opacity"), "compiled style MultiTrigger action initial opacity");
+
+        SetProperty(multiTriggerActionButton, "IsDefault", true);
+        flushRender();
+        AssertClose(0.74, Convert.ToDouble(GetProperty(multiTriggerActionButton, "Opacity")), 0.0001, "compiled style MultiTrigger EnterActions opacity");
+
+        SetProperty(multiTriggerActionButton, "IsEnabled", false);
+        flushRender();
+        AssertClose(1.0, Convert.ToDouble(GetProperty(multiTriggerActionButton, "Opacity")), 0.0001, "compiled style MultiTrigger ExitActions opacity");
+
+        SetProperty(multiTriggerActionButton, "IsEnabled", true);
+        flushRender();
+        AssertClose(0.74, Convert.ToDouble(GetProperty(multiTriggerActionButton, "Opacity")), 0.0001, "compiled style MultiTrigger restored enter opacity");
+
+        SetProperty(multiTriggerActionButton, "IsDefault", false);
+        flushRender();
+        AssertClose(1.0, Convert.ToDouble(GetProperty(multiTriggerActionButton, "Opacity")), 0.0001, "compiled style MultiTrigger restored opacity");
+    }
+
     private static void ValidatePostShowDataTriggerActions(object window, Action flushDataBindAndRender)
     {
         object dataContext = GetProperty(window, "DataContext");
@@ -2371,6 +2399,7 @@ internal static class Program
         object expectedTriggerActionStyle = GetDictionaryValue(resources, "TriggerActionButtonStyle");
         object expectedDataTriggerActionStyle = GetDictionaryValue(resources, "DataTriggerActionButtonStyle");
         object expectedMultiDataTriggerActionStyle = GetDictionaryValue(resources, "MultiDataTriggerActionButtonStyle");
+        object expectedMultiTriggerActionStyle = GetDictionaryValue(resources, "MultiTriggerActionButtonStyle");
         object expectedMultiStyle = GetDictionaryValue(resources, "MultiTriggeredButtonStyle");
         object dataContext = GetProperty(window, "DataContext");
 
@@ -2558,6 +2587,52 @@ internal static class Program
         AssertEqual(1.0, GetProperty(multiDataExitDoubleAnimation, "To"), "compiled MultiDataTrigger ExitActions target value");
         AssertEqual("00:00:00", GetProperty(multiDataExitDoubleAnimation, "Duration").ToString(), "compiled MultiDataTrigger ExitActions duration");
         AssertEqual("HoldEnd", GetProperty(multiDataExitDoubleAnimation, "FillBehavior").ToString(), "compiled MultiDataTrigger ExitActions fill behavior");
+
+        object multiTriggerActionButton = GetField(window, "MultiTriggerActionButton");
+        AssertType(multiTriggerActionButton, "System.Windows.Controls.Button", "compiled multi-trigger-action Button");
+        AssertSame(expectedMultiTriggerActionStyle, GetProperty(multiTriggerActionButton, "Style"), "compiled Button MultiTrigger action style");
+        AssertEqual("multi trigger action target", GetProperty(multiTriggerActionButton, "Content"), "compiled Button MultiTrigger action content");
+        AssertEqual(true, GetProperty(multiTriggerActionButton, "IsEnabled"), "compiled MultiTrigger action enabled condition");
+        AssertEqual(false, GetProperty(multiTriggerActionButton, "IsDefault"), "compiled MultiTrigger action initial default condition");
+        object multiTriggerActionTriggers = GetProperty(expectedMultiTriggerActionStyle, "Triggers");
+        AssertCollectionCount(multiTriggerActionTriggers, expected: 1, "compiled MultiTrigger action trigger count");
+        object multiTriggerActionTrigger = GetCollectionItem(multiTriggerActionTriggers, 0);
+        AssertType(multiTriggerActionTrigger, "System.Windows.MultiTrigger", "compiled MultiTrigger action metadata");
+        object multiTriggerActionConditions = GetProperty(multiTriggerActionTrigger, "Conditions");
+        AssertCollectionCount(multiTriggerActionConditions, expected: 2, "compiled MultiTrigger action condition count");
+        object actionEnabledCondition = GetCollectionItem(multiTriggerActionConditions, 0);
+        object actionDefaultCondition = GetCollectionItem(multiTriggerActionConditions, 1);
+        AssertEqual("IsEnabled", GetProperty(GetProperty(actionEnabledCondition, "Property"), "Name"), "compiled MultiTrigger action first condition property");
+        AssertEqual(true, GetProperty(actionEnabledCondition, "Value"), "compiled MultiTrigger action first condition value");
+        AssertEqual("IsDefault", GetProperty(GetProperty(actionDefaultCondition, "Property"), "Name"), "compiled MultiTrigger action second condition property");
+        AssertEqual(true, GetProperty(actionDefaultCondition, "Value"), "compiled MultiTrigger action second condition value");
+        AssertCollectionCount(GetProperty(multiTriggerActionTrigger, "Setters"), expected: 0, "compiled MultiTrigger action setter count");
+        object multiEnterActions = GetProperty(multiTriggerActionTrigger, "EnterActions");
+        AssertCollectionCount(multiEnterActions, expected: 1, "compiled MultiTrigger EnterActions count");
+        object multiEnterBeginStoryboard = GetCollectionItem(multiEnterActions, 0);
+        AssertType(multiEnterBeginStoryboard, "System.Windows.Media.Animation.BeginStoryboard", "compiled MultiTrigger EnterActions BeginStoryboard");
+        object multiEnterStoryboard = GetProperty(multiEnterBeginStoryboard, "Storyboard");
+        AssertType(multiEnterStoryboard, "System.Windows.Media.Animation.Storyboard", "compiled MultiTrigger EnterActions Storyboard");
+        object multiEnterStoryboardChildren = GetProperty(multiEnterStoryboard, "Children");
+        AssertCollectionCount(multiEnterStoryboardChildren, expected: 1, "compiled MultiTrigger EnterActions Storyboard children");
+        object multiEnterDoubleAnimation = GetCollectionItem(multiEnterStoryboardChildren, 0);
+        AssertType(multiEnterDoubleAnimation, "System.Windows.Media.Animation.DoubleAnimation", "compiled MultiTrigger EnterActions DoubleAnimation");
+        AssertEqual(0.74, GetProperty(multiEnterDoubleAnimation, "To"), "compiled MultiTrigger EnterActions target value");
+        AssertEqual("00:00:00", GetProperty(multiEnterDoubleAnimation, "Duration").ToString(), "compiled MultiTrigger EnterActions duration");
+        AssertEqual("HoldEnd", GetProperty(multiEnterDoubleAnimation, "FillBehavior").ToString(), "compiled MultiTrigger EnterActions fill behavior");
+        object multiExitActions = GetProperty(multiTriggerActionTrigger, "ExitActions");
+        AssertCollectionCount(multiExitActions, expected: 1, "compiled MultiTrigger ExitActions count");
+        object multiExitBeginStoryboard = GetCollectionItem(multiExitActions, 0);
+        AssertType(multiExitBeginStoryboard, "System.Windows.Media.Animation.BeginStoryboard", "compiled MultiTrigger ExitActions BeginStoryboard");
+        object multiExitStoryboard = GetProperty(multiExitBeginStoryboard, "Storyboard");
+        AssertType(multiExitStoryboard, "System.Windows.Media.Animation.Storyboard", "compiled MultiTrigger ExitActions Storyboard");
+        object multiExitStoryboardChildren = GetProperty(multiExitStoryboard, "Children");
+        AssertCollectionCount(multiExitStoryboardChildren, expected: 1, "compiled MultiTrigger ExitActions Storyboard children");
+        object multiExitDoubleAnimation = GetCollectionItem(multiExitStoryboardChildren, 0);
+        AssertType(multiExitDoubleAnimation, "System.Windows.Media.Animation.DoubleAnimation", "compiled MultiTrigger ExitActions DoubleAnimation");
+        AssertEqual(1.0, GetProperty(multiExitDoubleAnimation, "To"), "compiled MultiTrigger ExitActions target value");
+        AssertEqual("00:00:00", GetProperty(multiExitDoubleAnimation, "Duration").ToString(), "compiled MultiTrigger ExitActions duration");
+        AssertEqual("HoldEnd", GetProperty(multiExitDoubleAnimation, "FillBehavior").ToString(), "compiled MultiTrigger ExitActions fill behavior");
 
         object multiTriggeredButton = GetField(window, "MultiTriggeredButton");
         AssertType(multiTriggeredButton, "System.Windows.Controls.Button", "compiled multi-triggered Button");
@@ -4554,6 +4629,9 @@ internal static class Program
                 typedActivation.Window,
                 () => FlushDispatcherOperations(typedActivation.Window, "Render"));
             ValidatePostShowStyleTriggerActions(
+                typedActivation.Window,
+                () => FlushDispatcherOperations(typedActivation.Window, "Render"));
+            ValidatePostShowMultiTriggerActions(
                 typedActivation.Window,
                 () => FlushDispatcherOperations(typedActivation.Window, "Render"));
             ValidatePostShowDataTriggerActions(

@@ -1609,6 +1609,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled FlowDocument table cells", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument TextRange section text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument TextRange second table cell", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleBullets\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox ToggleBullets marker style", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleNumbering\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox ToggleNumbering marker style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetField(window, \"BindingBlock\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetField(window, \"CommandButton\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateBindingAndCommand(window)", harnessProgram, StringComparison.Ordinal);
@@ -2113,6 +2117,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled FlowDocument table cells", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument TextRange section text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument TextRange second table cell", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleBullets\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox ToggleBullets marker style", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleNumbering\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox ToggleNumbering marker style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button command binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateAdvancedBindingFeatures(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled PriorityBinding fallback value", harnessProgram, StringComparison.Ordinal);

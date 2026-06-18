@@ -529,6 +529,19 @@ internal static class Program
         AssertContains("table beta", text, "compiled FlowDocument TextRange second table cell");
         AssertContains("first document item", text, "compiled FlowDocument TextRange first list item");
         AssertContains("second document item", text, "compiled FlowDocument TextRange second list item");
+
+        object firstListItem = GetCollectionItem(listItems, 0);
+        object firstListParagraph = GetCollectionItem(GetProperty(firstListItem, "Blocks"), 0);
+        Invoke(selection, "Select", GetProperty(firstListParagraph, "ContentStart"), GetProperty(firstListParagraph, "ContentEnd"));
+        AssertContains("first document item", GetProperty(selection, "Text").ToString() ?? string.Empty, "compiled RichTextBox list command selection text");
+        object toggleBulletsCommand = GetStaticProperty(editingCommandsType, "ToggleBullets");
+        AssertEqual(true, InvokeTwoArgumentCommand(toggleBulletsCommand, "CanExecute", null, richTextBox), "compiled RichTextBox ToggleBullets CanExecute");
+        InvokeTwoArgumentCommand(toggleBulletsCommand, "Execute", null, richTextBox);
+        AssertEqual("Disc", GetProperty(list, "MarkerStyle").ToString(), "compiled RichTextBox ToggleBullets marker style");
+        object toggleNumberingCommand = GetStaticProperty(editingCommandsType, "ToggleNumbering");
+        AssertEqual(true, InvokeTwoArgumentCommand(toggleNumberingCommand, "CanExecute", null, richTextBox), "compiled RichTextBox ToggleNumbering CanExecute");
+        InvokeTwoArgumentCommand(toggleNumberingCommand, "Execute", null, richTextBox);
+        AssertEqual("Decimal", GetProperty(list, "MarkerStyle").ToString(), "compiled RichTextBox ToggleNumbering marker style");
     }
 
     private static void AssertFlowDocumentParagraphText(object paragraph, string expectedText, string description)

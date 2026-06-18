@@ -251,6 +251,10 @@
             ItemTemplate="{StaticResource SmokeItemTemplate}"
             ItemsSource="{Binding Items}"
             SelectedIndex="1" />
+        <TextBlock
+            x:Name="ItemsCountText"
+            Margin="0,6,0,0"
+            Text="{Binding Items.Count, StringFormat=items: {0}}" />
         <ContentControl
             x:Name="SelectedItemPresenter"
             Margin="0,8,0,0"

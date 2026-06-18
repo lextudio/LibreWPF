@@ -4704,6 +4704,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Text=\"routed event not raised\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Items}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemTemplate=\"{StaticResource SmokeItemTemplate}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ItemsCountText\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding Items.Count, StringFormat=items: {0}}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"{Binding SelectedItem, ElementName=ItemsList}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("local:SmokeItemDisplayConverter", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"LayoutGrid\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -4917,6 +4919,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("custom routed event original source", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("custom routed event status text", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"ItemsList\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"ItemsCountText\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("initial items count binding text", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"SelectedItemPresenter\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"LayoutGrid\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("layout grid row definition count", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -4938,6 +4942,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("FindResource\", \"SmokeRenderingItemTemplate\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("framework item selected template", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("rendering item selected template", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("items list count after collection change", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("selector items count after collection change", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("items count binding text after collection change", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("dynamic framework item selected template", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"CompiledSmokePanel\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled user control dependency property", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled user control bound dependency property", runtimeHarnessProgram, StringComparison.Ordinal);

@@ -446,6 +446,9 @@ internal static class Program
         object selectedItem = GetProperty(itemsList, "SelectedItem");
         AssertEqual("Scene", GetProperty(selectedItem, "Name"), "selected item name");
         AssertEqual("ProGPU", GetProperty(selectedItem, "Value"), "selected item value");
+        object itemsCountText = Invoke(window, "FindName", "ItemsCountText");
+        AssertType(itemsCountText, "System.Windows.Controls.TextBlock", "items count text element");
+        AssertEqual("items: 3", GetProperty(itemsCountText, "Text"), "initial items count binding text");
 
         object selectedItemPresenter = Invoke(window, "FindName", "SelectedItemPresenter");
         AssertType(selectedItemPresenter, "System.Windows.Controls.ContentControl", "selected item presenter");
@@ -501,6 +504,18 @@ internal static class Program
         object firstItem = EnumerateObjects(GetProperty(itemsList, "Items")).First();
         AssertSame(frameworkItemTemplate, Invoke(itemTemplateSelector, "SelectTemplate", firstItem, selectorItemsControl), "framework item selected template");
         AssertSame(renderingItemTemplate, Invoke(itemTemplateSelector, "SelectTemplate", selectedItem, selectorItemsControl), "rendering item selected template");
+        if (validateFrameContent)
+        {
+            object viewModel = GetProperty(window, "DataContext");
+            object items = GetProperty(viewModel, "Items");
+            object dynamicItem = Create(selectedItem.GetType(), "Binding", "dynamic", "Framework");
+            InvokeVoid(items, "Add", dynamicItem);
+            flushDispatcherOperations?.Invoke(window);
+            AssertEqual(4, GetCount(GetProperty(itemsList, "Items")), "items list count after collection change");
+            AssertEqual(4, GetCount(GetProperty(selectorItemsControl, "Items")), "selector items count after collection change");
+            AssertEqual("items: 4", GetProperty(itemsCountText, "Text"), "items count binding text after collection change");
+            AssertSame(frameworkItemTemplate, Invoke(itemTemplateSelector, "SelectTemplate", dynamicItem, selectorItemsControl), "dynamic framework item selected template");
+        }
 
         object compiledSmokePanel = Invoke(window, "FindName", "CompiledSmokePanel");
         AssertType(compiledSmokePanel, "ProGPU.Wpf.SdkSwitchSmoke.SmokePanel", "compiled user control");

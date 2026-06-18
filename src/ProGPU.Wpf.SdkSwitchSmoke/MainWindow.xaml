@@ -137,6 +137,7 @@
             RenderingTemplate="{StaticResource SmokeRenderingItemTemplate}" />
 
         <local:SmokeItemDisplayConverter x:Key="SmokeItemDisplayConverter" />
+        <local:SmokeItemSummaryConverter x:Key="SmokeItemSummaryConverter" />
 
         <CollectionViewSource x:Key="GroupedItems" Source="{Binding Items}">
             <CollectionViewSource.SortDescriptions>
@@ -255,6 +256,16 @@
             x:Name="ItemsCountText"
             Margin="0,6,0,0"
             Text="{Binding Items.Count, StringFormat=items: {0}}" />
+        <TextBlock
+            x:Name="MultiBindingSummaryText"
+            Margin="0,6,0,0">
+            <TextBlock.Text>
+                <MultiBinding Converter="{StaticResource SmokeItemSummaryConverter}">
+                    <Binding ElementName="ItemsList" Path="SelectedItem.Name" />
+                    <Binding ElementName="ItemsList" Path="SelectedItem.Value" />
+                </MultiBinding>
+            </TextBlock.Text>
+        </TextBlock>
         <ContentControl
             x:Name="SelectedItemPresenter"
             Margin="0,8,0,0"

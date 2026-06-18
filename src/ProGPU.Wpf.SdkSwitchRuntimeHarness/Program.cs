@@ -449,6 +449,9 @@ internal static class Program
         object itemsCountText = Invoke(window, "FindName", "ItemsCountText");
         AssertType(itemsCountText, "System.Windows.Controls.TextBlock", "items count text element");
         AssertEqual("items: 3", GetProperty(itemsCountText, "Text"), "initial items count binding text");
+        object multiBindingSummaryText = Invoke(window, "FindName", "MultiBindingSummaryText");
+        AssertType(multiBindingSummaryText, "System.Windows.Controls.TextBlock", "multi binding summary text element");
+        AssertEqual("Scene:ProGPU", GetProperty(multiBindingSummaryText, "Text"), "multi binding converter text");
 
         object selectedItemPresenter = Invoke(window, "FindName", "SelectedItemPresenter");
         AssertType(selectedItemPresenter, "System.Windows.Controls.ContentControl", "selected item presenter");

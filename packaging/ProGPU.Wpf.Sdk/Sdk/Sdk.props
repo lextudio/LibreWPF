@@ -12,6 +12,7 @@
     <ProGpuWpfPlatform Condition="'$(ProGpuWpfPlatform)' == ''">SilkNet</ProGpuWpfPlatform>
     <ProGpuWpfRenderingBackend Condition="'$(ProGpuWpfRenderingBackend)' == ''">ProGPU</ProGpuWpfRenderingBackend>
     <ProGpuWpfSdkVersion Condition="'$(ProGpuWpfSdkVersion)' == ''">0.1.0-dev</ProGpuWpfSdkVersion>
+    <ProGpuWpfReferenceMode Condition="'$(ProGpuWpfReferenceMode)' == '' And ('$(ProGpuWpfManagedReferenceRoot)' != '' Or '$(ProGpuReferenceRoot)' != '')">LocalArtifacts</ProGpuWpfReferenceMode>
     <ProGpuWpfReferenceMode Condition="'$(ProGpuWpfReferenceMode)' == ''">Package</ProGpuWpfReferenceMode>
     <ProGpuWpfPackageVersion Condition="'$(ProGpuWpfPackageVersion)' == ''">$(ProGpuWpfSdkVersion)</ProGpuWpfPackageVersion>
     <ProGpuPackageVersion Condition="'$(ProGpuPackageVersion)' == ''">$(ProGpuWpfSdkVersion)</ProGpuPackageVersion>

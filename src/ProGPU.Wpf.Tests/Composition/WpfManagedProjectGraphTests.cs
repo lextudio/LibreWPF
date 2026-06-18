@@ -4441,6 +4441,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<NoWarn>$(NoWarn);NETSDK1137</NoWarn>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfPlatform Condition=\"'$(ProGpuWpfPlatform)' == ''\">SilkNet</ProGpuWpfPlatform>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfRenderingBackend Condition=\"'$(ProGpuWpfRenderingBackend)' == ''\">ProGPU</ProGpuWpfRenderingBackend>", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("<ProGpuWpfReferenceMode Condition=\"'$(ProGpuWpfReferenceMode)' == '' And ('$(ProGpuWpfManagedReferenceRoot)' != '' Or '$(ProGpuReferenceRoot)' != '')\">LocalArtifacts</ProGpuWpfReferenceMode>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<Import Sdk=\"Microsoft.NET.Sdk.WindowsDesktop\" Project=\"Sdk.props\" />", sdkProps, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Wpf.Sdk.props", sdkProps, StringComparison.Ordinal);
 
@@ -4472,9 +4473,11 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", smokeProject, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>net11.0</TargetFramework>", smokeProject, StringComparison.Ordinal);
-        Assert.Contains("<ApplicationDefinition Include=\"App.xaml\">", smokeProject, StringComparison.Ordinal);
-        Assert.Contains("<Page Include=\"MainWindow.xaml\">", smokeProject, StringComparison.Ordinal);
-        Assert.Contains("<ProGpuWpfReferenceMode>LocalArtifacts</ProGpuWpfReferenceMode>", smokeProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("EnableDefaultItems", smokeProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("ApplicationDefinition Include", smokeProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("Page Include", smokeProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("Compile Include", smokeProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProGpuWpfReferenceMode", smokeProject, StringComparison.Ordinal);
         Assert.Contains("artifacts/packages/Release/NonShipping", smokeNuGetConfig, StringComparison.Ordinal);
     }
 

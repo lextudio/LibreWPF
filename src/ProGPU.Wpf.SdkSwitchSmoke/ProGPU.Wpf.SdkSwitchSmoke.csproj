@@ -7,27 +7,11 @@
     <RootNamespace>ProGPU.Wpf.SdkSwitchSmoke</RootNamespace>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <EnableDefaultItems>false</EnableDefaultItems>
     <InternalMarkupCompilation>true</InternalMarkupCompilation>
     <AlwaysCompileMarkupFilesInSeparateDomain>false</AlwaysCompileMarkupFilesInSeparateDomain>
     <GenerateDependencyFile>false</GenerateDependencyFile>
     <EnableNETAnalyzers>false</EnableNETAnalyzers>
     <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
     <NoWarn>$(NoWarn);IDE0073</NoWarn>
-    <ProGpuWpfReferenceMode>LocalArtifacts</ProGpuWpfReferenceMode>
   </PropertyGroup>
-
-  <ItemGroup>
-    <ApplicationDefinition Include="App.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </ApplicationDefinition>
-    <Page Include="MainWindow.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="App.xaml.cs" />
-    <Compile Include="MainWindow.xaml.cs" />
-  </ItemGroup>
 </Project>

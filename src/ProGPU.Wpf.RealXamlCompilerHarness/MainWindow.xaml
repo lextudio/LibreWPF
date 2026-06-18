@@ -20,9 +20,31 @@
             </CollectionViewSource.SortDescriptions>
         </CollectionViewSource>
         <CollectionViewSource
+            x:Key="LiveSortedItemsView"
+            IsLiveSortingRequested="True"
+            Source="{Binding Items}">
+            <CollectionViewSource.SortDescriptions>
+                <componentModel:SortDescription
+                    Direction="Descending"
+                    PropertyName="Name" />
+            </CollectionViewSource.SortDescriptions>
+            <CollectionViewSource.LiveSortingProperties>
+                <sys:String>Name</sys:String>
+            </CollectionViewSource.LiveSortingProperties>
+        </CollectionViewSource>
+        <CollectionViewSource
             x:Key="FilteredItemsView"
             Filter="OnFilteredItemsViewFilter"
             Source="{Binding Items}" />
+        <CollectionViewSource
+            x:Key="LiveFilteredItemsView"
+            Filter="OnFilteredItemsViewFilter"
+            IsLiveFilteringRequested="True"
+            Source="{Binding Items}">
+            <CollectionViewSource.LiveFilteringProperties>
+                <sys:String>Name</sys:String>
+            </CollectionViewSource.LiveFilteringProperties>
+        </CollectionViewSource>
         <CollectionViewSource
             x:Key="GroupedItemsView"
             Source="{Binding Items}">
@@ -869,9 +891,17 @@
             Margin="0,8,0,0"
             ItemsSource="{Binding Source={StaticResource SortedItemsView}}" />
         <ListBox
+            x:Name="LiveSortedItemsList"
+            Margin="0,8,0,0"
+            ItemsSource="{Binding Source={StaticResource LiveSortedItemsView}}" />
+        <ListBox
             x:Name="FilteredItemsList"
             Margin="0,8,0,0"
             ItemsSource="{Binding Source={StaticResource FilteredItemsView}}" />
+        <ListBox
+            x:Name="LiveFilteredItemsList"
+            Margin="0,8,0,0"
+            ItemsSource="{Binding Source={StaticResource LiveFilteredItemsView}}" />
         <ListBox
             x:Name="GroupedItemsList"
             Margin="0,8,0,0"

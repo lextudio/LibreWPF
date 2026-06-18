@@ -106,6 +106,9 @@ internal static class Program
             ValidatePostShowGroupStyleHeader(presentationCore, window);
             ValidatePostShowItemTemplateSelector(presentationCore, window);
             ValidatePostShowItemContainerStyleSelector(presentationCore, window);
+            ValidatePostShowLiveCollectionViewShaping(
+                window,
+                () => FlushDispatcherOperations(activationServiceType, window, "DataBind"));
             ValidatePostShowDataGridRows(presentationCore, window);
             ValidatePostShowImplicitDataTemplate(presentationCore, window);
             ValidatePostShowContentTemplateSelector(presentationCore, window);
@@ -1038,7 +1041,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 77, "stack panel children");
+        AssertCollectionCount(children, expected: 79, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -4265,6 +4268,29 @@ internal static class Program
         AssertEqual("item beta", GetProperty(GetCollectionItem(sortedItems, 0), "Name"), "compiled CollectionViewSource initial first item");
         AssertEqual("item alpha", GetProperty(GetCollectionItem(sortedItems, 1), "Name"), "compiled CollectionViewSource initial second item");
 
+        object liveSortedItemsViewSource = Invoke(window, "TryFindResource", "LiveSortedItemsView");
+        AssertType(liveSortedItemsViewSource, "System.Windows.Data.CollectionViewSource", "compiled live sorted CollectionViewSource resource");
+        AssertEqual(true, GetProperty(liveSortedItemsViewSource, "IsLiveSortingRequested"), "compiled live CollectionViewSource sorting request");
+        AssertEqual(true, GetProperty(liveSortedItemsViewSource, "CanChangeLiveSorting"), "compiled live CollectionViewSource can change sorting");
+        AssertEqual(true, GetProperty(liveSortedItemsViewSource, "IsLiveSorting"), "compiled live CollectionViewSource sorting state");
+        object liveSortDescriptions = GetProperty(liveSortedItemsViewSource, "SortDescriptions");
+        AssertCollectionCount(liveSortDescriptions, expected: 1, "compiled live CollectionViewSource sort descriptions");
+        object liveSortDescription = GetCollectionItem(liveSortDescriptions, 0);
+        AssertEqual("Name", GetProperty(liveSortDescription, "PropertyName"), "compiled live CollectionViewSource sort property");
+        AssertEqual("Descending", GetProperty(liveSortDescription, "Direction").ToString(), "compiled live CollectionViewSource sort direction");
+        object liveSortingProperties = GetProperty(liveSortedItemsViewSource, "LiveSortingProperties");
+        AssertCollectionCount(liveSortingProperties, expected: 1, "compiled live CollectionViewSource sorting properties");
+        AssertEqual("Name", GetCollectionItem(liveSortingProperties, 0), "compiled live CollectionViewSource sorting property");
+
+        object liveSortedItemsList = GetField(window, "LiveSortedItemsList");
+        AssertType(liveSortedItemsList, "System.Windows.Controls.ListBox", "compiled live sorted ListBox");
+        object liveSortedItemsView = GetProperty(liveSortedItemsViewSource, "View");
+        AssertSame(liveSortedItemsView, GetProperty(liveSortedItemsList, "ItemsSource"), "compiled ListBox live CollectionViewSource binding");
+        object liveSortedItems = GetProperty(liveSortedItemsList, "Items");
+        AssertCollectionCount(liveSortedItems, expected: 2, "compiled live sorted ListBox generated items");
+        AssertEqual("item beta", GetProperty(GetCollectionItem(liveSortedItems, 0), "Name"), "compiled live CollectionViewSource initial first item");
+        AssertEqual("item alpha", GetProperty(GetCollectionItem(liveSortedItems, 1), "Name"), "compiled live CollectionViewSource initial second item");
+
         object compositeItemsList = GetField(window, "CompositeItemsList");
         AssertType(compositeItemsList, "System.Windows.Controls.ListBox", "compiled CompositeCollection ListBox");
         object compositeItemsSource = GetProperty(compositeItemsList, "ItemsSource");
@@ -4305,6 +4331,23 @@ internal static class Program
         {
             throw new InvalidOperationException("Expected compiled CollectionViewSource Filter handler to run.");
         }
+
+        object liveFilteredItemsViewSource = Invoke(window, "TryFindResource", "LiveFilteredItemsView");
+        AssertType(liveFilteredItemsViewSource, "System.Windows.Data.CollectionViewSource", "compiled live filtered CollectionViewSource resource");
+        AssertEqual(true, GetProperty(liveFilteredItemsViewSource, "IsLiveFilteringRequested"), "compiled live CollectionViewSource filtering request");
+        AssertEqual(true, GetProperty(liveFilteredItemsViewSource, "CanChangeLiveFiltering"), "compiled live CollectionViewSource can change filtering");
+        AssertEqual(true, GetProperty(liveFilteredItemsViewSource, "IsLiveFiltering"), "compiled live CollectionViewSource filtering state");
+        object liveFilteringProperties = GetProperty(liveFilteredItemsViewSource, "LiveFilteringProperties");
+        AssertCollectionCount(liveFilteringProperties, expected: 1, "compiled live CollectionViewSource filtering properties");
+        AssertEqual("Name", GetCollectionItem(liveFilteringProperties, 0), "compiled live CollectionViewSource filtering property");
+
+        object liveFilteredItemsList = GetField(window, "LiveFilteredItemsList");
+        AssertType(liveFilteredItemsList, "System.Windows.Controls.ListBox", "compiled live filtered ListBox");
+        object liveFilteredItemsView = GetProperty(liveFilteredItemsViewSource, "View");
+        AssertSame(liveFilteredItemsView, GetProperty(liveFilteredItemsList, "ItemsSource"), "compiled ListBox live filtered CollectionViewSource binding");
+        object liveFilteredItems = GetProperty(liveFilteredItemsList, "Items");
+        AssertCollectionCount(liveFilteredItems, expected: 1, "compiled live filtered ListBox generated items");
+        AssertEqual("item beta", GetProperty(GetCollectionItem(liveFilteredItems, 0), "Name"), "compiled live CollectionViewSource filtered item");
 
         object groupedItemsViewSource = Invoke(window, "TryFindResource", "GroupedItemsView");
         AssertType(groupedItemsViewSource, "System.Windows.Data.CollectionViewSource", "compiled grouped CollectionViewSource resource");
@@ -4356,6 +4399,8 @@ internal static class Program
         AssertCollectionCount(GetProperty(stringFormatItemsList, "Items"), expected: 3, "compiled ItemStringFormat ListBox collection-change items");
         AssertCollectionCount(sortedItems, expected: 3, "compiled sorted ListBox collection-change items");
         AssertEqual("item gamma", GetProperty(GetCollectionItem(sortedItems, 0), "Name"), "compiled CollectionViewSource collection-change first item");
+        AssertCollectionCount(liveSortedItems, expected: 3, "compiled live sorted ListBox collection-change items");
+        AssertEqual("item gamma", GetProperty(GetCollectionItem(liveSortedItems, 0), "Name"), "compiled live CollectionViewSource collection-change first item");
         object compositeThirdItem = Create(window.GetType().Assembly, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeItem", "item gamma");
         AddToCollection(compositeSourceItems, compositeThirdItem);
         AssertCollectionCount(compositeItems, expected: 5, "compiled CompositeCollection collection-change flattened items");
@@ -4363,6 +4408,8 @@ internal static class Program
         AssertEqual("composite footer", GetCollectionItem(compositeItems, 4), "compiled CompositeCollection collection-change footer item");
         AssertCollectionCount(filteredItems, expected: 1, "compiled filtered CollectionViewSource collection-change items");
         AssertEqual("item beta", GetProperty(GetCollectionItem(filteredItems, 0), "Name"), "compiled filtered CollectionViewSource collection-change item");
+        AssertCollectionCount(liveFilteredItems, expected: 1, "compiled live filtered CollectionViewSource collection-change items");
+        AssertEqual("item beta", GetProperty(GetCollectionItem(liveFilteredItems, 0), "Name"), "compiled live filtered CollectionViewSource collection-change item");
         groups = GetProperty(groupedItemsView, "Groups");
         AssertCollectionCount(groups, expected: 2, "compiled CollectionViewSource collection-change groups");
         ValidateCollectionViewGroup(GetCollectionItem(groups, 0), "primary group", expectedItemCount: 2, "collection-change primary");
@@ -4397,6 +4444,48 @@ internal static class Program
         Invoke(filteredItemsView, "Refresh");
         Invoke(groupedItemsView, "Refresh");
         AssertEqual("item gamma", GetProperty(GetCollectionItem(sortedItems, 0), "Name"), "compiled CollectionViewSource property-change restored first item");
+    }
+
+    private static void ValidatePostShowLiveCollectionViewShaping(object window, Action flushDataBind)
+    {
+        object dataContext = GetProperty(window, "DataContext");
+        object sourceItems = GetProperty(dataContext, "Items");
+        AssertCollectionCount(sourceItems, expected: 3, "post-show live view-model items");
+
+        object liveSortedItemsList = GetField(window, "LiveSortedItemsList");
+        object liveSortedItems = GetProperty(liveSortedItemsList, "Items");
+        AssertCollectionCount(liveSortedItems, expected: 3, "post-show live sorted ListBox items");
+        AssertEqual("item gamma", GetProperty(GetCollectionItem(liveSortedItems, 0), "Name"), "post-show live CollectionViewSource initial first item");
+
+        object liveFilteredItemsList = GetField(window, "LiveFilteredItemsList");
+        object liveFilteredItems = GetProperty(liveFilteredItemsList, "Items");
+        AssertCollectionCount(liveFilteredItems, expected: 1, "post-show live filtered CollectionViewSource initial items");
+
+        object refreshFirstItem = GetCollectionItem(sourceItems, 0);
+        object refreshSecondItem = GetCollectionItem(sourceItems, 1);
+        object refreshThirdItem = GetCollectionItem(sourceItems, 2);
+        AssertSame(refreshSecondItem, GetCollectionItem(liveFilteredItems, 0), "post-show live filtered CollectionViewSource initial item");
+
+        SetProperty(refreshFirstItem, "Name", "item omega");
+        flushDataBind();
+        AssertEqual("item omega", GetProperty(GetCollectionItem(liveSortedItems, 0), "Name"), "compiled live CollectionViewSource property-change first item");
+
+        SetProperty(refreshSecondItem, "Name", "item delta");
+        flushDataBind();
+        AssertCollectionCount(liveFilteredItems, expected: 0, "compiled live filtered CollectionViewSource property-change removed items");
+
+        SetProperty(refreshThirdItem, "Name", "item beta");
+        flushDataBind();
+        AssertCollectionCount(liveFilteredItems, expected: 1, "compiled live filtered CollectionViewSource property-change accepted items");
+        AssertSame(refreshThirdItem, GetCollectionItem(liveFilteredItems, 0), "compiled live filtered CollectionViewSource property-change accepted item");
+
+        SetProperty(refreshFirstItem, "Name", "item alpha");
+        SetProperty(refreshSecondItem, "Name", "item beta");
+        SetProperty(refreshThirdItem, "Name", "item gamma");
+        flushDataBind();
+        AssertEqual("item gamma", GetProperty(GetCollectionItem(liveSortedItems, 0), "Name"), "compiled live CollectionViewSource property-change restored first item");
+        AssertCollectionCount(liveFilteredItems, expected: 1, "compiled live filtered CollectionViewSource property-change restored items");
+        AssertSame(refreshSecondItem, GetCollectionItem(liveFilteredItems, 0), "compiled live filtered CollectionViewSource property-change restored item");
     }
 
     private static void ValidateCollectionViewGroup(

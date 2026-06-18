@@ -19,6 +19,7 @@
   </Target>
 
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'Package'">
+    <PackageReference Include="$(ProGpuWpfManagedPackageId)" Version="$(ProGpuWpfManagedPackageVersion)" />
     <PackageReference Include="ProGPU.Wpf" Version="$(ProGpuWpfPackageVersion)" />
     <PackageReference Include="ProGPU.Backend" Version="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.Scene" Version="$(ProGpuPackageVersion)" />

@@ -20,6 +20,8 @@
     <ProGpuWpfReferenceMode Condition="'$(ProGpuWpfReferenceMode)' == '' And ('$(ProGpuWpfManagedReferenceRoot)' != '' Or '$(ProGpuReferenceRoot)' != '')">LocalArtifacts</ProGpuWpfReferenceMode>
     <ProGpuWpfReferenceMode Condition="'$(ProGpuWpfReferenceMode)' == ''">Package</ProGpuWpfReferenceMode>
     <ProGpuWpfPackageVersion Condition="'$(ProGpuWpfPackageVersion)' == ''">$(ProGpuWpfSdkVersion)</ProGpuWpfPackageVersion>
+    <ProGpuWpfManagedPackageId Condition="'$(ProGpuWpfManagedPackageId)' == ''">Microsoft.DotNet.Wpf.GitHub</ProGpuWpfManagedPackageId>
+    <ProGpuWpfManagedPackageVersion Condition="'$(ProGpuWpfManagedPackageVersion)' == ''">$(ProGpuWpfPackageVersion)</ProGpuWpfManagedPackageVersion>
     <ProGpuPackageVersion Condition="'$(ProGpuPackageVersion)' == ''">$(ProGpuWpfSdkVersion)</ProGpuPackageVersion>
     <ProGpuWpfSilkNetVersion Condition="'$(ProGpuWpfSilkNetVersion)' == ''">2.23.0</ProGpuWpfSilkNetVersion>
     <ProGpuWpfSystemConfigurationConfigurationManagerVersion Condition="'$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)' == ''">11.0.0-preview.5.26229.113</ProGpuWpfSystemConfigurationConfigurationManagerVersion>

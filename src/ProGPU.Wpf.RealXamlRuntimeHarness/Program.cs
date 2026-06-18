@@ -10,6 +10,7 @@ internal static class Program
     private const string CompilerHarnessAssemblyName = "ProGPU.Wpf.RealXamlCompilerHarness";
     private const string AppTypeName = "ProGPU.Wpf.RealXamlCompilerHarness.App";
     private const string MainWindowTypeName = "ProGPU.Wpf.RealXamlCompilerHarness.MainWindow";
+    private const string PortableMessageBoxServiceTypeName = "System.Windows.PortableMessageBoxService";
     private const string PortableWindowActivationServiceTypeName = "System.Windows.PortableWindowActivationService";
 
     [STAThread]
@@ -136,6 +137,7 @@ internal static class Program
             ValidatePortableTextInputActivation(presentationCore, activation, window);
             ValidatePortableMouseClickActivation(presentationCore, activation, window);
             ValidatePortableMouseWheelActivation(presentationCore, activation, window);
+            ValidatePortableMessageBox(presentationFramework, window);
         }
         finally
         {
@@ -152,6 +154,7 @@ internal static class Program
             activationServiceType?.GetMethod(
                 "Clear",
                 BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.Invoke(null, null);
+            ClearPortableService(presentationFramework, PortableMessageBoxServiceTypeName);
 
             if (application != null)
             {
@@ -5503,6 +5506,54 @@ internal static class Program
         AssertEqual(260, portableActivation.Host.Height, "host height");
     }
 
+    private static void ValidatePortableMessageBox(Assembly presentationFramework, object window)
+    {
+        Type serviceType = GetRequiredType(presentationFramework, PortableMessageBoxServiceTypeName);
+        AssertEqual(true, GetStaticProperty(serviceType, "IsEnabled"), "portable MessageBox service enabled");
+
+        Type messageBoxType = GetRequiredType(presentationFramework, "System.Windows.MessageBox");
+        Type windowType = GetRequiredType(presentationFramework, "System.Windows.Window");
+        Type buttonType = GetRequiredType(presentationFramework, "System.Windows.MessageBoxButton");
+        Type imageType = GetRequiredType(presentationFramework, "System.Windows.MessageBoxImage");
+        Type resultType = GetRequiredType(presentationFramework, "System.Windows.MessageBoxResult");
+        Type optionsType = GetRequiredType(presentationFramework, "System.Windows.MessageBoxOptions");
+
+        object yesNoCancel = Enum.Parse(buttonType, "YesNoCancel");
+        object okCancel = Enum.Parse(buttonType, "OKCancel");
+        object warning = Enum.Parse(imageType, "Warning");
+        object information = Enum.Parse(imageType, "Information");
+        object noneResult = Enum.Parse(resultType, "None");
+        object no = Enum.Parse(resultType, "No");
+        object ok = Enum.Parse(resultType, "OK");
+        object noneOptions = Enum.Parse(optionsType, "None");
+
+        MethodInfo noOwnerShow = messageBoxType.GetMethod(
+                "Show",
+                BindingFlags.Static | BindingFlags.Public,
+                binder: null,
+                types: new[] { typeof(string), typeof(string), buttonType, imageType, resultType, optionsType },
+                modifiers: null)
+            ?? throw new MissingMethodException(messageBoxType.FullName, "Show");
+        object noOwnerResult = noOwnerShow.Invoke(
+                null,
+                new[] { "portable message", "portable caption", yesNoCancel, warning, no, noneOptions })
+            ?? throw new InvalidOperationException("MessageBox.Show returned null.");
+        AssertEqual(no, noOwnerResult, "portable MessageBox no-owner default result");
+
+        MethodInfo ownerShow = messageBoxType.GetMethod(
+                "Show",
+                BindingFlags.Static | BindingFlags.Public,
+                binder: null,
+                types: new[] { windowType, typeof(string), typeof(string), buttonType, imageType, resultType, optionsType },
+                modifiers: null)
+            ?? throw new MissingMethodException(messageBoxType.FullName, "Show");
+        object ownerResult = ownerShow.Invoke(
+                null,
+                new[] { window, "portable owner message", "portable owner caption", okCancel, information, noneResult, noneOptions })
+            ?? throw new InvalidOperationException("MessageBox.Show returned null.");
+        AssertEqual(ok, ownerResult, "portable MessageBox owner fallback result");
+    }
+
     private static void FlushDispatcherOperations(Type activationServiceType, object window, params string[] markerPriorityNames)
     {
         MethodInfo flushMethod = activationServiceType.GetMethod(
@@ -5516,6 +5567,13 @@ internal static class Program
             object markerPriority = Enum.Parse(dispatcherPriorityType, markerPriorityName);
             flushMethod.Invoke(null, new[] { window, markerPriority });
         }
+    }
+
+    private static void ClearPortableService(Assembly assembly, string typeName)
+    {
+        assembly.GetType(typeName, throwOnError: false)?.GetMethod(
+            "Clear",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.Invoke(null, null);
     }
 
     private static void RaiseHostInput(ProGpuWpfWindowHost host, WpfInputEventArgs input)

@@ -8,6 +8,7 @@ namespace System.Windows.Media.ProGPU;
 public sealed class WpfPortableWindowActivation : IDisposable
 {
     private const string PortableWindowActivationServiceTypeName = "System.Windows.PortableWindowActivationService";
+    private const string PortableMessageBoxServiceTypeName = "System.Windows.PortableMessageBoxService";
     private const string PortableMediaContextRenderServiceTypeName = "System.Windows.Media.PortableMediaContextRenderService";
     private bool _isDisposed;
     private bool _isClosingFromNative;
@@ -123,6 +124,36 @@ public sealed class WpfPortableWindowActivation : IDisposable
         registerMethod.Invoke(
             obj: null,
             parameters: parameters);
+        TryRegisterPresentationFrameworkMessageBoxService(presentationFrameworkAssembly);
+        return true;
+    }
+
+    public static bool TryRegisterPresentationFrameworkMessageBoxService(Assembly presentationFrameworkAssembly)
+    {
+        ArgumentNullException.ThrowIfNull(presentationFrameworkAssembly);
+
+        var serviceType = presentationFrameworkAssembly.GetType(
+            PortableMessageBoxServiceTypeName,
+            throwOnError: false);
+        if (serviceType == null)
+        {
+            return false;
+        }
+
+        var registerMethod = serviceType.GetMethod(
+            "Register",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            types: new[] { typeof(Func<object, object>) },
+            modifiers: null);
+        if (registerMethod == null || !typeof(IDisposable).IsAssignableFrom(registerMethod.ReturnType))
+        {
+            return false;
+        }
+
+        registerMethod.Invoke(
+            obj: null,
+            parameters: new object[] { (Func<object, object>)ShowPortableMessageBox });
         return true;
     }
 
@@ -825,6 +856,32 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
 
         return null;
+    }
+
+    private static object ShowPortableMessageBox(object request)
+    {
+        if (TryReadRequestProperty(request, "FallbackResult", out object? fallbackResult) &&
+            fallbackResult != null)
+        {
+            return fallbackResult;
+        }
+
+        return "OK";
+    }
+
+    private static bool TryReadRequestProperty(object instance, string propertyName, out object? value)
+    {
+        value = null;
+        var property = instance.GetType().GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        if (property == null || property.GetIndexParameters().Length != 0)
+        {
+            return false;
+        }
+
+        value = property.GetValue(instance);
+        return true;
     }
 
     private static bool TryReadBooleanProperty(object instance, string propertyName, out bool value)

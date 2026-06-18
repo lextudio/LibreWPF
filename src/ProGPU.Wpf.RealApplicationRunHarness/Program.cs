@@ -9,6 +9,7 @@ internal static class Program
     private const string AppTypeName = "ProGPU.Wpf.RealXamlCompilerHarness.App";
     private const string MainWindowTypeName = "ProGPU.Wpf.RealXamlCompilerHarness.MainWindow";
     private const string PortableMediaContextRenderServiceTypeName = "System.Windows.Media.PortableMediaContextRenderService";
+    private const string PortableMessageBoxServiceTypeName = "System.Windows.PortableMessageBoxService";
     private const string PortablePresentationSourceTypeName = "System.Windows.PortablePresentationSource";
     private const string PortableWindowActivationServiceTypeName = "System.Windows.PortableWindowActivationService";
 
@@ -89,6 +90,7 @@ internal static class Program
             activationServiceType?.GetMethod(
                 "Clear",
                 BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.Invoke(null, null);
+            ClearPortableService(presentationFramework, PortableMessageBoxServiceTypeName);
 
             if (application != null)
             {
@@ -4992,8 +4994,86 @@ internal static class Program
                 new Action<object>(recorder.Dispose)
             });
 
+        RegisterPortableMessageBox(presentationFramework);
         AssertEqual(true, GetStaticProperty(activationServiceType, "IsEnabled"), "portable activation enabled");
         return recorder;
+    }
+
+    private static void RegisterPortableMessageBox(Assembly presentationFramework)
+    {
+        Type serviceType = GetRequiredType(presentationFramework, PortableMessageBoxServiceTypeName);
+        MethodInfo register = serviceType.GetMethod(
+                "Register",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: new[] { typeof(Func<object, object>) },
+                modifiers: null)
+            ?? throw new MissingMethodException(serviceType.FullName, "Register");
+
+        register.Invoke(
+            null,
+            new object[] { (Func<object, object>)ShowPortableMessageBox });
+        AssertEqual(true, GetStaticProperty(serviceType, "IsEnabled"), "portable MessageBox service enabled");
+    }
+
+    private static object ShowPortableMessageBox(object request)
+    {
+        return GetProperty(request, "FallbackResult");
+    }
+
+    private static void ValidatePortableMessageBox(Assembly presentationFramework, object window)
+    {
+        Type serviceType = GetRequiredType(presentationFramework, PortableMessageBoxServiceTypeName);
+        AssertEqual(true, GetStaticProperty(serviceType, "IsEnabled"), "portable MessageBox service enabled");
+
+        Type messageBoxType = GetRequiredType(presentationFramework, "System.Windows.MessageBox");
+        Type windowType = GetRequiredType(presentationFramework, "System.Windows.Window");
+        Type buttonType = GetRequiredType(presentationFramework, "System.Windows.MessageBoxButton");
+        Type imageType = GetRequiredType(presentationFramework, "System.Windows.MessageBoxImage");
+        Type resultType = GetRequiredType(presentationFramework, "System.Windows.MessageBoxResult");
+        Type optionsType = GetRequiredType(presentationFramework, "System.Windows.MessageBoxOptions");
+
+        object yesNoCancel = Enum.Parse(buttonType, "YesNoCancel");
+        object okCancel = Enum.Parse(buttonType, "OKCancel");
+        object warning = Enum.Parse(imageType, "Warning");
+        object information = Enum.Parse(imageType, "Information");
+        object noneResult = Enum.Parse(resultType, "None");
+        object no = Enum.Parse(resultType, "No");
+        object ok = Enum.Parse(resultType, "OK");
+        object noneOptions = Enum.Parse(optionsType, "None");
+
+        MethodInfo noOwnerShow = messageBoxType.GetMethod(
+                "Show",
+                BindingFlags.Static | BindingFlags.Public,
+                binder: null,
+                types: new[] { typeof(string), typeof(string), buttonType, imageType, resultType, optionsType },
+                modifiers: null)
+            ?? throw new MissingMethodException(messageBoxType.FullName, "Show");
+        object noOwnerResult = noOwnerShow.Invoke(
+                null,
+                new[] { "portable message", "portable caption", yesNoCancel, warning, no, noneOptions })
+            ?? throw new InvalidOperationException("MessageBox.Show returned null.");
+        AssertEqual(no, noOwnerResult, "portable MessageBox no-owner default result");
+
+        MethodInfo ownerShow = messageBoxType.GetMethod(
+                "Show",
+                BindingFlags.Static | BindingFlags.Public,
+                binder: null,
+                types: new[] { windowType, typeof(string), typeof(string), buttonType, imageType, resultType, optionsType },
+                modifiers: null)
+            ?? throw new MissingMethodException(messageBoxType.FullName, "Show");
+        object ownerResult = ownerShow.Invoke(
+                null,
+                new[] { window, "portable owner message", "portable owner caption", okCancel, information, noneResult, noneOptions })
+            ?? throw new InvalidOperationException("MessageBox.Show returned null.");
+        AssertEqual(ok, ownerResult, "portable MessageBox owner fallback result");
+    }
+
+    private static void ClearPortableService(Assembly assembly, string typeName)
+    {
+        assembly.GetType(typeName, throwOnError: false)?.GetMethod(
+            "Clear",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.Invoke(null, null);
     }
 
     private static object Create(Assembly assembly, string typeName, params object?[] parameters)
@@ -5883,6 +5963,7 @@ internal static class Program
             ValidatePortableTextInputActivation(typedActivation.Window);
             ValidatePortableMouseClickActivation(typedActivation.Window);
             ValidatePortableMouseWheelActivation(typedActivation.Window);
+            ValidatePortableMessageBox(_presentationFramework, typedActivation.Window);
         }
 
         public void Dispose(object activation)

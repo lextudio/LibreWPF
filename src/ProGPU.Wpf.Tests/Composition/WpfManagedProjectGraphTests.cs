@@ -535,6 +535,90 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void PresentationFrameworkMessageBoxUsesPortableServiceOutsideWindows()
+    {
+        var messageBoxPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "MessageBox.cs");
+        var messageBoxServicePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "PortableMessageBoxService.cs");
+        var projectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "PresentationFramework.csproj");
+        var proGpuActivationPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "WpfPortableWindowActivation.cs");
+        var runtimeHarnessPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealXamlRuntimeHarness",
+            "Program.cs");
+        var applicationRunHarnessPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealApplicationRunHarness",
+            "Program.cs");
+
+        var messageBox = File.ReadAllText(messageBoxPath);
+        var messageBoxService = File.ReadAllText(messageBoxServicePath);
+        var project = File.ReadAllText(projectPath);
+        var proGpuActivation = File.ReadAllText(proGpuActivationPath);
+        var runtimeHarness = File.ReadAllText(runtimeHarnessPath);
+        var applicationRunHarness = File.ReadAllText(applicationRunHarnessPath);
+
+        Assert.Contains(@"<Compile Include=""System\Windows\PortableMessageBoxService.cs"" />", project, StringComparison.Ordinal);
+        Assert.Contains("internal readonly struct PortableMessageBoxRequest", messageBoxService, StringComparison.Ordinal);
+        Assert.Contains("internal static class PortableMessageBoxService", messageBoxService, StringComparison.Ordinal);
+        Assert.Contains("internal static IDisposable Register(Func<object, object> show)", messageBoxService, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TryShow(", messageBoxService, StringComparison.Ordinal);
+        Assert.Contains("return MessageBox.GetPortableFallbackResult(DefaultResult, Button)", messageBoxService, StringComparison.Ordinal);
+        Assert.Contains("return !s_isWindows && Volatile.Read(ref s_show) != null", messageBoxService, StringComparison.Ordinal);
+
+        Assert.Contains("return ShowCore(owner, messageBoxText, caption, button, icon, defaultResult, options)", messageBox, StringComparison.Ordinal);
+        Assert.Contains("GetMessageBoxOwnerHandle(owner)", messageBox, StringComparison.Ordinal);
+        Assert.Contains("if (ownerHandle == IntPtr.Zero && OperatingSystem.IsWindows())", messageBox, StringComparison.Ordinal);
+        Assert.Contains("if (!OperatingSystem.IsWindows())", messageBox, StringComparison.Ordinal);
+        Assert.Contains("PortableMessageBoxService.TryShow(", messageBox, StringComparison.Ordinal);
+        Assert.Contains("return GetPortableFallbackResult(defaultResult, button)", messageBox, StringComparison.Ordinal);
+        Assert.Contains("return new WindowInteropHelper(owner).Handle", messageBox, StringComparison.Ordinal);
+        Assert.True(
+            messageBox.IndexOf("if (!OperatingSystem.IsWindows())", StringComparison.Ordinal)
+                < messageBox.IndexOf("UnsafeNativeMethods.MessageBox", StringComparison.Ordinal),
+            "MessageBox.ShowCore must try the portable service before the Win32 MessageBox call.");
+
+        Assert.Contains("PortableMessageBoxServiceTypeName", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("TryRegisterPresentationFrameworkMessageBoxService(presentationFrameworkAssembly)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("typeof(Func<object, object>)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("ShowPortableMessageBox", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("\"FallbackResult\"", proGpuActivation, StringComparison.Ordinal);
+
+        Assert.Contains("PortableMessageBoxServiceTypeName = \"System.Windows.PortableMessageBoxService\"", runtimeHarness, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableMessageBox(presentationFramework, window)", runtimeHarness, StringComparison.Ordinal);
+        Assert.Contains("portable MessageBox no-owner default result", runtimeHarness, StringComparison.Ordinal);
+        Assert.Contains("portable MessageBox owner fallback result", runtimeHarness, StringComparison.Ordinal);
+        Assert.Contains("ClearPortableService(presentationFramework, PortableMessageBoxServiceTypeName)", runtimeHarness, StringComparison.Ordinal);
+
+        Assert.Contains("PortableMessageBoxServiceTypeName = \"System.Windows.PortableMessageBoxService\"", applicationRunHarness, StringComparison.Ordinal);
+        Assert.Contains("RegisterPortableMessageBox(presentationFramework)", applicationRunHarness, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableMessageBox(_presentationFramework, typedActivation.Window)", applicationRunHarness, StringComparison.Ordinal);
+        Assert.Contains("portable MessageBox owner fallback result", applicationRunHarness, StringComparison.Ordinal);
+        Assert.Contains("ClearPortableService(presentationFramework, PortableMessageBoxServiceTypeName)", applicationRunHarness, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ManagedSubsystemBringupReusesRealWpfXamlFrameworkAndThemeProjects()
     {
         var systemXamlProjectPath = FindRepoPath(

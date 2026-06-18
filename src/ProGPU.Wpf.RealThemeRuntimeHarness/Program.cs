@@ -125,6 +125,17 @@ internal static class Program
         object checkBoxStyle = GetDictionaryValue(themeDictionary, "DefaultCheckBoxStyle");
         object comboBoxStyle = GetDictionaryValue(themeDictionary, "DefaultComboBoxStyle");
         object datePickerStyle = GetDictionaryValue(themeDictionary, "DefaultDatePickerStyle");
+        object dataGridStyle = GetDictionaryValue(themeDictionary, "DefaultDataGridStyle");
+        object dataGridCellStyle = GetDictionaryValue(themeDictionary, "DefaultDataGridCellStyle");
+        object dataGridCheckBoxElementStyle = GetDictionaryValue(themeDictionary, "DataGridCheckBoxElementDefaultStyle");
+        object dataGridCheckBoxEditingElementStyle = GetDictionaryValue(themeDictionary, "DataGridCheckBoxEditingElementDefaultStyle");
+        object dataGridColumnFloatingHeaderStyle = GetDictionaryValue(themeDictionary, "DefaultDataGridColumnFloatingHeaderStyle");
+        object dataGridColumnHeaderStyle = GetDictionaryValue(themeDictionary, "DefaultDataGridColumnHeaderStyle");
+        object dataGridColumnHeadersPresenterStyle = GetDictionaryValue(themeDictionary, "DefaultDataGridColumnHeadersPresenterStyle");
+        object dataGridCellsPresenterStyle = GetDictionaryValue(themeDictionary, "DefaultDataGridCellsPresenterStyle");
+        object dataGridHeaderDropSeparatorStyle = GetDictionaryValue(themeDictionary, "DefaultDataGridHeaderDropSeparatorStyle");
+        object dataGridRowHeaderStyle = GetDictionaryValue(themeDictionary, "DefaultDataGridRowHeaderStyle");
+        object dataGridRowStyle = GetDictionaryValue(themeDictionary, "DefaultDataGridRowStyle");
         object expanderStyle = GetDictionaryValue(themeDictionary, "DefaultExpanderStyle");
         object groupBoxStyle = GetDictionaryValue(themeDictionary, "DefaultGroupBoxStyle");
         object listViewStyle = GetDictionaryValue(themeDictionary, "DefaultListViewStyle");
@@ -156,6 +167,9 @@ internal static class Program
         Type calendarType = GetRequiredType(presentationFramework, "System.Windows.Controls.Calendar");
         Type checkBoxType = GetRequiredType(presentationFramework, "System.Windows.Controls.CheckBox");
         Type comboBoxType = GetRequiredType(presentationFramework, "System.Windows.Controls.ComboBox");
+        Type dataGridType = GetRequiredType(presentationFramework, "System.Windows.Controls.DataGrid");
+        Type dataGridColumnHeaderType = GetRequiredType(presentationFramework, "System.Windows.Controls.Primitives.DataGridColumnHeader");
+        Type dataGridColumnHeadersPresenterType = GetRequiredType(presentationFramework, "System.Windows.Controls.Primitives.DataGridColumnHeadersPresenter");
         Type datePickerType = GetRequiredType(presentationFramework, "System.Windows.Controls.DatePicker");
         Type expanderType = GetRequiredType(presentationFramework, "System.Windows.Controls.Expander");
         Type gridSplitterType = GetRequiredType(presentationFramework, "System.Windows.Controls.GridSplitter");
@@ -451,6 +465,28 @@ internal static class Program
         SetProperty(progressBar, "Style", progressBarStyle);
         AddToCollection(children, progressBar);
 
+        object dataGrid = Create(presentationFramework, "System.Windows.Controls.DataGrid");
+        SetProperty(dataGrid, "AutoGenerateColumns", false);
+        SetProperty(dataGrid, "CanUserAddRows", false);
+        SetProperty(dataGrid, "CanUserResizeColumns", true);
+        SetEnumProperty(dataGrid, "HeadersVisibility", "All");
+        SetEnumProperty(dataGrid, "GridLinesVisibility", "All");
+        SetProperty(dataGrid, "Style", dataGridStyle);
+        object dataGridColumns = GetProperty(dataGrid, "Columns");
+        object nameColumn = Create(presentationFramework, "System.Windows.Controls.DataGridTextColumn");
+        SetProperty(nameColumn, "Header", "Name");
+        SetProperty(nameColumn, "Binding", Create(presentationFramework, "System.Windows.Data.Binding", "Name"));
+        AddToCollection(dataGridColumns, nameColumn);
+        object activeColumn = Create(presentationFramework, "System.Windows.Controls.DataGridCheckBoxColumn");
+        SetProperty(activeColumn, "Header", "Active");
+        SetProperty(activeColumn, "Binding", Create(presentationFramework, "System.Windows.Data.Binding", "IsActive"));
+        AddToCollection(dataGridColumns, activeColumn);
+        object dataGridItems = GetProperty(dataGrid, "Items");
+        AddToCollection(dataGridItems, new ThemeGridRow("Theme grid one", true));
+        AddToCollection(dataGridItems, new ThemeGridRow("Theme grid two", false));
+        SetProperty(dataGrid, "SelectedIndex", 1);
+        AddToCollection(children, dataGrid);
+
         AssertSame(windowStyle, GetProperty(window, "Style"), "Window Fluent style");
         AssertSame(buttonStyle, GetProperty(button, "Style"), "Button Fluent style");
         AssertSame(textBoxStyle, GetProperty(textBox, "Style"), "TextBox Fluent style");
@@ -483,6 +519,7 @@ internal static class Program
         AssertSame(passwordBoxStyle, GetProperty(passwordBox, "Style"), "PasswordBox Fluent style");
         AssertSame(sliderStyle, GetProperty(slider, "Style"), "Slider Fluent style");
         AssertSame(progressBarStyle, GetProperty(progressBar, "Style"), "ProgressBar Fluent style");
+        AssertSame(dataGridStyle, GetProperty(dataGrid, "Style"), "DataGrid Fluent style");
         AssertSame(richTextBoxStyle, GetProperty(richTextBox, "Style"), "RichTextBox Fluent style");
         AssertSame(defaultButtonStyle, Invoke(application, "TryFindResource", "DefaultButtonStyle"), "application Fluent default Button resource lookup");
         AssertSame(buttonStyle, Invoke(application, "TryFindResource", "AccentButtonStyle"), "application Fluent resource lookup");
@@ -490,6 +527,17 @@ internal static class Program
         AssertSame(calendarStyle, Invoke(application, "TryFindResource", "DefaultCalendarStyle"), "application Fluent Calendar resource lookup");
         AssertSame(comboBoxStyle, Invoke(application, "TryFindResource", "DefaultComboBoxStyle"), "application Fluent ComboBox resource lookup");
         AssertSame(datePickerStyle, Invoke(application, "TryFindResource", "DefaultDatePickerStyle"), "application Fluent DatePicker resource lookup");
+        AssertSame(dataGridStyle, Invoke(application, "TryFindResource", "DefaultDataGridStyle"), "application Fluent DataGrid resource lookup");
+        AssertSame(dataGridCellStyle, Invoke(application, "TryFindResource", "DefaultDataGridCellStyle"), "application Fluent DataGridCell resource lookup");
+        AssertSame(dataGridCheckBoxElementStyle, Invoke(application, "TryFindResource", "DataGridCheckBoxElementDefaultStyle"), "application Fluent DataGrid CheckBox element resource lookup");
+        AssertSame(dataGridCheckBoxEditingElementStyle, Invoke(application, "TryFindResource", "DataGridCheckBoxEditingElementDefaultStyle"), "application Fluent DataGrid CheckBox editing resource lookup");
+        AssertSame(dataGridColumnFloatingHeaderStyle, Invoke(application, "TryFindResource", "DefaultDataGridColumnFloatingHeaderStyle"), "application Fluent DataGrid floating header resource lookup");
+        AssertSame(dataGridColumnHeaderStyle, Invoke(application, "TryFindResource", "DefaultDataGridColumnHeaderStyle"), "application Fluent DataGrid column header resource lookup");
+        AssertSame(dataGridColumnHeadersPresenterStyle, Invoke(application, "TryFindResource", "DefaultDataGridColumnHeadersPresenterStyle"), "application Fluent DataGrid column headers presenter resource lookup");
+        AssertSame(dataGridCellsPresenterStyle, Invoke(application, "TryFindResource", "DefaultDataGridCellsPresenterStyle"), "application Fluent DataGrid cells presenter resource lookup");
+        AssertSame(dataGridHeaderDropSeparatorStyle, Invoke(application, "TryFindResource", "DefaultDataGridHeaderDropSeparatorStyle"), "application Fluent DataGrid drop separator resource lookup");
+        AssertSame(dataGridRowHeaderStyle, Invoke(application, "TryFindResource", "DefaultDataGridRowHeaderStyle"), "application Fluent DataGrid row header resource lookup");
+        AssertSame(dataGridRowStyle, Invoke(application, "TryFindResource", "DefaultDataGridRowStyle"), "application Fluent DataGrid row resource lookup");
         AssertType(Invoke(application, "TryFindResource", calendarType), "System.Windows.Style", "application Fluent Calendar implicit style lookup");
         AssertSame(checkBoxStyle, Invoke(application, "TryFindResource", "DefaultCheckBoxStyle"), "application Fluent CheckBox resource lookup");
         AssertSame(expanderStyle, Invoke(application, "TryFindResource", "DefaultExpanderStyle"), "application Fluent Expander resource lookup");
@@ -514,6 +562,9 @@ internal static class Program
         AssertType(Invoke(application, "TryFindResource", buttonType), "System.Windows.Style", "application Fluent Button implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", checkBoxType), "System.Windows.Style", "application Fluent CheckBox implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", comboBoxType), "System.Windows.Style", "application Fluent ComboBox implicit style lookup");
+        AssertType(Invoke(application, "TryFindResource", dataGridType), "System.Windows.Style", "application Fluent DataGrid implicit style lookup");
+        AssertType(Invoke(application, "TryFindResource", dataGridColumnHeaderType), "System.Windows.Style", "application Fluent DataGridColumnHeader implicit style lookup");
+        AssertType(Invoke(application, "TryFindResource", dataGridColumnHeadersPresenterType), "System.Windows.Style", "application Fluent DataGridColumnHeadersPresenter implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", datePickerType), "System.Windows.Style", "application Fluent DatePicker implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", expanderType), "System.Windows.Style", "application Fluent Expander implicit style lookup");
         AssertType(Invoke(application, "TryFindResource", gridSplitterType), "System.Windows.Style", "application Fluent GridSplitter implicit style lookup");
@@ -546,39 +597,40 @@ internal static class Program
     {
         object content = GetProperty(window, "Content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expectedMinimum: 43, "themed stack panel children");
+        AssertCollectionCount(children, expectedMinimum: 44, "themed stack panel children");
 
         int childCount = GetCollectionCount(children);
-        object button = GetCollectionItem(children, childCount - 30);
-        object textBox = GetCollectionItem(children, childCount - 29);
-        object tabControl = GetCollectionItem(children, childCount - 28);
-        object listView = GetCollectionItem(children, childCount - 27);
-        object treeView = GetCollectionItem(children, childCount - 26);
-        object calendar = GetCollectionItem(children, childCount - 25);
-        object datePicker = GetCollectionItem(children, childCount - 24);
-        object menu = GetCollectionItem(children, childCount - 23);
-        object toolBarTray = GetCollectionItem(children, childCount - 22);
-        object statusBar = GetCollectionItem(children, childCount - 21);
-        object checkBox = GetCollectionItem(children, childCount - 20);
-        object radioButton = GetCollectionItem(children, childCount - 19);
-        object toggleButton = GetCollectionItem(children, childCount - 18);
-        object repeatButton = GetCollectionItem(children, childCount - 17);
-        object expander = GetCollectionItem(children, childCount - 16);
-        object groupBox = GetCollectionItem(children, childCount - 15);
-        object scrollViewer = GetCollectionItem(children, childCount - 14);
-        object scrollBar = GetCollectionItem(children, childCount - 13);
-        object defaultButton = GetCollectionItem(children, childCount - 12);
-        object itemsControl = GetCollectionItem(children, childCount - 11);
-        object listBox = GetCollectionItem(children, childCount - 10);
-        object label = GetCollectionItem(children, childCount - 9);
-        object separator = GetCollectionItem(children, childCount - 8);
-        object gridSplitter = GetCollectionItem(children, childCount - 7);
-        object resizeGrip = GetCollectionItem(children, childCount - 6);
-        object thumb = GetCollectionItem(children, childCount - 5);
-        object comboBox = GetCollectionItem(children, childCount - 4);
-        object passwordBox = GetCollectionItem(children, childCount - 3);
-        object slider = GetCollectionItem(children, childCount - 2);
-        object progressBar = GetCollectionItem(children, childCount - 1);
+        object button = GetCollectionItem(children, childCount - 31);
+        object textBox = GetCollectionItem(children, childCount - 30);
+        object tabControl = GetCollectionItem(children, childCount - 29);
+        object listView = GetCollectionItem(children, childCount - 28);
+        object treeView = GetCollectionItem(children, childCount - 27);
+        object calendar = GetCollectionItem(children, childCount - 26);
+        object datePicker = GetCollectionItem(children, childCount - 25);
+        object menu = GetCollectionItem(children, childCount - 24);
+        object toolBarTray = GetCollectionItem(children, childCount - 23);
+        object statusBar = GetCollectionItem(children, childCount - 22);
+        object checkBox = GetCollectionItem(children, childCount - 21);
+        object radioButton = GetCollectionItem(children, childCount - 20);
+        object toggleButton = GetCollectionItem(children, childCount - 19);
+        object repeatButton = GetCollectionItem(children, childCount - 18);
+        object expander = GetCollectionItem(children, childCount - 17);
+        object groupBox = GetCollectionItem(children, childCount - 16);
+        object scrollViewer = GetCollectionItem(children, childCount - 15);
+        object scrollBar = GetCollectionItem(children, childCount - 14);
+        object defaultButton = GetCollectionItem(children, childCount - 13);
+        object itemsControl = GetCollectionItem(children, childCount - 12);
+        object listBox = GetCollectionItem(children, childCount - 11);
+        object label = GetCollectionItem(children, childCount - 10);
+        object separator = GetCollectionItem(children, childCount - 9);
+        object gridSplitter = GetCollectionItem(children, childCount - 8);
+        object resizeGrip = GetCollectionItem(children, childCount - 7);
+        object thumb = GetCollectionItem(children, childCount - 6);
+        object comboBox = GetCollectionItem(children, childCount - 5);
+        object passwordBox = GetCollectionItem(children, childCount - 4);
+        object slider = GetCollectionItem(children, childCount - 3);
+        object progressBar = GetCollectionItem(children, childCount - 2);
+        object dataGrid = GetCollectionItem(children, childCount - 1);
         object richTextBox = Invoke(window, "FindName", "DocumentBox");
         object themedToolBar = GetCollectionItem(GetProperty(toolBarTray, "ToolBars"), 0);
         Type menuItemType = GetRequiredType(menu.GetType().Assembly, "System.Windows.Controls.MenuItem");
@@ -614,6 +666,7 @@ internal static class Program
         AssertType(passwordBox, "System.Windows.Controls.PasswordBox", "created themed PasswordBox");
         AssertType(slider, "System.Windows.Controls.Slider", "created themed Slider");
         AssertType(progressBar, "System.Windows.Controls.ProgressBar", "created themed ProgressBar");
+        AssertType(dataGrid, "System.Windows.Controls.DataGrid", "created themed DataGrid");
 
         AssertType(GetDictionaryValue(themeDictionary, "DefaultWindowStyle"), "System.Windows.Style", "DefaultWindowStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultButtonStyle"), "System.Windows.Style", "DefaultButtonStyle");
@@ -629,6 +682,17 @@ internal static class Program
         AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxToggleButtonStyle"), "System.Windows.Style", "DefaultComboBoxToggleButtonStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultComboBoxTemplate"), "System.Windows.Controls.ControlTemplate", "DefaultComboBoxTemplate");
         AssertType(GetDictionaryValue(themeDictionary, "EditableComboBoxTemplate"), "System.Windows.Controls.ControlTemplate", "EditableComboBoxTemplate");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultDataGridStyle"), "System.Windows.Style", "DefaultDataGridStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultDataGridCellStyle"), "System.Windows.Style", "DefaultDataGridCellStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DataGridCheckBoxElementDefaultStyle"), "System.Windows.Style", "DataGridCheckBoxElementDefaultStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DataGridCheckBoxEditingElementDefaultStyle"), "System.Windows.Style", "DataGridCheckBoxEditingElementDefaultStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultDataGridColumnFloatingHeaderStyle"), "System.Windows.Style", "DefaultDataGridColumnFloatingHeaderStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultDataGridHeaderDropSeparatorStyle"), "System.Windows.Style", "DefaultDataGridHeaderDropSeparatorStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultDataGridColumnHeaderStyle"), "System.Windows.Style", "DefaultDataGridColumnHeaderStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultDataGridColumnHeadersPresenterStyle"), "System.Windows.Style", "DefaultDataGridColumnHeadersPresenterStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultDataGridCellsPresenterStyle"), "System.Windows.Style", "DefaultDataGridCellsPresenterStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultDataGridRowHeaderStyle"), "System.Windows.Style", "DefaultDataGridRowHeaderStyle");
+        AssertType(GetDictionaryValue(themeDictionary, "DefaultDataGridRowStyle"), "System.Windows.Style", "DefaultDataGridRowStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultDatePickerStyle"), "System.Windows.Style", "DefaultDatePickerStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DatePickerCalendarStyle"), "System.Windows.Style", "DatePickerCalendarStyle");
         AssertType(GetDictionaryValue(themeDictionary, "DefaultDatePickerTextBoxStyle"), "System.Windows.Style", "DefaultDatePickerTextBoxStyle");
@@ -680,6 +744,7 @@ internal static class Program
         AssertType(GetDictionaryValue(themeDictionary, calendar.GetType()), "System.Windows.Style", "implicit Calendar Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, checkBox.GetType()), "System.Windows.Style", "implicit CheckBox Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, comboBox.GetType()), "System.Windows.Style", "implicit ComboBox Fluent style");
+        AssertType(GetDictionaryValue(themeDictionary, dataGrid.GetType()), "System.Windows.Style", "implicit DataGrid Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, datePicker.GetType()), "System.Windows.Style", "implicit DatePicker Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, expander.GetType()), "System.Windows.Style", "implicit Expander Fluent style");
         AssertType(GetDictionaryValue(themeDictionary, gridSplitter.GetType()), "System.Windows.Style", "implicit GridSplitter Fluent style");
@@ -750,6 +815,7 @@ internal static class Program
         AssertStyleTarget(GetProperty(passwordBox, "Style"), "System.Windows.Controls.PasswordBox", "PasswordBox Fluent style target");
         AssertStyleTarget(GetProperty(slider, "Style"), "System.Windows.Controls.Slider", "Slider Fluent style target");
         AssertStyleTarget(GetProperty(progressBar, "Style"), "System.Windows.Controls.ProgressBar", "ProgressBar Fluent style target");
+        AssertStyleTarget(GetProperty(dataGrid, "Style"), "System.Windows.Controls.DataGrid", "DataGrid Fluent style target");
         AssertStyleTarget(GetProperty(richTextBox, "Style"), "System.Windows.Controls.RichTextBox", "RichTextBox Fluent style target");
 
         Invoke(window, "ApplyTemplate");
@@ -790,6 +856,7 @@ internal static class Program
         Invoke(passwordBox, "ApplyTemplate");
         Invoke(slider, "ApplyTemplate");
         Invoke(progressBar, "ApplyTemplate");
+        Invoke(dataGrid, "ApplyTemplate");
         Invoke(richTextBox, "ApplyTemplate");
 
         AssertType(GetProperty(window, "Template"), "System.Windows.Controls.ControlTemplate", "Window template");
@@ -821,6 +888,7 @@ internal static class Program
         AssertType(GetProperty(passwordBox, "Template"), "System.Windows.Controls.ControlTemplate", "PasswordBox template");
         AssertType(GetProperty(slider, "Template"), "System.Windows.Controls.ControlTemplate", "Slider template");
         AssertType(GetProperty(progressBar, "Template"), "System.Windows.Controls.ControlTemplate", "ProgressBar template");
+        AssertType(GetProperty(dataGrid, "Template"), "System.Windows.Controls.ControlTemplate", "DataGrid template");
         AssertType(GetProperty(richTextBox, "Template"), "System.Windows.Controls.ControlTemplate", "RichTextBox template");
         AssertStyleHasSetter(GetProperty(tabControl, "Style"), "Template", "TabControl Fluent template setter");
         AssertStyleHasSetter(GetProperty(listView, "Style"), "Template", "ListView Fluent template setter");
@@ -851,6 +919,13 @@ internal static class Program
         AssertStyleHasSetter(GetProperty(passwordBox, "Style"), "Template", "PasswordBox Fluent template setter");
         AssertStyleHasSetter(GetProperty(textBox, "Style"), "Template", "TextBox Fluent template setter");
         AssertStyleHasSetter(GetProperty(progressBar, "Style"), "Template", "ProgressBar Fluent template setter");
+        AssertStyleHasSetter(GetProperty(dataGrid, "Style"), "Template", "DataGrid Fluent template setter");
+        AssertStyleHasSetter(GetProperty(dataGrid, "Style"), "RowStyle", "DataGrid Fluent row-style setter");
+        AssertStyleHasSetter(GetProperty(dataGrid, "Style"), "RowHeaderStyle", "DataGrid Fluent row-header-style setter");
+        AssertStyleHasSetter(GetProperty(dataGrid, "Style"), "CellStyle", "DataGrid Fluent cell-style setter");
+        AssertStyleHasSetter(GetProperty(dataGrid, "Style"), "ColumnHeaderStyle", "DataGrid Fluent column-header-style setter");
+        AssertStyleHasSetter(GetProperty(dataGrid, "Style"), "DropLocationIndicatorStyle", "DataGrid Fluent drop-location-style setter");
+        AssertStyleHasSetter(GetProperty(dataGrid, "Style"), "DragIndicatorStyle", "DataGrid Fluent drag-indicator-style setter");
         AssertStyleHasSetter(GetProperty(richTextBox, "Style"), "ContextMenu", "RichTextBox Fluent context-menu setter");
         AssertEqual("themed button smoke", GetProperty(button, "Content"), "themed button content");
         AssertEqual("themed text box smoke", GetProperty(textBox, "Text"), "themed TextBox text");
@@ -919,6 +994,27 @@ internal static class Program
         AssertEqual(100.0, GetProperty(slider, "Maximum"), "themed Slider maximum");
         AssertEqual(42.0, GetProperty(slider, "Value"), "themed Slider value");
         AssertEqual(64.0, GetProperty(progressBar, "Value"), "themed ProgressBar value");
+        AssertEqual(false, GetProperty(dataGrid, "AutoGenerateColumns"), "themed DataGrid auto-generate columns");
+        AssertEqual(false, GetProperty(dataGrid, "CanUserAddRows"), "themed DataGrid add rows");
+        AssertEqual(true, GetProperty(dataGrid, "CanUserResizeColumns"), "themed DataGrid resize columns");
+        AssertEqual("All", GetProperty(dataGrid, "HeadersVisibility").ToString(), "themed DataGrid headers visibility");
+        AssertEqual("All", GetProperty(dataGrid, "GridLinesVisibility").ToString(), "themed DataGrid grid lines visibility");
+        AssertEqual(2, GetCollectionCount(GetProperty(dataGrid, "Columns")), "themed DataGrid column count");
+        object dataGridColumns = GetProperty(dataGrid, "Columns");
+        object nameColumn = GetCollectionItem(dataGridColumns, 0);
+        object activeColumn = GetCollectionItem(dataGridColumns, 1);
+        AssertType(nameColumn, "System.Windows.Controls.DataGridTextColumn", "themed DataGrid text column");
+        AssertType(activeColumn, "System.Windows.Controls.DataGridCheckBoxColumn", "themed DataGrid checkbox column");
+        AssertEqual("Name", GetProperty(nameColumn, "Header"), "themed DataGrid text column header");
+        AssertEqual("Active", GetProperty(activeColumn, "Header"), "themed DataGrid checkbox column header");
+        AssertEqual("Name", GetProperty(GetProperty(GetProperty(nameColumn, "Binding"), "Path"), "Path"), "themed DataGrid text binding path");
+        AssertEqual("IsActive", GetProperty(GetProperty(GetProperty(activeColumn, "Binding"), "Path"), "Path"), "themed DataGrid checkbox binding path");
+        AssertEqual(2, GetCollectionCount(GetProperty(dataGrid, "Items")), "themed DataGrid item count");
+        AssertEqual(1, GetProperty(dataGrid, "SelectedIndex"), "themed DataGrid selected index");
+        object selectedGridRow = GetProperty(dataGrid, "SelectedItem");
+        AssertType(selectedGridRow, typeof(ThemeGridRow).FullName!, "themed DataGrid selected row type");
+        AssertEqual("Theme grid two", GetProperty(selectedGridRow, "Name"), "themed DataGrid selected row name");
+        AssertEqual(false, GetProperty(selectedGridRow, "IsActive"), "themed DataGrid selected row active");
 
         object appResources = GetProperty(application, "Resources");
         object mergedDictionaries = GetProperty(appResources, "MergedDictionaries");
@@ -1417,6 +1513,19 @@ internal static class Program
         }
 
         throw new DirectoryNotFoundException("Could not locate the WPF repository root.");
+    }
+
+    public sealed class ThemeGridRow
+    {
+        public ThemeGridRow(string name, bool isActive)
+        {
+            Name = name;
+            IsActive = isActive;
+        }
+
+        public string Name { get; set; }
+
+        public bool IsActive { get; set; }
     }
 
     private sealed class WpfAssemblyLoadContext : AssemblyLoadContext

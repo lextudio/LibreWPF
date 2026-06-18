@@ -703,6 +703,111 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void PresentationFrameworkFileDialogsUsePortableServiceOutsideWindows()
+    {
+        var projectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "PresentationFramework.csproj");
+        var commonDialogPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "Microsoft",
+            "Win32",
+            "CommonDialog.cs");
+        var commonItemDialogPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "Microsoft",
+            "Win32",
+            "CommonItemDialog.cs");
+        var fileDialogPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "Microsoft",
+            "Win32",
+            "FileDialog.cs");
+        var servicePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "Microsoft",
+            "Win32",
+            "PortableFileDialogService.cs");
+        var activationPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "WpfPortableWindowActivation.cs");
+        var runtimeHarnessPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealXamlRuntimeHarness",
+            "Program.cs");
+        var applicationRunHarnessPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.RealApplicationRunHarness",
+            "Program.cs");
+
+        var project = File.ReadAllText(projectPath);
+        var commonDialog = File.ReadAllText(commonDialogPath);
+        var commonItemDialog = File.ReadAllText(commonItemDialogPath);
+        var fileDialog = File.ReadAllText(fileDialogPath);
+        var service = File.ReadAllText(servicePath);
+        var activation = File.ReadAllText(activationPath);
+        var runtimeHarness = File.ReadAllText(runtimeHarnessPath);
+        var applicationRunHarness = File.ReadAllText(applicationRunHarnessPath);
+
+        Assert.Contains(@"<Compile Include=""Microsoft\Win32\PortableFileDialogService.cs"" />", project, StringComparison.Ordinal);
+        Assert.Contains("internal static class PortableFileDialogService", service, StringComparison.Ordinal);
+        Assert.Contains("RuntimeInformation.IsOSPlatform(OSPlatform.Windows)", service, StringComparison.Ordinal);
+        Assert.Contains("internal static IDisposable Register(Func<object, string> showDialog)", service, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TryShowDialog(CommonItemDialog dialog, out string selectedPath)", service, StringComparison.Ordinal);
+        Assert.Contains("private sealed class PortableFileDialogRequest", service, StringComparison.Ordinal);
+        Assert.Contains("public string Kind { get; }", service, StringComparison.Ordinal);
+        Assert.Contains("public string SuggestedItemName { get; }", service, StringComparison.Ordinal);
+
+        Assert.Contains("itemDialog.TryRunPortableDialog(out bool? portableResult)", commonDialog, StringComparison.Ordinal);
+        Assert.Contains("private bool? ShowWin32Dialog()", commonDialog, StringComparison.Ordinal);
+        Assert.Contains("private bool? ShowWin32Dialog(Window owner)", commonDialog, StringComparison.Ordinal);
+        Assert.True(
+            commonDialog.IndexOf("itemDialog.TryRunPortableDialog(out bool? portableResult)", StringComparison.Ordinal)
+                < commonDialog.IndexOf("UnsafeNativeMethods.GetActiveWindow()", StringComparison.Ordinal),
+            "CommonDialog.ShowDialog must try the portable service before reading Win32 active-window state.");
+        Assert.True(
+            commonDialog.IndexOf("itemDialog.TryRunPortableDialog(out bool? portableResult)", StringComparison.Ordinal)
+                < commonDialog.IndexOf("new WindowInteropHelper(owner)", StringComparison.Ordinal),
+            "CommonDialog.ShowDialog(owner) must try the portable service before requiring an HWND owner.");
+
+        Assert.Contains("internal bool TryRunPortableDialog(out bool? result)", commonItemDialog, StringComparison.Ordinal);
+        Assert.Contains("private protected virtual bool TryHandlePortableItemOk(out object revertState)", commonItemDialog, StringComparison.Ordinal);
+        Assert.Contains("private bool HandlePortableItemOk(string selectedPath)", commonItemDialog, StringComparison.Ordinal);
+        Assert.Contains("OnItemOk(cancelArgs)", commonItemDialog, StringComparison.Ordinal);
+        Assert.Contains("private protected override bool TryHandlePortableItemOk(out object restoreState)", fileDialog, StringComparison.Ordinal);
+        Assert.Contains("return ProcessFileNames();", fileDialog, StringComparison.Ordinal);
+
+        Assert.Contains("PortableFileDialogServiceTypeName = \"Microsoft.Win32.PortableFileDialogService\"", activation, StringComparison.Ordinal);
+        Assert.Contains("TryRegisterPresentationFrameworkFileDialogService(presentationFrameworkAssembly)", activation, StringComparison.Ordinal);
+        Assert.Contains("CrossPlatformWpfPlatformServices.Instance.FileDialogs", activation, StringComparison.Ordinal);
+        Assert.Contains("ReadFileDialogPatterns(request)", activation, StringComparison.Ordinal);
+
+        Assert.Contains("PortableFileDialogServiceTypeName = \"Microsoft.Win32.PortableFileDialogService\"", runtimeHarness, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableFileDialogs(presentationFramework)", runtimeHarness, StringComparison.Ordinal);
+        Assert.Contains("portable SaveFileDialog FileName", runtimeHarness, StringComparison.Ordinal);
+
+        Assert.Contains("PortableFileDialogServiceTypeName = \"Microsoft.Win32.PortableFileDialogService\"", applicationRunHarness, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableFileDialogs(presentationFramework)", applicationRunHarness, StringComparison.Ordinal);
+        Assert.Contains("portable OpenFolderDialog FolderName", applicationRunHarness, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ManagedSubsystemBringupReusesRealWpfXamlFrameworkAndThemeProjects()
     {
         var systemXamlProjectPath = FindRepoPath(

@@ -9,6 +9,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
 {
     private const string PortableWindowActivationServiceTypeName = "System.Windows.PortableWindowActivationService";
     private const string PortableMessageBoxServiceTypeName = "System.Windows.PortableMessageBoxService";
+    private const string PortableFileDialogServiceTypeName = "Microsoft.Win32.PortableFileDialogService";
     private const string PortableMediaContextRenderServiceTypeName = "System.Windows.Media.PortableMediaContextRenderService";
     private bool _isDisposed;
     private bool _isClosingFromNative;
@@ -125,6 +126,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             obj: null,
             parameters: parameters);
         TryRegisterPresentationFrameworkMessageBoxService(presentationFrameworkAssembly);
+        TryRegisterPresentationFrameworkFileDialogService(presentationFrameworkAssembly);
         return true;
     }
 
@@ -156,6 +158,36 @@ public sealed class WpfPortableWindowActivation : IDisposable
             parameters: new object[] { (Func<object, object>)ShowPortableMessageBox });
         return true;
     }
+
+    public static bool TryRegisterPresentationFrameworkFileDialogService(Assembly presentationFrameworkAssembly)
+    {
+        ArgumentNullException.ThrowIfNull(presentationFrameworkAssembly);
+
+        var serviceType = presentationFrameworkAssembly.GetType(
+            PortableFileDialogServiceTypeName,
+            throwOnError: false);
+        if (serviceType == null)
+        {
+            return false;
+        }
+
+        var registerMethod = serviceType.GetMethod(
+            "Register",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            types: new[] { typeof(Func<object, string?>) },
+            modifiers: null);
+        if (registerMethod == null || !typeof(IDisposable).IsAssignableFrom(registerMethod.ReturnType))
+        {
+            return false;
+        }
+
+        registerMethod.Invoke(
+            obj: null,
+            parameters: new object[] { (Func<object, string?>)ShowPortableFileDialog });
+        return true;
+    }
+
 
     public void Show()
     {
@@ -867,6 +899,72 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
 
         return "OK";
+    }
+
+    private static string? ShowPortableFileDialog(object request)
+    {
+        string kind = ReadRequestString(request, "Kind", "OpenFile");
+        var options = new WpfFileDialogOptions
+        {
+            Title = ReadRequestString(request, "Title", string.Empty),
+            SuggestedFileName = ReadRequestString(request, "SuggestedItemName", string.Empty),
+            FileTypePatterns = ReadFileDialogPatterns(request)
+        };
+
+        try
+        {
+            var fileDialogs = CrossPlatformWpfPlatformServices.Instance.FileDialogs;
+            return kind switch
+            {
+                "SaveFile" => fileDialogs.SaveFileAsync(options).AsTask().GetAwaiter().GetResult(),
+                "PickFolder" => fileDialogs.PickFolderAsync().AsTask().GetAwaiter().GetResult(),
+                _ => fileDialogs.OpenFileAsync(options).AsTask().GetAwaiter().GetResult()
+            };
+        }
+        catch (PlatformNotSupportedException)
+        {
+            return null;
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            return null;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    private static string ReadRequestString(object request, string propertyName, string fallback)
+    {
+        return TryReadRequestProperty(request, propertyName, out object? value) && value is string text
+            ? text
+            : fallback;
+    }
+
+    private static IReadOnlyList<string> ReadFileDialogPatterns(object request)
+    {
+        string filter = ReadRequestString(request, "Filter", string.Empty);
+        if (string.IsNullOrEmpty(filter))
+        {
+            return Array.Empty<string>();
+        }
+
+        string[] tokens = filter.Split('|');
+        var patterns = new List<string>();
+        for (int i = 1; i < tokens.Length; i += 2)
+        {
+            foreach (string rawPattern in tokens[i].Split(';'))
+            {
+                string pattern = rawPattern.Trim();
+                if (!string.IsNullOrEmpty(pattern))
+                {
+                    patterns.Add(pattern);
+                }
+            }
+        }
+
+        return patterns;
     }
 
     private static bool TryReadRequestProperty(object instance, string propertyName, out object? value)

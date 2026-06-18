@@ -283,6 +283,18 @@ namespace Microsoft.Win32
             }
         }
 
+        internal bool TryRunPortableDialog(out bool? result)
+        {
+            result = null;
+            if (!PortableFileDialogService.TryShowDialog(this, out string selectedPath))
+            {
+                return false;
+            }
+
+            result = selectedPath != null && HandlePortableItemOk(selectedPath);
+            return true;
+        }
+
         #endregion Protected Methods
 
         //---------------------------------------------------
@@ -441,6 +453,12 @@ namespace Microsoft.Win32
             return true;
         }
 
+        private protected virtual bool TryHandlePortableItemOk(out object revertState)
+        {
+            revertState = null;
+            return true;
+        }
+
         // This method is called inside a finally block when OK event was cancelled.
         // Inheritors should revert properties to the state before the dialog was shown, so that it can be shown again.
         private protected virtual void RevertItemOk(object state) { }
@@ -584,6 +602,35 @@ namespace Microsoft.Win32
                     _itemNames = saveItemNames;
                 }
             }
+            return ok;
+        }
+
+        private bool HandlePortableItemOk(string selectedPath)
+        {
+            string[] saveItemNames = _itemNames;
+            object saveState = null;
+            bool ok = false;
+
+            try
+            {
+                _itemNames = new[] { selectedPath };
+
+                if (TryHandlePortableItemOk(out saveState))
+                {
+                    var cancelArgs = new CancelEventArgs();
+                    OnItemOk(cancelArgs);
+                    ok = !cancelArgs.Cancel;
+                }
+            }
+            finally
+            {
+                if (!ok)
+                {
+                    RevertItemOk(saveState);
+                    _itemNames = saveItemNames;
+                }
+            }
+
             return ok;
         }
 

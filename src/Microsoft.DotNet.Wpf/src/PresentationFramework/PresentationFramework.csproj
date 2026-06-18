@@ -69,6 +69,7 @@
     <Compile Include="Microsoft\Win32\FileDialogCustomPlace.cs" />
     <Compile Include="Microsoft\Win32\FileDialogCustomPlaces.cs" />
     <Compile Include="Microsoft\Win32\OpenFileDialog.cs" />
+    <Compile Include="Microsoft\Win32\PortableFileDialogService.cs" />
     <Compile Include="Microsoft\Win32\SaveFileDialog.cs" />
     <Compile Include="Microsoft\Win32\OpenFolderDialog.cs" />
     <Compile Include="MS\Internal\AnimatedTypeHelpers.cs" />

@@ -362,6 +362,14 @@ internal static class Program
         Invoke(selection, "Select", GetProperty(spanRun, "ContentStart"), GetProperty(spanRun, "ContentEnd"));
         AssertEqual("span", (GetProperty(selection, "Text").ToString() ?? string.Empty).Trim(), "compiled RichTextBox command selection text");
         Assembly documentAssembly = flowDocument.GetType().Assembly;
+        Type textEditorType = GetRequiredType(documentAssembly, "System.Windows.Documents.TextEditor");
+        SetStaticProperty(textEditorType, "IsTableEditingEnabled", true);
+        AssertEqual(true, GetStaticProperty(textEditorType, "IsTableEditingEnabled"), "compiled RichTextBox table editing gate");
+        InvokeStatic(
+            GetRequiredType(documentAssembly, "System.Windows.Documents.TextEditorTables"),
+            "_RegisterClassHandlers",
+            richTextBox.GetType(),
+            false);
         Type editingCommandsType = GetRequiredType(documentAssembly, "System.Windows.Documents.EditingCommands");
         Type inlineType = GetRequiredType(documentAssembly, "System.Windows.Documents.Inline");
         Type textElementType = GetRequiredType(documentAssembly, "System.Windows.Documents.TextElement");
@@ -497,8 +505,23 @@ internal static class Program
         AssertCollectionCount(rows, expected: 1, "compiled FlowDocument table rows");
         object cells = GetProperty(GetCollectionItem(rows, 0), "Cells");
         AssertCollectionCount(cells, expected: 2, "compiled FlowDocument table cells");
-        AssertFlowDocumentTableCellText(GetCollectionItem(cells, 0), "table alpha", "first");
-        AssertFlowDocumentTableCellText(GetCollectionItem(cells, 1), "table beta", "second");
+        object firstTableCell = GetCollectionItem(cells, 0);
+        object secondTableCell = GetCollectionItem(cells, 1);
+        AssertFlowDocumentTableCellText(firstTableCell, "table alpha", "first");
+        AssertFlowDocumentTableCellText(secondTableCell, "table beta", "second");
+        object firstTableCellParagraph = GetCollectionItem(GetProperty(firstTableCell, "Blocks"), 0);
+        Invoke(selection, "Select", GetProperty(firstTableCellParagraph, "ContentStart"), GetProperty(firstTableCellParagraph, "ContentEnd"));
+        object insertRowsCommand = GetStaticProperty(editingCommandsType, "InsertRows");
+        AssertEqual(true, InvokeTwoArgumentCommand(insertRowsCommand, "CanExecute", null, richTextBox), "compiled RichTextBox InsertRows CanExecute");
+        InvokeTwoArgumentCommand(insertRowsCommand, "Execute", null, richTextBox);
+        AssertCollectionCount(rows, expected: 2, "compiled RichTextBox InsertRows table rows");
+        object insertedRow = GetCollectionItem(rows, 1);
+        object insertedCells = GetProperty(insertedRow, "Cells");
+        AssertCollectionCount(insertedCells, expected: 2, "compiled RichTextBox InsertRows copied cells");
+        AssertType(GetCollectionItem(insertedCells, 0), "System.Windows.Documents.TableCell", "compiled RichTextBox InsertRows first inserted cell");
+        AssertType(GetCollectionItem(insertedCells, 1), "System.Windows.Documents.TableCell", "compiled RichTextBox InsertRows second inserted cell");
+        AssertFlowDocumentTableCellText(firstTableCell, "table alpha", "first after row insert");
+        AssertFlowDocumentTableCellText(secondTableCell, "table beta", "second after row insert");
 
         object list = GetCollectionItem(blocks, 4);
         AssertType(list, "System.Windows.Documents.List", "compiled FlowDocument list");
@@ -3336,6 +3359,16 @@ internal static class Program
             propertyName,
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(null)
             ?? throw new InvalidOperationException($"Expected '{type.FullName}.{propertyName}' to have a value.");
+    }
+
+    private static void SetStaticProperty(Type type, string propertyName, object? value)
+    {
+        PropertyInfo property = type.GetProperty(
+                propertyName,
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(type.FullName, propertyName);
+
+        property.SetValue(null, value);
     }
 
     private static object GetStaticField(Type type, string fieldName)

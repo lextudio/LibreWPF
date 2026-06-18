@@ -1609,6 +1609,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled FlowDocument table cells", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument TextRange section text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument TextRange second table cell", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SetStaticProperty(textEditorType, \"IsTableEditingEnabled\", true)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Documents.TextEditorTables", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetStaticProperty(editingCommandsType, \"InsertRows\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox InsertRows table rows", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox InsertRows copied cells", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleBullets\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox ToggleBullets marker style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleNumbering\")", harnessProgram, StringComparison.Ordinal);
@@ -2123,6 +2128,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled FlowDocument table cells", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument TextRange section text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument TextRange second table cell", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SetStaticProperty(textEditorType, \"IsTableEditingEnabled\", true)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Documents.TextEditorTables", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetStaticProperty(editingCommandsType, \"InsertRows\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox InsertRows table rows", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox InsertRows copied cells", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleBullets\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox ToggleBullets marker style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleNumbering\")", harnessProgram, StringComparison.Ordinal);

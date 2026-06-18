@@ -128,6 +128,20 @@ public sealed class SmokeItem
     public string Category { get; }
 }
 
+public sealed class SmokeItemTemplateSelector : DataTemplateSelector
+{
+    public DataTemplate? FrameworkTemplate { get; set; }
+
+    public DataTemplate? RenderingTemplate { get; set; }
+
+    public override DataTemplate? SelectTemplate(object item, DependencyObject container)
+    {
+        return item is SmokeItem { Category: "Rendering" }
+            ? RenderingTemplate
+            : FrameworkTemplate;
+    }
+}
+
 public sealed class SmokeRoutedEventSource : FrameworkElement
 {
     public static readonly RoutedEvent SmokeBubbledEvent = EventManager.RegisterRoutedEvent(

@@ -489,6 +489,19 @@ internal static class Program
         AssertType(groupedItemsGroupStyle, "System.Windows.Controls.GroupStyle", "grouped items group style");
         AssertType(GetProperty(groupedItemsGroupStyle, "HeaderTemplate"), "System.Windows.DataTemplate", "grouped items group header template");
 
+        object selectorItemsControl = Invoke(window, "FindName", "SelectorItemsControl");
+        AssertType(selectorItemsControl, "System.Windows.Controls.ItemsControl", "selector items control");
+        AssertAtLeast(3, GetCount(GetProperty(selectorItemsControl, "Items")), "selector items control count");
+        object itemTemplateSelector = GetProperty(selectorItemsControl, "ItemTemplateSelector");
+        AssertType(itemTemplateSelector, "ProGPU.Wpf.SdkSwitchSmoke.SmokeItemTemplateSelector", "smoke item template selector");
+        object frameworkItemTemplate = Invoke(window, "FindResource", "SmokeFrameworkItemTemplate");
+        object renderingItemTemplate = Invoke(window, "FindResource", "SmokeRenderingItemTemplate");
+        AssertType(frameworkItemTemplate, "System.Windows.DataTemplate", "framework item data template");
+        AssertType(renderingItemTemplate, "System.Windows.DataTemplate", "rendering item data template");
+        object firstItem = EnumerateObjects(GetProperty(itemsList, "Items")).First();
+        AssertSame(frameworkItemTemplate, Invoke(itemTemplateSelector, "SelectTemplate", firstItem, selectorItemsControl), "framework item selected template");
+        AssertSame(renderingItemTemplate, Invoke(itemTemplateSelector, "SelectTemplate", selectedItem, selectorItemsControl), "rendering item selected template");
+
         object compiledSmokePanel = Invoke(window, "FindName", "CompiledSmokePanel");
         AssertType(compiledSmokePanel, "ProGPU.Wpf.SdkSwitchSmoke.SmokePanel", "compiled user control");
         AssertAssignableTo(compiledSmokePanel, "System.Windows.Controls.UserControl", "compiled user control base type");

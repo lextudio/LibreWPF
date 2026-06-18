@@ -4724,6 +4724,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"GroupedItemsControl\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Source={StaticResource GroupedItems}}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<GroupStyle HeaderTemplate=\"{StaticResource SmokeGroupHeaderTemplate}\" />", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"SmokeFrameworkItemTemplate\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"SmokeRenderingItemTemplate\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("local:SmokeItemTemplateSelector", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("FrameworkTemplate=\"{StaticResource SmokeFrameworkItemTemplate}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("RenderingTemplate=\"{StaticResource SmokeRenderingItemTemplate}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SelectorItemsControl\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemTemplateSelector=\"{StaticResource SmokeItemTemplateSelector}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("local:SmokePanel", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"CompiledSmokePanel\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Caption=\"Compiled user control\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -4805,6 +4812,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ObservableCollection<SmokeItem>", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("new SmokeItem(\"Scene\", \"ProGPU\", \"Rendering\")", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string Category", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokeItemTemplateSelector : DataTemplateSelector", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public DataTemplate? FrameworkTemplate", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public DataTemplate? RenderingTemplate", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public override DataTemplate? SelectTemplate(object item, DependencyObject container)", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Category: \"Rendering\"", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public static class SmokeResourceFactory", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("CreateGreeting(string prefix, int value)", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("return $\"{prefix}:{value}\";", smokeMainWindowCodeBehind, StringComparison.Ordinal);
@@ -4920,6 +4932,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("grouped items view group count", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"GroupedItemsControl\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("grouped items group header template", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"SelectorItemsControl\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("smoke item template selector", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindResource\", \"SmokeFrameworkItemTemplate\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindResource\", \"SmokeRenderingItemTemplate\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("framework item selected template", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("rendering item selected template", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"CompiledSmokePanel\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled user control dependency property", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled user control bound dependency property", runtimeHarnessProgram, StringComparison.Ordinal);

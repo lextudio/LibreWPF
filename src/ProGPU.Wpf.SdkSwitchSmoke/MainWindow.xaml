@@ -121,6 +121,21 @@
                 Text="{Binding Name}" />
         </DataTemplate>
 
+        <DataTemplate x:Key="SmokeFrameworkItemTemplate">
+            <TextBlock Text="{Binding Name, StringFormat=framework: {0}}" />
+        </DataTemplate>
+
+        <DataTemplate x:Key="SmokeRenderingItemTemplate">
+            <TextBlock
+                FontWeight="Bold"
+                Text="{Binding Name, StringFormat=rendering: {0}}" />
+        </DataTemplate>
+
+        <local:SmokeItemTemplateSelector
+            x:Key="SmokeItemTemplateSelector"
+            FrameworkTemplate="{StaticResource SmokeFrameworkItemTemplate}"
+            RenderingTemplate="{StaticResource SmokeRenderingItemTemplate}" />
+
         <local:SmokeItemDisplayConverter x:Key="SmokeItemDisplayConverter" />
 
         <CollectionViewSource x:Key="GroupedItems" Source="{Binding Items}">
@@ -281,6 +296,12 @@
                 <GroupStyle HeaderTemplate="{StaticResource SmokeGroupHeaderTemplate}" />
             </ItemsControl.GroupStyle>
         </ItemsControl>
+        <ItemsControl
+            x:Name="SelectorItemsControl"
+            Height="48"
+            Margin="{StaticResource SmokePanelMargin}"
+            ItemTemplateSelector="{StaticResource SmokeItemTemplateSelector}"
+            ItemsSource="{Binding Items}" />
         <local:SmokePanel
             x:Name="CompiledSmokePanel"
             Margin="{StaticResource SmokePanelMargin}"

@@ -216,16 +216,14 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(
-            new[] { "PushVisualOwner", "ApplyVisualState", "PushOpacityMask", "PushTransform", "DrawRectangle", "Pop", "Pop", "PopVisualOwner" },
+            new[] { "PushVisualOwner", "ApplyVisualState", "PushTransform", "DrawRectangle", "Pop", "PopVisualOwner" },
             sink.Operations);
         var state = Assert.Single(sink.RetainedVisualStates);
         Assert.IsType<ProGpuBlurEffect>(state.Effect);
         Assert.Same(Brushes.White, state.OpacityMask);
         Assert.Equal(new Rect(0, 0, 30, 40), state.OpacityMaskBounds);
         Assert.Equal(new Rect(10, 20, 30, 40), state.ContentBounds);
-        var mask = Assert.Single(sink.OpacityMasks);
-        Assert.Same(Brushes.White, mask.OpacityMask);
-        Assert.Equal(new Rect(0, 0, 30, 40), mask.Bounds);
+        Assert.Empty(sink.OpacityMasks);
         var transform = Assert.IsType<MatrixTransform>(Assert.Single(sink.Transforms));
         Assert.Equal(-10, transform.Matrix.OffsetX);
         Assert.Equal(-20, transform.Matrix.OffsetY);
@@ -342,7 +340,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
-    public void TryReplaySubtreeIntoCurrentRetainedVisualPreservesOpacityMaskCommandScope()
+    public void TryReplaySubtreeIntoCurrentRetainedVisualPreservesOpacityMaskNativeState()
     {
         var root = new FakeVisual
         {
@@ -361,14 +359,13 @@ public sealed class WpfVisualTreeReflectionRendererTests
             imageSourceAdapter: null,
             out var result));
 
-        Assert.Equal(new[] { "ApplyVisualState", "PushOpacityMask", "DrawRectangle", "Pop" }, sink.Operations);
+        Assert.Equal(new[] { "ApplyVisualState", "PushVisualOwner", "ApplyVisualState", "DrawRectangle", "PopVisualOwner" }, sink.Operations);
         Assert.Equal(new object[] { root, root.Children[0] }, sink.VisualOwners);
-        var state = Assert.Single(sink.RetainedVisualStates);
+        Assert.Equal(2, sink.RetainedVisualStates.Count);
+        var state = sink.RetainedVisualStates[0];
         Assert.Same(Brushes.White, state.OpacityMask);
         Assert.Equal(new Rect(1, 2, 100, 50), state.OpacityMaskBounds);
-        var mask = Assert.Single(sink.OpacityMasks);
-        Assert.Same(Brushes.White, mask.OpacityMask);
-        Assert.Equal(new Rect(1, 2, 100, 50), mask.Bounds);
+        Assert.Empty(sink.OpacityMasks);
         Assert.Equal(2, result.VisualCount);
         Assert.Equal(1, result.ContentCount);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
@@ -492,7 +489,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
-    public void ReplaySubtreeKeepsOpacityMaskCommandScopeInsideRetainedOwner()
+    public void ReplaySubtreeKeepsOpacityMaskAsNativeRetainedOwnerState()
     {
         var root = new FakeVisual
         {
@@ -504,14 +501,15 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var sink = new TestSink { AcceptRetainedVisualOwners = true };
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
-        Assert.Equal(new[] { "PushVisualOwner", "ApplyVisualState", "PushOpacityMask", "DrawRectangle", "Pop", "PopVisualOwner" }, sink.Operations);
+        Assert.Equal(
+            new[] { "PushVisualOwner", "ApplyVisualState", "PushVisualOwner", "ApplyVisualState", "DrawRectangle", "PopVisualOwner", "PopVisualOwner" },
+            sink.Operations);
         Assert.Equal(new object[] { root, root.Children[0] }, sink.VisualOwners);
-        var state = Assert.Single(sink.RetainedVisualStates);
+        Assert.Equal(2, sink.RetainedVisualStates.Count);
+        var state = sink.RetainedVisualStates[0];
         Assert.Same(Brushes.White, state.OpacityMask);
         Assert.Equal(new Rect(1, 2, 100, 50), state.OpacityMaskBounds);
-        var mask = Assert.Single(sink.OpacityMasks);
-        Assert.Same(Brushes.White, mask.OpacityMask);
-        Assert.Equal(new Rect(1, 2, 100, 50), mask.Bounds);
+        Assert.Empty(sink.OpacityMasks);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
     }

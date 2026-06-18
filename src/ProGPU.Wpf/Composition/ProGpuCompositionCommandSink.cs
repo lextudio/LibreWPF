@@ -586,7 +586,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.PushOpacityMask,
-            Brush = ToNativeBrush(opacityMask, bounds),
+            Brush = AdaptNativeBrush(opacityMask, bounds, count => UnsupportedStateCount += count),
             Rect = nativeBounds,
             Transform = _transformStack.Peek()
         });
@@ -1513,19 +1513,30 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         return Math.Abs(left - right) <= epsilon;
     }
 
-    private VectorBrush? ToNativeBrush(MediaBrush? brush, Rect bounds)
+    internal static VectorBrush? AdaptNativeBrush(
+        MediaBrush? brush,
+        Rect bounds,
+        Action<int>? reportUnsupportedState = null)
     {
         return brush switch
         {
             null => null,
-            ProGpuNativeBrush nativeBrush => ToNativeBrush(nativeBrush, bounds),
+            ProGpuNativeBrush nativeBrush => AdaptNativeBrush(nativeBrush, bounds, reportUnsupportedState),
             _ => brush.ToNative()
         };
     }
 
-    private VectorBrush ToNativeBrush(ProGpuNativeBrush brush, Rect bounds)
+    private VectorBrush? ToNativeBrush(MediaBrush? brush, Rect bounds)
     {
-        UnsupportedStateCount += brush.CountUnsupportedStateForBounds(bounds);
+        return AdaptNativeBrush(brush, bounds, count => UnsupportedStateCount += count);
+    }
+
+    private static VectorBrush AdaptNativeBrush(
+        ProGpuNativeBrush brush,
+        Rect bounds,
+        Action<int>? reportUnsupportedState)
+    {
+        reportUnsupportedState?.Invoke(brush.CountUnsupportedStateForBounds(bounds));
         return brush.ToNative(bounds);
     }
 

@@ -131,11 +131,9 @@ public sealed class WpfVisualTreeReflectionRenderer
         RegisterRetainedVisualStateDependencies(visual, sink);
         retainedVisualStateSink.ApplyVisualState(visualState);
 
-        var commandScopePopCount = 0;
         var contentTransformPopCount = 0;
         try
         {
-            commandScopePopCount = PushRetainedVisualStateCommandScopes(visualState, sink);
             contentTransformPopCount = PushRetainedVisualStateContentTransform(visualState, sink);
 
             if (!ReplayViewport3DVisual(visual, sink, stats))
@@ -151,14 +149,13 @@ public sealed class WpfVisualTreeReflectionRenderer
                         resources,
                         imageSourceAdapter,
                         stats,
-                        allowRetainedVisualOwnerScopes: !visualState.RequiresInlineChildReplay);
+                        allowRetainedVisualOwnerScopes: true);
                 }
             }
         }
         finally
         {
             PopRetainedVisualStateContentTransform(contentTransformPopCount, sink);
-            PopRetainedVisualStateCommandScopes(commandScopePopCount, sink);
         }
 
         return true;
@@ -189,11 +186,9 @@ public sealed class WpfVisualTreeReflectionRenderer
             RegisterRetainedVisualStateDependencies(visual, sink);
             retainedVisualStateSink.ApplyVisualState(visualState);
 
-            var commandScopePopCount = 0;
             var contentTransformPopCount = 0;
             try
             {
-                commandScopePopCount = PushRetainedVisualStateCommandScopes(visualState, sink);
                 contentTransformPopCount = PushRetainedVisualStateContentTransform(visualState, sink);
 
                 if (!ReplayViewport3DVisual(visual, sink, stats))
@@ -209,14 +204,13 @@ public sealed class WpfVisualTreeReflectionRenderer
                             resources,
                             imageSourceAdapter,
                             stats,
-                            allowRetainedVisualOwnerScopes: !visualState.RequiresInlineChildReplay);
+                            allowRetainedVisualOwnerScopes: true);
                     }
                 }
             }
             finally
             {
                 PopRetainedVisualStateContentTransform(contentTransformPopCount, sink);
-                PopRetainedVisualStateCommandScopes(commandScopePopCount, sink);
             }
 
             replayed = true;
@@ -404,27 +398,6 @@ public sealed class WpfVisualTreeReflectionRenderer
             opacityMask: opacityMask,
             opacityMaskBounds: opacityMaskBounds);
         return true;
-    }
-
-    private static int PushRetainedVisualStateCommandScopes(
-        in WpfRetainedVisualState state,
-        IWpfCompositionCommandSink sink)
-    {
-        if (state.OpacityMask == null || !state.OpacityMaskBounds.HasValue)
-        {
-            return 0;
-        }
-
-        sink.PushOpacityMask(state.OpacityMask, state.OpacityMaskBounds.Value);
-        return 1;
-    }
-
-    private static void PopRetainedVisualStateCommandScopes(int popCount, IWpfCompositionCommandSink sink)
-    {
-        for (var i = 0; i < popCount; i++)
-        {
-            sink.Pop();
-        }
     }
 
     private static int PushRetainedVisualStateContentTransform(

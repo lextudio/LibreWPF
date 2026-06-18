@@ -260,6 +260,40 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void RetainedSinkAppliesNativeOpacityMaskStateToCurrentOwnerScope()
+    {
+        var retainedRoot = new ProGpuContainerVisual();
+        var frame = new ProGpuWpfDrawingFrame(
+            new ProGpuContainerVisual(),
+            retainedRoot,
+            new ProGpuDrawingVisual(),
+            200,
+            100);
+        using var sink = new ProGpuRetainedCompositionCommandSink(frame, context: null, viewport3DTextureCache: null);
+        var branchSink = (IWpfRetainedVisualBranchSink)sink;
+        var stateSink = (IWpfRetainedVisualStateSink)sink;
+
+        Assert.True(branchSink.PushVisualOwner(new object()));
+        stateSink.ApplyVisualState(new WpfRetainedVisualState(
+            Vector2.Zero,
+            Matrix4x4.Identity,
+            1f,
+            clipBounds: null,
+            opacityMask: Brushes.White,
+            opacityMaskBounds: new Rect(1, 2, 30, 40)));
+        branchSink.PopVisualOwner();
+
+        var retainedRootVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
+        var ownerVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRootVisual.Children));
+        Assert.NotNull(ownerVisual.OpacityMask);
+        var maskBounds = Assert.NotNull(ownerVisual.OpacityMaskBounds);
+        Assert.Equal(1, maskBounds.X);
+        Assert.Equal(2, maskBounds.Y);
+        Assert.Equal(30, maskBounds.Width);
+        Assert.Equal(40, maskBounds.Height);
+    }
+
+    [Fact]
     public void RetainedSinkAppliesNativeEffectAndCacheStateToCurrentOwnerScope()
     {
         var retainedRoot = new ProGpuContainerVisual();

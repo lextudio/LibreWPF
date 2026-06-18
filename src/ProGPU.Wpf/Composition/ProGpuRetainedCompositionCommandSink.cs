@@ -163,6 +163,16 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
                 (float)state.ClipBounds.Value.Width,
                 (float)state.ClipBounds.Value.Height)
             : null;
+        visual.OpacityMask = state.OpacityMask != null && state.OpacityMaskBounds.HasValue
+            ? ProGpuCompositionCommandSink.AdaptNativeBrush(state.OpacityMask, state.OpacityMaskBounds.Value)
+            : null;
+        visual.OpacityMaskBounds = state.OpacityMask != null && state.OpacityMaskBounds.HasValue
+            ? new global::ProGPU.Scene.Rect(
+                (float)state.OpacityMaskBounds.Value.X,
+                (float)state.OpacityMaskBounds.Value.Y,
+                (float)state.OpacityMaskBounds.Value.Width,
+                (float)state.OpacityMaskBounds.Value.Height)
+            : null;
         visual.Effect = state.Effect;
         visual.CacheAsLayer = state.CacheAsLayer;
     }

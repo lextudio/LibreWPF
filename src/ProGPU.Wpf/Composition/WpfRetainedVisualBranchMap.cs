@@ -467,8 +467,6 @@ internal readonly struct WpfRetainedVisualState
     public MediaBrush? OpacityMask { get; }
 
     public Rect? OpacityMaskBounds { get; }
-
-    public bool RequiresInlineChildReplay => OpacityMask != null;
 }
 
 internal interface IWpfRetainedVisualStateSink

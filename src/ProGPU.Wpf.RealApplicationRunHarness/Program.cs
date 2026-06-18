@@ -985,7 +985,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 73, "stack panel children");
+        AssertCollectionCount(children, expected: 74, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -3910,6 +3910,20 @@ internal static class Program
         AssertCollectionCount(groups, expected: 2, "compiled CollectionViewSource initial groups");
         ValidateCollectionViewGroup(GetCollectionItem(groups, 0), "primary group", expectedItemCount: 1, "initial primary");
         ValidateCollectionViewGroup(GetCollectionItem(groups, 1), "secondary group", expectedItemCount: 1, "initial secondary");
+
+        object currencyItemsViewSource = Invoke(window, "TryFindResource", "CurrencyItemsView");
+        AssertType(currencyItemsViewSource, "System.Windows.Data.CollectionViewSource", "compiled current-item CollectionViewSource resource");
+        object currencyItemsView = GetProperty(currencyItemsViewSource, "View");
+        object currencyItemsList = GetField(window, "CurrencyItemsList");
+        AssertType(currencyItemsList, "System.Windows.Controls.ListBox", "compiled current-item ListBox");
+        AssertSame(currencyItemsView, GetProperty(currencyItemsList, "ItemsSource"), "compiled ListBox current-item CollectionViewSource binding");
+        AssertEqual(true, GetProperty(currencyItemsList, "IsSynchronizedWithCurrentItem"), "compiled ListBox current-item synchronization");
+        SetProperty(currencyItemsList, "SelectedIndex", 1);
+        AssertSame(GetCollectionItem(sourceItems, 1), GetProperty(currencyItemsView, "CurrentItem"), "compiled CollectionViewSource current item after selector selection");
+        AssertEqual(1, GetProperty(currencyItemsView, "CurrentPosition"), "compiled CollectionViewSource current position after selector selection");
+        Invoke(currencyItemsView, "MoveCurrentToPosition", 0);
+        AssertEqual(0, GetProperty(currencyItemsList, "SelectedIndex"), "compiled ListBox selection after current-position move");
+        AssertSame(GetCollectionItem(sourceItems, 0), GetProperty(currencyItemsList, "SelectedItem"), "compiled ListBox selected item after current-position move");
 
         object thirdItem = Create(window.GetType().Assembly, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeItem", "item gamma");
         AddToCollection(sourceItems, thirdItem);

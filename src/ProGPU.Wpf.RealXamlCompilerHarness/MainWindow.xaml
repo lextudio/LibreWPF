@@ -30,6 +30,9 @@
                 <PropertyGroupDescription PropertyName="Category" />
             </CollectionViewSource.GroupDescriptions>
         </CollectionViewSource>
+        <CollectionViewSource
+            x:Key="CurrencyItemsView"
+            Source="{Binding Items}" />
         <DataTemplate DataType="{x:Type local:SmokeDetail}">
             <TextBlock
                 x:Name="ImplicitDetailTextBlock"
@@ -886,6 +889,11 @@
                 </GroupStyle>
             </ListBox.GroupStyle>
         </ListBox>
+        <ListBox
+            x:Name="CurrencyItemsList"
+            IsSynchronizedWithCurrentItem="True"
+            Margin="0,8,0,0"
+            ItemsSource="{Binding Source={StaticResource CurrencyItemsView}}" />
         <ListBox
             x:Name="DisplayMemberItemsList"
             Margin="0,8,0,0"

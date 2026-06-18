@@ -1167,6 +1167,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Key=\"GroupedItemsView\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CollectionViewSource.GroupDescriptions", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("PropertyGroupDescription PropertyName=\"Category\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"CurrencyItemsView\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DataTemplate DataType=\"{x:Type local:SmokeDetail}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ImplicitDetailTextBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Tag=\"implicit data template\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1267,6 +1268,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GroupStyle.HeaderTemplate", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"GroupHeaderTextBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Tag=\"group header template\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"CurrencyItemsList\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("IsSynchronizedWithCurrentItem=\"True\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding Source={StaticResource CurrencyItemsView}}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"DisplayMemberItemsList\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DisplayMemberPath=\"Name\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SelectedValuePath=\"Category\"", mainWindowXaml, StringComparison.Ordinal);
@@ -2173,6 +2177,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled filtered CollectionViewSource property-change accepted item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource property-change refresh groups", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource property-change restored first item", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled current-item CollectionViewSource resource", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox current-item synchronization", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CollectionViewSource current item after selector selection", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox selected item after current-position move", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowGroupStyleHeader(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GroupStyle header generated binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(window, \"FindName\", \"InputBox\")", harnessProgram, StringComparison.Ordinal);
@@ -2810,6 +2818,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled filtered CollectionViewSource property-change accepted item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource property-change refresh groups", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource property-change restored first item", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled current-item CollectionViewSource resource", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox current-item synchronization", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CollectionViewSource current item after selector selection", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox selected item after current-position move", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowGroupStyleHeader(_presentationCore, activation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GroupStyle header generated binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("recorder.ValidateAfterRun()", harnessProgram, StringComparison.Ordinal);

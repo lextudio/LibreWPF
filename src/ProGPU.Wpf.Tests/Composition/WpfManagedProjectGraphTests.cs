@@ -1624,6 +1624,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled RichTextBox DeleteColumns table-cell selection", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox DeleteColumns first row cells", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox DeleteColumns preserved second cell", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetStaticProperty(editingCommandsType, \"MergeCells\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox MergeCells column span", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetStaticProperty(editingCommandsType, \"SplitCell\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox SplitCell copied second cell", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleBullets\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox ToggleBullets marker style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleNumbering\")", harnessProgram, StringComparison.Ordinal);
@@ -2153,6 +2157,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled RichTextBox DeleteColumns table-cell selection", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox DeleteColumns first row cells", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox DeleteColumns preserved second cell", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetStaticProperty(editingCommandsType, \"MergeCells\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox MergeCells column span", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetStaticProperty(editingCommandsType, \"SplitCell\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox SplitCell copied second cell", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleBullets\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox ToggleBullets marker style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleNumbering\")", harnessProgram, StringComparison.Ordinal);

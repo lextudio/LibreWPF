@@ -590,6 +590,26 @@ internal static class Program
         AssertContains("first document item", text, "compiled FlowDocument TextRange first list item");
         AssertContains("second document item", text, "compiled FlowDocument TextRange second list item");
 
+        Invoke(selection, "Select", GetProperty(firstTableCell, "ContentStart"), GetProperty(secondTableCell, "ContentEnd"));
+        AssertEqual(true, GetProperty(selection, "IsTableCellRange"), "compiled RichTextBox MergeCells table-cell selection");
+        object mergeCellsCommand = GetStaticProperty(editingCommandsType, "MergeCells");
+        AssertEqual(true, InvokeTwoArgumentCommand(mergeCellsCommand, "CanExecute", null, richTextBox), "compiled RichTextBox MergeCells CanExecute");
+        InvokeTwoArgumentCommand(mergeCellsCommand, "Execute", null, richTextBox);
+        AssertCollectionCount(cells, expected: 1, "compiled RichTextBox MergeCells first row cells");
+        AssertSame(firstTableCell, GetCollectionItem(cells, 0), "compiled RichTextBox MergeCells preserved first cell");
+        AssertEqual(2, GetProperty(firstTableCell, "ColumnSpan"), "compiled RichTextBox MergeCells column span");
+        AssertFlowDocumentTableCellText(firstTableCell, "table alpha", "first after cell merge");
+        Invoke(selection, "Select", GetProperty(firstTableCell, "ContentStart"), GetProperty(originalRow, "ContentEnd"));
+        AssertEqual(true, GetProperty(selection, "IsTableCellRange"), "compiled RichTextBox SplitCell table-cell selection");
+        object splitCellCommand = GetStaticProperty(editingCommandsType, "SplitCell");
+        AssertEqual(true, InvokeTwoArgumentCommand(splitCellCommand, "CanExecute", null, richTextBox), "compiled RichTextBox SplitCell CanExecute");
+        InvokeTwoArgumentCommand(splitCellCommand, "Execute", null, richTextBox);
+        AssertCollectionCount(cells, expected: 2, "compiled RichTextBox SplitCell first row cells");
+        AssertSame(firstTableCell, GetCollectionItem(cells, 0), "compiled RichTextBox SplitCell preserved first cell");
+        AssertType(GetCollectionItem(cells, 1), "System.Windows.Documents.TableCell", "compiled RichTextBox SplitCell copied second cell");
+        AssertEqual(1, GetProperty(firstTableCell, "ColumnSpan"), "compiled RichTextBox SplitCell column span");
+        AssertFlowDocumentTableCellText(firstTableCell, "table alpha", "first after cell split");
+
         object firstListItem = GetCollectionItem(listItems, 0);
         object secondListItem = GetCollectionItem(listItems, 1);
         object firstListParagraph = GetCollectionItem(GetProperty(firstListItem, "Blocks"), 0);

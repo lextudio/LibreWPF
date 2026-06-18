@@ -1,0 +1,114 @@
+using System.Runtime.CompilerServices;
+using System.Windows.Media.ProGPU.Composition;
+using MediaBrush = System.Windows.Media.Brush;
+using ProGpuEffectBase = global::ProGPU.Scene.EffectBase;
+
+namespace System.Windows.Media.ProGPU.Composition.Mil;
+
+internal static class WpfPortableCommandSinkBridge
+{
+    public static void PushOpacityMask(
+        IWpfCompositionCommandSink sink,
+        MediaBrush? opacityMask,
+        WpfReplayRect bounds)
+    {
+        if (sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            nativeSink.PushNativeOpacityMask(opacityMask, bounds);
+            return;
+        }
+
+        WpfManagedCommandSinkBridge.PushOpacityMask(sink, opacityMask, bounds);
+    }
+
+    public static bool TryPushVisualEffect(
+        IWpfCompositionCommandSink sink,
+        ProGpuEffectBase effect,
+        WpfReplayRect? bounds)
+    {
+        if (sink is IWpfNativeVisualEffectCommandSink nativeSink)
+        {
+            return nativeSink.PushNativeVisualEffect(effect, bounds);
+        }
+
+        if (sink is not IWpfVisualEffectCommandSink effectSink)
+        {
+            return false;
+        }
+
+        return bounds.HasValue
+            ? WpfManagedCommandSinkBridge.PushVisualEffect(effectSink, effect, bounds.Value)
+            : effectSink.PushVisualEffect(effect);
+    }
+
+    public static bool TryPushVisualCache(
+        IWpfCompositionCommandSink sink,
+        WpfReplayRect? bounds)
+    {
+        if (sink is IWpfNativeVisualCacheCommandSink nativeSink)
+        {
+            return nativeSink.PushNativeVisualCache(bounds);
+        }
+
+        return sink is IWpfVisualCacheCommandSink cacheSink
+            && WpfManagedCommandSinkBridge.PushVisualCache(cacheSink, bounds);
+    }
+
+    public static bool TryPushDrawingCache(
+        IWpfCompositionCommandSink sink,
+        WpfReplayRect? bounds)
+    {
+        if (sink is IWpfNativeDrawingCacheCommandSink nativeSink)
+        {
+            return nativeSink.PushNativeDrawingCache(bounds);
+        }
+
+        return sink is IWpfDrawingCacheCommandSink cacheSink
+            && WpfManagedCommandSinkBridge.PushDrawingCache(cacheSink, bounds);
+    }
+}
+
+internal static class WpfManagedCommandSinkBridge
+{
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void PushOpacityMask(
+        IWpfCompositionCommandSink sink,
+        MediaBrush? opacityMask,
+        WpfReplayRect bounds)
+    {
+        sink.PushOpacityMask(
+            opacityMask,
+            new System.Windows.Rect(bounds.X, bounds.Y, bounds.Width, bounds.Height));
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static bool PushVisualEffect(
+        IWpfVisualEffectCommandSink sink,
+        ProGpuEffectBase effect,
+        WpfReplayRect bounds)
+    {
+        return sink.PushVisualEffect(
+            effect,
+            new System.Windows.Rect(bounds.X, bounds.Y, bounds.Width, bounds.Height));
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static bool PushVisualCache(
+        IWpfVisualCacheCommandSink sink,
+        WpfReplayRect? bounds)
+    {
+        return sink.PushVisualCache(bounds.HasValue
+            ? new System.Windows.Rect(bounds.Value.X, bounds.Value.Y, bounds.Value.Width, bounds.Value.Height)
+            : null);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static bool PushDrawingCache(
+        IWpfDrawingCacheCommandSink sink,
+        WpfReplayRect? bounds)
+    {
+        return sink.PushDrawingCache(bounds.HasValue
+            ? new System.Windows.Rect(bounds.Value.X, bounds.Value.Y, bounds.Value.Width, bounds.Value.Height)
+            : null);
+    }
+}

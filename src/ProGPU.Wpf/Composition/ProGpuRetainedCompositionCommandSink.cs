@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using MediaBrush = System.Windows.Media.Brush;
@@ -23,6 +24,9 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
     IWpfVisualEffectCommandSink,
     IWpfVisualCacheCommandSink,
     IWpfDrawingCacheCommandSink,
+    IWpfNativeVisualEffectCommandSink,
+    IWpfNativeVisualCacheCommandSink,
+    IWpfNativeDrawingCacheCommandSink,
     IWpfRetainedVisualBranchSink,
     IWpfRetainedVisualStateSink,
     IWpfNativeTransformCommandSink,
@@ -376,10 +380,16 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
 
     public bool PushVisualEffect(ProGpuEffectBase effect)
     {
-        return PushVisualEffect(effect, bounds: null);
+        return PushNativeVisualEffect(effect, bounds: null);
     }
 
+    [MethodImpl(MethodImplOptions.NoInlining)]
     public bool PushVisualEffect(ProGpuEffectBase effect, Rect? bounds)
+    {
+        return PushNativeVisualEffect(effect, ToReplayRect(bounds));
+    }
+
+    public bool PushNativeVisualEffect(ProGpuEffectBase effect, WpfReplayRect? bounds)
     {
         ThrowIfClosed();
         ArgumentNullException.ThrowIfNull(effect);
@@ -398,15 +408,25 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
 
     public bool PushVisualCache(Rect? bounds = null)
     {
-        return PushCacheVisual(bounds, ScopeKind.VisualCache);
+        return PushNativeCacheVisual(ToReplayRect(bounds), ScopeKind.VisualCache);
     }
 
     public bool PushDrawingCache(Rect? bounds = null)
     {
-        return PushCacheVisual(bounds, ScopeKind.DrawingCache);
+        return PushNativeCacheVisual(ToReplayRect(bounds), ScopeKind.DrawingCache);
     }
 
-    private bool PushCacheVisual(Rect? bounds, ScopeKind scopeKind)
+    public bool PushNativeVisualCache(WpfReplayRect? bounds = null)
+    {
+        return PushNativeCacheVisual(bounds, ScopeKind.VisualCache);
+    }
+
+    public bool PushNativeDrawingCache(WpfReplayRect? bounds = null)
+    {
+        return PushNativeCacheVisual(bounds, ScopeKind.DrawingCache);
+    }
+
+    private bool PushNativeCacheVisual(WpfReplayRect? bounds, ScopeKind scopeKind)
     {
         ThrowIfClosed();
         var cacheBounds = NormalizeBounds(bounds);
@@ -466,10 +486,9 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         Close();
     }
 
-    private Rect NormalizeBounds(Rect? bounds)
+    private WpfReplayRect NormalizeBounds(WpfReplayRect? bounds)
     {
         if (bounds.HasValue
-            && !bounds.Value.IsEmpty
             && double.IsFinite(bounds.Value.X)
             && double.IsFinite(bounds.Value.Y)
             && double.IsFinite(bounds.Value.Width)
@@ -483,10 +502,22 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         var rootSize = _visualScopes.Count > 0
             ? _visualScopes.Peek().Visual.Size
             : Vector2.One;
-        return new Rect(0, 0, Math.Max(1, rootSize.X), Math.Max(1, rootSize.Y));
+        return new WpfReplayRect(0, 0, Math.Max(1, rootSize.X), Math.Max(1, rootSize.Y));
     }
 
-    private void PushVisualScope(ProGpuRetainedDrawingVisual visual, Rect bounds, ScopeKind scopeKind)
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static WpfReplayRect? ToReplayRect(Rect? bounds)
+    {
+        if (!bounds.HasValue)
+        {
+            return null;
+        }
+
+        var value = bounds.Value;
+        return new WpfReplayRect(value.X, value.Y, value.Width, value.Height);
+    }
+
+    private void PushVisualScope(ProGpuRetainedDrawingVisual visual, WpfReplayRect bounds, ScopeKind scopeKind)
     {
         Current.Visual.AddChild(visual);
 

@@ -551,16 +551,15 @@ internal static class WpfReflectionDrawingReplay
 
         if (hasOpacityMask)
         {
-            sink.PushOpacityMask(opacityMask, opacityMaskBounds);
+            WpfPortableCommandSinkBridge.PushOpacityMask(sink, opacityMask, ToReplayRect(opacityMaskBounds));
             popCount++;
         }
 
         var unsupportedGroupState = false;
         if (HasNonNullProperty(drawingGroup, "CacheMode"))
         {
-            if (sink is IWpfDrawingCacheCommandSink cacheSink
-                && TryGetDrawingGroupCacheBounds(drawingGroup, imageSourceAdapter, out var cacheBounds)
-                && cacheSink.PushDrawingCache(cacheBounds))
+            if (TryGetDrawingGroupCacheBounds(drawingGroup, imageSourceAdapter, out var cacheBounds)
+                && WpfPortableCommandSinkBridge.TryPushDrawingCache(sink, ToReplayRect(cacheBounds)))
             {
                 popCount++;
             }
@@ -572,8 +571,7 @@ internal static class WpfReflectionDrawingReplay
 
         if (hasEffect)
         {
-            if (sink is not IWpfVisualEffectCommandSink effectSink
-                || !effectSink.PushVisualEffect(effect!, effectBounds))
+            if (!WpfPortableCommandSinkBridge.TryPushVisualEffect(sink, effect!, ToReplayRect(effectBounds)))
             {
                 for (var i = 0; i < popCount; i++)
                 {
@@ -1742,6 +1740,16 @@ internal static class WpfReflectionDrawingReplay
             && double.IsFinite(rect.Height)
             && rect.Width > 0
             && rect.Height > 0;
+    }
+
+    private static WpfReplayRect? ToReplayRect(Rect? bounds)
+    {
+        return bounds.HasValue ? ToReplayRect(bounds.Value) : null;
+    }
+
+    private static WpfReplayRect ToReplayRect(Rect bounds)
+    {
+        return new WpfReplayRect(bounds.X, bounds.Y, bounds.Width, bounds.Height);
     }
 
     private static bool HasNonNullProperty(object instance, string propertyName)

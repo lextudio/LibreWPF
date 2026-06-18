@@ -4595,7 +4595,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("MergedAccentBrush", smokeResourcesXaml, StringComparison.Ordinal);
         Assert.Contains("SmokePanelMargin", smokeResourcesXaml, StringComparison.Ordinal);
         Assert.Contains("SmokeListTextStyle", smokeResourcesXaml, StringComparison.Ordinal);
-        Assert.Contains("Height=\"480\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("xmlns:componentModel=\"clr-namespace:System.ComponentModel;assembly=WindowsBase\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Height=\"560\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<ControlTemplate TargetType=\"{x:Type Button}\">", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<VisualStateManager.VisualStateGroups>", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<VisualStateGroup x:Name=\"CommonStates\">", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -4626,6 +4627,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ItemsSource=\"{Binding Items}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemTemplate=\"{StaticResource SmokeItemTemplate}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"{Binding SelectedItem, ElementName=ItemsList}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"GroupedItems\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<CollectionViewSource.SortDescriptions>", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("componentModel:SortDescription PropertyName=\"Name\" Direction=\"Ascending\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<PropertyGroupDescription PropertyName=\"Category\" />", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"GroupedItemsControl\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding Source={StaticResource GroupedItems}}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<GroupStyle HeaderTemplate=\"{StaticResource SmokeGroupHeaderTemplate}\" />", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<RichTextBox", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<FlowDocument>", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DataContext = new SmokeViewModel();", smokeMainWindowCodeBehind, StringComparison.Ordinal);
@@ -4638,6 +4646,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public bool IsHighlighted", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public bool IsCritical", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ObservableCollection<SmokeItem>", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("new SmokeItem(\"Scene\", \"ProGPU\", \"Rendering\")", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public string Category", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>", proGpuWpfProject, StringComparison.Ordinal);
         Assert.Contains("PresentationCore\\PresentationCore.csproj\" PrivateAssets=\"all\"", proGpuWpfProject, StringComparison.Ordinal);
         Assert.Contains("ReadReplayPoint", wpfMilRenderDataDecoder, StringComparison.Ordinal);
@@ -4701,6 +4711,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("FindName\", \"InputBox\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"ItemsList\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"SelectedItemPresenter\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindResource\", \"GroupedItems\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("grouped items group description count", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("grouped items view group count", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"GroupedItemsControl\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("grouped items group header template", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"DocumentBox\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("InvokeVoid(actionButton, \"OnClick\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RunApplicationRunSmoke", runtimeHarnessProgram, StringComparison.Ordinal);

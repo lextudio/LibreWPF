@@ -50,9 +50,9 @@ public sealed class SmokeViewModel
     {
         Items = new ObservableCollection<SmokeItem>
         {
-            new SmokeItem("Window", "portable"),
-            new SmokeItem("Scene", "ProGPU"),
-            new SmokeItem("XAML", "compiled")
+            new SmokeItem("Window", "portable", "Framework"),
+            new SmokeItem("Scene", "ProGPU", "Rendering"),
+            new SmokeItem("XAML", "compiled", "Framework")
         };
     }
 
@@ -69,13 +69,16 @@ public sealed class SmokeViewModel
 
 public sealed class SmokeItem
 {
-    public SmokeItem(string name, string value)
+    public SmokeItem(string name, string value, string category)
     {
         Name = name;
         Value = value;
+        Category = category;
     }
 
     public string Name { get; }
 
     public string Value { get; }
+
+    public string Category { get; }
 }

@@ -787,7 +787,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             var mediaOpacityMask = WpfReflectionResourceResolver.AdaptBrush(opacityMask);
             if (mediaOpacityMask != null && TryReadOpacityMaskBounds(visual, out var opacityMaskBounds))
             {
-                sink.PushOpacityMask(mediaOpacityMask, ToMediaRect(opacityMaskBounds));
+                WpfPortableCommandSinkBridge.PushOpacityMask(sink, mediaOpacityMask, opacityMaskBounds);
                 popCount++;
             }
             else
@@ -799,10 +799,10 @@ public sealed class WpfVisualTreeReflectionRenderer
         if (TryGetPropertyValue(visual, "Effect", out var effect) && effect != null)
         {
             if (WpfEffectReflection.TryCreateProGpuEffect(effect, out var proGpuEffect, imageSourceAdapter)
-                && sink is IWpfVisualEffectCommandSink effectSink
-                && effectSink.PushVisualEffect(
+                && WpfPortableCommandSinkBridge.TryPushVisualEffect(
+                    sink,
                     proGpuEffect,
-                    TryReadOpacityMaskBounds(visual, out var effectBounds) ? ToMediaRect(effectBounds) : null))
+                    TryReadOpacityMaskBounds(visual, out var effectBounds) ? effectBounds : null))
             {
                 popCount++;
             }
@@ -816,10 +816,10 @@ public sealed class WpfVisualTreeReflectionRenderer
         {
             TryGetPropertyValue(visual, "BitmapEffectInput", out var bitmapEffectInput);
             if (WpfEffectReflection.TryCreateProGpuPushEffect(bitmapEffect, bitmapEffectInput, out var proGpuBitmapEffect, imageSourceAdapter)
-                && sink is IWpfVisualEffectCommandSink effectSink
-                && effectSink.PushVisualEffect(
+                && WpfPortableCommandSinkBridge.TryPushVisualEffect(
+                    sink,
                     proGpuBitmapEffect,
-                    TryReadOpacityMaskBounds(visual, out var bitmapEffectBounds) ? ToMediaRect(bitmapEffectBounds) : null))
+                    TryReadOpacityMaskBounds(visual, out var bitmapEffectBounds) ? bitmapEffectBounds : null))
             {
                 popCount++;
             }
@@ -835,9 +835,9 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         if (TryGetPropertyValue(visual, "CacheMode", out var cacheMode) && cacheMode != null)
         {
-            if (sink is IWpfVisualCacheCommandSink cacheSink
-                && cacheSink.PushVisualCache(
-                    TryReadOpacityMaskBounds(visual, out var cacheBounds) ? ToMediaRect(cacheBounds) : null))
+            if (WpfPortableCommandSinkBridge.TryPushVisualCache(
+                sink,
+                TryReadOpacityMaskBounds(visual, out var cacheBounds) ? cacheBounds : null))
             {
                 popCount++;
             }

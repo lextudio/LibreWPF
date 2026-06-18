@@ -259,7 +259,7 @@ internal static class Program
         AssertAssignableTo(window, "System.Windows.Window", "SDK smoke main window");
         AssertEqual("ProGPU WPF SDK Smoke", GetProperty(window, "Title"), "window title");
         AssertEqual(420.0, GetProperty(window, "Width"), "window width");
-        AssertEqual(480.0, GetProperty(window, "Height"), "window height");
+        AssertEqual(560.0, GetProperty(window, "Height"), "window height");
 
         InvokeVoid(window, "UpdateLayout");
 
@@ -378,6 +378,21 @@ internal static class Program
         AssertType(selectedItemPresenter, "System.Windows.Controls.ContentControl", "selected item presenter");
         AssertSame(selectedItem, GetProperty(selectedItemPresenter, "Content"), "selected item presenter content");
         AssertType(GetProperty(selectedItemPresenter, "ContentTemplate"), "System.Windows.DataTemplate", "selected item presenter template");
+
+        object groupedItemsViewSource = Invoke(window, "FindResource", "GroupedItems");
+        AssertType(groupedItemsViewSource, "System.Windows.Data.CollectionViewSource", "grouped items collection view source");
+        AssertAtLeast(1, GetCount(GetProperty(groupedItemsViewSource, "SortDescriptions")), "grouped items sort description count");
+        AssertAtLeast(1, GetCount(GetProperty(groupedItemsViewSource, "GroupDescriptions")), "grouped items group description count");
+        object groupedItemsView = GetProperty(groupedItemsViewSource, "View");
+        AssertAtLeast(1, GetCount(GetProperty(groupedItemsView, "Groups")), "grouped items view group count");
+
+        object groupedItemsControl = Invoke(window, "FindName", "GroupedItemsControl");
+        AssertType(groupedItemsControl, "System.Windows.Controls.ItemsControl", "grouped items control");
+        AssertType(GetProperty(groupedItemsControl, "ItemTemplate"), "System.Windows.DataTemplate", "grouped items item template");
+        object groupedItemsGroupStyle = EnumerateObjects(GetProperty(groupedItemsControl, "GroupStyle")).FirstOrDefault()
+            ?? throw new InvalidOperationException("Expected a grouped items GroupStyle entry.");
+        AssertType(groupedItemsGroupStyle, "System.Windows.Controls.GroupStyle", "grouped items group style");
+        AssertType(GetProperty(groupedItemsGroupStyle, "HeaderTemplate"), "System.Windows.DataTemplate", "grouped items group header template");
 
         object documentBox = Invoke(window, "FindName", "DocumentBox");
         AssertType(documentBox, "System.Windows.Controls.RichTextBox", "rich text box");
@@ -867,7 +882,7 @@ internal static class Program
             AssertEqual(true, typedActivation.IsVisible, "SDK startup window visible before run");
             AssertEqual("ProGPU WPF SDK Smoke", typedActivation.Title, "activated SDK window title");
             AssertEqual(420.0, typedActivation.Width, "activated SDK window width");
-            AssertEqual(480.0, typedActivation.Height, "activated SDK window height");
+            AssertEqual(560.0, typedActivation.Height, "activated SDK window height");
             AssertSame(typedActivation.Window, GetProperty(_application, "MainWindow"), "SDK Application.MainWindow");
             InvokeVoid(typedActivation.Window, "UpdateLayout");
             FlushDispatcherOperations(typedActivation.Window, "Loaded", "Render", "ApplicationIdle");

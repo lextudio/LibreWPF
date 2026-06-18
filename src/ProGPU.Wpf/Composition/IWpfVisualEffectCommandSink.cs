@@ -9,3 +9,10 @@ public interface IWpfVisualEffectCommandSink
         return PushVisualEffect(effect);
     }
 }
+
+internal interface IWpfNativeVisualEffectCommandSink
+{
+    bool PushNativeVisualEffect(
+        global::ProGPU.Scene.EffectBase effect,
+        WpfReplayRect? bounds);
+}

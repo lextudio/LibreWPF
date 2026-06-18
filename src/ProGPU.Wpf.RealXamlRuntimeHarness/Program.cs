@@ -63,6 +63,7 @@ internal static class Program
             ValidateLooseXamlWriterRoundTrip(presentationFramework);
             ValidateLooseXamlWriterSystemResourceKeyRoundTrip(presentationFramework);
             ValidateLooseXamlWriterFrameworkElementRoundTrip(presentationFramework);
+            ValidateLooseXamlWriterFlowDocumentRoundTrip(presentationFramework);
             ValidateApplication(application);
 
             window = Create(compilerHarness, MainWindowTypeName);
@@ -403,6 +404,122 @@ internal static class Program
         AssertEqual("WriterTextBox", GetProperty(textBox, "Name"), "loose XamlWriter round-trip TextBox name");
         AssertEqual("writer text", GetProperty(textBox, "Text"), "loose XamlWriter round-trip TextBox text");
         AssertEqual(80.0, GetProperty(textBox, "MinWidth"), "loose XamlWriter round-trip TextBox MinWidth");
+    }
+
+    private static void ValidateLooseXamlWriterFlowDocumentRoundTrip(Assembly presentationFramework)
+    {
+        const string flowDocumentXaml = """
+<FlowDocument
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    FontSize="14"
+    Tag="writer document">
+    <Paragraph
+        Name="WriterParagraph"
+        Tag="writer paragraph">
+        writer paragraph <Bold>bold text</Bold><Italic> italic text</Italic><Underline> underline text</Underline>
+        <Hyperlink NavigateUri="https://example.test/progpu-wpf-writer">link text</Hyperlink>
+    </Paragraph>
+    <Section Name="WriterSection">
+        <Paragraph>section writer text</Paragraph>
+    </Section>
+    <Table CellSpacing="2">
+        <Table.Columns>
+            <TableColumn />
+            <TableColumn />
+        </Table.Columns>
+        <TableRowGroup>
+            <TableRow>
+                <TableCell>
+                    <Paragraph>table writer alpha</Paragraph>
+                </TableCell>
+                <TableCell>
+                    <Paragraph>table writer beta</Paragraph>
+                </TableCell>
+            </TableRow>
+        </TableRowGroup>
+    </Table>
+    <List MarkerStyle="Decimal">
+        <ListItem>
+            <Paragraph>first writer item</Paragraph>
+        </ListItem>
+        <ListItem>
+            <Paragraph>second writer item</Paragraph>
+        </ListItem>
+    </List>
+</FlowDocument>
+""";
+
+        object document = ParseLooseXaml(presentationFramework, flowDocumentXaml);
+        string serialized = SaveLooseXaml(presentationFramework, document);
+        AssertContains("FlowDocument", serialized, "loose XamlWriter serialized FlowDocument root");
+        AssertContains("Paragraph", serialized, "loose XamlWriter serialized FlowDocument Paragraph");
+        AssertContains("WriterParagraph", serialized, "loose XamlWriter serialized FlowDocument paragraph name");
+        AssertContains("Bold", serialized, "loose XamlWriter serialized FlowDocument Bold");
+        AssertContains("Hyperlink", serialized, "loose XamlWriter serialized FlowDocument Hyperlink");
+        AssertContains("Table", serialized, "loose XamlWriter serialized FlowDocument Table");
+        AssertContains("List", serialized, "loose XamlWriter serialized FlowDocument List");
+
+        if (serialized.Contains(" Name=\"\"", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException($"Expected loose XamlWriter serialized FlowDocument not to emit empty runtime names, got '{serialized}'.");
+        }
+
+        object roundTrippedDocument = ParseLooseXaml(presentationFramework, serialized);
+        AssertType(roundTrippedDocument, "System.Windows.Documents.FlowDocument", "loose XamlWriter round-trip FlowDocument");
+        AssertEqual(14.0, GetProperty(roundTrippedDocument, "FontSize"), "loose XamlWriter round-trip FlowDocument font size");
+        AssertEqual("writer document", GetProperty(roundTrippedDocument, "Tag"), "loose XamlWriter round-trip FlowDocument tag");
+
+        object blocks = GetProperty(roundTrippedDocument, "Blocks");
+        AssertCollectionCount(blocks, expected: 4, "loose XamlWriter round-trip FlowDocument blocks");
+
+        object paragraph = GetCollectionItem(blocks, 0);
+        AssertType(paragraph, "System.Windows.Documents.Paragraph", "loose XamlWriter round-trip FlowDocument paragraph");
+        AssertEqual("WriterParagraph", GetProperty(paragraph, "Name"), "loose XamlWriter round-trip FlowDocument paragraph name");
+        AssertEqual("writer paragraph", GetProperty(paragraph, "Tag"), "loose XamlWriter round-trip FlowDocument paragraph tag");
+
+        object paragraphInlines = GetProperty(paragraph, "Inlines");
+        object bold = GetFirstCollectionItemOfType(paragraphInlines, "System.Windows.Documents.Bold", "loose XamlWriter round-trip FlowDocument bold inline");
+        object boldRun = GetFirstCollectionItemOfType(GetProperty(bold, "Inlines"), "System.Windows.Documents.Run", "loose XamlWriter round-trip FlowDocument bold run");
+        AssertEqual("bold text", GetProperty(boldRun, "Text"), "loose XamlWriter round-trip FlowDocument bold text");
+        object italic = GetFirstCollectionItemOfType(paragraphInlines, "System.Windows.Documents.Italic", "loose XamlWriter round-trip FlowDocument italic inline");
+        object italicRun = GetFirstCollectionItemOfType(GetProperty(italic, "Inlines"), "System.Windows.Documents.Run", "loose XamlWriter round-trip FlowDocument italic run");
+        AssertEqual("italic text", GetProperty(italicRun, "Text"), "loose XamlWriter round-trip FlowDocument italic text");
+        object underline = GetFirstCollectionItemOfType(paragraphInlines, "System.Windows.Documents.Underline", "loose XamlWriter round-trip FlowDocument underline inline");
+        object underlineRun = GetFirstCollectionItemOfType(GetProperty(underline, "Inlines"), "System.Windows.Documents.Run", "loose XamlWriter round-trip FlowDocument underline run");
+        AssertEqual("underline text", GetProperty(underlineRun, "Text"), "loose XamlWriter round-trip FlowDocument underline text");
+        object hyperlink = GetFirstCollectionItemOfType(paragraphInlines, "System.Windows.Documents.Hyperlink", "loose XamlWriter round-trip FlowDocument hyperlink");
+        AssertEqual("https://example.test/progpu-wpf-writer", GetProperty(hyperlink, "NavigateUri").ToString(), "loose XamlWriter round-trip FlowDocument hyperlink URI");
+
+        object section = GetCollectionItem(blocks, 1);
+        AssertType(section, "System.Windows.Documents.Section", "loose XamlWriter round-trip FlowDocument section");
+        AssertEqual("WriterSection", GetProperty(section, "Name"), "loose XamlWriter round-trip FlowDocument section name");
+
+        object table = GetCollectionItem(blocks, 2);
+        AssertType(table, "System.Windows.Documents.Table", "loose XamlWriter round-trip FlowDocument table");
+        AssertCollectionCount(GetProperty(table, "Columns"), expected: 2, "loose XamlWriter round-trip FlowDocument table columns");
+
+        object list = GetCollectionItem(blocks, 3);
+        AssertType(list, "System.Windows.Documents.List", "loose XamlWriter round-trip FlowDocument list");
+        AssertEqual("Decimal", GetProperty(list, "MarkerStyle").ToString(), "loose XamlWriter round-trip FlowDocument list marker style");
+        AssertCollectionCount(GetProperty(list, "ListItems"), expected: 2, "loose XamlWriter round-trip FlowDocument list items");
+
+        object textRange = Create(
+            roundTrippedDocument.GetType().Assembly,
+            "System.Windows.Documents.TextRange",
+            GetProperty(roundTrippedDocument, "ContentStart"),
+            GetProperty(roundTrippedDocument, "ContentEnd"));
+        string text = GetProperty(textRange, "Text").ToString() ?? string.Empty;
+        AssertContains("writer paragraph", text, "loose XamlWriter round-trip FlowDocument TextRange paragraph text");
+        AssertContains("bold text", text, "loose XamlWriter round-trip FlowDocument TextRange bold text");
+        AssertContains("italic text", text, "loose XamlWriter round-trip FlowDocument TextRange italic text");
+        AssertContains("underline text", text, "loose XamlWriter round-trip FlowDocument TextRange underline text");
+        AssertContains("link text", text, "loose XamlWriter round-trip FlowDocument TextRange hyperlink text");
+        AssertContains("section writer text", text, "loose XamlWriter round-trip FlowDocument TextRange section text");
+        AssertContains("table writer alpha", text, "loose XamlWriter round-trip FlowDocument TextRange first table cell");
+        AssertContains("table writer beta", text, "loose XamlWriter round-trip FlowDocument TextRange second table cell");
+        AssertContains("first writer item", text, "loose XamlWriter round-trip FlowDocument TextRange first list item");
+        AssertContains("second writer item", text, "loose XamlWriter round-trip FlowDocument TextRange second list item");
     }
 
     private static void ValidateLooseGradientStop(object stop, string expectedColor, double expectedOffset, string description)

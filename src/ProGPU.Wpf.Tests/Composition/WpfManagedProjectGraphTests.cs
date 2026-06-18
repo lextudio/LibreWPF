@@ -1626,6 +1626,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("loose XamlWriter round-trip FrameworkElement children", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip Button background", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip TextBox MinWidth", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseXamlWriterFlowDocumentRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter serialized FlowDocument root", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip FlowDocument paragraph name", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip FlowDocument TextRange second list item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Create(compilerHarness, MainWindowTypeName)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(resources, \"AccentBrush\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateFreezableBrushResource(resources)", harnessProgram, StringComparison.Ordinal);
@@ -2227,6 +2231,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("loose XamlWriter round-trip FrameworkElement children", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip Button background", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip TextBox MinWidth", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseXamlWriterFlowDocumentRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter serialized FlowDocument root", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip FlowDocument paragraph name", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip FlowDocument TextRange second list item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(application, \"Run\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationServiceTypeName = \"System.Windows.PortableWindowActivationService\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("new Func<object, object>(recorder.Activate)", harnessProgram, StringComparison.Ordinal);

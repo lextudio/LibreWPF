@@ -598,6 +598,56 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeProjectsChildVisualStateWhenInferringOpacityMaskBounds()
+    {
+        var root = new FakeVisual
+        {
+            OpacityMask = Brushes.White
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green))
+        {
+            Transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 5, 7)),
+            Offset = new WpfVector(10, 20),
+            Clip = new FakeRectangleGeometry(new FakeRect(5, 6, 10, 12))
+        });
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(
+            new[] { "PushOpacityMask", "PushTransform", "PushTransform", "PushClip", "DrawRectangle", "Pop", "Pop", "Pop", "Pop" },
+            sink.Operations);
+        var mask = Assert.Single(sink.OpacityMasks);
+        Assert.Same(Brushes.White, mask.OpacityMask);
+        Assert.Equal(new Rect(20, 33, 10, 12), mask.Bounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(2, result.VisualCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeDoesNotInferOpacityMaskBoundsFromUnsupportedChildVisualState()
+    {
+        var root = new FakeVisual
+        {
+            OpacityMask = Brushes.White
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green))
+        {
+            Transform = new object()
+        });
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
+        Assert.Empty(sink.OpacityMasks);
+        Assert.Equal(2, result.UnsupportedVisualStateCount);
+        Assert.Equal(2, result.VisualCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
     public void ReplaySubtreeAppliesGuidelineCollectionsAsNoOpScope()
     {
         var root = new FakeVisual

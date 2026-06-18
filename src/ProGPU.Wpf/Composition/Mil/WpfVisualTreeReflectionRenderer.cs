@@ -1031,11 +1031,86 @@ public sealed class WpfVisualTreeReflectionRenderer
                 continue;
             }
 
-            bounds = hasBounds ? UnionBounds(bounds, childBounds) : childBounds;
+            if (!TryProjectChildBoundsIntoParent(child, childBounds, out var projectedChildBounds))
+            {
+                bounds = default;
+                return false;
+            }
+
+            bounds = hasBounds ? UnionBounds(bounds, projectedChildBounds) : projectedChildBounds;
             hasBounds = true;
         }
 
         return hasBounds && IsUsableBounds(bounds);
+    }
+
+    private static bool TryProjectChildBoundsIntoParent(object child, Rect childBounds, out Rect parentBounds)
+    {
+        parentBounds = default;
+        if (!TryClipChildBounds(child, childBounds, out var clippedBounds))
+        {
+            return false;
+        }
+
+        var transform = Matrix4x4.Identity;
+        if (TryGetPropertyValue(child, "Transform", out var transformValue) && transformValue != null)
+        {
+            var mediaTransform = WpfReflectionResourceResolver.AdaptTransform(transformValue);
+            if (mediaTransform == null)
+            {
+                return false;
+            }
+
+            transform = ToMatrix4x4(mediaTransform);
+        }
+
+        if (TryReadOffset(child, out var offsetX, out var offsetY) && (offsetX != 0 || offsetY != 0))
+        {
+            transform = Matrix4x4.CreateTranslation((float)offsetX, (float)offsetY, 0f) * transform;
+        }
+
+        parentBounds = TransformBounds(clippedBounds, transform);
+        return IsUsableBounds(parentBounds);
+    }
+
+    private static bool TryClipChildBounds(object child, Rect childBounds, out Rect clippedBounds)
+    {
+        clippedBounds = childBounds;
+        if (!IsUsableBounds(clippedBounds))
+        {
+            return false;
+        }
+
+        Rect? clipBounds = null;
+        if (TryGetPropertyValue(child, "Clip", out var clip) && clip != null)
+        {
+            if (!TryReadRectangleClipBounds(clip, out var childClipBounds))
+            {
+                return false;
+            }
+
+            clipBounds = childClipBounds;
+        }
+
+        if (TryGetPropertyValue(child, "ScrollableAreaClip", out var scrollableAreaClip) && scrollableAreaClip != null)
+        {
+            if (!TryReadRect(scrollableAreaClip, out var scrollableClipBounds) || !IsUsableBounds(scrollableClipBounds))
+            {
+                return false;
+            }
+
+            clipBounds = clipBounds.HasValue
+                ? CombineClipBounds(clipBounds.Value, scrollableClipBounds)
+                : scrollableClipBounds;
+        }
+
+        if (!clipBounds.HasValue)
+        {
+            return true;
+        }
+
+        clippedBounds = IntersectBounds(clippedBounds, clipBounds.Value);
+        return IsUsableBounds(clippedBounds);
     }
 
     private static bool TryReadRect(object rectValue, out Rect bounds)

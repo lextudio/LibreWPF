@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
     xmlns:local="clr-namespace:ProGPU.Wpf.RealXamlCompilerHarness"
+    xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework"
     xmlns:sys="clr-namespace:System;assembly=mscorlib"
     Title="ProGPU WPF XAML smoke"
     Width="420"
@@ -142,7 +143,10 @@
             Key="F6"
             Modifiers="Control" />
     </Window.InputBindings>
-    <StackPanel Margin="16">
+    <StackPanel
+        x:Name="SmokeRootPanel"
+        Margin="16"
+        primitives:Thumb.DragDelta="OnBubbledThumbDragDelta">
         <TextBlock
             FontSize="18"
             Foreground="{StaticResource AccentBrush}"
@@ -230,6 +234,15 @@
             Content="repeat action"
             Delay="250"
             Interval="75" />
+        <primitives:Thumb
+            x:Name="DragManagerThumb"
+            Margin="0,8,0,0"
+            Width="24"
+            Height="18"
+            DragCompleted="OnDragManagerThumbDragCompleted"
+            DragDelta="OnDragManagerThumbDragDelta"
+            DragStarted="OnDragManagerThumbDragStarted"
+            Tag="drag manager thumb" />
         <PasswordBox
             x:Name="CredentialBox"
             MaxLength="12"

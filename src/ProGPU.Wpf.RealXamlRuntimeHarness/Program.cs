@@ -190,7 +190,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 66, "stack panel children");
+        AssertCollectionCount(children, expected: 67, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -242,6 +242,7 @@ internal static class Program
         ValidateToggleChoiceControls(window);
         ValidateXamlEventHandler(window);
         ValidateRepeatButton(window);
+        ValidateThumbDragManager(window);
         ValidateStyleEventSetter(window);
         ValidateRoutedCommand(window);
         ValidateInputBinding(window);
@@ -1983,6 +1984,57 @@ internal static class Program
         AssertEqual(2, GetProperty(window, "RepeatButtonClickCount"), "compiled RepeatButton Click handler count");
         AssertEqual("RepeatActionButton", GetProperty(window, "LastRepeatButtonClickSenderName"), "compiled RepeatButton Click sender name");
         AssertEqual("Click", GetProperty(window, "LastRepeatButtonClickRoutedEventName"), "compiled RepeatButton Click routed event name");
+    }
+
+    private static void ValidateThumbDragManager(object window)
+    {
+        object rootPanel = GetField(window, "SmokeRootPanel");
+        AssertType(rootPanel, "System.Windows.Controls.StackPanel", "compiled root StackPanel");
+
+        object thumb = GetField(window, "DragManagerThumb");
+        AssertType(thumb, "System.Windows.Controls.Primitives.Thumb", "compiled Thumb drag manager");
+        AssertEqual(24.0, GetProperty(thumb, "Width"), "compiled Thumb width");
+        AssertEqual(18.0, GetProperty(thumb, "Height"), "compiled Thumb height");
+        AssertEqual("drag manager thumb", GetProperty(thumb, "Tag"), "compiled Thumb tag");
+        AssertEqual(false, GetProperty(thumb, "Focusable"), "compiled Thumb focusable metadata");
+        AssertEqual(false, GetProperty(thumb, "IsDragging"), "compiled Thumb initial dragging state");
+        AssertEqual(0, GetProperty(window, "ThumbDragStartedCount"), "compiled Thumb initial DragStarted count");
+        AssertEqual(0, GetProperty(window, "ThumbDragDeltaCount"), "compiled Thumb initial DragDelta count");
+        AssertEqual(0, GetProperty(window, "ThumbDragCompletedCount"), "compiled Thumb initial DragCompleted count");
+        AssertEqual(0, GetProperty(window, "BubbledThumbDragDeltaCount"), "compiled Thumb initial bubbled DragDelta count");
+
+        Assembly presentationFramework = thumb.GetType().Assembly;
+        object started = Create(presentationFramework, "System.Windows.Controls.Primitives.DragStartedEventArgs", 2.5, 3.5);
+        object delta = Create(presentationFramework, "System.Windows.Controls.Primitives.DragDeltaEventArgs", 4.0, 6.0);
+        object completed = Create(presentationFramework, "System.Windows.Controls.Primitives.DragCompletedEventArgs", 8.0, 10.0, true);
+
+        Invoke(thumb, "RaiseEvent", started);
+        AssertEqual(1, GetProperty(window, "ThumbDragStartedCount"), "compiled Thumb DragStarted handler count");
+        AssertEqual("DragManagerThumb", GetProperty(window, "LastThumbDragStartedSenderName"), "compiled Thumb DragStarted sender");
+        AssertEqual("DragStarted", GetProperty(window, "LastThumbDragStartedRoutedEventName"), "compiled Thumb DragStarted routed event");
+        AssertEqual(2.5, GetProperty(window, "LastThumbDragStartedHorizontalOffset"), "compiled Thumb DragStarted horizontal offset");
+        AssertEqual(3.5, GetProperty(window, "LastThumbDragStartedVerticalOffset"), "compiled Thumb DragStarted vertical offset");
+
+        Invoke(thumb, "RaiseEvent", delta);
+        AssertEqual(1, GetProperty(window, "ThumbDragDeltaCount"), "compiled Thumb DragDelta handler count");
+        AssertEqual("DragManagerThumb", GetProperty(window, "LastThumbDragDeltaSenderName"), "compiled Thumb DragDelta sender");
+        AssertEqual("DragDelta", GetProperty(window, "LastThumbDragDeltaRoutedEventName"), "compiled Thumb DragDelta routed event");
+        AssertEqual(4.0, GetProperty(window, "LastThumbDragDeltaHorizontalChange"), "compiled Thumb DragDelta horizontal change");
+        AssertEqual(6.0, GetProperty(window, "LastThumbDragDeltaVerticalChange"), "compiled Thumb DragDelta vertical change");
+        AssertEqual(1, GetProperty(window, "BubbledThumbDragDeltaCount"), "compiled Thumb bubbled DragDelta handler count");
+        AssertEqual("SmokeRootPanel", GetProperty(window, "LastBubbledThumbDragDeltaSenderName"), "compiled Thumb bubbled DragDelta sender");
+        AssertEqual("DragManagerThumb", GetProperty(window, "LastBubbledThumbDragDeltaOriginalSourceName"), "compiled Thumb bubbled DragDelta source");
+        AssertEqual("DragDelta", GetProperty(window, "LastBubbledThumbDragDeltaRoutedEventName"), "compiled Thumb bubbled DragDelta routed event");
+        AssertEqual(4.0, GetProperty(window, "LastBubbledThumbDragDeltaHorizontalChange"), "compiled Thumb bubbled DragDelta horizontal change");
+        AssertEqual(6.0, GetProperty(window, "LastBubbledThumbDragDeltaVerticalChange"), "compiled Thumb bubbled DragDelta vertical change");
+
+        Invoke(thumb, "RaiseEvent", completed);
+        AssertEqual(1, GetProperty(window, "ThumbDragCompletedCount"), "compiled Thumb DragCompleted handler count");
+        AssertEqual("DragManagerThumb", GetProperty(window, "LastThumbDragCompletedSenderName"), "compiled Thumb DragCompleted sender");
+        AssertEqual("DragCompleted", GetProperty(window, "LastThumbDragCompletedRoutedEventName"), "compiled Thumb DragCompleted routed event");
+        AssertEqual(8.0, GetProperty(window, "LastThumbDragCompletedHorizontalChange"), "compiled Thumb DragCompleted horizontal change");
+        AssertEqual(10.0, GetProperty(window, "LastThumbDragCompletedVerticalChange"), "compiled Thumb DragCompleted vertical change");
+        AssertEqual(true, GetProperty(window, "LastThumbDragCompletedCanceled"), "compiled Thumb DragCompleted canceled state");
     }
 
     private static void ValidateStyleEventSetter(object window)

@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -64,6 +65,50 @@ public partial class MainWindow : Window
     public string? LastRepeatButtonClickSenderName { get; private set; }
 
     public string? LastRepeatButtonClickRoutedEventName { get; private set; }
+
+    public int ThumbDragStartedCount { get; private set; }
+
+    public string? LastThumbDragStartedSenderName { get; private set; }
+
+    public string? LastThumbDragStartedRoutedEventName { get; private set; }
+
+    public double LastThumbDragStartedHorizontalOffset { get; private set; }
+
+    public double LastThumbDragStartedVerticalOffset { get; private set; }
+
+    public int ThumbDragDeltaCount { get; private set; }
+
+    public string? LastThumbDragDeltaSenderName { get; private set; }
+
+    public string? LastThumbDragDeltaRoutedEventName { get; private set; }
+
+    public double LastThumbDragDeltaHorizontalChange { get; private set; }
+
+    public double LastThumbDragDeltaVerticalChange { get; private set; }
+
+    public int ThumbDragCompletedCount { get; private set; }
+
+    public string? LastThumbDragCompletedSenderName { get; private set; }
+
+    public string? LastThumbDragCompletedRoutedEventName { get; private set; }
+
+    public double LastThumbDragCompletedHorizontalChange { get; private set; }
+
+    public double LastThumbDragCompletedVerticalChange { get; private set; }
+
+    public bool LastThumbDragCompletedCanceled { get; private set; }
+
+    public int BubbledThumbDragDeltaCount { get; private set; }
+
+    public string? LastBubbledThumbDragDeltaSenderName { get; private set; }
+
+    public string? LastBubbledThumbDragDeltaOriginalSourceName { get; private set; }
+
+    public string? LastBubbledThumbDragDeltaRoutedEventName { get; private set; }
+
+    public double LastBubbledThumbDragDeltaHorizontalChange { get; private set; }
+
+    public double LastBubbledThumbDragDeltaVerticalChange { get; private set; }
 
     public int StyledClickCount { get; private set; }
 
@@ -268,6 +313,44 @@ public partial class MainWindow : Window
         LastRepeatButtonClickSenderName = sender is FrameworkElement element ? element.Name : null;
         LastRepeatButtonClickRoutedEventName = e.RoutedEvent?.Name;
         e.Handled = true;
+    }
+
+    private void OnDragManagerThumbDragStarted(object sender, DragStartedEventArgs e)
+    {
+        ThumbDragStartedCount++;
+        LastThumbDragStartedSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastThumbDragStartedRoutedEventName = e.RoutedEvent?.Name;
+        LastThumbDragStartedHorizontalOffset = e.HorizontalOffset;
+        LastThumbDragStartedVerticalOffset = e.VerticalOffset;
+    }
+
+    private void OnDragManagerThumbDragDelta(object sender, DragDeltaEventArgs e)
+    {
+        ThumbDragDeltaCount++;
+        LastThumbDragDeltaSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastThumbDragDeltaRoutedEventName = e.RoutedEvent?.Name;
+        LastThumbDragDeltaHorizontalChange = e.HorizontalChange;
+        LastThumbDragDeltaVerticalChange = e.VerticalChange;
+    }
+
+    private void OnDragManagerThumbDragCompleted(object sender, DragCompletedEventArgs e)
+    {
+        ThumbDragCompletedCount++;
+        LastThumbDragCompletedSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastThumbDragCompletedRoutedEventName = e.RoutedEvent?.Name;
+        LastThumbDragCompletedHorizontalChange = e.HorizontalChange;
+        LastThumbDragCompletedVerticalChange = e.VerticalChange;
+        LastThumbDragCompletedCanceled = e.Canceled;
+    }
+
+    private void OnBubbledThumbDragDelta(object sender, DragDeltaEventArgs e)
+    {
+        BubbledThumbDragDeltaCount++;
+        LastBubbledThumbDragDeltaSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastBubbledThumbDragDeltaOriginalSourceName = e.OriginalSource is FrameworkElement source ? source.Name : null;
+        LastBubbledThumbDragDeltaRoutedEventName = e.RoutedEvent?.Name;
+        LastBubbledThumbDragDeltaHorizontalChange = e.HorizontalChange;
+        LastBubbledThumbDragDeltaVerticalChange = e.VerticalChange;
     }
 
     private void OnStyledButtonClick(object sender, RoutedEventArgs e)

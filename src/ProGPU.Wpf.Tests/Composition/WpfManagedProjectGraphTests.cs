@@ -1621,6 +1621,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SeparatorStyleKey", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter serialized system resource key member", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip system-key style target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseXamlWriterStyleRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter serialized style dictionary", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip derived BasedOn style", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip styled Button inherited Tag", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlWriterFrameworkElementRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter serialized FrameworkElement Button", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip FrameworkElement children", harnessProgram, StringComparison.Ordinal);
@@ -2226,6 +2230,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SeparatorStyleKey", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter serialized system resource key member", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip system-key style target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseXamlWriterStyleRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter serialized style dictionary", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip derived BasedOn style", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip styled Button inherited Tag", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlWriterFrameworkElementRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter serialized FrameworkElement Button", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip FrameworkElement children", harnessProgram, StringComparison.Ordinal);

@@ -62,6 +62,7 @@ internal static class Program
             ValidateLooseXamlReader(presentationFramework);
             ValidateLooseXamlWriterRoundTrip(presentationFramework);
             ValidateLooseXamlWriterSystemResourceKeyRoundTrip(presentationFramework);
+            ValidateLooseXamlWriterStyleRoundTrip(presentationFramework);
             ValidateLooseXamlWriterFrameworkElementRoundTrip(presentationFramework);
             ValidateLooseXamlWriterFlowDocumentRoundTrip(presentationFramework);
             ValidateApplication(application);
@@ -352,6 +353,60 @@ internal static class Program
         AssertEqual(menuItemType, GetProperty(roundTrippedStyle, "TargetType"), "loose XamlWriter round-trip system-key style target");
     }
 
+    private static void ValidateLooseXamlWriterStyleRoundTrip(Assembly presentationFramework)
+    {
+        const string styleDictionaryXaml = """
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style x:Key="WriterBaseButtonStyle" TargetType="{x:Type Button}">
+        <Setter Property="Tag" Value="base style tag" />
+    </Style>
+    <Style x:Key="WriterButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource WriterBaseButtonStyle}">
+        <Setter Property="Content" Value="writer style content" />
+        <Setter Property="MinWidth" Value="144" />
+    </Style>
+</ResourceDictionary>
+""";
+
+        object dictionary = ParseLooseXaml(presentationFramework, styleDictionaryXaml);
+        string serialized = SaveLooseXaml(presentationFramework, dictionary);
+        AssertContains("ResourceDictionary", serialized, "loose XamlWriter serialized style dictionary");
+        AssertContains("WriterBaseButtonStyle", serialized, "loose XamlWriter serialized base style key");
+        AssertContains("WriterButtonStyle", serialized, "loose XamlWriter serialized derived style key");
+        AssertContains("BasedOn", serialized, "loose XamlWriter serialized style BasedOn");
+        AssertContains("Setter", serialized, "loose XamlWriter serialized style setters");
+
+        object roundTrippedDictionary = ParseLooseXaml(presentationFramework, serialized);
+        object baseStyle = GetDictionaryValue(roundTrippedDictionary, "WriterBaseButtonStyle");
+        object derivedStyle = GetDictionaryValue(roundTrippedDictionary, "WriterButtonStyle");
+        AssertType(baseStyle, "System.Windows.Style", "loose XamlWriter round-trip base style");
+        AssertType(derivedStyle, "System.Windows.Style", "loose XamlWriter round-trip derived style");
+        AssertEqual("System.Windows.Controls.Button", GetProperty(baseStyle, "TargetType").ToString(), "loose XamlWriter round-trip base style target");
+        AssertEqual("System.Windows.Controls.Button", GetProperty(derivedStyle, "TargetType").ToString(), "loose XamlWriter round-trip derived style target");
+
+        object baseSetters = GetProperty(baseStyle, "Setters");
+        AssertCollectionCount(baseSetters, expected: 1, "loose XamlWriter round-trip base style setters");
+        AssertLooseStyleSetter(GetCollectionItem(baseSetters, 0), "Tag", "base style tag", "base style tag setter");
+
+        object basedOn = GetProperty(derivedStyle, "BasedOn");
+        AssertType(basedOn, "System.Windows.Style", "loose XamlWriter round-trip derived BasedOn style");
+        object basedOnSetters = GetProperty(basedOn, "Setters");
+        AssertCollectionCount(basedOnSetters, expected: 1, "loose XamlWriter round-trip derived BasedOn setters");
+        AssertLooseStyleSetter(GetCollectionItem(basedOnSetters, 0), "Tag", "base style tag", "derived BasedOn tag setter");
+
+        object derivedSetters = GetProperty(derivedStyle, "Setters");
+        AssertCollectionCount(derivedSetters, expected: 2, "loose XamlWriter round-trip derived style setters");
+        AssertLooseStyleSetter(GetCollectionItem(derivedSetters, 0), "Content", "writer style content", "derived style content setter");
+        AssertLooseStyleSetter(GetCollectionItem(derivedSetters, 1), "MinWidth", 144.0, "derived style MinWidth setter");
+
+        object styledButton = Create(presentationFramework, "System.Windows.Controls.Button");
+        SetProperty(styledButton, "Style", derivedStyle);
+        AssertEqual("base style tag", GetProperty(styledButton, "Tag"), "loose XamlWriter round-trip styled Button inherited Tag");
+        AssertEqual("writer style content", GetProperty(styledButton, "Content"), "loose XamlWriter round-trip styled Button content");
+        AssertEqual(144.0, GetProperty(styledButton, "MinWidth"), "loose XamlWriter round-trip styled Button MinWidth");
+    }
+
     private static void ValidateLooseXamlWriterFrameworkElementRoundTrip(Assembly presentationFramework)
     {
         const string frameworkElementXaml = """
@@ -520,6 +575,13 @@ internal static class Program
         AssertContains("table writer beta", text, "loose XamlWriter round-trip FlowDocument TextRange second table cell");
         AssertContains("first writer item", text, "loose XamlWriter round-trip FlowDocument TextRange first list item");
         AssertContains("second writer item", text, "loose XamlWriter round-trip FlowDocument TextRange second list item");
+    }
+
+    private static void AssertLooseStyleSetter(object setter, string expectedPropertyName, object expectedValue, string description)
+    {
+        AssertType(setter, "System.Windows.Setter", $"loose XamlWriter round-trip {description}");
+        AssertEqual(expectedPropertyName, GetProperty(GetProperty(setter, "Property"), "Name"), $"loose XamlWriter round-trip {description} property");
+        AssertEqual(expectedValue, GetProperty(setter, "Value"), $"loose XamlWriter round-trip {description} value");
     }
 
     private static void ValidateLooseGradientStop(object stop, string expectedColor, double expectedOffset, string description)

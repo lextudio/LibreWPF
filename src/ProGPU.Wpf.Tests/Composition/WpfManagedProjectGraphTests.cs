@@ -98,6 +98,26 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void XamlWriterSkipsEmptyRuntimeNames()
+    {
+        var sourcePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Markup",
+            "Primitives",
+            "ElementMarkupObject.cs");
+        var source = File.ReadAllText(sourcePath);
+
+        Assert.Contains("IsEmptyRuntimeNameProperty(pd, dpd, instance)", source, StringComparison.Ordinal);
+        Assert.Contains("instance is not FrameworkElement && instance is not FrameworkContentElement", source, StringComparison.Ordinal);
+        Assert.Contains("return String.IsNullOrEmpty(pd.GetValue(instance) as string);", source, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void MediaContextUsesPortableClockOutsideWindows()
     {
         var sourcePath = FindRepoPath(
@@ -1601,6 +1621,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SeparatorStyleKey", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter serialized system resource key member", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip system-key style target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseXamlWriterFrameworkElementRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter serialized FrameworkElement Button", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip FrameworkElement children", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip Button background", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip TextBox MinWidth", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Create(compilerHarness, MainWindowTypeName)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(resources, \"AccentBrush\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateFreezableBrushResource(resources)", harnessProgram, StringComparison.Ordinal);
@@ -2197,6 +2222,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SeparatorStyleKey", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter serialized system resource key member", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip system-key style target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseXamlWriterFrameworkElementRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter serialized FrameworkElement Button", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip FrameworkElement children", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip Button background", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip TextBox MinWidth", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(application, \"Run\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationServiceTypeName = \"System.Windows.PortableWindowActivationService\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("new Func<object, object>(recorder.Activate)", harnessProgram, StringComparison.Ordinal);

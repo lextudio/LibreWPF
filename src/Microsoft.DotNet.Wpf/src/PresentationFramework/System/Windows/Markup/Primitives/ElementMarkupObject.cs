@@ -204,6 +204,11 @@ namespace System.Windows.Markup.Primitives
             object invokeInstance = instance;
 
             DependencyPropertyDescriptor dpd = DependencyPropertyDescriptor.FromProperty(pd);
+            if (IsEmptyRuntimeNameProperty(pd, dpd, instance))
+            {
+                return false;
+            }
+
             if (dpd != null && dpd.IsAttached) 
             {
                 Type ownerType = dpd.DependencyProperty.OwnerType;
@@ -278,6 +283,21 @@ namespace System.Windows.Markup.Primitives
                 }
             }
             return pd.ShouldSerializeValue(instance);
+        }
+
+        private static bool IsEmptyRuntimeNameProperty(PropertyDescriptor pd, DependencyPropertyDescriptor dpd, object instance)
+        {
+            if (pd.Name != "Name")
+            {
+                return false;
+            }
+
+            if (instance is not FrameworkElement && instance is not FrameworkContentElement)
+            {
+                return false;
+            }
+
+            return String.IsNullOrEmpty(pd.GetValue(instance) as string);
         }
 
         private struct ShouldSerializeKey

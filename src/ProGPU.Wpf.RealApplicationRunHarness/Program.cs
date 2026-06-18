@@ -61,6 +61,7 @@ internal static class Program
             ValidateLooseXamlReader(presentationFramework);
             ValidateLooseXamlWriterRoundTrip(presentationFramework);
             ValidateLooseXamlWriterSystemResourceKeyRoundTrip(presentationFramework);
+            ValidateLooseXamlWriterFrameworkElementRoundTrip(presentationFramework);
             ValidateApplication(application);
 
             recorder = RegisterPortableActivation(
@@ -297,6 +298,60 @@ internal static class Program
         object roundTrippedStyle = GetDictionaryValue(roundTrippedDictionary, systemKey);
         AssertType(roundTrippedStyle, "System.Windows.Style", "loose XamlWriter round-trip system-key style");
         AssertEqual(menuItemType, GetProperty(roundTrippedStyle, "TargetType"), "loose XamlWriter round-trip system-key style target");
+    }
+
+    private static void ValidateLooseXamlWriterFrameworkElementRoundTrip(Assembly presentationFramework)
+    {
+        const string frameworkElementXaml = """
+<StackPanel
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Orientation="Vertical"
+    Tag="writer root">
+    <Button
+        Name="WriterButton"
+        Content="writer button"
+        Tag="writer button tag"
+        Width="120"
+        Height="32"
+        Padding="5,6,7,8"
+        Background="#224466" />
+    <TextBox
+        Name="WriterTextBox"
+        Text="writer text"
+        MinWidth="80" />
+</StackPanel>
+""";
+
+        object root = ParseLooseXaml(presentationFramework, frameworkElementXaml);
+        string serialized = SaveLooseXaml(presentationFramework, root);
+        AssertContains("StackPanel", serialized, "loose XamlWriter serialized FrameworkElement root");
+        AssertContains("Button", serialized, "loose XamlWriter serialized FrameworkElement Button");
+        AssertContains("TextBox", serialized, "loose XamlWriter serialized FrameworkElement TextBox");
+        AssertContains("writer button", serialized, "loose XamlWriter serialized FrameworkElement Button content");
+        AssertContains("writer text", serialized, "loose XamlWriter serialized FrameworkElement TextBox text");
+
+        object roundTrippedRoot = ParseLooseXaml(presentationFramework, serialized);
+        AssertType(roundTrippedRoot, "System.Windows.Controls.StackPanel", "loose XamlWriter round-trip FrameworkElement root");
+        AssertEqual("Vertical", GetProperty(roundTrippedRoot, "Orientation").ToString(), "loose XamlWriter round-trip StackPanel orientation");
+        AssertEqual("writer root", GetProperty(roundTrippedRoot, "Tag"), "loose XamlWriter round-trip StackPanel tag");
+
+        object children = GetProperty(roundTrippedRoot, "Children");
+        AssertCollectionCount(children, expected: 2, "loose XamlWriter round-trip FrameworkElement children");
+        object button = GetCollectionItem(children, 0);
+        AssertType(button, "System.Windows.Controls.Button", "loose XamlWriter round-trip Button");
+        AssertEqual("WriterButton", GetProperty(button, "Name"), "loose XamlWriter round-trip Button name");
+        AssertEqual("writer button", GetProperty(button, "Content"), "loose XamlWriter round-trip Button content");
+        AssertEqual("writer button tag", GetProperty(button, "Tag"), "loose XamlWriter round-trip Button tag");
+        AssertEqual(120.0, GetProperty(button, "Width"), "loose XamlWriter round-trip Button width");
+        AssertEqual(32.0, GetProperty(button, "Height"), "loose XamlWriter round-trip Button height");
+        AssertEqual("#FF224466", GetProperty(GetProperty(button, "Background"), "Color").ToString(), "loose XamlWriter round-trip Button background");
+
+        object textBox = GetCollectionItem(children, 1);
+        AssertType(textBox, "System.Windows.Controls.TextBox", "loose XamlWriter round-trip TextBox");
+        AssertEqual("WriterTextBox", GetProperty(textBox, "Name"), "loose XamlWriter round-trip TextBox name");
+        AssertEqual("writer text", GetProperty(textBox, "Text"), "loose XamlWriter round-trip TextBox text");
+        AssertEqual(80.0, GetProperty(textBox, "MinWidth"), "loose XamlWriter round-trip TextBox MinWidth");
     }
 
     private static void ValidateLooseGradientStop(object stop, string expectedColor, double expectedOffset, string description)

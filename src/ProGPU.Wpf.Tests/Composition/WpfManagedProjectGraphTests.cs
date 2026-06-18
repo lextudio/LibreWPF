@@ -1617,6 +1617,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetStaticProperty(editingCommandsType, \"InsertColumns\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox InsertColumns first row cells", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox InsertColumns copied row cells", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetStaticProperty(editingCommandsType, \"DeleteRows\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox DeleteRows table rows", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox DeleteRows preserved original row", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleBullets\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox ToggleBullets marker style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleNumbering\")", harnessProgram, StringComparison.Ordinal);
@@ -2139,6 +2142,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetStaticProperty(editingCommandsType, \"InsertColumns\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox InsertColumns first row cells", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox InsertColumns copied row cells", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetStaticProperty(editingCommandsType, \"DeleteRows\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox DeleteRows table rows", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox DeleteRows preserved original row", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleBullets\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox ToggleBullets marker style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleNumbering\")", harnessProgram, StringComparison.Ordinal);

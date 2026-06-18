@@ -3531,6 +3531,7 @@ internal static class Program
         SetProperty(classCommandTarget, "IsClassCommandEnabled", false);
         AssertEqual(false, InvokeTwoArgumentCommand(classCommand, "CanExecute", classCommandParameter, classCommandTarget), "class command disabled CanExecute result");
         AssertAtLeast(2, GetProperty(classCommandTarget, "ClassCommandCanExecuteCount"), "class command disabled CanExecute handler count");
+        SetProperty(classCommandTarget, "IsClassCommandEnabled", true);
     }
 
     private static void ValidateInputBinding(object window)
@@ -5974,6 +5975,23 @@ internal static class Program
             object keyUp = CreatePortableInputEvent("KeyUp", "F6", scanCode: 0, modifiersName: "None");
             Invoke(window, "HandlePortableInput", keyUp);
             AssertEqual(initialExecutionCount + 1, GetProperty(window, "RoutedCommandExecutionCount"), "portable Application.Run input KeyBinding ignores key up");
+
+            object classCommandTarget = GetField(window, "ClassCommandTargetBox");
+            SetProperty(classCommandTarget, "IsClassCommandEnabled", true);
+            object classFocused = InvokeStatic(keyboardType, "Focus", classCommandTarget);
+            AssertSame(classCommandTarget, classFocused, "portable Application.Run class input KeyBinding focused target");
+
+            int initialClassExecutionCount = Convert.ToInt32(GetProperty(classCommandTarget, "ClassCommandExecutionCount"));
+            object classKeyDown = CreatePortableInputEvent("KeyDown", "F7", scanCode: 0, modifiersName: "Control");
+            Invoke(window, "HandlePortableInput", classKeyDown);
+
+            AssertEqual(true, GetProperty(classKeyDown, "Handled"), "portable Application.Run class input KeyBinding handled state");
+            AssertEqual(initialClassExecutionCount + 1, GetProperty(classCommandTarget, "ClassCommandExecutionCount"), "portable Application.Run class input KeyBinding command execution count");
+            AssertEqual("class input payload", GetProperty(classCommandTarget, "LastClassCommandParameter"), "portable Application.Run class input KeyBinding command parameter");
+
+            object classKeyUp = CreatePortableInputEvent("KeyUp", "F7", scanCode: 0, modifiersName: "None");
+            Invoke(window, "HandlePortableInput", classKeyUp);
+            AssertEqual(initialClassExecutionCount + 1, GetProperty(classCommandTarget, "ClassCommandExecutionCount"), "portable Application.Run class input KeyBinding ignores key up");
 
             InvokeStatic(keyboardType, "ClearFocus");
             AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable Application.Run input KeyBinding clear focus");

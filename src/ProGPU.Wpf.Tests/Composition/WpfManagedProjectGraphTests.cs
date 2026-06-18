@@ -1439,6 +1439,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public static RoutedUICommand SmokeClassRoutedCommand", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeClassCommandTextBox : TextBox", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("CommandManager.RegisterClassCommandBinding", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("CommandManager.RegisterClassInputBinding", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Key.F7, ModifierKeys.Control", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("CommandParameter = \"class input payload\"", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("new CommandBinding(", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnSmokeClassCommandCanExecute", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnSmokeClassCommandExecuted", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -2023,6 +2026,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Window input bindings", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled KeyGesture", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled KeyBinding command executed parameter", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable class input KeyBinding focused target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable class input KeyBinding handled state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable class input KeyBinding command execution count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable class input KeyBinding command parameter", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable class input KeyBinding ignores key up", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMenuItems(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("RaiseMenuItemClick(clickItem)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled command MenuItem routed command", harnessProgram, StringComparison.Ordinal);
@@ -2717,6 +2725,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Window input bindings", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled KeyGesture", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled KeyBinding command executed parameter", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run class input KeyBinding focused target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run class input KeyBinding handled state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run class input KeyBinding command execution count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run class input KeyBinding command parameter", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run class input KeyBinding ignores key up", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMenuItems(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("RaiseMenuItemClick(clickItem)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled command MenuItem routed command", harnessProgram, StringComparison.Ordinal);

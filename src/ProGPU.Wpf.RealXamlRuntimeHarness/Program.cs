@@ -1667,6 +1667,31 @@ internal static class Program
         RaiseHostInput(portableActivation.Host, keyUp);
         AssertEqual(initialExecutionCount + 1, GetProperty(window, "RoutedCommandExecutionCount"), "portable input KeyBinding ignores key up");
 
+        object classCommandTarget = GetField(window, "ClassCommandTargetBox");
+        SetProperty(classCommandTarget, "IsClassCommandEnabled", true);
+        object classFocused = InvokeStatic(keyboardType, "Focus", classCommandTarget);
+        AssertSame(classCommandTarget, classFocused, "portable class input KeyBinding focused target");
+
+        int initialClassExecutionCount = Convert.ToInt32(GetProperty(classCommandTarget, "ClassCommandExecutionCount"));
+        var classKeyDown = new WpfInputEventArgs(
+            WpfInputEventKind.KeyDown,
+            key: "F7",
+            scanCode: 0,
+            modifiers: WpfInputModifiers.Control);
+        RaiseHostInput(portableActivation.Host, classKeyDown);
+
+        AssertEqual(true, classKeyDown.Handled, "portable class input KeyBinding handled state");
+        AssertEqual(initialClassExecutionCount + 1, GetProperty(classCommandTarget, "ClassCommandExecutionCount"), "portable class input KeyBinding command execution count");
+        AssertEqual("class input payload", GetProperty(classCommandTarget, "LastClassCommandParameter"), "portable class input KeyBinding command parameter");
+
+        var classKeyUp = new WpfInputEventArgs(
+            WpfInputEventKind.KeyUp,
+            key: "F7",
+            scanCode: 0,
+            modifiers: WpfInputModifiers.None);
+        RaiseHostInput(portableActivation.Host, classKeyUp);
+        AssertEqual(initialClassExecutionCount + 1, GetProperty(classCommandTarget, "ClassCommandExecutionCount"), "portable class input KeyBinding ignores key up");
+
         InvokeStatic(keyboardType, "ClearFocus");
         AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable input KeyBinding clear focus");
     }
@@ -3843,6 +3868,7 @@ internal static class Program
         SetProperty(classCommandTarget, "IsClassCommandEnabled", false);
         AssertEqual(false, InvokeTwoArgumentCommand(classCommand, "CanExecute", classCommandParameter, classCommandTarget), "class command disabled CanExecute result");
         AssertAtLeast(2, GetProperty(classCommandTarget, "ClassCommandCanExecuteCount"), "class command disabled CanExecute handler count");
+        SetProperty(classCommandTarget, "IsClassCommandEnabled", true);
     }
 
     private static void ValidateInputBinding(object window)

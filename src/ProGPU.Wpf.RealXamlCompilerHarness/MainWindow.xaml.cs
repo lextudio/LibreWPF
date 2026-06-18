@@ -901,6 +901,12 @@ public sealed class SmokeClassCommandTextBox : TextBox
                 MainWindow.SmokeClassRoutedCommand,
                 OnSmokeClassCommandExecuted,
                 OnSmokeClassCommandCanExecute));
+        CommandManager.RegisterClassInputBinding(
+            typeof(SmokeClassCommandTextBox),
+            new KeyBinding(MainWindow.SmokeClassRoutedCommand, Key.F7, ModifierKeys.Control)
+            {
+                CommandParameter = "class input payload"
+            });
     }
 
     public bool IsClassCommandEnabled { get; set; } = true;

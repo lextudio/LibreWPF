@@ -4,6 +4,12 @@
     <FrameworkReference Remove="Microsoft.WindowsDesktop.App.WPF" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfEnablePortableBootstrap)' == 'true'">
+    <Compile Include="$(MSBuildThisFileDirectory)ProGPU.Wpf.Sdk.PortableBootstrap.cs"
+             Link="ProGPU.Wpf.Sdk.PortableBootstrap.cs"
+             Visible="false" />
+  </ItemGroup>
+
   <Target Name="_ProGpuWpfSdkRemoveWindowsDesktopPackageDownloads"
           BeforeTargets="CollectPackageDownloads"
           Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'">
@@ -97,6 +103,15 @@
           Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '@(RuntimeCopyLocalItems)' != ''">
     <Copy SourceFiles="@(RuntimeCopyLocalItems)"
           DestinationFiles="@(RuntimeCopyLocalItems->'$(TargetDir)%(DestinationSubDirectory)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="_ProGpuWpfSdkCopyNativeRuntimeAssets"
+          DependsOnTargets="ResolvePackageAssets"
+          AfterTargets="CopyFilesToOutputDirectory"
+          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '@(NativeCopyLocalItems)' != ''">
+    <Copy SourceFiles="@(NativeCopyLocalItems)"
+          DestinationFiles="@(NativeCopyLocalItems->'$(TargetDir)%(DestinationSubPath)')"
           SkipUnchangedFiles="true" />
   </Target>
 

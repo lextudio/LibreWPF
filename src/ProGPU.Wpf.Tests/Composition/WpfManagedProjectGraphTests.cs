@@ -4404,6 +4404,11 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf.Sdk",
             "targets",
             "ProGPU.Wpf.Sdk.targets");
+        var portableBootstrapPath = FindRepoPath(
+            "packaging",
+            "ProGPU.Wpf.Sdk",
+            "targets",
+            "ProGPU.Wpf.Sdk.PortableBootstrap.cs");
         var smokeProjectPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
@@ -4426,6 +4431,7 @@ public sealed class WpfManagedProjectGraphTests
         var sdkTargets = File.ReadAllText(sdkTargetsPath);
         var portableProps = File.ReadAllText(portablePropsPath);
         var portableTargets = File.ReadAllText(portableTargetsPath);
+        var portableBootstrap = File.ReadAllText(portableBootstrapPath);
         var smokeProject = File.ReadAllText(smokeProjectPath);
         var smokeNuGetConfig = File.ReadAllText(smokeNuGetConfigPath);
         var runtimeHarnessProject = File.ReadAllText(runtimeHarnessProjectPath);
@@ -4450,9 +4456,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<EnableWindowsTargeting Condition=\"'$(EnableWindowsTargeting)' == ''\">true</EnableWindowsTargeting>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<CopyLocalLockFileAssemblies Condition=\"'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(CopyLocalLockFileAssemblies)' == ''\">true</CopyLocalLockFileAssemblies>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<NoWarn>$(NoWarn);NETSDK1137</NoWarn>", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("<ProGpuWpfEnablePortableBootstrap Condition=\"'$(ProGpuWpfEnablePortableBootstrap)' == ''\">true</ProGpuWpfEnablePortableBootstrap>", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("<ProGpuWpfUseCurrentRuntimeIdentifier Condition=\"'$(ProGpuWpfUseCurrentRuntimeIdentifier)' == ''\">true</ProGpuWpfUseCurrentRuntimeIdentifier>", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("<RuntimeIdentifier Condition=\"'$(ProGpuWpfUseCurrentRuntimeIdentifier)' == 'true' And '$(RuntimeIdentifier)' == ''\">$([System.Runtime.InteropServices.RuntimeInformation]::RuntimeIdentifier)</RuntimeIdentifier>", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("<AppendRuntimeIdentifierToOutputPath Condition=\"'$(ProGpuWpfUseCurrentRuntimeIdentifier)' == 'true' And '$(AppendRuntimeIdentifierToOutputPath)' == ''\">false</AppendRuntimeIdentifierToOutputPath>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfPlatform Condition=\"'$(ProGpuWpfPlatform)' == ''\">SilkNet</ProGpuWpfPlatform>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfRenderingBackend Condition=\"'$(ProGpuWpfRenderingBackend)' == ''\">ProGPU</ProGpuWpfRenderingBackend>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfReferenceMode Condition=\"'$(ProGpuWpfReferenceMode)' == '' And ('$(ProGpuWpfManagedReferenceRoot)' != '' Or '$(ProGpuReferenceRoot)' != '')\">LocalArtifacts</ProGpuWpfReferenceMode>", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("<ProGpuWpfSilkNetVersion Condition=\"'$(ProGpuWpfSilkNetVersion)' == ''\">2.23.0</ProGpuWpfSilkNetVersion>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfSystemIOPackagingVersion Condition=\"'$(ProGpuWpfSystemIOPackagingVersion)' == ''\">", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfSystemWindowsExtensionsVersion Condition=\"'$(ProGpuWpfSystemWindowsExtensionsVersion)' == ''\">", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<Import Sdk=\"Microsoft.NET.Sdk.WindowsDesktop\" Project=\"Sdk.props\" />", sdkProps, StringComparison.Ordinal);
@@ -4469,12 +4480,20 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<ApplicationDefinition Include=\"App.xaml\"", portableProps, StringComparison.Ordinal);
         Assert.Contains("<Page Include=\"**/*.xaml\"", portableProps, StringComparison.Ordinal);
         Assert.Contains("<None Remove=\"**/*.xaml\"", portableProps, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"Silk.NET.Input\" Version=\"$(ProGpuWpfSilkNetVersion)\" />", portableProps, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"Silk.NET.Windowing\" Version=\"$(ProGpuWpfSilkNetVersion)\" />", portableProps, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"Silk.NET.WebGPU\" Version=\"$(ProGpuWpfSilkNetVersion)\" />", portableProps, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"Silk.NET.WebGPU.Native.WGPU\" Version=\"$(ProGpuWpfSilkNetVersion)\" />", portableProps, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"System.Configuration.ConfigurationManager\" Version=\"$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)\" />", portableProps, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"System.Formats.Nrbf\" Version=\"$(ProGpuWpfSystemFormatsNrbfVersion)\" />", portableProps, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"System.IO.Packaging\" Version=\"$(ProGpuWpfSystemIOPackagingVersion)\" />", portableProps, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"System.Windows.Extensions\" Version=\"$(ProGpuWpfSystemWindowsExtensionsVersion)\" />", portableProps, StringComparison.Ordinal);
 
         Assert.Contains("<FrameworkReference Remove=\"Microsoft.WindowsDesktop.App.WPF\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("$(ProGpuWpfEnablePortableBootstrap)", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<Compile Include=\"$(MSBuildThisFileDirectory)ProGPU.Wpf.Sdk.PortableBootstrap.cs\"", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("Link=\"ProGPU.Wpf.Sdk.PortableBootstrap.cs\"", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("Visible=\"false\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkRemoveWindowsDesktopPackageDownloads", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageDownload Remove=\"Microsoft.WindowsDesktop.App.Ref\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"ProGPU.Wpf\" Version=\"$(ProGpuWpfPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
@@ -4489,10 +4508,19 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Condition=\"Exists('$(_ProGpuReferenceRoot)ProGPU.Text.dll')\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkCopyLocalRuntimeAssets", portableTargets, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkCopyPackageRuntimeAssets", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("_ProGpuWpfSdkCopyNativeRuntimeAssets", portableTargets, StringComparison.Ordinal);
         Assert.Contains("DependsOnTargets=\"ResolveLockFileCopyLocalFiles\"", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("DependsOnTargets=\"ResolvePackageAssets\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("DestinationFiles=\"@(RuntimeCopyLocalItems->'$(TargetDir)%(DestinationSubDirectory)%(Filename)%(Extension)')\"", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("DestinationFiles=\"@(NativeCopyLocalItems->'$(TargetDir)%(DestinationSubPath)')\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("local artifact mode requires ProGpuWpfManagedReferenceRoot", portableTargets, StringComparison.Ordinal);
         Assert.Contains("local artifact mode requires ProGpuReferenceRoot", portableTargets, StringComparison.Ordinal);
+
+        Assert.Contains("namespace ProGPU.Wpf.Sdk;", portableBootstrap, StringComparison.Ordinal);
+        Assert.Contains("internal static class ProGpuWpfSdkPortableBootstrap", portableBootstrap, StringComparison.Ordinal);
+        Assert.Contains("[ModuleInitializer]", portableBootstrap, StringComparison.Ordinal);
+        Assert.Contains("if (OperatingSystem.IsWindows())", portableBootstrap, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation(typeof(Application).Assembly)", portableBootstrap, StringComparison.Ordinal);
 
         Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", smokeProject, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>net11.0</TargetFramework>", smokeProject, StringComparison.Ordinal);
@@ -4516,8 +4544,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"Microsoft.DotNet.Wpf.GitHub.Debug\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"UIAutomationTypes\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"System.Windows.Primitives\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"Silk.NET.Windowing.Common\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"Silk.NET.WebGPU\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetNativeAssetCandidates(\"wgpu\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetNativeAssetCandidates(\"glfw\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RequireAnyFile", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"progpu-wpf-sdk-smoke\", \"progpu\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("InvokeVoid(app, \"InitializeComponent\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RunSdkPortableBootstrapSmoke", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.Sdk.ProGpuWpfSdkPortableBootstrap", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RuntimeHelpers.RunModuleConstructor", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK portable bootstrap activation enabled", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK portable bootstrap loaded ProGPU.Wpf", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(\"MainWindow.xaml\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindResource\", \"SmokeAccentBrush\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(\"#FF356D9E\"", runtimeHarnessProgram, StringComparison.Ordinal);

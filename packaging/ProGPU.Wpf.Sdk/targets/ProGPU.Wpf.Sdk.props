@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'">
+    <PackageReference Include="Silk.NET.Input" Version="$(ProGpuWpfSilkNetVersion)" />
+    <PackageReference Include="Silk.NET.Windowing" Version="$(ProGpuWpfSilkNetVersion)" />
+    <PackageReference Include="Silk.NET.WebGPU" Version="$(ProGpuWpfSilkNetVersion)" />
+    <PackageReference Include="Silk.NET.WebGPU.Native.WGPU" Version="$(ProGpuWpfSilkNetVersion)" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="$(ProGpuWpfSystemConfigurationConfigurationManagerVersion)" />
     <PackageReference Include="System.Formats.Nrbf" Version="$(ProGpuWpfSystemFormatsNrbfVersion)" />
     <PackageReference Include="System.IO.Packaging" Version="$(ProGpuWpfSystemIOPackagingVersion)" />

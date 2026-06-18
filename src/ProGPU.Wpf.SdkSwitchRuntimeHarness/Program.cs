@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 
 internal static class Program
@@ -29,6 +30,17 @@ internal static class Program
         "ProGPU.Vector",
         "ProGPU.Text"
     ];
+    private static readonly string[] SilkNetRuntimeAssemblies =
+    [
+        "Silk.NET.Core",
+        "Silk.NET.GLFW",
+        "Silk.NET.Input.Common",
+        "Silk.NET.Input.Glfw",
+        "Silk.NET.Maths",
+        "Silk.NET.WebGPU",
+        "Silk.NET.Windowing.Common",
+        "Silk.NET.Windowing.Glfw"
+    ];
     private static readonly string[] SupportPackageRuntimeAssemblies =
     [
         "System.Configuration.ConfigurationManager",
@@ -46,6 +58,7 @@ internal static class Program
         {
             SmokeInputs inputs = ResolveSmokeInputs();
             RunObjectGraphSmoke(inputs);
+            RunSdkPortableBootstrapSmoke(inputs);
             RunApplicationRunSmoke(inputs);
 
             Console.WriteLine("ProGPU WPF SDK switch runtime smoke succeeded.");
@@ -92,12 +105,35 @@ internal static class Program
 
     private static void RequireOutputRuntimeAssets(string appOutputRoot)
     {
-        foreach (string assemblyName in RequiredWpfRuntimeAssemblies.Concat(ProGpuRuntimeAssemblies).Concat(SupportPackageRuntimeAssemblies))
+        foreach (string assemblyName in RequiredWpfRuntimeAssemblies.Concat(ProGpuRuntimeAssemblies).Concat(SilkNetRuntimeAssemblies).Concat(SupportPackageRuntimeAssemblies))
         {
             RequireFile(
                 Path.Combine(appOutputRoot, assemblyName + ".dll"),
                 $"SDK switch output runtime asset '{assemblyName}.dll'");
         }
+
+        RequireAnyFile(
+            appOutputRoot,
+            GetNativeAssetCandidates("wgpu"),
+            "SDK switch output native WebGPU runtime asset");
+        RequireAnyFile(
+            appOutputRoot,
+            GetNativeAssetCandidates("glfw"),
+            "SDK switch output native GLFW runtime asset");
+    }
+
+    private static string[] GetNativeAssetCandidates(string assetName)
+    {
+        return assetName switch
+        {
+            "wgpu" when OperatingSystem.IsWindows() => ["wgpu_native.dll"],
+            "wgpu" when OperatingSystem.IsMacOS() => ["libwgpu_native.dylib"],
+            "wgpu" => ["libwgpu_native.so"],
+            "glfw" when OperatingSystem.IsWindows() => ["glfw3.dll"],
+            "glfw" when OperatingSystem.IsMacOS() => ["libglfw.3.dylib"],
+            "glfw" => ["libglfw.so.3"],
+            _ => throw new ArgumentOutOfRangeException(nameof(assetName), assetName, null)
+        };
     }
 
     private static void RunObjectGraphSmoke(SmokeInputs inputs)
@@ -117,6 +153,33 @@ internal static class Program
         finally
         {
             TryInvoke(app, "Shutdown");
+        }
+    }
+
+    private static void RunSdkPortableBootstrapSmoke(SmokeInputs inputs)
+    {
+        using var loadContext = CreateLoadContext(inputs);
+        Assembly smokeAssembly = loadContext.LoadFromAssemblyPath(inputs.SmokeAssemblyPath);
+        Type bootstrapType = smokeAssembly.GetType(
+            "ProGPU.Wpf.Sdk.ProGpuWpfSdkPortableBootstrap",
+            throwOnError: true)!;
+
+        RuntimeHelpers.RunModuleConstructor(smokeAssembly.ManifestModule.ModuleHandle);
+
+        Assembly presentationFramework = loadContext.LoadFromAssemblyName(new AssemblyName("PresentationFramework"));
+        Type activationServiceType = GetRequiredType(presentationFramework, PortableWindowActivationServiceTypeName);
+        try
+        {
+            AssertEqual(true, GetStaticProperty(activationServiceType, "IsEnabled"), "SDK portable bootstrap activation enabled");
+            AssertEqual(
+                true,
+                loadContext.Assemblies.Any(assembly => string.Equals(assembly.GetName().Name, "ProGPU.Wpf", StringComparison.Ordinal)),
+                "SDK portable bootstrap loaded ProGPU.Wpf");
+            AssertEqual("ProGPU.Wpf.Sdk", bootstrapType.Namespace ?? string.Empty, "SDK portable bootstrap namespace");
+        }
+        finally
+        {
+            ClearPortableActivation(activationServiceType);
         }
     }
 
@@ -505,6 +568,20 @@ internal static class Program
         {
             throw new FileNotFoundException($"{description} was not found.", path);
         }
+    }
+
+    private static void RequireAnyFile(string root, IReadOnlyList<string> fileNames, string description)
+    {
+        foreach (string fileName in fileNames)
+        {
+            if (Directory.EnumerateFiles(root, fileName, SearchOption.AllDirectories).Any())
+            {
+                return;
+            }
+        }
+
+        throw new FileNotFoundException(
+            $"{description} was not found under '{root}'. Expected one of: {string.Join(", ", fileNames)}.");
     }
 
     private static void RequireDirectory(string path, string description)

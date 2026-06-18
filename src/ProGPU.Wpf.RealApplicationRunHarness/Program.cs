@@ -63,6 +63,7 @@ internal static class Program
             ValidateLooseXamlWriterSystemResourceKeyRoundTrip(presentationFramework);
             ValidateLooseXamlWriterStyleRoundTrip(presentationFramework);
             ValidateLooseXamlWriterControlTemplateRoundTrip(presentationFramework);
+            ValidateLooseXamlWriterDataTemplateRoundTrip(presentationFramework);
             ValidateLooseXamlWriterFrameworkElementRoundTrip(presentationFramework);
             ValidateLooseXamlWriterFlowDocumentRoundTrip(presentationFramework);
             ValidateApplication(application);
@@ -415,6 +416,79 @@ internal static class Program
         object templateContent = Invoke(template, "FindName", "TemplateContent", button);
         AssertType(templateBorder, "System.Windows.Controls.Border", "loose XamlWriter round-trip applied ControlTemplate border");
         AssertType(templateContent, "System.Windows.Controls.ContentPresenter", "loose XamlWriter round-trip applied ControlTemplate content presenter");
+    }
+
+    private static void ValidateLooseXamlWriterDataTemplateRoundTrip(Assembly presentationFramework)
+    {
+        const string templateDictionaryXaml = """
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <DataTemplate x:Key="WriterDataTemplate">
+        <StackPanel
+            x:Name="TemplateRoot"
+            Tag="writer data template root">
+            <TextBlock
+                x:Name="TemplateNameText"
+                Text="{Binding Name}" />
+            <TextBlock
+                x:Name="TemplateCategoryText"
+                Text="{Binding Category}" />
+        </StackPanel>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                <Setter TargetName="TemplateNameText" Property="Tag" Value="active template item" />
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+</ResourceDictionary>
+""";
+
+        object dictionary = ParseLooseXaml(presentationFramework, templateDictionaryXaml);
+        object parsedTemplate = GetDictionaryValue(dictionary, "WriterDataTemplate");
+        AssertType(parsedTemplate, "System.Windows.DataTemplate", "loose XamlReader DataTemplate");
+        object parsedTemplateRoot = Invoke(parsedTemplate, "LoadContent");
+        AssertType(parsedTemplateRoot, "System.Windows.Controls.StackPanel", "loose XamlReader DataTemplate root");
+        object parsedTemplateChildren = GetProperty(parsedTemplateRoot, "Children");
+        AssertCollectionCount(parsedTemplateChildren, expected: 2, "loose XamlReader DataTemplate children");
+        AssertBindingPath(GetCollectionItem(parsedTemplateChildren, 0), "TextProperty", "Name", "loose XamlReader DataTemplate name binding path");
+        AssertBindingPath(GetCollectionItem(parsedTemplateChildren, 1), "TextProperty", "Category", "loose XamlReader DataTemplate category binding path");
+
+        string serialized = SaveLooseXaml(presentationFramework, dictionary);
+        AssertContains("DataTemplate", serialized, "loose XamlWriter serialized DataTemplate");
+        AssertContains("WriterDataTemplate", serialized, "loose XamlWriter serialized DataTemplate key");
+        AssertContains("TextBlock", serialized, "loose XamlWriter serialized DataTemplate TextBlock");
+        AssertContains("DataTemplate.Triggers", serialized, "loose XamlWriter serialized DataTemplate triggers");
+
+        object roundTrippedDictionary = ParseLooseXaml(presentationFramework, serialized);
+        object template = GetDictionaryValue(roundTrippedDictionary, "WriterDataTemplate");
+        AssertType(template, "System.Windows.DataTemplate", "loose XamlWriter round-trip DataTemplate");
+
+        object triggers = GetProperty(template, "Triggers");
+        AssertCollectionCount(triggers, expected: 1, "loose XamlWriter round-trip DataTemplate triggers");
+        object trigger = GetCollectionItem(triggers, 0);
+        AssertType(trigger, "System.Windows.DataTrigger", "loose XamlWriter round-trip DataTemplate trigger");
+        AssertBindingObjectPath(GetProperty(trigger, "Binding"), "IsActive", "loose XamlWriter round-trip DataTemplate trigger binding path");
+        AssertEqual("True", GetProperty(trigger, "Value").ToString(), "loose XamlWriter round-trip DataTemplate trigger value");
+        object setters = GetProperty(trigger, "Setters");
+        AssertCollectionCount(setters, expected: 1, "loose XamlWriter round-trip DataTemplate trigger setters");
+        object setter = GetCollectionItem(setters, 0);
+        AssertLooseStyleSetter(setter, "Tag", "active template item", "DataTemplate trigger Tag setter");
+        AssertEqual("TemplateNameText", GetProperty(setter, "TargetName"), "loose XamlWriter round-trip DataTemplate trigger setter target");
+
+        object templateRoot = Invoke(template, "LoadContent");
+        AssertType(templateRoot, "System.Windows.Controls.StackPanel", "loose XamlWriter round-trip DataTemplate root");
+        AssertEqual("TemplateRoot", GetProperty(templateRoot, "Name"), "loose XamlWriter round-trip DataTemplate root name");
+        AssertEqual("writer data template root", GetProperty(templateRoot, "Tag"), "loose XamlWriter round-trip DataTemplate root tag");
+
+        object children = GetProperty(templateRoot, "Children");
+        AssertCollectionCount(children, expected: 2, "loose XamlWriter round-trip DataTemplate children");
+        object nameText = GetCollectionItem(children, 0);
+        object categoryText = GetCollectionItem(children, 1);
+        AssertType(nameText, "System.Windows.Controls.TextBlock", "loose XamlWriter round-trip DataTemplate name TextBlock");
+        AssertType(categoryText, "System.Windows.Controls.TextBlock", "loose XamlWriter round-trip DataTemplate category TextBlock");
+        AssertEqual("TemplateNameText", GetProperty(nameText, "Name"), "loose XamlWriter round-trip DataTemplate name TextBlock name");
+        AssertEqual("TemplateCategoryText", GetProperty(categoryText, "Name"), "loose XamlWriter round-trip DataTemplate category TextBlock name");
     }
 
     private static void ValidateLooseXamlWriterFrameworkElementRoundTrip(Assembly presentationFramework)

@@ -1020,7 +1020,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 87, "stack panel children");
+        AssertCollectionCount(children, expected: 88, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -1062,6 +1062,7 @@ internal static class Program
         ValidateStoryboardEventTrigger(window);
         ValidateMarkupExtension(window);
         ValidateMergedResourceDictionary(window, application);
+        ValidateScopedResourceLookup(window, application);
         ValidateUnsharedResource(window, application);
         ValidateNestedUserControl(window);
         ValidateReadOnlyGridCollectionsAndAttachedProperties(window);
@@ -2531,6 +2532,47 @@ internal static class Program
         AssertSame(componentResourceBrush, GetProperty(componentResourceBlock, "Foreground"), "compiled ComponentResourceKey foreground");
         AssertSame(componentResourceBrush, Invoke(application, "TryFindResource", componentResourceKey), "compiled ComponentResourceKey application lookup");
         AssertEqual("#FF2F6B54", GetProperty(GetProperty(componentResourceBlock, "Foreground"), "Color").ToString(), "compiled ComponentResourceKey brush color");
+    }
+
+    private static void ValidateScopedResourceLookup(object window, object application)
+    {
+        object rootPanel = GetField(window, "SmokeRootPanel");
+        object rootResources = GetProperty(rootPanel, "Resources");
+        object scopedBrush = GetDictionaryValue(rootResources, "ScopedAccentBrush");
+        object scopedMargin = GetDictionaryValue(rootResources, "ScopedBlockMargin");
+
+        object scopedResourceBlock = GetField(window, "ScopedResourceBlock");
+        AssertType(scopedResourceBlock, "System.Windows.Controls.TextBlock", "compiled scoped-resource TextBlock");
+        AssertEqual("compiled scoped resource", GetProperty(scopedResourceBlock, "Text"), "compiled scoped-resource TextBlock text");
+        AssertSame(scopedBrush, GetProperty(scopedResourceBlock, "Foreground"), "compiled scoped-resource foreground");
+        AssertSame(scopedBrush, Invoke(rootPanel, "FindResource", "ScopedAccentBrush"), "compiled root-panel FindResource scoped brush");
+        AssertSame(scopedBrush, Invoke(scopedResourceBlock, "FindResource", "ScopedAccentBrush"), "compiled child FindResource scoped brush");
+        AssertSame(scopedBrush, InvokeNullable(scopedResourceBlock, "TryFindResource", "ScopedAccentBrush")!, "compiled child TryFindResource scoped brush");
+        AssertEqual("#FF6B4E9B", GetProperty(scopedBrush, "Color").ToString(), "compiled scoped-resource brush color");
+
+        object actualMargin = GetProperty(scopedResourceBlock, "Margin");
+        AssertEqual(GetProperty(scopedMargin, "Left"), GetProperty(actualMargin, "Left"), "compiled scoped-resource margin left");
+        AssertEqual(GetProperty(scopedMargin, "Top"), GetProperty(actualMargin, "Top"), "compiled scoped-resource margin top");
+        AssertEqual(GetProperty(scopedMargin, "Right"), GetProperty(actualMargin, "Right"), "compiled scoped-resource margin right");
+        AssertEqual(GetProperty(scopedMargin, "Bottom"), GetProperty(actualMargin, "Bottom"), "compiled scoped-resource margin bottom");
+
+        object applicationBrush = Invoke(application, "FindResource", "AccentBrush");
+        AssertSame(applicationBrush, Invoke(scopedResourceBlock, "FindResource", "AccentBrush"), "compiled child FindResource application fallback");
+        AssertSame(applicationBrush, InvokeNullable(scopedResourceBlock, "TryFindResource", "AccentBrush")!, "compiled child TryFindResource application fallback");
+        AssertEqual(null, InvokeNullable(scopedResourceBlock, "TryFindResource", "DefinitelyMissingResource"), "compiled child TryFindResource missing resource");
+
+        try
+        {
+            Invoke(scopedResourceBlock, "FindResource", "DefinitelyMissingResource");
+            throw new InvalidOperationException("Expected missing FindResource lookup to throw.");
+        }
+        catch (TargetInvocationException ex)
+            when (string.Equals(
+                ex.InnerException?.GetType().FullName,
+                "System.Windows.ResourceReferenceKeyNotFoundException",
+                StringComparison.Ordinal))
+        {
+        }
     }
 
     private static void ValidateUnsharedResource(object window, object application)

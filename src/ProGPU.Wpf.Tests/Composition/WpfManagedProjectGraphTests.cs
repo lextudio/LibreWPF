@@ -1352,9 +1352,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("To=\"0.64\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MarkupExtensionBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{local:SmokeText Prefix=compiled, Value=markup}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("StackPanel.Resources", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SolidColorBrush x:Key=\"ScopedAccentBrush\" Color=\"#6B4E9B\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Thickness x:Key=\"ScopedBlockMargin\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MergedResourceBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Foreground=\"{StaticResource MergedAccentBrush}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Margin=\"{StaticResource MergedBlockMargin}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ScopedResourceBlock\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Foreground=\"{StaticResource ScopedAccentBrush}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Margin=\"{StaticResource ScopedBlockMargin}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"compiled scoped resource\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ComponentResourceBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Foreground=\"{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type local:MainWindow}, ResourceId=SmokeComponentAccentBrush}}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"compiled component resource\"", mainWindowXaml, StringComparison.Ordinal);
@@ -2122,6 +2129,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled Freezable current-value clone opacity", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetProperty(resources, \"MergedDictionaries\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindResource\", \"MergedAccentBrush\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateScopedResourceLookup(window, application)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetDictionaryValue(rootResources, \"ScopedAccentBrush\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled child FindResource scoped brush", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled child TryFindResource application fallback", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.ResourceReferenceKeyNotFoundException", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(resources, \"SmokeTextBoxStyle\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(resources, \"BasedOnTextBoxStyle\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TextBox BasedOn style", harnessProgram, StringComparison.Ordinal);

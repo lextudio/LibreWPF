@@ -183,6 +183,10 @@
         x:Name="SmokeRootPanel"
         Margin="16"
         primitives:Thumb.DragDelta="OnBubbledThumbDragDelta">
+        <StackPanel.Resources>
+            <SolidColorBrush x:Key="ScopedAccentBrush" Color="#6B4E9B" />
+            <Thickness x:Key="ScopedBlockMargin">0,6,0,0</Thickness>
+        </StackPanel.Resources>
         <TextBlock
             x:Name="MouseBindingSurface"
             FontSize="18"
@@ -761,6 +765,11 @@
             Foreground="{StaticResource MergedAccentBrush}"
             Margin="{StaticResource MergedBlockMargin}"
             Text="compiled merged resource" />
+        <TextBlock
+            x:Name="ScopedResourceBlock"
+            Foreground="{StaticResource ScopedAccentBrush}"
+            Margin="{StaticResource ScopedBlockMargin}"
+            Text="compiled scoped resource" />
         <TextBlock
             x:Name="ComponentResourceBlock"
             Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type local:MainWindow}, ResourceId=SmokeComponentAccentBrush}}"

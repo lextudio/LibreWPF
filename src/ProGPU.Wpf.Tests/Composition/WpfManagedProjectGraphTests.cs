@@ -1693,6 +1693,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("local:SmokeDependencyPropertyControl", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"DependencyPropertyTarget\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CoercedLevel=\"15\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"CustomRoutedEventScopePanel\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("local:SmokeRoutedEventSource.SmokeBubbled=\"OnCustomRoutedEventScope\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("local:SmokeRoutedEventSource", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"CustomRoutedEventSource\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SmokeBubbled=\"OnCustomRoutedEventSource\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"AccessKeyFocusScope\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("FocusManager.IsFocusScope=\"True\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("FocusManager.FocusedElement=\"{Binding ElementName=AccessTargetBox}\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1765,6 +1770,24 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DependencyProperty.Register(", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private static object CoerceLevel(DependencyObject dependencyObject, object baseValue)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("control.CoercedLevelChangedCount++", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public delegate void SmokeRoutedEventHandler(object sender, SmokeRoutedEventArgs e)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokeRoutedEventArgs : RoutedEventArgs", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public string Payload { get; }", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokeRoutedEventSource : Control", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("EventManager.RegisterRoutedEvent(", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RoutingStrategy.Bubble", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public event SmokeRoutedEventHandler SmokeBubbled", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AddHandler(SmokeBubbledEvent, value)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RemoveHandler(SmokeBubbledEvent, value)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public SmokeRoutedEventArgs RaiseSmokeBubbled(string payload)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RaiseEvent(args)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int CustomRoutedEventSourceCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int CustomRoutedEventScopeCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnCustomRoutedEventSource(object sender, SmokeRoutedEventArgs e)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnCustomRoutedEventScope(object sender, SmokeRoutedEventArgs e)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastCustomRoutedEventScopeOriginalSourceName = DescribeElementName(e.OriginalSource)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastCustomRoutedEventScopePayload = e.Payload", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("e.Handled = true", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnSmokeCommandCanExecute", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnSmokeCommandExecuted", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RoutedCommandExecutionCount++", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -2485,6 +2508,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled inherited attached property target value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled inherited attached property local precedence", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled coerced dependency property minimum value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateCustomRoutedEvent(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled custom routed event source", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled custom routed event final handled state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled custom routed event source original source", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled custom routed event scope sender", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled custom routed event scope handled state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateAccessKeyFocusScope(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowAccessKeyFocusScope(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled alternate access-key target TextBox", harnessProgram, StringComparison.Ordinal);
@@ -3227,6 +3256,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled inherited attached property target value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled inherited attached property local precedence", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled coerced dependency property minimum value", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateCustomRoutedEvent(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled custom routed event source", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled custom routed event final handled state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled custom routed event source original source", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled custom routed event scope sender", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled custom routed event scope handled state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateAccessKeyFocusScope(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowAccessKeyFocusScope(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled alternate access-key target TextBox", harnessProgram, StringComparison.Ordinal);
@@ -3964,6 +3999,15 @@ public sealed class WpfManagedProjectGraphTests
             "System",
             "Windows",
             "SystemResources.cs"));
+        var xamlReader = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Markup",
+            "XamlReader.cs"));
         var systemParameters = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4158,6 +4202,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetPortableActiveSource()", accessKeyManager, StringComparison.Ordinal);
         AssertGuardBefore(systemResources, "if (!OperatingSystem.IsWindows())", "new HwndWrapper(");
         AssertGuardBefore(systemResources, "if (OperatingSystem.IsWindows())", "XamlAccessLevel.AssemblyAccessTo(assembly)");
+        AssertGuardBefore(xamlReader, "if (internalTypeHelper != null && OperatingSystem.IsWindows())", "XamlAccessLevel.AssemblyAccessTo(streamInfo.Assembly)");
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETFOCUSBORDERWIDTH");
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETFOCUSBORDERHEIGHT");
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETHIGHCONTRAST");

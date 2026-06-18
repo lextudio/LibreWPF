@@ -116,6 +116,30 @@ public partial class MainWindow : Window
 
     public double LastBubbledThumbDragDeltaVerticalChange { get; private set; }
 
+    public int CustomRoutedEventSourceCount { get; private set; }
+
+    public int CustomRoutedEventScopeCount { get; private set; }
+
+    public string? LastCustomRoutedEventSourceSenderName { get; private set; }
+
+    public string? LastCustomRoutedEventSourceOriginalSourceName { get; private set; }
+
+    public string? LastCustomRoutedEventSourceRoutedEventName { get; private set; }
+
+    public bool LastCustomRoutedEventSourceHandled { get; private set; }
+
+    public string? LastCustomRoutedEventSourcePayload { get; private set; }
+
+    public string? LastCustomRoutedEventScopeSenderName { get; private set; }
+
+    public string? LastCustomRoutedEventScopeOriginalSourceName { get; private set; }
+
+    public string? LastCustomRoutedEventScopeRoutedEventName { get; private set; }
+
+    public bool LastCustomRoutedEventScopeHandled { get; private set; }
+
+    public string? LastCustomRoutedEventScopePayload { get; private set; }
+
     public int DocumentLinkRequestNavigateCount { get; private set; }
 
     public string? LastDocumentLinkRequestNavigateSenderName { get; private set; }
@@ -435,6 +459,27 @@ public partial class MainWindow : Window
         LastBubbledThumbDragDeltaRoutedEventName = e.RoutedEvent?.Name;
         LastBubbledThumbDragDeltaHorizontalChange = e.HorizontalChange;
         LastBubbledThumbDragDeltaVerticalChange = e.VerticalChange;
+    }
+
+    private void OnCustomRoutedEventSource(object sender, SmokeRoutedEventArgs e)
+    {
+        CustomRoutedEventSourceCount++;
+        LastCustomRoutedEventSourceSenderName = DescribeElementName(sender);
+        LastCustomRoutedEventSourceOriginalSourceName = DescribeElementName(e.OriginalSource);
+        LastCustomRoutedEventSourceRoutedEventName = e.RoutedEvent?.Name;
+        LastCustomRoutedEventSourceHandled = e.Handled;
+        LastCustomRoutedEventSourcePayload = e.Payload;
+    }
+
+    private void OnCustomRoutedEventScope(object sender, SmokeRoutedEventArgs e)
+    {
+        CustomRoutedEventScopeCount++;
+        LastCustomRoutedEventScopeSenderName = DescribeElementName(sender);
+        LastCustomRoutedEventScopeOriginalSourceName = DescribeElementName(e.OriginalSource);
+        LastCustomRoutedEventScopeRoutedEventName = e.RoutedEvent?.Name;
+        LastCustomRoutedEventScopeHandled = e.Handled;
+        LastCustomRoutedEventScopePayload = e.Payload;
+        e.Handled = true;
     }
 
     private void OnDocumentLinkRequestNavigate(object sender, RequestNavigateEventArgs e)
@@ -1110,6 +1155,41 @@ public sealed class SmokeClassCommandTextBox : TextBox
             target.LastClassCommandParameter = e.Parameter;
             e.Handled = true;
         }
+    }
+}
+
+public delegate void SmokeRoutedEventHandler(object sender, SmokeRoutedEventArgs e);
+
+public sealed class SmokeRoutedEventArgs : RoutedEventArgs
+{
+    public SmokeRoutedEventArgs(RoutedEvent routedEvent, object source, string payload)
+        : base(routedEvent, source)
+    {
+        Payload = payload;
+    }
+
+    public string Payload { get; }
+}
+
+public sealed class SmokeRoutedEventSource : Control
+{
+    public static readonly RoutedEvent SmokeBubbledEvent = EventManager.RegisterRoutedEvent(
+        "SmokeBubbled",
+        RoutingStrategy.Bubble,
+        typeof(SmokeRoutedEventHandler),
+        typeof(SmokeRoutedEventSource));
+
+    public event SmokeRoutedEventHandler SmokeBubbled
+    {
+        add => AddHandler(SmokeBubbledEvent, value);
+        remove => RemoveHandler(SmokeBubbledEvent, value);
+    }
+
+    public SmokeRoutedEventArgs RaiseSmokeBubbled(string payload)
+    {
+        var args = new SmokeRoutedEventArgs(SmokeBubbledEvent, this, payload);
+        RaiseEvent(args);
+        return args;
     }
 }
 

@@ -1084,7 +1084,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 85, "stack panel children");
+        AssertCollectionCount(children, expected: 86, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -1160,6 +1160,7 @@ internal static class Program
         ValidateSectionControls(window);
         ValidateAdornerDecorator(window);
         ValidateDependencyPropertyCore(window);
+        ValidateCustomRoutedEvent(window);
         ValidateAccessKeyFocusScope(presentationCore, window);
         ValidateNavigationFrame(window);
     }
@@ -5501,6 +5502,36 @@ internal static class Program
         AssertEqual(3, GetProperty(target, "CoercedLevelChangedCount"), "compiled coerced dependency property mid change count");
         AssertEqual(0, GetProperty(target, "LastOldCoercedLevel"), "compiled coerced dependency property mid old value");
         AssertEqual(7, GetProperty(target, "LastNewCoercedLevel"), "compiled coerced dependency property mid new value");
+    }
+
+    private static void ValidateCustomRoutedEvent(object window)
+    {
+        object scope = GetField(window, "CustomRoutedEventScopePanel");
+        AssertType(scope, "System.Windows.Controls.StackPanel", "compiled custom routed event scope panel");
+        AssertEqual(1, GetProperty(GetProperty(scope, "Children"), "Count"), "compiled custom routed event scope child count");
+
+        object source = GetField(window, "CustomRoutedEventSource");
+        AssertType(source, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeRoutedEventSource", "compiled custom routed event source");
+        AssertSame(source, GetCollectionItem(GetProperty(scope, "Children"), 0), "compiled custom routed event scope child");
+        AssertEqual(0, GetProperty(window, "CustomRoutedEventSourceCount"), "compiled custom routed event source initial count");
+        AssertEqual(0, GetProperty(window, "CustomRoutedEventScopeCount"), "compiled custom routed event scope initial count");
+
+        object args = Invoke(source, "RaiseSmokeBubbled", "compiled routed payload");
+        AssertType(args, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeRoutedEventArgs", "compiled custom routed event args");
+        AssertEqual("compiled routed payload", GetProperty(args, "Payload"), "compiled custom routed event payload");
+        AssertEqual(true, GetProperty(args, "Handled"), "compiled custom routed event final handled state");
+        AssertEqual(1, GetProperty(window, "CustomRoutedEventSourceCount"), "compiled custom routed event source count");
+        AssertEqual(1, GetProperty(window, "CustomRoutedEventScopeCount"), "compiled custom routed event scope count");
+        AssertEqual("CustomRoutedEventSource", GetProperty(window, "LastCustomRoutedEventSourceSenderName"), "compiled custom routed event source sender");
+        AssertEqual("CustomRoutedEventSource", GetProperty(window, "LastCustomRoutedEventSourceOriginalSourceName"), "compiled custom routed event source original source");
+        AssertEqual("SmokeBubbled", GetProperty(window, "LastCustomRoutedEventSourceRoutedEventName"), "compiled custom routed event source routed event");
+        AssertEqual(false, GetProperty(window, "LastCustomRoutedEventSourceHandled"), "compiled custom routed event source handled state");
+        AssertEqual("compiled routed payload", GetProperty(window, "LastCustomRoutedEventSourcePayload"), "compiled custom routed event source payload");
+        AssertEqual("CustomRoutedEventScopePanel", GetProperty(window, "LastCustomRoutedEventScopeSenderName"), "compiled custom routed event scope sender");
+        AssertEqual("CustomRoutedEventSource", GetProperty(window, "LastCustomRoutedEventScopeOriginalSourceName"), "compiled custom routed event scope original source");
+        AssertEqual("SmokeBubbled", GetProperty(window, "LastCustomRoutedEventScopeRoutedEventName"), "compiled custom routed event scope routed event");
+        AssertEqual(false, GetProperty(window, "LastCustomRoutedEventScopeHandled"), "compiled custom routed event scope handled state");
+        AssertEqual("compiled routed payload", GetProperty(window, "LastCustomRoutedEventScopePayload"), "compiled custom routed event scope payload");
     }
 
     private static void ValidatePostShowAccessKeyFocusScope(Assembly presentationCore, object window)

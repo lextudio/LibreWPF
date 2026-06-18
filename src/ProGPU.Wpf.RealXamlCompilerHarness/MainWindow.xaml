@@ -862,6 +862,25 @@
                 </GridView>
             </ListView.View>
         </ListView>
+        <DataGrid
+            x:Name="ItemsDataGrid"
+            Margin="0,8,0,0"
+            AutoGenerateColumns="False"
+            CanUserAddRows="False"
+            GridLinesVisibility="Horizontal"
+            HeadersVisibility="Column"
+            IsReadOnly="True"
+            ItemsSource="{Binding Items}"
+            SelectedItem="{Binding SelectedItem, Mode=TwoWay}">
+            <DataGrid.Columns>
+                <DataGridTextColumn
+                    Binding="{Binding Name}"
+                    Header="Name" />
+                <DataGridTextColumn
+                    Binding="{Binding Category}"
+                    Header="Category" />
+            </DataGrid.Columns>
+        </DataGrid>
         <TreeView
             x:Name="NodeTree"
             Margin="0,8,0,0"

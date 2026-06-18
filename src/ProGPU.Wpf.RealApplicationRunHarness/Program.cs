@@ -153,7 +153,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 63, "stack panel children");
+        AssertCollectionCount(children, expected: 64, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -217,6 +217,7 @@ internal static class Program
         ValidateComboBox(window);
         ValidateSelectorSelectionChangedEvents(window);
         ValidateListViewGridView(window);
+        ValidateDataGrid(window);
         ValidateImplicitDataTemplate(window);
         ValidateContentTemplateSelector(window);
         ValidateHierarchicalDataTemplate(window);
@@ -2363,6 +2364,41 @@ internal static class Program
 
         AssertSame(GetCollectionItem(sourceItems, 0), GetProperty(listView, "SelectedItem"), "compiled GridView ListView selected item after index update");
         AssertEqual(0, GetProperty(listView, "SelectedIndex"), "compiled GridView ListView selected index after update");
+    }
+
+    private static void ValidateDataGrid(object window)
+    {
+        object dataContext = GetProperty(window, "DataContext");
+        object sourceItems = GetProperty(dataContext, "Items");
+
+        object dataGrid = GetField(window, "ItemsDataGrid");
+        AssertType(dataGrid, "System.Windows.Controls.DataGrid", "compiled DataGrid");
+        AssertSame(sourceItems, GetProperty(dataGrid, "ItemsSource"), "compiled DataGrid ItemsSource binding");
+        AssertCollectionCount(GetProperty(dataGrid, "Items"), expected: 3, "compiled DataGrid collection-change items");
+        AssertEqual(false, GetProperty(dataGrid, "AutoGenerateColumns"), "compiled DataGrid auto-generate columns");
+        AssertEqual(false, GetProperty(dataGrid, "CanUserAddRows"), "compiled DataGrid add rows");
+        AssertEqual(true, GetProperty(dataGrid, "IsReadOnly"), "compiled DataGrid read-only state");
+        AssertEqual("Horizontal", GetProperty(dataGrid, "GridLinesVisibility").ToString(), "compiled DataGrid grid-lines visibility");
+        AssertEqual("Column", GetProperty(dataGrid, "HeadersVisibility").ToString(), "compiled DataGrid headers visibility");
+        AssertBindingPath(dataGrid, "SelectedItemProperty", "SelectedItem", "compiled DataGrid SelectedItem binding path");
+        AssertSame(GetCollectionItem(sourceItems, 0), GetProperty(dataGrid, "SelectedItem"), "compiled DataGrid initial selected item");
+
+        object columns = GetProperty(dataGrid, "Columns");
+        AssertCollectionCount(columns, expected: 2, "compiled DataGrid columns");
+        object nameColumn = GetCollectionItem(columns, 0);
+        AssertType(nameColumn, "System.Windows.Controls.DataGridTextColumn", "compiled DataGrid name column");
+        AssertEqual("Name", GetProperty(nameColumn, "Header"), "compiled DataGrid name column header");
+        AssertBindingObjectPath(GetProperty(nameColumn, "Binding"), "Name", "compiled DataGrid name binding path");
+
+        object categoryColumn = GetCollectionItem(columns, 1);
+        AssertType(categoryColumn, "System.Windows.Controls.DataGridTextColumn", "compiled DataGrid category column");
+        AssertEqual("Category", GetProperty(categoryColumn, "Header"), "compiled DataGrid category column header");
+        AssertBindingObjectPath(GetProperty(categoryColumn, "Binding"), "Category", "compiled DataGrid category binding path");
+
+        SetProperty(dataGrid, "SelectedIndex", 1);
+
+        AssertSame(GetCollectionItem(sourceItems, 1), GetProperty(dataGrid, "SelectedItem"), "compiled DataGrid selected item after index update");
+        AssertSame(GetCollectionItem(sourceItems, 1), GetProperty(dataContext, "SelectedItem"), "compiled DataGrid two-way selected item source update");
     }
 
     private static void ValidateImplicitDataTemplate(object window)

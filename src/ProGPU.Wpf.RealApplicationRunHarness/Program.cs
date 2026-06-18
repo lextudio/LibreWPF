@@ -985,7 +985,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 74, "stack panel children");
+        AssertCollectionCount(children, expected: 75, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -3869,6 +3869,21 @@ internal static class Program
         AssertEqual("item beta", GetProperty(GetCollectionItem(sortedItems, 0), "Name"), "compiled CollectionViewSource initial first item");
         AssertEqual("item alpha", GetProperty(GetCollectionItem(sortedItems, 1), "Name"), "compiled CollectionViewSource initial second item");
 
+        object compositeItemsList = GetField(window, "CompositeItemsList");
+        AssertType(compositeItemsList, "System.Windows.Controls.ListBox", "compiled CompositeCollection ListBox");
+        object compositeItemsSource = GetProperty(compositeItemsList, "ItemsSource");
+        AssertType(compositeItemsSource, "System.Windows.Data.CompositeCollection", "compiled CompositeCollection source");
+        object compositeItemsContainer = GetCollectionItem(compositeItemsSource, 1);
+        AssertType(compositeItemsContainer, "System.Windows.Data.CollectionContainer", "compiled CompositeCollection container");
+        object compositeSourceItems = GetProperty(compositeItemsContainer, "Collection");
+        AssertCollectionCount(compositeSourceItems, expected: 2, "compiled CompositeCollection static source items");
+        object compositeItems = GetProperty(compositeItemsList, "Items");
+        AssertCollectionCount(compositeItems, expected: 4, "compiled CompositeCollection initial flattened items");
+        AssertEqual("composite header", GetCollectionItem(compositeItems, 0), "compiled CompositeCollection header item");
+        AssertEqual("item alpha", GetProperty(GetCollectionItem(compositeItems, 1), "Name"), "compiled CompositeCollection initial first collection item");
+        AssertEqual("item beta", GetProperty(GetCollectionItem(compositeItems, 2), "Name"), "compiled CompositeCollection initial second collection item");
+        AssertEqual("composite footer", GetCollectionItem(compositeItems, 3), "compiled CompositeCollection footer item");
+
         object filteredItemsViewSource = Invoke(window, "TryFindResource", "FilteredItemsView");
         AssertType(filteredItemsViewSource, "System.Windows.Data.CollectionViewSource", "compiled filtered CollectionViewSource resource");
         object filteredItemsList = GetField(window, "FilteredItemsList");
@@ -3930,6 +3945,11 @@ internal static class Program
         AssertCollectionCount(GetProperty(itemsList, "Items"), expected: 3, "compiled ListBox collection-change items");
         AssertCollectionCount(sortedItems, expected: 3, "compiled sorted ListBox collection-change items");
         AssertEqual("item gamma", GetProperty(GetCollectionItem(sortedItems, 0), "Name"), "compiled CollectionViewSource collection-change first item");
+        object compositeThirdItem = Create(window.GetType().Assembly, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeItem", "item gamma");
+        AddToCollection(compositeSourceItems, compositeThirdItem);
+        AssertCollectionCount(compositeItems, expected: 5, "compiled CompositeCollection collection-change flattened items");
+        AssertEqual("item gamma", GetProperty(GetCollectionItem(compositeItems, 3), "Name"), "compiled CompositeCollection collection-change appended collection item");
+        AssertEqual("composite footer", GetCollectionItem(compositeItems, 4), "compiled CompositeCollection collection-change footer item");
         AssertCollectionCount(filteredItems, expected: 1, "compiled filtered CollectionViewSource collection-change items");
         AssertEqual("item beta", GetProperty(GetCollectionItem(filteredItems, 0), "Name"), "compiled filtered CollectionViewSource collection-change item");
         groups = GetProperty(groupedItemsView, "Groups");

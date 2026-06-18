@@ -815,6 +815,21 @@ public sealed class ProviderDataFactory
     }
 }
 
+public static class SmokeCompositeItemsProvider
+{
+    public static ObservableCollection<SmokeItem> Items
+    {
+        get
+        {
+            return new ObservableCollection<SmokeItem>
+            {
+                new("item alpha"),
+                new("item beta"),
+            };
+        }
+    }
+}
+
 public sealed class SmokeTextExtension : MarkupExtension
 {
     public string Prefix { get; set; } = string.Empty;

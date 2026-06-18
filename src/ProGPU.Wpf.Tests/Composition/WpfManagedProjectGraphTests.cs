@@ -1271,6 +1271,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"CurrencyItemsList\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("IsSynchronizedWithCurrentItem=\"True\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Source={StaticResource CurrencyItemsView}}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SmokeCompositeItemsProvider.Items", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"CompositeItemsList\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<CompositeCollection>", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CollectionContainer Collection=\"{x:Static local:SmokeCompositeItemsProvider.Items}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("composite header", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("composite footer", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"DisplayMemberItemsList\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DisplayMemberPath=\"Name\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SelectedValuePath=\"Category\"", mainWindowXaml, StringComparison.Ordinal);
@@ -2181,6 +2187,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ListBox current-item synchronization", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource current item after selector selection", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox selected item after current-position move", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CompositeCollection container", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CompositeCollection static source items", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CompositeCollection source", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CompositeCollection initial flattened items", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CompositeCollection collection-change appended collection item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowGroupStyleHeader(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GroupStyle header generated binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(window, \"FindName\", \"InputBox\")", harnessProgram, StringComparison.Ordinal);
@@ -2822,6 +2833,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ListBox current-item synchronization", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource current item after selector selection", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ListBox selected item after current-position move", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CompositeCollection container", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CompositeCollection static source items", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CompositeCollection source", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CompositeCollection initial flattened items", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CompositeCollection collection-change appended collection item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowGroupStyleHeader(_presentationCore, activation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GroupStyle header generated binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("recorder.ValidateAfterRun()", harnessProgram, StringComparison.Ordinal);

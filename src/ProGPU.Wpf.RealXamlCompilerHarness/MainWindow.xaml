@@ -895,6 +895,17 @@
             Margin="0,8,0,0"
             ItemsSource="{Binding Source={StaticResource CurrencyItemsView}}" />
         <ListBox
+            x:Name="CompositeItemsList"
+            Margin="0,8,0,0">
+            <ListBox.ItemsSource>
+                <CompositeCollection>
+                    <sys:String>composite header</sys:String>
+                    <CollectionContainer Collection="{x:Static local:SmokeCompositeItemsProvider.Items}" />
+                    <sys:String>composite footer</sys:String>
+                </CompositeCollection>
+            </ListBox.ItemsSource>
+        </ListBox>
+        <ListBox
             x:Name="DisplayMemberItemsList"
             Margin="0,8,0,0"
             DisplayMemberPath="Name"

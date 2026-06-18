@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <ProjectGuid>{3D5C6752-3B11-4A83-A1F9-238C67B3E6ED}</ProjectGuid>
+    <Platforms>x86;x64;arm64</Platforms>
+    <PlatformIndependentPackage>true</PlatformIndependentPackage>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageName>$(MSBuildProjectName.Replace('.ArchNeutral',''))$(TransportPackageNameSuffix)</PackageName>
+    <AssemblyName>$(PackageName)</AssemblyName>
+    <PackageDescription>ProGPU/Silk.NET SDK for portable WPF applications</PackageDescription>
+    <PackageTags>wpf;progpu;silk.net;msbuild-sdk</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackagingContent Include="Sdk\*" SubFolder="root\Sdk" />
+    <PackagingContent Include="targets\*" SubFolder="root\targets" />
+    <PackagingContent Include="README.md" SubFolder="root" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="Sdk\**\*" Pack="true" PackagePath="Sdk\%(RecursiveDir)" />
+    <None Include="targets\**\*" Pack="true" PackagePath="targets\%(RecursiveDir)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="$(RepoRoot)src/Microsoft.DotNet.Wpf/src/PresentationBuildTasks/PresentationBuildTasks.csproj"
+                      ReferenceOutputAssembly="false"
+                      SkipGetTargetFrameworkProperties="true" />
+  </ItemGroup>
+
+</Project>

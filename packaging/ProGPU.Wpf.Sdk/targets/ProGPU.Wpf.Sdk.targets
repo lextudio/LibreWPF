@@ -1,0 +1,48 @@
+<Project>
+
+  <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'">
+    <FrameworkReference Remove="Microsoft.WindowsDesktop.App.WPF" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'Package'">
+    <PackageReference Include="ProGPU.Wpf" Version="$(ProGpuWpfPackageVersion)" />
+    <PackageReference Include="ProGPU.Backend" Version="$(ProGpuPackageVersion)" />
+    <PackageReference Include="ProGPU.Scene" Version="$(ProGpuPackageVersion)" />
+    <PackageReference Include="ProGPU.Vector" Version="$(ProGpuPackageVersion)" />
+    <PackageReference Include="ProGPU.Text" Version="$(ProGpuPackageVersion)" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'LocalArtifacts' And '$(ProGpuWpfManagedReferenceRoot)' != ''">
+    <Reference Include="WindowsBase" HintPath="$(ProGpuWpfManagedReferenceRoot)WindowsBase.dll" Private="true" />
+    <Reference Include="System.Xaml" HintPath="$(ProGpuWpfManagedReferenceRoot)System.Xaml.dll" Private="true" />
+    <Reference Include="PresentationCore" HintPath="$(ProGpuWpfManagedReferenceRoot)PresentationCore.dll" Private="true" />
+    <Reference Include="PresentationFramework" HintPath="$(ProGpuWpfManagedReferenceRoot)PresentationFramework.dll" Private="true" />
+    <Reference Include="PresentationUI" HintPath="$(ProGpuWpfManagedReferenceRoot)PresentationUI.dll" Private="true" />
+    <Reference Include="ReachFramework" HintPath="$(ProGpuWpfManagedReferenceRoot)ReachFramework.dll" Private="true" />
+    <Reference Include="System.Printing" HintPath="$(ProGpuWpfManagedReferenceRoot)System.Printing.dll" Private="true" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'LocalArtifacts' And '$(ProGpuReferenceRoot)' != ''">
+    <Reference Include="ProGPU.Wpf" HintPath="$(ProGpuReferenceRoot)ProGPU.Wpf.dll" Private="true" />
+    <Reference Include="ProGPU.Backend" HintPath="$(ProGpuReferenceRoot)ProGPU.Backend.dll" Private="true" />
+    <Reference Include="ProGPU.Scene" HintPath="$(ProGpuReferenceRoot)ProGPU.Scene.dll" Private="true" />
+    <Reference Include="ProGPU.Vector" HintPath="$(ProGpuReferenceRoot)ProGPU.Vector.dll" Private="true" />
+    <Reference Include="ProGPU.Text" HintPath="$(ProGpuReferenceRoot)ProGPU.Text.dll" Private="true" />
+  </ItemGroup>
+
+  <Target Name="_ProGpuWpfSdkValidatePortableReferences"
+          BeforeTargets="ResolveReferences"
+          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'LocalArtifacts'">
+    <Error Condition="'$(ProGpuWpfManagedReferenceRoot)' == ''"
+           Text="ProGPU.Wpf.Sdk local artifact mode requires ProGpuWpfManagedReferenceRoot to point at the ported WPF assembly directory." />
+    <Error Condition="'$(ProGpuReferenceRoot)' == ''"
+           Text="ProGPU.Wpf.Sdk local artifact mode requires ProGpuReferenceRoot to point at the ProGPU assembly directory." />
+  </Target>
+
+  <Target Name="_ProGpuWpfSdkReportConfiguration"
+          BeforeTargets="PrepareForBuild"
+          Condition="'$(ProGpuWpfEnableSdkDiagnostics)' == 'true'">
+    <Message Importance="High" Text="ProGPU.Wpf.Sdk platform=$(ProGpuWpfPlatform) backend=$(ProGpuWpfRenderingBackend) referenceMode=$(ProGpuWpfReferenceMode)" />
+  </Target>
+
+</Project>

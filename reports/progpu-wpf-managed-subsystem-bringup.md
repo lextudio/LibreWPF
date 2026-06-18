@@ -53,9 +53,11 @@ The product target is a custom SDK-style distribution, not a source-edit migrati
 
 This SDK target depends on the same reuse boundary as the port itself: keep `System.Xaml`, `PresentationBuildTasks`, `PresentationCore`, `PresentationFramework`, controls, resources, styles/templates, themes, and XAML/BAML managers on WPF code paths, and package only the platform/rendering substitutions behind MSBuild properties, assembly references, runtime identifiers, and native assets.
 
+The first package skeleton now lives under `packaging/ProGPU.Wpf.Sdk`. It produces an MSBuild SDK package layout with `Sdk/Sdk.props`, `Sdk/Sdk.targets`, and `targets/ProGPU.Wpf.Sdk.*`; it layers on the existing WindowsDesktop SDK so WPF markup compilation remains the real `PresentationBuildTasks` path, defaults `UseWPF=true`, declares Silk.NET/ProGPU platform properties, removes the WindowsDesktop WPF framework reference in portable mode, and provides package-reference plus local-artifact extension points for the ported WPF and ProGPU assemblies. The package now packs as an `MSBuildSdk` nupkg with verified root readme, `Sdk/`, and `targets/` contents. The next packaging gate is a small SDK-switch smoke app that uses `Sdk="ProGPU.Wpf.Sdk"` and validates that existing `App.xaml`/`Page` items compile and run without hand-written project references.
+
 ## Current Full-App Status
 
-The branch can run focused real-WPF smoke applications and harnesses through compiled XAML/BAML, `Application.Run()`, portable Silk.NET activation, and ProGPU rendering slices. It is not yet a drop-in runner for arbitrary full WPF applications. Full app delivery still needs the custom SDK packaging layer, broader platform service coverage, more complete text/IME/stylus/drag-drop/windowing behavior, deeper MediaContext/render scheduling, dirty-region/invalidation policy, wider theme/control coverage, and remaining ProGPU-native text/vector/image/effect fidelity work.
+The branch can run focused real-WPF smoke applications and harnesses through compiled XAML/BAML, `Application.Run()`, portable Silk.NET activation, and ProGPU rendering slices. It is not yet a drop-in runner for arbitrary full WPF applications. Full app delivery still needs the SDK-switch smoke app, runtime asset wiring, broader platform service coverage, more complete text/IME/stylus/drag-drop/windowing behavior, deeper MediaContext/render scheduling, dirty-region/invalidation policy, wider theme/control coverage, and remaining ProGPU-native text/vector/image/effect fidelity work.
 
 ## Current Checked Gate
 

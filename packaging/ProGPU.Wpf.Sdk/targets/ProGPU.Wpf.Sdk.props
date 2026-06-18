@@ -1,0 +1,11 @@
+<Project>
+
+  <PropertyGroup>
+    <DefaultXamlRuntime Condition="'$(DefaultXamlRuntime)' == ''">Wpf</DefaultXamlRuntime>
+    <ProGpuWpfUsePortableFrameworkReferences Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == ''">true</ProGpuWpfUsePortableFrameworkReferences>
+    <ProGpuWpfEnableSdkDiagnostics Condition="'$(ProGpuWpfEnableSdkDiagnostics)' == ''">false</ProGpuWpfEnableSdkDiagnostics>
+    <ProGpuWpfManagedReferenceRoot Condition="'$(ProGpuWpfManagedReferenceRoot)' != ''">$([MSBuild]::EnsureTrailingSlash('$(ProGpuWpfManagedReferenceRoot)'))</ProGpuWpfManagedReferenceRoot>
+    <ProGpuReferenceRoot Condition="'$(ProGpuReferenceRoot)' != ''">$([MSBuild]::EnsureTrailingSlash('$(ProGpuReferenceRoot)'))</ProGpuReferenceRoot>
+  </PropertyGroup>
+
+</Project>

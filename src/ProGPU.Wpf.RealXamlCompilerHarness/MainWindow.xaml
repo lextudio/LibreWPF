@@ -824,6 +824,12 @@
             CommandParameter="can execute payload"
             Content="can execute command" />
         <Button
+            x:Name="RequeryCommandButton"
+            Margin="0,8,0,0"
+            Command="{Binding RequeryCommand}"
+            CommandParameter="requery payload"
+            Content="requery command" />
+        <Button
             x:Name="RoutedCommandButton"
             Margin="0,8,0,0"
             Command="{x:Static local:MainWindow.SmokeRoutedCommand}"

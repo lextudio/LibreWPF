@@ -784,6 +784,8 @@ public partial class MainWindow : Window
 
         public SmokeToggleCommand ToggleCommand { get; } = new();
 
+        public SmokeRequeryCommand RequeryCommand { get; } = new();
+
         private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -846,6 +848,40 @@ public partial class MainWindow : Window
                 CanExecuteChangedCount++;
                 CanExecuteChanged?.Invoke(this, EventArgs.Empty);
             }
+        }
+    }
+
+    public sealed class SmokeRequeryCommand : ICommand
+    {
+        public bool CanExecuteValue { get; private set; }
+
+        public int CanExecuteCount { get; private set; }
+
+        public int ExecutionCount { get; private set; }
+
+        public object? LastParameter { get; private set; }
+
+        public event EventHandler? CanExecuteChanged
+        {
+            add => CommandManager.RequerySuggested += value;
+            remove => CommandManager.RequerySuggested -= value;
+        }
+
+        public bool CanExecute(object? parameter)
+        {
+            CanExecuteCount++;
+            return CanExecuteValue;
+        }
+
+        public void Execute(object? parameter)
+        {
+            ExecutionCount++;
+            LastParameter = parameter;
+        }
+
+        public void SetCanExecute(bool value)
+        {
+            CanExecuteValue = value;
         }
     }
 }

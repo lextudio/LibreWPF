@@ -81,6 +81,10 @@ internal static class Program
                 out activationServiceType,
                 out activation);
             ValidatePostShowBindingFeatures(window);
+            ValidatePostShowCommandManagerRequery(
+                presentationCore,
+                window,
+                () => FlushDispatcherOperations(activationServiceType, window, "Background"));
             ValidatePostShowLoadedEvent(window);
             ValidatePostShowClickStoryboardEventTrigger(
                 window,
@@ -1041,7 +1045,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 81, "stack panel children");
+        AssertCollectionCount(children, expected: 82, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -1885,6 +1889,44 @@ internal static class Program
         Invoke(toggleCommand, "SetCanExecute", false);
         AssertEqual(false, GetProperty(canExecuteCommandButton, "IsEnabled"), "compiled CanExecute command disabled button state");
         AssertEqual(2, GetProperty(toggleCommand, "CanExecuteChangedCount"), "compiled CanExecute command disabled change count");
+    }
+
+    private static void ValidatePostShowCommandManagerRequery(
+        Assembly presentationCore,
+        object window,
+        Action flushDispatcherOperations)
+    {
+        object dataContext = GetProperty(window, "DataContext");
+        object requeryCommandButton = GetField(window, "RequeryCommandButton");
+        AssertType(requeryCommandButton, "System.Windows.Controls.Button", "compiled CommandManager requery Button");
+        AssertEqual("requery command", GetProperty(requeryCommandButton, "Content"), "compiled CommandManager requery Button content");
+        AssertEqual("requery payload", GetProperty(requeryCommandButton, "CommandParameter"), "compiled CommandManager requery Button parameter");
+
+        object requeryCommand = GetProperty(dataContext, "RequeryCommand");
+        AssertType(requeryCommand, "ProGPU.Wpf.RealXamlCompilerHarness.MainWindow+SmokeRequeryCommand", "compiled CommandManager requery command");
+        AssertSame(requeryCommand, GetProperty(requeryCommandButton, "Command"), "compiled CommandManager RequerySuggested command binding");
+        AssertEqual(false, GetProperty(requeryCommand, "CanExecuteValue"), "compiled CommandManager requery initial state");
+        AssertEqual(false, GetProperty(requeryCommandButton, "IsEnabled"), "compiled CommandManager requery initial button state");
+
+        Type commandManagerType = GetRequiredType(presentationCore, "System.Windows.Input.CommandManager");
+        int initialQueryCount = Convert.ToInt32(GetProperty(requeryCommand, "CanExecuteCount"));
+        Invoke(requeryCommand, "SetCanExecute", true);
+        InvokeStatic(commandManagerType, "InvalidateRequerySuggested");
+        flushDispatcherOperations();
+
+        AssertEqual(true, GetProperty(requeryCommandButton, "IsEnabled"), "compiled CommandManager RequerySuggested enabled button state");
+        AssertAtLeast(initialQueryCount + 1, GetProperty(requeryCommand, "CanExecuteCount"), "compiled CommandManager RequerySuggested enabled query count");
+        Invoke(requeryCommandButton, "OnClick");
+        AssertEqual(1, GetProperty(requeryCommand, "ExecutionCount"), "compiled CommandManager RequerySuggested button execution count");
+        AssertEqual("requery payload", GetProperty(requeryCommand, "LastParameter"), "compiled CommandManager RequerySuggested execution parameter");
+
+        int enabledQueryCount = Convert.ToInt32(GetProperty(requeryCommand, "CanExecuteCount"));
+        Invoke(requeryCommand, "SetCanExecute", false);
+        InvokeStatic(commandManagerType, "InvalidateRequerySuggested");
+        flushDispatcherOperations();
+
+        AssertEqual(false, GetProperty(requeryCommandButton, "IsEnabled"), "compiled CommandManager RequerySuggested disabled button state");
+        AssertAtLeast(enabledQueryCount + 1, GetProperty(requeryCommand, "CanExecuteCount"), "compiled CommandManager RequerySuggested disabled query count");
     }
 
     private static void ValidateAdvancedBindingFeatures(object window)

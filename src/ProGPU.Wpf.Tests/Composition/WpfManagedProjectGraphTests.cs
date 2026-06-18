@@ -1155,6 +1155,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"CanExecuteCommandButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{Binding ToggleCommand}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CommandParameter=\"can execute payload\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"RequeryCommandButton\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{Binding RequeryCommand}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CommandParameter=\"requery payload\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:componentModel=\"clr-namespace:System.ComponentModel;assembly=WindowsBase\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:local=\"clr-namespace:ProGPU.Wpf.RealXamlCompilerHarness\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:primitives=\"clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1570,6 +1573,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public sealed class SmokeToggleCommand : ICommand", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public bool CanExecuteValue { get; private set; }", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public void SetCanExecute(bool value)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public SmokeRequeryCommand RequeryCommand { get; } = new();", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokeRequeryCommand : ICommand", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("CommandManager.RequerySuggested += value", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("CommandManager.RequerySuggested -= value", mainWindowCodeBehind, StringComparison.Ordinal);
 
         Assert.Contains("x:Class=\"ProGPU.Wpf.RealXamlCompilerHarness.SmokeUserControl\"", smokeUserControlXaml, StringComparison.Ordinal);
         Assert.Contains("UserControl.Resources", smokeUserControlXaml, StringComparison.Ordinal);
@@ -1834,6 +1841,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled CanExecute command enabled button state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CanExecute command button execution count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CanExecute command disabled button state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowCommandManagerRequery(", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("() => FlushDispatcherOperations(activationServiceType, window, \"Background\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetField(window, \"RequeryCommandButton\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetProperty(dataContext, \"RequeryCommand\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Input.CommandManager", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("InvalidateRequerySuggested", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CommandManager RequerySuggested enabled button state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CommandManager RequerySuggested button execution count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CommandManager RequerySuggested disabled button state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TextBlock property-change binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Button command binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateAdvancedBindingFeatures(window)", harnessProgram, StringComparison.Ordinal);
@@ -2399,6 +2415,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled CanExecute command enabled button state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CanExecute command button execution count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CanExecute command disabled button state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowCommandManagerRequery(", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("() => FlushDispatcherOperations(typedActivation.Window, \"Background\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetField(window, \"RequeryCommandButton\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetProperty(dataContext, \"RequeryCommand\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Input.CommandManager", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("InvalidateRequerySuggested", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CommandManager RequerySuggested enabled button state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CommandManager RequerySuggested button execution count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CommandManager RequerySuggested disabled button state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TextBlock property-change binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateTextBoxSelection(inputBox)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled TextBox selected text replacement", harnessProgram, StringComparison.Ordinal);

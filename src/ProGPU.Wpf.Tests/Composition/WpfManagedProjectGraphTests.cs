@@ -1643,6 +1643,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("loose XamlWriter serialized ItemsPanelTemplate", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip ItemsPanelTemplate panel name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip ItemsPanelTemplate item width", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseXamlWriterGroupStyleRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter serialized GroupStyle HeaderTemplate", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip GroupStyle HidesIfEmpty", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip GroupStyle header TextBlock name", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip GroupStyle panel orientation", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlWriterFrameworkElementRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter serialized FrameworkElement Button", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip FrameworkElement children", harnessProgram, StringComparison.Ordinal);
@@ -2270,6 +2275,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("loose XamlWriter serialized ItemsPanelTemplate", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip ItemsPanelTemplate panel name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip ItemsPanelTemplate item width", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseXamlWriterGroupStyleRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter serialized GroupStyle HeaderTemplate", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip GroupStyle HidesIfEmpty", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip GroupStyle header TextBlock name", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip GroupStyle panel orientation", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlWriterFrameworkElementRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter serialized FrameworkElement Button", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip FrameworkElement children", harnessProgram, StringComparison.Ordinal);

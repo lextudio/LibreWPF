@@ -67,6 +67,7 @@ internal static class Program
             ValidateLooseXamlWriterDataTemplateRoundTrip(presentationFramework);
             ValidateLooseXamlWriterHierarchicalDataTemplateRoundTrip(presentationFramework);
             ValidateLooseXamlWriterItemsPanelTemplateRoundTrip(presentationFramework);
+            ValidateLooseXamlWriterGroupStyleRoundTrip(presentationFramework);
             ValidateLooseXamlWriterFrameworkElementRoundTrip(presentationFramework);
             ValidateLooseXamlWriterFlowDocumentRoundTrip(presentationFramework);
             ValidateApplication(application);
@@ -657,6 +658,91 @@ internal static class Program
         AssertEqual("Horizontal", GetProperty(panel, "Orientation").ToString(), "loose XamlWriter round-trip ItemsPanelTemplate orientation");
         AssertEqual(48.0, GetProperty(panel, "ItemWidth"), "loose XamlWriter round-trip ItemsPanelTemplate item width");
         AssertEqual(24.0, GetProperty(panel, "ItemHeight"), "loose XamlWriter round-trip ItemsPanelTemplate item height");
+    }
+
+    private static void ValidateLooseXamlWriterGroupStyleRoundTrip(Assembly presentationFramework)
+    {
+        const string groupStyleDictionaryXaml = """
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <GroupStyle
+        x:Key="WriterGroupStyle"
+        HidesIfEmpty="True">
+        <GroupStyle.HeaderTemplate>
+            <DataTemplate>
+                <StackPanel
+                    x:Name="WriterGroupHeaderRoot"
+                    Tag="writer group header root">
+                    <TextBlock
+                        x:Name="WriterGroupHeaderText"
+                        Text="{Binding Name}"
+                        Tag="writer group header text" />
+                </StackPanel>
+            </DataTemplate>
+        </GroupStyle.HeaderTemplate>
+        <GroupStyle.Panel>
+            <ItemsPanelTemplate>
+                <StackPanel
+                    x:Name="WriterGroupItemsPanel"
+                    Orientation="Horizontal"
+                    Tag="writer group panel" />
+            </ItemsPanelTemplate>
+        </GroupStyle.Panel>
+    </GroupStyle>
+</ResourceDictionary>
+""";
+
+        object dictionary = ParseLooseXaml(presentationFramework, groupStyleDictionaryXaml);
+        object parsedGroupStyle = GetDictionaryValue(dictionary, "WriterGroupStyle");
+        AssertType(parsedGroupStyle, "System.Windows.Controls.GroupStyle", "loose XamlReader GroupStyle");
+        AssertEqual(true, GetProperty(parsedGroupStyle, "HidesIfEmpty"), "loose XamlReader GroupStyle HidesIfEmpty");
+        object parsedHeaderTemplate = GetProperty(parsedGroupStyle, "HeaderTemplate");
+        AssertType(parsedHeaderTemplate, "System.Windows.DataTemplate", "loose XamlReader GroupStyle HeaderTemplate");
+        object parsedHeaderRoot = Invoke(parsedHeaderTemplate, "LoadContent");
+        AssertType(parsedHeaderRoot, "System.Windows.Controls.StackPanel", "loose XamlReader GroupStyle header root");
+        object parsedHeaderChildren = GetProperty(parsedHeaderRoot, "Children");
+        AssertCollectionCount(parsedHeaderChildren, expected: 1, "loose XamlReader GroupStyle header children");
+        AssertBindingPath(GetCollectionItem(parsedHeaderChildren, 0), "TextProperty", "Name", "loose XamlReader GroupStyle header binding path");
+        object parsedPanelTemplate = GetProperty(parsedGroupStyle, "Panel");
+        AssertType(parsedPanelTemplate, "System.Windows.Controls.ItemsPanelTemplate", "loose XamlReader GroupStyle Panel");
+        object parsedPanel = Invoke(parsedPanelTemplate, "LoadContent");
+        AssertType(parsedPanel, "System.Windows.Controls.StackPanel", "loose XamlReader GroupStyle panel root");
+        AssertEqual("Horizontal", GetProperty(parsedPanel, "Orientation").ToString(), "loose XamlReader GroupStyle panel orientation");
+
+        string serialized = SaveLooseXaml(presentationFramework, dictionary);
+        AssertContains("GroupStyle", serialized, "loose XamlWriter serialized GroupStyle");
+        AssertContains("WriterGroupStyle", serialized, "loose XamlWriter serialized GroupStyle key");
+        AssertContains("GroupStyle.HeaderTemplate", serialized, "loose XamlWriter serialized GroupStyle HeaderTemplate");
+        AssertContains("GroupStyle.Panel", serialized, "loose XamlWriter serialized GroupStyle Panel");
+        AssertContains("WriterGroupHeaderRoot", serialized, "loose XamlWriter serialized GroupStyle header root name");
+        AssertContains("WriterGroupItemsPanel", serialized, "loose XamlWriter serialized GroupStyle panel name");
+
+        object roundTrippedDictionary = ParseLooseXaml(presentationFramework, serialized);
+        object groupStyle = GetDictionaryValue(roundTrippedDictionary, "WriterGroupStyle");
+        AssertType(groupStyle, "System.Windows.Controls.GroupStyle", "loose XamlWriter round-trip GroupStyle");
+        AssertEqual(true, GetProperty(groupStyle, "HidesIfEmpty"), "loose XamlWriter round-trip GroupStyle HidesIfEmpty");
+
+        object headerTemplate = GetProperty(groupStyle, "HeaderTemplate");
+        AssertType(headerTemplate, "System.Windows.DataTemplate", "loose XamlWriter round-trip GroupStyle HeaderTemplate");
+        object headerRoot = Invoke(headerTemplate, "LoadContent");
+        AssertType(headerRoot, "System.Windows.Controls.StackPanel", "loose XamlWriter round-trip GroupStyle header root");
+        AssertEqual("WriterGroupHeaderRoot", GetProperty(headerRoot, "Name"), "loose XamlWriter round-trip GroupStyle header root name");
+        AssertEqual("writer group header root", GetProperty(headerRoot, "Tag"), "loose XamlWriter round-trip GroupStyle header root tag");
+        object headerChildren = GetProperty(headerRoot, "Children");
+        AssertCollectionCount(headerChildren, expected: 1, "loose XamlWriter round-trip GroupStyle header children");
+        object headerText = GetCollectionItem(headerChildren, 0);
+        AssertType(headerText, "System.Windows.Controls.TextBlock", "loose XamlWriter round-trip GroupStyle header TextBlock");
+        AssertEqual("WriterGroupHeaderText", GetProperty(headerText, "Name"), "loose XamlWriter round-trip GroupStyle header TextBlock name");
+        AssertEqual("writer group header text", GetProperty(headerText, "Tag"), "loose XamlWriter round-trip GroupStyle header TextBlock tag");
+
+        object panelTemplate = GetProperty(groupStyle, "Panel");
+        AssertType(panelTemplate, "System.Windows.Controls.ItemsPanelTemplate", "loose XamlWriter round-trip GroupStyle Panel");
+        object panel = Invoke(panelTemplate, "LoadContent");
+        AssertType(panel, "System.Windows.Controls.StackPanel", "loose XamlWriter round-trip GroupStyle panel");
+        AssertEqual("WriterGroupItemsPanel", GetProperty(panel, "Name"), "loose XamlWriter round-trip GroupStyle panel name");
+        AssertEqual("writer group panel", GetProperty(panel, "Tag"), "loose XamlWriter round-trip GroupStyle panel tag");
+        AssertEqual("Horizontal", GetProperty(panel, "Orientation").ToString(), "loose XamlWriter round-trip GroupStyle panel orientation");
     }
 
     private static void ValidateLooseXamlWriterFrameworkElementRoundTrip(Assembly presentationFramework)

@@ -2384,7 +2384,7 @@ internal static class Program
         AssertSame(GetCollectionItem(sourceItems, 0), GetProperty(dataGrid, "SelectedItem"), "compiled DataGrid initial selected item");
 
         object columns = GetProperty(dataGrid, "Columns");
-        AssertCollectionCount(columns, expected: 2, "compiled DataGrid columns");
+        AssertCollectionCount(columns, expected: 3, "compiled DataGrid columns");
         object nameColumn = GetCollectionItem(columns, 0);
         AssertType(nameColumn, "System.Windows.Controls.DataGridTextColumn", "compiled DataGrid name column");
         AssertEqual("Name", GetProperty(nameColumn, "Header"), "compiled DataGrid name column header");
@@ -2394,6 +2394,12 @@ internal static class Program
         AssertType(categoryColumn, "System.Windows.Controls.DataGridTextColumn", "compiled DataGrid category column");
         AssertEqual("Category", GetProperty(categoryColumn, "Header"), "compiled DataGrid category column header");
         AssertBindingObjectPath(GetProperty(categoryColumn, "Binding"), "Category", "compiled DataGrid category binding path");
+
+        object activeColumn = GetCollectionItem(columns, 2);
+        AssertType(activeColumn, "System.Windows.Controls.DataGridCheckBoxColumn", "compiled DataGrid active column");
+        AssertEqual("Active", GetProperty(activeColumn, "Header"), "compiled DataGrid active column header");
+        AssertBindingObjectPath(GetProperty(activeColumn, "Binding"), "IsActive", "compiled DataGrid active binding path");
+        AssertEqual(true, GetProperty(GetCollectionItem(sourceItems, 1), "IsActive"), "compiled DataGrid active item value");
 
         SetProperty(dataGrid, "SelectedIndex", 1);
 

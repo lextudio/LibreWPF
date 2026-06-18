@@ -781,11 +781,14 @@ public sealed class SmokeItem
         Category = string.Equals(name, "item beta", StringComparison.Ordinal)
             ? "secondary group"
             : "primary group";
+        IsActive = string.Equals(name, "item beta", StringComparison.Ordinal);
     }
 
     public string Name { get; }
 
     public string Category { get; }
+
+    public bool IsActive { get; set; }
 }
 
 public sealed class SmokeDetail

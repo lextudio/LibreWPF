@@ -879,6 +879,9 @@
                 <DataGridTextColumn
                     Binding="{Binding Category}"
                     Header="Category" />
+                <DataGridCheckBoxColumn
+                    Binding="{Binding IsActive}"
+                    Header="Active" />
             </DataGrid.Columns>
         </DataGrid>
         <TreeView

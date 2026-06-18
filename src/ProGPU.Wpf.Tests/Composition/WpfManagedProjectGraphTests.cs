@@ -1183,6 +1183,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SelectedItem=\"{Binding SelectedItem, Mode=TwoWay}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DataGrid.Columns", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DataGridTextColumn", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DataGridCheckBoxColumn", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Binding=\"{Binding IsActive}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Header=\"Active\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"NodeTree\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemTemplate=\"{StaticResource SmokeNodeTemplate}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Nodes}\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1374,6 +1377,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("OnPropertyChanged();", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeItem", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string Category", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public bool IsActive { get; set; }", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeDetail", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeNode", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public ObservableCollection<SmokeNode> Children", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1761,6 +1765,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled DataGrid SelectedItem binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataGrid name binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataGrid category binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataGrid active binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataGrid active item value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataGrid two-way selected item source update", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowItemTemplateTriggerActivation(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowTabControl(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
@@ -2180,6 +2186,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled DataGrid SelectedItem binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataGrid name binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataGrid category binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataGrid active binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled DataGrid active item value", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled DataGrid two-way selected item source update", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowItemTemplateTriggerActivation(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowTabControl(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);

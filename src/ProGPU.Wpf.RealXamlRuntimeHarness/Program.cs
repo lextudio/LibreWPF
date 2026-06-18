@@ -57,6 +57,7 @@ internal static class Program
             application = Create(compilerHarness, AppTypeName);
             Invoke(application, "InitializeComponent");
             ValidateLooseXamlReader(presentationFramework);
+            ValidateLooseXamlWriterRoundTrip(presentationFramework);
             ValidateApplication(application);
 
             window = Create(compilerHarness, MainWindowTypeName);
@@ -251,6 +252,61 @@ internal static class Program
 
         return parse.Invoke(null, new object[] { xaml })
             ?? throw new InvalidOperationException("Loose XamlReader.Parse returned null.");
+    }
+
+    private static void ValidateLooseXamlWriterRoundTrip(Assembly presentationFramework)
+    {
+        const string writableXaml = """
+<LinearGradientBrush
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    StartPoint="0,0"
+    EndPoint="1,1"
+    Opacity="0.75"
+    SpreadMethod="Reflect">
+    <GradientStop Color="#336699" Offset="0" />
+    <GradientStop Color="#9C4A2F" Offset="1" />
+</LinearGradientBrush>
+""";
+
+        object brush = ParseLooseXaml(presentationFramework, writableXaml);
+        string serialized = SaveLooseXaml(presentationFramework, brush);
+        AssertContains("LinearGradientBrush", serialized, "loose XamlWriter serialized brush");
+        AssertContains("GradientStop", serialized, "loose XamlWriter serialized GradientStop");
+
+        object roundTrippedBrush = ParseLooseXaml(presentationFramework, serialized);
+        AssertType(roundTrippedBrush, "System.Windows.Media.LinearGradientBrush", "loose XamlWriter round-trip brush");
+        AssertEqual(0.75, GetProperty(roundTrippedBrush, "Opacity"), "loose XamlWriter round-trip brush opacity");
+        AssertEqual("Reflect", GetProperty(roundTrippedBrush, "SpreadMethod").ToString(), "loose XamlWriter round-trip brush spread method");
+        AssertPoint(GetProperty(roundTrippedBrush, "StartPoint"), 0.0, 0.0, "loose XamlWriter round-trip brush start point");
+        AssertPoint(GetProperty(roundTrippedBrush, "EndPoint"), 1.0, 1.0, "loose XamlWriter round-trip brush end point");
+
+        object roundTrippedStops = GetProperty(roundTrippedBrush, "GradientStops");
+        AssertCollectionCount(roundTrippedStops, expected: 2, "loose XamlWriter round-trip GradientStop count");
+        ValidateLooseGradientStop(GetCollectionItem(roundTrippedStops, 0), "#FF336699", 0.0, "first");
+        ValidateLooseGradientStop(GetCollectionItem(roundTrippedStops, 1), "#FF9C4A2F", 1.0, "second");
+    }
+
+    private static void ValidateLooseGradientStop(object stop, string expectedColor, double expectedOffset, string description)
+    {
+        AssertType(stop, "System.Windows.Media.GradientStop", $"loose XamlWriter round-trip {description} stop");
+        AssertEqual(expectedColor, GetProperty(stop, "Color").ToString(), $"loose XamlWriter round-trip {description} stop color");
+        AssertEqual(expectedOffset, GetProperty(stop, "Offset"), $"loose XamlWriter round-trip {description} stop offset");
+    }
+
+    private static string SaveLooseXaml(Assembly presentationFramework, object value)
+    {
+        Type xamlWriterType = GetRequiredType(presentationFramework, "System.Windows.Markup.XamlWriter");
+        MethodInfo save = xamlWriterType.GetMethod(
+                "Save",
+                BindingFlags.Static | BindingFlags.Public,
+                binder: null,
+                types: new[] { typeof(object) },
+                modifiers: null)
+            ?? throw new MissingMethodException(xamlWriterType.FullName, "Save");
+
+        return save.Invoke(null, new[] { value }) as string
+            ?? throw new InvalidOperationException("Loose XamlWriter.Save returned null.");
     }
 
     private static void ValidateMainWindow(Assembly presentationCore, object window, object application)

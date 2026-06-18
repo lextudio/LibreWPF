@@ -1566,6 +1566,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("System.Windows.Documents.BlockUIContainer", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument block Button content", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox selection text", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleBold\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox ToggleBold applied weight", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox ToggleBold restored weight", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument section blocks", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument table columns", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument table cells", harnessProgram, StringComparison.Ordinal);
@@ -2032,6 +2035,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("System.Windows.Documents.BlockUIContainer", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument block Button content", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox selection text", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleBold\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox ToggleBold applied weight", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox ToggleBold restored weight", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument section blocks", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument table columns", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument table cells", harnessProgram, StringComparison.Ordinal);

@@ -359,6 +359,19 @@ internal static class Program
         Invoke(selection, "Select", GetProperty(boldRun, "ContentStart"), GetProperty(boldRun, "ContentEnd"));
         AssertEqual("rich", (GetProperty(selection, "Text").ToString() ?? string.Empty).Trim(), "compiled RichTextBox selection text");
 
+        Invoke(selection, "Select", GetProperty(spanRun, "ContentStart"), GetProperty(spanRun, "ContentEnd"));
+        AssertEqual("span", (GetProperty(selection, "Text").ToString() ?? string.Empty).Trim(), "compiled RichTextBox command selection text");
+        Assembly documentAssembly = flowDocument.GetType().Assembly;
+        Type editingCommandsType = GetRequiredType(documentAssembly, "System.Windows.Documents.EditingCommands");
+        Type textElementType = GetRequiredType(documentAssembly, "System.Windows.Documents.TextElement");
+        object fontWeightProperty = GetStaticField(textElementType, "FontWeightProperty");
+        object toggleBoldCommand = GetStaticProperty(editingCommandsType, "ToggleBold");
+        AssertEqual(true, InvokeTwoArgumentCommand(toggleBoldCommand, "CanExecute", null, richTextBox), "compiled RichTextBox ToggleBold CanExecute");
+        InvokeTwoArgumentCommand(toggleBoldCommand, "Execute", null, richTextBox);
+        AssertEqual("Bold", Invoke(selection, "GetCurrentValue", fontWeightProperty).ToString(), "compiled RichTextBox ToggleBold applied weight");
+        InvokeTwoArgumentCommand(toggleBoldCommand, "Execute", null, richTextBox);
+        AssertEqual("Normal", Invoke(selection, "GetCurrentValue", fontWeightProperty).ToString(), "compiled RichTextBox ToggleBold restored weight");
+
         object section = GetCollectionItem(blocks, 1);
         AssertType(section, "System.Windows.Documents.Section", "compiled FlowDocument section");
         object sectionBlocks = GetProperty(section, "Blocks");

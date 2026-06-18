@@ -912,22 +912,66 @@ public sealed class SmokeBindingGroupValidationRule : ValidationRule
     }
 }
 
-public sealed class SmokeItem
+public sealed class SmokeItem : INotifyPropertyChanged
 {
+    private string _name;
+    private string _category;
+    private bool _isActive;
+
     public SmokeItem(string name)
     {
-        Name = name;
-        Category = string.Equals(name, "item beta", StringComparison.Ordinal)
+        _name = name;
+        _category = string.Equals(name, "item beta", StringComparison.Ordinal)
             ? "secondary group"
             : "primary group";
-        IsActive = string.Equals(name, "item beta", StringComparison.Ordinal);
+        _isActive = string.Equals(name, "item beta", StringComparison.Ordinal);
     }
 
-    public string Name { get; }
+    public event PropertyChangedEventHandler? PropertyChanged;
 
-    public string Category { get; }
+    public string Name
+    {
+        get => _name;
+        set
+        {
+            if (!string.Equals(_name, value, StringComparison.Ordinal))
+            {
+                _name = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
-    public bool IsActive { get; set; }
+    public string Category
+    {
+        get => _category;
+        set
+        {
+            if (!string.Equals(_category, value, StringComparison.Ordinal))
+            {
+                _category = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public bool IsActive
+    {
+        get => _isActive;
+        set
+        {
+            if (_isActive != value)
+            {
+                _isActive = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
 }
 
 public sealed class SmokeDetail

@@ -3862,7 +3862,8 @@ internal static class Program
 
         object sortedItemsList = GetField(window, "SortedItemsList");
         AssertType(sortedItemsList, "System.Windows.Controls.ListBox", "compiled sorted ListBox");
-        AssertSame(GetProperty(sortedItemsViewSource, "View"), GetProperty(sortedItemsList, "ItemsSource"), "compiled ListBox CollectionViewSource binding");
+        object sortedItemsView = GetProperty(sortedItemsViewSource, "View");
+        AssertSame(sortedItemsView, GetProperty(sortedItemsList, "ItemsSource"), "compiled ListBox CollectionViewSource binding");
         object sortedItems = GetProperty(sortedItemsList, "Items");
         AssertCollectionCount(sortedItems, expected: 2, "compiled sorted ListBox generated items");
         AssertEqual("item beta", GetProperty(GetCollectionItem(sortedItems, 0), "Name"), "compiled CollectionViewSource initial first item");
@@ -3872,7 +3873,8 @@ internal static class Program
         AssertType(filteredItemsViewSource, "System.Windows.Data.CollectionViewSource", "compiled filtered CollectionViewSource resource");
         object filteredItemsList = GetField(window, "FilteredItemsList");
         AssertType(filteredItemsList, "System.Windows.Controls.ListBox", "compiled filtered ListBox");
-        AssertSame(GetProperty(filteredItemsViewSource, "View"), GetProperty(filteredItemsList, "ItemsSource"), "compiled ListBox filtered CollectionViewSource binding");
+        object filteredItemsView = GetProperty(filteredItemsViewSource, "View");
+        AssertSame(filteredItemsView, GetProperty(filteredItemsList, "ItemsSource"), "compiled ListBox filtered CollectionViewSource binding");
         object filteredItems = GetProperty(filteredItemsList, "Items");
         AssertCollectionCount(filteredItems, expected: 1, "compiled filtered ListBox generated items");
         AssertEqual("item beta", GetProperty(GetCollectionItem(filteredItems, 0), "Name"), "compiled CollectionViewSource filtered item");
@@ -3920,6 +3922,36 @@ internal static class Program
         AssertCollectionCount(groups, expected: 2, "compiled CollectionViewSource collection-change groups");
         ValidateCollectionViewGroup(GetCollectionItem(groups, 0), "primary group", expectedItemCount: 2, "collection-change primary");
         ValidateCollectionViewGroup(GetCollectionItem(groups, 1), "secondary group", expectedItemCount: 1, "collection-change secondary");
+
+        object refreshFirstItem = GetCollectionItem(sourceItems, 0);
+        object refreshSecondItem = GetCollectionItem(sourceItems, 1);
+        SetProperty(refreshFirstItem, "Name", "item omega");
+        Invoke(sortedItemsView, "Refresh");
+        AssertEqual("item omega", GetProperty(GetCollectionItem(sortedItems, 0), "Name"), "compiled CollectionViewSource property-change refresh first item");
+
+        SetProperty(refreshSecondItem, "Name", "item delta");
+        Invoke(filteredItemsView, "Refresh");
+        AssertCollectionCount(filteredItems, expected: 0, "compiled filtered CollectionViewSource property-change removed items");
+        SetProperty(thirdItem, "Name", "item beta");
+        Invoke(filteredItemsView, "Refresh");
+        AssertCollectionCount(filteredItems, expected: 1, "compiled filtered CollectionViewSource property-change accepted items");
+        AssertSame(thirdItem, GetCollectionItem(filteredItems, 0), "compiled filtered CollectionViewSource property-change accepted item");
+
+        SetProperty(thirdItem, "Category", "secondary group");
+        Invoke(groupedItemsView, "Refresh");
+        groups = GetProperty(groupedItemsView, "Groups");
+        AssertCollectionCount(groups, expected: 2, "compiled CollectionViewSource property-change refresh groups");
+        ValidateCollectionViewGroup(GetCollectionItem(groups, 0), "primary group", expectedItemCount: 1, "property-change primary");
+        ValidateCollectionViewGroup(GetCollectionItem(groups, 1), "secondary group", expectedItemCount: 2, "property-change secondary");
+
+        SetProperty(refreshFirstItem, "Name", "item alpha");
+        SetProperty(refreshSecondItem, "Name", "item beta");
+        SetProperty(thirdItem, "Name", "item gamma");
+        SetProperty(thirdItem, "Category", "primary group");
+        Invoke(sortedItemsView, "Refresh");
+        Invoke(filteredItemsView, "Refresh");
+        Invoke(groupedItemsView, "Refresh");
+        AssertEqual("item gamma", GetProperty(GetCollectionItem(sortedItems, 0), "Name"), "compiled CollectionViewSource property-change restored first item");
     }
 
     private static void ValidateCollectionViewGroup(

@@ -1506,9 +1506,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public Style? AlphaStyle", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public override Style? SelectStyle", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnPropertyChanged();", mainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("public sealed class SmokeItem", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokeItem : INotifyPropertyChanged", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PropertyChangedEventHandler? PropertyChanged", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string Category", mainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("public bool IsActive { get; set; }", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public bool IsActive", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeDetail", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeNode", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public ObservableCollection<SmokeNode> Children", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -2167,6 +2168,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled CollectionViewSource collection-change groups", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled filtered CollectionViewSource collection-change item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource collection-change first item", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CollectionViewSource property-change refresh first item", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled filtered CollectionViewSource property-change removed items", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled filtered CollectionViewSource property-change accepted item", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CollectionViewSource property-change refresh groups", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CollectionViewSource property-change restored first item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowGroupStyleHeader(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GroupStyle header generated binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(window, \"FindName\", \"InputBox\")", harnessProgram, StringComparison.Ordinal);
@@ -2799,6 +2805,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled CollectionViewSource collection-change groups", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled filtered CollectionViewSource collection-change item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled CollectionViewSource collection-change first item", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CollectionViewSource property-change refresh first item", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled filtered CollectionViewSource property-change removed items", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled filtered CollectionViewSource property-change accepted item", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CollectionViewSource property-change refresh groups", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled CollectionViewSource property-change restored first item", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowGroupStyleHeader(_presentationCore, activation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled GroupStyle header generated binding", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("recorder.ValidateAfterRun()", harnessProgram, StringComparison.Ordinal);

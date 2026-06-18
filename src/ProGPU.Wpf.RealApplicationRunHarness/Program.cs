@@ -323,10 +323,30 @@ internal static class Program
         object boldRun = GetFirstCollectionItemOfType(GetProperty(bold, "Inlines"), "System.Windows.Documents.Run", "compiled FlowDocument bold run");
         AssertEqual("rich", GetProperty(boldRun, "Text"), "compiled FlowDocument bold run text");
 
+        object italic = GetFirstCollectionItemOfType(inlines, "System.Windows.Documents.Italic", "compiled FlowDocument italic inline");
+        object italicRun = GetFirstCollectionItemOfType(GetProperty(italic, "Inlines"), "System.Windows.Documents.Run", "compiled FlowDocument italic run");
+        AssertEqual(" italic", GetProperty(italicRun, "Text"), "compiled FlowDocument italic run text");
+
+        object underline = GetFirstCollectionItemOfType(inlines, "System.Windows.Documents.Underline", "compiled FlowDocument underline inline");
+        object underlineRun = GetFirstCollectionItemOfType(GetProperty(underline, "Inlines"), "System.Windows.Documents.Run", "compiled FlowDocument underline run");
+        AssertEqual(" underline", GetProperty(underlineRun, "Text"), "compiled FlowDocument underline run text");
+
+        object span = GetFirstCollectionItemOfType(inlines, "System.Windows.Documents.Span", "compiled FlowDocument span inline");
+        object spanRun = GetFirstCollectionItemOfType(GetProperty(span, "Inlines"), "System.Windows.Documents.Run", "compiled FlowDocument span run");
+        AssertEqual(" span", GetProperty(spanRun, "Text"), "compiled FlowDocument span run text");
+
+        GetFirstCollectionItemOfType(inlines, "System.Windows.Documents.LineBreak", "compiled FlowDocument line break inline");
+
         object hyperlink = GetFirstCollectionItemOfType(inlines, "System.Windows.Documents.Hyperlink", "compiled FlowDocument hyperlink");
         AssertEqual("https://example.test/progpu-wpf", GetProperty(hyperlink, "NavigateUri").ToString(), "compiled FlowDocument hyperlink URI");
         object hyperlinkRun = GetFirstCollectionItemOfType(GetProperty(hyperlink, "Inlines"), "System.Windows.Documents.Run", "compiled FlowDocument hyperlink run");
         AssertEqual("link", GetProperty(hyperlinkRun, "Text"), "compiled FlowDocument hyperlink run text");
+
+        object figure = GetFirstCollectionItemOfType(inlines, "System.Windows.Documents.Figure", "compiled FlowDocument figure inline");
+        AssertFlowDocumentAnchoredBlockText(figure, "figure anchored text", "figure");
+
+        object floater = GetFirstCollectionItemOfType(inlines, "System.Windows.Documents.Floater", "compiled FlowDocument floater inline");
+        AssertFlowDocumentAnchoredBlockText(floater, "floater anchored text", "floater");
 
         object inlineContainer = GetFirstCollectionItemOfType(inlines, "System.Windows.Documents.InlineUIContainer", "compiled FlowDocument inline UI container");
         object inlineButton = GetProperty(inlineContainer, "Child");
@@ -377,8 +397,14 @@ internal static class Program
         string text = GetProperty(textRange, "Text").ToString() ?? string.Empty;
         AssertContains("compiled", text, "compiled FlowDocument TextRange paragraph text");
         AssertContains("rich", text, "compiled FlowDocument TextRange bold text");
+        AssertContains("italic", text, "compiled FlowDocument TextRange italic text");
+        AssertContains("underline", text, "compiled FlowDocument TextRange underline text");
+        AssertContains("span", text, "compiled FlowDocument TextRange span text");
+        AssertContains("after line break", text, "compiled FlowDocument TextRange line-break text");
         AssertContains("FlowDocument", text, "compiled FlowDocument TextRange document text");
         AssertContains("link", text, "compiled FlowDocument TextRange hyperlink text");
+        AssertContains("figure anchored text", text, "compiled FlowDocument TextRange figure text");
+        AssertContains("floater anchored text", text, "compiled FlowDocument TextRange floater text");
         AssertContains("section block text", text, "compiled FlowDocument TextRange section text");
         AssertContains("table alpha", text, "compiled FlowDocument TextRange first table cell");
         AssertContains("table beta", text, "compiled FlowDocument TextRange second table cell");
@@ -391,6 +417,13 @@ internal static class Program
         AssertType(paragraph, "System.Windows.Documents.Paragraph", $"compiled FlowDocument {description} paragraph");
         object run = GetFirstCollectionItemOfType(GetProperty(paragraph, "Inlines"), "System.Windows.Documents.Run", $"compiled FlowDocument {description} run");
         AssertEqual(expectedText, GetProperty(run, "Text"), $"compiled FlowDocument {description} text");
+    }
+
+    private static void AssertFlowDocumentAnchoredBlockText(object anchoredBlock, string expectedText, string description)
+    {
+        object blocks = GetProperty(anchoredBlock, "Blocks");
+        AssertCollectionCount(blocks, expected: 1, $"compiled FlowDocument {description} blocks");
+        AssertFlowDocumentParagraphText(GetCollectionItem(blocks, 0), expectedText, description);
     }
 
     private static void AssertFlowDocumentTableCellText(object tableCell, string expectedText, string description)

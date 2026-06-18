@@ -459,12 +459,33 @@
                     <Bold>
                         <Run Text="rich" />
                     </Bold>
+                    <Italic>
+                        <Run Text=" italic" />
+                    </Italic>
+                    <Underline>
+                        <Run Text=" underline" />
+                    </Underline>
+                    <Span x:Name="DocumentSpan">
+                        <Run Text=" span" />
+                    </Span>
+                    <LineBreak />
+                    <Run Text="after line break" />
                     <Run Text=" FlowDocument " />
                     <Hyperlink
                         x:Name="DocumentLink"
                         NavigateUri="https://example.test/progpu-wpf">
                         <Run Text="link" />
                     </Hyperlink>
+                    <Figure x:Name="DocumentFigure">
+                        <Paragraph>
+                            <Run Text="figure anchored text" />
+                        </Paragraph>
+                    </Figure>
+                    <Floater x:Name="DocumentFloater">
+                        <Paragraph>
+                            <Run Text="floater anchored text" />
+                        </Paragraph>
+                    </Floater>
                     <InlineUIContainer x:Name="InlineActionContainer">
                         <Button
                             x:Name="DocumentInlineButton"

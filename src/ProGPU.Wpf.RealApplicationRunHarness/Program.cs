@@ -1499,6 +1499,45 @@ internal static class Program
         AssertClose(firstWidth, secondWidth, 0.001, "compiled shared-size Grid column width");
     }
 
+    private static void ValidatePostShowGridSplitterDrag(object window)
+    {
+        object splitterGrid = GetField(window, "GridSplitterGrid");
+        Invoke(splitterGrid, "UpdateLayout");
+        Invoke(window, "UpdateLayout");
+
+        object columnDefinitions = GetProperty(splitterGrid, "ColumnDefinitions");
+        object leftColumn = GetCollectionItem(columnDefinitions, 0);
+        object rightColumn = GetCollectionItem(columnDefinitions, 2);
+        double leftBefore = Convert.ToDouble(GetProperty(leftColumn, "ActualWidth"));
+        double rightBefore = Convert.ToDouble(GetProperty(rightColumn, "ActualWidth"));
+
+        if (leftBefore <= 0 || rightBefore <= 0)
+        {
+            throw new InvalidOperationException(
+                $"Expected compiled GridSplitter columns to be measured, got '{leftBefore}' and '{rightBefore}'.");
+        }
+
+        object splitter = GetField(window, "GridSplitterSmoke");
+        SetProperty(splitter, "ShowsPreview", false);
+
+        Assembly presentationFramework = splitter.GetType().Assembly;
+        object started = Create(presentationFramework, "System.Windows.Controls.Primitives.DragStartedEventArgs", 0.0, 0.0);
+        object delta = Create(presentationFramework, "System.Windows.Controls.Primitives.DragDeltaEventArgs", 12.0, 0.0);
+        object completed = Create(presentationFramework, "System.Windows.Controls.Primitives.DragCompletedEventArgs", 12.0, 0.0, false);
+
+        Invoke(splitter, "RaiseEvent", started);
+        Invoke(splitter, "RaiseEvent", delta);
+        Invoke(splitter, "RaiseEvent", completed);
+        Invoke(splitterGrid, "UpdateLayout");
+        Invoke(window, "UpdateLayout");
+
+        double leftAfter = Convert.ToDouble(GetProperty(leftColumn, "ActualWidth"));
+        double rightAfter = Convert.ToDouble(GetProperty(rightColumn, "ActualWidth"));
+        AssertClose(leftBefore + 12.0, leftAfter, 0.001, "compiled GridSplitter dragged left column width");
+        AssertClose(rightBefore - 12.0, rightAfter, 0.001, "compiled GridSplitter dragged right column width");
+        SetProperty(splitter, "ShowsPreview", true);
+    }
+
     private static void ValidateScrollingControls(object window)
     {
         object scrollingPanel = GetField(window, "ScrollingSmokePanel");
@@ -3730,6 +3769,7 @@ internal static class Program
                 typedActivation.Window,
                 () => FlushDispatcherOperations(typedActivation.Window, "Render"));
             ValidatePostShowSharedSizeGridLayout(typedActivation.Window);
+            ValidatePostShowGridSplitterDrag(typedActivation.Window);
             ValidatePostShowScrollingControls(typedActivation.Window);
             ValidatePortableInputBindingActivation(typedActivation.Window);
             ValidatePortableTextInputActivation(typedActivation.Window);

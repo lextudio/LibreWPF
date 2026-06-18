@@ -63,6 +63,7 @@ internal static class Program
             ValidateLooseXamlWriterRoundTrip(presentationFramework);
             ValidateLooseXamlWriterSystemResourceKeyRoundTrip(presentationFramework);
             ValidateLooseXamlWriterStyleRoundTrip(presentationFramework);
+            ValidateLooseXamlWriterControlTemplateRoundTrip(presentationFramework);
             ValidateLooseXamlWriterFrameworkElementRoundTrip(presentationFramework);
             ValidateLooseXamlWriterFlowDocumentRoundTrip(presentationFramework);
             ValidateApplication(application);
@@ -405,6 +406,66 @@ internal static class Program
         AssertEqual("base style tag", GetProperty(styledButton, "Tag"), "loose XamlWriter round-trip styled Button inherited Tag");
         AssertEqual("writer style content", GetProperty(styledButton, "Content"), "loose XamlWriter round-trip styled Button content");
         AssertEqual(144.0, GetProperty(styledButton, "MinWidth"), "loose XamlWriter round-trip styled Button MinWidth");
+    }
+
+    private static void ValidateLooseXamlWriterControlTemplateRoundTrip(Assembly presentationFramework)
+    {
+        const string templateDictionaryXaml = """
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ControlTemplate x:Key="WriterButtonTemplate" TargetType="{x:Type Button}">
+        <Border
+            x:Name="TemplateBorder"
+            Padding="{TemplateBinding Padding}"
+            Background="{TemplateBinding Background}">
+            <ContentPresenter
+                x:Name="TemplateContent"
+                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                RecognizesAccessKey="True" />
+        </Border>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsDefault" Value="True">
+                <Setter TargetName="TemplateBorder" Property="Tag" Value="default template state" />
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+</ResourceDictionary>
+""";
+
+        object dictionary = ParseLooseXaml(presentationFramework, templateDictionaryXaml);
+        string serialized = SaveLooseXaml(presentationFramework, dictionary);
+        AssertContains("ControlTemplate", serialized, "loose XamlWriter serialized ControlTemplate");
+        AssertContains("ContentPresenter", serialized, "loose XamlWriter serialized ControlTemplate ContentPresenter");
+        AssertContains("ControlTemplate.Triggers", serialized, "loose XamlWriter serialized ControlTemplate triggers");
+        AssertContains("TemplateBorder", serialized, "loose XamlWriter serialized ControlTemplate target name");
+
+        object roundTrippedDictionary = ParseLooseXaml(presentationFramework, serialized);
+        object template = GetDictionaryValue(roundTrippedDictionary, "WriterButtonTemplate");
+        AssertType(template, "System.Windows.Controls.ControlTemplate", "loose XamlWriter round-trip ControlTemplate");
+        AssertEqual("System.Windows.Controls.Button", GetProperty(template, "TargetType").ToString(), "loose XamlWriter round-trip ControlTemplate target type");
+
+        object triggers = GetProperty(template, "Triggers");
+        AssertCollectionCount(triggers, expected: 1, "loose XamlWriter round-trip ControlTemplate triggers");
+        object trigger = GetCollectionItem(triggers, 0);
+        AssertType(trigger, "System.Windows.Trigger", "loose XamlWriter round-trip ControlTemplate trigger");
+        AssertEqual("IsDefault", GetProperty(GetProperty(trigger, "Property"), "Name"), "loose XamlWriter round-trip ControlTemplate trigger property");
+        AssertEqual(true, GetProperty(trigger, "Value"), "loose XamlWriter round-trip ControlTemplate trigger value");
+        object setters = GetProperty(trigger, "Setters");
+        AssertCollectionCount(setters, expected: 1, "loose XamlWriter round-trip ControlTemplate trigger setters");
+        object setter = GetCollectionItem(setters, 0);
+        AssertLooseStyleSetter(setter, "Tag", "default template state", "ControlTemplate trigger Tag setter");
+        AssertEqual("TemplateBorder", GetProperty(setter, "TargetName"), "loose XamlWriter round-trip ControlTemplate trigger setter target");
+
+        object button = Create(presentationFramework, "System.Windows.Controls.Button");
+        SetProperty(button, "Template", template);
+        SetProperty(button, "Content", "templated writer button");
+        Invoke(button, "ApplyTemplate");
+        object templateBorder = Invoke(template, "FindName", "TemplateBorder", button);
+        object templateContent = Invoke(template, "FindName", "TemplateContent", button);
+        AssertType(templateBorder, "System.Windows.Controls.Border", "loose XamlWriter round-trip applied ControlTemplate border");
+        AssertType(templateContent, "System.Windows.Controls.ContentPresenter", "loose XamlWriter round-trip applied ControlTemplate content presenter");
     }
 
     private static void ValidateLooseXamlWriterFrameworkElementRoundTrip(Assembly presentationFramework)

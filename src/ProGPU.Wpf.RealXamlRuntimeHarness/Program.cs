@@ -65,6 +65,7 @@ internal static class Program
             ValidateLooseXamlWriterStyleRoundTrip(presentationFramework);
             ValidateLooseXamlWriterControlTemplateRoundTrip(presentationFramework);
             ValidateLooseXamlWriterDataTemplateRoundTrip(presentationFramework);
+            ValidateLooseXamlWriterHierarchicalDataTemplateRoundTrip(presentationFramework);
             ValidateLooseXamlWriterItemsPanelTemplateRoundTrip(presentationFramework);
             ValidateLooseXamlWriterFrameworkElementRoundTrip(presentationFramework);
             ValidateLooseXamlWriterFlowDocumentRoundTrip(presentationFramework);
@@ -541,6 +542,84 @@ internal static class Program
         AssertType(categoryText, "System.Windows.Controls.TextBlock", "loose XamlWriter round-trip DataTemplate category TextBlock");
         AssertEqual("TemplateNameText", GetProperty(nameText, "Name"), "loose XamlWriter round-trip DataTemplate name TextBlock name");
         AssertEqual("TemplateCategoryText", GetProperty(categoryText, "Name"), "loose XamlWriter round-trip DataTemplate category TextBlock name");
+    }
+
+    private static void ValidateLooseXamlWriterHierarchicalDataTemplateRoundTrip(Assembly presentationFramework)
+    {
+        const string templateDictionaryXaml = """
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <HierarchicalDataTemplate
+        x:Key="WriterNodeTemplate"
+        ItemsSource="{Binding Children}">
+        <StackPanel
+            x:Name="NodeTemplateRoot"
+            Tag="writer hierarchical template root">
+            <TextBlock
+                x:Name="NodeNameText"
+                Text="{Binding Name}" />
+            <TextBlock
+                x:Name="NodeCountText"
+                Text="{Binding Children.Count}" />
+        </StackPanel>
+        <HierarchicalDataTemplate.Triggers>
+            <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                <Setter TargetName="NodeNameText" Property="Tag" Value="expanded writer node" />
+            </DataTrigger>
+        </HierarchicalDataTemplate.Triggers>
+    </HierarchicalDataTemplate>
+</ResourceDictionary>
+""";
+
+        object dictionary = ParseLooseXaml(presentationFramework, templateDictionaryXaml);
+        object parsedTemplate = GetDictionaryValue(dictionary, "WriterNodeTemplate");
+        AssertType(parsedTemplate, "System.Windows.HierarchicalDataTemplate", "loose XamlReader HierarchicalDataTemplate");
+        AssertBindingObjectPath(GetProperty(parsedTemplate, "ItemsSource"), "Children", "loose XamlReader HierarchicalDataTemplate ItemsSource path");
+        object parsedTemplateRoot = Invoke(parsedTemplate, "LoadContent");
+        AssertType(parsedTemplateRoot, "System.Windows.Controls.StackPanel", "loose XamlReader HierarchicalDataTemplate root");
+        object parsedTemplateChildren = GetProperty(parsedTemplateRoot, "Children");
+        AssertCollectionCount(parsedTemplateChildren, expected: 2, "loose XamlReader HierarchicalDataTemplate children");
+        AssertBindingPath(GetCollectionItem(parsedTemplateChildren, 0), "TextProperty", "Name", "loose XamlReader HierarchicalDataTemplate name binding path");
+        AssertBindingPath(GetCollectionItem(parsedTemplateChildren, 1), "TextProperty", "Children.Count", "loose XamlReader HierarchicalDataTemplate count binding path");
+
+        string serialized = SaveLooseXaml(presentationFramework, dictionary);
+        AssertContains("HierarchicalDataTemplate", serialized, "loose XamlWriter serialized HierarchicalDataTemplate");
+        AssertContains("WriterNodeTemplate", serialized, "loose XamlWriter serialized HierarchicalDataTemplate key");
+        AssertContains("ItemsSource", serialized, "loose XamlWriter serialized HierarchicalDataTemplate ItemsSource");
+        AssertContains("NodeTemplateRoot", serialized, "loose XamlWriter serialized HierarchicalDataTemplate root name");
+        AssertContains("HierarchicalDataTemplate.Triggers", serialized, "loose XamlWriter serialized HierarchicalDataTemplate triggers");
+
+        object roundTrippedDictionary = ParseLooseXaml(presentationFramework, serialized);
+        object template = GetDictionaryValue(roundTrippedDictionary, "WriterNodeTemplate");
+        AssertType(template, "System.Windows.HierarchicalDataTemplate", "loose XamlWriter round-trip HierarchicalDataTemplate");
+        AssertBindingObjectPath(GetProperty(template, "ItemsSource"), "Children", "loose XamlWriter round-trip HierarchicalDataTemplate ItemsSource path");
+
+        object triggers = GetProperty(template, "Triggers");
+        AssertCollectionCount(triggers, expected: 1, "loose XamlWriter round-trip HierarchicalDataTemplate triggers");
+        object trigger = GetCollectionItem(triggers, 0);
+        AssertType(trigger, "System.Windows.DataTrigger", "loose XamlWriter round-trip HierarchicalDataTemplate trigger");
+        AssertBindingObjectPath(GetProperty(trigger, "Binding"), "IsExpanded", "loose XamlWriter round-trip HierarchicalDataTemplate trigger binding path");
+        AssertEqual("True", GetProperty(trigger, "Value").ToString(), "loose XamlWriter round-trip HierarchicalDataTemplate trigger value");
+        object setters = GetProperty(trigger, "Setters");
+        AssertCollectionCount(setters, expected: 1, "loose XamlWriter round-trip HierarchicalDataTemplate trigger setters");
+        object setter = GetCollectionItem(setters, 0);
+        AssertLooseStyleSetter(setter, "Tag", "expanded writer node", "HierarchicalDataTemplate trigger Tag setter");
+        AssertEqual("NodeNameText", GetProperty(setter, "TargetName"), "loose XamlWriter round-trip HierarchicalDataTemplate trigger setter target");
+
+        object templateRoot = Invoke(template, "LoadContent");
+        AssertType(templateRoot, "System.Windows.Controls.StackPanel", "loose XamlWriter round-trip HierarchicalDataTemplate root");
+        AssertEqual("NodeTemplateRoot", GetProperty(templateRoot, "Name"), "loose XamlWriter round-trip HierarchicalDataTemplate root name");
+        AssertEqual("writer hierarchical template root", GetProperty(templateRoot, "Tag"), "loose XamlWriter round-trip HierarchicalDataTemplate root tag");
+
+        object children = GetProperty(templateRoot, "Children");
+        AssertCollectionCount(children, expected: 2, "loose XamlWriter round-trip HierarchicalDataTemplate children");
+        object nameText = GetCollectionItem(children, 0);
+        object countText = GetCollectionItem(children, 1);
+        AssertType(nameText, "System.Windows.Controls.TextBlock", "loose XamlWriter round-trip HierarchicalDataTemplate name TextBlock");
+        AssertType(countText, "System.Windows.Controls.TextBlock", "loose XamlWriter round-trip HierarchicalDataTemplate count TextBlock");
+        AssertEqual("NodeNameText", GetProperty(nameText, "Name"), "loose XamlWriter round-trip HierarchicalDataTemplate name TextBlock name");
+        AssertEqual("NodeCountText", GetProperty(countText, "Name"), "loose XamlWriter round-trip HierarchicalDataTemplate count TextBlock name");
     }
 
     private static void ValidateLooseXamlWriterItemsPanelTemplateRoundTrip(Assembly presentationFramework)

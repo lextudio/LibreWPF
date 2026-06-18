@@ -2155,6 +2155,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled FocusManager logical focus restore", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Label access key registered", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Label access key focused target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableAccessKeyActivation(presentationCore, activation, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable access key handled state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable access key focused target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable access key clear focus", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowNavigationFrame(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Frame", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Page content", harnessProgram, StringComparison.Ordinal);
@@ -2869,6 +2873,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled FocusManager logical focus restore", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Label access key registered", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Label access key focused target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableAccessKeyActivation(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run access key handled state", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run access key focused target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Application.Run access key clear focus", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowNavigationFrame(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Frame", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled source Page content", harnessProgram, StringComparison.Ordinal);

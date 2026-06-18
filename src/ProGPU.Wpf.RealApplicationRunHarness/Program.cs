@@ -5817,6 +5817,7 @@ internal static class Program
             ValidatePostShowSectionControls(_presentationCore, typedActivation.Window);
             ValidatePostShowAdornerLayer(_presentationFramework, _compilerHarness, typedActivation.Window);
             ValidatePostShowAccessKeyFocusScope(_presentationCore, typedActivation.Window);
+            ValidatePortableAccessKeyActivation(typedActivation.Window);
             ValidatePostShowNavigationFrame(
                 typedActivation.Window,
                 () => FlushDispatcherOperations(typedActivation.Window, "Render"));
@@ -6038,6 +6039,22 @@ internal static class Program
 
             InvokeStatic(keyboardType, "ClearFocus");
             AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable Application.Run input KeyBinding clear focus");
+        }
+
+        private void ValidatePortableAccessKeyActivation(object window)
+        {
+            object accessTarget = GetField(window, "AccessTargetBox");
+            Type keyboardType = GetRequiredType(_presentationCore, "System.Windows.Input.Keyboard");
+            InvokeStatic(keyboardType, "ClearFocus");
+
+            object accessText = CreatePortableInputEvent("TextInput", key: null, scanCode: 0, character: 'a', modifiersName: "Alt");
+            Invoke(window, "HandlePortableInput", accessText);
+
+            AssertEqual(true, GetProperty(accessText, "Handled"), "portable Application.Run access key handled state");
+            AssertSame(accessTarget, GetStaticProperty(keyboardType, "FocusedElement"), "portable Application.Run access key focused target");
+
+            InvokeStatic(keyboardType, "ClearFocus");
+            AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable Application.Run access key clear focus");
         }
 
         private void ValidatePortableMouseBindingActivation(object window)

@@ -121,6 +121,7 @@ internal static class Program
             ValidatePostShowSectionControls(presentationCore, window);
             ValidatePostShowAdornerLayer(presentationFramework, compilerHarness, window);
             ValidatePostShowAccessKeyFocusScope(presentationCore, window);
+            ValidatePortableAccessKeyActivation(presentationCore, activation, window);
             ValidatePostShowNavigationFrame(
                 window,
                 () => FlushDispatcherOperations(activationServiceType, window, "Render"));
@@ -1696,6 +1697,31 @@ internal static class Program
 
         InvokeStatic(keyboardType, "ClearFocus");
         AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable input KeyBinding clear focus");
+    }
+
+    private static void ValidatePortableAccessKeyActivation(Assembly presentationCore, object activation, object window)
+    {
+        if (activation is not WpfPortableWindowActivation portableActivation)
+        {
+            throw new InvalidOperationException(
+                $"Expected a ProGPU portable activation for access-key routing, got '{activation.GetType().FullName}'.");
+        }
+
+        object accessTarget = GetField(window, "AccessTargetBox");
+        Type keyboardType = GetRequiredType(presentationCore, "System.Windows.Input.Keyboard");
+        InvokeStatic(keyboardType, "ClearFocus");
+
+        var accessText = new WpfInputEventArgs(
+            WpfInputEventKind.TextInput,
+            character: 'a',
+            modifiers: WpfInputModifiers.Alt);
+        RaiseHostInput(portableActivation.Host, accessText);
+
+        AssertEqual(true, accessText.Handled, "portable access key handled state");
+        AssertSame(accessTarget, GetStaticProperty(keyboardType, "FocusedElement"), "portable access key focused target");
+
+        InvokeStatic(keyboardType, "ClearFocus");
+        AssertEqual(null, TryGetStaticProperty(keyboardType, "FocusedElement"), "portable access key clear focus");
     }
 
     private static void ValidatePortableMouseBindingActivation(Assembly presentationCore, object activation, object window)

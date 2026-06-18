@@ -1020,7 +1020,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 84, "stack panel children");
+        AssertCollectionCount(children, expected: 85, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -1095,6 +1095,7 @@ internal static class Program
         ValidateTabControl(window);
         ValidateSectionControls(window);
         ValidateAdornerDecorator(window);
+        ValidateDependencyPropertyCore(window);
         ValidateAccessKeyFocusScope(presentationCore, window);
         ValidateNavigationFrame(window);
     }
@@ -4952,6 +4953,47 @@ internal static class Program
 
         Type focusManagerType = GetRequiredType(presentationCore, "System.Windows.Input.FocusManager");
         AssertEqual(true, InvokeStatic(focusManagerType, "GetIsFocusScope", focusScope), "compiled FocusManager focus scope");
+    }
+
+    private static void ValidateDependencyPropertyCore(object window)
+    {
+        object scope = GetField(window, "DependencyPropertyScopePanel");
+        AssertType(scope, "System.Windows.Controls.StackPanel", "compiled dependency-property scope panel");
+        AssertEqual(1, GetProperty(GetProperty(scope, "Children"), "Count"), "compiled dependency-property scope child count");
+
+        object target = GetField(window, "DependencyPropertyTarget");
+        AssertType(target, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeDependencyPropertyControl", "compiled dependency-property target");
+        AssertSame(target, GetCollectionItem(GetProperty(scope, "Children"), 0), "compiled dependency-property scope child");
+        AssertEqual(10, GetProperty(target, "CoercedLevel"), "compiled coerced dependency property value");
+        AssertEqual(1, GetProperty(target, "CoercedLevelChangedCount"), "compiled coerced dependency property initial change count");
+        AssertEqual(0, GetProperty(target, "LastOldCoercedLevel"), "compiled coerced dependency property initial old value");
+        AssertEqual(10, GetProperty(target, "LastNewCoercedLevel"), "compiled coerced dependency property initial new value");
+
+        Assembly compilerHarness = target.GetType().Assembly;
+        Type dependencyPropertiesType = GetRequiredType(
+            compilerHarness,
+            "ProGPU.Wpf.RealXamlCompilerHarness.SmokeDependencyProperties");
+        AssertEqual("inherited smoke", InvokeStatic(dependencyPropertiesType, "GetInheritedLabel", scope), "compiled inherited attached property scope value");
+        AssertEqual("inherited smoke", InvokeStatic(dependencyPropertiesType, "GetInheritedLabel", target), "compiled inherited attached property target value");
+
+        InvokeStatic(dependencyPropertiesType, "SetInheritedLabel", scope, "updated inherited smoke");
+        AssertEqual("updated inherited smoke", InvokeStatic(dependencyPropertiesType, "GetInheritedLabel", target), "compiled inherited attached property updated target value");
+
+        InvokeStatic(dependencyPropertiesType, "SetInheritedLabel", target, "local inherited smoke");
+        InvokeStatic(dependencyPropertiesType, "SetInheritedLabel", scope, "parent ignored by local value");
+        AssertEqual("local inherited smoke", InvokeStatic(dependencyPropertiesType, "GetInheritedLabel", target), "compiled inherited attached property local precedence");
+
+        SetProperty(target, "CoercedLevel", -4);
+        AssertEqual(0, GetProperty(target, "CoercedLevel"), "compiled coerced dependency property minimum value");
+        AssertEqual(2, GetProperty(target, "CoercedLevelChangedCount"), "compiled coerced dependency property minimum change count");
+        AssertEqual(10, GetProperty(target, "LastOldCoercedLevel"), "compiled coerced dependency property minimum old value");
+        AssertEqual(0, GetProperty(target, "LastNewCoercedLevel"), "compiled coerced dependency property minimum new value");
+
+        SetProperty(target, "CoercedLevel", 7);
+        AssertEqual(7, GetProperty(target, "CoercedLevel"), "compiled coerced dependency property mid value");
+        AssertEqual(3, GetProperty(target, "CoercedLevelChangedCount"), "compiled coerced dependency property mid change count");
+        AssertEqual(0, GetProperty(target, "LastOldCoercedLevel"), "compiled coerced dependency property mid old value");
+        AssertEqual(7, GetProperty(target, "LastNewCoercedLevel"), "compiled coerced dependency property mid new value");
     }
 
     private static void ValidatePostShowAccessKeyFocusScope(Assembly presentationCore, object window)

@@ -1197,6 +1197,14 @@
                 Tag="adorned button" />
         </AdornerDecorator>
         <StackPanel
+            x:Name="DependencyPropertyScopePanel"
+            local:SmokeDependencyProperties.InheritedLabel="inherited smoke"
+            Margin="0,8,0,0">
+            <local:SmokeDependencyPropertyControl
+                x:Name="DependencyPropertyTarget"
+                CoercedLevel="15" />
+        </StackPanel>
+        <StackPanel
             x:Name="AccessKeyFocusScope"
             FocusManager.FocusedElement="{Binding ElementName=AccessTargetBox}"
             FocusManager.IsFocusScope="True"

@@ -1233,6 +1233,65 @@ public sealed class SmokeBindingGroupValidationRule : ValidationRule
     }
 }
 
+public static class SmokeDependencyProperties
+{
+    public static readonly DependencyProperty InheritedLabelProperty = DependencyProperty.RegisterAttached(
+        "InheritedLabel",
+        typeof(string),
+        typeof(SmokeDependencyProperties),
+        new FrameworkPropertyMetadata("unset inherited label", FrameworkPropertyMetadataOptions.Inherits));
+
+    public static string GetInheritedLabel(DependencyObject target)
+    {
+        return (string)target.GetValue(InheritedLabelProperty);
+    }
+
+    public static void SetInheritedLabel(DependencyObject target, string value)
+    {
+        target.SetValue(InheritedLabelProperty, value);
+    }
+}
+
+public sealed class SmokeDependencyPropertyControl : Control
+{
+    public static readonly DependencyProperty CoercedLevelProperty = DependencyProperty.Register(
+        nameof(CoercedLevel),
+        typeof(int),
+        typeof(SmokeDependencyPropertyControl),
+        new FrameworkPropertyMetadata(
+            0,
+            OnCoercedLevelChanged,
+            CoerceLevel));
+
+    public int CoercedLevel
+    {
+        get => (int)GetValue(CoercedLevelProperty);
+        set => SetValue(CoercedLevelProperty, value);
+    }
+
+    public int CoercedLevelChangedCount { get; private set; }
+
+    public int LastOldCoercedLevel { get; private set; }
+
+    public int LastNewCoercedLevel { get; private set; }
+
+    private static object CoerceLevel(DependencyObject dependencyObject, object baseValue)
+    {
+        int value = (int)baseValue;
+        return Math.Max(0, Math.Min(10, value));
+    }
+
+    private static void OnCoercedLevelChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
+    {
+        if (dependencyObject is SmokeDependencyPropertyControl control)
+        {
+            control.CoercedLevelChangedCount++;
+            control.LastOldCoercedLevel = (int)e.OldValue;
+            control.LastNewCoercedLevel = (int)e.NewValue;
+        }
+    }
+}
+
 public sealed class SmokeItem : INotifyPropertyChanged
 {
     private string _name;

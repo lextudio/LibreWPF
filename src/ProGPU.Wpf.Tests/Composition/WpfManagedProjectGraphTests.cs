@@ -1620,6 +1620,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetStaticProperty(editingCommandsType, \"DeleteRows\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox DeleteRows table rows", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox DeleteRows preserved original row", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetStaticProperty(editingCommandsType, \"DeleteColumns\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox DeleteColumns table-cell selection", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox DeleteColumns first row cells", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox DeleteColumns preserved second cell", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleBullets\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox ToggleBullets marker style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleNumbering\")", harnessProgram, StringComparison.Ordinal);
@@ -2145,6 +2149,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetStaticProperty(editingCommandsType, \"DeleteRows\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox DeleteRows table rows", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox DeleteRows preserved original row", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetStaticProperty(editingCommandsType, \"DeleteColumns\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox DeleteColumns table-cell selection", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox DeleteColumns first row cells", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox DeleteColumns preserved second cell", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleBullets\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox ToggleBullets marker style", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleNumbering\")", harnessProgram, StringComparison.Ordinal);

@@ -568,6 +568,8 @@ internal static class Program
         InvokeTwoArgumentCommand(insertColumnsCommand, "Execute", null, richTextBox);
         AssertCollectionCount(cells, expected: 3, "compiled RichTextBox InsertColumns first row cells");
         AssertSame(firstTableCell, GetCollectionItem(cells, 0), "compiled RichTextBox InsertColumns preserved first cell");
+        object insertedColumnCell = GetCollectionItem(cells, 1);
+        AssertType(insertedColumnCell, "System.Windows.Documents.TableCell", "compiled RichTextBox InsertColumns first-row inserted cell");
         AssertSame(secondTableCell, GetCollectionItem(cells, 2), "compiled RichTextBox InsertColumns preserved second cell");
         AssertCollectionCount(insertedCells, expected: 3, "compiled RichTextBox InsertColumns copied row cells");
         AssertType(GetCollectionItem(insertedCells, 1), "System.Windows.Documents.TableCell", "compiled RichTextBox InsertColumns copied inserted-row cell");
@@ -586,6 +588,16 @@ internal static class Program
         AssertSame(secondTableCell, GetCollectionItem(cells, 2), "compiled RichTextBox DeleteRows preserved second cell");
         AssertFlowDocumentTableCellText(firstTableCell, "table alpha", "first after row delete");
         AssertFlowDocumentTableCellText(secondTableCell, "table beta", "second after row delete");
+        Invoke(selection, "Select", GetProperty(insertedColumnCell, "ContentStart"), GetProperty(secondTableCell, "ContentStart"));
+        AssertEqual(true, GetProperty(selection, "IsTableCellRange"), "compiled RichTextBox DeleteColumns table-cell selection");
+        object deleteColumnsCommand = GetStaticProperty(editingCommandsType, "DeleteColumns");
+        AssertEqual(true, InvokeTwoArgumentCommand(deleteColumnsCommand, "CanExecute", null, richTextBox), "compiled RichTextBox DeleteColumns CanExecute");
+        InvokeTwoArgumentCommand(deleteColumnsCommand, "Execute", null, richTextBox);
+        AssertCollectionCount(cells, expected: 2, "compiled RichTextBox DeleteColumns first row cells");
+        AssertSame(firstTableCell, GetCollectionItem(cells, 0), "compiled RichTextBox DeleteColumns preserved first cell");
+        AssertSame(secondTableCell, GetCollectionItem(cells, 1), "compiled RichTextBox DeleteColumns preserved second cell");
+        AssertFlowDocumentTableCellText(firstTableCell, "table alpha", "first after column delete");
+        AssertFlowDocumentTableCellText(secondTableCell, "table beta", "second after column delete");
 
         object list = GetCollectionItem(blocks, 4);
         AssertType(list, "System.Windows.Documents.List", "compiled FlowDocument list");

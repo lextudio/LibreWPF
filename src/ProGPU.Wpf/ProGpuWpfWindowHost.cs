@@ -452,10 +452,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             var activeWpfImageSourceAdapter = _target.CreateFrameImageSourceAdapter(WpfImageSourceAdapter);
 
             using (IDisposable? renderDataSinkProviderRegistration = RegisterRenderDataSinkProvider(drawingFrame, activeWpfImageSourceAdapter))
-            using (var drawingContext = drawingFrame.OpenDrawingContext())
             {
                 var args = new ProGpuWpfFrameEventArgs(
-                    drawingContext,
+                    drawingContext: null,
                     pixelWidth,
                     pixelHeight,
                     deltaSeconds,
@@ -511,8 +510,24 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                     LastSourceDrawingResult = default;
                 }
 
-                Draw?.Invoke(drawingContext, args);
-                Render?.Invoke(this, args);
+                if (Draw != null)
+                {
+                    using var drawingContext = drawingFrame.OpenDrawingContext();
+                    var drawArgs = new ProGpuWpfFrameEventArgs(
+                        drawingContext,
+                        pixelWidth,
+                        pixelHeight,
+                        deltaSeconds,
+                        dpiScale,
+                        drawingFrame);
+                    Draw.Invoke(drawingContext, drawArgs);
+                    Render?.Invoke(this, drawArgs);
+                }
+                else
+                {
+                    Render?.Invoke(this, args);
+                }
+
                 WpfRenderScheduler.ConsumeRenderRequest();
             }
 

@@ -6,7 +6,7 @@ namespace System.Windows.Media.ProGPU;
 public sealed class ProGpuWpfFrameEventArgs : EventArgs
 {
     public ProGpuWpfFrameEventArgs(
-        MediaDrawingContext drawingContext,
+        MediaDrawingContext? drawingContext,
         uint pixelWidth,
         uint pixelHeight,
         double deltaSeconds,
@@ -21,7 +21,7 @@ public sealed class ProGpuWpfFrameEventArgs : EventArgs
         DpiScale = dpiScale;
     }
 
-    public MediaDrawingContext DrawingContext { get; }
+    public MediaDrawingContext? DrawingContext { get; }
 
     public ProGpuWpfDrawingFrame? DrawingFrame { get; }
 

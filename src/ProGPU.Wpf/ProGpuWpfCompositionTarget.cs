@@ -180,8 +180,7 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         using IDisposable? renderDataSinkProviderRegistration = drawingFrame.TryRegisterRenderDataSinkProvider(activeImageSourceAdapter, out IDisposable? registration)
             ? registration
             : null;
-        using var drawingContext = drawingFrame.OpenDrawingContext();
-        using var sink = new ProGpuCompositionCommandSink(drawingContext, Context, Viewport3DTextureCache);
+        using var sink = drawingFrame.OpenCompositionCommandSink(null);
         return ReplayVisualSubtreeCore(
             rootVisual,
             sink,

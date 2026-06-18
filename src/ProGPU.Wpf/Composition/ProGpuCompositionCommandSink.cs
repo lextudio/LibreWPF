@@ -63,6 +63,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
     private readonly global::ProGPU.Backend.WgpuContext? _context;
     private readonly WpfViewport3DTextureCache? _viewport3DTextureCache;
     private readonly Func<VectorPathGeometry, VectorPathGeometry?>? _pathOperationResolver;
+    private readonly MediaDrawingContext? _drawingContext;
     private bool _isClosed;
 
     public ProGpuCompositionCommandSink(MediaDrawingContext drawingContext)
@@ -75,8 +76,38 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         global::ProGPU.Backend.WgpuContext? context,
         WpfViewport3DTextureCache? viewport3DTextureCache,
         Func<VectorPathGeometry, VectorPathGeometry?>? pathOperationResolver = null)
+        : this(
+            drawingContext?.NativeContext ?? throw new ArgumentNullException(nameof(drawingContext)),
+            context,
+            viewport3DTextureCache,
+            pathOperationResolver,
+            drawingContext)
     {
-        DrawingContext = drawingContext ?? throw new ArgumentNullException(nameof(drawingContext));
+    }
+
+    public ProGpuCompositionCommandSink(global::ProGPU.Scene.DrawingContext nativeContext)
+        : this(nativeContext, context: null, viewport3DTextureCache: null)
+    {
+    }
+
+    internal ProGpuCompositionCommandSink(
+        global::ProGPU.Scene.DrawingContext nativeContext,
+        global::ProGPU.Backend.WgpuContext? context,
+        WpfViewport3DTextureCache? viewport3DTextureCache,
+        Func<VectorPathGeometry, VectorPathGeometry?>? pathOperationResolver = null)
+        : this(nativeContext, context, viewport3DTextureCache, pathOperationResolver, drawingContext: null)
+    {
+    }
+
+    private ProGpuCompositionCommandSink(
+        global::ProGPU.Scene.DrawingContext nativeContext,
+        global::ProGPU.Backend.WgpuContext? context,
+        WpfViewport3DTextureCache? viewport3DTextureCache,
+        Func<VectorPathGeometry, VectorPathGeometry?>? pathOperationResolver,
+        MediaDrawingContext? drawingContext)
+    {
+        NativeContext = nativeContext ?? throw new ArgumentNullException(nameof(nativeContext));
+        _drawingContext = drawingContext;
         _context = context;
         _viewport3DTextureCache = viewport3DTextureCache;
         _pathOperationResolver = pathOperationResolver;
@@ -87,7 +118,9 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         _textHintingModeStack.Push(global::ProGPU.Scene.TextHintingMode.Auto);
     }
 
-    public MediaDrawingContext DrawingContext { get; }
+    public MediaDrawingContext? DrawingContext => _drawingContext;
+
+    internal global::ProGPU.Scene.DrawingContext NativeContext { get; }
 
     public int UnsupportedStateCount { get; private set; }
 
@@ -111,7 +144,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             return false;
         }
 
-        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawExtension,
             ExtensionId = global::ProGPU.Scene.CompositorBuiltInExtensions.Mesh3D,
@@ -121,7 +154,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             DataParam = replayData.Payload
         });
 
-        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawTexture,
             Texture = replayData.Payload.ColorTexture,
@@ -164,7 +197,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         var originalPoint1 = point1;
         ApplySquareLineCaps(pen, ref point0, ref point1, startLineCap, endLineCap);
 
-        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawLine,
             Pen = pen,
@@ -253,7 +286,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
         var center = isStart ? start : end;
         var outward = isStart ? -direction : direction;
 
-        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.FillTriangle,
             Brush = pen.Brush,
@@ -297,7 +330,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
 
     private void AddNativeRect(VectorBrush? brush, VectorPen? pen, Rect rectangle)
     {
-        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawRect,
             Brush = brush,
@@ -340,7 +373,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
 
     private void AddNativeRoundedRect(VectorBrush? brush, VectorPen? pen, Rect rectangle, double radiusX, double radiusY)
     {
-        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawRoundedRect,
             Brush = brush,
@@ -389,7 +422,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
 
     private void AddNativeEllipse(VectorBrush? brush, VectorPen? pen, Point center, double radiusX, double radiusY)
     {
-        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawEllipse,
             Brush = brush,
@@ -437,12 +470,19 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             return;
         }
 
-        DrawingContext.DrawGeometry(brush, pen, geometry);
+        if (_drawingContext != null)
+        {
+            _drawingContext.DrawGeometry(brush, pen, geometry);
+        }
+        else
+        {
+            UnsupportedStateCount++;
+        }
     }
 
     private void AddNativePath(VectorBrush? brush, VectorPen? pen, VectorPathGeometry path)
     {
-        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawPath,
             Brush = brush,
@@ -459,7 +499,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
 
         if (imageSource is MediaBitmapSource bitmapSource)
         {
-            DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+            NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
             {
                 Type = global::ProGPU.Scene.RenderCommandType.DrawTexture,
                 Texture = bitmapSource.GpuTexture,
@@ -470,7 +510,14 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             return;
         }
 
-        DrawingContext.DrawImage(imageSource, rectangle);
+        if (_drawingContext != null)
+        {
+            _drawingContext.DrawImage(imageSource, rectangle);
+        }
+        else
+        {
+            UnsupportedStateCount++;
+        }
     }
 
     public void DrawImage(MediaImageSource imageSource, Rect rectangle, Rect sourceRectangle)
@@ -479,7 +526,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
 
         if (imageSource is MediaBitmapSource bitmapSource)
         {
-            DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+            NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
             {
                 Type = global::ProGPU.Scene.RenderCommandType.DrawTexture,
                 Texture = bitmapSource.GpuTexture,
@@ -505,7 +552,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             (float)origin.X,
             (float)(origin.Y + formattedText.Height * 0.8));
 
-        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawText,
             Text = formattedText.Text,
@@ -528,7 +575,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             return;
         }
 
-        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawGlyphRun,
             GlyphIndices = glyphRun.GlyphIndices,
@@ -551,19 +598,27 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
 
         if (TryConvertGeometryToNativePath(clipGeometry, _transformStack.Peek(), out var path))
         {
-            DrawingContext.NativeContext.PushGeometryClip(path);
+            NativeContext.PushGeometryClip(path);
             _pushStack.Push(PushKind.GeometryClip);
             return;
         }
 
-        DrawingContext.PushClip(clipGeometry);
-        _pushStack.Push(PushKind.DrawingContext);
+        if (_drawingContext != null)
+        {
+            _drawingContext.PushClip(clipGeometry);
+            _pushStack.Push(PushKind.DrawingContext);
+        }
+        else
+        {
+            UnsupportedStateCount++;
+            _pushStack.Push(PushKind.NoOp);
+        }
     }
 
     public void PushOpacity(double opacity)
     {
         ThrowIfClosed();
-        DrawingContext.NativeContext.PushOpacity((float)opacity);
+        NativeContext.PushOpacity((float)opacity);
         _pushStack.Push(PushKind.Opacity);
     }
 
@@ -583,7 +638,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             (float)bounds.Width,
             (float)bounds.Height);
 
-        DrawingContext.NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.PushOpacityMask,
             Brush = AdaptNativeBrush(opacityMask, bounds, count => UnsupportedStateCount += count),
@@ -597,7 +652,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
     {
         ThrowIfClosed();
         _transformStack.Push(transform.Value * _transformStack.Peek());
-        DrawingContext.PushTransform(transform);
+        _drawingContext?.PushTransform(transform);
         _pushStack.Push(PushKind.Transform);
     }
 
@@ -722,26 +777,26 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
 
         if (_pushStack.Count == 0)
         {
-            DrawingContext.Pop();
+            _drawingContext?.Pop();
             return;
         }
 
         var pushKind = _pushStack.Pop();
         if (pushKind == PushKind.GeometryClip)
         {
-            DrawingContext.NativeContext.PopGeometryClip();
+            NativeContext.PopGeometryClip();
             return;
         }
 
         if (pushKind == PushKind.OpacityMask)
         {
-            DrawingContext.NativeContext.PopOpacityMask();
+            NativeContext.PopOpacityMask();
             return;
         }
 
         if (pushKind == PushKind.Opacity)
         {
-            DrawingContext.NativeContext.PopOpacity();
+            NativeContext.PopOpacity();
             return;
         }
 
@@ -805,7 +860,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             _transformStack.Pop();
         }
 
-        DrawingContext.Pop();
+        _drawingContext?.Pop();
     }
 
     public void Close()
@@ -815,7 +870,7 @@ public sealed class ProGpuCompositionCommandSink : IWpfCompositionCommandSink, I
             return;
         }
 
-        DrawingContext.Close();
+        _drawingContext?.Close();
         _isClosed = true;
     }
 

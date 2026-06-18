@@ -26,7 +26,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         _sink = sink ?? throw new ArgumentNullException(nameof(sink));
     }
 
-    public MediaDrawingContext DrawingContext => _sink.DrawingContext;
+    public MediaDrawingContext? DrawingContext => _sink.DrawingContext;
 
     public int StackDepth => _stackDepth;
 

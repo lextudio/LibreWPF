@@ -194,13 +194,12 @@ public sealed class ProGpuWpfDrawingFrame
         return ownerVisual => OpenObjectRenderDataSinkContext(ownerVisual, imageSourceAdapter);
     }
 
-    private IWpfCompositionCommandSink OpenCompositionCommandSink(object? ownerVisual)
+    internal IWpfCompositionCommandSink OpenCompositionCommandSink(object? ownerVisual)
     {
+        LastOwnerVisual = ownerVisual;
+
         if (ownerVisual != null && _retainedWpfVisualRoot != null && _allowRetainedOwnerContexts)
         {
-            DrawingContextCount++;
-            LastOwnerVisual = ownerVisual;
-
             var retainedSink = new ProGpuRetainedCompositionCommandSink(
                 this,
                 _context,
@@ -215,7 +214,7 @@ public sealed class ProGpuWpfDrawingFrame
         }
 
         return new ProGpuCompositionCommandSink(
-            OpenDrawingContext(ownerVisual),
+            _rootVisual.Context,
             _context,
             _viewport3DTextureCache);
     }

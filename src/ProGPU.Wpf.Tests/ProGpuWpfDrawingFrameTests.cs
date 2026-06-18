@@ -727,7 +727,7 @@ public sealed class ProGpuWpfDrawingFrameTests
             second.DrawLine(new Pen(Brushes.Black, 1), new Point(5, 6), new Point(7, 8));
         }
 
-        Assert.Equal(2, frame.DrawingContextCount);
+        Assert.Equal(0, frame.DrawingContextCount);
         Assert.Equal(2, frame.CompositionDrawingContextCount);
         Assert.Equal(new[]
         {
@@ -758,7 +758,7 @@ public sealed class ProGpuWpfDrawingFrameTests
             context.DrawRectangle(brush, null, new Rect(1, 2, 3, 4));
         }
 
-        Assert.Equal(1, frame.DrawingContextCount);
+        Assert.Equal(0, frame.DrawingContextCount);
         Assert.Equal(1, frame.CompositionDrawingContextCount);
         Assert.Same(ownerVisual, frame.LastOwnerVisual);
         Assert.Empty(flatRoot.Context.Commands);
@@ -798,7 +798,7 @@ public sealed class ProGpuWpfDrawingFrameTests
             context.DrawRectangle(Brushes.Blue, null, new Rect(5, 6, 7, 8));
         }
 
-        Assert.Equal(1, frame.DrawingContextCount);
+        Assert.Equal(0, frame.DrawingContextCount);
         Assert.Equal(1, frame.CompositionDrawingContextCount);
         Assert.Same(ownerVisual, frame.LastOwnerVisual);
         Assert.Same(preservedBranch, Assert.Single(retainedRoot.Children));
@@ -827,7 +827,7 @@ public sealed class ProGpuWpfDrawingFrameTests
             context.DrawRectangle(brush, null, new Rect(9, 10, 11, 12));
         }
 
-        Assert.Equal(1, frame.DrawingContextCount);
+        Assert.Equal(0, frame.DrawingContextCount);
         Assert.Equal(0, frame.CompositionDrawingContextCount);
         Assert.Equal(1, frame.ObjectRenderDataSinkContextCount);
         Assert.Empty(flatRoot.Context.Commands);

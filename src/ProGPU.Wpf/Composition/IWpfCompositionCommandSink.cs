@@ -13,7 +13,7 @@ namespace System.Windows.Media.ProGPU.Composition;
 
 public interface IWpfCompositionCommandSink : IDisposable
 {
-    MediaDrawingContext DrawingContext { get; }
+    MediaDrawingContext? DrawingContext { get; }
 
     void DrawLine(MediaPen? pen, Point point0, Point point1);
 

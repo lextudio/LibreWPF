@@ -81,7 +81,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         _visualScopes.Push(new VisualScope(rootVisual, context, viewport3DTextureCache, VisualScopeKind.Root, 0));
     }
 
-    public MediaDrawingContext DrawingContext => Current.DrawingContext;
+    public MediaDrawingContext? DrawingContext => Current.DrawingContext;
 
     public void RegisterVisualOwner(object sourceVisual)
     {
@@ -487,8 +487,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
             Viewport3DTextureCache = viewport3DTextureCache;
             ScopeKind = scopeKind;
             ScopeStackDepth = scopeStackDepth;
-            DrawingContext = new MediaDrawingContext(visual.Context);
-            Sink = new ProGpuCompositionCommandSink(DrawingContext, context, viewport3DTextureCache);
+            Sink = new ProGpuCompositionCommandSink(visual.Context, context, viewport3DTextureCache);
         }
 
         public ProGpuRetainedDrawingVisual Visual { get; }
@@ -501,7 +500,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
 
         public int ScopeStackDepth { get; }
 
-        public MediaDrawingContext DrawingContext { get; }
+        public MediaDrawingContext? DrawingContext => Sink.DrawingContext;
 
         public ProGpuCompositionCommandSink Sink { get; }
 
@@ -510,7 +509,6 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         public void Dispose()
         {
             Sink.Dispose();
-            DrawingContext.Dispose();
         }
     }
 }

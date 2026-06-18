@@ -115,7 +115,7 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         context.Close();
 
         Assert.Equal(1, frame.ObjectRenderDataSinkContextCount);
-        Assert.Equal(1, frame.DrawingContextCount);
+        Assert.Equal(0, frame.DrawingContextCount);
         Assert.Single(root.Context.Commands);
     }
 
@@ -153,7 +153,7 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         }
 
         Assert.Equal(1, frame.ObjectRenderDataSinkContextCount);
-        Assert.Equal(1, frame.DrawingContextCount);
+        Assert.Equal(0, frame.DrawingContextCount);
         Assert.Empty(flatRoot.Context.Commands);
         var retainedFrameRoot = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
         var ownerBranch = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedFrameRoot.Children));
@@ -203,7 +203,7 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("ProGpuWpfDrawingFrame drawingFrame = BeginDrawingFrame(pixelWidth, pixelHeight);", source, StringComparison.Ordinal);
         Assert.Contains("IWpfImageSourceAdapter? activeImageSourceAdapter = CreateFrameImageSourceAdapter(", source, StringComparison.Ordinal);
         Assert.Contains("drawingFrame.TryRegisterRenderDataSinkProvider(activeImageSourceAdapter, out IDisposable? registration)", source, StringComparison.Ordinal);
-        Assert.Contains("using var drawingContext = drawingFrame.OpenDrawingContext();", source, StringComparison.Ordinal);
+        Assert.Contains("using var sink = drawingFrame.OpenCompositionCommandSink(null);", source, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -62,6 +62,8 @@ public sealed class SmokeViewModel
 
     public bool IsHighlighted { get; } = true;
 
+    public bool IsCritical { get; } = true;
+
     public ObservableCollection<SmokeItem> Items { get; }
 }
 

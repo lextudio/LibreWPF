@@ -259,7 +259,7 @@ internal static class Program
         AssertAssignableTo(window, "System.Windows.Window", "SDK smoke main window");
         AssertEqual("ProGPU WPF SDK Smoke", GetProperty(window, "Title"), "window title");
         AssertEqual(420.0, GetProperty(window, "Width"), "window width");
-        AssertEqual(430.0, GetProperty(window, "Height"), "window height");
+        AssertEqual(480.0, GetProperty(window, "Height"), "window height");
 
         InvokeVoid(window, "UpdateLayout");
 
@@ -278,6 +278,9 @@ internal static class Program
         AssertType(actionButtonTemplate, "System.Windows.Controls.ControlTemplate", "action button control template");
         object actionButtonTemplateRoot = Invoke(actionButtonTemplate, "LoadContent");
         AssertType(actionButtonTemplateRoot, "System.Windows.Controls.Border", "action button control template root");
+        Type visualStateManagerType = GetRequiredType(actionButtonTemplateRoot.GetType().Assembly, "System.Windows.VisualStateManager");
+        object visualStateGroups = InvokeStatic(visualStateManagerType, "GetVisualStateGroups", actionButtonTemplateRoot);
+        AssertAtLeast(1, GetCount(visualStateGroups), "action button visual state group count");
         object actionButtonBackground = GetProperty(actionButton, "Background");
         AssertType(actionButtonBackground, "System.Windows.Media.SolidColorBrush", "action button dynamic resource background");
         AssertEqual("#FF356D9E", GetProperty(actionButtonBackground, "Color").ToString() ?? string.Empty, "action button background color");
@@ -343,6 +346,20 @@ internal static class Program
         object dataTriggerForeground = GetProperty(dataTriggerStatus, "Foreground");
         AssertType(dataTriggerForeground, "System.Windows.Media.SolidColorBrush", "data trigger foreground");
         AssertEqual("#FF6B8F3A", GetProperty(dataTriggerForeground, "Color").ToString() ?? string.Empty, "data trigger foreground color");
+
+        object multiTriggerStatus = Invoke(window, "FindName", "MultiTriggerStatus");
+        AssertType(multiTriggerStatus, "System.Windows.Controls.TextBlock", "multi trigger status element");
+        AssertEqual("multi trigger active", GetProperty(multiTriggerStatus, "Text"), "multi trigger text");
+        object multiTriggerForeground = GetProperty(multiTriggerStatus, "Foreground");
+        AssertType(multiTriggerForeground, "System.Windows.Media.SolidColorBrush", "multi trigger foreground");
+        AssertEqual("#FF356D9E", GetProperty(multiTriggerForeground, "Color").ToString() ?? string.Empty, "multi trigger foreground color");
+
+        object multiDataTriggerStatus = Invoke(window, "FindName", "MultiDataTriggerStatus");
+        AssertType(multiDataTriggerStatus, "System.Windows.Controls.TextBlock", "multi data trigger status element");
+        AssertEqual("multi data trigger active", GetProperty(multiDataTriggerStatus, "Text"), "multi data trigger text");
+        object multiDataTriggerForeground = GetProperty(multiDataTriggerStatus, "Foreground");
+        AssertType(multiDataTriggerForeground, "System.Windows.Media.SolidColorBrush", "multi data trigger foreground");
+        AssertEqual("#FF6B8F3A", GetProperty(multiDataTriggerForeground, "Color").ToString() ?? string.Empty, "multi data trigger foreground color");
 
         object inputBox = Invoke(window, "FindName", "InputBox");
         AssertType(inputBox, "System.Windows.Controls.TextBox", "input box");
@@ -850,7 +867,7 @@ internal static class Program
             AssertEqual(true, typedActivation.IsVisible, "SDK startup window visible before run");
             AssertEqual("ProGPU WPF SDK Smoke", typedActivation.Title, "activated SDK window title");
             AssertEqual(420.0, typedActivation.Width, "activated SDK window width");
-            AssertEqual(430.0, typedActivation.Height, "activated SDK window height");
+            AssertEqual(480.0, typedActivation.Height, "activated SDK window height");
             AssertSame(typedActivation.Window, GetProperty(_application, "MainWindow"), "SDK Application.MainWindow");
             InvokeVoid(typedActivation.Window, "UpdateLayout");
             FlushDispatcherOperations(typedActivation.Window, "Loaded", "Render", "ApplicationIdle");

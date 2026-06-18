@@ -6,7 +6,7 @@
     x:Name="RootWindow"
     Title="ProGPU WPF SDK Smoke"
     Width="420"
-    Height="430">
+    Height="480">
     <Window.CommandBindings>
         <CommandBinding
             CanExecute="OnSmokeCommandCanExecute"
@@ -35,6 +35,12 @@
                             x:Name="ButtonChrome"
                             Background="{TemplateBinding Background}"
                             Padding="{TemplateBinding Padding}">
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualState x:Name="Normal" />
+                                    <VisualState x:Name="Disabled" />
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
                             <ContentPresenter
                                 x:Name="ButtonContent"
                                 HorizontalAlignment="Center"
@@ -67,6 +73,34 @@
                     <Setter Property="Text" Value="data trigger active" />
                     <Setter Property="Foreground" Value="{DynamicResource MergedAccentBrush}" />
                 </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="MultiTriggeredTextStyle" TargetType="{x:Type TextBlock}">
+            <Setter Property="Text" Value="multi trigger inactive" />
+            <Style.Triggers>
+                <MultiTrigger>
+                    <MultiTrigger.Conditions>
+                        <Condition Property="Tag" Value="Active" />
+                        <Condition Property="IsEnabled" Value="True" />
+                    </MultiTrigger.Conditions>
+                    <Setter Property="Text" Value="multi trigger active" />
+                    <Setter Property="Foreground" Value="{DynamicResource SmokeAccentBrush}" />
+                </MultiTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="MultiDataTriggeredTextStyle" TargetType="{x:Type TextBlock}">
+            <Setter Property="Text" Value="multi data trigger inactive" />
+            <Style.Triggers>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsHighlighted}" Value="True" />
+                        <Condition Binding="{Binding IsCritical}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter Property="Text" Value="multi data trigger active" />
+                    <Setter Property="Foreground" Value="{DynamicResource MergedAccentBrush}" />
+                </MultiDataTrigger>
             </Style.Triggers>
         </Style>
 
@@ -117,6 +151,15 @@
             x:Name="DataTriggerStatus"
             Margin="0,6,0,0"
             Style="{StaticResource DataTriggeredTextStyle}" />
+        <TextBlock
+            x:Name="MultiTriggerStatus"
+            Margin="0,6,0,0"
+            Style="{StaticResource MultiTriggeredTextStyle}"
+            Tag="Active" />
+        <TextBlock
+            x:Name="MultiDataTriggerStatus"
+            Margin="0,6,0,0"
+            Style="{StaticResource MultiDataTriggeredTextStyle}" />
         <TextBox
             x:Name="InputBox"
             Margin="{StaticResource SmokePanelMargin}"

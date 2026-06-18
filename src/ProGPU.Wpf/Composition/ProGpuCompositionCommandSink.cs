@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using MediaBrush = System.Windows.Media.Brush;
@@ -954,7 +955,11 @@ public sealed class ProGpuCompositionCommandSink :
 
         if (_pushStack.Count == 0)
         {
-            _drawingContext?.Pop();
+            if (_drawingContext != null)
+            {
+                PopDrawingContext(_drawingContext);
+            }
+
             return;
         }
 
@@ -1037,7 +1042,10 @@ public sealed class ProGpuCompositionCommandSink :
             _transformStack.Pop();
         }
 
-        _drawingContext?.Pop();
+        if (_drawingContext != null)
+        {
+            PopDrawingContext(_drawingContext);
+        }
     }
 
     public void Close()
@@ -1047,8 +1055,24 @@ public sealed class ProGpuCompositionCommandSink :
             return;
         }
 
-        _drawingContext?.Close();
+        if (_drawingContext != null)
+        {
+            CloseDrawingContext(_drawingContext);
+        }
+
         _isClosed = true;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void PopDrawingContext(MediaDrawingContext drawingContext)
+    {
+        drawingContext.Pop();
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void CloseDrawingContext(MediaDrawingContext drawingContext)
+    {
+        drawingContext.Close();
     }
 
     public void Dispose()

@@ -1213,6 +1213,14 @@
                 SmokeBubbled="OnCustomRoutedEventSource" />
         </StackPanel>
         <StackPanel
+            x:Name="ClassRoutedEventScopePanel"
+            local:SmokeClassRoutedEventSource.SmokeClassBubbled="OnClassRoutedEventScope"
+            Margin="0,8,0,0">
+            <local:SmokeClassRoutedEventSource
+                x:Name="ClassRoutedEventSource"
+                SmokeClassBubbled="OnClassRoutedEventSource" />
+        </StackPanel>
+        <StackPanel
             x:Name="AccessKeyFocusScope"
             FocusManager.FocusedElement="{Binding ElementName=AccessTargetBox}"
             FocusManager.IsFocusScope="True"

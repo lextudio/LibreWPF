@@ -1084,7 +1084,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 86, "stack panel children");
+        AssertCollectionCount(children, expected: 87, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -1161,6 +1161,7 @@ internal static class Program
         ValidateAdornerDecorator(window);
         ValidateDependencyPropertyCore(window);
         ValidateCustomRoutedEvent(window);
+        ValidateClassRoutedEvent(window);
         ValidateAccessKeyFocusScope(presentationCore, window);
         ValidateNavigationFrame(window);
     }
@@ -5532,6 +5533,45 @@ internal static class Program
         AssertEqual("SmokeBubbled", GetProperty(window, "LastCustomRoutedEventScopeRoutedEventName"), "compiled custom routed event scope routed event");
         AssertEqual(false, GetProperty(window, "LastCustomRoutedEventScopeHandled"), "compiled custom routed event scope handled state");
         AssertEqual("compiled routed payload", GetProperty(window, "LastCustomRoutedEventScopePayload"), "compiled custom routed event scope payload");
+    }
+
+    private static void ValidateClassRoutedEvent(object window)
+    {
+        object scope = GetField(window, "ClassRoutedEventScopePanel");
+        AssertType(scope, "System.Windows.Controls.StackPanel", "compiled class routed event scope panel");
+        AssertEqual(1, GetProperty(GetProperty(scope, "Children"), "Count"), "compiled class routed event scope child count");
+
+        object source = GetField(window, "ClassRoutedEventSource");
+        AssertType(source, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeClassRoutedEventSource", "compiled class routed event source");
+        AssertSame(source, GetCollectionItem(GetProperty(scope, "Children"), 0), "compiled class routed event scope child");
+        AssertEqual(0, GetProperty(source, "ClassHandlerCount"), "compiled class routed event class handler initial count");
+        AssertEqual(0, GetProperty(window, "ClassRoutedEventSourceCount"), "compiled class routed event source initial count");
+        AssertEqual(0, GetProperty(window, "ClassRoutedEventScopeCount"), "compiled class routed event scope initial count");
+        AssertEqual(0, GetProperty(window, "ClassRoutedEventHandledTooScopeCount"), "compiled class routed event handled-too initial count");
+
+        object args = Invoke(source, "RaiseSmokeClassBubbled", "compiled class routed payload");
+        AssertType(args, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeRoutedEventArgs", "compiled class routed event args");
+        AssertEqual("compiled class routed payload", GetProperty(args, "Payload"), "compiled class routed event payload");
+        AssertEqual(true, GetProperty(args, "Handled"), "compiled class routed event final handled state");
+        AssertEqual(1, GetProperty(source, "ClassHandlerCount"), "compiled class routed event class handler count");
+        AssertEqual("ClassRoutedEventSource", GetProperty(source, "LastClassHandlerSenderName"), "compiled class routed event class handler sender");
+        AssertEqual("ClassRoutedEventSource", GetProperty(source, "LastClassHandlerOriginalSourceName"), "compiled class routed event class handler original source");
+        AssertEqual("SmokeClassBubbled", GetProperty(source, "LastClassHandlerRoutedEventName"), "compiled class routed event class handler routed event");
+        AssertEqual(false, GetProperty(source, "LastClassHandlerHandled"), "compiled class routed event class handler handled state");
+        AssertEqual("compiled class routed payload", GetProperty(source, "LastClassHandlerPayload"), "compiled class routed event class handler payload");
+        AssertEqual(1, GetProperty(window, "ClassRoutedEventSourceCount"), "compiled class routed event source count");
+        AssertEqual(0, GetProperty(window, "ClassRoutedEventScopeCount"), "compiled class routed event skipped normal scope count");
+        AssertEqual(1, GetProperty(window, "ClassRoutedEventHandledTooScopeCount"), "compiled class routed event handled-too scope count");
+        AssertEqual("ClassRoutedEventSource", GetProperty(window, "LastClassRoutedEventSourceSenderName"), "compiled class routed event source sender");
+        AssertEqual("ClassRoutedEventSource", GetProperty(window, "LastClassRoutedEventSourceOriginalSourceName"), "compiled class routed event source original source");
+        AssertEqual("SmokeClassBubbled", GetProperty(window, "LastClassRoutedEventSourceRoutedEventName"), "compiled class routed event source routed event");
+        AssertEqual(false, GetProperty(window, "LastClassRoutedEventSourceHandled"), "compiled class routed event source handled state");
+        AssertEqual("compiled class routed payload", GetProperty(window, "LastClassRoutedEventSourcePayload"), "compiled class routed event source payload");
+        AssertEqual("ClassRoutedEventScopePanel", GetProperty(window, "LastClassRoutedEventHandledTooScopeSenderName"), "compiled class routed event handled-too scope sender");
+        AssertEqual("ClassRoutedEventSource", GetProperty(window, "LastClassRoutedEventHandledTooScopeOriginalSourceName"), "compiled class routed event handled-too scope original source");
+        AssertEqual("SmokeClassBubbled", GetProperty(window, "LastClassRoutedEventHandledTooScopeRoutedEventName"), "compiled class routed event handled-too scope routed event");
+        AssertEqual(true, GetProperty(window, "LastClassRoutedEventHandledTooScopeHandled"), "compiled class routed event handled-too scope handled state");
+        AssertEqual("compiled class routed payload", GetProperty(window, "LastClassRoutedEventHandledTooScopePayload"), "compiled class routed event handled-too scope payload");
     }
 
     private static void ValidatePostShowAccessKeyFocusScope(Assembly presentationCore, object window)

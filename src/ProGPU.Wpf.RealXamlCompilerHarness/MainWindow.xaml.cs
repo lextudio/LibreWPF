@@ -32,6 +32,10 @@ public partial class MainWindow : Window
     {
         DataContext = new SmokeViewModel();
         InitializeComponent();
+        ClassRoutedEventScopePanel.AddHandler(
+            SmokeClassRoutedEventSource.SmokeClassBubbledEvent,
+            new SmokeRoutedEventHandler(OnClassRoutedEventScopeHandledToo),
+            handledEventsToo: true);
     }
 
     public int RoutedCommandCanExecuteCount { get; private set; }
@@ -139,6 +143,42 @@ public partial class MainWindow : Window
     public bool LastCustomRoutedEventScopeHandled { get; private set; }
 
     public string? LastCustomRoutedEventScopePayload { get; private set; }
+
+    public int ClassRoutedEventSourceCount { get; private set; }
+
+    public int ClassRoutedEventScopeCount { get; private set; }
+
+    public int ClassRoutedEventHandledTooScopeCount { get; private set; }
+
+    public string? LastClassRoutedEventSourceSenderName { get; private set; }
+
+    public string? LastClassRoutedEventSourceOriginalSourceName { get; private set; }
+
+    public string? LastClassRoutedEventSourceRoutedEventName { get; private set; }
+
+    public bool LastClassRoutedEventSourceHandled { get; private set; }
+
+    public string? LastClassRoutedEventSourcePayload { get; private set; }
+
+    public string? LastClassRoutedEventScopeSenderName { get; private set; }
+
+    public string? LastClassRoutedEventScopeOriginalSourceName { get; private set; }
+
+    public string? LastClassRoutedEventScopeRoutedEventName { get; private set; }
+
+    public bool LastClassRoutedEventScopeHandled { get; private set; }
+
+    public string? LastClassRoutedEventScopePayload { get; private set; }
+
+    public string? LastClassRoutedEventHandledTooScopeSenderName { get; private set; }
+
+    public string? LastClassRoutedEventHandledTooScopeOriginalSourceName { get; private set; }
+
+    public string? LastClassRoutedEventHandledTooScopeRoutedEventName { get; private set; }
+
+    public bool LastClassRoutedEventHandledTooScopeHandled { get; private set; }
+
+    public string? LastClassRoutedEventHandledTooScopePayload { get; private set; }
 
     public int DocumentLinkRequestNavigateCount { get; private set; }
 
@@ -480,6 +520,37 @@ public partial class MainWindow : Window
         LastCustomRoutedEventScopeHandled = e.Handled;
         LastCustomRoutedEventScopePayload = e.Payload;
         e.Handled = true;
+    }
+
+    private void OnClassRoutedEventSource(object sender, SmokeRoutedEventArgs e)
+    {
+        ClassRoutedEventSourceCount++;
+        LastClassRoutedEventSourceSenderName = DescribeElementName(sender);
+        LastClassRoutedEventSourceOriginalSourceName = DescribeElementName(e.OriginalSource);
+        LastClassRoutedEventSourceRoutedEventName = e.RoutedEvent?.Name;
+        LastClassRoutedEventSourceHandled = e.Handled;
+        LastClassRoutedEventSourcePayload = e.Payload;
+        e.Handled = true;
+    }
+
+    private void OnClassRoutedEventScope(object sender, SmokeRoutedEventArgs e)
+    {
+        ClassRoutedEventScopeCount++;
+        LastClassRoutedEventScopeSenderName = DescribeElementName(sender);
+        LastClassRoutedEventScopeOriginalSourceName = DescribeElementName(e.OriginalSource);
+        LastClassRoutedEventScopeRoutedEventName = e.RoutedEvent?.Name;
+        LastClassRoutedEventScopeHandled = e.Handled;
+        LastClassRoutedEventScopePayload = e.Payload;
+    }
+
+    private void OnClassRoutedEventScopeHandledToo(object sender, SmokeRoutedEventArgs e)
+    {
+        ClassRoutedEventHandledTooScopeCount++;
+        LastClassRoutedEventHandledTooScopeSenderName = DescribeElementName(sender);
+        LastClassRoutedEventHandledTooScopeOriginalSourceName = DescribeElementName(e.OriginalSource);
+        LastClassRoutedEventHandledTooScopeRoutedEventName = e.RoutedEvent?.Name;
+        LastClassRoutedEventHandledTooScopeHandled = e.Handled;
+        LastClassRoutedEventHandledTooScopePayload = e.Payload;
     }
 
     private void OnDocumentLinkRequestNavigate(object sender, RequestNavigateEventArgs e)
@@ -1190,6 +1261,66 @@ public sealed class SmokeRoutedEventSource : Control
         var args = new SmokeRoutedEventArgs(SmokeBubbledEvent, this, payload);
         RaiseEvent(args);
         return args;
+    }
+}
+
+public sealed class SmokeClassRoutedEventSource : Control
+{
+    public static readonly RoutedEvent SmokeClassBubbledEvent = EventManager.RegisterRoutedEvent(
+        "SmokeClassBubbled",
+        RoutingStrategy.Bubble,
+        typeof(SmokeRoutedEventHandler),
+        typeof(SmokeClassRoutedEventSource));
+
+    static SmokeClassRoutedEventSource()
+    {
+        EventManager.RegisterClassHandler(
+            typeof(SmokeClassRoutedEventSource),
+            SmokeClassBubbledEvent,
+            new SmokeRoutedEventHandler(OnSmokeClassBubbledClassHandler));
+    }
+
+    public event SmokeRoutedEventHandler SmokeClassBubbled
+    {
+        add => AddHandler(SmokeClassBubbledEvent, value);
+        remove => RemoveHandler(SmokeClassBubbledEvent, value);
+    }
+
+    public int ClassHandlerCount { get; private set; }
+
+    public string? LastClassHandlerSenderName { get; private set; }
+
+    public string? LastClassHandlerOriginalSourceName { get; private set; }
+
+    public string? LastClassHandlerRoutedEventName { get; private set; }
+
+    public bool LastClassHandlerHandled { get; private set; }
+
+    public string? LastClassHandlerPayload { get; private set; }
+
+    public SmokeRoutedEventArgs RaiseSmokeClassBubbled(string payload)
+    {
+        var args = new SmokeRoutedEventArgs(SmokeClassBubbledEvent, this, payload);
+        RaiseEvent(args);
+        return args;
+    }
+
+    private static void OnSmokeClassBubbledClassHandler(object sender, SmokeRoutedEventArgs e)
+    {
+        if (sender is SmokeClassRoutedEventSource source)
+        {
+            source.ClassHandlerCount++;
+            source.LastClassHandlerSenderName = DescribeElementName(sender);
+            source.LastClassHandlerOriginalSourceName = DescribeElementName(e.OriginalSource);
+            source.LastClassHandlerRoutedEventName = e.RoutedEvent?.Name;
+            source.LastClassHandlerHandled = e.Handled;
+            source.LastClassHandlerPayload = e.Payload;
+        }
+    }
+
+    private static string? DescribeElementName(object? value)
+    {
+        return value is FrameworkElement element ? element.Name : null;
     }
 }
 

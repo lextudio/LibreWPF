@@ -911,6 +911,11 @@
             Margin="0,8,0,0"
             ItemsSource="{Binding Items}" />
         <ListBox
+            x:Name="StringFormatItemsList"
+            ItemStringFormat="formatted {0}"
+            Margin="0,8,0,0"
+            ItemsSource="{Binding Labels}" />
+        <ListBox
             x:Name="DisplayMemberItemsList"
             Margin="0,8,0,0"
             DisplayMemberPath="Name"

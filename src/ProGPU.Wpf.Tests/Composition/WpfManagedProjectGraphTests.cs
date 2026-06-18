@@ -1279,6 +1279,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("composite footer", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"AlternationItemsList\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("AlternationCount=\"2\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"StringFormatItemsList\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemStringFormat=\"formatted {0}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding Labels}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"DisplayMemberItemsList\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DisplayMemberPath=\"Name\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SelectedValuePath=\"Category\"", mainWindowXaml, StringComparison.Ordinal);
@@ -2129,6 +2132,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ListBox AlternationCount", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled alternation ListBox collection-change items", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled alternation third item container index", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowItemStringFormat(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ItemStringFormat ListBox", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox ItemStringFormat", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ItemStringFormat ListBox collection-change items", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ItemStringFormat collection-change generated item text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowTabControl(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowSectionControls(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowScrollingControls(window)", harnessProgram, StringComparison.Ordinal);
@@ -2781,6 +2789,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled ListBox AlternationCount", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled alternation ListBox collection-change items", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled alternation third item container index", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowItemStringFormat(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePostShowItemStringFormat(_presentationCore, activation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ItemStringFormat ListBox", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ListBox ItemStringFormat", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ItemStringFormat ListBox collection-change items", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ItemStringFormat collection-change generated item text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowTabControl(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowSectionControls(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowScrollingControls(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);

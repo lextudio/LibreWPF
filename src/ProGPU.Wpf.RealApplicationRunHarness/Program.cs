@@ -985,7 +985,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 76, "stack panel children");
+        AssertCollectionCount(children, expected: 77, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -1855,6 +1855,53 @@ internal static class Program
         object itemContainer = Invoke(itemContainerGenerator, "ContainerFromItem", item);
         AssertType(itemContainer, "System.Windows.Controls.ListBoxItem", description);
         AssertEqual(expectedIndex, GetDependencyPropertyValue(itemContainer, itemsControlType, "AlternationIndexProperty"), description);
+    }
+
+    private static void ValidatePostShowItemStringFormat(Assembly presentationCore, object window)
+    {
+        object stringFormatItemsList = GetField(window, "StringFormatItemsList");
+        object sourceLabels = GetProperty(GetProperty(window, "DataContext"), "Labels");
+
+        ValidateGeneratedStringFormatContainer(
+            presentationCore,
+            stringFormatItemsList,
+            GetCollectionItem(sourceLabels, 0),
+            "formatted label alpha",
+            "compiled ItemStringFormat first generated item text");
+        ValidateGeneratedStringFormatContainer(
+            presentationCore,
+            stringFormatItemsList,
+            GetCollectionItem(sourceLabels, 1),
+            "formatted label beta",
+            "compiled ItemStringFormat second generated item text");
+        ValidateGeneratedStringFormatContainer(
+            presentationCore,
+            stringFormatItemsList,
+            GetCollectionItem(sourceLabels, 2),
+            "formatted label gamma",
+            "compiled ItemStringFormat collection-change generated item text");
+    }
+
+    private static void ValidateGeneratedStringFormatContainer(
+        Assembly presentationCore,
+        object stringFormatItemsList,
+        object item,
+        string expectedText,
+        string description)
+    {
+        Invoke(stringFormatItemsList, "ScrollIntoView", item);
+        Invoke(stringFormatItemsList, "UpdateLayout");
+
+        object itemContainerGenerator = GetProperty(stringFormatItemsList, "ItemContainerGenerator");
+        object itemContainer = Invoke(itemContainerGenerator, "ContainerFromItem", item);
+        AssertType(itemContainer, "System.Windows.Controls.ListBoxItem", description);
+        AssertEqual("formatted {0}", GetProperty(itemContainer, "ContentStringFormat"), "compiled ItemStringFormat generated container format");
+        Invoke(itemContainer, "ApplyTemplate");
+        Invoke(itemContainer, "UpdateLayout");
+
+        object textBlock = FindVisualDescendantByTypeName(presentationCore, itemContainer, "System.Windows.Controls.TextBlock")
+            ?? throw new InvalidOperationException("Expected ItemStringFormat container to generate a TextBlock.");
+        AssertEqual(expectedText, GetProperty(textBlock, "Text"), description);
     }
 
     private static void ValidatePostShowGroupStyleHeader(Assembly presentationCore, object window)
@@ -3783,6 +3830,8 @@ internal static class Program
         object dataContext = GetProperty(window, "DataContext");
         object sourceItems = GetProperty(dataContext, "Items");
         AssertCollectionCount(sourceItems, expected: 2, "view-model items");
+        object sourceLabels = GetProperty(dataContext, "Labels");
+        AssertCollectionCount(sourceLabels, expected: 2, "view-model labels");
 
         object itemsList = GetField(window, "ItemsList");
         AssertType(itemsList, "System.Windows.Controls.ListBox", "compiled item ListBox");
@@ -3932,6 +3981,12 @@ internal static class Program
         AssertEqual(2, GetProperty(alternationItemsList, "AlternationCount"), "compiled ListBox AlternationCount");
         AssertCollectionCount(GetProperty(alternationItemsList, "Items"), expected: 2, "compiled alternation ListBox generated items");
 
+        object stringFormatItemsList = GetField(window, "StringFormatItemsList");
+        AssertType(stringFormatItemsList, "System.Windows.Controls.ListBox", "compiled ItemStringFormat ListBox");
+        AssertSame(sourceLabels, GetProperty(stringFormatItemsList, "ItemsSource"), "compiled ItemStringFormat ListBox ItemsSource binding");
+        AssertEqual("formatted {0}", GetProperty(stringFormatItemsList, "ItemStringFormat"), "compiled ListBox ItemStringFormat");
+        AssertCollectionCount(GetProperty(stringFormatItemsList, "Items"), expected: 2, "compiled ItemStringFormat ListBox generated items");
+
         object filteredItemsViewSource = Invoke(window, "TryFindResource", "FilteredItemsView");
         AssertType(filteredItemsViewSource, "System.Windows.Data.CollectionViewSource", "compiled filtered CollectionViewSource resource");
         object filteredItemsList = GetField(window, "FilteredItemsList");
@@ -3990,8 +4045,10 @@ internal static class Program
 
         object thirdItem = Create(window.GetType().Assembly, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeItem", "item gamma");
         AddToCollection(sourceItems, thirdItem);
+        AddToCollection(sourceLabels, "label gamma");
         AssertCollectionCount(GetProperty(itemsList, "Items"), expected: 3, "compiled ListBox collection-change items");
         AssertCollectionCount(GetProperty(alternationItemsList, "Items"), expected: 3, "compiled alternation ListBox collection-change items");
+        AssertCollectionCount(GetProperty(stringFormatItemsList, "Items"), expected: 3, "compiled ItemStringFormat ListBox collection-change items");
         AssertCollectionCount(sortedItems, expected: 3, "compiled sorted ListBox collection-change items");
         AssertEqual("item gamma", GetProperty(GetCollectionItem(sortedItems, 0), "Name"), "compiled CollectionViewSource collection-change first item");
         object compositeThirdItem = Create(window.GetType().Assembly, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeItem", "item gamma");
@@ -5471,6 +5528,7 @@ internal static class Program
                 () => FlushDispatcherOperations(typedActivation.Window, "Render"));
             ValidatePostShowItemTemplateTriggerActivation(_presentationCore, typedActivation.Window);
             ValidatePostShowItemContainerAlternation(typedActivation.Window);
+            ValidatePostShowItemStringFormat(_presentationCore, typedActivation.Window);
             ValidatePostShowGroupStyleHeader(_presentationCore, typedActivation.Window);
             ValidatePostShowItemTemplateSelector(_presentationCore, typedActivation.Window);
             ValidatePostShowItemContainerStyleSelector(_presentationCore, typedActivation.Window);
@@ -5532,6 +5590,7 @@ internal static class Program
             ValidateLoadedEventHandlerState(activation.Window);
             ValidatePostShowItemTemplateTriggerActivation(_presentationCore, activation.Window);
             ValidatePostShowItemContainerAlternation(activation.Window);
+            ValidatePostShowItemStringFormat(_presentationCore, activation.Window);
             ValidatePostShowGroupStyleHeader(_presentationCore, activation.Window);
             ValidatePostShowItemTemplateSelector(_presentationCore, activation.Window);
             ValidatePostShowItemContainerStyleSelector(_presentationCore, activation.Window);

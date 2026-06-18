@@ -554,6 +554,8 @@ public partial class MainWindow : Window
         {
             Items.Add(new SmokeItem("item alpha"));
             Items.Add(new SmokeItem("item beta"));
+            Labels.Add("label alpha");
+            Labels.Add("label beta");
             Nodes.Add(new SmokeNode(
                 "root node",
                 new SmokeNode("child alpha"),
@@ -719,6 +721,8 @@ public partial class MainWindow : Window
         }
 
         public ObservableCollection<SmokeItem> Items { get; } = new();
+
+        public ObservableCollection<string> Labels { get; } = new();
 
         public ObservableCollection<SmokeNode> Nodes { get; } = new();
 

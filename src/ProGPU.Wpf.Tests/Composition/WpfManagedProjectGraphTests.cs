@@ -1634,6 +1634,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("loose XamlReader DataTemplate category binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip DataTemplate trigger setter target", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip DataTemplate category TextBlock name", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseXamlWriterItemsPanelTemplateRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter serialized ItemsPanelTemplate", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip ItemsPanelTemplate panel name", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip ItemsPanelTemplate item width", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlWriterFrameworkElementRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter serialized FrameworkElement Button", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip FrameworkElement children", harnessProgram, StringComparison.Ordinal);
@@ -2252,6 +2256,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("loose XamlReader DataTemplate category binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip DataTemplate trigger setter target", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip DataTemplate category TextBlock name", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseXamlWriterItemsPanelTemplateRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter serialized ItemsPanelTemplate", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip ItemsPanelTemplate panel name", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip ItemsPanelTemplate item width", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlWriterFrameworkElementRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter serialized FrameworkElement Button", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip FrameworkElement children", harnessProgram, StringComparison.Ordinal);

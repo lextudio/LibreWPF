@@ -64,6 +64,7 @@ internal static class Program
             ValidateLooseXamlWriterStyleRoundTrip(presentationFramework);
             ValidateLooseXamlWriterControlTemplateRoundTrip(presentationFramework);
             ValidateLooseXamlWriterDataTemplateRoundTrip(presentationFramework);
+            ValidateLooseXamlWriterItemsPanelTemplateRoundTrip(presentationFramework);
             ValidateLooseXamlWriterFrameworkElementRoundTrip(presentationFramework);
             ValidateLooseXamlWriterFlowDocumentRoundTrip(presentationFramework);
             ValidateApplication(application);
@@ -489,6 +490,43 @@ internal static class Program
         AssertType(categoryText, "System.Windows.Controls.TextBlock", "loose XamlWriter round-trip DataTemplate category TextBlock");
         AssertEqual("TemplateNameText", GetProperty(nameText, "Name"), "loose XamlWriter round-trip DataTemplate name TextBlock name");
         AssertEqual("TemplateCategoryText", GetProperty(categoryText, "Name"), "loose XamlWriter round-trip DataTemplate category TextBlock name");
+    }
+
+    private static void ValidateLooseXamlWriterItemsPanelTemplateRoundTrip(Assembly presentationFramework)
+    {
+        const string templateDictionaryXaml = """
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ItemsPanelTemplate x:Key="WriterItemsPanelTemplate">
+        <WrapPanel
+            x:Name="WriterItemsHostPanel"
+            Orientation="Horizontal"
+            ItemWidth="48"
+            ItemHeight="24"
+            Tag="writer items panel" />
+    </ItemsPanelTemplate>
+</ResourceDictionary>
+""";
+
+        object dictionary = ParseLooseXaml(presentationFramework, templateDictionaryXaml);
+        string serialized = SaveLooseXaml(presentationFramework, dictionary);
+        AssertContains("ItemsPanelTemplate", serialized, "loose XamlWriter serialized ItemsPanelTemplate");
+        AssertContains("WriterItemsPanelTemplate", serialized, "loose XamlWriter serialized ItemsPanelTemplate key");
+        AssertContains("WrapPanel", serialized, "loose XamlWriter serialized ItemsPanelTemplate panel");
+        AssertContains("WriterItemsHostPanel", serialized, "loose XamlWriter serialized ItemsPanelTemplate panel name");
+
+        object roundTrippedDictionary = ParseLooseXaml(presentationFramework, serialized);
+        object template = GetDictionaryValue(roundTrippedDictionary, "WriterItemsPanelTemplate");
+        AssertType(template, "System.Windows.Controls.ItemsPanelTemplate", "loose XamlWriter round-trip ItemsPanelTemplate");
+
+        object panel = Invoke(template, "LoadContent");
+        AssertType(panel, "System.Windows.Controls.WrapPanel", "loose XamlWriter round-trip ItemsPanelTemplate panel");
+        AssertEqual("WriterItemsHostPanel", GetProperty(panel, "Name"), "loose XamlWriter round-trip ItemsPanelTemplate panel name");
+        AssertEqual("writer items panel", GetProperty(panel, "Tag"), "loose XamlWriter round-trip ItemsPanelTemplate panel tag");
+        AssertEqual("Horizontal", GetProperty(panel, "Orientation").ToString(), "loose XamlWriter round-trip ItemsPanelTemplate orientation");
+        AssertEqual(48.0, GetProperty(panel, "ItemWidth"), "loose XamlWriter round-trip ItemsPanelTemplate item width");
+        AssertEqual(24.0, GetProperty(panel, "ItemHeight"), "loose XamlWriter round-trip ItemsPanelTemplate item height");
     }
 
     private static void ValidateLooseXamlWriterFrameworkElementRoundTrip(Assembly presentationFramework)

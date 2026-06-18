@@ -4417,6 +4417,18 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
             "NuGet.config");
+        var proGpuWpfProjectPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "ProGPU.Wpf.csproj");
+        var wpfTransportTargetsPath = FindRepoPath(
+            "packaging",
+            "Microsoft.DotNet.Wpf.GitHub",
+            "Directory.Build.targets");
+        var wpfTransportArchNeutralProjectPath = FindRepoPath(
+            "packaging",
+            "Microsoft.DotNet.Wpf.GitHub",
+            "Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj");
         var runtimeHarnessProjectPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.SdkSwitchRuntimeHarness",
@@ -4434,6 +4446,9 @@ public sealed class WpfManagedProjectGraphTests
         var portableBootstrap = File.ReadAllText(portableBootstrapPath);
         var smokeProject = File.ReadAllText(smokeProjectPath);
         var smokeNuGetConfig = File.ReadAllText(smokeNuGetConfigPath);
+        var proGpuWpfProject = File.ReadAllText(proGpuWpfProjectPath);
+        var wpfTransportTargets = File.ReadAllText(wpfTransportTargetsPath);
+        var wpfTransportArchNeutralProject = File.ReadAllText(wpfTransportArchNeutralProjectPath);
         var runtimeHarnessProject = File.ReadAllText(runtimeHarnessProjectPath);
         var runtimeHarnessProgram = File.ReadAllText(runtimeHarnessProgramPath);
 
@@ -4462,6 +4477,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<AppendRuntimeIdentifierToOutputPath Condition=\"'$(ProGpuWpfUseCurrentRuntimeIdentifier)' == 'true' And '$(AppendRuntimeIdentifierToOutputPath)' == ''\">false</AppendRuntimeIdentifierToOutputPath>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfPlatform Condition=\"'$(ProGpuWpfPlatform)' == ''\">SilkNet</ProGpuWpfPlatform>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfRenderingBackend Condition=\"'$(ProGpuWpfRenderingBackend)' == ''\">ProGPU</ProGpuWpfRenderingBackend>", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("<ProGpuWpfSdkVersion Condition=\"'$(ProGpuWpfSdkVersion)' == ''\">11.0.0-dev</ProGpuWpfSdkVersion>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfReferenceMode Condition=\"'$(ProGpuWpfReferenceMode)' == '' And ('$(ProGpuWpfManagedReferenceRoot)' != '' Or '$(ProGpuReferenceRoot)' != '')\">LocalArtifacts</ProGpuWpfReferenceMode>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfManagedPackageId Condition=\"'$(ProGpuWpfManagedPackageId)' == ''\">Microsoft.DotNet.Wpf.GitHub</ProGpuWpfManagedPackageId>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfManagedPackageVersion Condition=\"'$(ProGpuWpfManagedPackageVersion)' == ''\">$(ProGpuWpfPackageVersion)</ProGpuWpfManagedPackageVersion>", sdkProps, StringComparison.Ordinal);
@@ -4534,6 +4550,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("ProGpuWpfReferenceMode", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("GenerateDependencyFile", smokeProject, StringComparison.Ordinal);
         Assert.Contains("artifacts/packages/Release/NonShipping", smokeNuGetConfig, StringComparison.Ordinal);
+        Assert.Contains("<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>", proGpuWpfProject, StringComparison.Ordinal);
+        Assert.Contains("PresentationCore\\PresentationCore.csproj\" PrivateAssets=\"all\"", proGpuWpfProject, StringComparison.Ordinal);
+        Assert.Contains("$([MSBuild]::IsOSPlatform('Windows'))", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains("<_PowerShellExe Condition=\"'$(_PowerShellExe)' == ''\">pwsh</_PowerShellExe>", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains("<IncludeAssembliesInArchNeutralPackage>true</IncludeAssembliesInArchNeutralPackage>", wpfTransportArchNeutralProject, StringComparison.Ordinal);
 
         Assert.Contains("<Project Sdk=\"Microsoft.NET.Sdk\">", runtimeHarnessProject, StringComparison.Ordinal);
         Assert.Contains("<OutputType>Exe</OutputType>", runtimeHarnessProject, StringComparison.Ordinal);

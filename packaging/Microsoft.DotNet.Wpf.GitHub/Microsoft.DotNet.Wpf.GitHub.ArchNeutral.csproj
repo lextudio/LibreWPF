@@ -9,5 +9,6 @@
     <PackageName>$(MSBuildProjectName.Replace('.ArchNeutral',''))$(TransportPackageNameSuffix)</PackageName>
     <AssemblyName>$(PackageName)</AssemblyName>
     <PackageDescription>WPF Transport Package from dotnet/wpf repository</PackageDescription>
+    <IncludeAssembliesInArchNeutralPackage>true</IncludeAssembliesInArchNeutralPackage>
   </PropertyGroup>
 </Project>

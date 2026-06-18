@@ -5,3 +5,5 @@
 This initial package skeleton layers on the existing WindowsDesktop SDK so WPF markup compilation remains owned by the real `PresentationBuildTasks` implementation. It then selects the portable ProGPU/Silk.NET platform and redirects WPF framework references through either package references or local artifact roots while the port is still source-built.
 
 Package mode is the intended delivery path. It references the ported managed WPF bundle through `ProGpuWpfManagedPackageId`/`ProGpuWpfManagedPackageVersion`, references the ProGPU runtime packages, injects the non-Windows portable activation bootstrap, and copies resolved managed and native runtime assets to the application output. Local-artifact mode remains available for source-tree validation by setting `ProGpuWpfManagedReferenceRoot` and `ProGpuReferenceRoot`.
+
+The SDK owns the package dependency closure. The WPF transport package supplies the real managed WPF assembly identities and runtime payload, while `ProGPU.Wpf` is the adapter/runtime bridge package and does not publish dependencies on the ProGPU shim `PresentationCore` package.

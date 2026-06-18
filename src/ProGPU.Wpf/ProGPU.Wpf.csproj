@@ -3,6 +3,7 @@
     <AssemblyName>ProGPU.Wpf</AssemblyName>
     <RootNamespace>System.Windows.Media.ProGPU</RootNamespace>
     <Description>Cross-platform ProGPU rendering host and adapter lane for WPF managed rendering.</Description>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\external\ProGPU\src\PresentationCore\PresentationCore.csproj" />
+    <ProjectReference Include="..\..\external\ProGPU\src\PresentationCore\PresentationCore.csproj" PrivateAssets="all" />
     <ProjectReference Include="..\..\external\ProGPU\src\ProGPU.Backend\ProGPU.Backend.csproj" />
     <ProjectReference Include="..\..\external\ProGPU\src\ProGPU.Scene\ProGPU.Scene.csproj" />
   </ItemGroup>

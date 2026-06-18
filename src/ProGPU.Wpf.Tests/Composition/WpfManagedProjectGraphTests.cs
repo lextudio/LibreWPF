@@ -1064,6 +1064,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GotMouseCapture=\"OnXamlGotMouseCapture\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("LostMouseCapture=\"OnXamlLostMouseCapture\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("MouseWheel=\"OnXamlMouseWheel\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"RepeatActionButton\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Click=\"OnRepeatButtonClick\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Delay=\"250\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Interval=\"75\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"StyledEventButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style=\"{StaticResource EventSetterButtonStyle}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"CommandButton\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1319,6 +1323,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void OnXamlMouseWheel", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastXamlMouseWheelDelta = e.Delta", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastXamlMouseWheelRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int RepeatButtonClickCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnRepeatButtonClick", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastRepeatButtonClickRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int StyledClickCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnStyledButtonClick", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastStyledClickRoutedEventName = e.RoutedEvent?.Name", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -1657,6 +1664,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled RadioButton alpha Unchecked sender", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateXamlEventHandler(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled XAML Click handler count", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateRepeatButton(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RepeatButton interval", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RepeatButton Click handler count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateStyleEventSetter(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled EventSetter Click handler count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetField(window, \"RoutedCommandButton\")", harnessProgram, StringComparison.Ordinal);
@@ -2109,6 +2119,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled RadioButton beta Checked sender", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateXamlEventHandler(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled XAML Click routed event name", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateRepeatButton(window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RepeatButton delay", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RepeatButton Click routed event name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateStyleEventSetter(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled EventSetter Click routed event name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateRoutedCommand(window)", harnessProgram, StringComparison.Ordinal);

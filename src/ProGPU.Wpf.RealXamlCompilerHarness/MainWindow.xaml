@@ -223,6 +223,13 @@
             LostMouseCapture="OnXamlLostMouseCapture"
             MouseWheel="OnXamlMouseWheel"
             Content="run xaml event" />
+        <RepeatButton
+            x:Name="RepeatActionButton"
+            Margin="0,8,0,0"
+            Click="OnRepeatButtonClick"
+            Content="repeat action"
+            Delay="250"
+            Interval="75" />
         <PasswordBox
             x:Name="CredentialBox"
             MaxLength="12"

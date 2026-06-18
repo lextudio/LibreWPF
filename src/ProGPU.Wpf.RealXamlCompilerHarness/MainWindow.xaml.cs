@@ -59,6 +59,12 @@ public partial class MainWindow : Window
 
     public string? LastXamlMouseWheelRoutedEventName { get; private set; }
 
+    public int RepeatButtonClickCount { get; private set; }
+
+    public string? LastRepeatButtonClickSenderName { get; private set; }
+
+    public string? LastRepeatButtonClickRoutedEventName { get; private set; }
+
     public int StyledClickCount { get; private set; }
 
     public string? LastStyledClickSenderName { get; private set; }
@@ -253,6 +259,14 @@ public partial class MainWindow : Window
         LastXamlMouseWheelDelta = e.Delta;
         LastXamlMouseWheelSenderName = sender is FrameworkElement element ? element.Name : null;
         LastXamlMouseWheelRoutedEventName = e.RoutedEvent?.Name;
+        e.Handled = true;
+    }
+
+    private void OnRepeatButtonClick(object sender, RoutedEventArgs e)
+    {
+        RepeatButtonClickCount++;
+        LastRepeatButtonClickSenderName = sender is FrameworkElement element ? element.Name : null;
+        LastRepeatButtonClickRoutedEventName = e.RoutedEvent?.Name;
         e.Handled = true;
     }
 

@@ -190,7 +190,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 65, "stack panel children");
+        AssertCollectionCount(children, expected: 66, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -241,6 +241,7 @@ internal static class Program
         ValidateImplicitMergedStyle(window, application);
         ValidateToggleChoiceControls(window);
         ValidateXamlEventHandler(window);
+        ValidateRepeatButton(window);
         ValidateStyleEventSetter(window);
         ValidateRoutedCommand(window);
         ValidateInputBinding(window);
@@ -1965,6 +1966,23 @@ internal static class Program
         AssertEqual(1, GetProperty(window, "XamlClickCount"), "compiled XAML Click handler count");
         AssertEqual("EventButton", GetProperty(window, "LastXamlClickSenderName"), "compiled XAML Click sender name");
         AssertEqual("Click", GetProperty(window, "LastXamlClickRoutedEventName"), "compiled XAML Click routed event name");
+    }
+
+    private static void ValidateRepeatButton(object window)
+    {
+        object repeatButton = GetField(window, "RepeatActionButton");
+        AssertType(repeatButton, "System.Windows.Controls.Primitives.RepeatButton", "compiled RepeatButton");
+        AssertEqual("repeat action", GetProperty(repeatButton, "Content"), "compiled RepeatButton content");
+        AssertEqual(250, GetProperty(repeatButton, "Delay"), "compiled RepeatButton delay");
+        AssertEqual(75, GetProperty(repeatButton, "Interval"), "compiled RepeatButton interval");
+        AssertEqual(0, GetProperty(window, "RepeatButtonClickCount"), "compiled RepeatButton initial click count");
+
+        Invoke(repeatButton, "OnClick");
+        Invoke(repeatButton, "OnClick");
+
+        AssertEqual(2, GetProperty(window, "RepeatButtonClickCount"), "compiled RepeatButton Click handler count");
+        AssertEqual("RepeatActionButton", GetProperty(window, "LastRepeatButtonClickSenderName"), "compiled RepeatButton Click sender name");
+        AssertEqual("Click", GetProperty(window, "LastRepeatButtonClickRoutedEventName"), "compiled RepeatButton Click routed event name");
     }
 
     private static void ValidateStyleEventSetter(object window)

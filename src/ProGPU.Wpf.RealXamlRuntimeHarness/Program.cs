@@ -1045,7 +1045,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 82, "stack panel children");
+        AssertCollectionCount(children, expected: 84, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -3818,6 +3818,31 @@ internal static class Program
         InvokeTwoArgumentCommand(routedCommand, "Execute", commandParameter, inputBox);
         AssertEqual(1, GetProperty(window, "RoutedCommandExecutionCount"), "routed command execution count");
         AssertEqual("routed command payload", GetProperty(window, "LastRoutedCommandParameter"), "routed command executed parameter");
+
+        object classCommandTarget = GetField(window, "ClassCommandTargetBox");
+        AssertType(classCommandTarget, "ProGPU.Wpf.RealXamlCompilerHarness.SmokeClassCommandTextBox", "compiled class command target");
+        AssertEqual("class command target", GetProperty(classCommandTarget, "Text"), "compiled class command target text");
+        object classCommandButton = GetField(window, "ClassCommandButton");
+        AssertType(classCommandButton, "System.Windows.Controls.Button", "compiled class command Button");
+        AssertEqual("run class command", GetProperty(classCommandButton, "Content"), "compiled class command Button content");
+        AssertSame(classCommandTarget, GetProperty(classCommandButton, "CommandTarget"), "compiled class command target binding");
+        object classCommandParameter = GetProperty(classCommandButton, "CommandParameter");
+        AssertEqual("class command payload", classCommandParameter, "compiled class command parameter");
+
+        object classCommand = GetProperty(classCommandButton, "Command");
+        AssertType(classCommand, "System.Windows.Input.RoutedUICommand", "compiled class routed command");
+        AssertEqual("SmokeClassRoutedCommand", GetProperty(classCommand, "Name"), "compiled class routed command name");
+        AssertEqual(0, GetProperty(classCommandTarget, "ClassCommandExecutionCount"), "class command initial execution count");
+        AssertEqual(true, InvokeTwoArgumentCommand(classCommand, "CanExecute", classCommandParameter, classCommandTarget), "class command CanExecute result");
+        AssertAtLeast(1, GetProperty(classCommandTarget, "ClassCommandCanExecuteCount"), "class command CanExecute handler count");
+
+        Invoke(classCommandButton, "OnClick");
+        AssertEqual(1, GetProperty(classCommandTarget, "ClassCommandExecutionCount"), "class command execution count");
+        AssertEqual("class command payload", GetProperty(classCommandTarget, "LastClassCommandParameter"), "class command executed parameter");
+
+        SetProperty(classCommandTarget, "IsClassCommandEnabled", false);
+        AssertEqual(false, InvokeTwoArgumentCommand(classCommand, "CanExecute", classCommandParameter, classCommandTarget), "class command disabled CanExecute result");
+        AssertAtLeast(2, GetProperty(classCommandTarget, "ClassCommandCanExecuteCount"), "class command disabled CanExecute handler count");
     }
 
     private static void ValidateInputBinding(object window)

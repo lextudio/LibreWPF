@@ -22,6 +22,11 @@ public partial class MainWindow : Window
         "SmokeRoutedCommand",
         typeof(MainWindow));
 
+    public static RoutedUICommand SmokeClassRoutedCommand { get; } = new(
+        "Smoke class routed command",
+        "SmokeClassRoutedCommand",
+        typeof(MainWindow));
+
     public MainWindow()
     {
         DataContext = new SmokeViewModel();
@@ -882,6 +887,47 @@ public partial class MainWindow : Window
         public void SetCanExecute(bool value)
         {
             CanExecuteValue = value;
+        }
+    }
+}
+
+public sealed class SmokeClassCommandTextBox : TextBox
+{
+    static SmokeClassCommandTextBox()
+    {
+        CommandManager.RegisterClassCommandBinding(
+            typeof(SmokeClassCommandTextBox),
+            new CommandBinding(
+                MainWindow.SmokeClassRoutedCommand,
+                OnSmokeClassCommandExecuted,
+                OnSmokeClassCommandCanExecute));
+    }
+
+    public bool IsClassCommandEnabled { get; set; } = true;
+
+    public int ClassCommandCanExecuteCount { get; private set; }
+
+    public int ClassCommandExecutionCount { get; private set; }
+
+    public object? LastClassCommandParameter { get; private set; }
+
+    private static void OnSmokeClassCommandCanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+        if (sender is SmokeClassCommandTextBox target)
+        {
+            target.ClassCommandCanExecuteCount++;
+            e.CanExecute = target.IsClassCommandEnabled;
+            e.Handled = true;
+        }
+    }
+
+    private static void OnSmokeClassCommandExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        if (sender is SmokeClassCommandTextBox target)
+        {
+            target.ClassCommandExecutionCount++;
+            target.LastClassCommandParameter = e.Parameter;
+            e.Handled = true;
         }
     }
 }

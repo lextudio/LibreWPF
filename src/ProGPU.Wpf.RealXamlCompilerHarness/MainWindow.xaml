@@ -836,6 +836,17 @@
             CommandParameter="routed command payload"
             CommandTarget="{Binding ElementName=InputBox}"
             Content="run routed command" />
+        <local:SmokeClassCommandTextBox
+            x:Name="ClassCommandTargetBox"
+            Margin="0,8,0,0"
+            Text="class command target" />
+        <Button
+            x:Name="ClassCommandButton"
+            Margin="0,8,0,0"
+            Command="{x:Static local:MainWindow.SmokeClassRoutedCommand}"
+            CommandParameter="class command payload"
+            CommandTarget="{Binding ElementName=ClassCommandTargetBox}"
+            Content="run class command" />
         <Button
             x:Name="TemplatedButton"
             Margin="0,8,0,0"

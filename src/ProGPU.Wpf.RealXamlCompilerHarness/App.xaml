@@ -2,6 +2,7 @@
     x:Class="ProGPU.Wpf.RealXamlCompilerHarness.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:ProGPU.Wpf.RealXamlCompilerHarness"
     StartupUri="MainWindow.xaml">
     <Application.Resources>
         <ResourceDictionary>
@@ -9,6 +10,9 @@
                 <ResourceDictionary Source="SmokeResources.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <SolidColorBrush x:Key="AccentBrush" Color="#356D9E" />
+            <SolidColorBrush
+                x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:MainWindow}, ResourceId=SmokeComponentAccentBrush}"
+                Color="#2F6B54" />
             <SolidColorBrush x:Key="ReplacementAccentBrush" Color="#9C4A2F" />
             <SolidColorBrush x:Key="UnsharedAccentBrush" x:Shared="False" Color="#4D6F8E" />
             <SolidColorBrush x:Key="FreezableAccentBrush" Color="#B15E3B" />

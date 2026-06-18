@@ -90,7 +90,7 @@ internal static class Program
         AssertEqual("MainWindow.xaml", GetProperty(application, "StartupUri").ToString(), "startup URI");
 
         object resources = GetProperty(application, "Resources");
-        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 10, "application resource keys");
+        AssertCollectionCount(GetProperty(resources, "Keys"), expected: 11, "application resource keys");
         object mergedDictionaries = GetProperty(resources, "MergedDictionaries");
         AssertCollectionCount(mergedDictionaries, expected: 1, "application merged dictionaries");
         object smokeResources = GetCollectionItem(mergedDictionaries, 0);
@@ -153,7 +153,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 64, "stack panel children");
+        AssertCollectionCount(children, expected: 65, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -1143,6 +1143,7 @@ internal static class Program
 
     private static void ValidateMergedResourceDictionary(object window, object application)
     {
+        object resources = GetProperty(application, "Resources");
         object expectedBrush = Invoke(application, "TryFindResource", "MergedAccentBrush");
         object expectedMargin = Invoke(application, "TryFindResource", "MergedBlockMargin");
 
@@ -1156,6 +1157,25 @@ internal static class Program
         AssertEqual(GetProperty(expectedMargin, "Top"), GetProperty(actualMargin, "Top"), "compiled merged-resource margin top");
         AssertEqual(GetProperty(expectedMargin, "Right"), GetProperty(actualMargin, "Right"), "compiled merged-resource margin right");
         AssertEqual(GetProperty(expectedMargin, "Bottom"), GetProperty(actualMargin, "Bottom"), "compiled merged-resource margin bottom");
+
+        Assembly presentationFramework = window.GetType().BaseType?.Assembly
+            ?? throw new InvalidOperationException("Expected compiled window to derive from PresentationFramework Window.");
+        object componentResourceKey = Create(
+            presentationFramework,
+            "System.Windows.ComponentResourceKey",
+            window.GetType(),
+            "SmokeComponentAccentBrush");
+        AssertType(componentResourceKey, "System.Windows.ComponentResourceKey", "compiled ComponentResourceKey lookup key");
+        AssertSame(window.GetType(), GetProperty(componentResourceKey, "TypeInTargetAssembly"), "compiled ComponentResourceKey target type");
+        AssertEqual("SmokeComponentAccentBrush", GetProperty(componentResourceKey, "ResourceId"), "compiled ComponentResourceKey resource id");
+
+        object componentResourceBrush = GetDictionaryValue(resources, componentResourceKey);
+        object componentResourceBlock = GetField(window, "ComponentResourceBlock");
+        AssertType(componentResourceBlock, "System.Windows.Controls.TextBlock", "compiled ComponentResourceKey TextBlock");
+        AssertEqual("compiled component resource", GetProperty(componentResourceBlock, "Text"), "compiled ComponentResourceKey TextBlock text");
+        AssertSame(componentResourceBrush, GetProperty(componentResourceBlock, "Foreground"), "compiled ComponentResourceKey foreground");
+        AssertSame(componentResourceBrush, Invoke(application, "TryFindResource", componentResourceKey), "compiled ComponentResourceKey application lookup");
+        AssertEqual("#FF2F6B54", GetProperty(GetProperty(componentResourceBlock, "Foreground"), "Color").ToString(), "compiled ComponentResourceKey brush color");
     }
 
     private static void ValidateUnsharedResource(object window, object application)

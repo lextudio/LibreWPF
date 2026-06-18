@@ -689,6 +689,11 @@
             Foreground="{StaticResource MergedAccentBrush}"
             Margin="{StaticResource MergedBlockMargin}"
             Text="compiled merged resource" />
+        <TextBlock
+            x:Name="ComponentResourceBlock"
+            Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type local:MainWindow}, ResourceId=SmokeComponentAccentBrush}}"
+            Margin="0,8,0,0"
+            Text="compiled component resource" />
         <Border
             x:Name="UnsharedResourceBorderA"
             Background="{StaticResource UnsharedAccentBrush}"

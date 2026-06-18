@@ -795,6 +795,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ResourceDictionary.MergedDictionaries", appXaml, StringComparison.Ordinal);
         Assert.Contains("ResourceDictionary Source=\"SmokeResources.xaml\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("SolidColorBrush x:Key=\"AccentBrush\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("ComponentResourceKey TypeInTargetAssembly={x:Type local:MainWindow}, ResourceId=SmokeComponentAccentBrush", appXaml, StringComparison.Ordinal);
+        Assert.Contains("Color=\"#2F6B54\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("SolidColorBrush x:Key=\"ReplacementAccentBrush\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("SolidColorBrush x:Key=\"UnsharedAccentBrush\" x:Shared=\"False\"", appXaml, StringComparison.Ordinal);
         Assert.Contains("SolidColorBrush x:Key=\"FreezableAccentBrush\"", appXaml, StringComparison.Ordinal);
@@ -995,6 +997,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"MergedResourceBlock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Foreground=\"{StaticResource MergedAccentBrush}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Margin=\"{StaticResource MergedBlockMargin}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ComponentResourceBlock\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Foreground=\"{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type local:MainWindow}, ResourceId=SmokeComponentAccentBrush}}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"compiled component resource\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"UnsharedResourceBorderA\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"UnsharedResourceBorderB\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Background=\"{StaticResource UnsharedAccentBrush}\"", mainWindowXaml, StringComparison.Ordinal);
@@ -1609,6 +1614,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled MarkupExtension provided text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMergedResourceDictionary(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled merged-resource foreground", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.ComponentResourceKey", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ComponentResourceKey lookup key", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ComponentResourceKey TextBlock", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ComponentResourceKey foreground", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ComponentResourceKey application lookup", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateUnsharedResource(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled x:Shared=false StaticResource consumers", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled x:Shared=false dictionary lookup", harnessProgram, StringComparison.Ordinal);
@@ -2049,6 +2059,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled MarkupExtension provided text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMergedResourceDictionary(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled merged-resource margin top", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.ComponentResourceKey", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ComponentResourceKey lookup key", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ComponentResourceKey TextBlock", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ComponentResourceKey foreground", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled ComponentResourceKey application lookup", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateUnsharedResource(window, application)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled x:Shared=false StaticResource consumers", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled x:Shared=false dictionary lookup", harnessProgram, StringComparison.Ordinal);

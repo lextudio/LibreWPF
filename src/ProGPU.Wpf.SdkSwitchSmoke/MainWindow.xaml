@@ -1,0 +1,19 @@
+<Window
+    x:Class="ProGPU.Wpf.SdkSwitchSmoke.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="ProGPU WPF SDK Smoke"
+    Width="320"
+    Height="180">
+    <StackPanel Margin="16">
+        <TextBlock
+            x:Name="Message"
+            Foreground="{StaticResource SmokeAccentBrush}"
+            Text="ProGPU WPF SDK switch smoke" />
+        <Button
+            x:Name="ActionButton"
+            Width="140"
+            Margin="0,12,0,0"
+            Content="{Binding ElementName=Message, Path=Text}" />
+    </StackPanel>
+</Window>

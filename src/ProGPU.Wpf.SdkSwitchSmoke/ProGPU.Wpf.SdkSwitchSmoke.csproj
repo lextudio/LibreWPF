@@ -1,0 +1,33 @@
+<Project Sdk="ProGPU.Wpf.Sdk/11.0.0-dev">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net11.0</TargetFramework>
+    <RuntimeFrameworkVersion>11.0.0-preview.4.26210.111</RuntimeFrameworkVersion>
+    <AssemblyName>ProGPU.Wpf.SdkSwitchSmoke</AssemblyName>
+    <RootNamespace>ProGPU.Wpf.SdkSwitchSmoke</RootNamespace>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <InternalMarkupCompilation>true</InternalMarkupCompilation>
+    <AlwaysCompileMarkupFilesInSeparateDomain>false</AlwaysCompileMarkupFilesInSeparateDomain>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <NoWarn>$(NoWarn);IDE0073</NoWarn>
+    <ProGpuWpfReferenceMode>LocalArtifacts</ProGpuWpfReferenceMode>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </ApplicationDefinition>
+    <Page Include="MainWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="App.xaml.cs" />
+    <Compile Include="MainWindow.xaml.cs" />
+  </ItemGroup>
+</Project>

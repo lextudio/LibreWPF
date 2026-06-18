@@ -1,5 +1,12 @@
 <Project>
 
+  <PropertyGroup>
+    <ProGpuWpfUseWpfMarkup Condition="'$(ProGpuWpfUseWpfMarkup)' == '' And '$(UseWPF)' != ''">$(UseWPF)</ProGpuWpfUseWpfMarkup>
+    <ProGpuWpfUseWpfMarkup Condition="'$(ProGpuWpfUseWpfMarkup)' == ''">true</ProGpuWpfUseWpfMarkup>
+    <_ProGpuWpfProjectUseWPF>$(UseWPF)</_ProGpuWpfProjectUseWPF>
+    <UseWPF Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'">false</UseWPF>
+  </PropertyGroup>
+
   <Import Sdk="Microsoft.NET.Sdk.WindowsDesktop" Project="Sdk.targets" />
   <Import Project="$(MSBuildThisFileDirectory)..\targets\ProGPU.Wpf.Sdk.targets" />
 

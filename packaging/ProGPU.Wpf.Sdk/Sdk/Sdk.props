@@ -2,8 +2,12 @@
 
   <PropertyGroup>
     <_ProGpuWpfSdkImported>true</_ProGpuWpfSdkImported>
-    <UseWPF Condition="'$(UseWPF)' == ''">true</UseWPF>
+    <ProGpuWpfUseWpfMarkup Condition="'$(ProGpuWpfUseWpfMarkup)' == ''">true</ProGpuWpfUseWpfMarkup>
+    <ProGpuWpfUsePortableFrameworkReferences Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == ''">true</ProGpuWpfUsePortableFrameworkReferences>
+    <UseWPF Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'">false</UseWPF>
+    <EnableWindowsTargeting Condition="'$(EnableWindowsTargeting)' == ''">true</EnableWindowsTargeting>
     <ImportFrameworkWinFXTargets Condition="'$(ImportFrameworkWinFXTargets)' == ''">false</ImportFrameworkWinFXTargets>
+    <NoWarn>$(NoWarn);NETSDK1137</NoWarn>
     <ProGpuWpfUsePortablePlatform Condition="'$(ProGpuWpfUsePortablePlatform)' == ''">true</ProGpuWpfUsePortablePlatform>
     <ProGpuWpfPlatform Condition="'$(ProGpuWpfPlatform)' == ''">SilkNet</ProGpuWpfPlatform>
     <ProGpuWpfRenderingBackend Condition="'$(ProGpuWpfRenderingBackend)' == ''">ProGPU</ProGpuWpfRenderingBackend>

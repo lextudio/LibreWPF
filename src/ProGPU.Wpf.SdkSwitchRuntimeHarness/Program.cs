@@ -405,6 +405,28 @@ internal static class Program
         AssertSame(selectedItem, GetProperty(selectedItemPresenter, "Content"), "selected item presenter content");
         AssertType(GetProperty(selectedItemPresenter, "ContentTemplate"), "System.Windows.DataTemplate", "selected item presenter template");
 
+        object layoutGrid = Invoke(window, "FindName", "LayoutGrid");
+        AssertType(layoutGrid, "System.Windows.Controls.Grid", "layout grid");
+        AssertEqual(2, GetCount(GetProperty(layoutGrid, "RowDefinitions")), "layout grid row definition count");
+        AssertEqual(2, GetCount(GetProperty(layoutGrid, "ColumnDefinitions")), "layout grid column definition count");
+        Type gridType = layoutGrid.GetType();
+        object layoutLabel = Invoke(window, "FindName", "LayoutLabel");
+        AssertType(layoutLabel, "System.Windows.Controls.TextBlock", "layout label element");
+        AssertEqual("Selected:", GetProperty(layoutLabel, "Text"), "layout label text");
+        AssertEqual(0, InvokeStatic(gridType, "GetRow", layoutLabel), "layout label grid row");
+        AssertEqual(0, InvokeStatic(gridType, "GetColumn", layoutLabel), "layout label grid column");
+        object convertedSelectedItemText = Invoke(window, "FindName", "ConvertedSelectedItemText");
+        AssertType(convertedSelectedItemText, "System.Windows.Controls.TextBlock", "converted selected item text element");
+        AssertEqual("Scene=ProGPU/Rendering", GetProperty(convertedSelectedItemText, "Text"), "converted selected item text");
+        AssertEqual(0, InvokeStatic(gridType, "GetRow", convertedSelectedItemText), "converted selected item grid row");
+        AssertEqual(1, InvokeStatic(gridType, "GetColumn", convertedSelectedItemText), "converted selected item grid column");
+        object formattedInputText = Invoke(window, "FindName", "FormattedInputText");
+        AssertType(formattedInputText, "System.Windows.Controls.TextBlock", "formatted input text element");
+        AssertEqual("Input: editable package text", GetProperty(formattedInputText, "Text"), "formatted input binding text");
+        AssertEqual(1, InvokeStatic(gridType, "GetRow", formattedInputText), "formatted input grid row");
+        AssertEqual(0, InvokeStatic(gridType, "GetColumn", formattedInputText), "formatted input grid column");
+        AssertEqual(2, InvokeStatic(gridType, "GetColumnSpan", formattedInputText), "formatted input grid column span");
+
         object groupedItemsViewSource = Invoke(window, "FindResource", "GroupedItems");
         AssertType(groupedItemsViewSource, "System.Windows.Data.CollectionViewSource", "grouped items collection view source");
         AssertAtLeast(1, GetCount(GetProperty(groupedItemsViewSource, "SortDescriptions")), "grouped items sort description count");

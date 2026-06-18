@@ -121,6 +121,8 @@
                 Text="{Binding Name}" />
         </DataTemplate>
 
+        <local:SmokeItemDisplayConverter x:Key="SmokeItemDisplayConverter" />
+
         <CollectionViewSource x:Key="GroupedItems" Source="{Binding Items}">
             <CollectionViewSource.SortDescriptions>
                 <componentModel:SortDescription PropertyName="Name" Direction="Ascending" />
@@ -206,6 +208,36 @@
             Margin="0,8,0,0"
             Content="{Binding SelectedItem, ElementName=ItemsList}"
             ContentTemplate="{StaticResource SmokeItemTemplate}" />
+        <Grid
+            x:Name="LayoutGrid"
+            Height="54"
+            Margin="{StaticResource SmokePanelMargin}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock
+                x:Name="LayoutLabel"
+                Grid.Row="0"
+                Grid.Column="0"
+                Margin="0,0,8,0"
+                Text="Selected:" />
+            <TextBlock
+                x:Name="ConvertedSelectedItemText"
+                Grid.Row="0"
+                Grid.Column="1"
+                Text="{Binding SelectedItem, ElementName=ItemsList, Converter={StaticResource SmokeItemDisplayConverter}}" />
+            <TextBlock
+                x:Name="FormattedInputText"
+                Grid.Row="1"
+                Grid.Column="0"
+                Grid.ColumnSpan="2"
+                Text="{Binding InputText, StringFormat=Input: {0}}" />
+        </Grid>
         <ItemsControl
             x:Name="GroupedItemsControl"
             Height="78"

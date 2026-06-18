@@ -4449,6 +4449,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
             "SmokePage.xaml.cs");
+        var smokeItemDisplayConverterPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchSmoke",
+            "SmokeItemDisplayConverter.cs");
         var smokeThemedControlPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
@@ -4522,6 +4526,7 @@ public sealed class WpfManagedProjectGraphTests
         var smokePanelCodeBehind = File.ReadAllText(smokePanelCodeBehindPath);
         var smokePageXaml = File.ReadAllText(smokePageXamlPath);
         var smokePageCodeBehind = File.ReadAllText(smokePageCodeBehindPath);
+        var smokeItemDisplayConverter = File.ReadAllText(smokeItemDisplayConverterPath);
         var smokeThemedControl = File.ReadAllText(smokeThemedControlPath);
         var smokeGenericThemeXaml = File.ReadAllText(smokeGenericThemeXamlPath);
         var smokeAssemblyInfo = File.ReadAllText(smokeAssemblyInfoPath);
@@ -4685,6 +4690,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ItemsSource=\"{Binding Items}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemTemplate=\"{StaticResource SmokeItemTemplate}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"{Binding SelectedItem, ElementName=ItemsList}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("local:SmokeItemDisplayConverter", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"LayoutGrid\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<Grid.RowDefinitions>", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<Grid.ColumnDefinitions>", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"LayoutLabel\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Grid.Row=\"0\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Grid.Column=\"1\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ConvertedSelectedItemText\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Converter={StaticResource SmokeItemDisplayConverter}", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"FormattedInputText\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Grid.ColumnSpan=\"2\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("StringFormat=Input: {0}", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"GroupedItems\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<CollectionViewSource.SortDescriptions>", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("componentModel:SortDescription PropertyName=\"Name\" Direction=\"Ascending\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -4727,6 +4744,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Text=\"Frame loaded SDK-built BAML\"", smokePageXaml, StringComparison.Ordinal);
         Assert.Contains("public partial class SmokePage : Page", smokePageCodeBehind, StringComparison.Ordinal);
         Assert.Contains("InitializeComponent();", smokePageCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokeItemDisplayConverter : IValueConverter", smokeItemDisplayConverter, StringComparison.Ordinal);
+        Assert.Contains("item.Name}={item.Value}/{item.Category", smokeItemDisplayConverter, StringComparison.Ordinal);
+        Assert.Contains("Binding.DoNothing", smokeItemDisplayConverter, StringComparison.Ordinal);
         Assert.Contains("[assembly: ThemeInfo(ResourceDictionaryLocation.None, ResourceDictionaryLocation.SourceAssembly)]", smokeAssemblyInfo, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeThemedControl : Control", smokeThemedControl, StringComparison.Ordinal);
         Assert.Contains("DependencyProperty TextProperty", smokeThemedControl, StringComparison.Ordinal);
@@ -4834,6 +4854,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("FindName\", \"InputBox\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"ItemsList\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"SelectedItemPresenter\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"LayoutGrid\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("layout grid row definition count", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"LayoutLabel\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("layout label grid column", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"ConvertedSelectedItemText\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("converted selected item text", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"FormattedInputText\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("formatted input binding text", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetColumnSpan", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindResource\", \"GroupedItems\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("grouped items group description count", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("grouped items view group count", runtimeHarnessProgram, StringComparison.Ordinal);

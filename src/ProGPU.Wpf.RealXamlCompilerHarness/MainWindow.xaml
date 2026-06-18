@@ -53,6 +53,17 @@
             </CollectionViewSource.GroupDescriptions>
         </CollectionViewSource>
         <CollectionViewSource
+            x:Key="LiveGroupedItemsView"
+            IsLiveGroupingRequested="True"
+            Source="{Binding Items}">
+            <CollectionViewSource.GroupDescriptions>
+                <PropertyGroupDescription PropertyName="Category" />
+            </CollectionViewSource.GroupDescriptions>
+            <CollectionViewSource.LiveGroupingProperties>
+                <sys:String>Category</sys:String>
+            </CollectionViewSource.LiveGroupingProperties>
+        </CollectionViewSource>
+        <CollectionViewSource
             x:Key="CurrencyItemsView"
             Source="{Binding Items}" />
         <DataTemplate DataType="{x:Type local:SmokeDetail}">
@@ -913,6 +924,23 @@
                             <TextBlock
                                 x:Name="GroupHeaderTextBlock"
                                 Tag="group header template"
+                                Text="{Binding Name}" />
+                        </DataTemplate>
+                    </GroupStyle.HeaderTemplate>
+                </GroupStyle>
+            </ListBox.GroupStyle>
+        </ListBox>
+        <ListBox
+            x:Name="LiveGroupedItemsList"
+            Margin="0,8,0,0"
+            ItemsSource="{Binding Source={StaticResource LiveGroupedItemsView}}">
+            <ListBox.GroupStyle>
+                <GroupStyle>
+                    <GroupStyle.HeaderTemplate>
+                        <DataTemplate>
+                            <TextBlock
+                                x:Name="LiveGroupHeaderTextBlock"
+                                Tag="live group header template"
                                 Text="{Binding Name}" />
                         </DataTemplate>
                     </GroupStyle.HeaderTemplate>

@@ -1041,7 +1041,7 @@ internal static class Program
         object content = GetProperty(window, "Content");
         AssertType(content, "System.Windows.Controls.StackPanel", "window content");
         object children = GetProperty(content, "Children");
-        AssertCollectionCount(children, expected: 79, "stack panel children");
+        AssertCollectionCount(children, expected: 80, "stack panel children");
 
         object textBlock = GetCollectionItem(children, 0);
         AssertType(textBlock, "System.Windows.Controls.TextBlock", "compiled TextBlock");
@@ -4377,6 +4377,40 @@ internal static class Program
         ValidateCollectionViewGroup(GetCollectionItem(groups, 0), "primary group", expectedItemCount: 1, "initial primary");
         ValidateCollectionViewGroup(GetCollectionItem(groups, 1), "secondary group", expectedItemCount: 1, "initial secondary");
 
+        object liveGroupedItemsViewSource = Invoke(window, "TryFindResource", "LiveGroupedItemsView");
+        AssertType(liveGroupedItemsViewSource, "System.Windows.Data.CollectionViewSource", "compiled live grouped CollectionViewSource resource");
+        AssertEqual(true, GetProperty(liveGroupedItemsViewSource, "IsLiveGroupingRequested"), "compiled live CollectionViewSource grouping request");
+        AssertEqual(true, GetProperty(liveGroupedItemsViewSource, "CanChangeLiveGrouping"), "compiled live CollectionViewSource can change grouping");
+        AssertEqual(true, GetProperty(liveGroupedItemsViewSource, "IsLiveGrouping"), "compiled live CollectionViewSource grouping state");
+        object liveGroupDescriptions = GetProperty(liveGroupedItemsViewSource, "GroupDescriptions");
+        AssertCollectionCount(liveGroupDescriptions, expected: 1, "compiled live CollectionViewSource group descriptions");
+        object liveGroupDescription = GetCollectionItem(liveGroupDescriptions, 0);
+        AssertType(liveGroupDescription, "System.Windows.Data.PropertyGroupDescription", "compiled live CollectionViewSource group description");
+        AssertEqual("Category", GetProperty(liveGroupDescription, "PropertyName"), "compiled live CollectionViewSource group property");
+        object liveGroupingProperties = GetProperty(liveGroupedItemsViewSource, "LiveGroupingProperties");
+        AssertCollectionCount(liveGroupingProperties, expected: 1, "compiled live CollectionViewSource grouping properties");
+        AssertEqual("Category", GetCollectionItem(liveGroupingProperties, 0), "compiled live CollectionViewSource grouping property");
+
+        object liveGroupedItemsList = GetField(window, "LiveGroupedItemsList");
+        AssertType(liveGroupedItemsList, "System.Windows.Controls.ListBox", "compiled live grouped ListBox");
+        object liveGroupedItemsView = GetProperty(liveGroupedItemsViewSource, "View");
+        AssertSame(liveGroupedItemsView, GetProperty(liveGroupedItemsList, "ItemsSource"), "compiled ListBox live grouped CollectionViewSource binding");
+        object liveGroupStyles = GetProperty(liveGroupedItemsList, "GroupStyle");
+        AssertCollectionCount(liveGroupStyles, expected: 1, "compiled live ListBox GroupStyle entries");
+        object liveGroupStyle = GetCollectionItem(liveGroupStyles, 0);
+        AssertType(liveGroupStyle, "System.Windows.Controls.GroupStyle", "compiled live ListBox GroupStyle");
+        object liveGroupHeaderTemplate = GetProperty(liveGroupStyle, "HeaderTemplate");
+        AssertType(liveGroupHeaderTemplate, "System.Windows.DataTemplate", "compiled live GroupStyle HeaderTemplate");
+        object liveGroupHeaderTemplateRoot = Invoke(liveGroupHeaderTemplate, "LoadContent");
+        AssertType(liveGroupHeaderTemplateRoot, "System.Windows.Controls.TextBlock", "compiled live GroupStyle HeaderTemplate root");
+        AssertEqual("LiveGroupHeaderTextBlock", GetProperty(liveGroupHeaderTemplateRoot, "Name"), "compiled live GroupStyle HeaderTemplate named root");
+        AssertEqual("live group header template", GetProperty(liveGroupHeaderTemplateRoot, "Tag"), "compiled live GroupStyle HeaderTemplate root tag");
+        AssertBindingPath(liveGroupHeaderTemplateRoot, "TextProperty", "Name", "compiled live GroupStyle HeaderTemplate binding path");
+        object liveGroups = GetProperty(liveGroupedItemsView, "Groups");
+        AssertCollectionCount(liveGroups, expected: 2, "compiled live CollectionViewSource initial groups");
+        ValidateCollectionViewGroup(GetCollectionItem(liveGroups, 0), "primary group", expectedItemCount: 1, "live initial primary");
+        ValidateCollectionViewGroup(GetCollectionItem(liveGroups, 1), "secondary group", expectedItemCount: 1, "live initial secondary");
+
         object currencyItemsViewSource = Invoke(window, "TryFindResource", "CurrencyItemsView");
         AssertType(currencyItemsViewSource, "System.Windows.Data.CollectionViewSource", "compiled current-item CollectionViewSource resource");
         object currencyItemsView = GetProperty(currencyItemsViewSource, "View");
@@ -4414,6 +4448,10 @@ internal static class Program
         AssertCollectionCount(groups, expected: 2, "compiled CollectionViewSource collection-change groups");
         ValidateCollectionViewGroup(GetCollectionItem(groups, 0), "primary group", expectedItemCount: 2, "collection-change primary");
         ValidateCollectionViewGroup(GetCollectionItem(groups, 1), "secondary group", expectedItemCount: 1, "collection-change secondary");
+        liveGroups = GetProperty(liveGroupedItemsView, "Groups");
+        AssertCollectionCount(liveGroups, expected: 2, "compiled live CollectionViewSource collection-change groups");
+        ValidateCollectionViewGroup(GetCollectionItem(liveGroups, 0), "primary group", expectedItemCount: 2, "live collection-change primary");
+        ValidateCollectionViewGroup(GetCollectionItem(liveGroups, 1), "secondary group", expectedItemCount: 1, "live collection-change secondary");
 
         object refreshFirstItem = GetCollectionItem(sourceItems, 0);
         object refreshSecondItem = GetCollectionItem(sourceItems, 1);
@@ -4461,6 +4499,13 @@ internal static class Program
         object liveFilteredItems = GetProperty(liveFilteredItemsList, "Items");
         AssertCollectionCount(liveFilteredItems, expected: 1, "post-show live filtered CollectionViewSource initial items");
 
+        object liveGroupedItemsViewSource = Invoke(window, "TryFindResource", "LiveGroupedItemsView");
+        object liveGroupedItemsView = GetProperty(liveGroupedItemsViewSource, "View");
+        object liveGroups = GetProperty(liveGroupedItemsView, "Groups");
+        AssertCollectionCount(liveGroups, expected: 2, "post-show live grouped CollectionViewSource initial groups");
+        ValidateCollectionViewGroup(GetCollectionItem(liveGroups, 0), "primary group", expectedItemCount: 2, "post-show live initial primary");
+        ValidateCollectionViewGroup(GetCollectionItem(liveGroups, 1), "secondary group", expectedItemCount: 1, "post-show live initial secondary");
+
         object refreshFirstItem = GetCollectionItem(sourceItems, 0);
         object refreshSecondItem = GetCollectionItem(sourceItems, 1);
         object refreshThirdItem = GetCollectionItem(sourceItems, 2);
@@ -4479,13 +4524,25 @@ internal static class Program
         AssertCollectionCount(liveFilteredItems, expected: 1, "compiled live filtered CollectionViewSource property-change accepted items");
         AssertSame(refreshThirdItem, GetCollectionItem(liveFilteredItems, 0), "compiled live filtered CollectionViewSource property-change accepted item");
 
+        SetProperty(refreshThirdItem, "Category", "secondary group");
+        flushDataBind();
+        liveGroups = GetProperty(liveGroupedItemsView, "Groups");
+        AssertCollectionCount(liveGroups, expected: 2, "compiled live CollectionViewSource property-change grouped groups");
+        ValidateCollectionViewGroup(GetCollectionItem(liveGroups, 0), "primary group", expectedItemCount: 1, "live property-change primary");
+        ValidateCollectionViewGroup(GetCollectionItem(liveGroups, 1), "secondary group", expectedItemCount: 2, "live property-change secondary");
+
         SetProperty(refreshFirstItem, "Name", "item alpha");
         SetProperty(refreshSecondItem, "Name", "item beta");
         SetProperty(refreshThirdItem, "Name", "item gamma");
+        SetProperty(refreshThirdItem, "Category", "primary group");
         flushDataBind();
         AssertEqual("item gamma", GetProperty(GetCollectionItem(liveSortedItems, 0), "Name"), "compiled live CollectionViewSource property-change restored first item");
         AssertCollectionCount(liveFilteredItems, expected: 1, "compiled live filtered CollectionViewSource property-change restored items");
         AssertSame(refreshSecondItem, GetCollectionItem(liveFilteredItems, 0), "compiled live filtered CollectionViewSource property-change restored item");
+        liveGroups = GetProperty(liveGroupedItemsView, "Groups");
+        AssertCollectionCount(liveGroups, expected: 2, "compiled live CollectionViewSource property-change restored groups");
+        ValidateCollectionViewGroup(GetCollectionItem(liveGroups, 0), "primary group", expectedItemCount: 2, "live property-change restored primary");
+        ValidateCollectionViewGroup(GetCollectionItem(liveGroups, 1), "secondary group", expectedItemCount: 1, "live property-change restored secondary");
     }
 
     private static void ValidateCollectionViewGroup(

@@ -288,6 +288,44 @@ internal static class Program
 
         AssertEqual("clicked", GetProperty(clickStatus, "Text"), "click status after generated event");
 
+        object commandBindings = GetProperty(window, "CommandBindings");
+        object commandBinding = EnumerateObjects(commandBindings).FirstOrDefault()
+            ?? throw new InvalidOperationException("Expected an SDK smoke Window.CommandBindings entry.");
+        object commandBindingCommand = GetProperty(commandBinding, "Command");
+        AssertType(commandBindingCommand, "System.Windows.Input.RoutedUICommand", "window command binding command");
+        AssertEqual("SmokeCommand", GetProperty(commandBindingCommand, "Name"), "window command binding command name");
+
+        object inputBindings = GetProperty(window, "InputBindings");
+        object keyBinding = EnumerateObjects(inputBindings).FirstOrDefault()
+            ?? throw new InvalidOperationException("Expected an SDK smoke Window.InputBindings entry.");
+        object keyBindingCommand = GetProperty(keyBinding, "Command");
+        AssertType(keyBindingCommand, "System.Windows.Input.RoutedUICommand", "window key binding command");
+        AssertEqual("SmokeCommand", GetProperty(keyBindingCommand, "Name"), "window key binding command name");
+        AssertEqual("input binding payload", GetProperty(keyBinding, "CommandParameter"), "window key binding command parameter");
+        AssertEqual("F6", GetProperty(keyBinding, "Key").ToString() ?? string.Empty, "window key binding key");
+        AssertEqual("Control", GetProperty(keyBinding, "Modifiers").ToString() ?? string.Empty, "window key binding modifiers");
+
+        object commandButton = Invoke(window, "FindName", "CommandButton");
+        AssertType(commandButton, "System.Windows.Controls.Button", "command button");
+        object commandButtonCommand = GetProperty(commandButton, "Command");
+        AssertType(commandButtonCommand, "System.Windows.Input.RoutedUICommand", "command button command");
+        AssertEqual("SmokeCommand", GetProperty(commandButtonCommand, "Name"), "command button command name");
+        object commandButtonParameter = GetProperty(commandButton, "CommandParameter");
+        AssertEqual("routed command payload", commandButtonParameter, "command button command parameter");
+        AssertEqual(true, Invoke(commandButtonCommand, "CanExecute", commandButtonParameter, window), "command button routed command CanExecute");
+
+        object commandStatus = Invoke(window, "FindName", "CommandStatus");
+        AssertType(commandStatus, "System.Windows.Controls.TextBlock", "command status element");
+        if (object.Equals("command not executed", GetProperty(commandStatus, "Text")))
+        {
+            InvokeVoid(commandButton, "OnClick");
+        }
+
+        AssertAtLeast(1, GetProperty(window, "SmokeCommandCanExecuteCount"), "window routed command CanExecute count");
+        AssertAtLeast(1, GetProperty(window, "SmokeCommandExecutionCount"), "window routed command execution count");
+        AssertEqual("routed command payload", GetProperty(window, "LastSmokeCommandParameter"), "window routed command executed parameter");
+        AssertEqual("routed command payload", GetProperty(commandStatus, "Text"), "command status after routed command");
+
         object inputBox = Invoke(window, "FindName", "InputBox");
         AssertType(inputBox, "System.Windows.Controls.TextBox", "input box");
         AssertEqual("editable package text", GetProperty(inputBox, "Text"), "input box bound text");
@@ -564,6 +602,22 @@ internal static class Program
         }
 
         throw new MissingMemberException(collection.GetType().FullName, "Count");
+    }
+
+    private static IEnumerable<object> EnumerateObjects(object collection)
+    {
+        if (collection is not IEnumerable enumerable)
+        {
+            throw new InvalidOperationException($"Object '{collection.GetType().FullName}' is not enumerable.");
+        }
+
+        foreach (object? item in enumerable)
+        {
+            if (item is not null)
+            {
+                yield return item;
+            }
+        }
     }
 
     private static void AssertType(object value, string expectedTypeName, string description)

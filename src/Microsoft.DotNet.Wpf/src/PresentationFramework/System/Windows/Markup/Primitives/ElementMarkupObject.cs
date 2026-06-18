@@ -897,6 +897,15 @@ namespace System.Windows.Markup.Primitives
             // (Have to do this after the null check so that GetConverter doesn't get
             // an invalid argument.)
 
+            if (value is SystemResourceKey || value is SystemThemeKey)
+            {
+                var systemKeyConverter = new SystemKeyConverter();
+                if (systemKeyConverter.CanConvertTo(context, typeof(MarkupExtension)))
+                {
+                    return systemKeyConverter.ConvertTo(context, TypeConverterHelper.InvariantEnglishUS, value, typeof(MarkupExtension));
+                }
+            }
+
             TypeConverter converter = TypeDescriptor.GetConverter(value);
             if (converter.CanConvertTo(context, typeof(MarkupExtension)))
             {

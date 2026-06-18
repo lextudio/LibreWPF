@@ -1587,6 +1587,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("wrapped System.Xaml NameScopeDictionary clear unregisters underlying name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlReader(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlWriterRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseXamlWriterSystemResourceKeyRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Markup.XamlReader", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Markup.XamlWriter", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ParseLooseXaml(presentationFramework, looseXaml)", harnessProgram, StringComparison.Ordinal);
@@ -1596,6 +1597,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("loose XamlReader Binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter serialized GradientStop", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip {description} stop color", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Controls.MenuItem", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SeparatorStyleKey", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter serialized system resource key member", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip system-key style target", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Create(compilerHarness, MainWindowTypeName)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetDictionaryValue(resources, \"AccentBrush\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateFreezableBrushResource(resources)", harnessProgram, StringComparison.Ordinal);
@@ -2178,6 +2183,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("wrapped System.Xaml NameScopeDictionary clear unregisters underlying name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlReader(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlWriterRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseXamlWriterSystemResourceKeyRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Markup.XamlReader", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Markup.XamlWriter", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ParseLooseXaml(presentationFramework, looseXaml)", harnessProgram, StringComparison.Ordinal);
@@ -2187,6 +2193,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("loose XamlReader Binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter serialized GradientStop", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip {description} stop color", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Controls.MenuItem", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SeparatorStyleKey", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter serialized system resource key member", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip system-key style target", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(application, \"Run\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationServiceTypeName = \"System.Windows.PortableWindowActivationService\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("new Func<object, object>(recorder.Activate)", harnessProgram, StringComparison.Ordinal);

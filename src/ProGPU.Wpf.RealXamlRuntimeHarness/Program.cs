@@ -61,6 +61,7 @@ internal static class Program
             ValidateSystemXamlNameScopeDictionary(systemXaml);
             ValidateLooseXamlReader(presentationFramework);
             ValidateLooseXamlWriterRoundTrip(presentationFramework);
+            ValidateLooseXamlWriterSystemResourceKeyRoundTrip(presentationFramework);
             ValidateApplication(application);
 
             window = Create(compilerHarness, MainWindowTypeName);
@@ -324,6 +325,29 @@ internal static class Program
         AssertCollectionCount(roundTrippedStops, expected: 2, "loose XamlWriter round-trip GradientStop count");
         ValidateLooseGradientStop(GetCollectionItem(roundTrippedStops, 0), "#FF336699", 0.0, "first");
         ValidateLooseGradientStop(GetCollectionItem(roundTrippedStops, 1), "#FF9C4A2F", 1.0, "second");
+    }
+
+    private static void ValidateLooseXamlWriterSystemResourceKeyRoundTrip(Assembly presentationFramework)
+    {
+        Type dictionaryType = GetRequiredType(presentationFramework, "System.Windows.ResourceDictionary");
+        Type menuItemType = GetRequiredType(presentationFramework, "System.Windows.Controls.MenuItem");
+        Type styleType = GetRequiredType(presentationFramework, "System.Windows.Style");
+
+        object systemKey = GetStaticProperty(menuItemType, "SeparatorStyleKey");
+        object style = CreateInternal(styleType, menuItemType);
+        object dictionary = CreateInternal(dictionaryType);
+        ((IDictionary)dictionary).Add(systemKey, style);
+
+        string serialized = SaveLooseXaml(presentationFramework, dictionary);
+        AssertContains("ResourceDictionary", serialized, "loose XamlWriter serialized ResourceDictionary");
+        AssertContains("x:Key", serialized, "loose XamlWriter serialized system resource key directive");
+        AssertContains("MenuItem", serialized, "loose XamlWriter serialized system resource key owner");
+        AssertContains("SeparatorStyleKey", serialized, "loose XamlWriter serialized system resource key member");
+
+        object roundTrippedDictionary = ParseLooseXaml(presentationFramework, serialized);
+        object roundTrippedStyle = GetDictionaryValue(roundTrippedDictionary, systemKey);
+        AssertType(roundTrippedStyle, "System.Windows.Style", "loose XamlWriter round-trip system-key style");
+        AssertEqual(menuItemType, GetProperty(roundTrippedStyle, "TargetType"), "loose XamlWriter round-trip system-key style target");
     }
 
     private static void ValidateLooseGradientStop(object stop, string expectedColor, double expectedOffset, string description)

@@ -5118,6 +5118,10 @@ internal static class Program
         AssertType(accessTarget, "System.Windows.Controls.TextBox", "compiled access-key target TextBox");
         AssertEqual("access target", GetProperty(accessTarget, "Text"), "compiled access-key target text");
 
+        object alternateAccessTarget = GetField(window, "AlternateAccessTargetBox");
+        AssertType(alternateAccessTarget, "System.Windows.Controls.TextBox", "compiled alternate access-key target TextBox");
+        AssertEqual("alternate access target", GetProperty(alternateAccessTarget, "Text"), "compiled alternate access-key target text");
+
         object accessText = GetField(window, "StandaloneAccessText");
         AssertType(accessText, "System.Windows.Controls.AccessText", "compiled standalone AccessText");
         AssertEqual("_Standalone access text", GetProperty(accessText, "Text"), "compiled standalone AccessText text");
@@ -5133,10 +5137,19 @@ internal static class Program
         object focusScope = GetField(window, "AccessKeyFocusScope");
         object accessLabel = GetField(window, "AccessTargetLabel");
         object accessTarget = GetField(window, "AccessTargetBox");
+        object alternateAccessTarget = GetField(window, "AlternateAccessTargetBox");
         AssertSame(accessTarget, GetProperty(accessLabel, "Target"), "compiled access-key Label target");
 
         Type focusManagerType = GetRequiredType(presentationCore, "System.Windows.Input.FocusManager");
         AssertSame(accessTarget, InvokeStatic(focusManagerType, "GetFocusedElement", focusScope), "compiled FocusManager focused element");
+
+        Type keyboardType = GetRequiredType(presentationCore, "System.Windows.Input.Keyboard");
+        AssertSame(alternateAccessTarget, InvokeStatic(keyboardType, "Focus", alternateAccessTarget), "compiled FocusManager alternate Keyboard.Focus target");
+        AssertSame(alternateAccessTarget, GetStaticProperty(keyboardType, "FocusedElement"), "compiled FocusManager alternate keyboard focused element");
+        AssertSame(alternateAccessTarget, InvokeStatic(focusManagerType, "GetFocusedElement", focusScope), "compiled FocusManager live logical focus update");
+
+        InvokeStatic(focusManagerType, "SetFocusedElement", focusScope, accessTarget);
+        AssertSame(accessTarget, InvokeStatic(focusManagerType, "GetFocusedElement", focusScope), "compiled FocusManager logical focus restore");
 
         Type presentationSourceType = GetRequiredType(presentationCore, "System.Windows.PresentationSource");
         object source = InvokeStatic(presentationSourceType, "FromVisual", window);
@@ -5145,7 +5158,6 @@ internal static class Program
         AssertEqual(true, InvokeStatic(accessKeyManagerType, "IsKeyRegistered", source, "A"), "compiled Label access key registered");
         InvokeStatic(accessKeyManagerType, "ProcessKey", source, "A", false);
 
-        Type keyboardType = GetRequiredType(presentationCore, "System.Windows.Input.Keyboard");
         AssertSame(accessTarget, GetStaticProperty(keyboardType, "FocusedElement"), "compiled Label access key focused target");
         InvokeStatic(keyboardType, "ClearFocus");
     }

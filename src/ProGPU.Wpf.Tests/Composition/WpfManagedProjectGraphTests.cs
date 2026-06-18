@@ -1398,6 +1398,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"AccessKeyFocusScope\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("FocusManager.IsFocusScope=\"True\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("FocusManager.FocusedElement=\"{Binding ElementName=AccessTargetBox}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"AlternateAccessTargetBox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"AccessTargetLabel\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"_Access target\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Target=\"{Binding ElementName=AccessTargetBox}\"", mainWindowXaml, StringComparison.Ordinal);
@@ -2133,7 +2134,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled AdornerLayer added adorner", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateAccessKeyFocusScope(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowAccessKeyFocusScope(presentationCore, window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled alternate access-key target TextBox", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled access-key Label target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled FocusManager alternate Keyboard.Focus target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled FocusManager live logical focus update", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled FocusManager logical focus restore", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Label access key registered", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Label access key focused target", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowNavigationFrame(", harnessProgram, StringComparison.Ordinal);
@@ -2833,7 +2838,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled AdornerLayer added adorner", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateAccessKeyFocusScope(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowAccessKeyFocusScope(_presentationCore, typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled alternate access-key target TextBox", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled access-key Label target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled FocusManager alternate Keyboard.Focus target", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled FocusManager live logical focus update", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled FocusManager logical focus restore", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Label access key registered", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Label access key focused target", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowNavigationFrame(", harnessProgram, StringComparison.Ordinal);

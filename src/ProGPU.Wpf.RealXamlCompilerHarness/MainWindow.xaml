@@ -1179,6 +1179,9 @@
             <TextBox
                 x:Name="AccessTargetBox"
                 Text="access target" />
+            <TextBox
+                x:Name="AlternateAccessTargetBox"
+                Text="alternate access target" />
             <AccessText
                 x:Name="StandaloneAccessText"
                 Text="_Standalone access text" />

@@ -1725,6 +1725,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateRangeControls(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Slider Value binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Slider two-way value source update", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExecuteSliderCommand(slider, dataContext, progress, \"IncreaseSmall\", 40.1", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Slider MaximizeValue command", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ProgressBar value after source update", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableInputBindingActivation(presentationCore, activation, window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("RaiseHostInput(portableActivation.Host, keyDown)", harnessProgram, StringComparison.Ordinal);
@@ -2190,6 +2192,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateRangeControls(window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Slider Value binding path", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Slider two-way value source update", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExecuteSliderCommand(slider, dataContext, progress, \"IncreaseSmall\", 40.1", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled Slider MaximizeValue command", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled ProgressBar value after source update", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableInputBindingActivation(typedActivation.Window)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreatePortableInputEvent(\"KeyDown\", \"F6\"", harnessProgram, StringComparison.Ordinal);

@@ -2465,6 +2465,33 @@ internal static class Program
 
         AssertEqual(64.0, GetProperty(dataContext, "RangeValue"), "compiled Slider two-way value source update");
         AssertEqual(64.0, GetProperty(progress, "Value"), "compiled ProgressBar value after source update");
+
+        AssertEqual(0.1, GetProperty(slider, "SmallChange"), "compiled Slider small change default");
+        AssertEqual(1.0, GetProperty(slider, "LargeChange"), "compiled Slider large change default");
+        SetProperty(slider, "Value", 40.0);
+        AssertEqual(40.0, GetProperty(dataContext, "RangeValue"), "compiled Slider command baseline source update");
+        ExecuteSliderCommand(slider, dataContext, progress, "IncreaseSmall", 40.1, "compiled Slider IncreaseSmall command");
+        ExecuteSliderCommand(slider, dataContext, progress, "DecreaseSmall", 40.0, "compiled Slider DecreaseSmall command");
+        ExecuteSliderCommand(slider, dataContext, progress, "IncreaseLarge", 41.0, "compiled Slider IncreaseLarge command");
+        ExecuteSliderCommand(slider, dataContext, progress, "DecreaseLarge", 40.0, "compiled Slider DecreaseLarge command");
+        ExecuteSliderCommand(slider, dataContext, progress, "MaximizeValue", 100.0, "compiled Slider MaximizeValue command");
+        ExecuteSliderCommand(slider, dataContext, progress, "MinimizeValue", 0.0, "compiled Slider MinimizeValue command");
+    }
+
+    private static void ExecuteSliderCommand(
+        object slider,
+        object dataContext,
+        object progress,
+        string commandPropertyName,
+        double expectedValue,
+        string description)
+    {
+        object command = GetStaticProperty(slider.GetType(), commandPropertyName);
+        AssertEqual(true, InvokeTwoArgumentCommand(command, "CanExecute", null, slider), $"{description} CanExecute");
+        InvokeTwoArgumentCommand(command, "Execute", null, slider);
+        AssertClose(expectedValue, Convert.ToDouble(GetProperty(slider, "Value")), 0.0001, $"{description} value");
+        AssertClose(expectedValue, Convert.ToDouble(GetProperty(dataContext, "RangeValue")), 0.0001, $"{description} source value");
+        AssertClose(expectedValue, Convert.ToDouble(GetProperty(progress, "Value")), 0.0001, $"{description} progress value");
     }
 
     private static void RaiseMenuItemClick(object menuItem)

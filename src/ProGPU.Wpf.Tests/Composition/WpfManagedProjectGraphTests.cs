@@ -1569,6 +1569,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleBold\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox ToggleBold applied weight", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox ToggleBold restored weight", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleItalic\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox ToggleItalic applied style", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox ToggleItalic restored style", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleUnderline\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox ToggleUnderline applied decoration location", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox ToggleUnderline restored decoration count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument section blocks", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument table columns", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument table cells", harnessProgram, StringComparison.Ordinal);
@@ -2038,6 +2044,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleBold\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox ToggleBold applied weight", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled RichTextBox ToggleBold restored weight", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleItalic\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox ToggleItalic applied style", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox ToggleItalic restored style", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetStaticProperty(editingCommandsType, \"ToggleUnderline\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox ToggleUnderline applied decoration location", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled RichTextBox ToggleUnderline restored decoration count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument section blocks", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument table columns", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled FlowDocument table cells", harnessProgram, StringComparison.Ordinal);

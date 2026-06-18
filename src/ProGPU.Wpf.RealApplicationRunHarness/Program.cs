@@ -365,6 +365,7 @@ internal static class Program
         Type editingCommandsType = GetRequiredType(documentAssembly, "System.Windows.Documents.EditingCommands");
         Type inlineType = GetRequiredType(documentAssembly, "System.Windows.Documents.Inline");
         Type textElementType = GetRequiredType(documentAssembly, "System.Windows.Documents.TextElement");
+        Type typographyType = GetRequiredType(documentAssembly, "System.Windows.Documents.Typography");
         object fontWeightProperty = GetStaticField(textElementType, "FontWeightProperty");
         object fontStyleProperty = GetStaticField(textElementType, "FontStyleProperty");
         object fontSizeProperty = GetStaticField(textElementType, "FontSizeProperty");
@@ -372,6 +373,8 @@ internal static class Program
         object foregroundProperty = GetStaticField(textElementType, "ForegroundProperty");
         object backgroundProperty = GetStaticField(textElementType, "BackgroundProperty");
         object textDecorationsProperty = GetStaticField(inlineType, "TextDecorationsProperty");
+        object inlineFlowDirectionProperty = GetStaticField(inlineType, "FlowDirectionProperty");
+        object variantsProperty = GetStaticField(typographyType, "VariantsProperty");
         object toggleBoldCommand = GetStaticProperty(editingCommandsType, "ToggleBold");
         AssertEqual(true, InvokeTwoArgumentCommand(toggleBoldCommand, "CanExecute", null, richTextBox), "compiled RichTextBox ToggleBold CanExecute");
         InvokeTwoArgumentCommand(toggleBoldCommand, "Execute", null, richTextBox);
@@ -428,6 +431,26 @@ internal static class Program
         object appliedBackground = Invoke(selection, "GetCurrentValue", backgroundProperty);
         AssertType(appliedBackground, "System.Windows.Media.SolidColorBrush", "compiled RichTextBox ApplyBackground brush");
         AssertEqual("#FFABCDEF", GetProperty(appliedBackground, "Color").ToString(), "compiled RichTextBox ApplyBackground color");
+        object toggleSubscriptCommand = GetStaticProperty(editingCommandsType, "ToggleSubscript");
+        AssertEqual(true, InvokeTwoArgumentCommand(toggleSubscriptCommand, "CanExecute", null, richTextBox), "compiled RichTextBox ToggleSubscript CanExecute");
+        InvokeTwoArgumentCommand(toggleSubscriptCommand, "Execute", null, richTextBox);
+        AssertEqual("Subscript", Invoke(selection, "GetCurrentValue", variantsProperty).ToString(), "compiled RichTextBox ToggleSubscript applied variant");
+        InvokeTwoArgumentCommand(toggleSubscriptCommand, "Execute", null, richTextBox);
+        AssertEqual("Normal", Invoke(selection, "GetCurrentValue", variantsProperty).ToString(), "compiled RichTextBox ToggleSubscript restored variant");
+        object toggleSuperscriptCommand = GetStaticProperty(editingCommandsType, "ToggleSuperscript");
+        AssertEqual(true, InvokeTwoArgumentCommand(toggleSuperscriptCommand, "CanExecute", null, richTextBox), "compiled RichTextBox ToggleSuperscript CanExecute");
+        InvokeTwoArgumentCommand(toggleSuperscriptCommand, "Execute", null, richTextBox);
+        AssertEqual("Superscript", Invoke(selection, "GetCurrentValue", variantsProperty).ToString(), "compiled RichTextBox ToggleSuperscript applied variant");
+        InvokeTwoArgumentCommand(toggleSuperscriptCommand, "Execute", null, richTextBox);
+        AssertEqual("Normal", Invoke(selection, "GetCurrentValue", variantsProperty).ToString(), "compiled RichTextBox ToggleSuperscript restored variant");
+        object applyInlineRtlCommand = GetStaticProperty(editingCommandsType, "ApplyInlineFlowDirectionRTL");
+        AssertEqual(true, InvokeTwoArgumentCommand(applyInlineRtlCommand, "CanExecute", null, richTextBox), "compiled RichTextBox ApplyInlineFlowDirectionRTL CanExecute");
+        InvokeTwoArgumentCommand(applyInlineRtlCommand, "Execute", null, richTextBox);
+        AssertEqual("RightToLeft", Invoke(selection, "GetCurrentValue", inlineFlowDirectionProperty).ToString(), "compiled RichTextBox ApplyInlineFlowDirectionRTL value");
+        object applyInlineLtrCommand = GetStaticProperty(editingCommandsType, "ApplyInlineFlowDirectionLTR");
+        AssertEqual(true, InvokeTwoArgumentCommand(applyInlineLtrCommand, "CanExecute", null, richTextBox), "compiled RichTextBox ApplyInlineFlowDirectionLTR CanExecute");
+        InvokeTwoArgumentCommand(applyInlineLtrCommand, "Execute", null, richTextBox);
+        AssertEqual("LeftToRight", Invoke(selection, "GetCurrentValue", inlineFlowDirectionProperty).ToString(), "compiled RichTextBox ApplyInlineFlowDirectionLTR value");
 
         object section = GetCollectionItem(blocks, 1);
         AssertType(section, "System.Windows.Documents.Section", "compiled FlowDocument section");

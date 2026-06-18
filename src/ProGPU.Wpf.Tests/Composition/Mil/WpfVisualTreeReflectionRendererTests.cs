@@ -333,6 +333,24 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeRegistersUiElementDrawingContentResourcesAsRetainedDependencies()
+    {
+        var brush = Brushes.Green;
+        var renderData = CreateRenderData(brush);
+        var root = new FakeUiElementVisual(renderData);
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new object[] { root }, sink.VisualOwners);
+        Assert.Contains(root.Children, sink.VisualDependencies);
+        Assert.Contains(renderData, sink.VisualDependencies);
+        Assert.Contains(brush, sink.VisualDependencies);
+        Assert.Equal(1, result.ContentCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
     public void ReplaySubtreeRegistersNestedRenderDataResourcesAsRetainedDependencies()
     {
         var brush = Brushes.Green;

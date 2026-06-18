@@ -398,12 +398,30 @@ internal static class Program
         object mutableStatusText = Invoke(window, "FindName", "MutableStatusText");
         AssertType(mutableStatusText, "System.Windows.Controls.TextBlock", "mutable status text element");
         AssertEqual("initial binding status", GetProperty(mutableStatusText, "Text"), "mutable status initial binding text");
+        object validatedInputBox = Invoke(window, "FindName", "ValidatedInputBox");
+        AssertType(validatedInputBox, "System.Windows.Controls.TextBox", "validated input box");
+        AssertEqual("valid package text", GetProperty(validatedInputBox, "Text"), "validated input box initial text");
+        object validationStatus = Invoke(window, "FindName", "ValidationStatus");
+        AssertType(validationStatus, "System.Windows.Controls.TextBlock", "validation status element");
+        Type validationType = GetRequiredType(validatedInputBox.GetType().Assembly, "System.Windows.Controls.Validation");
+        AssertEqual(false, InvokeStatic(validationType, "GetHasError", validatedInputBox), "validated input initial validation state");
+        AssertEqual("validation has error: False", GetProperty(validationStatus, "Text"), "validation status initial text");
         if (validateFrameContent)
         {
             object viewModel = GetProperty(window, "DataContext");
             SetProperty(viewModel, "MutableStatus", "updated binding status");
             flushDispatcherOperations?.Invoke(window);
             AssertEqual("updated binding status", GetProperty(mutableStatusText, "Text"), "mutable status property changed binding text");
+            SetProperty(validatedInputBox, "Text", string.Empty);
+            flushDispatcherOperations?.Invoke(window);
+            AssertEqual(true, InvokeStatic(validationType, "GetHasError", validatedInputBox), "validated input empty validation state");
+            AssertEqual("validation has error: True", GetProperty(validationStatus, "Text"), "validation status empty text");
+            AssertEqual("valid package text", GetProperty(viewModel, "ValidationText"), "validated input rejected source update");
+            SetProperty(validatedInputBox, "Text", "corrected package text");
+            flushDispatcherOperations?.Invoke(window);
+            AssertEqual(false, InvokeStatic(validationType, "GetHasError", validatedInputBox), "validated input corrected validation state");
+            AssertEqual("validation has error: False", GetProperty(validationStatus, "Text"), "validation status corrected text");
+            AssertEqual("corrected package text", GetProperty(viewModel, "ValidationText"), "validated input corrected source update");
         }
         object routedEventSource = Invoke(window, "FindName", "RoutedEventSource");
         AssertType(routedEventSource, "ProGPU.Wpf.SdkSwitchSmoke.SmokeRoutedEventSource", "custom routed event source");

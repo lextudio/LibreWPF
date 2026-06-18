@@ -203,6 +203,24 @@
             x:Name="MutableStatusText"
             Margin="0,6,0,0"
             Text="{Binding MutableStatus}" />
+        <TextBox
+            x:Name="ValidatedInputBox"
+            Margin="0,6,0,0">
+            <TextBox.Text>
+                <Binding
+                    NotifyOnValidationError="True"
+                    Path="ValidationText"
+                    UpdateSourceTrigger="PropertyChanged">
+                    <Binding.ValidationRules>
+                        <local:SmokeNonEmptyValidationRule />
+                    </Binding.ValidationRules>
+                </Binding>
+            </TextBox.Text>
+        </TextBox>
+        <TextBlock
+            x:Name="ValidationStatus"
+            Margin="0,6,0,0"
+            Text="{Binding ElementName=ValidatedInputBox, Path=(Validation.HasError), StringFormat=validation has error: {0}}" />
         <local:SmokeRoutedEventSource
             x:Name="RoutedEventSource"
             Width="1"

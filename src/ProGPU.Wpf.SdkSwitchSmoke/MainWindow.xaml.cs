@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 
 namespace ProGPU.Wpf.SdkSwitchSmoke;
@@ -79,6 +81,8 @@ public sealed class SmokeViewModel : INotifyPropertyChanged
 
     public string InputText { get; set; } = "editable package text";
 
+    public string ValidationText { get; set; } = "valid package text";
+
     public string MutableStatus
     {
         get => _mutableStatus;
@@ -141,6 +145,20 @@ public sealed class SmokeRoutedEventSource : FrameworkElement
     public void RaiseSmokeBubbled()
     {
         RaiseEvent(new RoutedEventArgs(SmokeBubbledEvent, this));
+    }
+}
+
+public sealed class SmokeNonEmptyValidationRule : ValidationRule
+{
+    public override ValidationResult Validate(object value, CultureInfo cultureInfo)
+    {
+        string text = value as string ?? value?.ToString() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return new ValidationResult(false, "Value is required");
+        }
+
+        return ValidationResult.ValidResult;
     }
 }
 

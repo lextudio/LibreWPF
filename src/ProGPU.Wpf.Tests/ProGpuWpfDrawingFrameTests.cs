@@ -78,6 +78,38 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void ConstructorKeepsWpfLayersInLogicalDipsForHighDpiFrames()
+    {
+        var sceneRoot = new ProGpuContainerVisual();
+        var retainedRoot = new ProGpuContainerVisual();
+        var flatRoot = new ProGpuDrawingVisual();
+
+        var frame = new ProGpuWpfDrawingFrame(
+            sceneRoot,
+            retainedRoot,
+            flatRoot,
+            840,
+            1680,
+            logicalWidth: 420,
+            logicalHeight: 840,
+            dpiScaleX: 2.0,
+            dpiScaleY: 2.0);
+
+        Assert.Equal(840u, frame.PixelWidth);
+        Assert.Equal(1680u, frame.PixelHeight);
+        Assert.Equal(420u, frame.LogicalWidth);
+        Assert.Equal(840u, frame.LogicalHeight);
+        Assert.Equal(2.0, frame.DpiScaleX);
+        Assert.Equal(2.0, frame.DpiScaleY);
+        Assert.Equal(new Vector2(420, 840), sceneRoot.Size);
+        Assert.Equal(new Vector2(420, 840), retainedRoot.Size);
+        Assert.Equal(new Vector2(420, 840), flatRoot.Size);
+        Assert.Equal(Matrix4x4.Identity, retainedRoot.Transform);
+        Assert.Equal(Vector3.One, retainedRoot.Scale);
+        Assert.Equal(Vector2.Zero, retainedRoot.RenderTransformOrigin);
+    }
+
+    [Fact]
     public void ConstructorClearsRetainedVisualBranchMapWhenRetainedLayerIsCleared()
     {
         var branchMap = new WpfRetainedVisualBranchMap();

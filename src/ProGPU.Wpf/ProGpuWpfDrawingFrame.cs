@@ -25,7 +25,11 @@ public sealed class ProGpuWpfDrawingFrame
         uint pixelWidth,
         uint pixelHeight,
         ProGpuWgpuContext? context = null,
-        WpfViewport3DTextureCache? viewport3DTextureCache = null)
+        WpfViewport3DTextureCache? viewport3DTextureCache = null,
+        uint logicalWidth = 0,
+        uint logicalHeight = 0,
+        double dpiScaleX = 1.0,
+        double dpiScaleY = 1.0)
         : this(
             sceneRootVisual: null,
             retainedWpfVisualRoot: null,
@@ -33,7 +37,11 @@ public sealed class ProGpuWpfDrawingFrame
             pixelWidth,
             pixelHeight,
             context,
-            viewport3DTextureCache)
+            viewport3DTextureCache,
+            logicalWidth: logicalWidth,
+            logicalHeight: logicalHeight,
+            dpiScaleX: dpiScaleX,
+            dpiScaleY: dpiScaleY)
     {
     }
 
@@ -46,7 +54,11 @@ public sealed class ProGpuWpfDrawingFrame
         ProGpuWgpuContext? context = null,
         WpfViewport3DTextureCache? viewport3DTextureCache = null,
         bool clearRetainedWpfVisualRoot = true,
-        WpfRetainedVisualBranchMap? retainedVisualBranchMap = null)
+        WpfRetainedVisualBranchMap? retainedVisualBranchMap = null,
+        uint logicalWidth = 0,
+        uint logicalHeight = 0,
+        double dpiScaleX = 1.0,
+        double dpiScaleY = 1.0)
     {
         _sceneRootVisual = sceneRootVisual;
         _retainedWpfVisualRoot = retainedWpfVisualRoot;
@@ -58,9 +70,13 @@ public sealed class ProGpuWpfDrawingFrame
 
         PixelWidth = Math.Max(1, pixelWidth);
         PixelHeight = Math.Max(1, pixelHeight);
+        LogicalWidth = Math.Max(1, logicalWidth == 0 ? PixelWidth : logicalWidth);
+        LogicalHeight = Math.Max(1, logicalHeight == 0 ? PixelHeight : logicalHeight);
+        DpiScaleX = NormalizeDpiScale(dpiScaleX);
+        DpiScaleY = NormalizeDpiScale(dpiScaleY);
 
         _rootVisual.Context.Clear();
-        _rootVisual.Size = new Vector2(PixelWidth, PixelHeight);
+        _rootVisual.Size = new Vector2(LogicalWidth, LogicalHeight);
 
         if (_retainedWpfVisualRoot != null)
         {
@@ -70,13 +86,17 @@ public sealed class ProGpuWpfDrawingFrame
                 _retainedVisualBranchMap?.Clear();
             }
 
-            _retainedWpfVisualRoot.Size = new Vector2(PixelWidth, PixelHeight);
+            _retainedWpfVisualRoot.Size = new Vector2(LogicalWidth, LogicalHeight);
+            _retainedWpfVisualRoot.Offset = Vector2.Zero;
+            _retainedWpfVisualRoot.Transform = Matrix4x4.Identity;
+            _retainedWpfVisualRoot.Scale = Vector3.One;
+            _retainedWpfVisualRoot.RenderTransformOrigin = Vector2.Zero;
         }
 
         if (_sceneRootVisual != null)
         {
             _sceneRootVisual.ClearChildren();
-            _sceneRootVisual.Size = new Vector2(PixelWidth, PixelHeight);
+            _sceneRootVisual.Size = new Vector2(LogicalWidth, LogicalHeight);
             if (_retainedWpfVisualRoot != null)
             {
                 _sceneRootVisual.AddChild(_retainedWpfVisualRoot);
@@ -89,6 +109,14 @@ public sealed class ProGpuWpfDrawingFrame
     public uint PixelWidth { get; }
 
     public uint PixelHeight { get; }
+
+    public uint LogicalWidth { get; }
+
+    public uint LogicalHeight { get; }
+
+    public double DpiScaleX { get; }
+
+    public double DpiScaleY { get; }
 
     public int DrawingContextCount { get; private set; }
 
@@ -217,5 +245,10 @@ public sealed class ProGpuWpfDrawingFrame
             _rootVisual.Context,
             _context,
             _viewport3DTextureCache);
+    }
+
+    private static double NormalizeDpiScale(double dpiScale)
+    {
+        return double.IsFinite(dpiScale) && dpiScale > 0 ? dpiScale : 1.0;
     }
 }

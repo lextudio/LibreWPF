@@ -237,6 +237,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Host.TryBeginDragMove()", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("public bool TryBeginDragMove()", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("PlatformServices.WindowDecorations.TryBeginDragMove(_window)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("var logicalWidth = (uint)Math.Max(1, _window.Size.X)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("var logicalHeight = (uint)Math.Max(1, _window.Size.Y)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("var dpiScaleX = pixelWidth / (double)logicalWidth", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("var dpiScaleY = pixelHeight / (double)logicalHeight", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("logicalWidth,\n                logicalHeight,\n                dpiScaleX,\n                dpiScaleY", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("Present(logicalWidth, logicalHeight)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("IWpfWindowDecorationService WindowDecorations", proGpuPlatformServices, StringComparison.Ordinal);
         Assert.Contains("bool TryBeginDragMove(object window)", proGpuPlatformServices, StringComparison.Ordinal);
         Assert.Contains("_window.Update += OnUpdate", proGpuHost, StringComparison.Ordinal);
@@ -6695,6 +6701,35 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RawMouseActions.Activate | RawMouseActions.CancelCapture", portableSource, StringComparison.Ordinal);
         Assert.Contains("_site.ReportInput(report)", portableSource, StringComparison.Ordinal);
         Assert.Contains(@"<Compile Include=""System\Windows\PortablePresentationSource.cs"" />", project, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SilkNetWindowDecorationServiceUsesNativeDragMoveBoundary()
+    {
+        var sourcePath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Platform",
+            "SilkNetWpfWindowDecorationService.cs");
+        var source = File.ReadAllText(sourcePath);
+
+        Assert.Contains("window is not IView view", source, StringComparison.Ordinal);
+        Assert.Contains("view.Handle == IntPtr.Zero", source, StringComparison.Ordinal);
+        Assert.Contains("OperatingSystem.IsWindows()", source, StringComparison.Ordinal);
+        Assert.Contains("view is not INativeWindowSource nativeWindowSource", source, StringComparison.Ordinal);
+        Assert.Contains("var nativeWindow = nativeWindowSource.Native", source, StringComparison.Ordinal);
+        Assert.Contains("nativeWindow == null", source, StringComparison.Ordinal);
+        Assert.Contains("var win32 = nativeWindow.Win32", source, StringComparison.Ordinal);
+        Assert.Contains("return win32.HasValue ? win32.Value.Item2 : IntPtr.Zero", source, StringComparison.Ordinal);
+        Assert.Contains("TryBeginWin32DragMove(GetWin32Hwnd(view))", source, StringComparison.Ordinal);
+        Assert.Contains("hwnd == IntPtr.Zero", source, StringComparison.Ordinal);
+        Assert.Contains("ReleaseCapture();", source, StringComparison.Ordinal);
+        Assert.Contains("SendMessage(hwnd, WM_SYSCOMMAND, (IntPtr)SC_MOUSEMOVE, IntPtr.Zero)", source, StringComparison.Ordinal);
+        Assert.Contains("SendMessage(hwnd, WM_LBUTTONUP, IntPtr.Zero, IntPtr.Zero)", source, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "public bool TryBeginDragMove(object window)\n    {\n        return false;\n    }",
+            source,
+            StringComparison.Ordinal);
     }
 
     private static XElement AssertProjectReference(XDocument project, string includeSuffix)

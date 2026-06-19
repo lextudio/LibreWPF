@@ -131,6 +131,25 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         uint pixelHeight,
         bool clearRetainedWpfVisualRoot)
     {
+        return BeginDrawingFrame(
+            pixelWidth,
+            pixelHeight,
+            clearRetainedWpfVisualRoot,
+            logicalWidth: 0,
+            logicalHeight: 0,
+            dpiScaleX: 1.0,
+            dpiScaleY: 1.0);
+    }
+
+    internal ProGpuWpfDrawingFrame BeginDrawingFrame(
+        uint pixelWidth,
+        uint pixelHeight,
+        bool clearRetainedWpfVisualRoot,
+        uint logicalWidth,
+        uint logicalHeight,
+        double dpiScaleX,
+        double dpiScaleY)
+    {
         ThrowIfDisposed();
         if (clearRetainedWpfVisualRoot)
         {
@@ -146,7 +165,11 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
             Context,
             Viewport3DTextureCache,
             clearRetainedWpfVisualRoot,
-            RetainedVisualBranchMap);
+            RetainedVisualBranchMap,
+            logicalWidth,
+            logicalHeight,
+            dpiScaleX,
+            dpiScaleY);
     }
 
     public WpfCompositionDrawingContext OpenCompositionDrawingContext(uint pixelWidth, uint pixelHeight)
@@ -309,7 +332,7 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
             {
                 var branchVisual = (ProGpuRetainedDrawingVisual)target.Visual;
                 RetainedVisualBranchMap.UnregisterVisualTree(branchVisual);
-                ResetRetainedDrawingVisualBranch(branchVisual, drawingFrame.PixelWidth, drawingFrame.PixelHeight);
+                ResetRetainedDrawingVisualBranch(branchVisual, drawingFrame.LogicalWidth, drawingFrame.LogicalHeight);
 
                 using var sink = new ProGpuRetainedCompositionCommandSink(
                     drawingFrame,

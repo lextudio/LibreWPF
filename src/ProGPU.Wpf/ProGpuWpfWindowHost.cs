@@ -430,9 +430,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             var framebufferSize = _window.FramebufferSize;
             var pixelWidth = (uint)Math.Max(1, framebufferSize.X);
             var pixelHeight = (uint)Math.Max(1, framebufferSize.Y);
-            var logicalWidth = Math.Max(1, _window.Size.X);
-            var dpiScale = pixelWidth / (double)logicalWidth;
-            UpdatePortablePresentationSourceDpiScale(dpiScale, dpiScale);
+            var logicalWidth = (uint)Math.Max(1, _window.Size.X);
+            var logicalHeight = (uint)Math.Max(1, _window.Size.Y);
+            var dpiScaleX = pixelWidth / (double)logicalWidth;
+            var dpiScaleY = pixelHeight / (double)logicalHeight;
+            var dpiScale = (dpiScaleX + dpiScaleY) / 2.0;
+            UpdatePortablePresentationSourceDpiScale(dpiScaleX, dpiScaleY);
             _target.DetectWpfSourceChanges();
             var frameState = CaptureFrameState(_target, pixelWidth, pixelHeight);
 
@@ -455,7 +458,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             var drawingFrame = _target.BeginDrawingFrame(
                 pixelWidth,
                 pixelHeight,
-                clearRetainedWpfVisualRoot);
+                clearRetainedWpfVisualRoot,
+                logicalWidth,
+                logicalHeight,
+                dpiScaleX,
+                dpiScaleY);
             var activeWpfImageSourceAdapter = _target.CreateFrameImageSourceAdapter(WpfImageSourceAdapter);
 
             using (IDisposable? renderDataSinkProviderRegistration = RegisterRenderDataSinkProvider(drawingFrame, activeWpfImageSourceAdapter))
@@ -538,7 +545,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 WpfRenderScheduler.ConsumeRenderRequest();
             }
 
-            if (Present(pixelWidth, pixelHeight))
+            if (Present(logicalWidth, logicalHeight))
             {
                 RecordPresentedFrame(CaptureFrameState(_target, pixelWidth, pixelHeight));
             }
@@ -549,7 +556,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
     }
 
-    private bool Present(uint pixelWidth, uint pixelHeight)
+    private bool Present(uint renderWidth, uint renderHeight)
     {
         if (_target == null)
         {
@@ -578,7 +585,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         var targetView = _target.Context.Wgpu.TextureCreateView(surfaceTexture.Texture, &viewDescriptor);
         try
         {
-            _target.Render(pixelWidth, pixelHeight, targetView);
+            _target.Render(renderWidth, renderHeight, targetView);
             _target.Context.Wgpu.SurfacePresent(_target.Context.Surface);
             return true;
         }

@@ -4231,6 +4231,24 @@ public sealed class WpfManagedProjectGraphTests
             "windows",
             "Documents",
             "TextEditorTyping.cs"));
+        var selectionWordBreaker = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "windows",
+            "Documents",
+            "SelectionWordBreaker.cs"));
+        var textFindEngine = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "windows",
+            "Documents",
+            "TextFindEngine.cs"));
         var caretElement = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4467,6 +4485,12 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(textEditorTyping, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.ShowCursor(true)");
         AssertGuardBefore(textEditorTyping, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.PeekMessage");
         AssertGuardBefore(textEditorTyping, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.ShowCursor(false)");
+        AssertGuardBefore(selectionWordBreaker, "if (OperatingSystem.IsWindows())", "SafeNativeMethods.GetStringTypeEx");
+        Assert.Contains("private static UInt16 GetPortableCharType1(char ch)", selectionWordBreaker, StringComparison.Ordinal);
+        Assert.Contains("private static UInt16 GetPortableCharType3(char ch)", selectionWordBreaker, StringComparison.Ordinal);
+        Assert.Contains("CharUnicodeInfo.GetUnicodeCategory(ch)", selectionWordBreaker, StringComparison.Ordinal);
+        Assert.DoesNotContain("SafeNativeMethods.GetStringTypeEx", textFindEngine, StringComparison.Ordinal);
+        Assert.Contains("SelectionWordBreaker.IsBlankOrWhiteSpaceCharacter", textFindEngine, StringComparison.Ordinal);
         AssertGuardBefore(caretElement, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.CreateBitmap");
         AssertGuardBefore(caretElement, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.DestroyCaret()");
         AssertGuardBefore(caretElement, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.SetCaretPos");

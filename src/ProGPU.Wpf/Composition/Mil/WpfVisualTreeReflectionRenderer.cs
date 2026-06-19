@@ -310,13 +310,10 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         if (TryGetPropertyValue(visual, "Transform", out var transformValue) && transformValue != null)
         {
-            var mediaTransform = WpfReflectionResourceResolver.AdaptTransform(transformValue);
-            if (mediaTransform == null)
+            if (!WpfReflectionResourceResolver.TryAdaptTransformMatrix(transformValue, out transform))
             {
                 return false;
             }
-
-            transform = ToMatrix4x4(mediaTransform);
         }
 
         if (TryReadOffset(visual, out var offsetX, out var offsetY))
@@ -626,8 +623,8 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         if (TryGetPropertyValue(clip, "Transform", out var transformValue) && transformValue != null)
         {
-            var mediaTransform = WpfReflectionResourceResolver.AdaptTransform(transformValue);
-            if (mediaTransform == null || !mediaTransform.Value.IsIdentity)
+            if (!WpfReflectionResourceResolver.TryAdaptTransformMatrix(transformValue, out var transform)
+                || !WpfReflectionResourceResolver.IsIdentityMatrix(transform))
             {
                 bounds = default;
                 return false;
@@ -660,7 +657,9 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static Matrix4x4 ToMatrix4x4(MediaTransform transform)
     {
-        return transform.Value;
+        return WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out var matrix)
+            ? matrix
+            : Matrix4x4.Identity;
     }
 
     private static bool ReplayViewport3DVisual(
@@ -721,8 +720,13 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         if (TryGetPropertyValue(visual, "Transform", out var transform) && transform != null)
         {
-            var mediaTransform = WpfReflectionResourceResolver.AdaptTransform(transform);
-            if (mediaTransform != null)
+            if (sink is IWpfNativeTransformCommandSink nativeTransformSink
+                && WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out var nativeTransform))
+            {
+                nativeTransformSink.PushNativeTransform(nativeTransform);
+                popCount++;
+            }
+            else if (WpfReflectionResourceResolver.AdaptTransform(transform) is { } mediaTransform)
             {
                 sink.PushTransform(mediaTransform);
                 popCount++;
@@ -1155,13 +1159,10 @@ public sealed class WpfVisualTreeReflectionRenderer
         var transform = Matrix4x4.Identity;
         if (TryGetPropertyValue(child, "Transform", out var transformValue) && transformValue != null)
         {
-            var mediaTransform = WpfReflectionResourceResolver.AdaptTransform(transformValue);
-            if (mediaTransform == null)
+            if (!WpfReflectionResourceResolver.TryAdaptTransformMatrix(transformValue, out transform))
             {
                 return false;
             }
-
-            transform = ToMatrix4x4(mediaTransform);
         }
 
         if (TryReadOffset(child, out var offsetX, out var offsetY) && (offsetX != 0 || offsetY != 0))
@@ -1557,7 +1558,10 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         public void PushTransform(MediaTransform transform)
         {
-            _transformStack.Push(transform.Value * _transformStack.Peek());
+            var nativeTransform = WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out var adaptedTransform)
+                ? adaptedTransform
+                : System.Numerics.Matrix4x4.Identity;
+            _transformStack.Push(nativeTransform * _transformStack.Peek());
             _pushStack.Push(PushKind.Transform);
         }
 

@@ -13,7 +13,6 @@ using MediaColor = System.Windows.Media.Color;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
-using MediaMatrix = System.Windows.Media.Matrix;
 using MediaPen = System.Windows.Media.Pen;
 using MediaPenLineCap = System.Windows.Media.PenLineCap;
 using MediaTransform = System.Windows.Media.Transform;
@@ -65,6 +64,39 @@ public sealed class WpfReflectionResourceResolver :
     IWpfGuidelineSetResourceResolver,
     IWpfRawMilResourceResolver
 {
+    private readonly struct WpfMatrix2D
+    {
+        public WpfMatrix2D(
+            double m11,
+            double m12,
+            double m21,
+            double m22,
+            double offsetX,
+            double offsetY)
+        {
+            M11 = m11;
+            M12 = m12;
+            M21 = m21;
+            M22 = m22;
+            OffsetX = offsetX;
+            OffsetY = offsetY;
+        }
+
+        public static WpfMatrix2D Identity { get; } = new(1, 0, 0, 1, 0, 0);
+
+        public double M11 { get; }
+
+        public double M12 { get; }
+
+        public double M21 { get; }
+
+        public double M22 { get; }
+
+        public double OffsetX { get; }
+
+        public double OffsetY { get; }
+    }
+
     private const BindingFlags MemberFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
     private const int UnionPathOperation = 2;
     private const int MaxSupportedGradientStops = 65536;
@@ -764,13 +796,12 @@ public sealed class WpfReflectionResourceResolver :
             return null;
         }
 
-        var transform = AdaptTransform(transformValue);
-        if (transform == null || transform.Value.IsIdentity)
+        if (!TryAdaptTransformMatrix(transformValue, out var transform) || IsIdentityMatrix(transform))
         {
             return null;
         }
 
-        return transform.Value;
+        return transform;
     }
 
     public static MediaPen? AdaptPen(object? resource)
@@ -951,21 +982,46 @@ public sealed class WpfReflectionResourceResolver :
             return null;
         }
 
-        if (resource is MediaTransform transform)
+        if (!TryAdaptTransformMatrix2D(resource, out var matrix))
         {
-            return transform;
+            return null;
         }
 
-        if (!TryGetPropertyValue(resource, "Value", out var matrixValue)
-            || matrixValue == null
-            || !TryReadMatrix(matrixValue, out var matrix))
+        return TryCreateMatrixTransform(resource, matrix, out var transform)
+            ? transform
+            : null;
+    }
+
+    internal static bool TryAdaptTransformMatrix(object? resource, out Matrix4x4 transform)
+    {
+        if (TryAdaptTransformMatrix2D(resource, out var matrix))
         {
-            return TryCreateTransformMatrix(resource, out matrix)
-                ? new MatrixTransform(matrix)
-                : null;
+            transform = ToMatrix4x4(matrix);
+            return true;
         }
 
-        return new MatrixTransform(matrix);
+        transform = Matrix4x4.Identity;
+        return false;
+    }
+
+    internal static bool IsIdentityMatrix(Matrix4x4 matrix)
+    {
+        return NearlyEqual(matrix.M11, 1)
+            && NearlyEqual(matrix.M12, 0)
+            && NearlyEqual(matrix.M13, 0)
+            && NearlyEqual(matrix.M14, 0)
+            && NearlyEqual(matrix.M21, 0)
+            && NearlyEqual(matrix.M22, 1)
+            && NearlyEqual(matrix.M23, 0)
+            && NearlyEqual(matrix.M24, 0)
+            && NearlyEqual(matrix.M31, 0)
+            && NearlyEqual(matrix.M32, 0)
+            && NearlyEqual(matrix.M33, 1)
+            && NearlyEqual(matrix.M34, 0)
+            && NearlyEqual(matrix.M41, 0)
+            && NearlyEqual(matrix.M42, 0)
+            && NearlyEqual(matrix.M43, 0)
+            && NearlyEqual(matrix.M44, 1);
     }
 
     internal static bool TryAdaptNativeGlyphRun(object? resource, out WpfNativeGlyphRun glyphRun)
@@ -1824,12 +1880,34 @@ public sealed class WpfReflectionResourceResolver :
         return false;
     }
 
-    private static bool TryReadMatrix(object matrixValue, out MediaMatrix matrix)
+    private static bool TryAdaptTransformMatrix2D(object? resource, out WpfMatrix2D matrix)
     {
-        if (matrixValue is MediaMatrix mediaMatrix)
+        if (resource == null)
         {
-            matrix = mediaMatrix;
-            return true;
+            matrix = default;
+            return false;
+        }
+
+        if (resource is Matrix4x4 nativeMatrix)
+        {
+            return TryReadMatrix4x4(nativeMatrix, out matrix);
+        }
+
+        if (TryGetPropertyValue(resource, "Value", out var matrixValue)
+            && matrixValue != null
+            && TryReadMatrix(matrixValue, out matrix))
+        {
+            return TryUseFiniteMatrix(matrix, out matrix);
+        }
+
+        return TryCreateTransformMatrix(resource, out matrix);
+    }
+
+    private static bool TryReadMatrix(object matrixValue, out WpfMatrix2D matrix)
+    {
+        if (matrixValue is Matrix4x4 nativeMatrix)
+        {
+            return TryReadMatrix4x4(nativeMatrix, out matrix);
         }
 
         if (TryReadDoubleProperty(matrixValue, "M11", out var m11)
@@ -1839,23 +1917,16 @@ public sealed class WpfReflectionResourceResolver :
             && TryReadDoubleProperty(matrixValue, "OffsetX", out var offsetX)
             && TryReadDoubleProperty(matrixValue, "OffsetY", out var offsetY))
         {
-            matrix = new MediaMatrix
-            {
-                M11 = m11,
-                M12 = m12,
-                M21 = m21,
-                M22 = m22,
-                OffsetX = offsetX,
-                OffsetY = offsetY
-            };
-            return true;
+            return TryUseFiniteMatrix(
+                new WpfMatrix2D(m11, m12, m21, m22, offsetX, offsetY),
+                out matrix);
         }
 
         matrix = default;
         return false;
     }
 
-    private static bool TryCreateTransformMatrix(object transform, out MediaMatrix matrix)
+    private static bool TryCreateTransformMatrix(object transform, out WpfMatrix2D matrix)
     {
         if (TypeNameEndsWith(transform, "TranslateTransform"))
         {
@@ -1924,9 +1995,9 @@ public sealed class WpfReflectionResourceResolver :
         return false;
     }
 
-    private static bool TryCreateTransformGroupMatrix(object transformGroup, out MediaMatrix matrix)
+    private static bool TryCreateTransformGroupMatrix(object transformGroup, out WpfMatrix2D matrix)
     {
-        matrix = MediaMatrix.Identity;
+        matrix = WpfMatrix2D.Identity;
         if (!TryGetPropertyValue(transformGroup, "Children", out var children)
             || children == null)
         {
@@ -1952,13 +2023,7 @@ public sealed class WpfReflectionResourceResolver :
         for (var i = 0; i < count; i++)
         {
             var child = getChild(children, i);
-            if (child == null || AdaptTransform(child) is not { } childTransform)
-            {
-                matrix = default;
-                return false;
-            }
-
-            if (!TryReadMatrix4x4(childTransform.Value, out var childMatrix))
+            if (child == null || !TryAdaptTransformMatrix2D(child, out var childMatrix))
             {
                 matrix = default;
                 return false;
@@ -1985,69 +2050,59 @@ public sealed class WpfReflectionResourceResolver :
         return TryConvertToDouble(propertyValue, out value);
     }
 
-    private static MediaMatrix CreateTranslationMatrix(double x, double y)
+    private static WpfMatrix2D CreateTranslationMatrix(double x, double y)
     {
-        return new MediaMatrix
-        {
-            M11 = 1,
-            M22 = 1,
-            OffsetX = x,
-            OffsetY = y
-        };
+        return new WpfMatrix2D(1, 0, 0, 1, x, y);
     }
 
-    private static MediaMatrix CreateScaleMatrix(double scaleX, double scaleY, double centerX, double centerY)
+    private static WpfMatrix2D CreateScaleMatrix(double scaleX, double scaleY, double centerX, double centerY)
     {
-        return new MediaMatrix
-        {
-            M11 = scaleX,
-            M22 = scaleY,
-            OffsetX = centerX - scaleX * centerX,
-            OffsetY = centerY - scaleY * centerY
-        };
+        return new WpfMatrix2D(
+            scaleX,
+            0,
+            0,
+            scaleY,
+            centerX - scaleX * centerX,
+            centerY - scaleY * centerY);
     }
 
-    private static MediaMatrix CreateRotationMatrix(double angle, double centerX, double centerY)
+    private static WpfMatrix2D CreateRotationMatrix(double angle, double centerX, double centerY)
     {
         var radians = angle % 360 * Math.PI / 180.0;
         var sin = Math.Sin(radians);
         var cos = Math.Cos(radians);
-        return new MediaMatrix
-        {
-            M11 = cos,
-            M12 = sin,
-            M21 = -sin,
-            M22 = cos,
-            OffsetX = centerX * (1.0 - cos) + centerY * sin,
-            OffsetY = centerY * (1.0 - cos) - centerX * sin
-        };
+        return new WpfMatrix2D(
+            cos,
+            sin,
+            -sin,
+            cos,
+            centerX * (1.0 - cos) + centerY * sin,
+            centerY * (1.0 - cos) - centerX * sin);
     }
 
-    private static MediaMatrix CreateSkewMatrix(double angleX, double angleY)
+    private static WpfMatrix2D CreateSkewMatrix(double angleX, double angleY)
     {
-        return new MediaMatrix
-        {
-            M11 = 1,
-            M12 = Math.Tan(angleY % 360 * Math.PI / 180.0),
-            M21 = Math.Tan(angleX % 360 * Math.PI / 180.0),
-            M22 = 1
-        };
+        return new WpfMatrix2D(
+            1,
+            Math.Tan(angleY % 360 * Math.PI / 180.0),
+            Math.Tan(angleX % 360 * Math.PI / 180.0),
+            1,
+            0,
+            0);
     }
 
-    private static MediaMatrix MultiplyMatrix(MediaMatrix left, MediaMatrix right)
+    private static WpfMatrix2D MultiplyMatrix(WpfMatrix2D left, WpfMatrix2D right)
     {
-        return new MediaMatrix
-        {
-            M11 = left.M11 * right.M11 + left.M12 * right.M21,
-            M12 = left.M11 * right.M12 + left.M12 * right.M22,
-            M21 = left.M21 * right.M11 + left.M22 * right.M21,
-            M22 = left.M21 * right.M12 + left.M22 * right.M22,
-            OffsetX = left.OffsetX * right.M11 + left.OffsetY * right.M21 + right.OffsetX,
-            OffsetY = left.OffsetX * right.M12 + left.OffsetY * right.M22 + right.OffsetY
-        };
+        return new WpfMatrix2D(
+            left.M11 * right.M11 + left.M12 * right.M21,
+            left.M11 * right.M12 + left.M12 * right.M22,
+            left.M21 * right.M11 + left.M22 * right.M21,
+            left.M21 * right.M12 + left.M22 * right.M22,
+            left.OffsetX * right.M11 + left.OffsetY * right.M21 + right.OffsetX,
+            left.OffsetX * right.M12 + left.OffsetY * right.M22 + right.OffsetY);
     }
 
-    private static bool TryReadMatrix4x4(Matrix4x4 value, out MediaMatrix matrix)
+    private static bool TryReadMatrix4x4(Matrix4x4 value, out WpfMatrix2D matrix)
     {
         if (!NearlyEqual(value.M13, 0)
             || !NearlyEqual(value.M14, 0)
@@ -2065,19 +2120,11 @@ public sealed class WpfReflectionResourceResolver :
         }
 
         return TryUseFiniteMatrix(
-            new MediaMatrix
-            {
-                M11 = value.M11,
-                M12 = value.M12,
-                M21 = value.M21,
-                M22 = value.M22,
-                OffsetX = value.M41,
-                OffsetY = value.M42
-            },
+            new WpfMatrix2D(value.M11, value.M12, value.M21, value.M22, value.M41, value.M42),
             out matrix);
     }
 
-    private static bool TryUseFiniteMatrix(MediaMatrix value, out MediaMatrix matrix)
+    private static bool TryUseFiniteMatrix(WpfMatrix2D value, out WpfMatrix2D matrix)
     {
         matrix = value;
         return double.IsFinite(value.M11)
@@ -2086,6 +2133,116 @@ public sealed class WpfReflectionResourceResolver :
             && double.IsFinite(value.M22)
             && double.IsFinite(value.OffsetX)
             && double.IsFinite(value.OffsetY);
+    }
+
+    private static Matrix4x4 ToMatrix4x4(WpfMatrix2D matrix)
+    {
+        return new Matrix4x4(
+            (float)matrix.M11,
+            (float)matrix.M12,
+            0,
+            0,
+            (float)matrix.M21,
+            (float)matrix.M22,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            (float)matrix.OffsetX,
+            (float)matrix.OffsetY,
+            0,
+            1);
+    }
+
+    private static bool TryCreateMatrixTransform(
+        object resource,
+        WpfMatrix2D matrix,
+        out MediaTransform? transform)
+    {
+        transform = null;
+        var matrixTransformType = resource.GetType().Assembly.GetType("System.Windows.Media.MatrixTransform")
+            ?? typeof(MediaTransform).Assembly.GetType("System.Windows.Media.MatrixTransform");
+        if (matrixTransformType == null || !typeof(MediaTransform).IsAssignableFrom(matrixTransformType))
+        {
+            return false;
+        }
+
+        var transformConstructor = matrixTransformType.GetConstructors(MemberFlags)
+            .FirstOrDefault(constructor =>
+            {
+                var parameters = constructor.GetParameters();
+                return parameters.Length == 1
+                    && parameters[0].ParameterType.FullName == "System.Windows.Media.Matrix";
+            });
+        if (transformConstructor == null)
+        {
+            return false;
+        }
+
+        var matrixType = transformConstructor.GetParameters()[0].ParameterType;
+        if (!TryCreateMatrixInstance(matrixType, matrix, out var matrixInstance))
+        {
+            return false;
+        }
+
+        transform = transformConstructor.Invoke(new[] { matrixInstance }) as MediaTransform;
+        return transform != null;
+    }
+
+    private static bool TryCreateMatrixInstance(Type matrixType, WpfMatrix2D matrix, out object matrixInstance)
+    {
+        var matrixConstructor = matrixType.GetConstructor(new[]
+        {
+            typeof(double),
+            typeof(double),
+            typeof(double),
+            typeof(double),
+            typeof(double),
+            typeof(double)
+        });
+        if (matrixConstructor != null)
+        {
+            matrixInstance = matrixConstructor.Invoke(new object[]
+            {
+                matrix.M11,
+                matrix.M12,
+                matrix.M21,
+                matrix.M22,
+                matrix.OffsetX,
+                matrix.OffsetY
+            });
+            return true;
+        }
+
+        var instance = Activator.CreateInstance(matrixType);
+        if (instance == null
+            || !TrySetDoubleProperty(instance, "M11", matrix.M11)
+            || !TrySetDoubleProperty(instance, "M12", matrix.M12)
+            || !TrySetDoubleProperty(instance, "M21", matrix.M21)
+            || !TrySetDoubleProperty(instance, "M22", matrix.M22)
+            || !TrySetDoubleProperty(instance, "OffsetX", matrix.OffsetX)
+            || !TrySetDoubleProperty(instance, "OffsetY", matrix.OffsetY))
+        {
+            matrixInstance = null!;
+            return false;
+        }
+
+        matrixInstance = instance;
+        return true;
+    }
+
+    private static bool TrySetDoubleProperty(object instance, string propertyName, double value)
+    {
+        var property = instance.GetType().GetProperty(propertyName, MemberFlags);
+        if (property == null || !property.CanWrite)
+        {
+            return false;
+        }
+
+        property.SetValue(instance, value);
+        return true;
     }
 
     private static bool NearlyEqual(float left, float right)

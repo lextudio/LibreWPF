@@ -1,6 +1,7 @@
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition;
 using MediaBrush = System.Windows.Media.Brush;
@@ -251,6 +252,13 @@ public sealed class WpfMilRenderDataDecoder
                     if (transformToken == 0)
                     {
                         sink.PushNoOpScope();
+                        pushStack.Push(true);
+                        appliedCount++;
+                    }
+                    else if (sink is IWpfNativeTransformCommandSink nativeTransformSink
+                        && TryResolveNativeTransform(resources, transformToken, out var nativeTransform))
+                    {
+                        nativeTransformSink.PushNativeTransform(nativeTransform);
                         pushStack.Push(true);
                         appliedCount++;
                     }
@@ -572,6 +580,13 @@ public sealed class WpfMilRenderDataDecoder
                         pushStack.Push(true);
                         appliedCount++;
                     }
+                    else if (sink is IWpfNativeTransformCommandSink nativeTransformSink
+                        && TryResolveNativeTransform(resources, transformToken, out var nativeTransform))
+                    {
+                        nativeTransformSink.PushNativeTransform(nativeTransform);
+                        pushStack.Push(true);
+                        appliedCount++;
+                    }
                     else if (TryResolveTransform(resources, transformToken, out var transform))
                     {
                         sink.PushTransform(transform);
@@ -732,6 +747,21 @@ public sealed class WpfMilRenderDataDecoder
     {
         transform = resourceToken == 0 ? null! : resources.ResolveTransform(resourceToken)!;
         return transform != null;
+    }
+
+    private static bool TryResolveNativeTransform(
+        IWpfMilResourceResolver resources,
+        uint resourceToken,
+        out Matrix4x4 transform)
+    {
+        if (TryResolveRawResource(resources, resourceToken, out var resource)
+            && WpfReflectionResourceResolver.TryAdaptTransformMatrix(resource, out transform))
+        {
+            return true;
+        }
+
+        transform = Matrix4x4.Identity;
+        return false;
     }
 
     private static bool TryResolveGuidelineSet(IWpfMilResourceResolver resources, uint resourceToken, out object guidelineSet)

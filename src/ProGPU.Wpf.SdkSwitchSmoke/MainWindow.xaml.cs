@@ -181,7 +181,7 @@ public sealed class SmokeViewModel : INotifyPropertyChanged
                 "portable",
                 "Framework",
                 new SmokeItem("Startup", "managed", "Framework")),
-            new SmokeItem("Scene", "ProGPU", "Rendering"),
+            new SmokeItem("Scene", "ProGPU", "Rendering", false),
             new SmokeItem("XAML", "compiled", "Framework")
         };
     }
@@ -229,10 +229,16 @@ public sealed class SmokeItem
     }
 
     public SmokeItem(string name, string value, string category, params SmokeItem[] children)
+        : this(name, value, category, true, children)
+    {
+    }
+
+    public SmokeItem(string name, string value, string category, bool isActive, params SmokeItem[] children)
     {
         Name = name;
         Value = value;
         Category = category;
+        IsActive = isActive;
         Children = new ObservableCollection<SmokeItem>(children);
     }
 
@@ -241,6 +247,8 @@ public sealed class SmokeItem
     public string Value { get; }
 
     public string Category { get; }
+
+    public bool IsActive { get; set; }
 
     public ObservableCollection<SmokeItem> Children { get; }
 }

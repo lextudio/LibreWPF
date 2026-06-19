@@ -615,6 +615,49 @@ internal static class Program
         AssertSame(frameworkItemTemplate, Invoke(itemTemplateSelector, "SelectTemplate", firstItem, selectorItemsControl), "framework item selected template");
         AssertSame(renderingItemTemplate, Invoke(itemTemplateSelector, "SelectTemplate", selectedItem, selectorItemsControl), "rendering item selected template");
 
+        object smokeDataGrid = Invoke(window, "FindName", "SmokeDataGrid");
+        AssertType(smokeDataGrid, "System.Windows.Controls.DataGrid", "smoke data grid");
+        AssertEqual(false, GetProperty(smokeDataGrid, "AutoGenerateColumns"), "smoke data grid AutoGenerateColumns");
+        AssertEqual(false, GetProperty(smokeDataGrid, "CanUserAddRows"), "smoke data grid CanUserAddRows");
+        AssertAtLeast(3, GetCount(GetProperty(smokeDataGrid, "Items")), "smoke data grid item count");
+        AssertEqual(1, GetProperty(smokeDataGrid, "SelectedIndex"), "smoke data grid initial selected index");
+        object dataGridSelectedItem = GetProperty(smokeDataGrid, "SelectedItem");
+        AssertEqual("Scene", GetProperty(dataGridSelectedItem, "Name"), "smoke data grid selected item name");
+        AssertEqual(false, GetProperty(dataGridSelectedItem, "IsActive"), "smoke data grid selected item active");
+        object[] dataGridColumns = EnumerateObjects(GetProperty(smokeDataGrid, "Columns")).ToArray();
+        AssertEqual(3, dataGridColumns.Length, "smoke data grid column count");
+        AssertType(dataGridColumns[0], "System.Windows.Controls.DataGridTextColumn", "smoke data grid name column");
+        AssertEqual("Name", GetProperty(dataGridColumns[0], "Header"), "smoke data grid name column header");
+        object dataGridNameBinding = GetProperty(dataGridColumns[0], "Binding");
+        AssertType(dataGridNameBinding, "System.Windows.Data.Binding", "smoke data grid name binding");
+        AssertEqual("Name", GetBindingPath(dataGridNameBinding), "smoke data grid name binding path");
+        AssertType(dataGridColumns[1], "System.Windows.Controls.DataGridTextColumn", "smoke data grid category column");
+        AssertEqual("Category", GetProperty(dataGridColumns[1], "Header"), "smoke data grid category column header");
+        object dataGridCategoryBinding = GetProperty(dataGridColumns[1], "Binding");
+        AssertType(dataGridCategoryBinding, "System.Windows.Data.Binding", "smoke data grid category binding");
+        AssertEqual("Category", GetBindingPath(dataGridCategoryBinding), "smoke data grid category binding path");
+        AssertType(dataGridColumns[2], "System.Windows.Controls.DataGridCheckBoxColumn", "smoke data grid active column");
+        AssertEqual("Active", GetProperty(dataGridColumns[2], "Header"), "smoke data grid active column header");
+        object dataGridActiveBinding = GetProperty(dataGridColumns[2], "Binding");
+        AssertType(dataGridActiveBinding, "System.Windows.Data.Binding", "smoke data grid active binding");
+        AssertEqual("IsActive", GetBindingPath(dataGridActiveBinding), "smoke data grid active binding path");
+        object dataGridStatus = Invoke(window, "FindName", "DataGridStatus");
+        AssertType(dataGridStatus, "System.Windows.Controls.TextBlock", "data grid status element");
+        AssertEqual("data grid: Scene", GetProperty(dataGridStatus, "Text"), "data grid initial selected text");
+        if (validateFrameContent)
+        {
+            SetProperty(smokeDataGrid, "SelectedIndex", 2);
+            flushDispatcherOperations?.Invoke(window);
+            AssertEqual(2, GetProperty(smokeDataGrid, "SelectedIndex"), "smoke data grid changed selected index");
+            object changedDataGridSelectedItem = GetProperty(smokeDataGrid, "SelectedItem");
+            AssertEqual("XAML", GetProperty(changedDataGridSelectedItem, "Name"), "smoke data grid changed selected item");
+            AssertEqual(true, GetProperty(changedDataGridSelectedItem, "IsActive"), "smoke data grid changed selected active");
+            AssertEqual("data grid: XAML", GetProperty(dataGridStatus, "Text"), "data grid changed selected text");
+            SetProperty(smokeDataGrid, "SelectedIndex", 1);
+            flushDispatcherOperations?.Invoke(window);
+            AssertEqual("data grid: Scene", GetProperty(dataGridStatus, "Text"), "data grid restored selected text");
+        }
+
         object smokeComboBox = Invoke(window, "FindName", "SmokeComboBox");
         AssertType(smokeComboBox, "System.Windows.Controls.ComboBox", "smoke combo box");
         AssertAtLeast(3, GetCount(GetProperty(smokeComboBox, "Items")), "smoke combo box item count");
@@ -764,6 +807,7 @@ internal static class Program
             flushDispatcherOperations?.Invoke(window);
             AssertEqual(4, GetCount(GetProperty(itemsList, "Items")), "items list count after collection change");
             AssertEqual(4, GetCount(GetProperty(selectorItemsControl, "Items")), "selector items count after collection change");
+            AssertEqual(4, GetCount(GetProperty(smokeDataGrid, "Items")), "data grid items count after collection change");
             AssertEqual("items: 4", GetProperty(itemsCountText, "Text"), "items count binding text after collection change");
             AssertSame(frameworkItemTemplate, Invoke(itemTemplateSelector, "SelectTemplate", dynamicItem, selectorItemsControl), "dynamic framework item selected template");
         }
@@ -1071,6 +1115,12 @@ internal static class Program
             ?? throw new MissingMemberException(instance.GetType().FullName, propertyName);
         return property.GetValue(instance)
             ?? throw new InvalidOperationException($"Property '{propertyName}' returned null.");
+    }
+
+    private static string GetBindingPath(object binding)
+    {
+        object propertyPath = GetProperty(binding, "Path");
+        return GetProperty(propertyPath, "Path").ToString() ?? string.Empty;
     }
 
     private static object GetStaticProperty(Type type, string propertyName)

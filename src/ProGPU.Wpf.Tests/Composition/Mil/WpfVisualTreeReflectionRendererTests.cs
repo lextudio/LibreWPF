@@ -608,9 +608,10 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushTransform", "PushClip", "DrawRectangle", "Pop", "Pop" }, sink.Operations);
-        Assert.Single(sink.Transforms);
-        Assert.Equal(3, sink.Transforms[0].Value.M41);
-        Assert.Equal(4, sink.Transforms[0].Value.M42);
+        Assert.Empty(sink.Transforms);
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(3, transform.M41);
+        Assert.Equal(4, transform.M42);
         var clip = Assert.Single(sink.Clips);
         Assert.Equal(new Rect(0, 0, 100, 50), clip.Bounds);
         Assert.Equal(0, result.UnsupportedVisualStateCount);

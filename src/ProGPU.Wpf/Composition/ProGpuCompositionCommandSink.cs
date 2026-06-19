@@ -575,7 +575,10 @@ public sealed class ProGpuCompositionCommandSink :
     public void PushTransform(MediaTransform transform)
     {
         ThrowIfClosed();
-        _transformStack.Push(transform.Value * _transformStack.Peek());
+        var nativeTransform = WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out var adaptedTransform)
+            ? adaptedTransform
+            : Matrix4x4.Identity;
+        _transformStack.Push(nativeTransform * _transformStack.Peek());
         _drawingContext?.PushTransform(transform);
         _pushStack.Push(PushKind.Transform);
     }

@@ -495,6 +495,30 @@
                     Text="range idle" />
             </StackPanel>
         </GroupBox>
+        <DataGrid
+            x:Name="SmokeDataGrid"
+            Height="96"
+            Margin="{StaticResource SmokePanelMargin}"
+            AutoGenerateColumns="False"
+            CanUserAddRows="False"
+            ItemsSource="{Binding Items}"
+            SelectedIndex="1">
+            <DataGrid.Columns>
+                <DataGridTextColumn
+                    Binding="{Binding Name}"
+                    Header="Name" />
+                <DataGridTextColumn
+                    Binding="{Binding Category}"
+                    Header="Category" />
+                <DataGridCheckBoxColumn
+                    Binding="{Binding IsActive}"
+                    Header="Active" />
+            </DataGrid.Columns>
+        </DataGrid>
+        <TextBlock
+            x:Name="DataGridStatus"
+            Margin="0,6,0,0"
+            Text="{Binding SelectedItem.Name, ElementName=SmokeDataGrid, StringFormat=data grid: {0}}" />
         <TreeView
             x:Name="HierarchyTree"
             Height="72"

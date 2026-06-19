@@ -4398,6 +4398,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("_verticalScrollBarWidth = GetSystemMetricPixel(SM.CXVSCROLL, DefaultScrollBarMetric)", systemParameters, StringComparison.Ordinal);
         Assert.Contains("_horizontalScrollBarHeight = GetSystemMetricPixel(SM.CYHSCROLL, DefaultScrollBarMetric)", systemParameters, StringComparison.Ordinal);
         Assert.Contains("_caretWidth = 1.0", systemParameters, StringComparison.Ordinal);
+        Assert.Contains("private static int GetDefaultSystemMetric(SM metric)", systemParameters, StringComparison.Ordinal);
+        Assert.Contains("private static int GetStandardSystemMetric(Standard.SM metric)", systemParameters, StringComparison.Ordinal);
+        Assert.Contains("SM.CXMAXTRACK => DefaultPrimaryScreenWidth", systemParameters, StringComparison.Ordinal);
+        Assert.Contains("SM.CYCAPTION => 23", systemParameters, StringComparison.Ordinal);
+        Assert.Contains("SM.MOUSEPRESENT => 1", systemParameters, StringComparison.Ordinal);
+        Assert.Contains("_powerLineStatus = PowerLineStatus.Unknown", systemParameters, StringComparison.Ordinal);
+        Assert.Contains("_dpiX = 96", systemParameters, StringComparison.Ordinal);
+        AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetSystemPowerStatus(ref status)");
+        AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetDC(desktopWnd)");
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETCARETWIDTH");
         AssertGuardBefore(textSelection, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetLocaleInfoW");
         Assert.Contains("return cultureInfo.TextInfo.IsRightToLeft", textSelection, StringComparison.Ordinal);

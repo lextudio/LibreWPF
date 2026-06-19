@@ -485,14 +485,65 @@ internal static class Program
         AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "VerticalScrollBarWidth", 17.0);
         AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "HorizontalScrollBarHeight", 17.0);
         AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "CaretWidth", 1.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "ThinHorizontalBorderHeight", 1.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "ThinVerticalBorderWidth", 1.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "CursorWidth", 32.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "CursorHeight", 32.0);
+        AssertPortableSystemParameterMetricValue(systemParametersType, "MinimumHorizontalDragDistance", 4.0);
+        AssertPortableSystemParameterMetricValue(systemParametersType, "MinimumVerticalDragDistance", 4.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "IconWidth", 32.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "IconHeight", 32.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "IconGridWidth", 75.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "IconGridHeight", 75.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "MenuCheckmarkWidth", 13.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "MenuCheckmarkHeight", 13.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "MenuButtonWidth", 18.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "MenuButtonHeight", 18.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "WindowCaptionHeight", 23.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "MenuBarHeight", 19.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "VirtualScreenWidth", 1024.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "VirtualScreenHeight", 768.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "VirtualScreenLeft", 0.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "VirtualScreenTop", 0.0);
+        AssertPortableSystemParameterThickness(systemParametersType, "WindowResizeBorderThickness", 8.0, 8.0, 8.0, 8.0);
+        AssertPortableSystemParameterThickness(systemParametersType, "WindowNonClientFrameThickness", 8.0, 31.0, 8.0, 8.0);
         AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "HighContrast", false);
         AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "DropShadow", false);
         AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "WheelScrollLines", 3);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "IsImmEnabled", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "IsMediaCenter", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "IsMenuDropRightAligned", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "IsMiddleEastEnabled", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "IsMousePresent", true);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "IsMouseWheelPresent", true);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "IsPenWindows", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "IsRemotelyControlled", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "IsRemoteSession", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "ShowSounds", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "IsSlowMachine", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "SwapButtons", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "IsTabletPC", false);
+        AssertPortableSystemParameterValue(
+            systemParametersType,
+            resourceOwner,
+            "PowerLineStatus",
+            Enum.Parse(GetRequiredType(presentationFramework, "System.Windows.PowerLineStatus"), "Unknown"));
     }
 
     private static void AssertPortableSystemParameterMetric(
         Type systemParametersType,
         object resourceOwner,
+        string propertyName,
+        double expectedNonWindowsValue)
+    {
+        double value = AssertPortableSystemParameterMetricValue(systemParametersType, propertyName, expectedNonWindowsValue);
+
+        object resourceValue = ResolveSystemParameterResource(systemParametersType, resourceOwner, propertyName);
+        AssertClose(value, Convert.ToDouble(resourceValue), 0.0001, $"portable SDK SystemParameters.{propertyName} resource");
+    }
+
+    private static double AssertPortableSystemParameterMetricValue(
+        Type systemParametersType,
         string propertyName,
         double expectedNonWindowsValue)
     {
@@ -509,8 +560,28 @@ internal static class Program
             AssertClose(expectedNonWindowsValue, value, 0.0001, $"portable SDK SystemParameters.{propertyName}");
         }
 
-        object resourceValue = ResolveSystemParameterResource(systemParametersType, resourceOwner, propertyName);
-        AssertClose(value, Convert.ToDouble(resourceValue), 0.0001, $"portable SDK SystemParameters.{propertyName} resource");
+        return value;
+    }
+
+    private static void AssertPortableSystemParameterThickness(
+        Type systemParametersType,
+        string propertyName,
+        double expectedLeft,
+        double expectedTop,
+        double expectedRight,
+        double expectedBottom)
+    {
+        object value = GetStaticProperty(systemParametersType, propertyName);
+        if (OperatingSystem.IsWindows())
+        {
+            AssertType(value, "System.Windows.Thickness", $"SDK SystemParameters.{propertyName}");
+            return;
+        }
+
+        AssertClose(expectedLeft, Convert.ToDouble(GetProperty(value, "Left")), 0.0001, $"portable SDK SystemParameters.{propertyName}.Left");
+        AssertClose(expectedTop, Convert.ToDouble(GetProperty(value, "Top")), 0.0001, $"portable SDK SystemParameters.{propertyName}.Top");
+        AssertClose(expectedRight, Convert.ToDouble(GetProperty(value, "Right")), 0.0001, $"portable SDK SystemParameters.{propertyName}.Right");
+        AssertClose(expectedBottom, Convert.ToDouble(GetProperty(value, "Bottom")), 0.0001, $"portable SDK SystemParameters.{propertyName}.Bottom");
     }
 
     private static void AssertPortableSystemParameterValue(

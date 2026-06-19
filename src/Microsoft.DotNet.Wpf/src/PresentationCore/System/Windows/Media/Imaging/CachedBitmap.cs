@@ -213,6 +213,25 @@ namespace System.Windows.Media.Imaging
         ///
         internal override void FinalizeCreation()
         {
+            byte[] managedPixels = _source.CloneManagedPixelBuffer();
+            if (!OperatingSystem.IsWindows() && managedPixels != null)
+            {
+                InitializeManagedPixelBuffer(
+                    _source.PixelWidth,
+                    _source.PixelHeight,
+                    _source.DpiX,
+                    _source.DpiY,
+                    _source.Format,
+                    _source.Palette,
+                    managedPixels,
+                    _source._managedPixelStride);
+
+                IsSourceCached = (_cacheOption != BitmapCacheOption.None);
+                CreationCompleted = true;
+                UpdateCachedSettings();
+                return;
+            }
+
             lock (_syncObject)
             {
                 WicSourceHandle = CreateCachedBitmap(_source as BitmapFrame, _source.WicSourceHandle, _createOptions, _cacheOption, _source.Palette);

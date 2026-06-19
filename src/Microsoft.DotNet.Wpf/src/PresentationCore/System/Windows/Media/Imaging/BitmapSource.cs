@@ -1140,7 +1140,15 @@ namespace System.Windows.Media.Imaging
         {
             // Set the source to an empty image in case the user doesn't respond to the failed event
             byte[] pixels = new byte[4];
-            WicSourceHandle = Create(1, 1, 96, 96, PixelFormats.Pbgra32, null, pixels, 4).WicSourceHandle;
+            if (!OperatingSystem.IsWindows())
+            {
+                InitializeManagedPixelBuffer(1, 1, 96, 96, PixelFormats.Pbgra32, null, pixels, 4);
+            }
+            else
+            {
+                WicSourceHandle = Create(1, 1, 96, 96, PixelFormats.Pbgra32, null, pixels, 4).WicSourceHandle;
+            }
+
             IsSourceCached = true;
 
             // Let the user know that we've failed to decode so they can gracefully handle the failure.

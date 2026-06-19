@@ -64,6 +64,15 @@ namespace System.Windows.Media.Imaging
                 ImagingCache.RemoveFromDecoderCache(bitmapUri);
             }
 
+            if (!OperatingSystem.IsWindows() &&
+                expectedClsId == MILGuidData.GUID_ContainerFormatBmp &&
+                BmpBitmapDecoder.TryCreatePortableFrameFromUri(bitmapUri, createOptions, cacheOption, out BitmapFrame portableFrame))
+            {
+                _uri = bitmapUri;
+                InitializePortableFrames(null, bitmapUri, null, createOptions, cacheOption, portableFrame);
+                return;
+            }
+
             BitmapDecoder decoder = CheckCache(bitmapUri, out clsId);
             if (decoder != null)
             {
@@ -278,10 +287,17 @@ namespace System.Windows.Media.Imaging
                 return new LateBoundBitmapDecoder(baseUri, uri, stream, createOptions, cacheOption, uriCachePolicy);
             }
             else if (!OperatingSystem.IsWindows() &&
-                     stream != null &&
-                     BmpBitmapDecoder.TryCreatePortableFrame(stream, createOptions, cacheOption, out BitmapFrame portableFrame))
+                     finalUri != null &&
+                     stream == null &&
+                     BmpBitmapDecoder.TryCreatePortableFrameFromUri(finalUri, createOptions, cacheOption, out BitmapFrame portableUriFrame))
             {
-                return new BmpBitmapDecoder(portableFrame, baseUri, uri, stream, createOptions, cacheOption);
+                return new BmpBitmapDecoder(portableUriFrame, baseUri, uri, null, createOptions, cacheOption);
+            }
+            else if (!OperatingSystem.IsWindows() &&
+                     stream != null &&
+                     BmpBitmapDecoder.TryCreatePortableFrame(stream, createOptions, cacheOption, out BitmapFrame portableStreamFrame))
+            {
+                return new BmpBitmapDecoder(portableStreamFrame, baseUri, uri, stream, createOptions, cacheOption);
             }
             else
             {

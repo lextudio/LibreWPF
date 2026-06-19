@@ -611,7 +611,24 @@ namespace System.Windows.Media.Imaging
                 _finalSource = source;
             }
 
-            WicSourceHandle = source.WicSourceHandle;
+            byte[] managedPixels = source.CloneManagedPixelBuffer();
+            if (!OperatingSystem.IsWindows() && managedPixels != null)
+            {
+                InitializeManagedPixelBuffer(
+                    source.PixelWidth,
+                    source.PixelHeight,
+                    source.DpiX,
+                    source.DpiY,
+                    source.Format,
+                    source.Palette,
+                    managedPixels,
+                    source._managedPixelStride);
+            }
+            else
+            {
+                WicSourceHandle = source.WicSourceHandle;
+            }
+
             IsSourceCached = source.IsSourceCached;
 
             CreationCompleted = true;

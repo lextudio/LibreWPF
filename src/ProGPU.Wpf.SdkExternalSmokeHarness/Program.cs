@@ -2545,6 +2545,40 @@ internal static class Program
                     AssertEqual(1, directBmpDecoder.Frames.Count, "external SDK BmpBitmapDecoder frame count");
                     AssertEqual(PixelFormats.Bgra32, directBmpDecoder.Frames[0].Format, "external SDK BmpBitmapDecoder Bgra32 format");
 
+                    string bmpPath = Path.Combine(Path.GetTempPath(), "external-sdk-managed-image-" + Guid.NewGuid().ToString("N") + ".bmp");
+                    File.WriteAllBytes(bmpPath, bmpBytes);
+                    try
+                    {
+                        var bmpUri = new Uri(bmpPath);
+                        var uriBmpDecoder = BitmapDecoder.Create(
+                            bmpUri,
+                            BitmapCreateOptions.PreservePixelFormat,
+                            BitmapCacheOption.OnLoad);
+                        AssertEqual(typeof(BmpBitmapDecoder), uriBmpDecoder.GetType(), "external SDK BitmapDecoder.Create URI BMP decoder type");
+                        AssertEqual(1, uriBmpDecoder.Frames.Count, "external SDK BitmapDecoder.Create URI BMP frame count");
+                        AssertEqual(PixelFormats.Bgra32, uriBmpDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create URI BMP Bgra32 format");
+
+                        var directUriBmpDecoder = new BmpBitmapDecoder(
+                            bmpUri,
+                            BitmapCreateOptions.PreservePixelFormat,
+                            BitmapCacheOption.OnLoad);
+                        AssertEqual(1, directUriBmpDecoder.Frames.Count, "external SDK BmpBitmapDecoder URI frame count");
+                        AssertEqual(2, directUriBmpDecoder.Frames[0].PixelWidth, "external SDK BmpBitmapDecoder URI pixel width");
+
+                        var bitmapImage = new BitmapImage(bmpUri);
+                        AssertEqual(2, bitmapImage.PixelWidth, "external SDK BitmapImage URI BMP pixel width");
+                        AssertEqual(2, bitmapImage.PixelHeight, "external SDK BitmapImage URI BMP pixel height");
+                        AssertEqual(PixelFormats.Bgra32, bitmapImage.Format, "external SDK BitmapImage URI BMP Bgra32 format");
+                        var bitmapImagePixels = new byte[pixels.Length];
+                        bitmapImage.CopyPixels(bitmapImagePixels, 8, 0);
+                        AssertEqual(pixels[0], bitmapImagePixels[0], "external SDK BitmapImage URI BMP top-left blue byte");
+                        AssertEqual(pixels[14], bitmapImagePixels[14], "external SDK BitmapImage URI BMP bottom-right red byte");
+                    }
+                    finally
+                    {
+                        File.Delete(bmpPath);
+                    }
+
                     var writeableBitmap = new WriteableBitmap(2, 2, 96.0, 96.0, PixelFormats.Bgra32, null);
                     writeableBitmap.WritePixels(new Int32Rect(0, 0, 2, 2), pixels, 8, 0);
                     var writeablePixels = new byte[pixels.Length];

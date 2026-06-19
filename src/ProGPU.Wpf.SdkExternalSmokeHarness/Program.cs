@@ -384,6 +384,19 @@ internal static class Program
                             Text="{Binding Kind}" />
                     </StackPanel>
                 </DataTemplate>
+                <HierarchicalDataTemplate
+                    x:Key="ExternalNodeTemplate"
+                    DataType="{x:Type local:ExternalNode}"
+                    ItemsSource="{Binding Children}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock
+                            x:Name="ExternalNodeNameText"
+                            Text="{Binding Name}" />
+                        <TextBlock
+                            x:Name="ExternalNodeKindText"
+                            Text="{Binding Kind}" />
+                    </StackPanel>
+                </HierarchicalDataTemplate>
             </ResourceDictionary>
             """);
 
@@ -498,6 +511,26 @@ internal static class Program
                         ItemsPanel="{StaticResource ExternalItemsPanelTemplate}"
                         ItemsSource="{Binding ExternalItems}"
                         ItemStringFormat="External item {0}" />
+                    <TreeView
+                        x:Name="ExternalTreeView"
+                        ItemTemplate="{StaticResource ExternalNodeTemplate}"
+                        ItemsSource="{Binding ExternalNodes}" />
+                    <TreeView x:Name="ExternalExplicitTreeView">
+                        <TreeViewItem
+                            x:Name="ExternalTreeRootItem"
+                            Header="External root"
+                            IsExpanded="False"
+                            Expanded="OnExternalTreeItemExpanded"
+                            Collapsed="OnExternalTreeItemCollapsed"
+                            Selected="OnExternalTreeItemSelected"
+                            Unselected="OnExternalTreeItemUnselected">
+                            <TreeViewItem
+                                x:Name="ExternalTreeChildItem"
+                                Header="External child"
+                                Selected="OnExternalTreeItemSelected"
+                                Unselected="OnExternalTreeItemUnselected" />
+                        </TreeViewItem>
+                    </TreeView>
                     <ComboBox
                         x:Name="ExternalComboBox"
                         DisplayMemberPath="Name"
@@ -761,6 +794,17 @@ internal static class Program
                     new ExternalItem("Beta", "Rendering")
                 ];
 
+                public ObservableCollection<ExternalNode> ExternalNodes { get; } =
+                [
+                    new ExternalNode(
+                        "Root",
+                        "Framework",
+                        [
+                            new ExternalNode("Child", "Rendering")
+                        ]),
+                    new ExternalNode("Sibling", "Data")
+                ];
+
                 public ExternalItem SelectedExternalItem => ExternalItems[0];
 
                 public string SelectedExternalKind { get; set; } = "Rendering";
@@ -782,6 +826,22 @@ internal static class Program
                 public string? LastExternalDocumentLinkRequestNavigateUri { get; private set; }
 
                 public string? LastExternalDocumentLinkRequestNavigateRoutedEventName { get; private set; }
+
+                public int ExternalTreeExpandedCount { get; private set; }
+
+                public int ExternalTreeCollapsedCount { get; private set; }
+
+                public int ExternalTreeSelectedCount { get; private set; }
+
+                public int ExternalTreeUnselectedCount { get; private set; }
+
+                public string? LastExternalTreeExpandedOriginalSourceName { get; private set; }
+
+                public string? LastExternalTreeCollapsedOriginalSourceName { get; private set; }
+
+                public string? LastExternalTreeSelectedOriginalSourceName { get; private set; }
+
+                public string? LastExternalTreeUnselectedOriginalSourceName { get; private set; }
 
                 public int ExternalCommandCanExecuteCount { get; private set; }
 
@@ -832,6 +892,30 @@ internal static class Program
                     LastExternalDocumentLinkRequestNavigateUri = e.Uri?.ToString();
                     LastExternalDocumentLinkRequestNavigateRoutedEventName = e.RoutedEvent?.Name;
                     e.Handled = true;
+                }
+
+                private void OnExternalTreeItemExpanded(object sender, RoutedEventArgs e)
+                {
+                    ExternalTreeExpandedCount++;
+                    LastExternalTreeExpandedOriginalSourceName = (e.OriginalSource as FrameworkElement)?.Name;
+                }
+
+                private void OnExternalTreeItemCollapsed(object sender, RoutedEventArgs e)
+                {
+                    ExternalTreeCollapsedCount++;
+                    LastExternalTreeCollapsedOriginalSourceName = (e.OriginalSource as FrameworkElement)?.Name;
+                }
+
+                private void OnExternalTreeItemSelected(object sender, RoutedEventArgs e)
+                {
+                    ExternalTreeSelectedCount++;
+                    LastExternalTreeSelectedOriginalSourceName = (e.OriginalSource as FrameworkElement)?.Name;
+                }
+
+                private void OnExternalTreeItemUnselected(object sender, RoutedEventArgs e)
+                {
+                    ExternalTreeUnselectedCount++;
+                    LastExternalTreeUnselectedOriginalSourceName = (e.OriginalSource as FrameworkElement)?.Name;
                 }
 
                 private void OnExternalFrameNavigating(object sender, NavigatingCancelEventArgs e)
@@ -886,6 +970,27 @@ internal static class Program
                 public string Name { get; }
 
                 public string Kind { get; }
+            }
+
+            public sealed class ExternalNode
+            {
+                public ExternalNode(string name, string kind)
+                    : this(name, kind, [])
+                {
+                }
+
+                public ExternalNode(string name, string kind, IEnumerable<ExternalNode> children)
+                {
+                    Name = name;
+                    Kind = kind;
+                    Children = new ObservableCollection<ExternalNode>(children);
+                }
+
+                public string Name { get; }
+
+                public string Kind { get; }
+
+                public ObservableCollection<ExternalNode> Children { get; }
             }
 
             public sealed class ExternalUpperConverter : IValueConverter
@@ -1393,6 +1498,84 @@ internal static class Program
                     AssertEqual(4, itemPanelList.AlternationCount, "external SDK item panel list alternation count");
                     AssertEqual("External item {0}", itemPanelList.ItemStringFormat, "external SDK item panel list string format");
                     AssertEqual(3, itemPanelList.Items.Count, "external SDK item panel list collection count after mutation");
+
+                    var nodeTemplate = RequireType<HierarchicalDataTemplate>(
+                        window.FindResource("ExternalNodeTemplate"),
+                        "external SDK node hierarchical data template");
+                    var nodeItemsSource = RequireType<Binding>(
+                        nodeTemplate.ItemsSource,
+                        "external SDK node template ItemsSource binding");
+                    AssertEqual("Children", nodeItemsSource.Path.Path, "external SDK node template ItemsSource path");
+
+                    var treeView = RequireType<TreeView>(
+                        window.FindName("ExternalTreeView"),
+                        "external SDK tree view");
+                    AssertEqual(nodeTemplate, treeView.ItemTemplate, "external SDK tree view item template");
+                    AssertEqual(2, treeView.Items.Count, "external SDK tree view root item count");
+                    AssertEqual(window.ExternalNodes[0], treeView.Items[0], "external SDK tree view first root item");
+                    AssertEqual(1, window.ExternalNodes[0].Children.Count, "external SDK tree node child count");
+                    AssertEqual("Child", window.ExternalNodes[0].Children[0].Name, "external SDK tree child node name");
+
+                    var templateRoot = RequireType<StackPanel>(
+                        nodeTemplate.LoadContent(),
+                        "external SDK node template root");
+                    templateRoot.DataContext = window.ExternalNodes[0];
+                    DrainDispatcher();
+                    AssertEqual(2, templateRoot.Children.Count, "external SDK node template child count");
+                    var nodeNameText = RequireType<TextBlock>(
+                        templateRoot.Children[0],
+                        "external SDK node template name text");
+                    var nodeKindText = RequireType<TextBlock>(
+                        templateRoot.Children[1],
+                        "external SDK node template kind text");
+                    AssertEqual("Root", nodeNameText.Text, "external SDK node template name binding");
+                    AssertEqual("Framework", nodeKindText.Text, "external SDK node template kind binding");
+
+                    var explicitTree = RequireType<TreeView>(
+                        window.FindName("ExternalExplicitTreeView"),
+                        "external SDK explicit tree view");
+                    var rootItem = RequireType<TreeViewItem>(
+                        window.FindName("ExternalTreeRootItem"),
+                        "external SDK explicit root tree item");
+                    var childItem = RequireType<TreeViewItem>(
+                        window.FindName("ExternalTreeChildItem"),
+                        "external SDK explicit child tree item");
+                    AssertEqual(1, explicitTree.Items.Count, "external SDK explicit tree root count");
+                    AssertEqual(rootItem, explicitTree.Items[0], "external SDK explicit tree root item");
+                    AssertEqual("External root", rootItem.Header, "external SDK explicit root header");
+                    AssertEqual("External child", childItem.Header, "external SDK explicit child header");
+                    AssertEqual(1, rootItem.Items.Count, "external SDK explicit root child count");
+
+                    int expandedBefore = window.ExternalTreeExpandedCount;
+                    rootItem.IsExpanded = true;
+                    DrainDispatcher();
+                    AssertEqual(true, rootItem.IsExpanded, "external SDK explicit root expanded state");
+                    AssertAtLeast(expandedBefore + 1, window.ExternalTreeExpandedCount, "external SDK tree expanded event count");
+                    AssertEqual("ExternalTreeRootItem", window.LastExternalTreeExpandedOriginalSourceName, "external SDK tree expanded original source");
+
+                    int selectedBefore = window.ExternalTreeSelectedCount;
+                    childItem.IsSelected = true;
+                    DrainDispatcher();
+                    AssertEqual(true, childItem.IsSelected, "external SDK explicit child selected state");
+                    AssertEqual(childItem, explicitTree.SelectedItem, "external SDK explicit tree selected item");
+                    AssertAtLeast(selectedBefore + 1, window.ExternalTreeSelectedCount, "external SDK tree selected event count");
+                    AssertEqual("ExternalTreeChildItem", window.LastExternalTreeSelectedOriginalSourceName, "external SDK tree selected original source");
+
+                    int unselectedBefore = window.ExternalTreeUnselectedCount;
+                    rootItem.IsSelected = true;
+                    DrainDispatcher();
+                    AssertEqual(false, childItem.IsSelected, "external SDK explicit child unselected state");
+                    AssertEqual(true, rootItem.IsSelected, "external SDK explicit root selected state");
+                    AssertEqual(rootItem, explicitTree.SelectedItem, "external SDK explicit tree selected root item");
+                    AssertAtLeast(unselectedBefore + 1, window.ExternalTreeUnselectedCount, "external SDK tree unselected event count");
+                    AssertEqual("ExternalTreeChildItem", window.LastExternalTreeUnselectedOriginalSourceName, "external SDK tree unselected original source");
+
+                    int collapsedBefore = window.ExternalTreeCollapsedCount;
+                    rootItem.IsExpanded = false;
+                    DrainDispatcher();
+                    AssertEqual(false, rootItem.IsExpanded, "external SDK explicit root collapsed state");
+                    AssertAtLeast(collapsedBefore + 1, window.ExternalTreeCollapsedCount, "external SDK tree collapsed event count");
+                    AssertEqual("ExternalTreeRootItem", window.LastExternalTreeCollapsedOriginalSourceName, "external SDK tree collapsed original source");
                 }
 
                 private static void ValidateSelectorsAndContent(MainWindow window)

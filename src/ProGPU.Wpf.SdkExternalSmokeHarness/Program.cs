@@ -343,7 +343,24 @@ internal static class Program
                 Title="External SDK App"
                 Width="320"
                 Height="200">
-                <StackPanel>
+                <Window.CommandBindings>
+                    <CommandBinding
+                        Command="{x:Static local:MainWindow.ExternalCommand}"
+                        CanExecute="OnExternalCommandCanExecute"
+                        Executed="OnExternalCommandExecuted" />
+                </Window.CommandBindings>
+                <Window.InputBindings>
+                    <KeyBinding
+                        Command="{x:Static local:MainWindow.ExternalCommand}"
+                        Gesture="Ctrl+E" />
+                </Window.InputBindings>
+                <StackPanel
+                    x:Name="ExternalFocusPanel"
+                    FocusManager.FocusedElement="{Binding ElementName=ExternalCommandButton}"
+                    FocusManager.IsFocusScope="True"
+                    KeyboardNavigation.ControlTabNavigation="Cycle"
+                    KeyboardNavigation.DirectionalNavigation="Contained"
+                    KeyboardNavigation.TabNavigation="Cycle">
                     <TextBlock
                         x:Name="TitleText"
                         Text="External SDK app" />
@@ -364,6 +381,12 @@ internal static class Program
                         DisplayMemberPath="Name"
                         ItemsSource="{Binding ExternalItems}"
                         SelectedIndex="1" />
+                    <Button
+                        x:Name="ExternalCommandButton"
+                        Command="{x:Static local:MainWindow.ExternalCommand}"
+                        CommandParameter="ExternalCommandParameter"
+                        Click="OnExternalCommandButtonClick"
+                        Content="Run command" />
                     <library:ExternalPanel
                         x:Name="ExternalPanel"
                         Caption="External SDK library panel" />
@@ -457,6 +480,8 @@ internal static class Program
             using System.Collections.Generic;
             using System.Windows;
             using System.Windows.Controls;
+            using System.Windows.Controls.Primitives;
+            using System.Windows.Input;
             using System.Windows.Media;
             using System.Windows.Navigation;
             using System.Windows.Threading;
@@ -466,6 +491,11 @@ internal static class Program
 
             public partial class MainWindow : Window
             {
+                public static readonly RoutedUICommand ExternalCommand = new(
+                    "External SDK command",
+                    nameof(ExternalCommand),
+                    typeof(MainWindow));
+
                 public MainWindow()
                 {
                     DataContext = this;
@@ -479,6 +509,16 @@ internal static class Program
                 ];
 
                 public ExternalItem SelectedExternalItem => ExternalItems[0];
+
+                public int ExternalCommandCanExecuteCount { get; private set; }
+
+                public int ExternalCommandExecutedCount { get; private set; }
+
+                public int ExternalCommandButtonClickCount { get; private set; }
+
+                public object? LastExternalCommandParameter { get; private set; }
+
+                public string? LastExternalCommandName { get; private set; }
 
                 public int ExternalFrameNavigatingCount { get; private set; }
 
@@ -514,6 +554,26 @@ internal static class Program
                 {
                     ExternalFrameLoadCompletedCount++;
                     LastExternalFrameLoadCompletedUri = e.Uri?.ToString();
+                }
+
+                private void OnExternalCommandCanExecute(object sender, CanExecuteRoutedEventArgs e)
+                {
+                    ExternalCommandCanExecuteCount++;
+                    e.CanExecute = true;
+                    e.Handled = true;
+                }
+
+                private void OnExternalCommandExecuted(object sender, ExecutedRoutedEventArgs e)
+                {
+                    ExternalCommandExecutedCount++;
+                    LastExternalCommandParameter = e.Parameter;
+                    LastExternalCommandName = (e.Command as RoutedCommand)?.Name;
+                    e.Handled = true;
+                }
+
+                private void OnExternalCommandButtonClick(object sender, RoutedEventArgs e)
+                {
+                    ExternalCommandButtonClickCount++;
                 }
             }
 
@@ -558,6 +618,7 @@ internal static class Program
                         "external SDK user-control named TextBlock");
                     AssertEqual("External SDK library panel", captionText.Text, "external SDK user-control ElementName binding");
                     ValidateApplicationResources(window);
+                    ValidateCommandsAndFocus(window);
 
                     var themedControl = RequireType<ExternalThemedControl>(
                         window.FindName("ExternalThemedControl"),
@@ -708,6 +769,56 @@ internal static class Program
                     window.ExternalItems.Add(new ExternalItem("Gamma", "Data"));
                     DrainDispatcher();
                     AssertEqual(3, itemsList.Items.Count, "external SDK bound items count after collection change");
+                }
+
+                private static void ValidateCommandsAndFocus(MainWindow window)
+                {
+                    AssertEqual(1, window.CommandBindings.Count, "external SDK command binding count");
+                    var commandBinding = RequireType<CommandBinding>(
+                        window.CommandBindings[0],
+                        "external SDK command binding");
+                    AssertEqual(MainWindow.ExternalCommand, commandBinding.Command, "external SDK command binding command");
+
+                    AssertEqual(1, window.InputBindings.Count, "external SDK input binding count");
+                    var keyBinding = RequireType<KeyBinding>(
+                        window.InputBindings[0],
+                        "external SDK key binding");
+                    AssertEqual(MainWindow.ExternalCommand, keyBinding.Command, "external SDK key binding command");
+                    AssertEqual(Key.E, keyBinding.Key, "external SDK key binding key");
+                    AssertEqual(ModifierKeys.Control, keyBinding.Modifiers, "external SDK key binding modifiers");
+
+                    var focusPanel = RequireType<StackPanel>(
+                        window.FindName("ExternalFocusPanel"),
+                        "external SDK focus panel");
+                    var commandButton = RequireType<Button>(
+                        window.FindName("ExternalCommandButton"),
+                        "external SDK command button");
+                    AssertEqual(commandButton, FocusManager.GetFocusedElement(focusPanel), "external SDK focus manager focused element");
+                    AssertEqual(true, FocusManager.GetIsFocusScope(focusPanel), "external SDK focus manager scope flag");
+                    AssertEqual(KeyboardNavigationMode.Cycle, KeyboardNavigation.GetTabNavigation(focusPanel), "external SDK tab navigation mode");
+                    AssertEqual(KeyboardNavigationMode.Cycle, KeyboardNavigation.GetControlTabNavigation(focusPanel), "external SDK control-tab navigation mode");
+                    AssertEqual(KeyboardNavigationMode.Contained, KeyboardNavigation.GetDirectionalNavigation(focusPanel), "external SDK directional navigation mode");
+                    AssertEqual(MainWindow.ExternalCommand, commandButton.Command, "external SDK command button command");
+                    AssertEqual("ExternalCommandParameter", commandButton.CommandParameter, "external SDK command button parameter");
+
+                    int canExecuteBefore = window.ExternalCommandCanExecuteCount;
+                    int executedBefore = window.ExternalCommandExecutedCount;
+                    MainWindow.ExternalCommand.Execute("DirectCommandParameter", commandButton);
+                    AssertAtLeast(canExecuteBefore + 1, window.ExternalCommandCanExecuteCount, "external SDK direct command can-execute count");
+                    AssertEqual(executedBefore + 1, window.ExternalCommandExecutedCount, "external SDK direct command executed count");
+                    AssertEqual("DirectCommandParameter", window.LastExternalCommandParameter, "external SDK direct command parameter");
+                    AssertEqual(nameof(MainWindow.ExternalCommand), window.LastExternalCommandName, "external SDK command name");
+
+                    int clickBefore = window.ExternalCommandButtonClickCount;
+                    int buttonExecutedBefore = window.ExternalCommandExecutedCount;
+                    commandButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, commandButton));
+                    AssertEqual(clickBefore + 1, window.ExternalCommandButtonClickCount, "external SDK generated button click count");
+                    RequireType<RoutedCommand>(
+                        commandButton.Command,
+                        "external SDK command button routed command")
+                        .Execute(commandButton.CommandParameter, commandButton);
+                    AssertEqual(buttonExecutedBefore + 1, window.ExternalCommandExecutedCount, "external SDK button command executed count");
+                    AssertEqual("ExternalCommandParameter", window.LastExternalCommandParameter, "external SDK button command parameter");
                 }
 
                 private static void DrainDispatcher()

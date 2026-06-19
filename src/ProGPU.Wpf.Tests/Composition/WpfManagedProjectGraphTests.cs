@@ -4733,6 +4733,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"AccessKeyFocusPanel\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("FocusManager.IsFocusScope=\"True\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("FocusManager.FocusedElement=\"{Binding ElementName=InputBox}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("KeyboardNavigation.ControlTabNavigation=\"Cycle\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("KeyboardNavigation.DirectionalNavigation=\"Contained\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("KeyboardNavigation.TabNavigation=\"Cycle\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"InputAccessLabel\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"_Input access\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Target=\"{Binding ElementName=InputBox}\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -5196,6 +5199,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("FindName\", \"AccessKeyFocusPanel\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("access key focus scope flag", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("access key focus initial focused element", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Input.KeyboardNavigation", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("access key tab navigation mode", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("access key control tab navigation mode", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("access key directional navigation mode", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"InputAccessLabel\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("input access label target", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"StandaloneAccessText\"", runtimeHarnessProgram, StringComparison.Ordinal);

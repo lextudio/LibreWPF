@@ -328,7 +328,10 @@
             x:Name="AccessKeyFocusPanel"
             Margin="0,6,0,0"
             FocusManager.FocusedElement="{Binding ElementName=InputBox}"
-            FocusManager.IsFocusScope="True">
+            FocusManager.IsFocusScope="True"
+            KeyboardNavigation.ControlTabNavigation="Cycle"
+            KeyboardNavigation.DirectionalNavigation="Contained"
+            KeyboardNavigation.TabNavigation="Cycle">
             <Label
                 x:Name="InputAccessLabel"
                 Content="_Input access"

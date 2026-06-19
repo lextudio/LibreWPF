@@ -544,6 +544,11 @@ internal static class Program
         Type focusManagerType = GetRequiredType(presentationCore, "System.Windows.Input.FocusManager");
         AssertEqual(true, InvokeStatic(focusManagerType, "GetIsFocusScope", accessKeyFocusPanel), "access key focus scope flag");
         AssertSame(inputBox, InvokeStatic(focusManagerType, "GetFocusedElement", accessKeyFocusPanel), "access key focus initial focused element");
+        Assembly presentationFramework = GetAssemblyFromContext(window.GetType().Assembly, "PresentationFramework");
+        Type keyboardNavigationType = GetRequiredType(presentationFramework, "System.Windows.Input.KeyboardNavigation");
+        AssertEqual("Cycle", InvokeStatic(keyboardNavigationType, "GetTabNavigation", accessKeyFocusPanel).ToString() ?? string.Empty, "access key tab navigation mode");
+        AssertEqual("Cycle", InvokeStatic(keyboardNavigationType, "GetControlTabNavigation", accessKeyFocusPanel).ToString() ?? string.Empty, "access key control tab navigation mode");
+        AssertEqual("Contained", InvokeStatic(keyboardNavigationType, "GetDirectionalNavigation", accessKeyFocusPanel).ToString() ?? string.Empty, "access key directional navigation mode");
         object inputAccessLabel = Invoke(window, "FindName", "InputAccessLabel");
         AssertType(inputAccessLabel, "System.Windows.Controls.Label", "input access label");
         AssertEqual("_Input access", GetProperty(inputAccessLabel, "Content"), "input access label content");

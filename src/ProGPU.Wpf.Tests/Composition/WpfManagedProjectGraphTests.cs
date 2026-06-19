@@ -4989,11 +4989,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DefaultStyleKeyProperty.OverrideMetadata", smokeThemedControl, StringComparison.Ordinal);
         Assert.Contains("new FrameworkPropertyMetadata(typeof(SmokeThemedControl))", smokeThemedControl, StringComparison.Ordinal);
         Assert.Contains("TargetType=\"{x:Type local:SmokeThemedControl}\"", smokeGenericThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("ComponentResourceKey TypeInTargetAssembly={x:Type local:SmokeThemedControl}, ResourceId=ThemeBadgeBrush", smokeGenericThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("Color=\"#7A4EB2\"", smokeGenericThemeXaml, StringComparison.Ordinal);
         Assert.Contains("DynamicResource MergedAccentBrush", smokeGenericThemeXaml, StringComparison.Ordinal);
         Assert.Contains("DynamicResource SmokeAccentBrush", smokeGenericThemeXaml, StringComparison.Ordinal);
         Assert.Contains("<ControlTemplate TargetType=\"{x:Type local:SmokeThemedControl}\">", smokeGenericThemeXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ThemeRoot\"", smokeGenericThemeXaml, StringComparison.Ordinal);
         Assert.Contains("Background=\"{TemplateBinding Background}\"", smokeGenericThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("BorderBrush=\"{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type local:SmokeThemedControl}, ResourceId=ThemeBadgeBrush}}\"", smokeGenericThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("BorderThickness=\"1\"", smokeGenericThemeXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ThemeText\"", smokeGenericThemeXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{TemplateBinding Text}\"", smokeGenericThemeXaml, StringComparison.Ordinal);
         Assert.Contains("DataContext = new SmokeViewModel();", smokeMainWindowCodeBehind, StringComparison.Ordinal);
@@ -5453,6 +5457,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("themed custom control template binding", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"ThemeRoot\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("themed custom control background color", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("themed custom control component resource color", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("themed custom control border thickness left", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"SmokeFrame\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled page frame source", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Wpf.SdkSwitchSmoke.SmokePage", runtimeHarnessProgram, StringComparison.Ordinal);

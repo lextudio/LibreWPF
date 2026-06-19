@@ -1115,6 +1115,14 @@ internal static class Program
         object themedTemplateBackground = GetProperty(themedTemplateRoot, "Background");
         AssertType(themedTemplateBackground, "System.Windows.Media.SolidColorBrush", "themed custom control background");
         AssertEqual("#FF6B8F3A", GetProperty(themedTemplateBackground, "Color").ToString() ?? string.Empty, "themed custom control background color");
+        object themedTemplateBorderBrush = GetProperty(themedTemplateRoot, "BorderBrush");
+        AssertType(themedTemplateBorderBrush, "System.Windows.Media.SolidColorBrush", "themed custom control component resource brush");
+        AssertEqual("#FF7A4EB2", GetProperty(themedTemplateBorderBrush, "Color").ToString() ?? string.Empty, "themed custom control component resource color");
+        object themedTemplateBorderThickness = GetProperty(themedTemplateRoot, "BorderThickness");
+        AssertEqual(1.0, GetProperty(themedTemplateBorderThickness, "Left"), "themed custom control border thickness left");
+        AssertEqual(1.0, GetProperty(themedTemplateBorderThickness, "Top"), "themed custom control border thickness top");
+        AssertEqual(1.0, GetProperty(themedTemplateBorderThickness, "Right"), "themed custom control border thickness right");
+        AssertEqual(1.0, GetProperty(themedTemplateBorderThickness, "Bottom"), "themed custom control border thickness bottom");
 
         object smokeFrame = Invoke(window, "FindName", "SmokeFrame");
         AssertType(smokeFrame, "System.Windows.Controls.Frame", "compiled page frame");

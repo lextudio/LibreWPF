@@ -1848,6 +1848,15 @@ internal static class Program
                         SystemParameters.CaretWidth,
                         SystemParameters.CaretWidthKey,
                         1.0);
+                    AssertSystemParameterRect(
+                        resourceOwner,
+                        "WorkArea",
+                        SystemParameters.WorkArea,
+                        SystemParameters.WorkAreaKey,
+                        0.0,
+                        0.0,
+                        1024.0,
+                        768.0);
                     AssertSystemParameterValue(
                         resourceOwner,
                         "HighContrast",
@@ -1860,6 +1869,102 @@ internal static class Program
                         SystemParameters.DropShadow,
                         SystemParameters.DropShadowKey,
                         false);
+                    AssertSystemParameterValue(
+                        resourceOwner,
+                        "FlatMenu",
+                        SystemParameters.FlatMenu,
+                        SystemParameters.FlatMenuKey,
+                        false);
+                    AssertSystemParameterValue(
+                        resourceOwner,
+                        "MenuDropAlignment",
+                        SystemParameters.MenuDropAlignment,
+                        SystemParameters.MenuDropAlignmentKey,
+                        false);
+                    AssertSystemParameterValue(
+                        resourceOwner,
+                        "MenuFade",
+                        SystemParameters.MenuFade,
+                        SystemParameters.MenuFadeKey,
+                        false);
+                    AssertSystemParameterValue(
+                        resourceOwner,
+                        "MenuShowDelay",
+                        SystemParameters.MenuShowDelay,
+                        SystemParameters.MenuShowDelayKey,
+                        400);
+                    AssertSystemParameterValue(
+                        resourceOwner,
+                        "ClientAreaAnimation",
+                        SystemParameters.ClientAreaAnimation,
+                        SystemParameters.ClientAreaAnimationKey,
+                        false);
+                    AssertSystemParameterValue(
+                        resourceOwner,
+                        "CursorShadow",
+                        SystemParameters.CursorShadow,
+                        SystemParameters.CursorShadowKey,
+                        false);
+                    AssertSystemParameterValue(
+                        resourceOwner,
+                        "GradientCaptions",
+                        SystemParameters.GradientCaptions,
+                        SystemParameters.GradientCaptionsKey,
+                        false);
+                    AssertSystemParameterValue(
+                        resourceOwner,
+                        "HotTracking",
+                        SystemParameters.HotTracking,
+                        SystemParameters.HotTrackingKey,
+                        false);
+                    AssertSystemParameterValue(
+                        resourceOwner,
+                        "ListBoxSmoothScrolling",
+                        SystemParameters.ListBoxSmoothScrolling,
+                        SystemParameters.ListBoxSmoothScrollingKey,
+                        false);
+                    AssertSystemParameterValue(
+                        resourceOwner,
+                        "SelectionFade",
+                        SystemParameters.SelectionFade,
+                        SystemParameters.SelectionFadeKey,
+                        false);
+                    AssertSystemParameterValue(
+                        resourceOwner,
+                        "StylusHotTracking",
+                        SystemParameters.StylusHotTracking,
+                        SystemParameters.StylusHotTrackingKey,
+                        false);
+                    AssertSystemParameterValue(
+                        resourceOwner,
+                        "UIEffects",
+                        SystemParameters.UIEffects,
+                        SystemParameters.UIEffectsKey,
+                        false);
+                    AssertSystemParameterValue(
+                        resourceOwner,
+                        "MinimizeAnimation",
+                        SystemParameters.MinimizeAnimation,
+                        SystemParameters.MinimizeAnimationKey,
+                        false);
+                    AssertSystemParameterValue(
+                        resourceOwner,
+                        "Border",
+                        SystemParameters.Border,
+                        SystemParameters.BorderKey,
+                        1);
+                    AssertSystemParameterValue(
+                        resourceOwner,
+                        "DragFullWindows",
+                        SystemParameters.DragFullWindows,
+                        SystemParameters.DragFullWindowsKey,
+                        true);
+                    AssertSystemParameterValue(
+                        resourceOwner,
+                        "ForegroundFlashCount",
+                        SystemParameters.ForegroundFlashCount,
+                        SystemParameters.ForegroundFlashCountKey,
+                        7);
                     AssertSystemParameterValue(
                         resourceOwner,
                         "WheelScrollLines",
@@ -1894,6 +1999,29 @@ internal static class Program
                         value,
                         Convert.ToDouble(resourceValue, CultureInfo.InvariantCulture),
                         $"external SDK SystemParameters.{propertyName} resource");
+                }
+
+                private static void AssertSystemParameterRect(
+                    FrameworkElement resourceOwner,
+                    string propertyName,
+                    Rect value,
+                    object resourceKey,
+                    double expectedX,
+                    double expectedY,
+                    double expectedWidth,
+                    double expectedHeight)
+                {
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        AssertClose(expectedX, value.X, $"external SDK SystemParameters.{propertyName}.X");
+                        AssertClose(expectedY, value.Y, $"external SDK SystemParameters.{propertyName}.Y");
+                        AssertClose(expectedWidth, value.Width, $"external SDK SystemParameters.{propertyName}.Width");
+                        AssertClose(expectedHeight, value.Height, $"external SDK SystemParameters.{propertyName}.Height");
+                    }
+
+                    object resourceValue = resourceOwner.TryFindResource(resourceKey)
+                        ?? throw new InvalidOperationException($"Expected external SDK SystemParameters.{propertyName} resource.");
+                    AssertEqual(value, (Rect)resourceValue, $"external SDK SystemParameters.{propertyName} resource");
                 }
 
                 private static void AssertSystemParameterValue<T>(

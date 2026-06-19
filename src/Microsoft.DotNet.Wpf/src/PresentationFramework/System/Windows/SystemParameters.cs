@@ -340,7 +340,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.FlatMenu] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETFLATMENU, 0, ref _flatMenu, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _flatMenu = false;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETFLATMENU, 0, ref _flatMenu, 0))
                         {
                         }
                         else
@@ -369,7 +373,11 @@ namespace System.Windows
                         _cacheValid[(int)CacheSlot.WorkAreaInternal] = true;
 
                         _workAreaInternal = new NativeMethods.RECT();
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETWORKAREA, 0, ref _workAreaInternal, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _workAreaInternal = new NativeMethods.RECT(0, 0, DefaultPrimaryScreenWidth, DefaultPrimaryScreenHeight);
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETWORKAREA, 0, ref _workAreaInternal, 0))
                         {
                         }
                         else
@@ -1057,7 +1065,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.MenuDropAlignment] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETMENUDROPALIGNMENT, 0, ref _menuDropAlignment, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _menuDropAlignment = false;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETMENUDROPALIGNMENT, 0, ref _menuDropAlignment, 0))
                         {
                         }
                         else
@@ -1084,7 +1096,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.MenuFade] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETMENUFADE, 0, ref _menuFade, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _menuFade = false;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETMENUFADE, 0, ref _menuFade, 0))
                         {
                         }
                         else
@@ -1113,7 +1129,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.MenuShowDelay] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETMENUSHOWDELAY, 0, ref _menuShowDelay, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _menuShowDelay = DefaultMenuShowDelay;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETMENUSHOWDELAY, 0, ref _menuShowDelay, 0))
                         {
                         }
                         else
@@ -1248,8 +1268,12 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.ClientAreaAnimation] = true;
 
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _clientAreaAnimation = false;
+                        }
                         // This parameter is only available on Windows Versions >= 0x0600 (Vista)
-                        if (System.Environment.OSVersion.Version.Major >= 6)
+                        else if (System.Environment.OSVersion.Version.Major >= 6)
                         {
                             if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETCLIENTAREAANIMATION, 0, ref _clientAreaAnimation, 0))
                             {
@@ -1284,7 +1308,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.CursorShadow] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETCURSORSHADOW, 0, ref _cursorShadow, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _cursorShadow = false;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETCURSORSHADOW, 0, ref _cursorShadow, 0))
                         {
                         }
                         else
@@ -1312,7 +1340,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.GradientCaptions] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETGRADIENTCAPTIONS, 0, ref _gradientCaptions, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _gradientCaptions = false;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETGRADIENTCAPTIONS, 0, ref _gradientCaptions, 0))
                         {
                         }
                         else
@@ -1340,7 +1372,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.HotTracking] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETHOTTRACKING, 0, ref _hotTracking, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _hotTracking = false;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETHOTTRACKING, 0, ref _hotTracking, 0))
                         {
                         }
                         else
@@ -1368,7 +1404,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.ListBoxSmoothScrolling] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETLISTBOXSMOOTHSCROLLING, 0, ref _listBoxSmoothScrolling, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _listBoxSmoothScrolling = false;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETLISTBOXSMOOTHSCROLLING, 0, ref _listBoxSmoothScrolling, 0))
                         {
                         }
                         else
@@ -1451,7 +1491,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.SelectionFade] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETSELECTIONFADE, 0, ref _selectionFade, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _selectionFade = false;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETSELECTIONFADE, 0, ref _selectionFade, 0))
                         {
                         }
                         else
@@ -1479,7 +1523,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.StylusHotTracking] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETSTYLUSHOTTRACKING, 0, ref _stylusHotTracking, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _stylusHotTracking = false;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETSTYLUSHOTTRACKING, 0, ref _stylusHotTracking, 0))
                         {
                         }
                         else
@@ -1588,7 +1636,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.UIEffects] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETUIEFFECTS, 0, ref _uiEffects, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _uiEffects = false;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETUIEFFECTS, 0, ref _uiEffects, 0))
                         {
                         }
                         else
@@ -1864,6 +1916,12 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.MinimizeAnimation] = true;
 
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _minAnimation = false;
+                            continue;
+                        }
+
                         NativeMethods.ANIMATIONINFO animInfo = new NativeMethods.ANIMATIONINFO();
 
                         if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETANIMATION, animInfo.cbSize, animInfo, 0))
@@ -1895,7 +1953,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.Border] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETBORDER, 0, ref _border, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _border = DefaultBorderMetric;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETBORDER, 0, ref _border, 0))
                         {
                         }
                         else
@@ -1981,7 +2043,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.DragFullWindows] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETDRAGFULLWINDOWS, 0, ref _dragFullWindows, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _dragFullWindows = true;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETDRAGFULLWINDOWS, 0, ref _dragFullWindows, 0))
                         {
                         }
                         else
@@ -2010,7 +2076,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.ForegroundFlashCount] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETFOREGROUNDFLASHCOUNT, 0, ref _foregroundFlashCount, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _foregroundFlashCount = DefaultForegroundFlashCount;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETFOREGROUNDFLASHCOUNT, 0, ref _foregroundFlashCount, 0))
                         {
                         }
                         else
@@ -5910,7 +5980,10 @@ namespace System.Windows
         }
 
         private const int DefaultScrollBarMetric = 17;
+        private const int DefaultBorderMetric = 1;
         private const int DefaultFocusBorderMetric = 1;
+        private const int DefaultMenuShowDelay = 400;
+        private const int DefaultForegroundFlashCount = 7;
         private const int DefaultPrimaryScreenWidth = 1024;
         private const int DefaultPrimaryScreenHeight = 768;
 

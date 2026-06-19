@@ -508,10 +508,27 @@ internal static class Program
         AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "VirtualScreenHeight", 768.0);
         AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "VirtualScreenLeft", 0.0);
         AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "VirtualScreenTop", 0.0);
+        AssertPortableSystemParameterRect(systemParametersType, resourceOwner, "WorkArea", 0.0, 0.0, 1024.0, 768.0);
         AssertPortableSystemParameterThickness(systemParametersType, "WindowResizeBorderThickness", 8.0, 8.0, 8.0, 8.0);
         AssertPortableSystemParameterThickness(systemParametersType, "WindowNonClientFrameThickness", 8.0, 31.0, 8.0, 8.0);
         AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "HighContrast", false);
         AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "DropShadow", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "FlatMenu", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "MenuDropAlignment", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "MenuFade", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "MenuShowDelay", 400);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "ClientAreaAnimation", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "CursorShadow", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "GradientCaptions", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "HotTracking", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "ListBoxSmoothScrolling", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "SelectionFade", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "StylusHotTracking", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "UIEffects", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "MinimizeAnimation", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "Border", 1);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "DragFullWindows", true);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "ForegroundFlashCount", 7);
         AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "WheelScrollLines", 3);
         AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "IsImmEnabled", false);
         AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "IsMediaCenter", false);
@@ -679,6 +696,32 @@ internal static class Program
         AssertClose(expectedTop, Convert.ToDouble(GetProperty(value, "Top")), 0.0001, $"portable SDK SystemParameters.{propertyName}.Top");
         AssertClose(expectedRight, Convert.ToDouble(GetProperty(value, "Right")), 0.0001, $"portable SDK SystemParameters.{propertyName}.Right");
         AssertClose(expectedBottom, Convert.ToDouble(GetProperty(value, "Bottom")), 0.0001, $"portable SDK SystemParameters.{propertyName}.Bottom");
+    }
+
+    private static void AssertPortableSystemParameterRect(
+        Type systemParametersType,
+        object resourceOwner,
+        string propertyName,
+        double expectedX,
+        double expectedY,
+        double expectedWidth,
+        double expectedHeight)
+    {
+        object value = GetStaticProperty(systemParametersType, propertyName);
+        if (OperatingSystem.IsWindows())
+        {
+            AssertType(value, "System.Windows.Rect", $"SDK SystemParameters.{propertyName}");
+        }
+        else
+        {
+            AssertClose(expectedX, Convert.ToDouble(GetProperty(value, "X")), 0.0001, $"portable SDK SystemParameters.{propertyName}.X");
+            AssertClose(expectedY, Convert.ToDouble(GetProperty(value, "Y")), 0.0001, $"portable SDK SystemParameters.{propertyName}.Y");
+            AssertClose(expectedWidth, Convert.ToDouble(GetProperty(value, "Width")), 0.0001, $"portable SDK SystemParameters.{propertyName}.Width");
+            AssertClose(expectedHeight, Convert.ToDouble(GetProperty(value, "Height")), 0.0001, $"portable SDK SystemParameters.{propertyName}.Height");
+        }
+
+        object resourceValue = ResolveSystemParameterResource(systemParametersType, resourceOwner, propertyName);
+        AssertEqual(value, resourceValue, $"portable SDK SystemParameters.{propertyName} resource");
     }
 
     private static void AssertPortableSystemParameterValue(

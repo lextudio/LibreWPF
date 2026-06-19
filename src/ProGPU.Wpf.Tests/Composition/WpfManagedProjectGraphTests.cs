@@ -6745,6 +6745,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("view.Handle == IntPtr.Zero", source, StringComparison.Ordinal);
         Assert.Contains("OperatingSystem.IsWindows()", source, StringComparison.Ordinal);
         Assert.Contains("OperatingSystem.IsMacOS()", source, StringComparison.Ordinal);
+        Assert.Contains("OperatingSystem.IsLinux()", source, StringComparison.Ordinal);
         Assert.Contains("view is not INativeWindowSource nativeWindowSource", source, StringComparison.Ordinal);
         Assert.Contains("return nativeWindowSource.Native", source, StringComparison.Ordinal);
         Assert.Contains("GetNativeWindow(view)", source, StringComparison.Ordinal);
@@ -6752,8 +6753,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("return win32.HasValue ? win32.Value.Item2 : IntPtr.Zero", source, StringComparison.Ordinal);
         Assert.Contains("var cocoa = nativeWindow.Cocoa", source, StringComparison.Ordinal);
         Assert.Contains("return cocoa.GetValueOrDefault()", source, StringComparison.Ordinal);
+        Assert.Contains("var x11 = nativeWindow.X11", source, StringComparison.Ordinal);
+        Assert.Contains("new X11WindowHandle(x11.Value.Item1, x11.Value.Item2)", source, StringComparison.Ordinal);
         Assert.Contains("TryBeginWin32DragMove(GetWin32Hwnd(view))", source, StringComparison.Ordinal);
         Assert.Contains("TryBeginCocoaDragMove(GetCocoaWindow(view))", source, StringComparison.Ordinal);
+        Assert.Contains("return TryBeginX11DragMove(x11.Display, x11.Window)", source, StringComparison.Ordinal);
         Assert.Contains("hwnd == IntPtr.Zero", source, StringComparison.Ordinal);
         Assert.Contains("ReleaseCapture();", source, StringComparison.Ordinal);
         Assert.Contains("SendMessage(hwnd, WM_SYSCOMMAND, (IntPtr)SC_MOUSEMOVE, IntPtr.Zero)", source, StringComparison.Ordinal);
@@ -6767,6 +6771,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("currentEvent == IntPtr.Zero", source, StringComparison.Ordinal);
         Assert.Contains("ObjCMsgSend(nsWindow, performDragSelector, currentEvent)", source, StringComparison.Ordinal);
         Assert.Contains("EntryPoint = \"objc_msgSend\"", source, StringComparison.Ordinal);
+        Assert.Contains("private const string X11Library = \"libX11.so.6\"", source, StringComparison.Ordinal);
+        Assert.Contains("private const int NetWmMoveresizeMove = 8", source, StringComparison.Ordinal);
+        Assert.Contains("[SupportedOSPlatform(\"linux\")]", source, StringComparison.Ordinal);
+        Assert.Contains("XDefaultRootWindow(display)", source, StringComparison.Ordinal);
+        Assert.Contains("XQueryPointer(", source, StringComparison.Ordinal);
+        Assert.Contains("XInternAtom(display, \"_NET_WM_MOVERESIZE\", onlyIfExists: false)", source, StringComparison.Ordinal);
+        Assert.Contains("XUngrabPointer(display, UIntPtr.Zero)", source, StringComparison.Ordinal);
+        Assert.Contains("XSendEvent(", source, StringComparison.Ordinal);
+        Assert.Contains("SubstructureRedirectMask | SubstructureNotifyMask", source, StringComparison.Ordinal);
+        Assert.Contains("XFlush(display)", source, StringComparison.Ordinal);
         Assert.DoesNotContain(
             "public bool TryBeginDragMove(object window)\n    {\n        return false;\n    }",
             source,

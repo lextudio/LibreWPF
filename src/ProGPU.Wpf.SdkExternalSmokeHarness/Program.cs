@@ -588,6 +588,36 @@ internal static class Program
                             </MultiDataTrigger>
                         </Style.Triggers>
                     </Style>
+                    <Style
+                        x:Key="ExternalDataTriggerActionTextStyle"
+                        TargetType="{x:Type TextBlock}">
+                        <Setter Property="Text" Value="External data trigger action target" />
+                        <Setter Property="Opacity" Value="0.82" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsExternalDataTriggerActionActive}" Value="True">
+                                <DataTrigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation
+                                                Storyboard.TargetProperty="Opacity"
+                                                To="0.31"
+                                                Duration="0:0:0" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.EnterActions>
+                                <DataTrigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation
+                                                Storyboard.TargetProperty="Opacity"
+                                                To="0.82"
+                                                Duration="0:0:0" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </DataTrigger.ExitActions>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
                 </Window.Resources>
                 <Window.CommandBindings>
                     <CommandBinding
@@ -658,6 +688,9 @@ internal static class Program
                     <TextBlock
                         x:Name="ExternalMultiDataTriggerText"
                         Style="{StaticResource ExternalMultiDataTriggeredTextStyle}" />
+                    <TextBlock
+                        x:Name="ExternalDataTriggerActionText"
+                        Style="{StaticResource ExternalDataTriggerActionTextStyle}" />
                     <TextBlock
                         x:Name="ExternalLoadedStoryboardText"
                         Loaded="OnExternalLoadedStoryboardTextLoaded"
@@ -1294,6 +1327,19 @@ internal static class Program
                     }
                 }
 
+                public bool IsExternalDataTriggerActionActive
+                {
+                    get => _isExternalDataTriggerActionActive;
+                    set
+                    {
+                        if (_isExternalDataTriggerActionActive != value)
+                        {
+                            _isExternalDataTriggerActionActive = value;
+                            OnPropertyChanged(nameof(IsExternalDataTriggerActionActive));
+                        }
+                    }
+                }
+
                 public event PropertyChangedEventHandler? PropertyChanged;
 
                 public int ExternalSelectionChangedCount { get; private set; }
@@ -1609,6 +1655,8 @@ internal static class Program
                 private bool _isExternalDataTriggerActive;
 
                 private bool _isExternalMultiTriggerReady;
+
+                private bool _isExternalDataTriggerActionActive;
             }
 
             public sealed class ExternalItem
@@ -1867,6 +1915,7 @@ internal static class Program
                     ValidateBindingGroup(window);
                     ValidateStylesAndTemplates(window);
                     ValidateLoadedStoryboardMetadata(window);
+                    ValidateDataTriggerActionsMetadata(window);
                     ValidateMenusAndChoiceControls(window);
                     ValidateToolbarStatusRangePasswordDateControls(window);
                     ValidateAdornerDecorator(window);
@@ -2010,6 +2059,7 @@ internal static class Program
                     AssertEqual("External SDK startup resource", startupResourceText.Text, "external SDK startup dynamic resource text");
                     AssertBrushColor(startupResourceText.Foreground, "#FF176283", "external SDK startup dynamic resource foreground");
                     ValidateLoadedStoryboardAfterRun(window);
+                    ValidateDataTriggerActionsAfterRun(window);
                     ValidateVisualStateTransitions(window);
                     ValidateAdornerLayer(window);
 
@@ -3734,6 +3784,74 @@ internal static class Program
                     AssertClose(0.37, loadedStoryboardText.Opacity, "external SDK Application.Run loaded storyboard opacity");
                     AssertAtLeast(1, window.ExternalLoadedStoryboardTextLoadedCount, "external SDK loaded storyboard handler count");
                     AssertEqual("Loaded", window.LastExternalLoadedStoryboardTextRoutedEventName, "external SDK loaded storyboard routed event name");
+                }
+
+                private static void ValidateDataTriggerActionsMetadata(MainWindow window)
+                {
+                    var actionStyle = RequireType<Style>(
+                        window.FindResource("ExternalDataTriggerActionTextStyle"),
+                        "external SDK data trigger action style");
+                    AssertEqual(typeof(TextBlock), actionStyle.TargetType, "external SDK data trigger action style target type");
+                    AssertEqual(2, actionStyle.Setters.Count, "external SDK data trigger action style setter count");
+                    AssertEqual(1, actionStyle.Triggers.Count, "external SDK data trigger action style trigger count");
+                    var dataTrigger = RequireType<DataTrigger>(
+                        actionStyle.Triggers[0],
+                        "external SDK data trigger action trigger");
+                    var binding = RequireType<Binding>(
+                        dataTrigger.Binding,
+                        "external SDK data trigger action binding");
+                    AssertEqual("IsExternalDataTriggerActionActive", binding.Path.Path, "external SDK data trigger action binding path");
+                    AssertEqual("True", dataTrigger.Value?.ToString(), "external SDK data trigger action value");
+                    AssertEqual(1, dataTrigger.EnterActions.Count, "external SDK data trigger action EnterActions count");
+                    AssertDataTriggerActionStoryboard(dataTrigger.EnterActions[0], 0.31, "EnterActions");
+                    AssertEqual(1, dataTrigger.ExitActions.Count, "external SDK data trigger action ExitActions count");
+                    AssertDataTriggerActionStoryboard(dataTrigger.ExitActions[0], 0.82, "ExitActions");
+
+                    var actionText = RequireType<TextBlock>(
+                        window.FindName("ExternalDataTriggerActionText"),
+                        "external SDK data trigger action text");
+                    AssertEqual(actionStyle, actionText.Style, "external SDK data trigger action text style");
+                    AssertEqual("External data trigger action target", actionText.Text, "external SDK data trigger action text content");
+                    AssertClose(0.82, actionText.Opacity, "external SDK data trigger action initial opacity");
+                }
+
+                private static void AssertDataTriggerActionStoryboard(TriggerAction action, double expectedTo, string actionName)
+                {
+                    var beginStoryboard = RequireType<BeginStoryboard>(
+                        action,
+                        $"external SDK data trigger action {actionName} BeginStoryboard");
+                    var storyboard = RequireType<Storyboard>(
+                        beginStoryboard.Storyboard,
+                        $"external SDK data trigger action {actionName} storyboard");
+                    AssertEqual(1, storyboard.Children.Count, $"external SDK data trigger action {actionName} storyboard child count");
+                    var doubleAnimation = RequireType<DoubleAnimation>(
+                        storyboard.Children[0],
+                        $"external SDK data trigger action {actionName} animation");
+                    AssertEqual(expectedTo, doubleAnimation.To ?? double.NaN, $"external SDK data trigger action {actionName} target value");
+                    AssertEqual(TimeSpan.Zero, doubleAnimation.Duration.TimeSpan, $"external SDK data trigger action {actionName} duration");
+                    AssertEqual(FillBehavior.HoldEnd, doubleAnimation.FillBehavior, $"external SDK data trigger action {actionName} fill behavior");
+                    var targetProperty = RequireType<PropertyPath>(
+                        Storyboard.GetTargetProperty(doubleAnimation),
+                        $"external SDK data trigger action {actionName} target property");
+                    AssertEqual("Opacity", targetProperty.Path?.ToString() ?? string.Empty, $"external SDK data trigger action {actionName} target property path");
+                }
+
+                private static void ValidateDataTriggerActionsAfterRun(MainWindow window)
+                {
+                    DrainDispatcher();
+
+                    var actionText = RequireType<TextBlock>(
+                        window.FindName("ExternalDataTriggerActionText"),
+                        "external SDK Application.Run data trigger action text");
+                    AssertClose(0.82, actionText.Opacity, "external SDK Application.Run data trigger action initial opacity");
+
+                    window.IsExternalDataTriggerActionActive = true;
+                    DrainDispatcher();
+                    AssertClose(0.31, actionText.Opacity, "external SDK Application.Run data trigger EnterActions opacity");
+
+                    window.IsExternalDataTriggerActionActive = false;
+                    DrainDispatcher();
+                    AssertClose(0.82, actionText.Opacity, "external SDK Application.Run data trigger ExitActions opacity");
                 }
 
                 private static void ValidateStylesAndTemplates(MainWindow window)

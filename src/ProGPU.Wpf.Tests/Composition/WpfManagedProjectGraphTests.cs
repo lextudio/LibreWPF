@@ -6014,6 +6014,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("EventTrigger RoutedEvent=\"FrameworkElement.Loaded\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("BeginStoryboard", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Storyboard.TargetName=\"ExternalLoadedStoryboardText\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"ExternalDataTriggerActionTextStyle\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DataTrigger.EnterActions", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DataTrigger.ExitActions", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Storyboard.TargetProperty=\"Opacity\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalDataTriggerActionText\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Style=\"{StaticResource ExternalTriggeredButtonStyle}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ExternalEventSetterButton\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Style=\"{StaticResource ExternalEventSetterButtonStyle}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6024,6 +6029,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateStylesAndTemplates(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLoadedStoryboardMetadata(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLoadedStoryboardAfterRun(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateDataTriggerActionsMetadata(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateDataTriggerActionsAfterRun(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("triggeredStyle.BasedOn", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("triggeredStyle.Triggers.Count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("eventSetterStyle.Setters.OfType<EventSetter>()", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6034,6 +6041,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Storyboard.GetTargetProperty(doubleAnimation)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK loaded storyboard target property path", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Application.Run loaded storyboard opacity", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertDataTriggerActionStoryboard(dataTrigger.EnterActions[0], 0.31, \"EnterActions\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertDataTriggerActionStoryboard(dataTrigger.ExitActions[0], 0.82, \"ExitActions\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Application.Run data trigger EnterActions opacity", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Application.Run data trigger ExitActions opacity", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateVisualStateTransitions(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("VisualStateManager.GoToState(styledButton, \"Pressed\", false)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Application.Run VisualStateManager Pressed opacity", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6413,6 +6424,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public partial class MainWindow : Window, INotifyPropertyChanged", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("OnPropertyChanged(nameof(IsExternalDataTriggerActive))", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("OnPropertyChanged(nameof(IsExternalMultiTriggerReady))", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OnPropertyChanged(nameof(IsExternalDataTriggerActionActive))", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK data trigger active text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK multi data trigger one-condition text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK multi data trigger active tag", externalSdkHarnessProgram, StringComparison.Ordinal);

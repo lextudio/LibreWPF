@@ -5298,6 +5298,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableClipboardServiceTypeName = \"System.Windows.PortableClipboardService\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableFileDialogServiceTypeName = \"Microsoft.Win32.PortableFileDialogService\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableMessageBoxServiceTypeName = \"System.Windows.PortableMessageBoxService\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableSystemParameters(presentationFramework, app)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.SystemParameters", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable SDK SystemParameters.{propertyName}", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable SDK SystemParameters.{propertyName} resource", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PrimaryScreenWidth", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("WheelScrollLines", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ResolveSystemParameterResource(systemParametersType, resourceOwner, propertyName)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableClipboard(presentationCore)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableFileDialogs(presentationFramework)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RegisterPortableMessageBox(presentationFramework)", runtimeHarnessProgram, StringComparison.Ordinal);

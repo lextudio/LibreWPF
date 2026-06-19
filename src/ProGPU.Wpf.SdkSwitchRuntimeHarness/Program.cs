@@ -160,6 +160,7 @@ internal static class Program
         {
             InvokeVoid(app, "InitializeComponent");
             ValidateApp(app);
+            ValidatePortableSystemParameters(presentationFramework, app);
 
             object window = Create(smokeAssembly, MainWindowTypeName);
             ValidateWindow(window, validateFrameContent: false, flushDispatcherOperations: null);
@@ -225,6 +226,7 @@ internal static class Program
             app = Create(smokeAssembly, AppTypeName);
             InvokeVoid(app, "InitializeComponent");
             ValidateApp(app);
+            ValidatePortableSystemParameters(presentationFramework, app);
             ValidatePortableClipboard(presentationCore);
             ValidatePortableFileDialogs(presentationFramework);
             RegisterPortableMessageBox(presentationFramework);
@@ -362,6 +364,69 @@ internal static class Program
         AssertEqual(false, GetProperty(currentValueClone, "IsFrozen"), "SDK Freezable gradient current-value clone mutable");
         AssertClose(0.8, Convert.ToDouble(GetProperty(currentValueClone, "Opacity")), 0.0001, "SDK Freezable gradient current-value clone opacity");
         AssertEqual(3, GetCount(GetProperty(currentValueClone, "GradientStops")), "SDK Freezable gradient current-value clone stop collection");
+    }
+
+    private static void ValidatePortableSystemParameters(Assembly presentationFramework, object resourceOwner)
+    {
+        Type systemParametersType = GetRequiredType(presentationFramework, "System.Windows.SystemParameters");
+
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "FocusBorderWidth", 1.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "FocusBorderHeight", 1.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "FocusHorizontalBorderHeight", 1.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "FocusVerticalBorderWidth", 1.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "PrimaryScreenWidth", 1024.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "PrimaryScreenHeight", 768.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "VerticalScrollBarWidth", 17.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "HorizontalScrollBarHeight", 17.0);
+        AssertPortableSystemParameterMetric(systemParametersType, resourceOwner, "CaretWidth", 1.0);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "HighContrast", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "DropShadow", false);
+        AssertPortableSystemParameterValue(systemParametersType, resourceOwner, "WheelScrollLines", 3);
+    }
+
+    private static void AssertPortableSystemParameterMetric(
+        Type systemParametersType,
+        object resourceOwner,
+        string propertyName,
+        double expectedNonWindowsValue)
+    {
+        double value = Convert.ToDouble(GetStaticProperty(systemParametersType, propertyName));
+        if (OperatingSystem.IsWindows())
+        {
+            if (value < 0)
+            {
+                throw new InvalidOperationException($"Expected SystemParameters.{propertyName} to be non-negative, got '{value}'.");
+            }
+        }
+        else
+        {
+            AssertClose(expectedNonWindowsValue, value, 0.0001, $"portable SDK SystemParameters.{propertyName}");
+        }
+
+        object resourceValue = ResolveSystemParameterResource(systemParametersType, resourceOwner, propertyName);
+        AssertClose(value, Convert.ToDouble(resourceValue), 0.0001, $"portable SDK SystemParameters.{propertyName} resource");
+    }
+
+    private static void AssertPortableSystemParameterValue(
+        Type systemParametersType,
+        object resourceOwner,
+        string propertyName,
+        object expectedNonWindowsValue)
+    {
+        object value = GetStaticProperty(systemParametersType, propertyName);
+        if (!OperatingSystem.IsWindows())
+        {
+            AssertEqual(expectedNonWindowsValue, value, $"portable SDK SystemParameters.{propertyName}");
+        }
+
+        object resourceValue = ResolveSystemParameterResource(systemParametersType, resourceOwner, propertyName);
+        AssertEqual(value, resourceValue, $"portable SDK SystemParameters.{propertyName} resource");
+    }
+
+    private static object ResolveSystemParameterResource(Type systemParametersType, object resourceOwner, string propertyName)
+    {
+        object key = GetStaticProperty(systemParametersType, propertyName + "Key");
+        return Invoke(resourceOwner, "TryFindResource", key);
     }
 
     private static void ValidateSdkLooseXamlReaderWriter(Assembly presentationFramework)

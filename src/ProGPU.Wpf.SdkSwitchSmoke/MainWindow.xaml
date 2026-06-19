@@ -115,6 +115,12 @@
             </StackPanel>
         </DataTemplate>
 
+        <DataTemplate DataType="{x:Type local:SmokeItem}">
+            <TextBlock
+                x:Name="ImplicitSmokeItemText"
+                Text="{Binding Name, StringFormat=implicit: {0}}" />
+        </DataTemplate>
+
         <HierarchicalDataTemplate
             x:Key="SmokeHierarchyTemplate"
             ItemsSource="{Binding Children}">
@@ -482,6 +488,10 @@
             Margin="0,8,0,0"
             Content="{Binding SelectedItem, ElementName=ItemsList}"
             ContentTemplate="{StaticResource SmokeItemTemplate}" />
+        <ContentPresenter
+            x:Name="ImplicitItemPresenter"
+            Margin="0,6,0,0"
+            Content="{Binding SelectedItem, ElementName=ItemsList}" />
         <Grid
             x:Name="LayoutGrid"
             Height="54"

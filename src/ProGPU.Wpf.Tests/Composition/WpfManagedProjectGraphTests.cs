@@ -4793,6 +4793,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Text=\"routed event not raised\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Items}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemTemplate=\"{StaticResource SmokeItemTemplate}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<DataTemplate DataType=\"{x:Type local:SmokeItem}\">", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ImplicitSmokeItemText\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding Name, StringFormat=implicit: {0}}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ImplicitItemPresenter\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<HierarchicalDataTemplate", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"SmokeHierarchyTemplate\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Children}\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -5350,6 +5354,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("priority binding expression child count", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("priority binding active path", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"SelectedItemPresenter\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.DataTemplateKey", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("implicit item data template", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("implicit item template binding path", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"ImplicitItemPresenter\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("implicit item template resolved text", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"LayoutGrid\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("layout grid row definition count", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"LayoutLabel\"", runtimeHarnessProgram, StringComparison.Ordinal);

@@ -780,6 +780,25 @@ internal static class Program
         AssertType(selectedItemPresenter, "System.Windows.Controls.ContentControl", "selected item presenter");
         AssertSame(selectedItem, GetProperty(selectedItemPresenter, "Content"), "selected item presenter content");
         AssertType(GetProperty(selectedItemPresenter, "ContentTemplate"), "System.Windows.DataTemplate", "selected item presenter template");
+        Type dataTemplateKeyType = GetRequiredType(presentationFramework, "System.Windows.DataTemplateKey");
+        object implicitTemplateKey = Create(dataTemplateKeyType, selectedItem.GetType());
+        object implicitItemTemplate = Invoke(window, "FindResource", implicitTemplateKey);
+        AssertType(implicitItemTemplate, "System.Windows.DataTemplate", "implicit item data template");
+        object implicitTemplateRoot = Invoke(implicitItemTemplate, "LoadContent");
+        AssertType(implicitTemplateRoot, "System.Windows.Controls.TextBlock", "implicit item template root");
+        object implicitTemplateTextProperty = GetStaticField(implicitTemplateRoot.GetType(), "TextProperty");
+        object implicitTemplateBindingExpression = InvokeStatic(bindingOperationsType, "GetBindingExpression", implicitTemplateRoot, implicitTemplateTextProperty);
+        AssertType(implicitTemplateBindingExpression, "System.Windows.Data.BindingExpression", "implicit item template binding expression");
+        AssertEqual("Name", GetBindingPath(GetProperty(implicitTemplateBindingExpression, "ParentBinding")), "implicit item template binding path");
+        object implicitItemPresenter = Invoke(window, "FindName", "ImplicitItemPresenter");
+        AssertType(implicitItemPresenter, "System.Windows.Controls.ContentPresenter", "implicit item presenter");
+        AssertSame(selectedItem, GetProperty(implicitItemPresenter, "Content"), "implicit item presenter content");
+        if (flushDispatcherOperations is not null)
+        {
+            SetProperty(implicitTemplateRoot, "DataContext", selectedItem);
+            flushDispatcherOperations(window);
+            AssertEqual("implicit: Scene", GetProperty(implicitTemplateRoot, "Text"), "implicit item template resolved text");
+        }
 
         object layoutGrid = Invoke(window, "FindName", "LayoutGrid");
         AssertType(layoutGrid, "System.Windows.Controls.Grid", "layout grid");

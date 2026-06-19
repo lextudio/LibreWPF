@@ -3066,6 +3066,11 @@ namespace System.Windows.Controls.Primitives
 
             internal void SetPopupPos(bool position, int x, int y, bool size, int width, int height)
             {
+                if (!OperatingSystem.IsWindows())
+                {
+                    return;
+                }
+
                 int flags = NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE;
                 if (!position)
                 {
@@ -3082,6 +3087,11 @@ namespace System.Windows.Controls.Primitives
 
             internal Rect GetParentWindowRect()
             {
+                if (!OperatingSystem.IsWindows())
+                {
+                    return GetPresentationSourceRootRect();
+                }
+
                 NativeMethods.RECT rect = new NativeMethods.RECT(0, 0, 0, 0);
 
                 IntPtr parent = ParentHandle;
@@ -3091,6 +3101,26 @@ namespace System.Windows.Controls.Primitives
                 }
 
                 return PointUtil.ToRect(rect);
+            }
+
+            private Rect GetPresentationSourceRootRect()
+            {
+                CompositionTarget compositionTarget = _window?.CompositionTarget;
+                FrameworkElement rootElement = compositionTarget?.RootVisual as FrameworkElement;
+                if (rootElement == null)
+                {
+                    return Rect.Empty;
+                }
+
+                Size renderSize = rootElement.RenderSize;
+                if (renderSize.Width == 0 && renderSize.Height == 0)
+                {
+                    return Rect.Empty;
+                }
+
+                Point minPoint = compositionTarget.TransformToDevice.Transform(new Point(0, 0));
+                Point maxPoint = compositionTarget.TransformToDevice.Transform(new Point(renderSize.Width, renderSize.Height));
+                return new Rect(minPoint, maxPoint);
             }
 
             internal Rect GetWindowRect()
@@ -3372,6 +3402,11 @@ namespace System.Windows.Controls.Primitives
 
             private static bool ConnectedToForegroundWindow(IntPtr window)
             {
+                if (!OperatingSystem.IsWindows())
+                {
+                    return false;
+                }
+
                 IntPtr foregroundWindow = UnsafeNativeMethods.GetForegroundWindow();
 
                 while (window != IntPtr.Zero)
@@ -3398,6 +3433,11 @@ namespace System.Windows.Controls.Primitives
 
             private static IntPtr GetParentHandle(HwndSource hwnd)
             {
+                if (!OperatingSystem.IsWindows())
+                {
+                    return IntPtr.Zero;
+                }
+
                 if (hwnd != null)
                 {
                     IntPtr child = GetHandle(hwnd);

@@ -4473,6 +4473,11 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(popupControlService, "if (!OperatingSystem.IsWindows()", "MS.Win32.SafeNativeMethods.GetCapture()");
         AssertGuardBefore(comboBox, "(!OperatingSystem.IsWindows()", "MS.Win32.SafeNativeMethods.GetCapture()");
         AssertGuardBefore(popup, "(!OperatingSystem.IsWindows()", "MS.Win32.SafeNativeMethods.GetCapture()");
+        Assert.Contains("return GetPresentationSourceRootRect();", popup, StringComparison.Ordinal);
+        Assert.Contains("private Rect GetPresentationSourceRootRect()", popup, StringComparison.Ordinal);
+        Assert.Contains("if (!OperatingSystem.IsWindows())\n                {\n                    return;\n                }\n\n                int flags = NativeMethods.SWP_NOZORDER", popup, StringComparison.Ordinal);
+        Assert.Contains("return false;\n                }\n\n                IntPtr foregroundWindow", popup, StringComparison.Ordinal);
+        Assert.Contains("return IntPtr.Zero;\n                }\n\n                if (hwnd != null)", popup, StringComparison.Ordinal);
         AssertGuardBefore(menuBase, "(!OperatingSystem.IsWindows()", "MS.Win32.SafeNativeMethods.GetCapture()");
         AssertGuardBefore(menuBase, "if (OperatingSystem.IsWindows())", "MS.Win32.UnsafeNativeMethods.GetFocus()");
         Assert.Contains("AreComponentResourceUrisEquivalent(loadBamlSyncInfo.BamlUri, curComponentUri)", application, StringComparison.Ordinal);

@@ -412,6 +412,49 @@
                 Grid.ColumnSpan="2"
                 Text="{Binding InputText, StringFormat=Input: {0}}" />
         </Grid>
+        <DockPanel
+            x:Name="DockLayoutPanel"
+            Height="58"
+            Margin="{StaticResource SmokePanelMargin}"
+            LastChildFill="True">
+            <TextBlock
+                x:Name="DockTopText"
+                DockPanel.Dock="Top"
+                Text="dock top" />
+            <TextBlock
+                x:Name="DockLeftText"
+                Width="72"
+                DockPanel.Dock="Left"
+                Text="dock left" />
+            <TextBlock
+                x:Name="DockFillText"
+                Text="{Binding SelectedItem.Name, ElementName=ItemsList, StringFormat=dock fill: {0}}" />
+        </DockPanel>
+        <Canvas
+            x:Name="CanvasLayoutPanel"
+            Height="44"
+            Margin="{StaticResource SmokePanelMargin}">
+            <TextBlock
+                x:Name="CanvasPositionedText"
+                Canvas.Left="12"
+                Canvas.Top="8"
+                Text="canvas positioned" />
+        </Canvas>
+        <UniformGrid
+            x:Name="UniformLayoutPanel"
+            Margin="{StaticResource SmokePanelMargin}"
+            Columns="3"
+            Rows="1">
+            <TextBlock
+                x:Name="UniformCellOne"
+                Text="one" />
+            <TextBlock
+                x:Name="UniformCellTwo"
+                Text="two" />
+            <TextBlock
+                x:Name="UniformCellThree"
+                Text="three" />
+        </UniformGrid>
         <ItemsControl
             x:Name="GroupedItemsControl"
             Height="78"

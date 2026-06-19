@@ -637,6 +637,46 @@ internal static class Program
         AssertEqual(0, InvokeStatic(gridType, "GetColumn", formattedInputText), "formatted input grid column");
         AssertEqual(2, InvokeStatic(gridType, "GetColumnSpan", formattedInputText), "formatted input grid column span");
 
+        object dockLayoutPanel = Invoke(window, "FindName", "DockLayoutPanel");
+        AssertType(dockLayoutPanel, "System.Windows.Controls.DockPanel", "dock layout panel");
+        AssertEqual(true, GetProperty(dockLayoutPanel, "LastChildFill"), "dock layout last child fill");
+        AssertAtLeast(3, GetCount(GetProperty(dockLayoutPanel, "Children")), "dock layout child count");
+        Type dockPanelType = dockLayoutPanel.GetType();
+        object dockTopText = Invoke(window, "FindName", "DockTopText");
+        AssertType(dockTopText, "System.Windows.Controls.TextBlock", "dock top text element");
+        AssertEqual("dock top", GetProperty(dockTopText, "Text"), "dock top text");
+        AssertEqual("Top", InvokeStatic(dockPanelType, "GetDock", dockTopText).ToString() ?? string.Empty, "dock layout top dock");
+        object dockLeftText = Invoke(window, "FindName", "DockLeftText");
+        AssertType(dockLeftText, "System.Windows.Controls.TextBlock", "dock left text element");
+        AssertEqual("dock left", GetProperty(dockLeftText, "Text"), "dock left text");
+        AssertEqual(72.0, GetProperty(dockLeftText, "Width"), "dock left width");
+        AssertEqual("Left", InvokeStatic(dockPanelType, "GetDock", dockLeftText).ToString() ?? string.Empty, "dock layout left dock");
+        object dockFillText = Invoke(window, "FindName", "DockFillText");
+        AssertType(dockFillText, "System.Windows.Controls.TextBlock", "dock fill text element");
+        AssertEqual("dock fill: Scene", GetProperty(dockFillText, "Text"), "dock fill binding text");
+
+        object canvasLayoutPanel = Invoke(window, "FindName", "CanvasLayoutPanel");
+        AssertType(canvasLayoutPanel, "System.Windows.Controls.Canvas", "canvas layout panel");
+        AssertAtLeast(1, GetCount(GetProperty(canvasLayoutPanel, "Children")), "canvas layout child count");
+        Type canvasType = canvasLayoutPanel.GetType();
+        object canvasPositionedText = Invoke(window, "FindName", "CanvasPositionedText");
+        AssertType(canvasPositionedText, "System.Windows.Controls.TextBlock", "canvas positioned text element");
+        AssertEqual("canvas positioned", GetProperty(canvasPositionedText, "Text"), "canvas positioned text");
+        AssertEqual(12.0, InvokeStatic(canvasType, "GetLeft", canvasPositionedText), "canvas positioned left");
+        AssertEqual(8.0, InvokeStatic(canvasType, "GetTop", canvasPositionedText), "canvas positioned top");
+
+        object uniformLayoutPanel = Invoke(window, "FindName", "UniformLayoutPanel");
+        AssertType(uniformLayoutPanel, "System.Windows.Controls.Primitives.UniformGrid", "uniform layout panel");
+        AssertEqual(1, GetProperty(uniformLayoutPanel, "Rows"), "uniform layout rows");
+        AssertEqual(3, GetProperty(uniformLayoutPanel, "Columns"), "uniform layout columns");
+        AssertEqual(3, GetCount(GetProperty(uniformLayoutPanel, "Children")), "uniform layout child count");
+        object uniformCellOne = Invoke(window, "FindName", "UniformCellOne");
+        AssertType(uniformCellOne, "System.Windows.Controls.TextBlock", "uniform cell one");
+        AssertEqual("one", GetProperty(uniformCellOne, "Text"), "uniform cell one text");
+        object uniformCellThree = Invoke(window, "FindName", "UniformCellThree");
+        AssertType(uniformCellThree, "System.Windows.Controls.TextBlock", "uniform cell three");
+        AssertEqual("three", GetProperty(uniformCellThree, "Text"), "uniform cell three text");
+
         object groupedItemsViewSource = Invoke(window, "FindResource", "GroupedItems");
         AssertType(groupedItemsViewSource, "System.Windows.Data.CollectionViewSource", "grouped items collection view source");
         AssertAtLeast(1, GetCount(GetProperty(groupedItemsViewSource, "SortDescriptions")), "grouped items sort description count");

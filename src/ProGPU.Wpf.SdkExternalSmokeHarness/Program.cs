@@ -560,6 +560,34 @@ internal static class Program
                             Event="Click"
                             Handler="OnExternalStyleEventButtonClick" />
                     </Style>
+                    <Style
+                        x:Key="ExternalDataTriggeredTextStyle"
+                        TargetType="{x:Type TextBlock}">
+                        <Setter Property="Text" Value="External data trigger inactive" />
+                        <Setter Property="Tag" Value="data-inactive" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsExternalDataTriggerActive}" Value="True">
+                                <Setter Property="Text" Value="External data trigger active" />
+                                <Setter Property="Tag" Value="data-active" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                    <Style
+                        x:Key="ExternalMultiDataTriggeredTextStyle"
+                        TargetType="{x:Type TextBlock}">
+                        <Setter Property="Text" Value="External multi data trigger inactive" />
+                        <Setter Property="Tag" Value="multi-data-inactive" />
+                        <Style.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding IsExternalDataTriggerActive}" Value="True" />
+                                    <Condition Binding="{Binding IsExternalMultiTriggerReady}" Value="True" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Text" Value="External multi data trigger active" />
+                                <Setter Property="Tag" Value="multi-data-active" />
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
                 </Window.Resources>
                 <Window.CommandBindings>
                     <CommandBinding
@@ -624,6 +652,12 @@ internal static class Program
                     <Button
                         x:Name="ExternalEventSetterButton"
                         Style="{StaticResource ExternalEventSetterButtonStyle}" />
+                    <TextBlock
+                        x:Name="ExternalDataTriggerText"
+                        Style="{StaticResource ExternalDataTriggeredTextStyle}" />
+                    <TextBlock
+                        x:Name="ExternalMultiDataTriggerText"
+                        Style="{StaticResource ExternalMultiDataTriggeredTextStyle}" />
                     <Menu x:Name="ExternalMenu">
                         <MenuItem
                             x:Name="ExternalRootMenuItem"
@@ -1150,6 +1184,7 @@ internal static class Program
             using System;
             using System.Collections.ObjectModel;
             using System.Collections.Generic;
+            using System.ComponentModel;
             using System.Globalization;
             using System.IO;
             using System.Linq;
@@ -1174,7 +1209,7 @@ internal static class Program
 
             namespace ExternalSdkApp;
 
-            public partial class MainWindow : Window
+            public partial class MainWindow : Window, INotifyPropertyChanged
             {
                 public static readonly RoutedUICommand ExternalCommand = new(
                     "External SDK command",
@@ -1213,6 +1248,34 @@ internal static class Program
                 public string BindingGroupFirstName { get; set; } = "group: Ada";
 
                 public string BindingGroupLastName { get; set; } = "group: Lovelace";
+
+                public bool IsExternalDataTriggerActive
+                {
+                    get => _isExternalDataTriggerActive;
+                    set
+                    {
+                        if (_isExternalDataTriggerActive != value)
+                        {
+                            _isExternalDataTriggerActive = value;
+                            OnPropertyChanged(nameof(IsExternalDataTriggerActive));
+                        }
+                    }
+                }
+
+                public bool IsExternalMultiTriggerReady
+                {
+                    get => _isExternalMultiTriggerReady;
+                    set
+                    {
+                        if (_isExternalMultiTriggerReady != value)
+                        {
+                            _isExternalMultiTriggerReady = value;
+                            OnPropertyChanged(nameof(IsExternalMultiTriggerReady));
+                        }
+                    }
+                }
+
+                public event PropertyChangedEventHandler? PropertyChanged;
 
                 public int ExternalSelectionChangedCount { get; private set; }
 
@@ -1508,6 +1571,15 @@ internal static class Program
                     LastExternalStyleEventSenderName = (sender as FrameworkElement)?.Name;
                     LastExternalStyleEventRoutedEventName = e.RoutedEvent?.Name;
                 }
+
+                private void OnPropertyChanged(string propertyName)
+                {
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+                }
+
+                private bool _isExternalDataTriggerActive;
+
+                private bool _isExternalMultiTriggerReady;
             }
 
             public sealed class ExternalItem
@@ -3598,6 +3670,12 @@ internal static class Program
                     var eventSetterStyle = RequireType<Style>(
                         window.FindResource("ExternalEventSetterButtonStyle"),
                         "external SDK event setter button style");
+                    var dataTriggeredStyle = RequireType<Style>(
+                        window.FindResource("ExternalDataTriggeredTextStyle"),
+                        "external SDK data trigger text style");
+                    var multiDataTriggeredStyle = RequireType<Style>(
+                        window.FindResource("ExternalMultiDataTriggeredTextStyle"),
+                        "external SDK multi data trigger text style");
                     var buttonTemplate = RequireType<ControlTemplate>(
                         window.FindResource("ExternalButtonTemplate"),
                         "external SDK button control template");
@@ -3605,11 +3683,39 @@ internal static class Program
                     AssertEqual(typeof(Button), basedStyle.TargetType, "external SDK based style target type");
                     AssertEqual(typeof(Button), triggeredStyle.TargetType, "external SDK triggered style target type");
                     AssertEqual(typeof(Button), eventSetterStyle.TargetType, "external SDK event setter style target type");
+                    AssertEqual(typeof(TextBlock), dataTriggeredStyle.TargetType, "external SDK data trigger style target type");
+                    AssertEqual(typeof(TextBlock), multiDataTriggeredStyle.TargetType, "external SDK multi data trigger style target type");
                     AssertEqual(basedStyle, triggeredStyle.BasedOn, "external SDK style BasedOn link");
                     AssertEqual(3, basedStyle.Setters.Count, "external SDK based style setter count");
                     AssertEqual(2, triggeredStyle.Setters.Count, "external SDK triggered style setter count");
                     AssertEqual(3, eventSetterStyle.Setters.Count, "external SDK event setter style setter count");
+                    AssertEqual(2, dataTriggeredStyle.Setters.Count, "external SDK data trigger style setter count");
+                    AssertEqual(1, dataTriggeredStyle.Triggers.Count, "external SDK data trigger style trigger count");
+                    AssertEqual(2, multiDataTriggeredStyle.Setters.Count, "external SDK multi data trigger style setter count");
+                    AssertEqual(1, multiDataTriggeredStyle.Triggers.Count, "external SDK multi data trigger style trigger count");
                     AssertEqual(1, triggeredStyle.Triggers.Count, "external SDK triggered style trigger count");
+                    var dataTrigger = RequireType<DataTrigger>(
+                        dataTriggeredStyle.Triggers[0],
+                        "external SDK data trigger");
+                    var dataTriggerBinding = RequireType<Binding>(
+                        dataTrigger.Binding,
+                        "external SDK data trigger binding");
+                    AssertEqual("IsExternalDataTriggerActive", dataTriggerBinding.Path.Path, "external SDK data trigger binding path");
+                    AssertEqual("True", dataTrigger.Value?.ToString(), "external SDK data trigger value");
+                    var multiDataTrigger = RequireType<MultiDataTrigger>(
+                        multiDataTriggeredStyle.Triggers[0],
+                        "external SDK multi data trigger");
+                    AssertEqual(2, multiDataTrigger.Conditions.Count, "external SDK multi data trigger condition count");
+                    var firstMultiDataTriggerBinding = RequireType<Binding>(
+                        multiDataTrigger.Conditions[0].Binding,
+                        "external SDK multi data trigger first binding");
+                    AssertEqual("IsExternalDataTriggerActive", firstMultiDataTriggerBinding.Path.Path, "external SDK multi data trigger first binding path");
+                    AssertEqual("True", multiDataTrigger.Conditions[0].Value?.ToString(), "external SDK multi data trigger first value");
+                    var secondMultiDataTriggerBinding = RequireType<Binding>(
+                        multiDataTrigger.Conditions[1].Binding,
+                        "external SDK multi data trigger second binding");
+                    AssertEqual("IsExternalMultiTriggerReady", secondMultiDataTriggerBinding.Path.Path, "external SDK multi data trigger second binding path");
+                    AssertEqual("True", multiDataTrigger.Conditions[1].Value?.ToString(), "external SDK multi data trigger second value");
                     var eventSetter = RequireType<EventSetter>(
                         eventSetterStyle.Setters.OfType<EventSetter>().SingleOrDefault(),
                         "external SDK event setter style click event setter");
@@ -3635,6 +3741,41 @@ internal static class Program
                     AssertEqual(1, window.ExternalStyleEventButtonClickCount, "external SDK EventSetter click count");
                     AssertEqual("ExternalEventSetterButton", window.LastExternalStyleEventSenderName, "external SDK EventSetter sender name");
                     AssertEqual("Click", window.LastExternalStyleEventRoutedEventName, "external SDK EventSetter routed event");
+
+                    var dataTriggerText = RequireType<TextBlock>(
+                        window.FindName("ExternalDataTriggerText"),
+                        "external SDK data trigger text");
+                    var multiDataTriggerText = RequireType<TextBlock>(
+                        window.FindName("ExternalMultiDataTriggerText"),
+                        "external SDK multi data trigger text");
+                    AssertEqual(dataTriggeredStyle, dataTriggerText.Style, "external SDK data trigger text style");
+                    AssertEqual(multiDataTriggeredStyle, multiDataTriggerText.Style, "external SDK multi data trigger text style");
+                    AssertEqual("External data trigger inactive", dataTriggerText.Text, "external SDK data trigger initial text");
+                    AssertEqual("data-inactive", dataTriggerText.Tag, "external SDK data trigger initial tag");
+                    AssertEqual("External multi data trigger inactive", multiDataTriggerText.Text, "external SDK multi data trigger initial text");
+                    AssertEqual("multi-data-inactive", multiDataTriggerText.Tag, "external SDK multi data trigger initial tag");
+
+                    window.IsExternalDataTriggerActive = true;
+                    DrainDispatcher();
+                    AssertEqual("External data trigger active", dataTriggerText.Text, "external SDK data trigger active text");
+                    AssertEqual("data-active", dataTriggerText.Tag, "external SDK data trigger active tag");
+                    AssertEqual("External multi data trigger inactive", multiDataTriggerText.Text, "external SDK multi data trigger one-condition text");
+                    AssertEqual("multi-data-inactive", multiDataTriggerText.Tag, "external SDK multi data trigger one-condition tag");
+
+                    window.IsExternalMultiTriggerReady = true;
+                    DrainDispatcher();
+                    AssertEqual("External multi data trigger active", multiDataTriggerText.Text, "external SDK multi data trigger active text");
+                    AssertEqual("multi-data-active", multiDataTriggerText.Tag, "external SDK multi data trigger active tag");
+
+                    window.IsExternalDataTriggerActive = false;
+                    DrainDispatcher();
+                    AssertEqual("External data trigger inactive", dataTriggerText.Text, "external SDK data trigger exit text");
+                    AssertEqual("data-inactive", dataTriggerText.Tag, "external SDK data trigger exit tag");
+                    AssertEqual("External multi data trigger inactive", multiDataTriggerText.Text, "external SDK multi data trigger exit text");
+                    AssertEqual("multi-data-inactive", multiDataTriggerText.Tag, "external SDK multi data trigger exit tag");
+
+                    window.IsExternalMultiTriggerReady = false;
+                    DrainDispatcher();
 
                     styledButton.ApplyTemplate();
                     var templateRoot = RequireType<Border>(

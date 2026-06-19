@@ -6393,6 +6393,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK Clipboard data object unicode text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Clipboard current data object", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Clipboard cleared text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"ExternalDataTriggeredTextStyle\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<DataTrigger Binding=\"{Binding IsExternalDataTriggerActive}\" Value=\"True\">", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"ExternalMultiDataTriggeredTextStyle\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<MultiDataTrigger>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<Condition Binding=\"{Binding IsExternalMultiTriggerReady}\" Value=\"True\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("public partial class MainWindow : Window, INotifyPropertyChanged", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OnPropertyChanged(nameof(IsExternalDataTriggerActive))", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OnPropertyChanged(nameof(IsExternalMultiTriggerReady))", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK data trigger active text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK multi data trigger one-condition text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK multi data trigger active tag", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK multi data trigger exit text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("template.LoadContent()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK item template name binding", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window.ExternalItems.Add(new ExternalItem(\"Gamma\", \"Data\"))", externalSdkHarnessProgram, StringComparison.Ordinal);

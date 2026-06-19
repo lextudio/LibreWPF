@@ -116,6 +116,14 @@ namespace System.Windows.Media.Imaging
 
             ArgumentNullException.ThrowIfNull(bitmapStream);
 
+            if (!OperatingSystem.IsWindows() &&
+                expectedClsId == MILGuidData.GUID_ContainerFormatBmp &&
+                BmpBitmapDecoder.TryCreatePortableFrame(bitmapStream, createOptions, cacheOption, out BitmapFrame portableFrame))
+            {
+                InitializePortableFrames(null, null, bitmapStream, createOptions, cacheOption, portableFrame);
+                return;
+            }
+
             _decoderHandle = SetupDecoderFromUriOrStream(
                 null,
                 bitmapStream,
@@ -268,6 +276,12 @@ namespace System.Windows.Media.Imaging
             else if ((stream != null) && (!stream.CanSeek))
             {
                 return new LateBoundBitmapDecoder(baseUri, uri, stream, createOptions, cacheOption, uriCachePolicy);
+            }
+            else if (!OperatingSystem.IsWindows() &&
+                     stream != null &&
+                     BmpBitmapDecoder.TryCreatePortableFrame(stream, createOptions, cacheOption, out BitmapFrame portableFrame))
+            {
+                return new BmpBitmapDecoder(portableFrame, baseUri, uri, stream, createOptions, cacheOption);
             }
             else
             {
@@ -534,6 +548,32 @@ namespace System.Windows.Media.Imaging
 
                 return _palette;
             }
+        }
+
+        internal void InitializePortableFrames(
+            Uri baseUri,
+            Uri uri,
+            Stream stream,
+            BitmapCreateOptions createOptions,
+            BitmapCacheOption cacheOption,
+            BitmapFrame frame)
+        {
+            Debug.Assert(frame != null);
+
+            _isBuiltInDecoder = true;
+            _baseUri = baseUri;
+            _uri = uri;
+            _stream = stream;
+            _createOptions = createOptions;
+            _cacheOption = cacheOption;
+
+            if (!frame.IsFrozen && frame.CanFreeze)
+            {
+                frame.Freeze();
+            }
+
+            _frames = new List<BitmapFrame>(1) { frame };
+            _readOnlyFrames = new ReadOnlyCollection<BitmapFrame>(_frames);
         }
 
         /// <summary>
@@ -1669,4 +1709,3 @@ namespace System.Windows.Media.Imaging
 
     #endregion // BitmapDecoder
 }
-

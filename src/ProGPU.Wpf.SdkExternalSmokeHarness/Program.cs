@@ -2524,6 +2524,27 @@ internal static class Program
                     AssertEqual(pixels[13], bmpBytes[bmpPixelOffset + 5], "external SDK BmpBitmapEncoder bottom-right green byte");
                     AssertEqual(pixels[2], bmpBytes[bmpPixelOffset + 10], "external SDK BmpBitmapEncoder top-left red byte");
 
+                    var bmpDecoder = BitmapDecoder.Create(
+                        new MemoryStream(bmpBytes),
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(typeof(BmpBitmapDecoder), bmpDecoder.GetType(), "external SDK BitmapDecoder.Create BMP decoder type");
+                    AssertEqual(1, bmpDecoder.Frames.Count, "external SDK BitmapDecoder.Create BMP frame count");
+                    AssertEqual(2, bmpDecoder.Frames[0].PixelWidth, "external SDK BitmapDecoder.Create BMP pixel width");
+                    AssertEqual(2, bmpDecoder.Frames[0].PixelHeight, "external SDK BitmapDecoder.Create BMP pixel height");
+                    AssertEqual(PixelFormats.Bgra32, bmpDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create BMP Bgra32 format");
+                    var decodedBmpPixels = new byte[pixels.Length];
+                    bmpDecoder.Frames[0].CopyPixels(decodedBmpPixels, 8, 0);
+                    AssertEqual(pixels[0], decodedBmpPixels[0], "external SDK BitmapDecoder.Create BMP top-left blue byte");
+                    AssertEqual(pixels[14], decodedBmpPixels[14], "external SDK BitmapDecoder.Create BMP bottom-right red byte");
+
+                    var directBmpDecoder = new BmpBitmapDecoder(
+                        new MemoryStream(bmpBytes),
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(1, directBmpDecoder.Frames.Count, "external SDK BmpBitmapDecoder frame count");
+                    AssertEqual(PixelFormats.Bgra32, directBmpDecoder.Frames[0].Format, "external SDK BmpBitmapDecoder Bgra32 format");
+
                     var writeableBitmap = new WriteableBitmap(2, 2, 96.0, 96.0, PixelFormats.Bgra32, null);
                     writeableBitmap.WritePixels(new Int32Rect(0, 0, 2, 2), pixels, 8, 0);
                     var writeablePixels = new byte[pixels.Length];

@@ -6164,6 +6164,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("new BmpBitmapEncoder()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("bmpEncoder.Save(bmpStream)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BmpBitmapEncoder bottom-left blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("BitmapDecoder.Create(", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new BmpBitmapDecoder(", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create BMP top-left blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("WriteableBitmap(2, 2, 96.0, 96.0, PixelFormats.Bgra32", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapSource copied blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapFrame copied red byte", externalSdkHarnessProgram, StringComparison.Ordinal);

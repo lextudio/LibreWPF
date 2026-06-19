@@ -700,7 +700,10 @@
         <Frame
             x:Name="SmokeFrame"
             Height="64"
+            LoadCompleted="OnSmokeFrameLoadCompleted"
             Margin="{StaticResource SmokePanelMargin}"
+            Navigated="OnSmokeFrameNavigated"
+            Navigating="OnSmokeFrameNavigating"
             NavigationUIVisibility="Hidden"
             Source="SmokePage.xaml" />
         <RichTextBox

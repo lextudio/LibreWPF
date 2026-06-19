@@ -1102,6 +1102,14 @@ internal static class Program
             object pageSubtitle = Invoke(smokePage, "FindName", "PageSubtitle");
             AssertType(pageSubtitle, "System.Windows.Controls.TextBlock", "compiled page subtitle element");
             AssertEqual("Frame loaded SDK-built BAML", GetProperty(pageSubtitle, "Text"), "compiled page subtitle text");
+            AssertAtLeast(1, GetProperty(window, "SmokeFrameNavigatingCount"), "compiled frame navigating count");
+            AssertAtLeast(1, GetProperty(window, "SmokeFrameNavigatedCount"), "compiled frame navigated count");
+            AssertAtLeast(1, GetProperty(window, "SmokeFrameLoadCompletedCount"), "compiled frame load completed count");
+            AssertEqual(true, (GetProperty(window, "LastSmokeFrameNavigatingUri").ToString() ?? string.Empty).EndsWith("SmokePage.xaml", StringComparison.Ordinal), "compiled frame navigating URI");
+            AssertEqual("New", GetProperty(window, "LastSmokeFrameNavigationMode"), "compiled frame navigation mode");
+            AssertEqual(true, (GetProperty(window, "LastSmokeFrameNavigatedUri").ToString() ?? string.Empty).EndsWith("SmokePage.xaml", StringComparison.Ordinal), "compiled frame navigated URI");
+            AssertEqual("ProGPU.Wpf.SdkSwitchSmoke.SmokePage", GetProperty(window, "LastSmokeFrameNavigatedContentType"), "compiled frame navigated content type");
+            AssertEqual(true, (GetProperty(window, "LastSmokeFrameLoadCompletedUri").ToString() ?? string.Empty).EndsWith("SmokePage.xaml", StringComparison.Ordinal), "compiled frame load completed URI");
         }
 
         object documentBox = Invoke(window, "FindName", "DocumentBox");

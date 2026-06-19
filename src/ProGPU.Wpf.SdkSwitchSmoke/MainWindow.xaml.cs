@@ -66,6 +66,22 @@ public partial class MainWindow : Window
 
     public int RangeValueChangedCount { get; private set; }
 
+    public int SmokeFrameNavigatingCount { get; private set; }
+
+    public int SmokeFrameNavigatedCount { get; private set; }
+
+    public int SmokeFrameLoadCompletedCount { get; private set; }
+
+    public string? LastSmokeFrameNavigatingUri { get; private set; }
+
+    public string? LastSmokeFrameNavigationMode { get; private set; }
+
+    public string? LastSmokeFrameNavigatedUri { get; private set; }
+
+    public string? LastSmokeFrameNavigatedContentType { get; private set; }
+
+    public string? LastSmokeFrameLoadCompletedUri { get; private set; }
+
     public int DocumentLinkRequestNavigateCount { get; private set; }
 
     public string? LastDocumentLinkRequestNavigateUri { get; private set; }
@@ -253,6 +269,26 @@ public partial class MainWindow : Window
         }
 
         e.Handled = true;
+    }
+
+    private void OnSmokeFrameNavigating(object sender, NavigatingCancelEventArgs e)
+    {
+        SmokeFrameNavigatingCount++;
+        LastSmokeFrameNavigatingUri = e.Uri?.ToString();
+        LastSmokeFrameNavigationMode = e.NavigationMode.ToString();
+    }
+
+    private void OnSmokeFrameNavigated(object sender, NavigationEventArgs e)
+    {
+        SmokeFrameNavigatedCount++;
+        LastSmokeFrameNavigatedUri = e.Uri?.ToString();
+        LastSmokeFrameNavigatedContentType = e.Content?.GetType().FullName;
+    }
+
+    private void OnSmokeFrameLoadCompleted(object sender, NavigationEventArgs e)
+    {
+        SmokeFrameLoadCompletedCount++;
+        LastSmokeFrameLoadCompletedUri = e.Uri?.ToString();
     }
 
     private void OnSmokeBubbled(object sender, RoutedEventArgs e)

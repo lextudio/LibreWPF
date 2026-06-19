@@ -538,6 +538,19 @@ internal static class Program
         object inputBox = Invoke(window, "FindName", "InputBox");
         AssertType(inputBox, "System.Windows.Controls.TextBox", "input box");
         AssertEqual("editable package text", GetProperty(inputBox, "Text"), "input box bound text");
+        object accessKeyFocusPanel = Invoke(window, "FindName", "AccessKeyFocusPanel");
+        AssertType(accessKeyFocusPanel, "System.Windows.Controls.StackPanel", "access key focus panel");
+        Assembly presentationCore = GetAssemblyFromContext(window.GetType().Assembly, "PresentationCore");
+        Type focusManagerType = GetRequiredType(presentationCore, "System.Windows.Input.FocusManager");
+        AssertEqual(true, InvokeStatic(focusManagerType, "GetIsFocusScope", accessKeyFocusPanel), "access key focus scope flag");
+        AssertSame(inputBox, InvokeStatic(focusManagerType, "GetFocusedElement", accessKeyFocusPanel), "access key focus initial focused element");
+        object inputAccessLabel = Invoke(window, "FindName", "InputAccessLabel");
+        AssertType(inputAccessLabel, "System.Windows.Controls.Label", "input access label");
+        AssertEqual("_Input access", GetProperty(inputAccessLabel, "Content"), "input access label content");
+        AssertSame(inputBox, GetProperty(inputAccessLabel, "Target"), "input access label target");
+        object standaloneAccessText = Invoke(window, "FindName", "StandaloneAccessText");
+        AssertType(standaloneAccessText, "System.Windows.Controls.AccessText", "standalone access text");
+        AssertEqual("_Standalone access", GetProperty(standaloneAccessText, "Text"), "standalone access text");
         object mutableStatusText = Invoke(window, "FindName", "MutableStatusText");
         AssertType(mutableStatusText, "System.Windows.Controls.TextBlock", "mutable status text element");
         AssertEqual("initial binding status", GetProperty(mutableStatusText, "Text"), "mutable status initial binding text");
@@ -1159,6 +1172,15 @@ internal static class Program
     {
         return assembly.GetType(typeName, throwOnError: true)!
             ?? throw new TypeLoadException(typeName);
+    }
+
+    private static Assembly GetAssemblyFromContext(Assembly contextAssembly, string assemblyName)
+    {
+        AssemblyLoadContext loadContext = AssemblyLoadContext.GetLoadContext(contextAssembly)
+            ?? throw new InvalidOperationException($"Assembly '{contextAssembly.FullName}' does not have a load context.");
+        return loadContext.Assemblies.FirstOrDefault(
+                assembly => string.Equals(assembly.GetName().Name, assemblyName, StringComparison.Ordinal))
+            ?? throw new InvalidOperationException($"Assembly '{assemblyName}' is not loaded in context '{loadContext.Name}'.");
     }
 
     private static object Invoke(object instance, string methodName, params object?[] args)

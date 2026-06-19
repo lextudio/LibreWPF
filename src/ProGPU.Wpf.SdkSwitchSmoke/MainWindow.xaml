@@ -324,6 +324,19 @@
             x:Name="InputBox"
             Margin="{StaticResource SmokePanelMargin}"
             Text="{Binding InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        <StackPanel
+            x:Name="AccessKeyFocusPanel"
+            Margin="0,6,0,0"
+            FocusManager.FocusedElement="{Binding ElementName=InputBox}"
+            FocusManager.IsFocusScope="True">
+            <Label
+                x:Name="InputAccessLabel"
+                Content="_Input access"
+                Target="{Binding ElementName=InputBox}" />
+            <AccessText
+                x:Name="StandaloneAccessText"
+                Text="_Standalone access" />
+        </StackPanel>
         <TextBlock
             x:Name="MutableStatusText"
             Margin="0,6,0,0"

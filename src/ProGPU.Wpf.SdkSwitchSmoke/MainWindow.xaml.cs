@@ -35,6 +35,16 @@ public partial class MainWindow : Window
 
     public int MenuUncheckedCount { get; private set; }
 
+    public int ManagedCheckBoxCheckedCount { get; private set; }
+
+    public int ManagedCheckBoxUncheckedCount { get; private set; }
+
+    public int ManagedRadioCheckedCount { get; private set; }
+
+    public int ManagedRadioUncheckedCount { get; private set; }
+
+    public string? LastManagedRadioCheckedName { get; private set; }
+
     public int SelectorSelectionChangedCount { get; private set; }
 
     public int TabSelectionChangedCount { get; private set; }
@@ -93,6 +103,51 @@ public partial class MainWindow : Window
         if (MenuStatus != null)
         {
             MenuStatus.Text = "menu unchecked";
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnManagedCheckBoxChecked(object sender, RoutedEventArgs e)
+    {
+        ManagedCheckBoxCheckedCount++;
+        if (CheckChoiceStatus != null)
+        {
+            CheckChoiceStatus.Text = "check checked";
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnManagedCheckBoxUnchecked(object sender, RoutedEventArgs e)
+    {
+        ManagedCheckBoxUncheckedCount++;
+        if (CheckChoiceStatus != null)
+        {
+            CheckChoiceStatus.Text = "check unchecked";
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnManagedRadioChecked(object sender, RoutedEventArgs e)
+    {
+        ManagedRadioCheckedCount++;
+        LastManagedRadioCheckedName = (sender as FrameworkElement)?.Name;
+        if (CheckChoiceStatus != null)
+        {
+            CheckChoiceStatus.Text = $"radio checked: {LastManagedRadioCheckedName}";
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnManagedRadioUnchecked(object sender, RoutedEventArgs e)
+    {
+        ManagedRadioUncheckedCount++;
+        if (CheckChoiceStatus != null)
+        {
+            CheckChoiceStatus.Text = "radio unchecked";
         }
 
         e.Handled = true;

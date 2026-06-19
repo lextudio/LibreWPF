@@ -254,6 +254,36 @@
             x:Name="MenuStatus"
             Margin="0,6,0,0"
             Text="menu idle" />
+        <StackPanel
+            x:Name="CheckChoicePanel"
+            Margin="{StaticResource SmokePanelMargin}">
+            <CheckBox
+                x:Name="ManagedCheckBox"
+                Checked="OnManagedCheckBoxChecked"
+                Content="Managed check"
+                IsChecked="True"
+                Unchecked="OnManagedCheckBoxUnchecked" />
+            <StackPanel Orientation="Horizontal">
+                <RadioButton
+                    x:Name="ManagedRadioAlpha"
+                    Checked="OnManagedRadioChecked"
+                    Content="Alpha"
+                    GroupName="ManagedRadioGroup"
+                    IsChecked="True"
+                    Unchecked="OnManagedRadioUnchecked" />
+                <RadioButton
+                    x:Name="ManagedRadioBeta"
+                    Margin="12,0,0,0"
+                    Checked="OnManagedRadioChecked"
+                    Content="Beta"
+                    GroupName="ManagedRadioGroup"
+                    Unchecked="OnManagedRadioUnchecked" />
+            </StackPanel>
+        </StackPanel>
+        <TextBlock
+            x:Name="CheckChoiceStatus"
+            Margin="0,6,0,0"
+            Text="check choice idle" />
         <TextBlock
             x:Name="PropertyTriggerStatus"
             Margin="0,8,0,0"

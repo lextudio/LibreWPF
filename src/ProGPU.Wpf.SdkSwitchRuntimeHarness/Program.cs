@@ -438,6 +438,52 @@ internal static class Program
         AssertAtLeast(1, GetProperty(window, "MenuCheckedCount"), "window menu checked count");
         AssertEqual("menu checked", GetProperty(menuStatus, "Text"), "menu status after checked item");
 
+        object checkChoicePanel = Invoke(window, "FindName", "CheckChoicePanel");
+        AssertType(checkChoicePanel, "System.Windows.Controls.StackPanel", "check choice panel");
+        AssertAtLeast(2, GetCount(GetProperty(checkChoicePanel, "Children")), "check choice panel child count");
+        object checkChoiceStatus = Invoke(window, "FindName", "CheckChoiceStatus");
+        AssertType(checkChoiceStatus, "System.Windows.Controls.TextBlock", "check choice status element");
+
+        object managedCheckBox = Invoke(window, "FindName", "ManagedCheckBox");
+        AssertType(managedCheckBox, "System.Windows.Controls.CheckBox", "managed check box");
+        AssertEqual("Managed check", GetProperty(managedCheckBox, "Content"), "managed check box content");
+        AssertEqual(true, GetProperty(managedCheckBox, "IsChecked"), "managed check box initial checked state");
+        int managedCheckBoxUncheckedCountBefore = Convert.ToInt32(GetProperty(window, "ManagedCheckBoxUncheckedCount"));
+        InvokeVoid(managedCheckBox, "OnClick");
+        AssertEqual(false, GetProperty(managedCheckBox, "IsChecked"), "managed check box unchecked by click");
+        AssertAtLeast(managedCheckBoxUncheckedCountBefore + 1, GetProperty(window, "ManagedCheckBoxUncheckedCount"), "managed check box unchecked count");
+        AssertEqual("check unchecked", GetProperty(checkChoiceStatus, "Text"), "check choice status after check unchecked");
+        int managedCheckBoxCheckedCountBefore = Convert.ToInt32(GetProperty(window, "ManagedCheckBoxCheckedCount"));
+        InvokeVoid(managedCheckBox, "OnClick");
+        AssertEqual(true, GetProperty(managedCheckBox, "IsChecked"), "managed check box checked by click");
+        AssertAtLeast(managedCheckBoxCheckedCountBefore + 1, GetProperty(window, "ManagedCheckBoxCheckedCount"), "managed check box checked count");
+        AssertEqual("check checked", GetProperty(checkChoiceStatus, "Text"), "check choice status after check checked");
+
+        object managedRadioAlpha = Invoke(window, "FindName", "ManagedRadioAlpha");
+        AssertType(managedRadioAlpha, "System.Windows.Controls.RadioButton", "managed radio alpha");
+        AssertEqual("Alpha", GetProperty(managedRadioAlpha, "Content"), "managed radio alpha content");
+        AssertEqual("ManagedRadioGroup", GetProperty(managedRadioAlpha, "GroupName"), "managed radio alpha group");
+        object managedRadioBeta = Invoke(window, "FindName", "ManagedRadioBeta");
+        AssertType(managedRadioBeta, "System.Windows.Controls.RadioButton", "managed radio beta");
+        AssertEqual("Beta", GetProperty(managedRadioBeta, "Content"), "managed radio beta content");
+        AssertEqual("ManagedRadioGroup", GetProperty(managedRadioBeta, "GroupName"), "managed radio beta group");
+        AssertEqual(true, GetProperty(managedRadioAlpha, "IsChecked"), "managed radio alpha initial checked state");
+        AssertEqual(false, GetProperty(managedRadioBeta, "IsChecked"), "managed radio beta initial checked state");
+        int managedRadioCheckedCountBefore = Convert.ToInt32(GetProperty(window, "ManagedRadioCheckedCount"));
+        int managedRadioUncheckedCountBefore = Convert.ToInt32(GetProperty(window, "ManagedRadioUncheckedCount"));
+        InvokeVoid(managedRadioBeta, "OnClick");
+        AssertEqual(false, GetProperty(managedRadioAlpha, "IsChecked"), "managed radio alpha unchecked after beta click");
+        AssertEqual(true, GetProperty(managedRadioBeta, "IsChecked"), "managed radio beta checked by click");
+        AssertAtLeast(managedRadioCheckedCountBefore + 1, GetProperty(window, "ManagedRadioCheckedCount"), "managed radio checked count after beta");
+        AssertAtLeast(managedRadioUncheckedCountBefore + 1, GetProperty(window, "ManagedRadioUncheckedCount"), "managed radio unchecked count after beta");
+        AssertEqual("ManagedRadioBeta", GetProperty(window, "LastManagedRadioCheckedName"), "managed radio beta last checked name");
+        AssertEqual("radio checked: ManagedRadioBeta", GetProperty(checkChoiceStatus, "Text"), "check choice status after beta radio");
+        InvokeVoid(managedRadioAlpha, "OnClick");
+        AssertEqual(true, GetProperty(managedRadioAlpha, "IsChecked"), "managed radio alpha rechecked by click");
+        AssertEqual(false, GetProperty(managedRadioBeta, "IsChecked"), "managed radio beta unchecked after alpha click");
+        AssertEqual("ManagedRadioAlpha", GetProperty(window, "LastManagedRadioCheckedName"), "managed radio alpha last checked name");
+        AssertEqual("radio checked: ManagedRadioAlpha", GetProperty(checkChoiceStatus, "Text"), "check choice status after alpha radio");
+
         object propertyTriggerStatus = Invoke(window, "FindName", "PropertyTriggerStatus");
         AssertType(propertyTriggerStatus, "System.Windows.Controls.TextBlock", "property trigger status element");
         AssertEqual("property trigger active", GetProperty(propertyTriggerStatus, "Text"), "property trigger text");

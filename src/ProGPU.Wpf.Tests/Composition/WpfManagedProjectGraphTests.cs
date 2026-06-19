@@ -4143,6 +4143,15 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Input",
             "InputMethod.cs"));
+        var tipTsfHelper = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "MS",
+            "internal",
+            "Interop",
+            "TipTsfHelper.cs"));
         var systemResources = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4555,6 +4564,8 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(inputMethod, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetKeyboardLayout(0)");
         AssertGuardBefore(inputMethod, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.ImmGetContext(new HandleRef(this, hwnd))");
         AssertGuardBefore(inputMethod, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.ImmGetDefaultIMEWnd");
+        AssertGuardBefore(tipTsfHelper, "if (!OperatingSystem.IsWindows())", "InputPane.GetForWindow(GetHwndSource(focusedObject))");
+        Assert.Contains("internal static void Hide(DependencyObject focusedObject)\n        {\n            if (!OperatingSystem.IsWindows())", tipTsfHelper, StringComparison.Ordinal);
         AssertGuardBefore(systemResources, "if (!OperatingSystem.IsWindows())", "new HwndWrapper(");
         AssertGuardBefore(systemResources, "if (OperatingSystem.IsWindows())", "XamlAccessLevel.AssemblyAccessTo(assembly)");
         AssertGuardBefore(xamlReader, "if (internalTypeHelper != null && OperatingSystem.IsWindows())", "XamlAccessLevel.AssemblyAccessTo(streamInfo.Assembly)");

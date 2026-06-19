@@ -45,6 +45,16 @@ public partial class MainWindow : Window
 
     public string? LastManagedRadioCheckedName { get; private set; }
 
+    public int PasswordChangedCount { get; private set; }
+
+    public string? LastPasswordChangedSenderName { get; private set; }
+
+    public string? LastPasswordChangedRoutedEventName { get; private set; }
+
+    public int DateSelectionChangedCount { get; private set; }
+
+    public string? LastDateSelectionChangedSenderName { get; private set; }
+
     public int SelectorSelectionChangedCount { get; private set; }
 
     public int TabSelectionChangedCount { get; private set; }
@@ -148,6 +158,31 @@ public partial class MainWindow : Window
         if (CheckChoiceStatus != null)
         {
             CheckChoiceStatus.Text = "radio unchecked";
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnPasswordChanged(object sender, RoutedEventArgs e)
+    {
+        PasswordChangedCount++;
+        LastPasswordChangedSenderName = (sender as FrameworkElement)?.Name;
+        LastPasswordChangedRoutedEventName = e.RoutedEvent?.Name;
+        if (PasswordStatus != null)
+        {
+            PasswordStatus.Text = "password changed";
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnDateSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        DateSelectionChangedCount++;
+        LastDateSelectionChangedSenderName = (sender as FrameworkElement)?.Name;
+        if (DateStatus != null)
+        {
+            DateStatus.Text = $"date changed: {LastDateSelectionChangedSenderName}";
         }
 
         e.Handled = true;

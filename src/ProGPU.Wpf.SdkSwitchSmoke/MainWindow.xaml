@@ -346,6 +346,40 @@
             x:Name="ValidationStatus"
             Margin="0,6,0,0"
             Text="{Binding ElementName=ValidatedInputBox, Path=(Validation.HasError), StringFormat=validation has error: {0}}" />
+        <PasswordBox
+            x:Name="CredentialBox"
+            Margin="0,6,0,0"
+            MaxLength="12"
+            PasswordChanged="OnPasswordChanged"
+            PasswordChar="#" />
+        <TextBlock
+            x:Name="PasswordStatus"
+            Margin="0,6,0,0"
+            Text="password unchanged" />
+        <Calendar
+            x:Name="CalendarSmoke"
+            Height="142"
+            Margin="{StaticResource SmokePanelMargin}"
+            DisplayDate="2026-06-01"
+            DisplayDateEnd="2026-12-31"
+            DisplayDateStart="2026-01-01"
+            FirstDayOfWeek="Monday"
+            IsTodayHighlighted="False"
+            SelectedDate="2026-06-17"
+            SelectedDatesChanged="OnDateSelectionChanged"
+            SelectionMode="SingleDate" />
+        <DatePicker
+            x:Name="DatePickerSmoke"
+            Margin="0,6,0,0"
+            FirstDayOfWeek="Monday"
+            IsTodayHighlighted="False"
+            SelectedDate="2026-06-18"
+            SelectedDateChanged="OnDateSelectionChanged"
+            SelectedDateFormat="Short" />
+        <TextBlock
+            x:Name="DateStatus"
+            Margin="0,6,0,0"
+            Text="date unchanged" />
         <local:SmokeRoutedEventSource
             x:Name="RoutedEventSource"
             Width="1"

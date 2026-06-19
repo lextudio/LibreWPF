@@ -566,6 +566,74 @@ internal static class Program
             AssertEqual("validation has error: False", GetProperty(validationStatus, "Text"), "validation status corrected text");
             AssertEqual("corrected package text", GetProperty(viewModel, "ValidationText"), "validated input corrected source update");
         }
+
+        object credentialBox = Invoke(window, "FindName", "CredentialBox");
+        AssertType(credentialBox, "System.Windows.Controls.PasswordBox", "credential password box");
+        AssertEqual(12, GetProperty(credentialBox, "MaxLength"), "credential password box max length");
+        AssertEqual('#', GetProperty(credentialBox, "PasswordChar"), "credential password box password char");
+        AssertEqual(string.Empty, GetProperty(credentialBox, "Password"), "credential password box initial password");
+        object credentialSecurePassword = GetProperty(credentialBox, "SecurePassword");
+        AssertEqual(0, GetProperty(credentialSecurePassword, "Length"), "credential password box initial secure password length");
+        object passwordStatus = Invoke(window, "FindName", "PasswordStatus");
+        AssertType(passwordStatus, "System.Windows.Controls.TextBlock", "password status element");
+        if (validateFrameContent)
+        {
+            int passwordChangedCountBefore = Convert.ToInt32(GetProperty(window, "PasswordChangedCount"));
+            SetProperty(credentialBox, "Password", "secret42");
+            AssertEqual("secret42", GetProperty(credentialBox, "Password"), "credential password box updated password");
+            credentialSecurePassword = GetProperty(credentialBox, "SecurePassword");
+            AssertEqual(8, GetProperty(credentialSecurePassword, "Length"), "credential password box secure password length");
+            AssertAtLeast(passwordChangedCountBefore + 1, GetProperty(window, "PasswordChangedCount"), "credential password box changed count");
+            AssertEqual("CredentialBox", GetProperty(window, "LastPasswordChangedSenderName"), "credential password box changed sender");
+            AssertEqual("PasswordChanged", GetProperty(window, "LastPasswordChangedRoutedEventName"), "credential password box routed event");
+            AssertEqual("password changed", GetProperty(passwordStatus, "Text"), "password status after change");
+            int passwordClearCountBefore = Convert.ToInt32(GetProperty(window, "PasswordChangedCount"));
+            InvokeVoid(credentialBox, "Clear");
+            AssertEqual(string.Empty, GetProperty(credentialBox, "Password"), "credential password box cleared password");
+            credentialSecurePassword = GetProperty(credentialBox, "SecurePassword");
+            AssertEqual(0, GetProperty(credentialSecurePassword, "Length"), "credential password box cleared secure password length");
+            AssertAtLeast(passwordClearCountBefore + 1, GetProperty(window, "PasswordChangedCount"), "credential password box clear changed count");
+        }
+
+        object calendarSmoke = Invoke(window, "FindName", "CalendarSmoke");
+        AssertType(calendarSmoke, "System.Windows.Controls.Calendar", "calendar smoke");
+        AssertEqual("Month", GetProperty(calendarSmoke, "DisplayMode").ToString() ?? string.Empty, "calendar smoke display mode");
+        AssertEqual("SingleDate", GetProperty(calendarSmoke, "SelectionMode").ToString() ?? string.Empty, "calendar smoke selection mode");
+        AssertEqual("Monday", GetProperty(calendarSmoke, "FirstDayOfWeek").ToString() ?? string.Empty, "calendar smoke first day");
+        AssertEqual(false, GetProperty(calendarSmoke, "IsTodayHighlighted"), "calendar smoke today highlight");
+        AssertDate(GetProperty(calendarSmoke, "DisplayDateStart"), 2026, 1, 1, "calendar smoke display start");
+        AssertDate(GetProperty(calendarSmoke, "DisplayDateEnd"), 2026, 12, 31, "calendar smoke display end");
+        AssertDate(GetProperty(calendarSmoke, "DisplayDate"), 2026, 6, 1, "calendar smoke display date");
+        AssertDate(GetProperty(calendarSmoke, "SelectedDate"), 2026, 6, 17, "calendar smoke selected date");
+        object calendarSelectedDates = GetProperty(calendarSmoke, "SelectedDates");
+        AssertEqual(1, GetCount(calendarSelectedDates), "calendar smoke selected date count");
+        AssertDate(EnumerateObjects(calendarSelectedDates).First(), 2026, 6, 17, "calendar smoke selected date collection item");
+
+        object datePickerSmoke = Invoke(window, "FindName", "DatePickerSmoke");
+        AssertType(datePickerSmoke, "System.Windows.Controls.DatePicker", "date picker smoke");
+        AssertEqual("Monday", GetProperty(datePickerSmoke, "FirstDayOfWeek").ToString() ?? string.Empty, "date picker smoke first day");
+        AssertEqual(false, GetProperty(datePickerSmoke, "IsTodayHighlighted"), "date picker smoke today highlight");
+        AssertEqual("Short", GetProperty(datePickerSmoke, "SelectedDateFormat").ToString() ?? string.Empty, "date picker smoke selected date format");
+        AssertDate(GetProperty(datePickerSmoke, "SelectedDate"), 2026, 6, 18, "date picker smoke selected date");
+        object dateStatus = Invoke(window, "FindName", "DateStatus");
+        AssertType(dateStatus, "System.Windows.Controls.TextBlock", "date status element");
+        if (validateFrameContent)
+        {
+            int dateSelectionChangedCountBefore = Convert.ToInt32(GetProperty(window, "DateSelectionChangedCount"));
+            SetProperty(calendarSmoke, "SelectedDate", new DateTime(2026, 6, 21));
+            AssertDate(GetProperty(calendarSmoke, "SelectedDate"), 2026, 6, 21, "calendar smoke updated selected date");
+            AssertDate(EnumerateObjects(calendarSelectedDates).First(), 2026, 6, 21, "calendar smoke updated selected date collection item");
+            AssertAtLeast(dateSelectionChangedCountBefore + 1, GetProperty(window, "DateSelectionChangedCount"), "calendar smoke selection changed count");
+            AssertEqual("CalendarSmoke", GetProperty(window, "LastDateSelectionChangedSenderName"), "calendar smoke selection changed sender");
+            AssertEqual("date changed: CalendarSmoke", GetProperty(dateStatus, "Text"), "date status after calendar change");
+            dateSelectionChangedCountBefore = Convert.ToInt32(GetProperty(window, "DateSelectionChangedCount"));
+            SetProperty(datePickerSmoke, "SelectedDate", new DateTime(2026, 6, 22));
+            AssertDate(GetProperty(datePickerSmoke, "SelectedDate"), 2026, 6, 22, "date picker smoke updated selected date");
+            AssertAtLeast(dateSelectionChangedCountBefore + 1, GetProperty(window, "DateSelectionChangedCount"), "date picker smoke selection changed count");
+            AssertEqual("DatePickerSmoke", GetProperty(window, "LastDateSelectionChangedSenderName"), "date picker smoke selection changed sender");
+            AssertEqual("date changed: DatePickerSmoke", GetProperty(dateStatus, "Text"), "date status after date picker change");
+        }
+
         object routedEventSource = Invoke(window, "FindName", "RoutedEventSource");
         AssertType(routedEventSource, "ProGPU.Wpf.SdkSwitchSmoke.SmokeRoutedEventSource", "custom routed event source");
         AssertAssignableTo(routedEventSource, "System.Windows.FrameworkElement", "custom routed event source base type");
@@ -1342,6 +1410,20 @@ internal static class Program
         if (!object.Equals(expected, actual))
         {
             throw new InvalidOperationException($"{description}: expected '{expected}', actual '{actual}'.");
+        }
+    }
+
+    private static void AssertDate(object value, int year, int month, int day, string description)
+    {
+        if (value is not DateTime date)
+        {
+            throw new InvalidOperationException($"{description}: expected DateTime, actual '{value.GetType().FullName}'.");
+        }
+
+        DateTime expected = new(year, month, day);
+        if (date.Date != expected)
+        {
+            throw new InvalidOperationException($"{description}: expected '{expected:yyyy-MM-dd}', actual '{date:yyyy-MM-dd}'.");
         }
     }
 

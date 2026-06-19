@@ -3,10 +3,5 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net11.0</TargetFramework>
     <UseWPF>true</UseWPF>
-    <ImplicitUsings>disable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <EnableNETAnalyzers>false</EnableNETAnalyzers>
-    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
-    <NoWarn>$(NoWarn);IDE0073</NoWarn>
   </PropertyGroup>
 </Project>

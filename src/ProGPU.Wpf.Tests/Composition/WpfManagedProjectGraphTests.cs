@@ -4454,6 +4454,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
             "ProGPU.Wpf.SdkSwitchSmoke.csproj");
+        var smokeDirectoryBuildPropsPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchSmoke",
+            "Directory.Build.props");
         var smokeNuGetConfigPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
@@ -4570,6 +4574,7 @@ public sealed class WpfManagedProjectGraphTests
         var portableTargets = File.ReadAllText(portableTargetsPath);
         var portableBootstrap = File.ReadAllText(portableBootstrapPath);
         var smokeProject = File.ReadAllText(smokeProjectPath);
+        var smokeDirectoryBuildProps = File.ReadAllText(smokeDirectoryBuildPropsPath);
         var smokeNuGetConfig = File.ReadAllText(smokeNuGetConfigPath);
         var smokeAppXaml = File.ReadAllText(smokeAppXamlPath);
         var smokeAppCodeBehind = File.ReadAllText(smokeAppCodeBehindPath);
@@ -4706,6 +4711,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("AssemblyName", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("RootNamespace", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("GenerateDependencyFile", smokeProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("ImplicitUsings", smokeProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("Nullable", smokeProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("EnableNETAnalyzers", smokeProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("EnforceCodeStyleInBuild", smokeProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("NoWarn", smokeProject, StringComparison.Ordinal);
+        Assert.Contains(@"..\..\Directory.Build.props", smokeDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<EnableNETAnalyzers>false</EnableNETAnalyzers>", smokeDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>", smokeDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("artifacts/packages/Release/NonShipping", smokeNuGetConfig, StringComparison.Ordinal);
         Assert.Contains("ResourceDictionary Source=\"SmokeResources.xaml\"", smokeAppXaml, StringComparison.Ordinal);
         Assert.Contains("SmokeAccentBrush", smokeAppXaml, StringComparison.Ordinal);

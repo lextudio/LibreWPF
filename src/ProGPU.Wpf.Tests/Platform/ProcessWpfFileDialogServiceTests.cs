@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows.Media.ProGPU.Platform;
 using Xunit;
@@ -55,7 +56,7 @@ public sealed class ProcessWpfFileDialogServiceTests
     }
 
     [Fact]
-    public void CreateLinuxOpenFileStartInfoUsesZenityWithFilters()
+    public void CreateLinuxOpenFileStartInfosUseZenityAndKDialogWithFilters()
     {
         var options = new WpfFileDialogOptions
         {
@@ -63,31 +64,52 @@ public sealed class ProcessWpfFileDialogServiceTests
             FileTypePatterns = new[] { ".png", "*.jpg", "*.*" }
         };
 
-        var startInfo = Assert.Single(ProcessWpfFileDialogService.CreateStartInfos(
+        var startInfos = ProcessWpfFileDialogService.CreateStartInfos(
             WpfFileDialogPlatform.Linux,
             WpfFileDialogKind.OpenFile,
-            options));
+            options);
 
+        Assert.Equal(2, startInfos.Count);
+        var startInfo = startInfos[0];
         Assert.Equal("zenity", startInfo.FileName);
         Assert.Contains("--file-selection", startInfo.ArgumentList);
         Assert.Contains("--title=Open media", startInfo.ArgumentList);
         Assert.Contains("--file-filter=Selected Files | *.png *.jpg", startInfo.ArgumentList);
         Assert.Contains("--file-filter=All Files | *", startInfo.ArgumentList);
         Assert.False(startInfo.UseShellExecute);
+
+        var fallback = startInfos[1];
+        Assert.Equal("kdialog", fallback.FileName);
+        Assert.Contains("--title", fallback.ArgumentList);
+        Assert.Contains("Open media", fallback.ArgumentList);
+        Assert.Contains("--getopenfilename", fallback.ArgumentList);
+        Assert.Contains(".", fallback.ArgumentList);
+        Assert.Contains(fallback.ArgumentList, argument => argument.Contains("*.png *.jpg|Selected Files", StringComparison.Ordinal));
+        Assert.Contains(fallback.ArgumentList, argument => argument.Contains("*|All Files", StringComparison.Ordinal));
+        Assert.False(fallback.UseShellExecute);
     }
 
     [Fact]
-    public void CreateLinuxFolderStartInfoUsesDirectoryMode()
+    public void CreateLinuxFolderStartInfosUseDirectoryMode()
     {
-        var startInfo = Assert.Single(ProcessWpfFileDialogService.CreateStartInfos(
+        var startInfos = ProcessWpfFileDialogService.CreateStartInfos(
             WpfFileDialogPlatform.Linux,
             WpfFileDialogKind.PickFolder,
-            new WpfFileDialogOptions { Title = "Choose folder" }));
+            new WpfFileDialogOptions { Title = "Choose folder" });
 
+        Assert.Equal(2, startInfos.Count);
+        var startInfo = startInfos[0];
         Assert.Equal("zenity", startInfo.FileName);
         Assert.Contains("--file-selection", startInfo.ArgumentList);
         Assert.Contains("--directory", startInfo.ArgumentList);
         Assert.Contains("--title=Choose folder", startInfo.ArgumentList);
+
+        var fallback = startInfos[1];
+        Assert.Equal("kdialog", fallback.FileName);
+        Assert.Contains("--title", fallback.ArgumentList);
+        Assert.Contains("Choose folder", fallback.ArgumentList);
+        Assert.Contains("--getexistingdirectory", fallback.ArgumentList);
+        Assert.Contains(".", fallback.ArgumentList);
     }
 
     [Fact]
@@ -106,6 +128,29 @@ public sealed class ProcessWpfFileDialogServiceTests
 
         Assert.Equal("/tmp/file.txt", selected);
         Assert.Single(calls);
+    }
+
+    [Fact]
+    public async Task OpenFileAsyncFallsBackToKDialogWhenZenityCannotStart()
+    {
+        var calls = new List<string>();
+        var service = new ProcessWpfFileDialogService(
+            () => WpfFileDialogPlatform.Linux,
+            (startInfo, _) =>
+            {
+                calls.Add(startInfo.FileName);
+                if (startInfo.FileName == "zenity")
+                {
+                    throw new Win32Exception(2);
+                }
+
+                return ValueTask.FromResult(new WpfFileDialogProcessResult(0, "/tmp/fallback.txt", string.Empty));
+            });
+
+        var selected = await service.OpenFileAsync(new WpfFileDialogOptions());
+
+        Assert.Equal("/tmp/fallback.txt", selected);
+        Assert.Equal(new[] { "zenity", "kdialog" }, calls);
     }
 
     [Fact]

@@ -98,7 +98,7 @@ public sealed class ProcessWpfFileDialogService : IWpfFileDialogService
         {
             WpfFileDialogPlatform.Windows => new[] { CreateWindowsStartInfo(kind, options) },
             WpfFileDialogPlatform.MacOS => new[] { CreateMacStartInfo(kind, options) },
-            WpfFileDialogPlatform.Linux => new[] { CreateLinuxStartInfo(kind, options) },
+            WpfFileDialogPlatform.Linux => CreateLinuxStartInfos(kind, options),
             _ => Array.Empty<ProcessStartInfo>()
         };
     }
@@ -227,7 +227,16 @@ public sealed class ProcessWpfFileDialogService : IWpfFileDialogService
         return extensions.Length == 0 ? string.Empty : $"of type {{{string.Join(", ", extensions)}}} ";
     }
 
-    private static ProcessStartInfo CreateLinuxStartInfo(WpfFileDialogKind kind, WpfFileDialogOptions options)
+    private static IReadOnlyList<ProcessStartInfo> CreateLinuxStartInfos(WpfFileDialogKind kind, WpfFileDialogOptions options)
+    {
+        return new[]
+        {
+            CreateLinuxZenityStartInfo(kind, options),
+            CreateLinuxKDialogStartInfo(kind, options)
+        };
+    }
+
+    private static ProcessStartInfo CreateLinuxZenityStartInfo(WpfFileDialogKind kind, WpfFileDialogOptions options)
     {
         var title = options.Title ?? DefaultTitle(kind);
         var startInfo = CreateStartInfo("zenity", "--file-selection", $"--title={title}");
@@ -254,6 +263,47 @@ public sealed class ProcessWpfFileDialogService : IWpfFileDialogService
         }
 
         return startInfo;
+    }
+
+    private static ProcessStartInfo CreateLinuxKDialogStartInfo(WpfFileDialogKind kind, WpfFileDialogOptions options)
+    {
+        var title = options.Title ?? DefaultTitle(kind);
+        var startInfo = CreateStartInfo("kdialog", "--title", title);
+
+        if (kind == WpfFileDialogKind.OpenFile)
+        {
+            startInfo.ArgumentList.Add("--getopenfilename");
+            startInfo.ArgumentList.Add(".");
+            AddKDialogFileFilter(startInfo, options.FileTypePatterns);
+        }
+        else if (kind == WpfFileDialogKind.SaveFile)
+        {
+            startInfo.ArgumentList.Add("--getsavefilename");
+            startInfo.ArgumentList.Add(string.IsNullOrWhiteSpace(options.SuggestedFileName) ? "." : options.SuggestedFileName!);
+            AddKDialogFileFilter(startInfo, options.FileTypePatterns);
+        }
+        else if (kind == WpfFileDialogKind.PickFolder)
+        {
+            startInfo.ArgumentList.Add("--getexistingdirectory");
+            startInfo.ArgumentList.Add(".");
+        }
+        else
+        {
+            throw new ArgumentOutOfRangeException(nameof(kind), kind, null);
+        }
+
+        return startInfo;
+    }
+
+    private static void AddKDialogFileFilter(ProcessStartInfo startInfo, IReadOnlyList<string> patterns)
+    {
+        var normalized = NormalizeFileTypePatterns(patterns).ToArray();
+        if (normalized.Length == 0)
+        {
+            return;
+        }
+
+        startInfo.ArgumentList.Add($"{string.Join(' ', normalized)}|Selected Files\n*|All Files");
     }
 
     private static string DefaultTitle(WpfFileDialogKind kind)

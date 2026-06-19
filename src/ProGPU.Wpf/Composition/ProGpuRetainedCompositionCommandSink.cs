@@ -63,7 +63,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
 
         var rootVisual = new ProGpuRetainedDrawingVisual
         {
-            Size = new Vector2(drawingFrame.PixelWidth, drawingFrame.PixelHeight)
+            Size = new Vector2(drawingFrame.LogicalWidth, drawingFrame.LogicalHeight)
         };
 
         if (!drawingFrame.AddRetainedWpfVisual(rootVisual))

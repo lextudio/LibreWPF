@@ -107,6 +107,10 @@ public sealed class ProGpuWpfDrawingFrameTests
         Assert.Equal(Matrix4x4.Identity, retainedRoot.Transform);
         Assert.Equal(Vector3.One, retainedRoot.Scale);
         Assert.Equal(Vector2.Zero, retainedRoot.RenderTransformOrigin);
+
+        using var sink = new ProGpuRetainedCompositionCommandSink(frame, context: null, viewport3DTextureCache: null);
+        var retainedFrameRoot = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
+        Assert.Equal(new Vector2(420, 840), retainedFrameRoot.Size);
     }
 
     [Fact]

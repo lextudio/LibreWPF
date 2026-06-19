@@ -195,6 +195,16 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf",
             "ProGpuWpfWindowHost.cs");
+        var proGpuCompositionTargetPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "ProGpuWpfCompositionTarget.cs");
+        var proGpuCompositorPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Scene",
+            "Compositor.cs");
 
         var mediaContext = File.ReadAllText(mediaContextPath);
         var renderService = File.ReadAllText(renderServicePath);
@@ -204,6 +214,8 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuScheduler = File.ReadAllText(proGpuSchedulerPath);
         var proGpuPlatformServices = File.ReadAllText(proGpuPlatformServicesPath);
         var proGpuHost = File.ReadAllText(proGpuHostPath);
+        var proGpuCompositionTarget = File.ReadAllText(proGpuCompositionTargetPath);
+        var proGpuCompositor = File.ReadAllText(proGpuCompositorPath);
 
         Assert.Contains(@"<Compile Include=""System\Windows\Media\PortableMediaContextRenderService.cs"" />", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains("internal static class PortableMediaContextRenderService", renderService, StringComparison.Ordinal);
@@ -237,12 +249,20 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Host.TryBeginDragMove()", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("public bool TryBeginDragMove()", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("PlatformServices.WindowDecorations.TryBeginDragMove(_window)", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("var logicalWidth = (uint)Math.Max(1, _window.Size.X)", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("var logicalHeight = (uint)Math.Max(1, _window.Size.Y)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("public int Width => _clientWidth;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("public int Height => _clientHeight;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("var logicalWidth = (uint)Math.Max(1, _clientWidth)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("var logicalHeight = (uint)Math.Max(1, _clientHeight)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var dpiScaleX = pixelWidth / (double)logicalWidth", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var dpiScaleY = pixelHeight / (double)logicalHeight", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("logicalWidth,\n                logicalHeight,\n                dpiScaleX,\n                dpiScaleY", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("Present(logicalWidth, logicalHeight)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("Present(logicalWidth, logicalHeight, pixelWidth, pixelHeight, dpiScale)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_target.Render(logicalWidth, logicalHeight, pixelWidth, pixelHeight, (float)dpiScale, targetView)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("uint renderTargetWidth", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("_explicitRenderTargetWidth = Math.Max(1, renderTargetWidth)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("uint renderWidth = _explicitRenderTargetWidth ?? width", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("float dpiScale", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("Compositor.RenderScene(\n            SceneRootVisual,\n            logicalWidth,\n            logicalHeight,\n            pixelWidth,\n            pixelHeight,\n            dpiScale,\n            targetView)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("IWpfWindowDecorationService WindowDecorations", proGpuPlatformServices, StringComparison.Ordinal);
         Assert.Contains("bool TryBeginDragMove(object window)", proGpuPlatformServices, StringComparison.Ordinal);
         Assert.Contains("_window.Update += OnUpdate", proGpuHost, StringComparison.Ordinal);

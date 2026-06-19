@@ -273,6 +273,39 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         Compositor.RenderScene(SceneRootVisual, pixelWidth, pixelHeight, targetView);
     }
 
+    public void Render(
+        uint logicalWidth,
+        uint logicalHeight,
+        uint pixelWidth,
+        uint pixelHeight,
+        float dpiScale,
+        TextureView* targetView)
+    {
+        ThrowIfDisposed();
+
+        if (targetView == null)
+        {
+            throw new ArgumentNullException(nameof(targetView));
+        }
+
+        logicalWidth = Math.Max(1, logicalWidth);
+        logicalHeight = Math.Max(1, logicalHeight);
+        pixelWidth = Math.Max(1, pixelWidth);
+        pixelHeight = Math.Max(1, pixelHeight);
+        SceneRootVisual.Size = new Vector2(logicalWidth, logicalHeight);
+        RetainedWpfVisualRoot.Size = new Vector2(logicalWidth, logicalHeight);
+        RootVisual.Size = new Vector2(logicalWidth, logicalHeight);
+
+        Compositor.RenderScene(
+            SceneRootVisual,
+            logicalWidth,
+            logicalHeight,
+            pixelWidth,
+            pixelHeight,
+            dpiScale,
+            targetView);
+    }
+
     public bool DetectWpfSourceChanges()
     {
         ThrowIfDisposed();

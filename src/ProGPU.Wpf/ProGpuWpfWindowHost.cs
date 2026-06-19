@@ -76,9 +76,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     public string Title => _window?.Title ?? _windowTitle;
 
-    public int Width => _window?.Size.X ?? _clientWidth;
+    public int Width => _clientWidth;
 
-    public int Height => _window?.Size.Y ?? _clientHeight;
+    public int Height => _clientHeight;
 
     public object? PortablePresentationSource => _portablePresentationSourceBridge?.Source;
 
@@ -430,8 +430,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             var framebufferSize = _window.FramebufferSize;
             var pixelWidth = (uint)Math.Max(1, framebufferSize.X);
             var pixelHeight = (uint)Math.Max(1, framebufferSize.Y);
-            var logicalWidth = (uint)Math.Max(1, _window.Size.X);
-            var logicalHeight = (uint)Math.Max(1, _window.Size.Y);
+            var logicalWidth = (uint)Math.Max(1, _clientWidth);
+            var logicalHeight = (uint)Math.Max(1, _clientHeight);
             var dpiScaleX = pixelWidth / (double)logicalWidth;
             var dpiScaleY = pixelHeight / (double)logicalHeight;
             var dpiScale = (dpiScaleX + dpiScaleY) / 2.0;
@@ -545,7 +545,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 WpfRenderScheduler.ConsumeRenderRequest();
             }
 
-            if (Present(logicalWidth, logicalHeight))
+            if (Present(logicalWidth, logicalHeight, pixelWidth, pixelHeight, dpiScale))
             {
                 RecordPresentedFrame(CaptureFrameState(_target, pixelWidth, pixelHeight));
             }
@@ -556,7 +556,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
     }
 
-    private bool Present(uint renderWidth, uint renderHeight)
+    private bool Present(
+        uint logicalWidth,
+        uint logicalHeight,
+        uint pixelWidth,
+        uint pixelHeight,
+        double dpiScale)
     {
         if (_target == null)
         {
@@ -585,7 +590,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         var targetView = _target.Context.Wgpu.TextureCreateView(surfaceTexture.Texture, &viewDescriptor);
         try
         {
-            _target.Render(renderWidth, renderHeight, targetView);
+            _target.Render(logicalWidth, logicalHeight, pixelWidth, pixelHeight, (float)dpiScale, targetView);
             _target.Context.Wgpu.SurfacePresent(_target.Context.Surface);
             return true;
         }

@@ -2843,6 +2843,92 @@ internal static class Program
                     AssertEqual(Orientation.Horizontal, itemsPanel.Orientation, "external SDK loose XamlWriter round-trip ItemsPanelTemplate orientation");
                     AssertEqual(48.0, itemsPanel.ItemWidth, "external SDK loose XamlWriter round-trip ItemsPanelTemplate item width");
                     AssertEqual(24.0, itemsPanel.ItemHeight, "external SDK loose XamlWriter round-trip ItemsPanelTemplate item height");
+
+                    string groupStyleDictionaryXaml =
+                        "<ResourceDictionary xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" " +
+                        "xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\">" +
+                        "<GroupStyle x:Key=\"ExternalWriterGroupStyle\" HidesIfEmpty=\"True\">" +
+                        "<GroupStyle.HeaderTemplate>" +
+                        "<DataTemplate>" +
+                        "<StackPanel x:Name=\"ExternalWriterGroupHeaderRoot\" Tag=\"external writer group header root\">" +
+                        "<TextBlock x:Name=\"ExternalWriterGroupHeaderText\" Text=\"{Binding Name}\" Tag=\"external writer group header text\" />" +
+                        "</StackPanel>" +
+                        "</DataTemplate>" +
+                        "</GroupStyle.HeaderTemplate>" +
+                        "<GroupStyle.Panel>" +
+                        "<ItemsPanelTemplate>" +
+                        "<StackPanel x:Name=\"ExternalWriterGroupItemsPanel\" Orientation=\"Horizontal\" Tag=\"external writer group panel\" />" +
+                        "</ItemsPanelTemplate>" +
+                        "</GroupStyle.Panel>" +
+                        "</GroupStyle>" +
+                        "</ResourceDictionary>";
+                    var groupStyleDictionary = RequireType<ResourceDictionary>(
+                        XamlReader.Parse(groupStyleDictionaryXaml),
+                        "external SDK loose XamlWriter GroupStyle dictionary source");
+                    var parsedGroupStyle = RequireType<GroupStyle>(
+                        groupStyleDictionary["ExternalWriterGroupStyle"],
+                        "external SDK loose XamlReader GroupStyle");
+                    AssertEqual(true, parsedGroupStyle.HidesIfEmpty, "external SDK loose XamlReader GroupStyle HidesIfEmpty");
+                    var parsedGroupHeaderTemplate = RequireType<DataTemplate>(
+                        parsedGroupStyle.HeaderTemplate,
+                        "external SDK loose XamlReader GroupStyle HeaderTemplate");
+                    var parsedGroupHeaderRoot = RequireType<StackPanel>(
+                        parsedGroupHeaderTemplate.LoadContent(),
+                        "external SDK loose XamlReader GroupStyle header root");
+                    AssertEqual(1, parsedGroupHeaderRoot.Children.Count, "external SDK loose XamlReader GroupStyle header child count");
+                    AssertEqual(
+                        "Name",
+                        RequireType<TextBlock>(
+                            parsedGroupHeaderRoot.Children[0],
+                            "external SDK loose XamlReader GroupStyle header text").GetBindingExpression(TextBlock.TextProperty)?.ParentBinding.Path.Path,
+                        "external SDK loose XamlReader GroupStyle header binding path");
+                    var parsedGroupPanelTemplate = RequireType<ItemsPanelTemplate>(
+                        parsedGroupStyle.Panel,
+                        "external SDK loose XamlReader GroupStyle Panel");
+                    var parsedGroupPanel = RequireType<StackPanel>(
+                        parsedGroupPanelTemplate.LoadContent(),
+                        "external SDK loose XamlReader GroupStyle panel root");
+                    AssertEqual(Orientation.Horizontal, parsedGroupPanel.Orientation, "external SDK loose XamlReader GroupStyle panel orientation");
+
+                    string groupStyleSerialized = XamlWriter.Save(groupStyleDictionary);
+                    AssertContains("GroupStyle", groupStyleSerialized, "external SDK loose XamlWriter serialized GroupStyle");
+                    AssertContains("ExternalWriterGroupStyle", groupStyleSerialized, "external SDK loose XamlWriter serialized GroupStyle key");
+                    AssertContains("GroupStyle.HeaderTemplate", groupStyleSerialized, "external SDK loose XamlWriter serialized GroupStyle HeaderTemplate");
+                    AssertContains("GroupStyle.Panel", groupStyleSerialized, "external SDK loose XamlWriter serialized GroupStyle Panel");
+                    AssertContains("ExternalWriterGroupHeaderRoot", groupStyleSerialized, "external SDK loose XamlWriter serialized GroupStyle header root");
+                    AssertContains("ExternalWriterGroupItemsPanel", groupStyleSerialized, "external SDK loose XamlWriter serialized GroupStyle panel name");
+                    var roundTrippedGroupStyles = RequireType<ResourceDictionary>(
+                        XamlReader.Parse(groupStyleSerialized),
+                        "external SDK loose XamlWriter round-trip GroupStyle dictionary");
+                    var groupStyle = RequireType<GroupStyle>(
+                        roundTrippedGroupStyles["ExternalWriterGroupStyle"],
+                        "external SDK loose XamlWriter round-trip GroupStyle");
+                    AssertEqual(true, groupStyle.HidesIfEmpty, "external SDK loose XamlWriter round-trip GroupStyle HidesIfEmpty");
+
+                    var groupHeaderTemplate = RequireType<DataTemplate>(
+                        groupStyle.HeaderTemplate,
+                        "external SDK loose XamlWriter round-trip GroupStyle HeaderTemplate");
+                    var groupHeaderRoot = RequireType<StackPanel>(
+                        groupHeaderTemplate.LoadContent(),
+                        "external SDK loose XamlWriter round-trip GroupStyle header root");
+                    AssertEqual("ExternalWriterGroupHeaderRoot", groupHeaderRoot.Name, "external SDK loose XamlWriter round-trip GroupStyle header root name");
+                    AssertEqual("external writer group header root", groupHeaderRoot.Tag, "external SDK loose XamlWriter round-trip GroupStyle header root tag");
+                    AssertEqual(1, groupHeaderRoot.Children.Count, "external SDK loose XamlWriter round-trip GroupStyle header child count");
+                    var groupHeaderText = RequireType<TextBlock>(
+                        groupHeaderRoot.Children[0],
+                        "external SDK loose XamlWriter round-trip GroupStyle header text");
+                    AssertEqual("ExternalWriterGroupHeaderText", groupHeaderText.Name, "external SDK loose XamlWriter round-trip GroupStyle header TextBlock name");
+                    AssertEqual("external writer group header text", groupHeaderText.Tag, "external SDK loose XamlWriter round-trip GroupStyle header TextBlock tag");
+
+                    var groupPanelTemplate = RequireType<ItemsPanelTemplate>(
+                        groupStyle.Panel,
+                        "external SDK loose XamlWriter round-trip GroupStyle Panel");
+                    var groupPanel = RequireType<StackPanel>(
+                        groupPanelTemplate.LoadContent(),
+                        "external SDK loose XamlWriter round-trip GroupStyle panel");
+                    AssertEqual("ExternalWriterGroupItemsPanel", groupPanel.Name, "external SDK loose XamlWriter round-trip GroupStyle panel name");
+                    AssertEqual("external writer group panel", groupPanel.Tag, "external SDK loose XamlWriter round-trip GroupStyle panel tag");
+                    AssertEqual(Orientation.Horizontal, groupPanel.Orientation, "external SDK loose XamlWriter round-trip GroupStyle panel orientation");
                 }
 
                 private static void ValidateDataProviders(MainWindow window)

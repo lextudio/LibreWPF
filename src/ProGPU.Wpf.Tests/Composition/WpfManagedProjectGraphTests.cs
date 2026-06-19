@@ -4644,11 +4644,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation(typeof(Application).Assembly)", portableBootstrap, StringComparison.Ordinal);
 
         Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", smokeProject, StringComparison.Ordinal);
+        Assert.Contains("<OutputType>WinExe</OutputType>", smokeProject, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>net11.0</TargetFramework>", smokeProject, StringComparison.Ordinal);
+        Assert.Contains("<UseWPF>true</UseWPF>", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("EnableDefaultItems", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("ApplicationDefinition Include", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("Page Include", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("Compile Include", smokeProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProGpuWpfUseWpfMarkup", smokeProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProGpuWpfUsePortableFrameworkReferences", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuWpfReferenceMode", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("GenerateDependencyFile", smokeProject, StringComparison.Ordinal);
         Assert.Contains("artifacts/packages/Release/NonShipping", smokeNuGetConfig, StringComparison.Ordinal);

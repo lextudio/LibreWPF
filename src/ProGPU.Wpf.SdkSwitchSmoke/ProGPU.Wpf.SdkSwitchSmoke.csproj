@@ -1,7 +1,8 @@
 <Project Sdk="ProGPU.Wpf.Sdk/11.0.0-dev">
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <TargetFramework>net11.0</TargetFramework>
+    <UseWPF>true</UseWPF>
     <RuntimeFrameworkVersion>11.0.0-preview.4.26210.111</RuntimeFrameworkVersion>
     <AssemblyName>ProGPU.Wpf.SdkSwitchSmoke</AssemblyName>
     <RootNamespace>ProGPU.Wpf.SdkSwitchSmoke</RootNamespace>

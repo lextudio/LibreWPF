@@ -238,7 +238,7 @@ namespace System.Windows
             VerifyHwndCreateShowState();
 
             // Adding check for IsCompositionTargetInvalid
-            if (IsSourceWindowNull || IsCompositionTargetInvalid)
+            if (IsLayoutSourceUnavailable)
             {
                 return;
             }
@@ -249,6 +249,16 @@ namespace System.Windows
             {
                 if (WindowState == WindowState.Normal)
                 {
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        if (IsPortableWindowActive)
+                        {
+                            PortableWindowActivationService.TryDragMove(_portableWindowActivation);
+                        }
+
+                        return;
+                    }
+
                     // SendMessage's return value is dependent on the message send.  WM_SYSCOMMAND
                     // and WM_LBUTTONUP return value just signify whether the WndProc handled the
                     // message or not, so they are not interesting

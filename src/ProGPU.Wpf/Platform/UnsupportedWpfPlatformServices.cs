@@ -27,6 +27,8 @@ public sealed class UnsupportedWpfPlatformServices : IWpfPlatformServices
 
     public IWpfTimerService Timers { get; } = new UnsupportedTimerService();
 
+    public IWpfWindowDecorationService WindowDecorations { get; } = new UnsupportedWindowDecorationService();
+
     public IWpfWindowEventService WindowEvents { get; } = new UnsupportedWindowEventService();
 
     private sealed class UnsupportedClipboard : IWpfClipboard
@@ -146,6 +148,14 @@ public sealed class UnsupportedWpfPlatformServices : IWpfPlatformServices
         public IWpfTimer CreateTimer(TimeSpan interval, Action callback, bool isRepeating = true)
         {
             throw new PlatformNotSupportedException("Timer services are not configured for this WPF ProGPU host.");
+        }
+    }
+
+    private sealed class UnsupportedWindowDecorationService : IWpfWindowDecorationService
+    {
+        public bool TryBeginDragMove(object window)
+        {
+            throw new PlatformNotSupportedException("Window decoration services are not configured for this WPF ProGPU host.");
         }
     }
 

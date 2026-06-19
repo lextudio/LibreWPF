@@ -260,6 +260,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return _window != null && PlatformServices.Cursors.SetCursor(_window, cursor);
     }
 
+    public bool TryBeginDragMove()
+    {
+        ThrowIfDisposed();
+
+        return _window != null && PlatformServices.WindowDecorations.TryBeginDragMove(_window);
+    }
+
     public bool ProcessDispatcherQueue()
     {
         ThrowIfDisposed();

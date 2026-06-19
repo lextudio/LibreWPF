@@ -186,6 +186,11 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Platform",
             "IWpfRenderScheduler.cs");
+        var proGpuPlatformServicesPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Platform",
+            "IWpfPlatformServices.cs");
         var proGpuHostPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -197,6 +202,7 @@ public sealed class WpfManagedProjectGraphTests
         var activationService = File.ReadAllText(activationServicePath);
         var proGpuActivation = File.ReadAllText(proGpuActivationPath);
         var proGpuScheduler = File.ReadAllText(proGpuSchedulerPath);
+        var proGpuPlatformServices = File.ReadAllText(proGpuPlatformServicesPath);
         var proGpuHost = File.ReadAllText(proGpuHostPath);
 
         Assert.Contains(@"<Compile Include=""System\Windows\Media\PortableMediaContextRenderService.cs"" />", presentationCoreProject, StringComparison.Ordinal);
@@ -226,6 +232,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("FlushWpfDispatcherOperations(\"Render\")", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryFlushDispatcherOperations(Window, markerPriorityName)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FindPortableWindowActivationServiceType(window)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("typeof(Func<object, bool>)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("TryDragMove()", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("Host.TryBeginDragMove()", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("public bool TryBeginDragMove()", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("PlatformServices.WindowDecorations.TryBeginDragMove(_window)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("IWpfWindowDecorationService WindowDecorations", proGpuPlatformServices, StringComparison.Ordinal);
+        Assert.Contains("bool TryBeginDragMove(object window)", proGpuPlatformServices, StringComparison.Ordinal);
         Assert.Contains("_window.Update += OnUpdate", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_window.Update -= OnUpdate", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("private void OnUpdate(double deltaSeconds)", proGpuHost, StringComparison.Ordinal);
@@ -441,6 +454,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static void SetTitle(object activation, string title)", activationService, StringComparison.Ordinal);
         Assert.Contains("Action<object, double, double> setClientSize", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void SetClientSize(object activation, double width, double height)", activationService, StringComparison.Ordinal);
+        Assert.Contains("Func<object, bool> dragMove", activationService, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TryDragMove(object activation)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void SetActivationState(Window window, bool isActive)", activationService, StringComparison.Ordinal);
         Assert.Contains("NotifyPortableInputProvidersDeactivated(window)", activationService, StringComparison.Ordinal);
         Assert.Contains("source.GetInputProvider(typeof(KeyboardDevice))?.NotifyDeactivate()", activationService, StringComparison.Ordinal);
@@ -475,6 +490,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableWindowActivationService.SetTitle(_portableWindowActivation, Title)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.SetClientSize(_portableWindowActivation, Width, height)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.SetClientSize(_portableWindowActivation, width, Height)", window, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.TryDragMove(_portableWindowActivation)", window, StringComparison.Ordinal);
+        AssertGuardBefore(window, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SendMessage( Handle, WindowMessage.WM_SYSCOMMAND");
         Assert.Contains("ClosePortableWindowActivation();", window, StringComparison.Ordinal);
         Assert.Contains("private bool IsPortableWindowActive", window, StringComparison.Ordinal);
         Assert.Contains("private bool IsLayoutSourceUnavailable", window, StringComparison.Ordinal);

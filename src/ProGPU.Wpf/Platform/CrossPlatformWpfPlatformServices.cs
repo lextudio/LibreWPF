@@ -139,7 +139,7 @@ public sealed class CrossPlatformWpfPlatformServices : IWpfPlatformServices
         IWpfInputService input,
         IWpfTimerService timers,
         IWpfWindowEventService windowEvents)
-        : this(launcher, monitors, clipboard, cursors, dispatcher, fileDialogs, input, timers, windowEvents, new SilkNetWpfDragDropService())
+        : this(launcher, monitors, clipboard, cursors, dispatcher, fileDialogs, input, timers, windowEvents, new SilkNetWpfWindowDecorationService(), new SilkNetWpfDragDropService())
     {
     }
 
@@ -154,6 +154,22 @@ public sealed class CrossPlatformWpfPlatformServices : IWpfPlatformServices
         IWpfTimerService timers,
         IWpfWindowEventService windowEvents,
         IWpfDragDropService dragDrop)
+        : this(launcher, monitors, clipboard, cursors, dispatcher, fileDialogs, input, timers, windowEvents, new SilkNetWpfWindowDecorationService(), dragDrop)
+    {
+    }
+
+    public CrossPlatformWpfPlatformServices(
+        IWpfLauncher launcher,
+        IWpfMonitorService monitors,
+        IWpfClipboard clipboard,
+        IWpfCursorService cursors,
+        IWpfDispatcherService dispatcher,
+        IWpfFileDialogService fileDialogs,
+        IWpfInputService input,
+        IWpfTimerService timers,
+        IWpfWindowEventService windowEvents,
+        IWpfWindowDecorationService windowDecorations,
+        IWpfDragDropService dragDrop)
     {
         ArgumentNullException.ThrowIfNull(launcher);
         ArgumentNullException.ThrowIfNull(monitors);
@@ -164,6 +180,7 @@ public sealed class CrossPlatformWpfPlatformServices : IWpfPlatformServices
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(timers);
         ArgumentNullException.ThrowIfNull(windowEvents);
+        ArgumentNullException.ThrowIfNull(windowDecorations);
         ArgumentNullException.ThrowIfNull(dragDrop);
 
         Clipboard = clipboard;
@@ -175,6 +192,7 @@ public sealed class CrossPlatformWpfPlatformServices : IWpfPlatformServices
         Launcher = launcher;
         Monitors = monitors;
         Timers = timers;
+        WindowDecorations = windowDecorations;
         WindowEvents = windowEvents;
     }
 
@@ -195,6 +213,8 @@ public sealed class CrossPlatformWpfPlatformServices : IWpfPlatformServices
     public IWpfMonitorService Monitors { get; }
 
     public IWpfTimerService Timers { get; }
+
+    public IWpfWindowDecorationService WindowDecorations { get; }
 
     public IWpfWindowEventService WindowEvents { get; }
 }

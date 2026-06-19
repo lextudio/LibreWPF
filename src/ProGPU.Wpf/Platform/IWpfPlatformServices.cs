@@ -25,6 +25,8 @@ public interface IWpfPlatformServices
 
     IWpfTimerService Timers { get; }
 
+    IWpfWindowDecorationService WindowDecorations { get; }
+
     IWpfWindowEventService WindowEvents { get; }
 }
 
@@ -111,6 +113,11 @@ public interface IWpfTimer : IDisposable
     void Start();
 
     void Stop();
+}
+
+public interface IWpfWindowDecorationService
+{
+    bool TryBeginDragMove(object window);
 }
 
 public interface IWpfWindowEventService

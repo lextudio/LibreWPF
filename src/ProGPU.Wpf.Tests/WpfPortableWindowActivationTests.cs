@@ -207,6 +207,20 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void TryDragMoveReturnsFalseBeforeNativeWindowExists()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+        Assert.False(activation.TryDragMove());
+    }
+
+    [Fact]
     public void HostActivationEventsForwardToWpfWindowActivationState()
     {
         using var host = new ProGpuWpfWindowHost();

@@ -83,6 +83,7 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.IsType<ProcessWpfLauncher>(services.Launcher);
         Assert.IsType<SilkNetWpfMonitorService>(services.Monitors);
         Assert.IsType<ThreadPoolWpfTimerService>(services.Timers);
+        Assert.IsType<SilkNetWpfWindowDecorationService>(services.WindowDecorations);
         Assert.IsType<SilkNetWpfWindowEventService>(services.WindowEvents);
         Assert.IsType<DispatcherWpfRenderScheduler>(host.WpfRenderScheduler);
     }
@@ -101,6 +102,14 @@ public sealed class ProGpuWpfWindowHostTests
         using var host = new ProGpuWpfWindowHost();
 
         Assert.False(host.SetCursor(WpfCursor.Hand));
+    }
+
+    [Fact]
+    public void TryBeginDragMoveReturnsFalseBeforeWindowIsCreated()
+    {
+        using var host = new ProGpuWpfWindowHost();
+
+        Assert.False(host.TryBeginDragMove());
     }
 
     [Fact]

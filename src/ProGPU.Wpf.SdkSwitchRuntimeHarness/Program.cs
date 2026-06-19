@@ -2065,7 +2065,8 @@ internal static class Program
                 new Action<object, double, double>(recorder.SetClientSize),
                 new Action<object>(recorder.Close),
                 new Action<object>(recorder.Run),
-                new Action<object>(recorder.Dispose)
+                new Action<object>(recorder.Dispose),
+                new Func<object, bool>(_ => false)
             });
 
         AssertEqual(true, GetStaticProperty(activationServiceType, "IsEnabled"), "portable activation enabled");

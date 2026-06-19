@@ -71,7 +71,8 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 typeof(Action<object, double, double>),
                 typeof(Action<object>),
                 typeof(Action<object>),
-                typeof(Action<object>)
+                typeof(Action<object>),
+                typeof(Func<object, bool>)
             },
             modifiers: null);
         if (registerMethod == null)
@@ -119,10 +120,15 @@ public sealed class WpfPortableWindowActivation : IDisposable
             ((WpfPortableWindowActivation)activation).Run();
         Action<object> dispose = activation =>
             ((WpfPortableWindowActivation)activation).Dispose();
+        Func<object, bool> dragMove = activation =>
+            ((WpfPortableWindowActivation)activation).TryDragMove();
 
-        var parameters = registerMethod.GetParameters().Length == 9
-            ? new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, close, run, dispose }
-            : new object[] { activate, show, hide, setWindowState, close, run, dispose };
+        var parameters = registerMethod.GetParameters().Length switch
+        {
+            10 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, close, run, dispose, dragMove },
+            9 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, close, run, dispose },
+            _ => new object[] { activate, show, hide, setWindowState, close, run, dispose }
+        };
         registerMethod.Invoke(
             obj: null,
             parameters: parameters);
@@ -290,6 +296,12 @@ public sealed class WpfPortableWindowActivation : IDisposable
     {
         ThrowIfDisposed();
         Host.Run();
+    }
+
+    public bool TryDragMove()
+    {
+        ThrowIfDisposed();
+        return Host.TryBeginDragMove();
     }
 
     public void Dispose()

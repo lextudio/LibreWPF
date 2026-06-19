@@ -19,6 +19,7 @@ namespace System.Windows
         private static Action<object> _close;
         private static Action<object> _run;
         private static Action<object> _dispose;
+        private static Func<object, bool> _dragMove;
 
         internal static bool IsEnabled
         {
@@ -37,7 +38,8 @@ namespace System.Windows
             Action<object, double, double> setClientSize = null,
             Action<object> close = null,
             Action<object> run = null,
-            Action<object> dispose = null)
+            Action<object> dispose = null,
+            Func<object, bool> dragMove = null)
         {
             ArgumentNullException.ThrowIfNull(activate);
 
@@ -50,6 +52,7 @@ namespace System.Windows
             Volatile.Write(ref _close, close);
             Volatile.Write(ref _run, run);
             Volatile.Write(ref _dispose, dispose);
+            Volatile.Write(ref _dragMove, dragMove);
         }
 
         internal static void Clear()
@@ -63,6 +66,7 @@ namespace System.Windows
             Volatile.Write(ref _close, null);
             Volatile.Write(ref _run, null);
             Volatile.Write(ref _dispose, null);
+            Volatile.Write(ref _dragMove, null);
         }
 
         internal static bool TryActivate(Window window, out object activation)
@@ -107,6 +111,17 @@ namespace System.Windows
         internal static void SetClientSize(object activation, double width, double height)
         {
             Volatile.Read(ref _setClientSize)?.Invoke(activation, width, height);
+        }
+
+        internal static bool TryDragMove(object activation)
+        {
+            if (OperatingSystem.IsWindows() || activation == null)
+            {
+                return false;
+            }
+
+            Func<object, bool> dragMove = Volatile.Read(ref _dragMove);
+            return dragMove != null && dragMove(activation);
         }
 
         internal static void SetActivationState(Window window, bool isActive)

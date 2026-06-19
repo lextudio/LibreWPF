@@ -991,7 +991,9 @@ internal static class Program
                             </PriorityBinding>
                         </TextBlock.Text>
                     </TextBlock>
-                    <TextBox x:Name="ExternalValidationTextBox">
+                    <TextBox
+                        x:Name="ExternalValidationTextBox"
+                        TextChanged="OnExternalValidationTextChanged">
                         <TextBox.Text>
                             <Binding
                                 Path="ValidationText"
@@ -1219,6 +1221,10 @@ internal static class Program
 
                 public int ExternalPasswordChangedCount { get; private set; }
 
+                public int ExternalValidationTextChangedCount { get; private set; }
+
+                public string? LastExternalValidationText { get; private set; }
+
                 public int ExternalSliderValueChangedCount { get; private set; }
 
                 public double LastExternalSliderValue { get; private set; }
@@ -1381,6 +1387,12 @@ internal static class Program
                 private void OnExternalPasswordChanged(object sender, RoutedEventArgs e)
                 {
                     ExternalPasswordChangedCount++;
+                }
+
+                private void OnExternalValidationTextChanged(object sender, TextChangedEventArgs e)
+                {
+                    ExternalValidationTextChangedCount++;
+                    LastExternalValidationText = (sender as TextBox)?.Text;
                 }
 
                 private void OnExternalSliderValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -2546,13 +2558,35 @@ internal static class Program
                     var textBindingExpression = validationTextBox.GetBindingExpression(TextBox.TextProperty)
                         ?? throw new InvalidOperationException("Expected external SDK validation BindingExpression.");
                     AssertEqual("valid external text", validationTextBox.Text, "external SDK validation text initial value");
+                    int textChangedBeforeValidation = window.ExternalValidationTextChangedCount;
                     validationTextBox.Text = string.Empty;
                     textBindingExpression.UpdateSource();
                     AssertEqual(true, Validation.GetHasError(validationTextBox), "external SDK validation failure state");
+                    AssertAtLeast(textChangedBeforeValidation + 1, window.ExternalValidationTextChangedCount, "external SDK TextBox validation TextChanged failure count");
+                    AssertEqual(string.Empty, window.LastExternalValidationText, "external SDK TextBox validation TextChanged failure text");
                     validationTextBox.Text = "recovered external text";
                     textBindingExpression.UpdateSource();
                     AssertEqual(false, Validation.GetHasError(validationTextBox), "external SDK validation recovery state");
                     AssertEqual("recovered external text", window.ValidationText, "external SDK validation source update");
+                    AssertAtLeast(textChangedBeforeValidation + 2, window.ExternalValidationTextChangedCount, "external SDK TextBox validation TextChanged recovery count");
+                    AssertEqual("recovered external text", window.LastExternalValidationText, "external SDK TextBox validation TextChanged recovery text");
+
+                    int textChangedBeforeEditing = window.ExternalValidationTextChangedCount;
+                    validationTextBox.Text = "external editing text";
+                    AssertAtLeast(textChangedBeforeEditing + 1, window.ExternalValidationTextChangedCount, "external SDK TextBox editing TextChanged count");
+                    AssertEqual("external editing text", window.LastExternalValidationText, "external SDK TextBox editing TextChanged text");
+                    validationTextBox.Select(9, 7);
+                    AssertEqual(9, validationTextBox.SelectionStart, "external SDK TextBox selection start");
+                    AssertEqual(7, validationTextBox.SelectionLength, "external SDK TextBox selection length");
+                    AssertEqual("editing", validationTextBox.SelectedText, "external SDK TextBox selected text");
+                    validationTextBox.SelectedText = "selection";
+                    AssertEqual("external selection text", validationTextBox.Text, "external SDK TextBox selected text replacement");
+                    validationTextBox.CaretIndex = validationTextBox.Text.Length;
+                    AssertEqual(validationTextBox.Text.Length, validationTextBox.CaretIndex, "external SDK TextBox caret index");
+                    validationTextBox.AppendText(" appended");
+                    AssertEqual("external selection text appended", validationTextBox.Text, "external SDK TextBox AppendText result");
+                    textBindingExpression.UpdateSource();
+                    AssertEqual("external selection text appended", window.ValidationText, "external SDK TextBox editing source update");
                 }
 
                 private static void ValidateVisualStateTransitions(MainWindow window)

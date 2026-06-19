@@ -4585,6 +4585,14 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.SdkSwitchRuntimeHarness",
             "Program.cs");
+        var externalSdkHarnessProjectPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkExternalSmokeHarness",
+            "ProGPU.Wpf.SdkExternalSmokeHarness.csproj");
+        var externalSdkHarnessProgramPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkExternalSmokeHarness",
+            "Program.cs");
 
         var sdkProject = XDocument.Load(sdkProjectPath);
         var sdkProps = File.ReadAllText(sdkPropsPath);
@@ -4623,6 +4631,8 @@ public sealed class WpfManagedProjectGraphTests
         var wpfTransportArchNeutralProject = File.ReadAllText(wpfTransportArchNeutralProjectPath);
         var runtimeHarnessProject = File.ReadAllText(runtimeHarnessProjectPath);
         var runtimeHarnessProgram = File.ReadAllText(runtimeHarnessProgramPath);
+        var externalSdkHarnessProject = File.ReadAllText(externalSdkHarnessProjectPath);
+        var externalSdkHarnessProgram = File.ReadAllText(externalSdkHarnessProgramPath);
 
         Assert.Contains("ProGPU/Silk.NET SDK for portable WPF applications", sdkProject.ToString(), StringComparison.Ordinal);
         Assert.Contains("MSBuildProjectName.Replace('.ArchNeutral','')", sdkProject.ToString(), StringComparison.Ordinal);
@@ -5396,6 +5406,28 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SDK portable bootstrap MessageBox enabled", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK portable bootstrap file dialog enabled", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK portable bootstrap loaded ProGPU.Wpf", runtimeHarnessProgram, StringComparison.Ordinal);
+
+        Assert.Contains("<Project Sdk=\"Microsoft.NET.Sdk\">", externalSdkHarnessProject, StringComparison.Ordinal);
+        Assert.Contains("<TargetFramework>net11.0</TargetFramework>", externalSdkHarnessProject, StringComparison.Ordinal);
+        Assert.Contains("<RuntimeFrameworkVersion>11.0.0-preview.4.26210.111</RuntimeFrameworkVersion>", externalSdkHarnessProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProGPU.Wpf.Sdk", externalSdkHarnessProject, StringComparison.Ordinal);
+        Assert.Contains("Path.GetTempPath()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.SdkExternalSmoke", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalSdkApp", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalSdkLibrary", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<OutputType>WinExe</OutputType>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<UseWPF>true</UseWPF>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("NuGet.config", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("External SDK smoke must not rely on generated Directory.Build.props or Directory.Build.targets files.", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfManagedReferenceRoot", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Microsoft.DotNet.Wpf.GitHub", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Compute", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Transpiler", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetNativeAssetCandidates(\"wgpu\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetNativeAssetCandidates(\"glfw\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+
         Assert.Contains("PortableClipboardServiceTypeName = \"System.Windows.PortableClipboardService\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableFileDialogServiceTypeName = \"Microsoft.Win32.PortableFileDialogService\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableMessageBoxServiceTypeName = \"System.Windows.PortableMessageBoxService\"", runtimeHarnessProgram, StringComparison.Ordinal);

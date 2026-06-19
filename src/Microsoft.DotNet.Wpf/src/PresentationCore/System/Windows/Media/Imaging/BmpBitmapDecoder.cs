@@ -5,6 +5,7 @@
 //
 
 using System.Buffers.Binary;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using MS.Internal;
@@ -182,7 +183,7 @@ namespace System.Windows.Media.Imaging
                 _ = ReadUInt32(stream);
                 int pixelsPerMeterX = ReadInt32(stream);
                 int pixelsPerMeterY = ReadInt32(stream);
-                _ = ReadUInt32(stream);
+                uint colorsUsed = ReadUInt32(stream);
                 _ = ReadUInt32(stream);
 
                 if (width <= 0 || signedHeight == 0 || planes != 1 || compression != 0)
@@ -190,17 +191,23 @@ namespace System.Windows.Media.Imaging
                     throw new FileFormatException(null, SR.Image_CantDealWithStream);
                 }
 
-                PixelFormat pixelFormat = bitsPerPixel switch
-                {
-                    24 => PixelFormats.Bgr24,
-                    32 => PixelFormats.Bgra32,
-                    _ => throw new NotSupportedException($"Portable BMP decoding does not support {bitsPerPixel}-bit BI_RGB bitmaps.")
-                };
-
                 long extraHeaderBytes = dibHeaderSize - 40;
                 if (extraHeaderBytes > 0)
                 {
                     stream.Seek(extraHeaderBytes, SeekOrigin.Current);
+                }
+
+                BitmapPalette palette = null;
+                List<Color> paletteColors = null;
+                if (bitsPerPixel <= 8)
+                {
+                    paletteColors = ReadColorTable(stream, startPosition, pixelOffset, bitsPerPixel, colorsUsed);
+                }
+
+                PixelFormat pixelFormat = GetPixelFormat(bitsPerPixel, paletteColors, out bool usesPalette);
+                if (usesPalette)
+                {
+                    palette = new BitmapPalette(paletteColors);
                 }
 
                 int height = Math.Abs(signedHeight);
@@ -224,7 +231,7 @@ namespace System.Windows.Media.Imaging
                     PixelsPerMeterToDpi(pixelsPerMeterX),
                     PixelsPerMeterToDpi(pixelsPerMeterY),
                     pixelFormat,
-                    null,
+                    palette,
                     pixels,
                     targetStride);
 
@@ -241,6 +248,93 @@ namespace System.Windows.Media.Imaging
                 stream.Position = startPosition;
                 throw;
             }
+        }
+
+        private static PixelFormat GetPixelFormat(ushort bitsPerPixel, List<Color> paletteColors, out bool usesPalette)
+        {
+            usesPalette = false;
+
+            switch (bitsPerPixel)
+            {
+                case 1:
+                    if (IsGeneratedGrayPalette(paletteColors, bitsPerPixel))
+                    {
+                        return PixelFormats.BlackWhite;
+                    }
+
+                    usesPalette = true;
+                    return PixelFormats.Indexed1;
+                case 4:
+                    if (IsGeneratedGrayPalette(paletteColors, bitsPerPixel))
+                    {
+                        return PixelFormats.Gray4;
+                    }
+
+                    usesPalette = true;
+                    return PixelFormats.Indexed4;
+                case 8:
+                    if (IsGeneratedGrayPalette(paletteColors, bitsPerPixel))
+                    {
+                        return PixelFormats.Gray8;
+                    }
+
+                    usesPalette = true;
+                    return PixelFormats.Indexed8;
+                case 24:
+                    return PixelFormats.Bgr24;
+                case 32:
+                    return PixelFormats.Bgra32;
+                default:
+                    throw new NotSupportedException($"Portable BMP decoding does not support {bitsPerPixel}-bit BI_RGB bitmaps.");
+            }
+        }
+
+        private static List<Color> ReadColorTable(Stream stream, long startPosition, uint pixelOffset, ushort bitsPerPixel, uint colorsUsed)
+        {
+            int maximumColorCount = 1 << bitsPerPixel;
+            int colorCount = colorsUsed == 0 ? maximumColorCount : checked((int)Math.Min(colorsUsed, (uint)maximumColorCount));
+            long colorTableBytes = (startPosition + pixelOffset) - stream.Position;
+            if (colorCount <= 0 || colorTableBytes < checked(colorCount * 4L))
+            {
+                throw new FileFormatException(null, SR.Image_CantDealWithStream);
+            }
+
+            List<Color> colors = new List<Color>(colorCount);
+            Span<byte> entry = stackalloc byte[4];
+            for (int i = 0; i < colorCount; i++)
+            {
+                ReadExactly(stream, entry);
+                colors.Add(Color.FromRgb(entry[2], entry[1], entry[0]));
+            }
+
+            return colors;
+        }
+
+        private static bool IsGeneratedGrayPalette(List<Color> paletteColors, ushort bitsPerPixel)
+        {
+            if (paletteColors == null)
+            {
+                return false;
+            }
+
+            int colorCount = 1 << bitsPerPixel;
+            if (paletteColors.Count != colorCount)
+            {
+                return false;
+            }
+
+            int divisor = colorCount - 1;
+            for (int i = 0; i < colorCount; i++)
+            {
+                byte expected = divisor == 0 ? (byte)0 : (byte)((i * 255) / divisor);
+                Color color = paletteColors[i];
+                if (color.R != expected || color.G != expected || color.B != expected)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         internal static bool TryCreatePortableFrameFromUri(

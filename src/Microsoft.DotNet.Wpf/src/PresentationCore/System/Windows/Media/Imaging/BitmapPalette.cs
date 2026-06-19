@@ -46,6 +46,11 @@ namespace System.Windows.Media.Imaging
 
             _colors = new ReadOnlyCollection<Color>(colorArray);
 
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
             _palette = CreateInternalPalette();
 
             UpdateUnmanaged();
@@ -213,7 +218,13 @@ namespace System.Windows.Media.Imaging
             {
                 if (_palette == null || _palette.IsInvalid)
                 {
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        throw new PlatformNotSupportedException("WIC palettes are not available outside Windows.");
+                    }
+
                     _palette = CreateInternalPalette();
+                    UpdateUnmanaged();
                 }
 
                 return _palette;
@@ -243,6 +254,11 @@ namespace System.Windows.Media.Imaging
 
         internal static SafeMILHandle CreateInternalPalette()
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                throw new PlatformNotSupportedException("WIC palettes are not available outside Windows.");
+            }
+
             SafeMILHandle palette = null;
 
             using (FactoryMaker myFactory = new FactoryMaker())
@@ -368,5 +384,4 @@ namespace System.Windows.Media.Imaging
         private IList<Color> _colors = ReadOnlyCollection<Color>.Empty;
     }
 }
-
 

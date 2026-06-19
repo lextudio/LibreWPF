@@ -2579,6 +2579,60 @@ internal static class Program
                         File.Delete(bmpPath);
                     }
 
+                    var indexedPalette = new BitmapPalette(
+                    [
+                        Color.FromRgb(0x00, 0x00, 0x00),
+                        Color.FromRgb(0xCC, 0x22, 0x22),
+                        Color.FromRgb(0x22, 0xAA, 0x44),
+                        Color.FromRgb(0x22, 0x44, 0xCC)
+                    ]);
+                    byte[] indexedPixels = [0, 1, 2, 3];
+                    var indexedSource = BitmapSource.Create(
+                        2,
+                        2,
+                        96.0,
+                        96.0,
+                        PixelFormats.Indexed8,
+                        indexedPalette,
+                        indexedPixels,
+                        2);
+                    var indexedEncoder = new BmpBitmapEncoder();
+                    indexedEncoder.Frames.Add(BitmapFrame.Create(indexedSource));
+                    using var indexedBmpStream = new MemoryStream();
+                    indexedEncoder.Save(indexedBmpStream);
+                    byte[] indexedBmpBytes = indexedBmpStream.ToArray();
+                    AssertEqual(8, BitConverter.ToUInt16(indexedBmpBytes, 28), "external SDK Indexed8 BMP bits per pixel");
+                    AssertEqual(4, BitConverter.ToInt32(indexedBmpBytes, 46), "external SDK Indexed8 BMP color table size");
+                    var indexedDecoder = BitmapDecoder.Create(
+                        new MemoryStream(indexedBmpBytes),
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(PixelFormats.Indexed8, indexedDecoder.Frames[0].Format, "external SDK Indexed8 BitmapDecoder format");
+                    AssertEqual(4, indexedDecoder.Frames[0].Palette.Colors.Count, "external SDK Indexed8 BitmapDecoder palette count");
+                    AssertEqual("#FF22AA44", indexedDecoder.Frames[0].Palette.Colors[2].ToString(), "external SDK Indexed8 BitmapDecoder palette green");
+                    var decodedIndexedPixels = new byte[indexedPixels.Length];
+                    indexedDecoder.Frames[0].CopyPixels(decodedIndexedPixels, 2, 0);
+                    AssertEqual(indexedPixels[0], decodedIndexedPixels[0], "external SDK Indexed8 BitmapDecoder top-left index");
+                    AssertEqual(indexedPixels[3], decodedIndexedPixels[3], "external SDK Indexed8 BitmapDecoder bottom-right index");
+
+                    string indexedBmpPath = Path.Combine(Path.GetTempPath(), "external-sdk-indexed-image-" + Guid.NewGuid().ToString("N") + ".bmp");
+                    File.WriteAllBytes(indexedBmpPath, indexedBmpBytes);
+                    try
+                    {
+                        var indexedBmpUri = new Uri(indexedBmpPath);
+                        var indexedBitmapImage = new BitmapImage(indexedBmpUri);
+                        AssertEqual(PixelFormats.Indexed8, indexedBitmapImage.Format, "external SDK Indexed8 BitmapImage URI format");
+                        AssertEqual(4, indexedBitmapImage.Palette.Colors.Count, "external SDK Indexed8 BitmapImage URI palette count");
+                        var indexedImagePixels = new byte[indexedPixels.Length];
+                        indexedBitmapImage.CopyPixels(indexedImagePixels, 2, 0);
+                        AssertEqual(indexedPixels[1], indexedImagePixels[1], "external SDK Indexed8 BitmapImage URI top-right index");
+                        AssertEqual(indexedPixels[2], indexedImagePixels[2], "external SDK Indexed8 BitmapImage URI bottom-left index");
+                    }
+                    finally
+                    {
+                        File.Delete(indexedBmpPath);
+                    }
+
                     var writeableBitmap = new WriteableBitmap(2, 2, 96.0, 96.0, PixelFormats.Bgra32, null);
                     writeableBitmap.WritePixels(new Int32Rect(0, 0, 2, 2), pixels, 8, 0);
                     var writeablePixels = new byte[pixels.Length];

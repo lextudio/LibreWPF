@@ -5582,6 +5582,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK DatePicker selected date format", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProgressBar ElementName binding", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProgressBar value after Slider update", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalAdornerDecorator", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalAdornedButton", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("public sealed class ExternalAdorner : Adorner", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateAdornerDecorator(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateAdornerLayer(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK AdornerLayer added adorner", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalComboBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SelectedValuePath=\"Kind\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SelectedValue=\"{Binding SelectedExternalKind, Mode=TwoWay}\"", externalSdkHarnessProgram, StringComparison.Ordinal);

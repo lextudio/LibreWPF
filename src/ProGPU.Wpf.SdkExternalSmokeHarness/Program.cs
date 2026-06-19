@@ -671,6 +671,12 @@ internal static class Program
                     <AccessText
                         x:Name="ExternalStandaloneAccessText"
                         Text="_External standalone access" />
+                    <AdornerDecorator x:Name="ExternalAdornerDecorator">
+                        <Button
+                            x:Name="ExternalAdornedButton"
+                            Content="External adorned button"
+                            Tag="external adorned button" />
+                    </AdornerDecorator>
                     <Grid x:Name="ExternalLayoutGrid">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -1431,6 +1437,23 @@ internal static class Program
                 }
             }
 
+            public sealed class ExternalAdorner : Adorner
+            {
+                public ExternalAdorner(UIElement adornedElement)
+                    : base(adornedElement)
+                {
+                    IsHitTestVisible = false;
+                }
+
+                protected override void OnRender(DrawingContext drawingContext)
+                {
+                    base.OnRender(drawingContext);
+
+                    var adornedBounds = new Rect(AdornedElement.RenderSize);
+                    drawingContext.DrawRectangle(null, new Pen(Brushes.LimeGreen, 1.0), adornedBounds);
+                }
+            }
+
             public partial class App
             {
                 private static bool s_externalRunValidationRequested;
@@ -1518,6 +1541,7 @@ internal static class Program
                     ValidateStylesAndTemplates(window);
                     ValidateMenusAndChoiceControls(window);
                     ValidateToolbarStatusRangePasswordDateControls(window);
+                    ValidateAdornerDecorator(window);
                     ValidateLayoutsAndItems(window);
                     ValidateSelectorsAndContent(window);
                     ValidateRichDocuments(window);
@@ -1658,6 +1682,7 @@ internal static class Program
                     AssertEqual("External SDK startup resource", startupResourceText.Text, "external SDK startup dynamic resource text");
                     AssertBrushColor(startupResourceText.Foreground, "#FF176283", "external SDK startup dynamic resource foreground");
                     ValidateVisualStateTransitions(window);
+                    ValidateAdornerLayer(window);
 
                     App.MarkExternalRunValidated();
                     app.Shutdown(0);
@@ -2337,6 +2362,45 @@ internal static class Program
                     AssertClose(40.0, window.LastExternalSliderValue, "external SDK Slider event value");
                     AssertAtLeast(sliderValueChangedBefore + 1, window.ExternalSliderValueChangedCount, "external SDK Slider changed count");
                     AssertClose(40.0, progressBar.Value, "external SDK ProgressBar value after Slider update");
+                }
+
+                private static void ValidateAdornerDecorator(MainWindow window)
+                {
+                    var decorator = RequireType<AdornerDecorator>(
+                        window.FindName("ExternalAdornerDecorator"),
+                        "external SDK AdornerDecorator");
+                    var adornedButton = RequireType<Button>(
+                        window.FindName("ExternalAdornedButton"),
+                        "external SDK adorned button");
+                    AssertEqual(adornedButton, decorator.Child, "external SDK AdornerDecorator child");
+                    AssertEqual("External adorned button", adornedButton.Content, "external SDK adorned button content");
+                    AssertEqual("external adorned button", adornedButton.Tag, "external SDK adorned button tag");
+                }
+
+                private static void ValidateAdornerLayer(MainWindow window)
+                {
+                    var adornedButton = RequireType<Button>(
+                        window.FindName("ExternalAdornedButton"),
+                        "external SDK Application.Run adorned button");
+                    var adornerLayer = AdornerLayer.GetAdornerLayer(adornedButton)
+                        ?? throw new InvalidOperationException("Expected external SDK AdornerLayer after Application.Run startup.");
+                    var adorner = new ExternalAdorner(adornedButton);
+                    AssertEqual(adornedButton, adorner.AdornedElement, "external SDK Adorner adorned element");
+                    AssertEqual(false, adorner.IsHitTestVisible, "external SDK Adorner hit testing");
+
+                    adornerLayer.Add(adorner);
+                    var adorners = adornerLayer.GetAdorners(adornedButton)
+                        ?? throw new InvalidOperationException("Expected external SDK AdornerLayer adorners after add.");
+                    AssertEqual(1, adorners.Length, "external SDK AdornerLayer adorner count");
+                    AssertEqual(adorner, adorners[0], "external SDK AdornerLayer added adorner");
+
+                    adornerLayer.Remove(adorner);
+                    var remainingAdorners = adornerLayer.GetAdorners(adornedButton);
+                    if (remainingAdorners is { Length: > 0 })
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected external SDK AdornerLayer to remove adorner, but found '{remainingAdorners.Length}'.");
+                    }
                 }
 
                 private static void ValidateLayoutsAndItems(MainWindow window)

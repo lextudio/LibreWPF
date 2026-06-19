@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Globalization;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Runtime.CompilerServices;
@@ -217,6 +218,7 @@ internal static class Program
 
             object window = Create(smokeAssembly, MainWindowTypeName);
             ValidateWindow(window, validateFrameContent: false, flushDispatcherOperations: null);
+            ValidatePortableInputLanguageManager(presentationCore, window);
             ValidatePortableMessageBox(presentationFramework, window);
         }
         finally
@@ -528,6 +530,41 @@ internal static class Program
             resourceOwner,
             "PowerLineStatus",
             Enum.Parse(GetRequiredType(presentationFramework, "System.Windows.PowerLineStatus"), "Unknown"));
+    }
+
+    private static void ValidatePortableInputLanguageManager(Assembly presentationCore, object target)
+    {
+        Type inputLanguageManagerType = GetRequiredType(presentationCore, "System.Windows.Input.InputLanguageManager");
+        object manager = GetStaticProperty(inputLanguageManagerType, "Current");
+        object currentLanguage = GetProperty(manager, "CurrentInputLanguage");
+        AssertType(currentLanguage, "System.Globalization.CultureInfo", "SDK InputLanguageManager current language");
+
+        object availableLanguages = GetProperty(manager, "AvailableInputLanguages");
+        AssertAtLeast(1, EnumerateObjects(availableLanguages).Count(), "SDK InputLanguageManager available language count");
+
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        string currentName = GetProperty(currentLanguage, "Name").ToString() ?? string.Empty;
+        AssertEqual(CultureInfo.CurrentCulture.Name, currentName, "portable SDK InputLanguageManager current culture");
+
+        CultureInfo requestedLanguage = CultureInfo.GetCultureInfo("en-US");
+        SetProperty(manager, "CurrentInputLanguage", requestedLanguage);
+        AssertEqual(
+            requestedLanguage.Name,
+            GetProperty(GetProperty(manager, "CurrentInputLanguage"), "Name").ToString() ?? string.Empty,
+            "portable SDK InputLanguageManager set current language");
+
+        InvokeStaticVoid(inputLanguageManagerType, "SetInputLanguage", target, requestedLanguage);
+        object attachedLanguage = InvokeStatic(inputLanguageManagerType, "GetInputLanguage", target);
+        AssertEqual(
+            requestedLanguage.Name,
+            GetProperty(attachedLanguage, "Name").ToString() ?? string.Empty,
+            "portable SDK InputLanguageManager attached language");
+
+        SetProperty(manager, "CurrentInputLanguage", CultureInfo.CurrentCulture);
     }
 
     private static void AssertPortableSystemParameterMetric(

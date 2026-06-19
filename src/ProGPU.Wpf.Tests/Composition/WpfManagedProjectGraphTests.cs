@@ -4114,6 +4114,24 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Input",
             "AccessKeyManager.cs"));
+        var inputLanguageSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Input",
+            "InputLanguageSource.cs"));
+        var inputLanguageManager = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Input",
+            "InputLanguageManager.cs"));
         var systemResources = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4361,6 +4379,14 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(accessKeyManager, "if (!global::System.OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetActiveWindow()");
         Assert.Contains("PresentationSource.CriticalCurrentSources", accessKeyManager, StringComparison.Ordinal);
         Assert.Contains("GetPortableActiveSource()", accessKeyManager, StringComparison.Ordinal);
+        Assert.Contains("_portableCurrentInputLanguage = CultureInfo.CurrentCulture", inputLanguageSource, StringComparison.Ordinal);
+        Assert.Contains("return new CultureInfo[1] { CurrentInputLanguage }", inputLanguageSource, StringComparison.Ordinal);
+        AssertGuardBefore(inputLanguageSource, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetKeyboardLayout(0)");
+        AssertGuardBefore(inputLanguageSource, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetCurrentThreadId()");
+        AssertGuardBefore(inputLanguageSource, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetKeyboardLayoutList(0, null)");
+        AssertGuardBefore(inputLanguageSource, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetKeyboardLayout(_dispatcherThreadId)");
+        AssertGuardBefore(inputLanguageManager, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetKeyboardLayout(0)");
+        AssertGuardBefore(inputLanguageManager, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetKeyboardLayoutList(0, null)");
         AssertGuardBefore(systemResources, "if (!OperatingSystem.IsWindows())", "new HwndWrapper(");
         AssertGuardBefore(systemResources, "if (OperatingSystem.IsWindows())", "XamlAccessLevel.AssemblyAccessTo(assembly)");
         AssertGuardBefore(xamlReader, "if (internalTypeHelper != null && OperatingSystem.IsWindows())", "XamlAccessLevel.AssemblyAccessTo(streamInfo.Assembly)");

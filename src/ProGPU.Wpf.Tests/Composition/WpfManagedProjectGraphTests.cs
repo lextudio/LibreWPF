@@ -4269,6 +4269,10 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(systemResources, "if (!OperatingSystem.IsWindows())", "new HwndWrapper(");
         AssertGuardBefore(systemResources, "if (OperatingSystem.IsWindows())", "XamlAccessLevel.AssemblyAccessTo(assembly)");
         AssertGuardBefore(xamlReader, "if (internalTypeHelper != null && OperatingSystem.IsWindows())", "XamlAccessLevel.AssemblyAccessTo(streamInfo.Assembly)");
+        Assert.Contains("AreComponentResourceUrisEquivalent(loadBamlSyncInfo.BamlUri, curComponentUri)", application, StringComparison.Ordinal);
+        Assert.Contains("BaseUriHelper.GetAssemblyNameAndPart(", application, StringComparison.Ordinal);
+        Assert.Contains("AreOptionalComponentAssemblyPartsCompatible(firstAssemblyVersion, secondAssemblyVersion)", application, StringComparison.Ordinal);
+        Assert.Contains("IsResourceAssemblyName", application, StringComparison.Ordinal);
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETFOCUSBORDERWIDTH");
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETFOCUSBORDERHEIGHT");
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETHIGHCONTRAST");
@@ -4958,7 +4962,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("InitializeComponent();", smokePageCodeBehind, StringComparison.Ordinal);
         Assert.Contains("x:Class=\"ProGPU.Wpf.SdkSwitchSmoke.SmokeSecondPage\"", smokeSecondPageXaml, StringComparison.Ordinal);
         Assert.Contains("Title=\"Compiled Second Page\"", smokeSecondPageXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SecondPageTitle\"", smokeSecondPageXaml, StringComparison.Ordinal);
         Assert.Contains("Compiled second page content", smokeSecondPageXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SecondPageSubtitle\"", smokeSecondPageXaml, StringComparison.Ordinal);
         Assert.Contains("Frame navigated to SDK-built BAML", smokeSecondPageXaml, StringComparison.Ordinal);
         Assert.Contains("public partial class SmokeSecondPage : Page", smokeSecondPageCodeBehind, StringComparison.Ordinal);
         Assert.Contains("InitializeComponent();", smokeSecondPageCodeBehind, StringComparison.Ordinal);
@@ -5435,7 +5441,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SmokeSecondPage.xaml", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled frame second page navigate result", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled second frame page", runtimeHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("compiled second page child count", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"SecondPageTitle\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled second page title text", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"SecondPageSubtitle\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled second page subtitle text", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled frame second page content type", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled frame journal can go back", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("InvokeVoid(smokeFrame, \"GoBack\")", runtimeHarnessProgram, StringComparison.Ordinal);

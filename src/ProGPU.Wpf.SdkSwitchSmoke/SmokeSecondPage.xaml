@@ -4,7 +4,11 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="Compiled Second Page">
     <StackPanel Margin="6">
-        <TextBlock Text="Compiled second page content" />
-        <TextBlock Text="Frame navigated to SDK-built BAML" />
+        <TextBlock
+            x:Name="SecondPageTitle"
+            Text="Compiled second page content" />
+        <TextBlock
+            x:Name="SecondPageSubtitle"
+            Text="Frame navigated to SDK-built BAML" />
     </StackPanel>
 </Page>

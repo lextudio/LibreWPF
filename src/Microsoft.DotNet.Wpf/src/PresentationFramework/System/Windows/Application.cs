@@ -2421,7 +2421,7 @@ namespace System.Windows
                     Invariant.Assert(fileInBamlConvert != null, "fileInBamlConvert should not be null");
                     Invariant.Assert(fileCurrent != null, "fileCurrent should not be null");
 
-                    if (string.Equals(fileInBamlConvert, fileCurrent, StringComparison.OrdinalIgnoreCase))
+                    if (AreComponentResourceUrisEquivalent(loadBamlSyncInfo.BamlUri, curComponentUri))
                     {
                         //
                         // This is the root element of the xaml page which is being loaded to creat a tree
@@ -2460,6 +2460,82 @@ namespace System.Windows
             }
 
             return isRootElement;
+        }
+
+        private static bool AreComponentResourceUrisEquivalent(Uri firstUri, Uri secondUri)
+        {
+            string firstPath = firstUri.LocalPath;
+            string secondPath = secondUri.LocalPath;
+
+            Invariant.Assert(firstPath != null, "firstPath should not be null");
+            Invariant.Assert(secondPath != null, "secondPath should not be null");
+
+            if (string.Equals(firstPath, secondPath, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            try
+            {
+                Uri firstRelativeUri = new Uri(firstPath, UriKind.Relative);
+                Uri secondRelativeUri = new Uri(secondPath, UriKind.Relative);
+
+                BaseUriHelper.GetAssemblyNameAndPart(
+                    firstRelativeUri,
+                    out string firstPartName,
+                    out string firstAssemblyName,
+                    out string firstAssemblyVersion,
+                    out string firstAssemblyKey);
+                BaseUriHelper.GetAssemblyNameAndPart(
+                    secondRelativeUri,
+                    out string secondPartName,
+                    out string secondAssemblyName,
+                    out string secondAssemblyVersion,
+                    out string secondAssemblyKey);
+
+                return string.Equals(firstPartName, secondPartName, StringComparison.OrdinalIgnoreCase)
+                    && AreComponentAssemblyNamesEquivalent(firstAssemblyName, secondAssemblyName)
+                    && AreOptionalComponentAssemblyPartsCompatible(firstAssemblyVersion, secondAssemblyVersion)
+                    && AreOptionalComponentAssemblyPartsCompatible(firstAssemblyKey, secondAssemblyKey);
+            }
+            catch (UriFormatException)
+            {
+                return false;
+            }
+        }
+
+        private static bool AreComponentAssemblyNamesEquivalent(string firstAssemblyName, string secondAssemblyName)
+        {
+            if (string.Equals(firstAssemblyName, secondAssemblyName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (string.IsNullOrEmpty(firstAssemblyName))
+            {
+                return IsResourceAssemblyName(secondAssemblyName);
+            }
+
+            if (string.IsNullOrEmpty(secondAssemblyName))
+            {
+                return IsResourceAssemblyName(firstAssemblyName);
+            }
+
+            return false;
+        }
+
+        private static bool AreOptionalComponentAssemblyPartsCompatible(string firstValue, string secondValue)
+        {
+            return string.IsNullOrEmpty(firstValue)
+                || string.IsNullOrEmpty(secondValue)
+                || string.Equals(firstValue, secondValue, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsResourceAssemblyName(string assemblyName)
+        {
+            Assembly resourceAssembly = ResourceAssembly;
+            return resourceAssembly != null
+                && string.Equals(resourceAssembly.GetName().Name, assemblyName, StringComparison.OrdinalIgnoreCase);
         }
 
 

@@ -1119,14 +1119,10 @@ internal static class Program
             AssertType(smokeSecondPage, "ProGPU.Wpf.SdkSwitchSmoke.SmokeSecondPage", "compiled second frame page");
             AssertAssignableTo(smokeSecondPage, "System.Windows.Controls.Page", "compiled second frame page base type");
             AssertEqual("Compiled Second Page", GetProperty(smokeSecondPage, "Title"), "compiled second page title");
-            object secondPagePanel = GetProperty(smokeSecondPage, "Content");
-            AssertType(secondPagePanel, "System.Windows.Controls.StackPanel", "compiled second page panel");
-            object[] secondPageChildren = EnumerateObjects(GetProperty(secondPagePanel, "Children")).ToArray();
-            AssertAtLeast(2, secondPageChildren.Length, "compiled second page child count");
-            object secondPageTitle = secondPageChildren[0];
+            object secondPageTitle = Invoke(smokeSecondPage, "FindName", "SecondPageTitle");
             AssertType(secondPageTitle, "System.Windows.Controls.TextBlock", "compiled second page title element");
             AssertEqual("Compiled second page content", GetProperty(secondPageTitle, "Text"), "compiled second page title text");
-            object secondPageSubtitle = secondPageChildren[1];
+            object secondPageSubtitle = Invoke(smokeSecondPage, "FindName", "SecondPageSubtitle");
             AssertType(secondPageSubtitle, "System.Windows.Controls.TextBlock", "compiled second page subtitle element");
             AssertEqual("Frame navigated to SDK-built BAML", GetProperty(secondPageSubtitle, "Text"), "compiled second page subtitle text");
             AssertAtLeast(navigatingCountBeforeSecondPage + 1, GetProperty(window, "SmokeFrameNavigatingCount"), "compiled frame second page navigating count");

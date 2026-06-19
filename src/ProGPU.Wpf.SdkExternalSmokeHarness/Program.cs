@@ -85,6 +85,18 @@ internal static class Program
                     ["PROGPU_WPF_EXTERNAL_VALIDATE"] = "1"
                 },
                 Path.Combine(outputRoot, AppAssemblyName + ".dll"));
+            string applicationRunOutput = RunProcess(
+                dotnetPath,
+                outputRoot,
+                new Dictionary<string, string>
+                {
+                    ["PROGPU_WPF_EXTERNAL_RUN_VALIDATE"] = "1"
+                },
+                Path.Combine(outputRoot, AppAssemblyName + ".dll"));
+            AssertContains(
+                applicationRunOutput,
+                "External SDK Application.Run validation succeeded.",
+                "external SDK Application.Run validation output");
 
             Console.WriteLine("ProGPU WPF external SDK smoke succeeded.");
             return 0;
@@ -277,7 +289,9 @@ internal static class Program
                 x:Class="ExternalSdkApp.App"
                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                StartupUri="MainWindow.xaml">
+                StartupUri="MainWindow.xaml"
+                Startup="OnExternalAppStartup"
+                Exit="OnExternalAppExit">
                 <Application.Resources>
                     <ResourceDictionary>
                         <ResourceDictionary.MergedDictionaries>
@@ -374,6 +388,10 @@ internal static class Program
                         x:Name="DynamicResourceText"
                         Foreground="{DynamicResource ExternalDynamicBrush}"
                         Text="External SDK dynamic resource" />
+                    <TextBlock
+                        x:Name="ExternalStartupResourceText"
+                        Foreground="{DynamicResource ExternalStartupBrush}"
+                        Text="{DynamicResource ExternalStartupText}" />
                     <ContentControl
                         x:Name="ExternalTemplatePresenter"
                         Content="{Binding SelectedExternalItem}"
@@ -667,6 +685,18 @@ internal static class Program
 
             public partial class App
             {
+                private static bool s_externalRunValidationRequested;
+
+                public static int ExternalStartupEventCount { get; private set; }
+
+                public static int ExternalStartupArgumentCount { get; private set; }
+
+                public static int ExternalExitEventCount { get; private set; }
+
+                public static int ExternalExitCode { get; private set; }
+
+                public static bool ExternalRunValidated { get; private set; }
+
                 protected override void OnStartup(StartupEventArgs e)
                 {
                     if (Environment.GetEnvironmentVariable("PROGPU_WPF_EXTERNAL_VALIDATE") == "1")
@@ -676,7 +706,47 @@ internal static class Program
                         return;
                     }
 
+                    if (Environment.GetEnvironmentVariable("PROGPU_WPF_EXTERNAL_RUN_VALIDATE") == "1")
+                    {
+                        s_externalRunValidationRequested = true;
+                        base.OnStartup(e);
+                        Dispatcher.BeginInvoke(
+                            DispatcherPriority.ApplicationIdle,
+                            new Action(ExternalSdkValidation.ValidateApplicationRunAndShutdown));
+                        return;
+                    }
+
                     base.OnStartup(e);
+                }
+
+                protected override void OnExit(ExitEventArgs e)
+                {
+                    base.OnExit(e);
+
+                    if (s_externalRunValidationRequested)
+                    {
+                        ExternalSdkValidation.ValidateApplicationExit(e.ApplicationExitCode);
+                        Console.WriteLine("External SDK Application.Run validation succeeded.");
+                    }
+                }
+
+                private void OnExternalAppStartup(object sender, StartupEventArgs e)
+                {
+                    ExternalStartupEventCount++;
+                    ExternalStartupArgumentCount = e.Args.Length;
+                    Resources["ExternalStartupText"] = "External SDK startup resource";
+                    Resources["ExternalStartupBrush"] = new SolidColorBrush(Color.FromRgb(0x17, 0x62, 0x83));
+                }
+
+                private void OnExternalAppExit(object sender, ExitEventArgs e)
+                {
+                    ExternalExitEventCount++;
+                    ExternalExitCode = e.ApplicationExitCode;
+                }
+
+                public static void MarkExternalRunValidated()
+                {
+                    ExternalRunValidated = true;
                 }
             }
 
@@ -782,6 +852,66 @@ internal static class Program
                     AssertAtLeast(navigatedCountBeforeBack + 1, window.ExternalFrameNavigatedCount, "external SDK back frame navigated count");
                     AssertEqual("Back", window.LastExternalFrameNavigationMode, "external SDK back frame navigation mode");
                     AssertEqual(typeof(ExternalPage).FullName, window.LastExternalFrameContentType, "external SDK back frame content type");
+                }
+
+                public static void ValidateApplicationRunAndShutdown()
+                {
+                    var app = RequireType<App>(
+                        Application.Current,
+                        "external SDK current application");
+                    AssertEqual(1, App.ExternalStartupEventCount, "external SDK application startup event count");
+                    AssertEqual(0, App.ExternalStartupArgumentCount, "external SDK application startup argument count");
+                    AssertEqual(ShutdownMode.OnLastWindowClose, app.ShutdownMode, "external SDK application shutdown mode");
+
+                    var window = RequireType<MainWindow>(
+                        app.MainWindow,
+                        "external SDK application main window");
+                    AssertEqual(true, window.IsVisible, "external SDK application main window visibility");
+                    AssertAtLeast(1, app.Windows.Count, "external SDK application windows count");
+
+                    bool containsMainWindow = false;
+                    foreach (Window candidate in app.Windows)
+                    {
+                        if (ReferenceEquals(candidate, window))
+                        {
+                            containsMainWindow = true;
+                            break;
+                        }
+                    }
+
+                    AssertEqual(true, containsMainWindow, "external SDK application windows contains main window");
+
+                    var titleText = RequireType<TextBlock>(
+                        window.FindName("TitleText"),
+                        "external SDK Application.Run startup window title");
+                    AssertEqual("External SDK app", titleText.Text, "external SDK Application.Run startup window text");
+
+                    AssertEqual(
+                        "External SDK startup resource",
+                        app.Resources["ExternalStartupText"],
+                        "external SDK application startup text resource");
+                    AssertBrushColor(
+                        RequireType<Brush>(app.Resources["ExternalStartupBrush"], "external SDK application startup brush resource"),
+                        "#FF176283",
+                        "external SDK application startup brush resource");
+
+                    var startupResourceText = RequireType<TextBlock>(
+                        window.FindName("ExternalStartupResourceText"),
+                        "external SDK startup resource text block");
+                    AssertEqual("External SDK startup resource", startupResourceText.Text, "external SDK startup dynamic resource text");
+                    AssertBrushColor(startupResourceText.Foreground, "#FF176283", "external SDK startup dynamic resource foreground");
+
+                    App.MarkExternalRunValidated();
+                    app.Shutdown(0);
+                }
+
+                public static void ValidateApplicationExit(int exitCode)
+                {
+                    AssertEqual(0, exitCode, "external SDK application exit code");
+                    AssertEqual(1, App.ExternalStartupEventCount, "external SDK application exit-observed startup event count");
+                    AssertEqual(1, App.ExternalExitEventCount, "external SDK application exit event count");
+                    AssertEqual(0, App.ExternalExitCode, "external SDK application exit event code");
+                    AssertEqual(true, App.ExternalRunValidated, "external SDK application run validated before exit");
                 }
 
                 private static void ValidateApplicationResources(MainWindow window)

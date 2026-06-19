@@ -448,6 +448,88 @@ internal static class Program
                     <Button
                         x:Name="ExternalStyledButton"
                         Style="{StaticResource ExternalTriggeredButtonStyle}" />
+                    <Menu x:Name="ExternalMenu">
+                        <MenuItem
+                            x:Name="ExternalRootMenuItem"
+                            Header="_External">
+                            <MenuItem
+                                x:Name="ExternalCommandMenuItem"
+                                Header="_Command"
+                                Command="{x:Static local:MainWindow.ExternalCommand}"
+                                CommandParameter="ExternalMenuCommandParameter"
+                                CommandTarget="{Binding ElementName=ExternalCommandButton}" />
+                            <Separator x:Name="ExternalMenuSeparator" />
+                            <MenuItem
+                                x:Name="ExternalClickMenuItem"
+                                Header="_Click"
+                                Click="OnExternalMenuItemClick" />
+                            <MenuItem
+                                x:Name="ExternalCheckableMenuItem"
+                                Header="_Checkable"
+                                IsCheckable="True"
+                                Checked="OnExternalMenuItemChecked"
+                                Unchecked="OnExternalMenuItemUnchecked" />
+                        </MenuItem>
+                    </Menu>
+                    <Button
+                        x:Name="ExternalPopupOwnerButton"
+                        Content="External popup owner">
+                        <Button.ToolTip>
+                            <ToolTip
+                                x:Name="ExternalToolTip"
+                                Placement="Right">
+                                <TextBlock
+                                    x:Name="ExternalToolTipText"
+                                    Text="External tooltip content" />
+                            </ToolTip>
+                        </Button.ToolTip>
+                        <Button.ContextMenu>
+                            <ContextMenu x:Name="ExternalContextMenu">
+                                <MenuItem
+                                    x:Name="ExternalContextCommandMenuItem"
+                                    Header="Context command"
+                                    Command="{x:Static local:MainWindow.ExternalCommand}"
+                                    CommandParameter="ExternalContextCommandParameter"
+                                    CommandTarget="{Binding ElementName=ExternalCommandButton}" />
+                                <Separator x:Name="ExternalContextMenuSeparator" />
+                                <MenuItem
+                                    x:Name="ExternalContextClickMenuItem"
+                                    Header="Context click"
+                                    Click="OnExternalContextMenuItemClick" />
+                                <MenuItem
+                                    x:Name="ExternalContextCheckableMenuItem"
+                                    Header="Context checkable"
+                                    IsCheckable="True"
+                                    Checked="OnExternalContextMenuItemChecked"
+                                    Unchecked="OnExternalContextMenuItemUnchecked" />
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                    </Button>
+                    <CheckBox
+                        x:Name="ExternalCheckBox"
+                        Content="External check"
+                        IsChecked="False"
+                        Checked="OnExternalCheckBoxChecked"
+                        Unchecked="OnExternalCheckBoxUnchecked" />
+                    <RadioButton
+                        x:Name="ExternalRadioAlpha"
+                        Content="External alpha"
+                        GroupName="ExternalChoiceGroup"
+                        Checked="OnExternalRadioButtonChecked"
+                        Unchecked="OnExternalRadioButtonUnchecked" />
+                    <RadioButton
+                        x:Name="ExternalRadioBeta"
+                        Content="External beta"
+                        GroupName="ExternalChoiceGroup"
+                        IsChecked="True"
+                        Checked="OnExternalRadioButtonChecked"
+                        Unchecked="OnExternalRadioButtonUnchecked" />
+                    <ToggleButton
+                        x:Name="ExternalToggleButton"
+                        Content="External toggle"
+                        IsChecked="False"
+                        Checked="OnExternalToggleButtonChecked"
+                        Unchecked="OnExternalToggleButtonUnchecked" />
                     <Grid x:Name="ExternalLayoutGrid">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -843,6 +925,42 @@ internal static class Program
 
                 public string? LastExternalTreeUnselectedOriginalSourceName { get; private set; }
 
+                public int ExternalMenuClickCount { get; private set; }
+
+                public int ExternalMenuCheckedCount { get; private set; }
+
+                public int ExternalMenuUncheckedCount { get; private set; }
+
+                public int ExternalContextMenuClickCount { get; private set; }
+
+                public int ExternalContextMenuCheckedCount { get; private set; }
+
+                public int ExternalContextMenuUncheckedCount { get; private set; }
+
+                public string? LastExternalMenuRoutedEventName { get; private set; }
+
+                public string? LastExternalContextMenuRoutedEventName { get; private set; }
+
+                public int ExternalCheckBoxCheckedCount { get; private set; }
+
+                public int ExternalCheckBoxUncheckedCount { get; private set; }
+
+                public int ExternalRadioButtonCheckedCount { get; private set; }
+
+                public int ExternalRadioButtonUncheckedCount { get; private set; }
+
+                public int ExternalToggleButtonCheckedCount { get; private set; }
+
+                public int ExternalToggleButtonUncheckedCount { get; private set; }
+
+                public string? LastExternalCheckBoxRoutedEventName { get; private set; }
+
+                public string? LastExternalRadioButtonCheckedName { get; private set; }
+
+                public string? LastExternalRadioButtonUncheckedName { get; private set; }
+
+                public string? LastExternalToggleButtonRoutedEventName { get; private set; }
+
                 public int ExternalCommandCanExecuteCount { get; private set; }
 
                 public int ExternalCommandExecutedCount { get; private set; }
@@ -916,6 +1034,78 @@ internal static class Program
                 {
                     ExternalTreeUnselectedCount++;
                     LastExternalTreeUnselectedOriginalSourceName = (e.OriginalSource as FrameworkElement)?.Name;
+                }
+
+                private void OnExternalMenuItemClick(object sender, RoutedEventArgs e)
+                {
+                    ExternalMenuClickCount++;
+                    LastExternalMenuRoutedEventName = e.RoutedEvent?.Name;
+                }
+
+                private void OnExternalMenuItemChecked(object sender, RoutedEventArgs e)
+                {
+                    ExternalMenuCheckedCount++;
+                    LastExternalMenuRoutedEventName = e.RoutedEvent?.Name;
+                }
+
+                private void OnExternalMenuItemUnchecked(object sender, RoutedEventArgs e)
+                {
+                    ExternalMenuUncheckedCount++;
+                    LastExternalMenuRoutedEventName = e.RoutedEvent?.Name;
+                }
+
+                private void OnExternalContextMenuItemClick(object sender, RoutedEventArgs e)
+                {
+                    ExternalContextMenuClickCount++;
+                    LastExternalContextMenuRoutedEventName = e.RoutedEvent?.Name;
+                }
+
+                private void OnExternalContextMenuItemChecked(object sender, RoutedEventArgs e)
+                {
+                    ExternalContextMenuCheckedCount++;
+                    LastExternalContextMenuRoutedEventName = e.RoutedEvent?.Name;
+                }
+
+                private void OnExternalContextMenuItemUnchecked(object sender, RoutedEventArgs e)
+                {
+                    ExternalContextMenuUncheckedCount++;
+                    LastExternalContextMenuRoutedEventName = e.RoutedEvent?.Name;
+                }
+
+                private void OnExternalCheckBoxChecked(object sender, RoutedEventArgs e)
+                {
+                    ExternalCheckBoxCheckedCount++;
+                    LastExternalCheckBoxRoutedEventName = e.RoutedEvent?.Name;
+                }
+
+                private void OnExternalCheckBoxUnchecked(object sender, RoutedEventArgs e)
+                {
+                    ExternalCheckBoxUncheckedCount++;
+                    LastExternalCheckBoxRoutedEventName = e.RoutedEvent?.Name;
+                }
+
+                private void OnExternalRadioButtonChecked(object sender, RoutedEventArgs e)
+                {
+                    ExternalRadioButtonCheckedCount++;
+                    LastExternalRadioButtonCheckedName = (sender as FrameworkElement)?.Name;
+                }
+
+                private void OnExternalRadioButtonUnchecked(object sender, RoutedEventArgs e)
+                {
+                    ExternalRadioButtonUncheckedCount++;
+                    LastExternalRadioButtonUncheckedName = (sender as FrameworkElement)?.Name;
+                }
+
+                private void OnExternalToggleButtonChecked(object sender, RoutedEventArgs e)
+                {
+                    ExternalToggleButtonCheckedCount++;
+                    LastExternalToggleButtonRoutedEventName = e.RoutedEvent?.Name;
+                }
+
+                private void OnExternalToggleButtonUnchecked(object sender, RoutedEventArgs e)
+                {
+                    ExternalToggleButtonUncheckedCount++;
+                    LastExternalToggleButtonRoutedEventName = e.RoutedEvent?.Name;
                 }
 
                 private void OnExternalFrameNavigating(object sender, NavigatingCancelEventArgs e)
@@ -1112,6 +1302,7 @@ internal static class Program
                     ValidateApplicationResources(window);
                     ValidateBindings(window);
                     ValidateStylesAndTemplates(window);
+                    ValidateMenusAndChoiceControls(window);
                     ValidateLayoutsAndItems(window);
                     ValidateSelectorsAndContent(window);
                     ValidateRichDocuments(window);
@@ -1427,6 +1618,181 @@ internal static class Program
                     DrainDispatcher();
                     AssertEqual("base-style", styledButton.Tag, "external SDK property trigger restored tag");
                     AssertBrushColor(styledButton.Background, "#FF254C6A", "external SDK property trigger restored background");
+                }
+
+                private static void ValidateMenusAndChoiceControls(MainWindow window)
+                {
+                    var commandButton = RequireType<Button>(
+                        window.FindName("ExternalCommandButton"),
+                        "external SDK command button for menu validation");
+                    var menu = RequireType<Menu>(
+                        window.FindName("ExternalMenu"),
+                        "external SDK menu");
+                    AssertEqual(1, menu.Items.Count, "external SDK menu root count");
+                    var rootItem = RequireType<MenuItem>(
+                        menu.Items[0],
+                        "external SDK root menu item");
+                    AssertEqual("_External", rootItem.Header, "external SDK root menu header");
+                    AssertEqual(4, rootItem.Items.Count, "external SDK root menu child count");
+
+                    var commandItem = RequireType<MenuItem>(
+                        rootItem.Items[0],
+                        "external SDK command menu item");
+                    var separator = RequireType<Separator>(
+                        rootItem.Items[1],
+                        "external SDK menu separator");
+                    var clickItem = RequireType<MenuItem>(
+                        rootItem.Items[2],
+                        "external SDK click menu item");
+                    var checkableItem = RequireType<MenuItem>(
+                        rootItem.Items[3],
+                        "external SDK checkable menu item");
+                    AssertEqual("ExternalMenuSeparator", separator.Name, "external SDK menu separator name");
+                    AssertEqual(MainWindow.ExternalCommand, commandItem.Command, "external SDK command menu item command");
+                    AssertEqual("ExternalMenuCommandParameter", commandItem.CommandParameter, "external SDK command menu item parameter");
+                    AssertEqual("_Click", clickItem.Header, "external SDK click menu header");
+                    AssertEqual(true, checkableItem.IsCheckable, "external SDK checkable menu flag");
+
+                    int menuCommandExecutedBefore = window.ExternalCommandExecutedCount;
+                    RequireType<RoutedCommand>(
+                        commandItem.Command,
+                        "external SDK command menu routed command")
+                        .Execute(commandItem.CommandParameter, commandItem.CommandTarget ?? commandButton);
+                    AssertEqual(menuCommandExecutedBefore + 1, window.ExternalCommandExecutedCount, "external SDK menu command executed count");
+                    AssertEqual("ExternalMenuCommandParameter", window.LastExternalCommandParameter, "external SDK menu command parameter");
+
+                    int menuClickBefore = window.ExternalMenuClickCount;
+                    clickItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, clickItem));
+                    AssertEqual(menuClickBefore + 1, window.ExternalMenuClickCount, "external SDK menu click count");
+                    AssertEqual("Click", window.LastExternalMenuRoutedEventName, "external SDK menu click routed event");
+
+                    int menuCheckedBefore = window.ExternalMenuCheckedCount;
+                    int menuUncheckedBefore = window.ExternalMenuUncheckedCount;
+                    checkableItem.IsChecked = true;
+                    DrainDispatcher();
+                    AssertEqual(true, checkableItem.IsChecked, "external SDK checkable menu checked state");
+                    AssertAtLeast(menuCheckedBefore + 1, window.ExternalMenuCheckedCount, "external SDK checkable menu checked count");
+                    AssertEqual("Checked", window.LastExternalMenuRoutedEventName, "external SDK checkable menu checked routed event");
+                    checkableItem.IsChecked = false;
+                    DrainDispatcher();
+                    AssertEqual(false, checkableItem.IsChecked, "external SDK checkable menu unchecked state");
+                    AssertAtLeast(menuUncheckedBefore + 1, window.ExternalMenuUncheckedCount, "external SDK checkable menu unchecked count");
+                    AssertEqual("Unchecked", window.LastExternalMenuRoutedEventName, "external SDK checkable menu unchecked routed event");
+
+                    var popupOwner = RequireType<Button>(
+                        window.FindName("ExternalPopupOwnerButton"),
+                        "external SDK popup owner button");
+                    var toolTip = RequireType<ToolTip>(
+                        popupOwner.ToolTip,
+                        "external SDK tooltip");
+                    var toolTipText = RequireType<TextBlock>(
+                        toolTip.Content,
+                        "external SDK tooltip text");
+                    AssertEqual(PlacementMode.Right, toolTip.Placement, "external SDK tooltip placement");
+                    AssertEqual("External tooltip content", toolTipText.Text, "external SDK tooltip content");
+
+                    var contextMenu = RequireType<ContextMenu>(
+                        popupOwner.ContextMenu,
+                        "external SDK context menu");
+                    AssertEqual(4, contextMenu.Items.Count, "external SDK context menu item count");
+                    var contextCommandItem = RequireType<MenuItem>(
+                        contextMenu.Items[0],
+                        "external SDK context command menu item");
+                    var contextSeparator = RequireType<Separator>(
+                        contextMenu.Items[1],
+                        "external SDK context menu separator");
+                    var contextClickItem = RequireType<MenuItem>(
+                        contextMenu.Items[2],
+                        "external SDK context click menu item");
+                    var contextCheckableItem = RequireType<MenuItem>(
+                        contextMenu.Items[3],
+                        "external SDK context checkable menu item");
+                    AssertEqual("ExternalContextMenuSeparator", contextSeparator.Name, "external SDK context menu separator name");
+                    AssertEqual(MainWindow.ExternalCommand, contextCommandItem.Command, "external SDK context command item command");
+                    AssertEqual("ExternalContextCommandParameter", contextCommandItem.CommandParameter, "external SDK context command item parameter");
+                    AssertEqual("Context click", contextClickItem.Header, "external SDK context click item header");
+                    AssertEqual(true, contextCheckableItem.IsCheckable, "external SDK context checkable menu flag");
+
+                    int contextCommandExecutedBefore = window.ExternalCommandExecutedCount;
+                    RequireType<RoutedCommand>(
+                        contextCommandItem.Command,
+                        "external SDK context command routed command")
+                        .Execute(contextCommandItem.CommandParameter, contextCommandItem.CommandTarget ?? commandButton);
+                    AssertEqual(contextCommandExecutedBefore + 1, window.ExternalCommandExecutedCount, "external SDK context command executed count");
+                    AssertEqual("ExternalContextCommandParameter", window.LastExternalCommandParameter, "external SDK context command parameter");
+
+                    int contextClickBefore = window.ExternalContextMenuClickCount;
+                    contextClickItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent, contextClickItem));
+                    AssertEqual(contextClickBefore + 1, window.ExternalContextMenuClickCount, "external SDK context menu click count");
+                    AssertEqual("Click", window.LastExternalContextMenuRoutedEventName, "external SDK context menu click routed event");
+
+                    int contextCheckedBefore = window.ExternalContextMenuCheckedCount;
+                    int contextUncheckedBefore = window.ExternalContextMenuUncheckedCount;
+                    contextCheckableItem.IsChecked = true;
+                    DrainDispatcher();
+                    AssertEqual(true, contextCheckableItem.IsChecked, "external SDK context checkable checked state");
+                    AssertAtLeast(contextCheckedBefore + 1, window.ExternalContextMenuCheckedCount, "external SDK context checked count");
+                    AssertEqual("Checked", window.LastExternalContextMenuRoutedEventName, "external SDK context checked routed event");
+                    contextCheckableItem.IsChecked = false;
+                    DrainDispatcher();
+                    AssertEqual(false, contextCheckableItem.IsChecked, "external SDK context checkable unchecked state");
+                    AssertAtLeast(contextUncheckedBefore + 1, window.ExternalContextMenuUncheckedCount, "external SDK context unchecked count");
+                    AssertEqual("Unchecked", window.LastExternalContextMenuRoutedEventName, "external SDK context unchecked routed event");
+
+                    var checkBox = RequireType<CheckBox>(
+                        window.FindName("ExternalCheckBox"),
+                        "external SDK check box");
+                    AssertEqual(false, checkBox.IsChecked == true, "external SDK initial check box state");
+                    int checkBoxCheckedBefore = window.ExternalCheckBoxCheckedCount;
+                    int checkBoxUncheckedBefore = window.ExternalCheckBoxUncheckedCount;
+                    checkBox.IsChecked = true;
+                    DrainDispatcher();
+                    AssertEqual(true, checkBox.IsChecked == true, "external SDK check box checked state");
+                    AssertAtLeast(checkBoxCheckedBefore + 1, window.ExternalCheckBoxCheckedCount, "external SDK check box checked count");
+                    AssertEqual("Checked", window.LastExternalCheckBoxRoutedEventName, "external SDK check box checked routed event");
+                    checkBox.IsChecked = false;
+                    DrainDispatcher();
+                    AssertEqual(false, checkBox.IsChecked == true, "external SDK check box unchecked state");
+                    AssertAtLeast(checkBoxUncheckedBefore + 1, window.ExternalCheckBoxUncheckedCount, "external SDK check box unchecked count");
+                    AssertEqual("Unchecked", window.LastExternalCheckBoxRoutedEventName, "external SDK check box unchecked routed event");
+
+                    var radioAlpha = RequireType<RadioButton>(
+                        window.FindName("ExternalRadioAlpha"),
+                        "external SDK alpha radio button");
+                    var radioBeta = RequireType<RadioButton>(
+                        window.FindName("ExternalRadioBeta"),
+                        "external SDK beta radio button");
+                    AssertEqual("ExternalChoiceGroup", radioAlpha.GroupName, "external SDK alpha radio group");
+                    AssertEqual("ExternalChoiceGroup", radioBeta.GroupName, "external SDK beta radio group");
+                    AssertEqual(false, radioAlpha.IsChecked == true, "external SDK initial alpha radio state");
+                    AssertEqual(true, radioBeta.IsChecked == true, "external SDK initial beta radio state");
+                    int radioCheckedBefore = window.ExternalRadioButtonCheckedCount;
+                    int radioUncheckedBefore = window.ExternalRadioButtonUncheckedCount;
+                    radioAlpha.IsChecked = true;
+                    DrainDispatcher();
+                    AssertEqual(true, radioAlpha.IsChecked == true, "external SDK alpha radio checked state");
+                    AssertEqual(false, radioBeta.IsChecked == true, "external SDK beta radio unchecked state");
+                    AssertAtLeast(radioCheckedBefore + 1, window.ExternalRadioButtonCheckedCount, "external SDK radio checked count");
+                    AssertAtLeast(radioUncheckedBefore + 1, window.ExternalRadioButtonUncheckedCount, "external SDK radio unchecked count");
+                    AssertEqual("ExternalRadioAlpha", window.LastExternalRadioButtonCheckedName, "external SDK radio checked sender");
+                    AssertEqual("ExternalRadioBeta", window.LastExternalRadioButtonUncheckedName, "external SDK radio unchecked sender");
+
+                    var toggleButton = RequireType<ToggleButton>(
+                        window.FindName("ExternalToggleButton"),
+                        "external SDK toggle button");
+                    AssertEqual(false, toggleButton.IsChecked == true, "external SDK initial toggle state");
+                    int toggleCheckedBefore = window.ExternalToggleButtonCheckedCount;
+                    int toggleUncheckedBefore = window.ExternalToggleButtonUncheckedCount;
+                    toggleButton.IsChecked = true;
+                    DrainDispatcher();
+                    AssertEqual(true, toggleButton.IsChecked == true, "external SDK toggle checked state");
+                    AssertAtLeast(toggleCheckedBefore + 1, window.ExternalToggleButtonCheckedCount, "external SDK toggle checked count");
+                    AssertEqual("Checked", window.LastExternalToggleButtonRoutedEventName, "external SDK toggle checked routed event");
+                    toggleButton.IsChecked = false;
+                    DrainDispatcher();
+                    AssertEqual(false, toggleButton.IsChecked == true, "external SDK toggle unchecked state");
+                    AssertAtLeast(toggleUncheckedBefore + 1, window.ExternalToggleButtonUncheckedCount, "external SDK toggle unchecked count");
+                    AssertEqual("Unchecked", window.LastExternalToggleButtonRoutedEventName, "external SDK toggle unchecked routed event");
                 }
 
                 private static void ValidateLayoutsAndItems(MainWindow window)

@@ -4661,6 +4661,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("MergedAccentBrush", smokeResourcesXaml, StringComparison.Ordinal);
         Assert.Contains("UnsharedAccentBrush", smokeResourcesXaml, StringComparison.Ordinal);
         Assert.Contains("x:Shared=\"False\"", smokeResourcesXaml, StringComparison.Ordinal);
+        Assert.Contains("SolidColorBrush", smokeResourcesXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"FreezableAccentBrush\"", smokeResourcesXaml, StringComparison.Ordinal);
+        Assert.Contains("LinearGradientBrush", smokeResourcesXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"FreezableGradientBrush\"", smokeResourcesXaml, StringComparison.Ordinal);
+        Assert.Contains("SpreadMethod=\"Reflect\"", smokeResourcesXaml, StringComparison.Ordinal);
+        Assert.Contains("GradientStop Color=\"#2F6B54\" Offset=\"0\"", smokeResourcesXaml, StringComparison.Ordinal);
+        Assert.Contains("GradientStop Color=\"#B15E3B\" Offset=\"0.5\"", smokeResourcesXaml, StringComparison.Ordinal);
         Assert.Contains("SmokePanelMargin", smokeResourcesXaml, StringComparison.Ordinal);
         Assert.Contains("SmokeListTextStyle", smokeResourcesXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"BasedOnSmokeTextStyle\"", smokeResourcesXaml, StringComparison.Ordinal);
@@ -5233,6 +5240,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryFindResource\", \"SmokePanelMargin\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindResource\", \"ProviderGreeting\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("application object data provider result", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateFreezableBrushResource(app)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateFreezableGradientBrushResource(app)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK Freezable brush clone mutable opacity", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK Freezable gradient clone mutable stop offset", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK Freezable gradient current-value clone stop collection", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(\"#FF356D9E\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("loaded storyboard TextBlock", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("loaded storyboard EventTrigger", runtimeHarnessProgram, StringComparison.Ordinal);

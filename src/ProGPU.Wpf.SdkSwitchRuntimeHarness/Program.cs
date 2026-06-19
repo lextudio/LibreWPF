@@ -259,7 +259,66 @@ internal static class Program
         object providerGreeting = Invoke(app, "TryFindResource", "ProviderGreeting");
         AssertType(providerGreeting, "System.Windows.Data.ObjectDataProvider", "application object data provider");
         AssertEqual("provider:7", GetProperty(providerGreeting, "Data"), "application object data provider result");
+        ValidateFreezableBrushResource(app);
+        ValidateFreezableGradientBrushResource(app);
         AssertAtLeast(1, GetCount(GetProperty(resources, "Keys")), "application resource key count");
+    }
+
+    private static void ValidateFreezableBrushResource(object app)
+    {
+        object brush = Invoke(app, "TryFindResource", "FreezableAccentBrush");
+        AssertType(brush, "System.Windows.Media.SolidColorBrush", "SDK Freezable brush resource");
+        AssertEqual("#FF24507A", GetProperty(brush, "Color").ToString() ?? string.Empty, "SDK Freezable brush color");
+        AssertClose(0.75, Convert.ToDouble(GetProperty(brush, "Opacity")), 0.0001, "SDK Freezable brush opacity");
+        AssertEqual(true, GetProperty(brush, "CanFreeze"), "SDK Freezable brush can freeze");
+        InvokeVoid(brush, "Freeze");
+        AssertEqual(true, GetProperty(brush, "IsFrozen"), "SDK Freezable brush frozen");
+
+        object clone = Invoke(brush, "Clone");
+        AssertType(clone, "System.Windows.Media.SolidColorBrush", "SDK Freezable brush clone");
+        AssertEqual(false, GetProperty(clone, "IsFrozen"), "SDK Freezable brush clone mutable");
+        SetProperty(clone, "Opacity", 0.5);
+        AssertClose(0.5, Convert.ToDouble(GetProperty(clone, "Opacity")), 0.0001, "SDK Freezable brush clone mutable opacity");
+
+        object currentValueClone = Invoke(brush, "CloneCurrentValue");
+        AssertType(currentValueClone, "System.Windows.Media.SolidColorBrush", "SDK Freezable brush current-value clone");
+        AssertEqual(false, GetProperty(currentValueClone, "IsFrozen"), "SDK Freezable brush current-value clone mutable");
+        AssertClose(0.75, Convert.ToDouble(GetProperty(currentValueClone, "Opacity")), 0.0001, "SDK Freezable current-value clone opacity");
+    }
+
+    private static void ValidateFreezableGradientBrushResource(object app)
+    {
+        object gradient = Invoke(app, "TryFindResource", "FreezableGradientBrush");
+        AssertType(gradient, "System.Windows.Media.LinearGradientBrush", "SDK Freezable gradient brush resource");
+        AssertClose(0.8, Convert.ToDouble(GetProperty(gradient, "Opacity")), 0.0001, "SDK Freezable gradient opacity");
+        AssertEqual("Reflect", GetProperty(gradient, "SpreadMethod").ToString() ?? string.Empty, "SDK Freezable gradient spread method");
+        object stops = GetProperty(gradient, "GradientStops");
+        AssertEqual(3, GetCount(stops), "SDK Freezable gradient stop count");
+        object firstStop = EnumerateObjects(stops).First();
+        AssertType(firstStop, "System.Windows.Media.GradientStop", "SDK Freezable gradient first stop");
+        AssertEqual("#FF2F6B54", GetProperty(firstStop, "Color").ToString() ?? string.Empty, "SDK Freezable gradient first stop color");
+        AssertClose(0.0, Convert.ToDouble(GetProperty(firstStop, "Offset")), 0.0001, "SDK Freezable gradient first stop offset");
+        AssertEqual(true, GetProperty(gradient, "CanFreeze"), "SDK Freezable gradient can freeze");
+        InvokeVoid(gradient, "Freeze");
+        AssertEqual(true, GetProperty(gradient, "IsFrozen"), "SDK Freezable gradient frozen");
+        AssertEqual(true, GetProperty(stops, "IsFrozen"), "SDK Freezable gradient stop collection frozen");
+        AssertEqual(true, GetProperty(firstStop, "IsFrozen"), "SDK Freezable gradient stop frozen");
+
+        object clone = Invoke(gradient, "Clone");
+        AssertType(clone, "System.Windows.Media.LinearGradientBrush", "SDK Freezable gradient clone");
+        AssertEqual(false, GetProperty(clone, "IsFrozen"), "SDK Freezable gradient clone mutable");
+        object cloneStops = GetProperty(clone, "GradientStops");
+        AssertEqual(false, GetProperty(cloneStops, "IsFrozen"), "SDK Freezable gradient clone stop collection mutable");
+        object cloneFirstStop = EnumerateObjects(cloneStops).First();
+        AssertEqual(false, GetProperty(cloneFirstStop, "IsFrozen"), "SDK Freezable gradient clone stop mutable");
+        SetProperty(cloneFirstStop, "Offset", 0.25);
+        AssertClose(0.25, Convert.ToDouble(GetProperty(cloneFirstStop, "Offset")), 0.0001, "SDK Freezable gradient clone mutable stop offset");
+
+        object currentValueClone = Invoke(gradient, "CloneCurrentValue");
+        AssertType(currentValueClone, "System.Windows.Media.LinearGradientBrush", "SDK Freezable gradient current-value clone");
+        AssertEqual(false, GetProperty(currentValueClone, "IsFrozen"), "SDK Freezable gradient current-value clone mutable");
+        AssertClose(0.8, Convert.ToDouble(GetProperty(currentValueClone, "Opacity")), 0.0001, "SDK Freezable gradient current-value clone opacity");
+        AssertEqual(3, GetCount(GetProperty(currentValueClone, "GradientStops")), "SDK Freezable gradient current-value clone stop collection");
     }
 
     private static void ValidateWindow(

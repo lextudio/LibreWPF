@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Security;
 
@@ -67,6 +68,7 @@ internal static class Program
             string repoRoot = FindRepoRoot();
             string packageFeed = Path.Combine(repoRoot, "artifacts", "packages", "Release", "NonShipping");
             RequireDirectory(packageFeed, "local package feed");
+            ValidateSdkPackageLayout(packageFeed);
 
             string workRoot = Path.Combine(Path.GetTempPath(), "ProGPU.Wpf.SdkExternalSmoke");
             string appProjectPath = PrepareExternalSdkApp(workRoot, packageFeed);
@@ -106,6 +108,60 @@ internal static class Program
             Console.Error.WriteLine(ex);
             return 1;
         }
+    }
+
+    private static void ValidateSdkPackageLayout(string packageFeed)
+    {
+        string packagePath = Path.Combine(packageFeed, $"ProGPU.Wpf.Sdk.{SdkVersion}.nupkg");
+        RequireFile(packagePath, "ProGPU WPF SDK package");
+
+        using ZipArchive package = ZipFile.OpenRead(packagePath);
+
+        string nuspec = ReadPackageEntry(package, "ProGPU.Wpf.Sdk.nuspec", "SDK nuspec");
+        string sdkProps = ReadPackageEntry(package, "Sdk/Sdk.props", "SDK root props import");
+        string sdkTargets = ReadPackageEntry(package, "Sdk/Sdk.targets", "SDK root targets import");
+        string portableProps = ReadPackageEntry(package, "targets/ProGPU.Wpf.Sdk.props", "portable SDK props");
+        string portableTargets = ReadPackageEntry(package, "targets/ProGPU.Wpf.Sdk.targets", "portable SDK targets");
+        string portableBootstrap = ReadPackageEntry(package, "targets/ProGPU.Wpf.Sdk.PortableBootstrap.cs", "portable SDK bootstrap");
+        _ = ReadPackageEntry(package, "README.md", "SDK readme");
+
+        AssertContains(nuspec, "<id>ProGPU.Wpf.Sdk</id>", "SDK nuspec package id");
+        AssertContains(nuspec, $"<version>{SdkVersion}</version>", "SDK nuspec version");
+        AssertContains(nuspec, "<packageType name=\"MSBuildSdk\" />", "SDK nuspec package type");
+        AssertContains(nuspec, "<dependencies>", "SDK nuspec dependency group");
+
+        AssertContains(sdkProps, "<ProGpuWpfSdkVersion Condition=\"'$(ProGpuWpfSdkVersion)' == ''\">11.0.0-dev</ProGpuWpfSdkVersion>", "SDK root version default");
+        AssertContains(sdkProps, "<Import Sdk=\"Microsoft.NET.Sdk.WindowsDesktop\" Project=\"Sdk.props\" />", "SDK root WindowsDesktop props import");
+        AssertContains(sdkProps, "ProGPU.Wpf.Sdk.props", "SDK root portable props import");
+        AssertContains(sdkTargets, "<Import Sdk=\"Microsoft.NET.Sdk.WindowsDesktop\" Project=\"Sdk.targets\" />", "SDK root WindowsDesktop targets import");
+        AssertContains(sdkTargets, "ProGPU.Wpf.Sdk.targets", "SDK root portable targets import");
+
+        AssertContains(portableProps, "<InternalMarkupCompilation Condition=\"'$(ProGpuWpfUseWpfMarkup)' == 'true' And '$(InternalMarkupCompilation)' == ''\">true</InternalMarkupCompilation>", "SDK markup compiler default");
+        AssertContains(portableProps, "<AlwaysCompileMarkupFilesInSeparateDomain Condition=\"'$(ProGpuWpfUseWpfMarkup)' == 'true' And '$(AlwaysCompileMarkupFilesInSeparateDomain)' == ''\">false</AlwaysCompileMarkupFilesInSeparateDomain>", "SDK markup compiler appdomain default");
+        AssertContains(portableProps, "<ApplicationDefinition Include=\"App.xaml\"", "SDK default app XAML item");
+        AssertContains(portableProps, "<Page Include=\"**/*.xaml\"", "SDK default page XAML item");
+        AssertContains(portableProps, "<PackageReference Include=\"Silk.NET.WebGPU.Native.WGPU\" Version=\"$(ProGpuWpfSilkNetVersion)\" />", "SDK native WebGPU package reference");
+        AssertContains(portableProps, "<PackageReference Include=\"System.IO.Packaging\" Version=\"$(ProGpuWpfSystemIOPackagingVersion)\" />", "SDK WPF support package reference");
+
+        AssertContains(portableTargets, "<FrameworkReference Remove=\"Microsoft.WindowsDesktop.App.WPF\" />", "SDK WindowsDesktop framework suppression");
+        AssertContains(portableTargets, "<PackageReference Include=\"$(ProGpuWpfManagedPackageId)\" Version=\"$(ProGpuWpfManagedPackageVersion)\" />", "SDK managed WPF transport package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.Wpf\" Version=\"$(ProGpuWpfPackageVersion)\" />", "SDK ProGPU WPF package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.Compute\" Version=\"$(ProGpuPackageVersion)\" />", "SDK ProGPU compute package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.Transpiler\" Version=\"$(ProGpuPackageVersion)\" />", "SDK ProGPU transpiler package reference");
+        AssertContains(portableTargets, "<Compile Include=\"$(MSBuildThisFileDirectory)ProGPU.Wpf.Sdk.PortableBootstrap.cs\"", "SDK portable bootstrap injection");
+        AssertContains(portableTargets, "_ProGpuWpfSdkCopyPackageRuntimeAssets", "SDK managed runtime copy target");
+        AssertContains(portableTargets, "_ProGpuWpfSdkCopyNativeRuntimeAssets", "SDK native runtime copy target");
+
+        AssertContains(portableBootstrap, "[ModuleInitializer]", "SDK bootstrap module initializer");
+        AssertContains(portableBootstrap, "WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation", "SDK presentation framework activation bootstrap");
+        AssertContains(portableBootstrap, "WpfPortableWindowActivation.TryRegisterPresentationCoreClipboardService", "SDK presentation core clipboard bootstrap");
+
+        AssertNoPackageEntryPrefix(package, "build/", "SDK package build folder");
+        AssertNoPackageEntryPrefix(package, "buildTransitive/", "SDK package buildTransitive folder");
+        AssertNoPackageEntryPrefix(package, "contentFiles/", "SDK package content files folder");
+        AssertNoPackageEntryPrefix(package, "lib/", "SDK package lib folder");
+        AssertNoPackageEntryPrefix(package, "ref/", "SDK package ref folder");
+        AssertNoPackageEntryPrefix(package, "tools/", "SDK package tools folder");
     }
 
     private static string PrepareExternalSdkApp(string workRoot, string packageFeed)
@@ -3694,6 +3750,32 @@ internal static class Program
         }
 
         throw new FileNotFoundException($"Missing {description} under {root}.");
+    }
+
+    private static string ReadPackageEntry(ZipArchive package, string entryName, string description)
+    {
+        using Stream stream = RequirePackageEntry(package, entryName, description).Open();
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
+    private static ZipArchiveEntry RequirePackageEntry(ZipArchive package, string entryName, string description)
+    {
+        ZipArchiveEntry? entry = package.GetEntry(entryName);
+        if (entry is null)
+        {
+            throw new FileNotFoundException($"Missing {description} package entry: {entryName}", entryName);
+        }
+
+        return entry;
+    }
+
+    private static void AssertNoPackageEntryPrefix(ZipArchive package, string prefix, string description)
+    {
+        if (package.Entries.Any(entry => entry.FullName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException($"Expected {description} to be absent.");
+        }
     }
 
     private static void AssertContains(string value, string expected, string description)

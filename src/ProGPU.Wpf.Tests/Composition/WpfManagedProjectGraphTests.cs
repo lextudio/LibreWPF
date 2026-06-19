@@ -6174,6 +6174,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK app merged resource dictionary source", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK app compiled page source", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("NuGet.config", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateSdkPackageLayout(packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.Sdk.{SdkVersion}.nupkg", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<packageType name=\\\"MSBuildSdk\\\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ReadPackageEntry(package, \"Sdk/Sdk.props\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ReadPackageEntry(package, \"targets/ProGPU.Wpf.Sdk.PortableBootstrap.cs\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertNoPackageEntryPrefix(package, \"lib/\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertNoPackageEntryPrefix(package, \"ref/\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("_ProGpuWpfSdkCopyNativeRuntimeAssets", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("External SDK smoke must not rely on generated Directory.Build.props or Directory.Build.targets files.", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfManagedReferenceRoot", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Microsoft.DotNet.Wpf.GitHub", externalSdkHarnessProgram, StringComparison.Ordinal);

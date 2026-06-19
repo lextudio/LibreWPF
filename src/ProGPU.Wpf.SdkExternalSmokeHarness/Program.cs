@@ -332,6 +332,38 @@ internal static class Program
                 <sys:String
                     x:Key="ExternalStaticText"
                     xmlns:sys="clr-namespace:System;assembly=System.Private.CoreLib">External SDK resource text</sys:String>
+                <ControlTemplate
+                    x:Key="ExternalButtonTemplate"
+                    TargetType="{x:Type Button}">
+                    <Border
+                        x:Name="ExternalTemplateRoot"
+                        Background="{TemplateBinding Background}"
+                        Padding="3">
+                        <ContentPresenter
+                            x:Name="ExternalTemplateContent"
+                            Content="{TemplateBinding Content}" />
+                    </Border>
+                </ControlTemplate>
+                <Style
+                    x:Key="ExternalBasedButtonStyle"
+                    TargetType="{x:Type Button}">
+                    <Setter Property="Background" Value="#254C6A" />
+                    <Setter Property="Foreground" Value="#F4D35E" />
+                    <Setter Property="Tag" Value="base-style" />
+                </Style>
+                <Style
+                    x:Key="ExternalTriggeredButtonStyle"
+                    BasedOn="{StaticResource ExternalBasedButtonStyle}"
+                    TargetType="{x:Type Button}">
+                    <Setter Property="Content" Value="External styled button" />
+                    <Setter Property="Template" Value="{StaticResource ExternalButtonTemplate}" />
+                    <Style.Triggers>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Background" Value="#8E3B46" />
+                            <Setter Property="Tag" Value="disabled-style" />
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
                 <DataTemplate
                     x:Key="ExternalItemTemplate"
                     DataType="{x:Type local:ExternalItem}">
@@ -392,6 +424,9 @@ internal static class Program
                         x:Name="ExternalStartupResourceText"
                         Foreground="{DynamicResource ExternalStartupBrush}"
                         Text="{DynamicResource ExternalStartupText}" />
+                    <Button
+                        x:Name="ExternalStyledButton"
+                        Style="{StaticResource ExternalTriggeredButtonStyle}" />
                     <ContentControl
                         x:Name="ExternalTemplatePresenter"
                         Content="{Binding SelectedExternalItem}"
@@ -764,6 +799,7 @@ internal static class Program
                     AssertEqual("External SDK library panel", captionText.Text, "external SDK user-control ElementName binding");
                     ValidateApplicationResources(window);
                     ValidateBindings(window);
+                    ValidateStylesAndTemplates(window);
                     ValidateCommandsAndFocus(window);
 
                     var themedControl = RequireType<ExternalThemedControl>(
@@ -1025,6 +1061,57 @@ internal static class Program
                     textBindingExpression.UpdateSource();
                     AssertEqual(false, Validation.GetHasError(validationTextBox), "external SDK validation recovery state");
                     AssertEqual("recovered external text", window.ValidationText, "external SDK validation source update");
+                }
+
+                private static void ValidateStylesAndTemplates(MainWindow window)
+                {
+                    var basedStyle = RequireType<Style>(
+                        window.FindResource("ExternalBasedButtonStyle"),
+                        "external SDK based button style");
+                    var triggeredStyle = RequireType<Style>(
+                        window.FindResource("ExternalTriggeredButtonStyle"),
+                        "external SDK triggered button style");
+                    var buttonTemplate = RequireType<ControlTemplate>(
+                        window.FindResource("ExternalButtonTemplate"),
+                        "external SDK button control template");
+
+                    AssertEqual(typeof(Button), basedStyle.TargetType, "external SDK based style target type");
+                    AssertEqual(typeof(Button), triggeredStyle.TargetType, "external SDK triggered style target type");
+                    AssertEqual(basedStyle, triggeredStyle.BasedOn, "external SDK style BasedOn link");
+                    AssertEqual(3, basedStyle.Setters.Count, "external SDK based style setter count");
+                    AssertEqual(2, triggeredStyle.Setters.Count, "external SDK triggered style setter count");
+                    AssertEqual(1, triggeredStyle.Triggers.Count, "external SDK triggered style trigger count");
+                    AssertEqual(typeof(Button), buttonTemplate.TargetType, "external SDK control template target type");
+
+                    var styledButton = RequireType<Button>(
+                        window.FindName("ExternalStyledButton"),
+                        "external SDK styled button");
+                    AssertEqual(triggeredStyle, styledButton.Style, "external SDK styled button style");
+                    AssertEqual("External styled button", styledButton.Content, "external SDK styled button content setter");
+                    AssertEqual("base-style", styledButton.Tag, "external SDK BasedOn style tag setter");
+                    AssertBrushColor(styledButton.Background, "#FF254C6A", "external SDK BasedOn style background");
+                    AssertBrushColor(styledButton.Foreground, "#FFF4D35E", "external SDK BasedOn style foreground");
+
+                    styledButton.ApplyTemplate();
+                    var templateRoot = RequireType<Border>(
+                        buttonTemplate.FindName("ExternalTemplateRoot", styledButton),
+                        "external SDK styled button template root");
+                    var templateContent = RequireType<ContentPresenter>(
+                        buttonTemplate.FindName("ExternalTemplateContent", styledButton),
+                        "external SDK styled button template content presenter");
+                    AssertBrushColor(templateRoot.Background, "#FF254C6A", "external SDK TemplateBinding background");
+                    AssertEqual("External styled button", templateContent.Content, "external SDK TemplateBinding content");
+
+                    styledButton.IsEnabled = false;
+                    DrainDispatcher();
+                    AssertEqual("disabled-style", styledButton.Tag, "external SDK property trigger tag setter");
+                    AssertBrushColor(styledButton.Background, "#FF8E3B46", "external SDK property trigger background setter");
+                    AssertBrushColor(templateRoot.Background, "#FF8E3B46", "external SDK TemplateBinding triggered background");
+
+                    styledButton.IsEnabled = true;
+                    DrainDispatcher();
+                    AssertEqual("base-style", styledButton.Tag, "external SDK property trigger restored tag");
+                    AssertBrushColor(styledButton.Background, "#FF254C6A", "external SDK property trigger restored background");
                 }
 
                 private static void ValidateCommandsAndFocus(MainWindow window)

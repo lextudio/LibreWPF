@@ -4474,6 +4474,9 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(xamlReader, "if (internalTypeHelper != null && OperatingSystem.IsWindows())", "XamlAccessLevel.AssemblyAccessTo(streamInfo.Assembly)");
         AssertGuardBefore(popupControlService, "if (!OperatingSystem.IsWindows()", "MS.Win32.SafeNativeMethods.GetCapture()");
         AssertGuardBefore(comboBox, "(!OperatingSystem.IsWindows()", "MS.Win32.SafeNativeMethods.GetCapture()");
+        Assert.Contains("PresentationSource source = PresentationSource.CriticalFromVisual(itemsHost);", comboBox, StringComparison.Ordinal);
+        Assert.Contains("CompositionTarget compositionTarget = source?.CompositionTarget;", comboBox, StringComparison.Ordinal);
+        Assert.DoesNotContain("HwndSource source = PresentationSource.CriticalFromVisual(itemsHost) as HwndSource;", comboBox, StringComparison.Ordinal);
         AssertGuardBefore(popup, "(!OperatingSystem.IsWindows()", "MS.Win32.SafeNativeMethods.GetCapture()");
         Assert.Contains("return GetPresentationSourceRootRect();", popup, StringComparison.Ordinal);
         Assert.Contains("private Rect GetPresentationSourceRootRect()", popup, StringComparison.Ordinal);

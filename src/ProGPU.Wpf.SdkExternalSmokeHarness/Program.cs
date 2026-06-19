@@ -1043,6 +1043,7 @@ internal static class Program
             using System.Collections.Generic;
             using System.Globalization;
             using System.Linq;
+            using System.Reflection;
             using System.Windows;
             using System.Windows.Controls;
             using System.Windows.Controls.Primitives;
@@ -1547,6 +1548,7 @@ internal static class Program
                     AssertEqual("External SDK library panel", captionText.Text, "external SDK user-control ElementName binding");
                     ValidateApplicationResources(window);
                     ValidateSystemParameters(window);
+                    ValidateMessageBox(window);
                     ValidateFreezableResources();
                     ValidateLooseXamlReaderWriter();
                     ValidateDataProviders(window);
@@ -1905,6 +1907,50 @@ internal static class Program
                     object resourceValue = resourceOwner.TryFindResource(resourceKey)
                         ?? throw new InvalidOperationException($"Expected external SDK SystemParameters.{propertyName} resource.");
                     AssertEqual(value, (T)resourceValue, $"external SDK SystemParameters.{propertyName} resource");
+                }
+
+                private static void ValidateMessageBox(Window window)
+                {
+                    Type serviceType = typeof(MessageBox).Assembly.GetType(
+                            "System.Windows.PortableMessageBoxService",
+                            throwOnError: false)
+                        ?? throw new TypeLoadException("System.Windows.PortableMessageBoxService");
+                    var isEnabledProperty = serviceType.GetProperty(
+                            "IsEnabled",
+                            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                        ?? throw new MissingMemberException(serviceType.FullName, "IsEnabled");
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        AssertEqual(
+                            true,
+                            (bool)(isEnabledProperty.GetValue(null) ?? false),
+                            "external SDK portable MessageBox service enabled");
+                    }
+
+                    var noOwnerResult = MessageBox.Show(
+                        "external SDK message",
+                        "external SDK caption",
+                        MessageBoxButton.YesNoCancel,
+                        MessageBoxImage.Warning,
+                        MessageBoxResult.No,
+                        MessageBoxOptions.None);
+                    AssertEqual(
+                        MessageBoxResult.No,
+                        noOwnerResult,
+                        "external SDK MessageBox no-owner default result");
+
+                    var ownerResult = MessageBox.Show(
+                        window,
+                        "external SDK owner message",
+                        "external SDK owner caption",
+                        MessageBoxButton.OKCancel,
+                        MessageBoxImage.Information,
+                        MessageBoxResult.None,
+                        MessageBoxOptions.None);
+                    AssertEqual(
+                        MessageBoxResult.OK,
+                        ownerResult,
+                        "external SDK MessageBox owner fallback result");
                 }
 
                 private static void ValidateFreezableResources()

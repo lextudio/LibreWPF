@@ -5702,6 +5702,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SystemParameters.PrimaryScreenWidthKey", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SystemParameters.WheelScrollLines", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK SystemParameters.{propertyName} resource", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateMessageBox(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.PortableMessageBoxService", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK portable MessageBox service enabled", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK MessageBox no-owner default result", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK MessageBox owner fallback result", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("template.LoadContent()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK item template name binding", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window.ExternalItems.Add(new ExternalItem(\"Gamma\", \"Data\"))", externalSdkHarnessProgram, StringComparison.Ordinal);

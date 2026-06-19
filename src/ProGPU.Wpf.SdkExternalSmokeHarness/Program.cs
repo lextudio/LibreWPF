@@ -498,6 +498,58 @@ internal static class Program
                         ItemsPanel="{StaticResource ExternalItemsPanelTemplate}"
                         ItemsSource="{Binding ExternalItems}"
                         ItemStringFormat="External item {0}" />
+                    <ComboBox
+                        x:Name="ExternalComboBox"
+                        DisplayMemberPath="Name"
+                        ItemsSource="{Binding ExternalItems}"
+                        SelectedValuePath="Kind"
+                        SelectedValue="{Binding SelectedExternalKind, Mode=TwoWay}"
+                        SelectionChanged="OnExternalSelectionChanged" />
+                    <TabControl
+                        x:Name="ExternalTabControl"
+                        SelectedIndex="1"
+                        SelectionChanged="OnExternalSelectionChanged">
+                        <TabItem
+                            x:Name="ExternalFrameworkTab"
+                            Header="Framework">
+                            <TextBlock
+                                x:Name="ExternalFrameworkTabText"
+                                Text="Framework tab" />
+                        </TabItem>
+                        <TabItem
+                            x:Name="ExternalRenderingTab"
+                            Header="Rendering">
+                            <TextBlock
+                                x:Name="ExternalRenderingTabText"
+                                Text="{Binding SelectedExternalItem.Kind}" />
+                        </TabItem>
+                    </TabControl>
+                    <GroupBox
+                        x:Name="ExternalGroupBox"
+                        Header="External group">
+                        <TextBlock
+                            x:Name="ExternalGroupText"
+                            Text="{Binding SelectedExternalItem.Name}" />
+                    </GroupBox>
+                    <Expander
+                        x:Name="ExternalExpander"
+                        Header="External expander"
+                        IsExpanded="False"
+                        Expanded="OnExternalExpanderExpanded"
+                        Collapsed="OnExternalExpanderCollapsed">
+                        <TextBlock
+                            x:Name="ExternalExpanderText"
+                            Text="External expanded content" />
+                    </Expander>
+                    <ScrollViewer
+                        x:Name="ExternalScrollViewer"
+                        HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="ExternalScrollContent">
+                            <TextBlock Text="External scroll row 1" />
+                            <TextBlock Text="External scroll row 2" />
+                        </StackPanel>
+                    </ScrollViewer>
                     <TextBlock
                         x:Name="ExternalConverterText"
                         Text="{Binding SelectedExternalItem.Name, Converter={StaticResource ExternalUpperConverter}, ConverterParameter=converted}" />
@@ -661,7 +713,17 @@ internal static class Program
 
                 public ExternalItem SelectedExternalItem => ExternalItems[0];
 
+                public string SelectedExternalKind { get; set; } = "Rendering";
+
                 public string ValidationText { get; set; } = "valid external text";
+
+                public int ExternalSelectionChangedCount { get; private set; }
+
+                public string? LastExternalSelectionSourceName { get; private set; }
+
+                public int ExternalExpanderExpandedCount { get; private set; }
+
+                public int ExternalExpanderCollapsedCount { get; private set; }
 
                 public int ExternalCommandCanExecuteCount { get; private set; }
 
@@ -688,6 +750,22 @@ internal static class Program
                 public string? LastExternalFrameNavigationMode { get; private set; }
 
                 public string? LastExternalFrameContentType { get; private set; }
+
+                private void OnExternalSelectionChanged(object sender, SelectionChangedEventArgs e)
+                {
+                    ExternalSelectionChangedCount++;
+                    LastExternalSelectionSourceName = (sender as FrameworkElement)?.Name;
+                }
+
+                private void OnExternalExpanderExpanded(object sender, RoutedEventArgs e)
+                {
+                    ExternalExpanderExpandedCount++;
+                }
+
+                private void OnExternalExpanderCollapsed(object sender, RoutedEventArgs e)
+                {
+                    ExternalExpanderCollapsedCount++;
+                }
 
                 private void OnExternalFrameNavigating(object sender, NavigatingCancelEventArgs e)
                 {
@@ -863,6 +941,7 @@ internal static class Program
                     ValidateBindings(window);
                     ValidateStylesAndTemplates(window);
                     ValidateLayoutsAndItems(window);
+                    ValidateSelectorsAndContent(window);
                     ValidateCommandsAndFocus(window);
 
                     var themedControl = RequireType<ExternalThemedControl>(
@@ -1246,6 +1325,97 @@ internal static class Program
                     AssertEqual(4, itemPanelList.AlternationCount, "external SDK item panel list alternation count");
                     AssertEqual("External item {0}", itemPanelList.ItemStringFormat, "external SDK item panel list string format");
                     AssertEqual(3, itemPanelList.Items.Count, "external SDK item panel list collection count after mutation");
+                }
+
+                private static void ValidateSelectorsAndContent(MainWindow window)
+                {
+                    var comboBox = RequireType<ComboBox>(
+                        window.FindName("ExternalComboBox"),
+                        "external SDK combo box");
+                    DrainDispatcher();
+                    AssertEqual(3, comboBox.Items.Count, "external SDK combo box item count after mutation");
+                    AssertEqual("Kind", comboBox.SelectedValuePath, "external SDK combo box selected value path");
+                    AssertEqual("Rendering", comboBox.SelectedValue, "external SDK combo box selected value");
+                    AssertEqual(1, comboBox.SelectedIndex, "external SDK combo box selected index");
+                    AssertEqual(window.ExternalItems[1], comboBox.SelectedItem, "external SDK combo box selected item");
+                    var selectedValueBinding = comboBox.GetBindingExpression(Selector.SelectedValueProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK ComboBox SelectedValue BindingExpression.");
+                    AssertEqual("SelectedExternalKind", selectedValueBinding.ParentBinding.Path.Path, "external SDK combo box selected value binding path");
+
+                    int comboSelectionBefore = window.ExternalSelectionChangedCount;
+                    comboBox.SelectedIndex = 0;
+                    DrainDispatcher();
+                    AssertEqual("Framework", comboBox.SelectedValue, "external SDK combo box selected value after change");
+                    AssertEqual("Framework", window.SelectedExternalKind, "external SDK combo box two-way selected value source update");
+                    AssertAtLeast(comboSelectionBefore + 1, window.ExternalSelectionChangedCount, "external SDK combo box selection changed count");
+                    AssertEqual("ExternalComboBox", window.LastExternalSelectionSourceName, "external SDK combo box selection source name");
+
+                    var tabControl = RequireType<TabControl>(
+                        window.FindName("ExternalTabControl"),
+                        "external SDK tab control");
+                    var frameworkTab = RequireType<TabItem>(
+                        window.FindName("ExternalFrameworkTab"),
+                        "external SDK framework tab item");
+                    var renderingTab = RequireType<TabItem>(
+                        window.FindName("ExternalRenderingTab"),
+                        "external SDK rendering tab item");
+                    AssertEqual(2, tabControl.Items.Count, "external SDK tab item count");
+                    AssertEqual(1, tabControl.SelectedIndex, "external SDK tab selected index");
+                    AssertEqual(renderingTab, tabControl.SelectedItem, "external SDK selected tab item");
+                    AssertEqual("Framework", frameworkTab.Header, "external SDK framework tab header");
+                    AssertEqual("Rendering", renderingTab.Header, "external SDK rendering tab header");
+                    var renderingTabText = RequireType<TextBlock>(
+                        window.FindName("ExternalRenderingTabText"),
+                        "external SDK rendering tab text");
+                    AssertEqual("Framework", renderingTabText.Text, "external SDK rendering tab content binding");
+
+                    int tabSelectionBefore = window.ExternalSelectionChangedCount;
+                    tabControl.SelectedIndex = 0;
+                    DrainDispatcher();
+                    AssertEqual(frameworkTab, tabControl.SelectedItem, "external SDK tab item after selected index change");
+                    AssertAtLeast(tabSelectionBefore + 1, window.ExternalSelectionChangedCount, "external SDK tab selection changed count");
+                    AssertEqual("ExternalTabControl", window.LastExternalSelectionSourceName, "external SDK tab selection source name");
+
+                    var groupBox = RequireType<GroupBox>(
+                        window.FindName("ExternalGroupBox"),
+                        "external SDK group box");
+                    var groupText = RequireType<TextBlock>(
+                        groupBox.Content,
+                        "external SDK group box content");
+                    AssertEqual("External group", groupBox.Header, "external SDK group box header");
+                    AssertEqual("Alpha", groupText.Text, "external SDK group box content binding");
+
+                    var expander = RequireType<Expander>(
+                        window.FindName("ExternalExpander"),
+                        "external SDK expander");
+                    var expanderText = RequireType<TextBlock>(
+                        expander.Content,
+                        "external SDK expander content");
+                    AssertEqual("External expander", expander.Header, "external SDK expander header");
+                    AssertEqual(false, expander.IsExpanded, "external SDK expander initial expanded state");
+                    AssertEqual("External expanded content", expanderText.Text, "external SDK expander content text");
+
+                    int expandedBefore = window.ExternalExpanderExpandedCount;
+                    int collapsedBefore = window.ExternalExpanderCollapsedCount;
+                    expander.IsExpanded = true;
+                    DrainDispatcher();
+                    AssertEqual(true, expander.IsExpanded, "external SDK expander expanded state");
+                    AssertAtLeast(expandedBefore + 1, window.ExternalExpanderExpandedCount, "external SDK expander expanded event count");
+                    expander.IsExpanded = false;
+                    DrainDispatcher();
+                    AssertEqual(false, expander.IsExpanded, "external SDK expander collapsed state");
+                    AssertAtLeast(collapsedBefore + 1, window.ExternalExpanderCollapsedCount, "external SDK expander collapsed event count");
+
+                    var scrollViewer = RequireType<ScrollViewer>(
+                        window.FindName("ExternalScrollViewer"),
+                        "external SDK scroll viewer");
+                    var scrollContent = RequireType<StackPanel>(
+                        window.FindName("ExternalScrollContent"),
+                        "external SDK scroll content panel");
+                    AssertEqual(ScrollBarVisibility.Auto, scrollViewer.VerticalScrollBarVisibility, "external SDK scroll viewer vertical visibility");
+                    AssertEqual(ScrollBarVisibility.Disabled, scrollViewer.HorizontalScrollBarVisibility, "external SDK scroll viewer horizontal visibility");
+                    AssertEqual(scrollContent, scrollViewer.Content, "external SDK scroll viewer content");
+                    AssertEqual(2, scrollContent.Children.Count, "external SDK scroll content child count");
                 }
 
                 private static void ValidateCommandsAndFocus(MainWindow window)

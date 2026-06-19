@@ -323,6 +323,27 @@
             Margin="0,6,0,0"
             Style="{StaticResource MultiDataTriggeredTextStyle}" />
         <TextBlock
+            x:Name="LoadedStoryboardText"
+            Margin="0,6,0,0"
+            Loaded="OnLoadedStoryboardTextLoaded"
+            Opacity="1"
+            Text="loaded storyboard target">
+            <TextBlock.Triggers>
+                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation
+                                Storyboard.TargetName="LoadedStoryboardText"
+                                Storyboard.TargetProperty="Opacity"
+                                Duration="0:0:0"
+                                FillBehavior="HoldEnd"
+                                To="0.42" />
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </TextBlock.Triggers>
+        </TextBlock>
+        <TextBlock
             x:Name="BasedOnResourceText"
             Margin="0,6,0,0"
             Style="{StaticResource BasedOnSmokeTextStyle}"

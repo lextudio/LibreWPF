@@ -94,6 +94,10 @@ public partial class MainWindow : Window
 
     public string? LastDocumentLinkRequestNavigateRoutedEventName { get; private set; }
 
+    public int LoadedStoryboardTextLoadedCount { get; private set; }
+
+    public string? LastLoadedStoryboardTextRoutedEventName { get; private set; }
+
     public object? LastSmokeRoutedEventSender { get; private set; }
 
     public object? LastSmokeRoutedEventSource { get; private set; }
@@ -321,6 +325,12 @@ public partial class MainWindow : Window
         LastDocumentLinkRequestNavigateUri = e.Uri?.ToString();
         LastDocumentLinkRequestNavigateRoutedEventName = e.RoutedEvent?.Name;
         e.Handled = true;
+    }
+
+    private void OnLoadedStoryboardTextLoaded(object sender, RoutedEventArgs e)
+    {
+        LoadedStoryboardTextLoadedCount++;
+        LastLoadedStoryboardTextRoutedEventName = e.RoutedEvent?.Name;
     }
 }
 

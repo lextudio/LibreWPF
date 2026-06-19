@@ -4739,6 +4739,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"DataTriggerStatus\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MultiTriggerStatus\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MultiDataTriggerStatus\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"LoadedStoryboardText\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Loaded=\"OnLoadedStoryboardTextLoaded\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("EventTrigger RoutedEvent=\"FrameworkElement.Loaded\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("BeginStoryboard", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Storyboard.TargetName=\"LoadedStoryboardText\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Storyboard.TargetProperty=\"Opacity\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DoubleAnimation", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("To=\"0.42\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"BasedOnResourceText\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style=\"{StaticResource BasedOnSmokeTextStyle}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ProviderGreetingText\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -5106,6 +5114,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DocumentLinkRequestNavigateCount++", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastDocumentLinkRequestNavigateUri = e.Uri?.ToString()", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastDocumentLinkRequestNavigateRoutedEventName = e.RoutedEvent?.Name", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int LoadedStoryboardTextLoadedCount", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public string? LastLoadedStoryboardTextRoutedEventName", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnLoadedStoryboardTextLoaded(object sender, RoutedEventArgs e)", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LoadedStoryboardTextLoadedCount++", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastLoadedStoryboardTextRoutedEventName = e.RoutedEvent?.Name", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SmokeRoutedEventCount++", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnSmokeBubbled", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastSmokeRoutedEventSender = sender;", smokeMainWindowCodeBehind, StringComparison.Ordinal);
@@ -5221,6 +5234,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryFindResource\", \"ProviderGreeting\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("application object data provider result", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(\"#FF356D9E\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loaded storyboard TextBlock", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loaded storyboard EventTrigger", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loaded storyboard DoubleAnimation target value", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loaded storyboard post-Loaded opacity", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK loaded storyboard handler count", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateApplicationDynamicResourceInvalidation", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("set_Item\", \"SmokeAccentBrush\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("set_Item\", \"MergedAccentBrush\"", runtimeHarnessProgram, StringComparison.Ordinal);

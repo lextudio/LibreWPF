@@ -530,6 +530,42 @@ internal static class Program
         AssertType(multiDataTriggerForeground, "System.Windows.Media.SolidColorBrush", "multi data trigger foreground");
         AssertEqual("#FF6B8F3A", GetProperty(multiDataTriggerForeground, "Color").ToString() ?? string.Empty, "multi data trigger foreground color");
 
+        object loadedStoryboardText = Invoke(window, "FindName", "LoadedStoryboardText");
+        AssertType(loadedStoryboardText, "System.Windows.Controls.TextBlock", "loaded storyboard TextBlock");
+        AssertEqual("loaded storyboard target", GetProperty(loadedStoryboardText, "Text"), "loaded storyboard text");
+        object loadedStoryboardTriggers = GetProperty(loadedStoryboardText, "Triggers");
+        AssertEqual(1, GetCount(loadedStoryboardTriggers), "loaded storyboard trigger count");
+        object loadedStoryboardTrigger = FindFirstByType(loadedStoryboardTriggers, "System.Windows.EventTrigger", "loaded storyboard EventTrigger");
+        AssertEqual("Loaded", GetProperty(GetProperty(loadedStoryboardTrigger, "RoutedEvent"), "Name"), "loaded storyboard routed event");
+        object loadedStoryboardActions = GetProperty(loadedStoryboardTrigger, "Actions");
+        AssertEqual(1, GetCount(loadedStoryboardActions), "loaded storyboard action count");
+        object beginStoryboard = FindFirstByType(loadedStoryboardActions, "System.Windows.Media.Animation.BeginStoryboard", "loaded storyboard BeginStoryboard");
+        object loadedStoryboard = GetProperty(beginStoryboard, "Storyboard");
+        AssertType(loadedStoryboard, "System.Windows.Media.Animation.Storyboard", "loaded storyboard");
+        object loadedStoryboardChildren = GetProperty(loadedStoryboard, "Children");
+        AssertEqual(1, GetCount(loadedStoryboardChildren), "loaded storyboard child count");
+        object doubleAnimation = FindFirstByType(loadedStoryboardChildren, "System.Windows.Media.Animation.DoubleAnimation", "loaded storyboard DoubleAnimation");
+        AssertEqual(0.42, GetProperty(doubleAnimation, "To"), "loaded storyboard DoubleAnimation target value");
+        AssertEqual("00:00:00", GetProperty(doubleAnimation, "Duration").ToString() ?? string.Empty, "loaded storyboard DoubleAnimation duration");
+        AssertEqual("HoldEnd", GetProperty(doubleAnimation, "FillBehavior").ToString() ?? string.Empty, "loaded storyboard DoubleAnimation fill behavior");
+        Type storyboardType = loadedStoryboard.GetType();
+        AssertEqual("LoadedStoryboardText", InvokeStatic(storyboardType, "GetTargetName", doubleAnimation), "loaded storyboard target name");
+        object loadedStoryboardTargetProperty = InvokeStatic(storyboardType, "GetTargetProperty", doubleAnimation);
+        AssertType(loadedStoryboardTargetProperty, "System.Windows.PropertyPath", "loaded storyboard target property path");
+        AssertEqual("Opacity", GetProperty(loadedStoryboardTargetProperty, "Path"), "loaded storyboard target property");
+        if (validateFrameContent)
+        {
+            flushDispatcherOperations?.Invoke(window);
+            AssertClose(0.42, Convert.ToDouble(GetProperty(loadedStoryboardText, "Opacity")), 0.0001, "loaded storyboard post-Loaded opacity");
+            AssertAtLeast(1, GetProperty(window, "LoadedStoryboardTextLoadedCount"), "SDK loaded storyboard handler count");
+            AssertEqual("Loaded", GetProperty(window, "LastLoadedStoryboardTextRoutedEventName"), "SDK loaded storyboard routed event name");
+        }
+        else
+        {
+            AssertEqual(1.0, GetProperty(loadedStoryboardText, "Opacity"), "loaded storyboard initial opacity");
+            AssertEqual(0, GetProperty(window, "LoadedStoryboardTextLoadedCount"), "SDK loaded storyboard initial handler count");
+        }
+
         object basedOnResourceText = Invoke(window, "FindName", "BasedOnResourceText");
         AssertType(basedOnResourceText, "System.Windows.Controls.TextBlock", "based-on resource text element");
         AssertEqual("based-on resource style", GetProperty(basedOnResourceText, "Text"), "based-on resource text");
@@ -1669,6 +1705,14 @@ internal static class Program
     private static void AssertEqual(object expected, object actual, string description)
     {
         if (!object.Equals(expected, actual))
+        {
+            throw new InvalidOperationException($"{description}: expected '{expected}', actual '{actual}'.");
+        }
+    }
+
+    private static void AssertClose(double expected, double actual, double tolerance, string description)
+    {
+        if (Math.Abs(expected - actual) > tolerance)
         {
             throw new InvalidOperationException($"{description}: expected '{expected}', actual '{actual}'.");
         }

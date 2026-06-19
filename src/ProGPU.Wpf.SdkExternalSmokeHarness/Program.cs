@@ -611,6 +611,59 @@ internal static class Program
                         IsChecked="False"
                         Checked="OnExternalToggleButtonChecked"
                         Unchecked="OnExternalToggleButtonUnchecked" />
+                    <ToolBarTray x:Name="ExternalToolBarTray">
+                        <ToolBar x:Name="ExternalToolBar">
+                            <Button
+                                x:Name="ExternalToolBarCommandButton"
+                                Command="{x:Static local:MainWindow.ExternalCommand}"
+                                CommandParameter="ExternalToolBarCommandParameter"
+                                CommandTarget="{Binding ElementName=ExternalCommandButton}"
+                                Content="External toolbar command" />
+                            <Separator x:Name="ExternalToolBarSeparator" />
+                            <ToggleButton
+                                x:Name="ExternalToolBarToggle"
+                                Content="External toolbar toggle"
+                                IsChecked="False" />
+                        </ToolBar>
+                    </ToolBarTray>
+                    <StatusBar x:Name="ExternalStatusBar">
+                        <StatusBarItem x:Name="ExternalStatusBarItem">
+                            <TextBlock
+                                x:Name="ExternalStatusReadyText"
+                                Text="External status ready" />
+                        </StatusBarItem>
+                        <TextBlock
+                            x:Name="ExternalStatusItemText"
+                            Text="{Binding SelectedExternalItem.Name}" />
+                    </StatusBar>
+                    <PasswordBox
+                        x:Name="ExternalPasswordBox"
+                        MaxLength="16"
+                        PasswordChar="*"
+                        PasswordChanged="OnExternalPasswordChanged" />
+                    <Calendar
+                        x:Name="ExternalCalendar"
+                        FirstDayOfWeek="Monday"
+                        SelectionMode="SingleDate" />
+                    <DatePicker
+                        x:Name="ExternalDatePicker"
+                        FirstDayOfWeek="Monday"
+                        SelectedDateFormat="Long" />
+                    <Slider
+                        x:Name="ExternalSlider"
+                        Minimum="0"
+                        Maximum="100"
+                        SmallChange="2"
+                        LargeChange="10"
+                        TickFrequency="5"
+                        IsSnapToTickEnabled="True"
+                        Value="25"
+                        ValueChanged="OnExternalSliderValueChanged" />
+                    <ProgressBar
+                        x:Name="ExternalProgressBar"
+                        Minimum="0"
+                        Maximum="100"
+                        Value="{Binding Value, ElementName=ExternalSlider}" />
                     <Grid x:Name="ExternalLayoutGrid">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -1076,6 +1129,12 @@ internal static class Program
 
                 public int ExternalToggleButtonUncheckedCount { get; private set; }
 
+                public int ExternalPasswordChangedCount { get; private set; }
+
+                public int ExternalSliderValueChangedCount { get; private set; }
+
+                public double LastExternalSliderValue { get; private set; }
+
                 public string? LastExternalCheckBoxRoutedEventName { get; private set; }
 
                 public string? LastExternalRadioButtonCheckedName { get; private set; }
@@ -1229,6 +1288,17 @@ internal static class Program
                 {
                     ExternalToggleButtonUncheckedCount++;
                     LastExternalToggleButtonRoutedEventName = e.RoutedEvent?.Name;
+                }
+
+                private void OnExternalPasswordChanged(object sender, RoutedEventArgs e)
+                {
+                    ExternalPasswordChangedCount++;
+                }
+
+                private void OnExternalSliderValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+                {
+                    ExternalSliderValueChangedCount++;
+                    LastExternalSliderValue = e.NewValue;
                 }
 
                 private void OnExternalFrameNavigating(object sender, NavigatingCancelEventArgs e)
@@ -1440,6 +1510,7 @@ internal static class Program
                     ValidateBindings(window);
                     ValidateStylesAndTemplates(window);
                     ValidateMenusAndChoiceControls(window);
+                    ValidateToolbarStatusRangePasswordDateControls(window);
                     ValidateLayoutsAndItems(window);
                     ValidateSelectorsAndContent(window);
                     ValidateRichDocuments(window);
@@ -2142,6 +2213,123 @@ internal static class Program
                     AssertEqual(false, toggleButton.IsChecked == true, "external SDK toggle unchecked state");
                     AssertAtLeast(toggleUncheckedBefore + 1, window.ExternalToggleButtonUncheckedCount, "external SDK toggle unchecked count");
                     AssertEqual("Unchecked", window.LastExternalToggleButtonRoutedEventName, "external SDK toggle unchecked routed event");
+                }
+
+                private static void ValidateToolbarStatusRangePasswordDateControls(MainWindow window)
+                {
+                    var commandButton = RequireType<Button>(
+                        window.FindName("ExternalCommandButton"),
+                        "external SDK command button for toolbar validation");
+                    var toolBarTray = RequireType<ToolBarTray>(
+                        window.FindName("ExternalToolBarTray"),
+                        "external SDK toolbar tray");
+                    var toolBar = RequireType<ToolBar>(
+                        window.FindName("ExternalToolBar"),
+                        "external SDK toolbar");
+                    AssertEqual(1, toolBarTray.ToolBars.Count, "external SDK toolbar tray toolbar count");
+                    AssertEqual(toolBar, toolBarTray.ToolBars[0], "external SDK toolbar tray owns toolbar");
+                    AssertEqual(3, toolBar.Items.Count, "external SDK toolbar item count");
+
+                    var toolBarCommandButton = RequireType<Button>(
+                        toolBar.Items[0],
+                        "external SDK toolbar command button");
+                    var toolBarSeparator = RequireType<Separator>(
+                        toolBar.Items[1],
+                        "external SDK toolbar separator");
+                    var toolBarToggle = RequireType<ToggleButton>(
+                        toolBar.Items[2],
+                        "external SDK toolbar toggle");
+                    AssertEqual("ExternalToolBarSeparator", toolBarSeparator.Name, "external SDK toolbar separator name");
+                    AssertEqual(MainWindow.ExternalCommand, toolBarCommandButton.Command, "external SDK toolbar command button command");
+                    AssertEqual("ExternalToolBarCommandParameter", toolBarCommandButton.CommandParameter, "external SDK toolbar command button parameter");
+                    int toolBarExecutedBefore = window.ExternalCommandExecutedCount;
+                    RequireType<RoutedCommand>(
+                        toolBarCommandButton.Command,
+                        "external SDK toolbar routed command")
+                        .Execute(toolBarCommandButton.CommandParameter, toolBarCommandButton.CommandTarget ?? commandButton);
+                    AssertEqual(toolBarExecutedBefore + 1, window.ExternalCommandExecutedCount, "external SDK toolbar routed command count");
+                    AssertEqual("ExternalToolBarCommandParameter", window.LastExternalCommandParameter, "external SDK toolbar command parameter");
+                    AssertEqual(false, toolBarToggle.IsChecked == true, "external SDK toolbar toggle initial state");
+                    toolBarToggle.IsChecked = true;
+                    DrainDispatcher();
+                    AssertEqual(true, toolBarToggle.IsChecked == true, "external SDK toolbar toggle checked state");
+
+                    var statusBar = RequireType<StatusBar>(
+                        window.FindName("ExternalStatusBar"),
+                        "external SDK status bar");
+                    AssertEqual(2, statusBar.Items.Count, "external SDK status bar item count");
+                    var statusBarItem = RequireType<StatusBarItem>(
+                        statusBar.Items[0],
+                        "external SDK status bar item");
+                    var readyText = RequireType<TextBlock>(
+                        statusBarItem.Content,
+                        "external SDK status bar ready text");
+                    var boundStatusText = RequireType<TextBlock>(
+                        statusBar.Items[1],
+                        "external SDK status bar bound text");
+                    AssertEqual("External status ready", readyText.Text, "external SDK status bar ready text");
+                    AssertEqual("Alpha", boundStatusText.Text, "external SDK status bar selected item binding");
+
+                    var passwordBox = RequireType<PasswordBox>(
+                        window.FindName("ExternalPasswordBox"),
+                        "external SDK password box");
+                    AssertEqual(16, passwordBox.MaxLength, "external SDK PasswordBox max length");
+                    AssertEqual('*', passwordBox.PasswordChar, "external SDK PasswordBox password char");
+                    int passwordChangedBefore = window.ExternalPasswordChangedCount;
+                    passwordBox.Password = "external-secret";
+                    DrainDispatcher();
+                    AssertEqual("external-secret", passwordBox.Password, "external SDK PasswordBox password");
+                    AssertEqual(15, passwordBox.SecurePassword.Length, "external SDK PasswordBox secure password length");
+                    AssertAtLeast(passwordChangedBefore + 1, window.ExternalPasswordChangedCount, "external SDK PasswordBox changed count");
+                    passwordBox.Clear();
+                    DrainDispatcher();
+                    AssertEqual(string.Empty, passwordBox.Password, "external SDK PasswordBox clear password");
+                    AssertAtLeast(passwordChangedBefore + 2, window.ExternalPasswordChangedCount, "external SDK PasswordBox clear changed count");
+
+                    var calendar = RequireType<System.Windows.Controls.Calendar>(
+                        window.FindName("ExternalCalendar"),
+                        "external SDK calendar");
+                    var selectedDate = new DateTime(2026, 6, 19);
+                    AssertEqual(DayOfWeek.Monday, calendar.FirstDayOfWeek, "external SDK Calendar first day");
+                    AssertEqual(System.Windows.Controls.CalendarSelectionMode.SingleDate, calendar.SelectionMode, "external SDK Calendar selection mode");
+                    calendar.SelectedDate = selectedDate;
+                    AssertEqual(selectedDate, calendar.SelectedDate, "external SDK Calendar selected date");
+                    AssertEqual(1, calendar.SelectedDates.Count, "external SDK Calendar selected date collection count");
+                    AssertEqual(selectedDate, calendar.SelectedDates[0], "external SDK Calendar selected date collection item");
+
+                    var datePicker = RequireType<DatePicker>(
+                        window.FindName("ExternalDatePicker"),
+                        "external SDK date picker");
+                    var pickedDate = selectedDate.AddDays(1);
+                    AssertEqual(DayOfWeek.Monday, datePicker.FirstDayOfWeek, "external SDK DatePicker first day");
+                    AssertEqual(DatePickerFormat.Long, datePicker.SelectedDateFormat, "external SDK DatePicker selected date format");
+                    datePicker.SelectedDate = pickedDate;
+                    AssertEqual(pickedDate, datePicker.SelectedDate, "external SDK DatePicker selected date");
+
+                    var slider = RequireType<Slider>(
+                        window.FindName("ExternalSlider"),
+                        "external SDK slider");
+                    var progressBar = RequireType<ProgressBar>(
+                        window.FindName("ExternalProgressBar"),
+                        "external SDK progress bar");
+                    AssertEqual(0.0, slider.Minimum, "external SDK Slider minimum");
+                    AssertEqual(100.0, slider.Maximum, "external SDK Slider maximum");
+                    AssertEqual(2.0, slider.SmallChange, "external SDK Slider small change");
+                    AssertEqual(10.0, slider.LargeChange, "external SDK Slider large change");
+                    AssertEqual(5.0, slider.TickFrequency, "external SDK Slider tick frequency");
+                    AssertEqual(true, slider.IsSnapToTickEnabled, "external SDK Slider snap to tick");
+                    AssertEqual(25.0, slider.Value, "external SDK Slider initial value");
+                    AssertEqual(25.0, progressBar.Value, "external SDK ProgressBar initial bound value");
+                    var progressBinding = progressBar.GetBindingExpression(RangeBase.ValueProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK ProgressBar Value binding.");
+                    AssertEqual("ExternalSlider", progressBinding.ParentBinding.ElementName, "external SDK ProgressBar ElementName binding");
+                    int sliderValueChangedBefore = window.ExternalSliderValueChangedCount;
+                    slider.Value = 40.0;
+                    DrainDispatcher();
+                    AssertClose(40.0, slider.Value, "external SDK Slider changed value");
+                    AssertClose(40.0, window.LastExternalSliderValue, "external SDK Slider event value");
+                    AssertAtLeast(sliderValueChangedBefore + 1, window.ExternalSliderValueChangedCount, "external SDK Slider changed count");
+                    AssertClose(40.0, progressBar.Value, "external SDK ProgressBar value after Slider update");
                 }
 
                 private static void ValidateLayoutsAndItems(MainWindow window)

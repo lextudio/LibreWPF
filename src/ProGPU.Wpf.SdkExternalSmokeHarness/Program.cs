@@ -2508,6 +2508,22 @@ internal static class Program
                     bitmapFrame.CopyPixels(framePixels, 8, 0);
                     AssertEqual(pixels[10], framePixels[10], "external SDK BitmapFrame copied red byte");
 
+                    var bmpEncoder = new BmpBitmapEncoder();
+                    bmpEncoder.Frames.Add(bitmapFrame);
+                    using var bmpStream = new MemoryStream();
+                    bmpEncoder.Save(bmpStream);
+                    byte[] bmpBytes = bmpStream.ToArray();
+                    AssertEqual((byte)'B', bmpBytes[0], "external SDK BmpBitmapEncoder signature byte 0");
+                    AssertEqual((byte)'M', bmpBytes[1], "external SDK BmpBitmapEncoder signature byte 1");
+                    AssertEqual(2, BitConverter.ToInt32(bmpBytes, 18), "external SDK BmpBitmapEncoder pixel width");
+                    AssertEqual(2, BitConverter.ToInt32(bmpBytes, 22), "external SDK BmpBitmapEncoder pixel height");
+                    AssertEqual(32, BitConverter.ToUInt16(bmpBytes, 28), "external SDK BmpBitmapEncoder bits per pixel");
+                    int bmpPixelOffset = BitConverter.ToInt32(bmpBytes, 10);
+                    AssertEqual(54, bmpPixelOffset, "external SDK BmpBitmapEncoder pixel offset");
+                    AssertEqual(pixels[8], bmpBytes[bmpPixelOffset], "external SDK BmpBitmapEncoder bottom-left blue byte");
+                    AssertEqual(pixels[13], bmpBytes[bmpPixelOffset + 5], "external SDK BmpBitmapEncoder bottom-right green byte");
+                    AssertEqual(pixels[2], bmpBytes[bmpPixelOffset + 10], "external SDK BmpBitmapEncoder top-left red byte");
+
                     var writeableBitmap = new WriteableBitmap(2, 2, 96.0, 96.0, PixelFormats.Bgra32, null);
                     writeableBitmap.WritePixels(new Int32Rect(0, 0, 2, 2), pixels, 8, 0);
                     var writeablePixels = new byte[pixels.Length];

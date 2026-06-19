@@ -5348,6 +5348,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SDK loose XamlWriter serialized GradientStop", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateSdkLooseGradientStop(GetCollectionItem(roundTrippedStops, 1)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateApplicationRunLifetime(app)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateApplicationInitialLifetimeState(app)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateApplicationShutdownLifetimeState(app)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK Application.Current before run", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK Application.ShutdownMode before run", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK Application.Windows before run", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK Application.MainWindow before run", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK Application.Current during run", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK Application.Windows startup window", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK Application.Current after shutdown", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK Application.Windows after shutdown", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("application startup event initial count", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("application Startup event count", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("application Startup args length", runtimeHarnessProgram, StringComparison.Ordinal);

@@ -274,6 +274,7 @@ internal static class Program
         AssertEqual(0, GetProperty(app, "StartupEventCount"), "application startup event initial count");
         AssertEqual(0, GetProperty(app, "ExitEventCount"), "application exit event initial count");
         AssertEqual(-1, GetProperty(app, "LastExitCode"), "application exit code initial value");
+        ValidateApplicationInitialLifetimeState(app);
 
         object resources = GetProperty(app, "Resources");
         object accentBrush = Invoke(app, "TryFindResource", "SmokeAccentBrush");
@@ -303,10 +304,28 @@ internal static class Program
         AssertEqual(0, GetProperty(app, "StartupArgsLength"), "application Startup args length");
         AssertEqual(1, GetProperty(app, "ExitEventCount"), "application Exit event count");
         AssertEqual(0, GetProperty(app, "LastExitCode"), "application Exit code");
+        ValidateApplicationShutdownLifetimeState(app);
         object startupInjectedBrush = Invoke(app, "TryFindResource", "StartupInjectedBrush");
         AssertType(startupInjectedBrush, "System.Windows.Media.SolidColorBrush", "application Startup injected brush");
         AssertEqual("#FF7A4EB2", GetProperty(startupInjectedBrush, "Color").ToString() ?? string.Empty, "application Startup injected brush color");
         AssertEqual("startup resource value", Invoke(app, "TryFindResource", "StartupInjectedText"), "application Startup injected text resource");
+    }
+
+    private static void ValidateApplicationInitialLifetimeState(object app)
+    {
+        Type applicationType = GetRequiredType(GetAssemblyFromContext(app.GetType().Assembly, "PresentationFramework"), "System.Windows.Application");
+        AssertSame(app, GetStaticProperty(applicationType, "Current"), "SDK Application.Current before run");
+        AssertEqual("OnLastWindowClose", GetProperty(app, "ShutdownMode").ToString() ?? string.Empty, "SDK Application.ShutdownMode before run");
+        AssertEqual(0, GetCount(GetProperty(app, "Windows")), "SDK Application.Windows before run");
+        AssertNull(GetPropertyOrNull(app, "MainWindow"), "SDK Application.MainWindow before run");
+    }
+
+    private static void ValidateApplicationShutdownLifetimeState(object app)
+    {
+        Type applicationType = GetRequiredType(GetAssemblyFromContext(app.GetType().Assembly, "PresentationFramework"), "System.Windows.Application");
+        AssertNull(GetStaticPropertyOrNull(applicationType, "Current"), "SDK Application.Current after shutdown");
+        AssertNull(GetPropertyOrNull(app, "MainWindow"), "SDK Application.MainWindow after shutdown");
+        AssertEqual(0, GetCount(GetProperty(app, "Windows")), "SDK Application.Windows after shutdown");
     }
 
     private static void ValidateFreezableBrushResource(object app)
@@ -2074,6 +2093,15 @@ internal static class Program
             ?? throw new InvalidOperationException($"Property '{propertyName}' returned null.");
     }
 
+    private static object? GetPropertyOrNull(object instance, string propertyName)
+    {
+        PropertyInfo property = instance.GetType().GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(instance.GetType().FullName, propertyName);
+        return property.GetValue(instance);
+    }
+
     private static string GetBindingPath(object binding)
     {
         object propertyPath = GetProperty(binding, "Path");
@@ -2102,6 +2130,15 @@ internal static class Program
             ?? throw new MissingMemberException(type.FullName, propertyName);
         return property.GetValue(null)
             ?? throw new InvalidOperationException($"Property '{propertyName}' returned null.");
+    }
+
+    private static object? GetStaticPropertyOrNull(Type type, string propertyName)
+    {
+        PropertyInfo property = type.GetProperty(
+            propertyName,
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(type.FullName, propertyName);
+        return property.GetValue(null);
     }
 
     private static object GetStaticField(Type type, string fieldName)
@@ -2214,6 +2251,14 @@ internal static class Program
         if (!object.Equals(expected, actual))
         {
             throw new InvalidOperationException($"{description}: expected '{expected}', actual '{actual}'.");
+        }
+    }
+
+    private static void AssertNull(object? actual, string description)
+    {
+        if (actual is not null)
+        {
+            throw new InvalidOperationException($"{description}: expected null, actual '{actual}'.");
         }
     }
 
@@ -2441,6 +2486,12 @@ internal static class Program
             AssertEqual(420.0, typedActivation.Width, "activated SDK window width");
             AssertEqual(840.0, typedActivation.Height, "activated SDK window height");
             AssertSame(typedActivation.Window, GetProperty(_application, "MainWindow"), "SDK Application.MainWindow");
+            Type applicationType = GetRequiredType(_presentationFramework, "System.Windows.Application");
+            AssertSame(_application, GetStaticProperty(applicationType, "Current"), "SDK Application.Current during run");
+            AssertEqual("OnLastWindowClose", GetProperty(_application, "ShutdownMode").ToString() ?? string.Empty, "SDK Application.ShutdownMode during run");
+            object windows = GetProperty(_application, "Windows");
+            AssertEqual(1, GetCount(windows), "SDK Application.Windows during run count");
+            AssertSame(typedActivation.Window, GetCollectionItem(windows, 0), "SDK Application.Windows startup window");
             InvokeVoid(typedActivation.Window, "UpdateLayout");
             FlushDispatcherOperations(typedActivation.Window, "Loaded", "Render", "ApplicationIdle");
             ValidateWindow(

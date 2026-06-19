@@ -372,6 +372,28 @@ internal static class Program
                         x:Name="ExternalTemplateRoot"
                         Background="{TemplateBinding Background}"
                         Padding="3">
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup x:Name="ExternalCommonStates">
+                                <VisualState x:Name="Normal">
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="ExternalTemplateContent"
+                                            Storyboard.TargetProperty="Opacity"
+                                            To="1"
+                                            Duration="0:0:0" />
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="Pressed">
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="ExternalTemplateContent"
+                                            Storyboard.TargetProperty="Opacity"
+                                            To="0.42"
+                                            Duration="0:0:0" />
+                                    </Storyboard>
+                                </VisualState>
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
                         <ContentPresenter
                             x:Name="ExternalTemplateContent"
                             Content="{TemplateBinding Content}" />
@@ -951,6 +973,7 @@ internal static class Program
             using System.Windows.Input;
             using System.Windows.Markup;
             using System.Windows.Media;
+            using System.Windows.Media.Animation;
             using System.Windows.Navigation;
             using System.Windows.Threading;
             using ExternalSdkLibrary;
@@ -1556,6 +1579,7 @@ internal static class Program
                         "external SDK startup resource text block");
                     AssertEqual("External SDK startup resource", startupResourceText.Text, "external SDK startup dynamic resource text");
                     AssertBrushColor(startupResourceText.Foreground, "#FF176283", "external SDK startup dynamic resource foreground");
+                    ValidateVisualStateTransitions(window);
 
                     App.MarkExternalRunValidated();
                     app.Shutdown(0);
@@ -1848,6 +1872,26 @@ internal static class Program
                     AssertEqual("recovered external text", window.ValidationText, "external SDK validation source update");
                 }
 
+                private static void ValidateVisualStateTransitions(MainWindow window)
+                {
+                    var styledButton = RequireType<Button>(
+                        window.FindName("ExternalStyledButton"),
+                        "external SDK Application.Run visual-state button");
+                    styledButton.ApplyTemplate();
+                    var template = styledButton.Template
+                        ?? throw new InvalidOperationException("Expected external SDK Application.Run visual-state button template.");
+                    var templateContent = RequireType<ContentPresenter>(
+                        template.FindName("ExternalTemplateContent", styledButton),
+                        "external SDK Application.Run visual-state content presenter");
+
+                    AssertEqual(true, VisualStateManager.GoToState(styledButton, "Pressed", false), "external SDK Application.Run VisualStateManager Pressed transition");
+                    DrainDispatcher();
+                    AssertClose(0.42, templateContent.Opacity, "external SDK Application.Run VisualStateManager Pressed opacity");
+                    AssertEqual(true, VisualStateManager.GoToState(styledButton, "Normal", false), "external SDK Application.Run VisualStateManager Normal transition");
+                    DrainDispatcher();
+                    AssertClose(1.0, templateContent.Opacity, "external SDK Application.Run VisualStateManager Normal opacity");
+                }
+
                 private static void ValidateStylesAndTemplates(MainWindow window)
                 {
                     var basedStyle = RequireType<Style>(
@@ -1884,6 +1928,32 @@ internal static class Program
                     var templateContent = RequireType<ContentPresenter>(
                         buttonTemplate.FindName("ExternalTemplateContent", styledButton),
                         "external SDK styled button template content presenter");
+                    var stateGroups = VisualStateManager.GetVisualStateGroups(templateRoot);
+                    AssertEqual(1, stateGroups.Count, "external SDK VisualStateManager group count");
+                    var commonStates = RequireType<VisualStateGroup>(
+                        stateGroups[0],
+                        "external SDK VisualStateManager common states group");
+                    AssertEqual("ExternalCommonStates", commonStates.Name, "external SDK VisualStateManager group name");
+                    AssertEqual(2, commonStates.States.Count, "external SDK VisualStateManager state count");
+                    var normalState = commonStates.States
+                        .OfType<VisualState>()
+                        .FirstOrDefault(state => state.Name == "Normal")
+                        ?? throw new InvalidOperationException("Expected external SDK VisualStateManager Normal state.");
+                    var pressedState = commonStates.States
+                        .OfType<VisualState>()
+                        .FirstOrDefault(state => state.Name == "Pressed")
+                        ?? throw new InvalidOperationException("Expected external SDK VisualStateManager Pressed state.");
+                    var normalStoryboard = normalState.Storyboard
+                        ?? throw new InvalidOperationException("Expected external SDK VisualStateManager Normal storyboard.");
+                    var pressedStoryboard = pressedState.Storyboard
+                        ?? throw new InvalidOperationException("Expected external SDK VisualStateManager Pressed storyboard.");
+                    AssertEqual(1, normalStoryboard.Children.Count, "external SDK VisualStateManager Normal storyboard child count");
+                    AssertEqual(1, pressedStoryboard.Children.Count, "external SDK VisualStateManager Pressed storyboard child count");
+                    var pressedAnimation = RequireType<DoubleAnimation>(
+                        pressedStoryboard.Children[0],
+                        "external SDK VisualStateManager Pressed animation");
+                    AssertEqual(0.42, pressedAnimation.To ?? double.NaN, "external SDK VisualStateManager Pressed animation opacity");
+                    AssertEqual(TimeSpan.Zero, pressedAnimation.Duration.TimeSpan, "external SDK VisualStateManager Pressed animation duration");
                     AssertBrushColor(templateRoot.Background, "#FF254C6A", "external SDK TemplateBinding background");
                     AssertEqual("External styled button", templateContent.Content, "external SDK TemplateBinding content");
 
@@ -2649,6 +2719,15 @@ internal static class Program
                     {
                         throw new InvalidOperationException(
                             $"Expected {description} to be '{expected}', but found '{actual}'.");
+                    }
+                }
+
+                private static void AssertClose(double expected, double actual, string description)
+                {
+                    if (Math.Abs(expected - actual) > 0.000001)
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected {description} to be close to '{expected}', but found '{actual}'.");
                     }
                 }
 

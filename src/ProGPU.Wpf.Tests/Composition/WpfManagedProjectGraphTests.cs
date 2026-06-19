@@ -5728,6 +5728,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK portable MessageBox service enabled", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK MessageBox no-owner default result", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK MessageBox owner fallback result", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateFileDialogs(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Microsoft.Win32.PortableFileDialogService", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK portable file dialog service enabled", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK OpenFileDialog FileName", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK owner SaveFileDialog FileName", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK owner OpenFolderDialog FolderName", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK file dialog request count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateClipboard()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Clipboard.SetText(\"external SDK clipboard text\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Clipboard data object unicode text", externalSdkHarnessProgram, StringComparison.Ordinal);

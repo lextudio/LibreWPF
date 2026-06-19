@@ -1042,6 +1042,7 @@ internal static class Program
             using System.Collections.ObjectModel;
             using System.Collections.Generic;
             using System.Globalization;
+            using System.IO;
             using System.Linq;
             using System.Reflection;
             using System.Windows;
@@ -1056,6 +1057,7 @@ internal static class Program
             using System.Windows.Navigation;
             using System.Windows.Threading;
             using ExternalSdkLibrary;
+            using Microsoft.Win32;
 
             namespace ExternalSdkApp;
 
@@ -1549,6 +1551,7 @@ internal static class Program
                     ValidateApplicationResources(window);
                     ValidateSystemParameters(window);
                     ValidateMessageBox(window);
+                    ValidateFileDialogs(window);
                     ValidateClipboard();
                     ValidateFreezableResources();
                     ValidateLooseXamlReaderWriter();
@@ -1952,6 +1955,105 @@ internal static class Program
                         MessageBoxResult.OK,
                         ownerResult,
                         "external SDK MessageBox owner fallback result");
+                }
+
+                private static void ValidateFileDialogs(Window window)
+                {
+                    Type serviceType = typeof(OpenFileDialog).Assembly.GetType(
+                            "Microsoft.Win32.PortableFileDialogService",
+                            throwOnError: false)
+                        ?? throw new TypeLoadException("Microsoft.Win32.PortableFileDialogService");
+                    var isEnabledProperty = serviceType.GetProperty(
+                            "IsEnabled",
+                            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                        ?? throw new MissingMemberException(serviceType.FullName, "IsEnabled");
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        AssertEqual(
+                            true,
+                            (bool)(isEnabledProperty.GetValue(null) ?? false),
+                            "external SDK portable file dialog service enabled");
+                    }
+
+                    var registerMethod = serviceType.GetMethod(
+                            "Register",
+                            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                            binder: null,
+                            types: new[] { typeof(Func<object, string?>) },
+                            modifiers: null)
+                        ?? throw new MissingMethodException(serviceType.FullName, "Register");
+
+                    string tempDirectory = Path.Combine(
+                        Path.GetTempPath(),
+                        "progpu-wpf-external-file-dialog-" + Guid.NewGuid().ToString("N"));
+                    Directory.CreateDirectory(tempDirectory);
+                    string openPath = Path.Combine(tempDirectory, "open.txt");
+                    string savePathWithoutExtension = Path.Combine(tempDirectory, "saved");
+                    string savePath = savePathWithoutExtension + ".txt";
+                    File.WriteAllText(openPath, "external SDK file dialog");
+
+                    int requestCount = 0;
+                    var seenKinds = new List<string>();
+                    Func<object, string?> handler = request =>
+                    {
+                        string kind = ReadPortableRequestString(request, "Kind");
+                        seenKinds.Add(kind);
+                        requestCount++;
+
+                        return kind switch
+                        {
+                            "SaveFile" => savePathWithoutExtension,
+                            "PickFolder" => tempDirectory,
+                            _ => openPath
+                        };
+                    };
+
+                    IDisposable? registration = null;
+                    try
+                    {
+                        registration = (IDisposable?)registerMethod.Invoke(null, new object[] { handler });
+
+                        var openDialog = new OpenFileDialog
+                        {
+                            Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*"
+                        };
+                        AssertEqual(true, openDialog.ShowDialog(), "external SDK OpenFileDialog result");
+                        AssertEqual(openPath, openDialog.FileName, "external SDK OpenFileDialog FileName");
+                        AssertEqual("open.txt", openDialog.SafeFileName, "external SDK OpenFileDialog SafeFileName");
+
+                        var saveDialog = new SaveFileDialog
+                        {
+                            DefaultExt = "txt",
+                            OverwritePrompt = false
+                        };
+                        AssertEqual(true, saveDialog.ShowDialog(window), "external SDK owner SaveFileDialog result");
+                        AssertEqual(savePath, saveDialog.FileName, "external SDK owner SaveFileDialog FileName");
+                        AssertEqual("saved.txt", saveDialog.SafeFileName, "external SDK owner SaveFileDialog SafeFileName");
+
+                        var folderDialog = new OpenFolderDialog();
+                        AssertEqual(true, folderDialog.ShowDialog(window), "external SDK owner OpenFolderDialog result");
+                        AssertEqual(tempDirectory, folderDialog.FolderName, "external SDK owner OpenFolderDialog FolderName");
+                        AssertEqual(Path.GetFileName(tempDirectory), folderDialog.SafeFolderName, "external SDK owner OpenFolderDialog SafeFolderName");
+
+                        AssertEqual(3, requestCount, "external SDK file dialog request count");
+                        AssertEqual("OpenFile", seenKinds[0], "external SDK file dialog open request kind");
+                        AssertEqual("SaveFile", seenKinds[1], "external SDK file dialog save request kind");
+                        AssertEqual("PickFolder", seenKinds[2], "external SDK file dialog folder request kind");
+                    }
+                    finally
+                    {
+                        registration?.Dispose();
+                        Directory.Delete(tempDirectory, recursive: true);
+                    }
+                }
+
+                private static string ReadPortableRequestString(object request, string propertyName)
+                {
+                    return request.GetType()
+                        .GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                        ?.GetValue(request)
+                        ?.ToString()
+                        ?? string.Empty;
                 }
 
                 private static void ValidateClipboard()

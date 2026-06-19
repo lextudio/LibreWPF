@@ -4443,6 +4443,54 @@ public sealed class WpfManagedProjectGraphTests
             "Internal",
             "Automation",
             "UiaCoreTypesApi.cs"));
+        var pointUtil = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "Shared",
+            "MS",
+            "Internal",
+            "PointUtil.cs"));
+        var uiElementAutomationPeer = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Automation",
+            "Peers",
+            "UIElementAutomationPeer.cs"));
+        var uiElement3DAutomationPeer = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Automation",
+            "Peers",
+            "UIElement3DAutomationPeer.cs"));
+        var documentAutomationPeer = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Automation",
+            "Peers",
+            "DocumentAutomationPeer.cs"));
+        var textElementAutomationPeer = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Automation",
+            "Peers",
+            "TextElementAutomationPeer.cs"));
 
         AssertGuardBefore(compositionExports, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.MilCoreApi.EnterCompositionEngineLock()");
         AssertGuardBefore(uiElement, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetDC(desktopWnd)");
@@ -4609,6 +4657,17 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(uiaCoreTypesApi, "if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))", "LoadLibraryHelper.SecureLoadLibraryEx(DllImport.UIAutomationCore");
         Assert.Contains("s_reservedNotSupportedValue", uiaCoreTypesApi, StringComparison.Ordinal);
         Assert.Contains("s_reservedMixedAttributeValue", uiaCoreTypesApi, StringComparison.Ordinal);
+        Assert.Contains("internal static Rect ClientToScreen(Rect rectClient, PresentationSource presentationSource)", pointUtil, StringComparison.Ordinal);
+        Assert.Contains("Point corner1 = ClientToScreen(rectClient.TopLeft, presentationSource);", pointUtil, StringComparison.Ordinal);
+        Assert.DoesNotContain("ClientToScreen(Rect rectClient, HwndSource hwndSource)", pointUtil, StringComparison.Ordinal);
+        Assert.Contains("PointUtil.ClientToScreen(rectClient, presentationSource)", uiElementAutomationPeer, StringComparison.Ordinal);
+        Assert.Contains("PointUtil.ClientToScreen(rectClient, presentationSource)", uiElement3DAutomationPeer, StringComparison.Ordinal);
+        Assert.Contains("PointUtil.ClientToScreen(boundingRect, presentationSource)", documentAutomationPeer, StringComparison.Ordinal);
+        Assert.Contains("PointUtil.ClientToScreen(rectClient, presentationSource)", textElementAutomationPeer, StringComparison.Ordinal);
+        Assert.DoesNotContain("presentationSource as HwndSource", uiElementAutomationPeer, StringComparison.Ordinal);
+        Assert.DoesNotContain("presentationSource as HwndSource", uiElement3DAutomationPeer, StringComparison.Ordinal);
+        Assert.DoesNotContain("as HwndSource", documentAutomationPeer, StringComparison.Ordinal);
+        Assert.DoesNotContain("presentationSource as HwndSource", textElementAutomationPeer, StringComparison.Ordinal);
         AssertGuardBefore(application, "if (!global::System.OperatingSystem.IsWindows())", "UnsafeNativeMethods.PlaySound(soundFile");
         AssertGuardBefore(application, "if (!global::System.OperatingSystem.IsWindows())", "Registry.CurrentUser.OpenSubKey(regPath)");
         AssertGuardBefore(application, "if (!WindowsInternal.HasItem(wnd))", "wnd.Visibility = Visibility.Visible");

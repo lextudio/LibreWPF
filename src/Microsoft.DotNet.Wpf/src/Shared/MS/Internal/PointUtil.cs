@@ -253,23 +253,23 @@ namespace MS.Internal
         }
 
         /// <summary>
-        ///     Converts a rectangle from Win32 client co-ordinate space to Win32 screen
+        ///     Converts a rectangle from client co-ordinate space to screen
         /// </summary>
         /// <remarks>
         /// </remarks>
         /// <param name="rectClient">
         ///     The rectangle to be converted
         /// </param>
-        /// <param name="hwndSource">
-        ///     The HwndSource corresponding to the Win32 window containing the rectangle
+        /// <param name="presentationSource">
+        ///     The PresentationSource containing the rectangle
         /// </param>
         /// <returns>
-        ///     The rectangle in Win32 screen co-ordinate space
+        ///     The rectangle in screen co-ordinate space
         /// </returns>
-        internal static Rect ClientToScreen(Rect rectClient, HwndSource hwndSource)
+        internal static Rect ClientToScreen(Rect rectClient, PresentationSource presentationSource)
         {
-            Point corner1 = ClientToScreen(rectClient.TopLeft, hwndSource);
-            Point corner2 = ClientToScreen(rectClient.BottomRight, hwndSource);
+            Point corner1 = ClientToScreen(rectClient.TopLeft, presentationSource);
+            Point corner2 = ClientToScreen(rectClient.BottomRight, presentationSource);
             return new Rect(corner1, corner2);
         }
 
@@ -434,5 +434,4 @@ namespace MS.Internal
 
     }
 }
-
 

@@ -364,6 +364,14 @@ internal static class Program
                         </Trigger>
                     </Style.Triggers>
                 </Style>
+                <ItemsPanelTemplate x:Key="ExternalItemsPanelTemplate">
+                    <WrapPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+                <Style
+                    x:Key="ExternalItemContainerStyle"
+                    TargetType="{x:Type ListBoxItem}">
+                    <Setter Property="Tag" Value="external item container" />
+                </Style>
                 <DataTemplate
                     x:Key="ExternalItemTemplate"
                     DataType="{x:Type local:ExternalItem}">
@@ -427,6 +435,53 @@ internal static class Program
                     <Button
                         x:Name="ExternalStyledButton"
                         Style="{StaticResource ExternalTriggeredButtonStyle}" />
+                    <Grid x:Name="ExternalLayoutGrid">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock
+                            x:Name="ExternalGridLabel"
+                            Grid.Row="0"
+                            Grid.Column="0"
+                            Text="External grid label" />
+                        <TextBlock
+                            x:Name="ExternalGridValue"
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            Grid.ColumnSpan="1"
+                            Text="{Binding SelectedExternalItem.Name}" />
+                    </Grid>
+                    <DockPanel
+                        x:Name="ExternalDockPanel"
+                        LastChildFill="True">
+                        <TextBlock
+                            x:Name="ExternalDockTop"
+                            DockPanel.Dock="Top"
+                            Text="External dock top" />
+                        <TextBlock
+                            x:Name="ExternalDockFill"
+                            Text="{Binding SelectedExternalItem.Kind}" />
+                    </DockPanel>
+                    <Canvas x:Name="ExternalCanvas">
+                        <TextBlock
+                            x:Name="ExternalCanvasChild"
+                            Canvas.Left="12"
+                            Canvas.Top="7"
+                            Text="External canvas child" />
+                    </Canvas>
+                    <UniformGrid
+                        x:Name="ExternalUniformGrid"
+                        Rows="1"
+                        Columns="3">
+                        <TextBlock Text="One" />
+                        <TextBlock Text="Two" />
+                        <TextBlock Text="Three" />
+                    </UniformGrid>
                     <ContentControl
                         x:Name="ExternalTemplatePresenter"
                         Content="{Binding SelectedExternalItem}"
@@ -436,6 +491,13 @@ internal static class Program
                         DisplayMemberPath="Name"
                         ItemsSource="{Binding ExternalItems}"
                         SelectedIndex="1" />
+                    <ListBox
+                        x:Name="ExternalItemsPanelList"
+                        AlternationCount="4"
+                        ItemContainerStyle="{StaticResource ExternalItemContainerStyle}"
+                        ItemsPanel="{StaticResource ExternalItemsPanelTemplate}"
+                        ItemsSource="{Binding ExternalItems}"
+                        ItemStringFormat="External item {0}" />
                     <TextBlock
                         x:Name="ExternalConverterText"
                         Text="{Binding SelectedExternalItem.Name, Converter={StaticResource ExternalUpperConverter}, ConverterParameter=converted}" />
@@ -800,6 +862,7 @@ internal static class Program
                     ValidateApplicationResources(window);
                     ValidateBindings(window);
                     ValidateStylesAndTemplates(window);
+                    ValidateLayoutsAndItems(window);
                     ValidateCommandsAndFocus(window);
 
                     var themedControl = RequireType<ExternalThemedControl>(
@@ -1112,6 +1175,77 @@ internal static class Program
                     DrainDispatcher();
                     AssertEqual("base-style", styledButton.Tag, "external SDK property trigger restored tag");
                     AssertBrushColor(styledButton.Background, "#FF254C6A", "external SDK property trigger restored background");
+                }
+
+                private static void ValidateLayoutsAndItems(MainWindow window)
+                {
+                    var grid = RequireType<Grid>(
+                        window.FindName("ExternalLayoutGrid"),
+                        "external SDK layout grid");
+                    AssertEqual(2, grid.RowDefinitions.Count, "external SDK grid row definition count");
+                    AssertEqual(2, grid.ColumnDefinitions.Count, "external SDK grid column definition count");
+
+                    var gridLabel = RequireType<TextBlock>(
+                        window.FindName("ExternalGridLabel"),
+                        "external SDK grid label");
+                    var gridValue = RequireType<TextBlock>(
+                        window.FindName("ExternalGridValue"),
+                        "external SDK grid value");
+                    AssertEqual(0, Grid.GetRow(gridLabel), "external SDK grid label row");
+                    AssertEqual(0, Grid.GetColumn(gridLabel), "external SDK grid label column");
+                    AssertEqual(1, Grid.GetRow(gridValue), "external SDK grid value row");
+                    AssertEqual(1, Grid.GetColumn(gridValue), "external SDK grid value column");
+                    AssertEqual(1, Grid.GetColumnSpan(gridValue), "external SDK grid value column span");
+                    AssertEqual("Alpha", gridValue.Text, "external SDK grid binding text");
+
+                    var dockPanel = RequireType<DockPanel>(
+                        window.FindName("ExternalDockPanel"),
+                        "external SDK dock panel");
+                    var dockTop = RequireType<TextBlock>(
+                        window.FindName("ExternalDockTop"),
+                        "external SDK dock top text");
+                    var dockFill = RequireType<TextBlock>(
+                        window.FindName("ExternalDockFill"),
+                        "external SDK dock fill text");
+                    AssertEqual(true, dockPanel.LastChildFill, "external SDK dock panel last child fill");
+                    AssertEqual(Dock.Top, DockPanel.GetDock(dockTop), "external SDK dock top attached property");
+                    AssertEqual("Framework", dockFill.Text, "external SDK dock fill binding text");
+
+                    var canvasChild = RequireType<TextBlock>(
+                        window.FindName("ExternalCanvasChild"),
+                        "external SDK canvas child");
+                    AssertEqual(12.0, Canvas.GetLeft(canvasChild), "external SDK canvas child left");
+                    AssertEqual(7.0, Canvas.GetTop(canvasChild), "external SDK canvas child top");
+
+                    var uniformGrid = RequireType<UniformGrid>(
+                        window.FindName("ExternalUniformGrid"),
+                        "external SDK uniform grid");
+                    AssertEqual(1, uniformGrid.Rows, "external SDK uniform grid rows");
+                    AssertEqual(3, uniformGrid.Columns, "external SDK uniform grid columns");
+                    AssertEqual(3, uniformGrid.Children.Count, "external SDK uniform grid child count");
+
+                    var itemsPanelTemplate = RequireType<ItemsPanelTemplate>(
+                        window.FindResource("ExternalItemsPanelTemplate"),
+                        "external SDK items panel template");
+                    var panelRoot = RequireType<WrapPanel>(
+                        itemsPanelTemplate.LoadContent(),
+                        "external SDK items panel template root");
+                    AssertEqual(Orientation.Horizontal, panelRoot.Orientation, "external SDK items panel orientation");
+
+                    var itemContainerStyle = RequireType<Style>(
+                        window.FindResource("ExternalItemContainerStyle"),
+                        "external SDK item container style");
+                    AssertEqual(typeof(ListBoxItem), itemContainerStyle.TargetType, "external SDK item container style target type");
+                    AssertEqual(1, itemContainerStyle.Setters.Count, "external SDK item container style setter count");
+
+                    var itemPanelList = RequireType<ListBox>(
+                        window.FindName("ExternalItemsPanelList"),
+                        "external SDK item panel list");
+                    AssertEqual(itemsPanelTemplate, itemPanelList.ItemsPanel, "external SDK item panel list ItemsPanel");
+                    AssertEqual(itemContainerStyle, itemPanelList.ItemContainerStyle, "external SDK item panel list ItemContainerStyle");
+                    AssertEqual(4, itemPanelList.AlternationCount, "external SDK item panel list alternation count");
+                    AssertEqual("External item {0}", itemPanelList.ItemStringFormat, "external SDK item panel list string format");
+                    AssertEqual(3, itemPanelList.Items.Count, "external SDK item panel list collection count after mutation");
                 }
 
                 private static void ValidateCommandsAndFocus(MainWindow window)

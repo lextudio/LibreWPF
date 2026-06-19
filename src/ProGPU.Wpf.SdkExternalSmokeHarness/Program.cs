@@ -77,6 +77,14 @@ internal static class Program
             ValidateExternalProjectShape(workRoot);
             string outputRoot = Path.Combine(workRoot, AppAssemblyName, "bin", "Debug", "net11.0");
             ValidateExternalOutput(outputRoot);
+            RunProcess(
+                dotnetPath,
+                outputRoot,
+                new Dictionary<string, string>
+                {
+                    ["PROGPU_WPF_EXTERNAL_VALIDATE"] = "1"
+                },
+                Path.Combine(outputRoot, AppAssemblyName + ".dll"));
 
             Console.WriteLine("ProGPU WPF external SDK smoke succeeded.");
             return 0;
@@ -125,6 +133,14 @@ internal static class Program
             """);
 
         WriteFile(
+            Path.Combine(libraryRoot, "Properties", "AssemblyInfo.cs"),
+            """
+            using System.Windows;
+
+            [assembly: ThemeInfo(ResourceDictionaryLocation.None, ResourceDictionaryLocation.SourceAssembly)]
+            """);
+
+        WriteFile(
             Path.Combine(libraryRoot, "ExternalPanel.xaml"),
             """
             <UserControl
@@ -168,6 +184,73 @@ internal static class Program
                     set => SetValue(CaptionProperty, value);
                 }
             }
+            """);
+
+        WriteFile(
+            Path.Combine(libraryRoot, "ExternalThemedControl.cs"),
+            """
+            using System.Windows;
+            using System.Windows.Controls;
+
+            namespace ExternalSdkLibrary;
+
+            public sealed class ExternalThemedControl : Control
+            {
+                public static readonly DependencyProperty TextProperty = DependencyProperty.Register(
+                    nameof(Text),
+                    typeof(string),
+                    typeof(ExternalThemedControl),
+                    new FrameworkPropertyMetadata(string.Empty));
+
+                static ExternalThemedControl()
+                {
+                    DefaultStyleKeyProperty.OverrideMetadata(
+                        typeof(ExternalThemedControl),
+                        new FrameworkPropertyMetadata(typeof(ExternalThemedControl)));
+                }
+
+                public string Text
+                {
+                    get => (string)GetValue(TextProperty);
+                    set => SetValue(TextProperty, value);
+                }
+            }
+            """);
+
+        WriteFile(
+            Path.Combine(libraryRoot, "Themes", "Generic.xaml"),
+            """
+            <ResourceDictionary
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:local="clr-namespace:ExternalSdkLibrary">
+                <SolidColorBrush
+                    x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:ExternalThemedControl}, ResourceId=ExternalThemeBorderBrush}"
+                    Color="#7A4EB2" />
+
+                <Style TargetType="{x:Type local:ExternalThemedControl}">
+                    <Setter Property="Background" Value="#6B8F3A" />
+                    <Setter Property="Foreground" Value="#356D9E" />
+                    <Setter Property="Padding" Value="5" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="{x:Type local:ExternalThemedControl}">
+                                <Border
+                                    x:Name="ThemeRoot"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{DynamicResource {ComponentResourceKey TypeInTargetAssembly={x:Type local:ExternalThemedControl}, ResourceId=ExternalThemeBorderBrush}}"
+                                    BorderThickness="2"
+                                    Padding="{TemplateBinding Padding}">
+                                    <TextBlock
+                                        x:Name="ThemeText"
+                                        Foreground="{TemplateBinding Foreground}"
+                                        Text="{TemplateBinding Text}" />
+                                </Border>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </ResourceDictionary>
             """);
 
         string appProjectPath = Path.Combine(appRoot, AppAssemblyName + ".csproj");
@@ -227,6 +310,9 @@ internal static class Program
                     <library:ExternalPanel
                         x:Name="ExternalPanel"
                         Caption="External SDK library panel" />
+                    <library:ExternalThemedControl
+                        x:Name="ExternalThemedControl"
+                        Text="External SDK themed control" />
                 </StackPanel>
             </Window>
             """);
@@ -234,7 +320,12 @@ internal static class Program
         WriteFile(
             Path.Combine(appRoot, "MainWindow.xaml.cs"),
             """
+            using System;
+            using System.Collections.Generic;
             using System.Windows;
+            using System.Windows.Controls;
+            using System.Windows.Media;
+            using ExternalSdkLibrary;
 
             namespace ExternalSdkApp;
 
@@ -243,6 +334,88 @@ internal static class Program
                 public MainWindow()
                 {
                     InitializeComponent();
+                }
+            }
+
+            public partial class App
+            {
+                protected override void OnStartup(StartupEventArgs e)
+                {
+                    if (Environment.GetEnvironmentVariable("PROGPU_WPF_EXTERNAL_VALIDATE") == "1")
+                    {
+                        ExternalSdkValidation.Run();
+                        Shutdown();
+                        return;
+                    }
+
+                    base.OnStartup(e);
+                }
+            }
+
+            internal static class ExternalSdkValidation
+            {
+                public static void Run()
+                {
+                    var window = new MainWindow();
+                    var panel = RequireType<ExternalPanel>(
+                        window.FindName("ExternalPanel"),
+                        "external SDK app library user-control");
+                    var captionText = RequireType<TextBlock>(
+                        panel.FindName("CaptionText"),
+                        "external SDK user-control named TextBlock");
+                    AssertEqual("External SDK library panel", captionText.Text, "external SDK user-control ElementName binding");
+
+                    var themedControl = RequireType<ExternalThemedControl>(
+                        window.FindName("ExternalThemedControl"),
+                        "external SDK app library themed control");
+                    themedControl.ApplyTemplate();
+                    if (themedControl.Template is null)
+                    {
+                        throw new InvalidOperationException("External SDK themed library control did not receive its Generic.xaml default template.");
+                    }
+
+                    var themeRoot = RequireType<Border>(
+                        themedControl.Template.FindName("ThemeRoot", themedControl),
+                        "external SDK themed control template root");
+                    var themeText = RequireType<TextBlock>(
+                        themedControl.Template.FindName("ThemeText", themedControl),
+                        "external SDK themed control template text");
+
+                    AssertEqual("External SDK themed control", themeText.Text, "external SDK themed control TemplateBinding text");
+                    AssertBrushColor(themeRoot.Background, "#FF6B8F3A", "external SDK themed control background");
+                    AssertBrushColor(themeRoot.BorderBrush, "#FF7A4EB2", "external SDK themed control component resource brush");
+                    AssertBrushColor(themeText.Foreground, "#FF356D9E", "external SDK themed control foreground");
+
+                    AssertEqual(2.0, themeRoot.BorderThickness.Left, "external SDK themed control border left");
+                    AssertEqual(2.0, themeRoot.BorderThickness.Top, "external SDK themed control border top");
+                    AssertEqual(2.0, themeRoot.BorderThickness.Right, "external SDK themed control border right");
+                    AssertEqual(2.0, themeRoot.BorderThickness.Bottom, "external SDK themed control border bottom");
+                }
+
+                private static T RequireType<T>(object? value, string description)
+                {
+                    if (value is T typed)
+                    {
+                        return typed;
+                    }
+
+                    throw new InvalidOperationException(
+                        $"Expected {description} to be {typeof(T).FullName}, but found {value?.GetType().FullName ?? "<null>"}.");
+                }
+
+                private static void AssertBrushColor(Brush brush, string expected, string description)
+                {
+                    var solidColorBrush = RequireType<SolidColorBrush>(brush, description);
+                    AssertEqual(expected, solidColorBrush.Color.ToString(), description);
+                }
+
+                private static void AssertEqual<T>(T expected, T actual, string description)
+                {
+                    if (!EqualityComparer<T>.Default.Equals(expected, actual))
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected {description} to be '{expected}', but found '{actual}'.");
+                    }
                 }
             }
             """);
@@ -261,6 +434,8 @@ internal static class Program
         AssertContains(appProject, $"<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", "external app project reference");
         AssertContains(libraryProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external library SDK");
         AssertContains(libraryProject, "<UseWPF>true</UseWPF>", "external library WPF property");
+        RequireFile(Path.Combine(workRoot, LibraryAssemblyName, "Properties", "AssemblyInfo.cs"), "external SDK library ThemeInfo source");
+        RequireFile(Path.Combine(workRoot, LibraryAssemblyName, "Themes", "Generic.xaml"), "external SDK library Generic.xaml source");
 
         AssertDoesNotContain(appProject, "ProGpuWpfReferenceMode", "external app local artifact mode");
         AssertDoesNotContain(appProject, "ProGpuWpfManagedReferenceRoot", "external app managed artifact root");
@@ -302,6 +477,15 @@ internal static class Program
 
     private static string RunProcess(string fileName, string workingDirectory, params string[] arguments)
     {
+        return RunProcess(fileName, workingDirectory, environment: null, arguments);
+    }
+
+    private static string RunProcess(
+        string fileName,
+        string workingDirectory,
+        IReadOnlyDictionary<string, string>? environment,
+        params string[] arguments)
+    {
         var startInfo = new ProcessStartInfo(fileName)
         {
             WorkingDirectory = workingDirectory,
@@ -311,6 +495,14 @@ internal static class Program
         };
 
         startInfo.Environment["DOTNET_ROLL_FORWARD"] = "Major";
+        if (environment is not null)
+        {
+            foreach (var item in environment)
+            {
+                startInfo.Environment[item.Key] = item.Value;
+            }
+        }
+
         foreach (string argument in arguments)
         {
             startInfo.ArgumentList.Add(argument);

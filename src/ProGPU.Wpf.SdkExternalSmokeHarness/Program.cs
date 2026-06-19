@@ -2540,6 +2540,109 @@ internal static class Program
                     AssertEqual(0.0, roundTrippedBrush.GradientStops[0].Offset, "external SDK loose XamlWriter round-trip first stop offset");
                     AssertEqual("#FFB15E3B", roundTrippedBrush.GradientStops[1].Color.ToString(), "external SDK loose XamlWriter round-trip second stop color");
                     AssertEqual(1.0, roundTrippedBrush.GradientStops[1].Offset, "external SDK loose XamlWriter round-trip second stop offset");
+
+                    string styleDictionaryXaml =
+                        "<ResourceDictionary xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" " +
+                        "xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\">" +
+                        "<Style x:Key=\"ExternalWriterBaseButtonStyle\" TargetType=\"{x:Type Button}\">" +
+                        "<Setter Property=\"Tag\" Value=\"external writer base tag\" />" +
+                        "</Style>" +
+                        "<Style x:Key=\"ExternalWriterButtonStyle\" TargetType=\"{x:Type Button}\" BasedOn=\"{StaticResource ExternalWriterBaseButtonStyle}\">" +
+                        "<Setter Property=\"Content\" Value=\"external writer style content\" />" +
+                        "<Setter Property=\"MinWidth\" Value=\"144\" />" +
+                        "</Style>" +
+                        "</ResourceDictionary>";
+                    var styleDictionary = RequireType<ResourceDictionary>(
+                        XamlReader.Parse(styleDictionaryXaml),
+                        "external SDK loose XamlWriter style dictionary source");
+                    string styleSerialized = XamlWriter.Save(styleDictionary);
+                    AssertContains("ExternalWriterBaseButtonStyle", styleSerialized, "external SDK loose XamlWriter serialized base style key");
+                    AssertContains("ExternalWriterButtonStyle", styleSerialized, "external SDK loose XamlWriter serialized derived style key");
+                    AssertContains("BasedOn", styleSerialized, "external SDK loose XamlWriter serialized style BasedOn");
+                    AssertContains("Setter", styleSerialized, "external SDK loose XamlWriter serialized style setters");
+                    var roundTrippedStyles = RequireType<ResourceDictionary>(
+                        XamlReader.Parse(styleSerialized),
+                        "external SDK loose XamlWriter round-trip style dictionary");
+                    var baseStyle = RequireType<Style>(
+                        roundTrippedStyles["ExternalWriterBaseButtonStyle"],
+                        "external SDK loose XamlWriter round-trip base style");
+                    var derivedStyle = RequireType<Style>(
+                        roundTrippedStyles["ExternalWriterButtonStyle"],
+                        "external SDK loose XamlWriter round-trip derived style");
+                    AssertEqual(typeof(Button), baseStyle.TargetType, "external SDK loose XamlWriter round-trip base style target");
+                    AssertEqual(typeof(Button), derivedStyle.TargetType, "external SDK loose XamlWriter round-trip derived style target");
+                    var basedOnStyle = RequireType<Style>(
+                        derivedStyle.BasedOn,
+                        "external SDK loose XamlWriter round-trip style BasedOn");
+                    AssertEqual(typeof(Button), basedOnStyle.TargetType, "external SDK loose XamlWriter round-trip style BasedOn target");
+                    AssertEqual(1, basedOnStyle.Setters.Count, "external SDK loose XamlWriter round-trip style BasedOn setter count");
+                    AssertLooseStyleSetter(basedOnStyle.Setters[0], FrameworkElement.TagProperty, "external writer base tag", "external SDK loose XamlWriter round-trip style BasedOn setter");
+                    AssertEqual(1, baseStyle.Setters.Count, "external SDK loose XamlWriter round-trip base style setter count");
+                    AssertLooseStyleSetter(baseStyle.Setters[0], FrameworkElement.TagProperty, "external writer base tag", "external SDK loose XamlWriter base Tag setter");
+                    AssertEqual(2, derivedStyle.Setters.Count, "external SDK loose XamlWriter round-trip derived style setter count");
+                    AssertLooseStyleSetter(derivedStyle.Setters[0], ContentControl.ContentProperty, "external writer style content", "external SDK loose XamlWriter derived Content setter");
+                    AssertLooseStyleSetter(derivedStyle.Setters[1], FrameworkElement.MinWidthProperty, 144.0, "external SDK loose XamlWriter derived MinWidth setter");
+                    var styledButton = new Button { Style = derivedStyle };
+                    AssertEqual("external writer base tag", styledButton.Tag, "external SDK loose XamlWriter styled Button inherited Tag");
+                    AssertEqual("external writer style content", styledButton.Content, "external SDK loose XamlWriter styled Button content");
+                    AssertEqual(144.0, styledButton.MinWidth, "external SDK loose XamlWriter styled Button MinWidth");
+
+                    string templateDictionaryXaml =
+                        "<ResourceDictionary xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" " +
+                        "xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\">" +
+                        "<ControlTemplate x:Key=\"ExternalWriterButtonTemplate\" TargetType=\"{x:Type Button}\">" +
+                        "<Border x:Name=\"ExternalTemplateBorder\" Padding=\"{TemplateBinding Padding}\" Background=\"{TemplateBinding Background}\">" +
+                        "<ContentPresenter x:Name=\"ExternalTemplateContent\" RecognizesAccessKey=\"True\" />" +
+                        "</Border>" +
+                        "<ControlTemplate.Triggers>" +
+                        "<Trigger Property=\"IsDefault\" Value=\"True\">" +
+                        "<Setter TargetName=\"ExternalTemplateBorder\" Property=\"Tag\" Value=\"external default template state\" />" +
+                        "</Trigger>" +
+                        "</ControlTemplate.Triggers>" +
+                        "</ControlTemplate>" +
+                        "</ResourceDictionary>";
+                    var templateDictionary = RequireType<ResourceDictionary>(
+                        XamlReader.Parse(templateDictionaryXaml),
+                        "external SDK loose XamlWriter template dictionary source");
+                    string templateSerialized = XamlWriter.Save(templateDictionary);
+                    AssertContains("ControlTemplate", templateSerialized, "external SDK loose XamlWriter serialized ControlTemplate");
+                    AssertContains("ContentPresenter", templateSerialized, "external SDK loose XamlWriter serialized ControlTemplate ContentPresenter");
+                    AssertContains("ControlTemplate.Triggers", templateSerialized, "external SDK loose XamlWriter serialized ControlTemplate triggers");
+                    AssertContains("ExternalTemplateBorder", templateSerialized, "external SDK loose XamlWriter serialized ControlTemplate target name");
+                    var roundTrippedTemplates = RequireType<ResourceDictionary>(
+                        XamlReader.Parse(templateSerialized),
+                        "external SDK loose XamlWriter round-trip template dictionary");
+                    var template = RequireType<ControlTemplate>(
+                        roundTrippedTemplates["ExternalWriterButtonTemplate"],
+                        "external SDK loose XamlWriter round-trip ControlTemplate");
+                    AssertEqual(typeof(Button), template.TargetType, "external SDK loose XamlWriter round-trip ControlTemplate target");
+                    AssertEqual(1, template.Triggers.Count, "external SDK loose XamlWriter round-trip ControlTemplate trigger count");
+                    var trigger = RequireType<Trigger>(
+                        template.Triggers[0],
+                        "external SDK loose XamlWriter round-trip ControlTemplate trigger");
+                    AssertEqual(Button.IsDefaultProperty, trigger.Property, "external SDK loose XamlWriter round-trip ControlTemplate trigger property");
+                    AssertEqual(true, trigger.Value, "external SDK loose XamlWriter round-trip ControlTemplate trigger value");
+                    AssertEqual(1, trigger.Setters.Count, "external SDK loose XamlWriter round-trip ControlTemplate trigger setter count");
+                    var triggerSetter = AssertLooseStyleSetter(
+                        trigger.Setters[0],
+                        FrameworkElement.TagProperty,
+                        "external default template state",
+                        "external SDK loose XamlWriter ControlTemplate trigger Tag setter");
+                    AssertEqual("ExternalTemplateBorder", triggerSetter.TargetName, "external SDK loose XamlWriter ControlTemplate trigger setter target");
+                    var templatedButton = new Button
+                    {
+                        Template = template,
+                        Content = "external templated writer button"
+                    };
+                    templatedButton.ApplyTemplate();
+                    AssertEqual(
+                        true,
+                        template.FindName("ExternalTemplateBorder", templatedButton) is Border,
+                        "external SDK loose XamlWriter applied ControlTemplate border");
+                    AssertEqual(
+                        true,
+                        template.FindName("ExternalTemplateContent", templatedButton) is ContentPresenter,
+                        "external SDK loose XamlWriter applied ControlTemplate content presenter");
                 }
 
                 private static void ValidateDataProviders(MainWindow window)
@@ -3722,6 +3825,20 @@ internal static class Program
                         tableCell.Blocks.FirstBlock,
                         $"external SDK FlowDocument {description} table cell paragraph");
                     AssertParagraphText(paragraph, expectedText, $"{description} table cell");
+                }
+
+                private static Setter AssertLooseStyleSetter(
+                    SetterBase setterBase,
+                    DependencyProperty expectedProperty,
+                    object expectedValue,
+                    string description)
+                {
+                    var setter = RequireType<Setter>(
+                        setterBase,
+                        description);
+                    AssertEqual(expectedProperty, setter.Property, $"{description} property");
+                    AssertEqual(expectedValue, setter.Value, $"{description} value");
+                    return setter;
                 }
 
                 private static void AssertEqual<T>(T expected, T actual, string description)

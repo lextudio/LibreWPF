@@ -6167,6 +6167,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK loose XamlReader Binding path", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK loose XamlWriter serialized GradientStop", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK loose XamlWriter round-trip second stop color", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalWriterBaseButtonStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalWriterButtonStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("XamlWriter.Save(styleDictionary)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter serialized style BasedOn", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter round-trip style BasedOn setter", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter styled Button inherited Tag", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalWriterButtonTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("XamlWriter.Save(templateDictionary)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter serialized ControlTemplate triggers", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter round-trip ControlTemplate trigger property", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter applied ControlTemplate content presenter", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateDataProviders(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ObjectDataProvider data", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ObjectDataProvider bound text", externalSdkHarnessProgram, StringComparison.Ordinal);

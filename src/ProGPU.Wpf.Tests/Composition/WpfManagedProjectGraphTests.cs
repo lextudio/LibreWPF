@@ -6277,6 +6277,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Converter={StaticResource ExternalUpperConverter}", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<MultiBinding Converter=\"{StaticResource ExternalSummaryConverter}\">", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<PriorityBinding>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalAncestorBindingBorder\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding RelativeSource={RelativeSource AncestorType={x:Type Border}}, Path=Tag}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<local:ExternalNonEmptyValidationRule />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ExternalBindingGroupPanel\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<BindingGroup Name=\"ExternalBindingGroup\">", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6296,6 +6298,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateBindingGroup(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("BindingOperations.GetMultiBindingExpression", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("BindingOperations.GetPriorityBindingExpression", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ancestorBindingExpression.ParentBinding.RelativeSource", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RelativeSourceMode.FindAncestor", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK RelativeSource ancestor binding value", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Validation.GetHasError(validationTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK validation source update", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("bindingGroup.ValidateWithoutUpdate()", externalSdkHarnessProgram, StringComparison.Ordinal);

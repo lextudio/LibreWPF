@@ -1007,6 +1007,26 @@ internal static class Program
                             </Binding>
                         </TextBox.Text>
                     </TextBox>
+                    <StackPanel
+                        x:Name="ExternalBindingGroupPanel"
+                        Margin="0,4,0,0">
+                        <StackPanel.BindingGroup>
+                            <BindingGroup Name="ExternalBindingGroup">
+                                <BindingGroup.ValidationRules>
+                                    <local:ExternalBindingGroupValidationRule
+                                        FirstProperty="BindingGroupFirstName"
+                                        RequiredPrefix="group:"
+                                        SecondProperty="BindingGroupLastName" />
+                                </BindingGroup.ValidationRules>
+                            </BindingGroup>
+                        </StackPanel.BindingGroup>
+                        <TextBox
+                            x:Name="ExternalBindingGroupFirstBox"
+                            Text="{Binding BindingGroupFirstName, UpdateSourceTrigger=Explicit}" />
+                        <TextBox
+                            x:Name="ExternalBindingGroupLastBox"
+                            Text="{Binding BindingGroupLastName, UpdateSourceTrigger=Explicit}" />
+                    </StackPanel>
                     <Button
                         x:Name="ExternalCommandButton"
                         Command="{x:Static local:MainWindow.ExternalCommand}"
@@ -1160,6 +1180,10 @@ internal static class Program
                 public string SelectedExternalKind { get; set; } = "Rendering";
 
                 public string ValidationText { get; set; } = "valid external text";
+
+                public string BindingGroupFirstName { get; set; } = "group: Ada";
+
+                public string BindingGroupLastName { get; set; } = "group: Lovelace";
 
                 public int ExternalSelectionChangedCount { get; private set; }
 
@@ -1526,6 +1550,41 @@ internal static class Program
                 }
             }
 
+            public sealed class ExternalBindingGroupValidationRule : ValidationRule
+            {
+                public string FirstProperty { get; set; } = string.Empty;
+
+                public string SecondProperty { get; set; } = string.Empty;
+
+                public string RequiredPrefix { get; set; } = string.Empty;
+
+                public override ValidationResult Validate(object value, CultureInfo cultureInfo)
+                {
+                    if (value is not BindingGroup bindingGroup)
+                    {
+                        return new ValidationResult(false, "Expected a BindingGroup value.");
+                    }
+
+                    foreach (object item in bindingGroup.Items)
+                    {
+                        if (!HasRequiredPrefix(bindingGroup, item, FirstProperty) ||
+                            !HasRequiredPrefix(bindingGroup, item, SecondProperty))
+                        {
+                            return new ValidationResult(false, $"External BindingGroup values must start with '{RequiredPrefix}'.");
+                        }
+                    }
+
+                    return ValidationResult.ValidResult;
+                }
+
+                private bool HasRequiredPrefix(BindingGroup bindingGroup, object item, string propertyName)
+                {
+                    object value = bindingGroup.GetValue(item, propertyName);
+                    string text = value?.ToString() ?? string.Empty;
+                    return text.StartsWith(RequiredPrefix, StringComparison.Ordinal);
+                }
+            }
+
             public sealed class ExternalAdorner : Adorner
             {
                 public ExternalAdorner(UIElement adornedElement)
@@ -1633,6 +1692,7 @@ internal static class Program
                     ValidateLooseXamlReaderWriter();
                     ValidateDataProviders(window);
                     ValidateBindings(window);
+                    ValidateBindingGroup(window);
                     ValidateStylesAndTemplates(window);
                     ValidateMenusAndChoiceControls(window);
                     ValidateToolbarStatusRangePasswordDateControls(window);
@@ -2604,6 +2664,55 @@ internal static class Program
                     AssertEqual(false, validationTextBox.Redo(), "external SDK TextBox empty Redo result");
                     AssertEqual("external undo base changed", validationTextBox.Text, "external SDK TextBox empty Redo text");
                     AssertEqual(8, validationTextBox.UndoLimit, "external SDK TextBox UndoLimit");
+                }
+
+                private static void ValidateBindingGroup(MainWindow window)
+                {
+                    var panel = RequireType<StackPanel>(
+                        window.FindName("ExternalBindingGroupPanel"),
+                        "external SDK BindingGroup panel");
+                    var bindingGroup = panel.BindingGroup
+                        ?? throw new InvalidOperationException("Expected external SDK BindingGroup panel to expose a BindingGroup.");
+
+                    AssertEqual("ExternalBindingGroup", bindingGroup.Name, "external SDK BindingGroup name");
+                    AssertEqual(1, bindingGroup.Items.Count, "external SDK BindingGroup item count");
+                    AssertEqual(window, bindingGroup.Items[0], "external SDK BindingGroup source item");
+                    AssertEqual(1, bindingGroup.ValidationRules.Count, "external SDK BindingGroup validation rule count");
+                    var rule = RequireType<ExternalBindingGroupValidationRule>(
+                        bindingGroup.ValidationRules[0],
+                        "external SDK BindingGroup validation rule");
+                    AssertEqual("BindingGroupFirstName", rule.FirstProperty, "external SDK BindingGroup first property");
+                    AssertEqual("BindingGroupLastName", rule.SecondProperty, "external SDK BindingGroup second property");
+                    AssertEqual("group:", rule.RequiredPrefix, "external SDK BindingGroup required prefix");
+
+                    var firstBox = RequireType<TextBox>(
+                        window.FindName("ExternalBindingGroupFirstBox"),
+                        "external SDK BindingGroup first text box");
+                    var lastBox = RequireType<TextBox>(
+                        window.FindName("ExternalBindingGroupLastBox"),
+                        "external SDK BindingGroup last text box");
+                    AssertEqual("group: Ada", firstBox.Text, "external SDK BindingGroup first initial text");
+                    AssertEqual("group: Lovelace", lastBox.Text, "external SDK BindingGroup last initial text");
+                    AssertEqual("group: Ada", window.BindingGroupFirstName, "external SDK BindingGroup first initial source");
+                    AssertEqual("group: Lovelace", window.BindingGroupLastName, "external SDK BindingGroup last initial source");
+                    AssertEqual("BindingGroupFirstName", firstBox.GetBindingExpression(TextBox.TextProperty)?.ParentBinding.Path.Path, "external SDK BindingGroup first binding path");
+                    AssertEqual("BindingGroupLastName", lastBox.GetBindingExpression(TextBox.TextProperty)?.ParentBinding.Path.Path, "external SDK BindingGroup last binding path");
+
+                    AssertEqual(false, Validation.GetHasError(panel), "external SDK BindingGroup initial error state");
+                    AssertEqual(true, bindingGroup.ValidateWithoutUpdate(), "external SDK BindingGroup initial validation");
+
+                    firstBox.Text = "Ada";
+                    AssertEqual(false, bindingGroup.CommitEdit(), "external SDK BindingGroup rejected commit");
+                    AssertEqual("group: Ada", window.BindingGroupFirstName, "external SDK BindingGroup rejected first source");
+                    AssertEqual("group: Lovelace", window.BindingGroupLastName, "external SDK BindingGroup rejected last source");
+                    AssertEqual(true, Validation.GetHasError(panel), "external SDK BindingGroup rejected error state");
+
+                    firstBox.Text = "group: Grace";
+                    lastBox.Text = "group: Hopper";
+                    AssertEqual(true, bindingGroup.CommitEdit(), "external SDK BindingGroup accepted commit");
+                    AssertEqual("group: Grace", window.BindingGroupFirstName, "external SDK BindingGroup accepted first source");
+                    AssertEqual("group: Hopper", window.BindingGroupLastName, "external SDK BindingGroup accepted last source");
+                    AssertEqual(false, Validation.GetHasError(panel), "external SDK BindingGroup accepted error state");
                 }
 
                 private static void ValidateVisualStateTransitions(MainWindow window)

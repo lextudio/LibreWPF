@@ -4373,15 +4373,16 @@ internal static class Program
                     AssertEqual("External validation input", AutomationProperties.GetName(validationTextBox), "external SDK automation name");
                     AssertEqual("External SDK validation text", AutomationProperties.GetHelpText(validationTextBox), "external SDK automation help text");
                     AssertEqual(accessLabel, AutomationProperties.GetLabeledBy(validationTextBox), "external SDK automation labeled-by element");
+                    var labelPeer = RequireType<LabelAutomationPeer>(
+                        UIElementAutomationPeer.CreatePeerForElement(accessLabel),
+                        "external SDK label automation peer");
                     var validationPeer = RequireType<TextBoxAutomationPeer>(
                         UIElementAutomationPeer.CreatePeerForElement(validationTextBox),
                         "external SDK text box automation peer");
                     AssertEqual("ExternalValidationTextBoxAutomation", validationPeer.GetAutomationId(), "external SDK automation peer id");
                     AssertEqual("External validation input", validationPeer.GetName(), "external SDK automation peer name");
                     AssertEqual("External SDK validation text", validationPeer.GetHelpText(), "external SDK automation peer help text");
-                    var labelPeer = RequireType<LabelAutomationPeer>(
-                        UIElementAutomationPeer.CreatePeerForElement(accessLabel),
-                        "external SDK label automation peer");
+                    AssertEqual(labelPeer, validationPeer.GetLabeledBy(), "external SDK automation peer labeled-by peer");
                     AssertEqual(accessLabel, labelPeer.Owner, "external SDK label automation peer owner");
                     AssertEqual(MainWindow.ExternalCommand, commandButton.Command, "external SDK command button command");
                     AssertEqual("ExternalCommandParameter", commandButton.CommandParameter, "external SDK command button parameter");

@@ -6311,6 +6311,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AutomationProperties.GetLabeledBy(validationTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("UIElementAutomationPeer.CreatePeerForElement(validationTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("UIElementAutomationPeer.CreatePeerForElement(accessLabel)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("validationPeer.GetLabeledBy()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalStandaloneAccessText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Text=\"_External standalone access\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Click=\"OnExternalCommandButtonClick\"", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -4701,6 +4701,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Header=\"_Context checked\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"CommandButton\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CommandParameter=\"routed command payload\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"EventSetterButtonStyle\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<EventSetter Event=\"Click\" Handler=\"OnEventSetterButtonClick\" />", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"EventSetterButton\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Style=\"{StaticResource EventSetterButtonStyle}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"EventSetterStatus\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SmokeMenu\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"CommandMenuItem\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CommandParameter=\"menu command payload\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -5016,6 +5021,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void OnSmokeCommandCanExecute", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnSmokeCommandExecuted", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SmokeCommandExecutionCount++", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int EventSetterClickCount", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public string? LastEventSetterSenderName", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public string? LastEventSetterRoutedEventName", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnEventSetterButtonClick", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("EventSetterClickCount++", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastEventSetterRoutedEventName = e.RoutedEvent?.Name", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int MenuClickCount", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int MenuCheckedCount", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int MenuUncheckedCount", smokeMainWindowCodeBehind, StringComparison.Ordinal);
@@ -5221,6 +5232,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("window key binding command parameter", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("command button routed command CanExecute", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window routed command execution count", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"EventSetterButton\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("event setter button style target type", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.EventSetter", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("event setter button routed event", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("event setter click count", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("event setter routed event name", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("action button tooltip", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("action tooltip content", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("action tooltip placement", runtimeHarnessProgram, StringComparison.Ordinal);

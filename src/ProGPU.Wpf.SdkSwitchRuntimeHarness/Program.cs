@@ -357,6 +357,24 @@ internal static class Program
         AssertAtLeast(1, GetProperty(window, "SmokeCommandCanExecuteCount"), "window routed command CanExecute count");
         AssertAtLeast(1, GetProperty(window, "SmokeCommandExecutionCount"), "window routed command execution count");
 
+        object eventSetterButton = Invoke(window, "FindName", "EventSetterButton");
+        AssertType(eventSetterButton, "System.Windows.Controls.Button", "event setter button");
+        AssertEqual("Run event setter", GetProperty(eventSetterButton, "Content"), "event setter button content");
+        AssertEqual("event setter styled", GetProperty(eventSetterButton, "Tag"), "event setter button tag");
+        object eventSetterButtonStyle = GetProperty(eventSetterButton, "Style");
+        AssertType(eventSetterButtonStyle, "System.Windows.Style", "event setter button style");
+        AssertEqual("System.Windows.Controls.Button", GetProperty(eventSetterButtonStyle, "TargetType").ToString() ?? string.Empty, "event setter button style target type");
+        object eventSetter = FindFirstByType(GetProperty(eventSetterButtonStyle, "Setters"), "System.Windows.EventSetter", "event setter button style event setter");
+        AssertEqual("ButtonBase.Click", GetProperty(eventSetter, "Event").ToString() ?? string.Empty, "event setter button routed event");
+        object eventSetterStatus = Invoke(window, "FindName", "EventSetterStatus");
+        AssertType(eventSetterStatus, "System.Windows.Controls.TextBlock", "event setter status");
+        int eventSetterClickCountBefore = Convert.ToInt32(GetProperty(window, "EventSetterClickCount"));
+        InvokeVoid(eventSetterButton, "OnClick");
+        AssertAtLeast(eventSetterClickCountBefore + 1, GetProperty(window, "EventSetterClickCount"), "event setter click count");
+        AssertEqual("EventSetterButton", GetProperty(window, "LastEventSetterSenderName"), "event setter sender name");
+        AssertEqual("Click", GetProperty(window, "LastEventSetterRoutedEventName"), "event setter routed event name");
+        AssertEqual("event setter clicked", GetProperty(eventSetterStatus, "Text"), "event setter status text");
+
         object actionToolTip = GetProperty(actionButton, "ToolTip");
         AssertType(actionToolTip, "System.Windows.Controls.ToolTip", "action button tooltip");
         AssertEqual("Action tooltip content", GetProperty(actionToolTip, "Content"), "action tooltip content");

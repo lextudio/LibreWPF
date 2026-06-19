@@ -57,6 +57,11 @@
             </Setter>
         </Style>
 
+        <Style x:Key="EventSetterButtonStyle" TargetType="{x:Type Button}">
+            <Setter Property="Tag" Value="event setter styled" />
+            <EventSetter Event="Click" Handler="OnEventSetterButtonClick" />
+        </Style>
+
         <Style x:Key="PropertyTriggeredTextStyle" TargetType="{x:Type TextBlock}">
             <Setter Property="Text" Value="property trigger inactive" />
             <Style.Triggers>
@@ -232,6 +237,15 @@
             x:Name="CommandStatus"
             Margin="0,6,0,0"
             Text="command not executed" />
+        <Button
+            x:Name="EventSetterButton"
+            Margin="0,8,0,0"
+            Content="Run event setter"
+            Style="{StaticResource EventSetterButtonStyle}" />
+        <TextBlock
+            x:Name="EventSetterStatus"
+            Margin="0,6,0,0"
+            Text="event setter idle" />
         <Menu
             x:Name="SmokeMenu"
             Margin="0,8,0,0">

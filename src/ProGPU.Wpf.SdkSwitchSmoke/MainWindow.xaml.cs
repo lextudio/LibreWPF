@@ -28,6 +28,12 @@ public partial class MainWindow : Window
 
     public string? LastSmokeCommandParameter { get; private set; }
 
+    public int EventSetterClickCount { get; private set; }
+
+    public string? LastEventSetterSenderName { get; private set; }
+
+    public string? LastEventSetterRoutedEventName { get; private set; }
+
     public int SmokeRoutedEventCount { get; private set; }
 
     public int MenuClickCount { get; private set; }
@@ -95,6 +101,15 @@ public partial class MainWindow : Window
     private void OnActionButtonClick(object sender, RoutedEventArgs e)
     {
         ClickStatus.Text = "clicked";
+    }
+
+    private void OnEventSetterButtonClick(object sender, RoutedEventArgs e)
+    {
+        EventSetterClickCount++;
+        LastEventSetterSenderName = (sender as FrameworkElement)?.Name;
+        LastEventSetterRoutedEventName = e.RoutedEvent?.Name;
+        EventSetterStatus.Text = "event setter clicked";
+        e.Handled = true;
     }
 
     private void OnSmokeCommandCanExecute(object sender, CanExecuteRoutedEventArgs e)

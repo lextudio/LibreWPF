@@ -949,6 +949,7 @@ internal static class Program
             using System.Windows.Data;
             using System.Windows.Documents;
             using System.Windows.Input;
+            using System.Windows.Markup;
             using System.Windows.Media;
             using System.Windows.Navigation;
             using System.Windows.Threading;
@@ -1411,6 +1412,7 @@ internal static class Program
                     AssertEqual("External SDK library panel", captionText.Text, "external SDK user-control ElementName binding");
                     ValidateApplicationResources(window);
                     ValidateFreezableResources();
+                    ValidateLooseXamlReaderWriter();
                     ValidateDataProviders(window);
                     ValidateBindings(window);
                     ValidateStylesAndTemplates(window);
@@ -1682,6 +1684,81 @@ internal static class Program
                     AssertEqual(3, gradientCurrentValueClone.GradientStops.Count, "external SDK Freezable gradient current-value clone stop count");
                     AssertEqual(false, gradientCurrentValueClone.GradientStops.IsFrozen, "external SDK Freezable gradient current-value clone stop collection");
                     AssertEqual("#FF4B5E9D", gradientCurrentValueClone.GradientStops[2].Color.ToString(), "external SDK Freezable gradient current-value clone third stop color");
+                }
+
+                private static void ValidateLooseXamlReaderWriter()
+                {
+                    string looseXaml =
+                        "<StackPanel xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" " +
+                        "xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\" " +
+                        "x:Name=\"ExternalLooseRoot\">" +
+                        "<StackPanel.Resources>" +
+                        "<SolidColorBrush x:Key=\"ExternalLooseAccentBrush\" Color=\"#4F7CAC\" />" +
+                        "<Style x:Key=\"ExternalLooseTextStyle\" TargetType=\"{x:Type TextBlock}\">" +
+                        "<Setter Property=\"Tag\" Value=\"external loose style tag\" />" +
+                        "<Setter Property=\"Foreground\" Value=\"{StaticResource ExternalLooseAccentBrush}\" />" +
+                        "</Style>" +
+                        "</StackPanel.Resources>" +
+                        "<TextBlock x:Name=\"ExternalLooseText\" Style=\"{StaticResource ExternalLooseTextStyle}\" Text=\"External loose xaml text\" />" +
+                        "<TextBox x:Name=\"ExternalLooseTextBox\" Tag=\"External loose binding text\" Text=\"{Binding Tag, RelativeSource={RelativeSource Self}}\" />" +
+                        "</StackPanel>";
+                    var root = RequireType<StackPanel>(
+                        XamlReader.Parse(looseXaml),
+                        "external SDK loose XamlReader root");
+                    AssertEqual("ExternalLooseRoot", root.Name, "external SDK loose XamlReader root name");
+                    AssertEqual(2, root.Children.Count, "external SDK loose XamlReader child count");
+                    var accentBrush = RequireType<SolidColorBrush>(
+                        root.Resources["ExternalLooseAccentBrush"],
+                        "external SDK loose XamlReader brush resource");
+                    AssertEqual("#FF4F7CAC", accentBrush.Color.ToString(), "external SDK loose XamlReader brush color");
+                    var textStyle = RequireType<Style>(
+                        root.Resources["ExternalLooseTextStyle"],
+                        "external SDK loose XamlReader style resource");
+                    AssertEqual(typeof(TextBlock), textStyle.TargetType, "external SDK loose XamlReader style target");
+
+                    var textBlock = RequireType<TextBlock>(
+                        root.FindName("ExternalLooseText"),
+                        "external SDK loose XamlReader named TextBlock");
+                    AssertEqual(true, ReferenceEquals(root.Children[0], textBlock), "external SDK loose XamlReader TextBlock child");
+                    AssertEqual(textStyle, textBlock.Style, "external SDK loose XamlReader StaticResource style");
+                    AssertEqual("External loose xaml text", textBlock.Text, "external SDK loose XamlReader text");
+                    AssertEqual("external loose style tag", textBlock.Tag, "external SDK loose XamlReader style setter tag");
+                    AssertEqual(true, ReferenceEquals(accentBrush, textBlock.Foreground), "external SDK loose XamlReader style StaticResource brush");
+
+                    var textBox = RequireType<TextBox>(
+                        root.FindName("ExternalLooseTextBox"),
+                        "external SDK loose XamlReader named TextBox");
+                    AssertEqual(true, ReferenceEquals(root.Children[1], textBox), "external SDK loose XamlReader TextBox child");
+                    AssertEqual("External loose binding text", textBox.Tag, "external SDK loose XamlReader TextBox tag");
+                    DrainDispatcher();
+                    AssertEqual("External loose binding text", textBox.Text, "external SDK loose XamlReader RelativeSource binding text");
+                    var textBoxBinding = textBox.GetBindingExpression(TextBox.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK loose XamlReader TextBox BindingExpression.");
+                    AssertEqual("Tag", textBoxBinding.ParentBinding.Path.Path, "external SDK loose XamlReader Binding path");
+
+                    string writableXaml =
+                        "<LinearGradientBrush xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" " +
+                        "xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\" " +
+                        "StartPoint=\"0,0\" EndPoint=\"1,1\" Opacity=\"0.625\" SpreadMethod=\"Reflect\">" +
+                        "<GradientStop Color=\"#4F7CAC\" Offset=\"0\" />" +
+                        "<GradientStop Color=\"#B15E3B\" Offset=\"1\" />" +
+                        "</LinearGradientBrush>";
+                    var brush = RequireType<LinearGradientBrush>(
+                        XamlReader.Parse(writableXaml),
+                        "external SDK loose XamlWriter source brush");
+                    string serialized = XamlWriter.Save(brush);
+                    AssertContains("LinearGradientBrush", serialized, "external SDK loose XamlWriter serialized brush");
+                    AssertContains("GradientStop", serialized, "external SDK loose XamlWriter serialized GradientStop");
+                    var roundTrippedBrush = RequireType<LinearGradientBrush>(
+                        XamlReader.Parse(serialized),
+                        "external SDK loose XamlWriter round-trip brush");
+                    AssertEqual(0.625, roundTrippedBrush.Opacity, "external SDK loose XamlWriter round-trip brush opacity");
+                    AssertEqual(GradientSpreadMethod.Reflect, roundTrippedBrush.SpreadMethod, "external SDK loose XamlWriter round-trip spread method");
+                    AssertEqual(2, roundTrippedBrush.GradientStops.Count, "external SDK loose XamlWriter round-trip GradientStop count");
+                    AssertEqual("#FF4F7CAC", roundTrippedBrush.GradientStops[0].Color.ToString(), "external SDK loose XamlWriter round-trip first stop color");
+                    AssertEqual(0.0, roundTrippedBrush.GradientStops[0].Offset, "external SDK loose XamlWriter round-trip first stop offset");
+                    AssertEqual("#FFB15E3B", roundTrippedBrush.GradientStops[1].Color.ToString(), "external SDK loose XamlWriter round-trip second stop color");
+                    AssertEqual(1.0, roundTrippedBrush.GradientStops[1].Offset, "external SDK loose XamlWriter round-trip second stop offset");
                 }
 
                 private static void ValidateDataProviders(MainWindow window)

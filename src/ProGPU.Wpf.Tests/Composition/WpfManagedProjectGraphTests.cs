@@ -5602,6 +5602,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK Freezable gradient stop collection frozen state", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Freezable gradient clone mutable stop offset", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Freezable gradient current-value clone stop collection", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("using System.Windows.Markup;", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseXamlReaderWriter()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("XamlReader.Parse(looseXaml)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("XamlWriter.Save(brush)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalLooseAccentBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalLooseTextStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlReader style StaticResource brush", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlReader Binding path", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter serialized GradientStop", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter round-trip second stop color", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateDataProviders(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ObjectDataProvider data", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ObjectDataProvider bound text", externalSdkHarnessProgram, StringComparison.Ordinal);

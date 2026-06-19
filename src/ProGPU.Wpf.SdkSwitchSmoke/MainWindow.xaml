@@ -196,6 +196,34 @@
             x:Name="CommandStatus"
             Margin="0,6,0,0"
             Text="command not executed" />
+        <Menu
+            x:Name="SmokeMenu"
+            Margin="0,8,0,0">
+            <MenuItem Header="_Smoke">
+                <MenuItem
+                    x:Name="CommandMenuItem"
+                    Command="{x:Static local:MainWindow.SmokeCommand}"
+                    CommandParameter="menu command payload"
+                    CommandTarget="{Binding ElementName=RootWindow}"
+                    Header="_Run command" />
+                <MenuItem
+                    x:Name="ClickMenuItem"
+                    Click="OnMenuItemClick"
+                    Header="_Click item" />
+                <Separator />
+                <MenuItem
+                    x:Name="CheckableMenuItem"
+                    Checked="OnCheckableMenuItemChecked"
+                    Header="_Checked item"
+                    IsCheckable="True"
+                    IsChecked="True"
+                    Unchecked="OnCheckableMenuItemUnchecked" />
+            </MenuItem>
+        </Menu>
+        <TextBlock
+            x:Name="MenuStatus"
+            Margin="0,6,0,0"
+            Text="menu idle" />
         <TextBlock
             x:Name="PropertyTriggerStatus"
             Margin="0,8,0,0"

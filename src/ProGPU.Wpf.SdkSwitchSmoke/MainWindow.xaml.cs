@@ -29,6 +29,12 @@ public partial class MainWindow : Window
 
     public int SmokeRoutedEventCount { get; private set; }
 
+    public int MenuClickCount { get; private set; }
+
+    public int MenuCheckedCount { get; private set; }
+
+    public int MenuUncheckedCount { get; private set; }
+
     public object? LastSmokeRoutedEventSender { get; private set; }
 
     public object? LastSmokeRoutedEventSource { get; private set; }
@@ -50,6 +56,35 @@ public partial class MainWindow : Window
         SmokeCommandExecutionCount++;
         LastSmokeCommandParameter = e.Parameter?.ToString();
         CommandStatus.Text = LastSmokeCommandParameter ?? "executed";
+        e.Handled = true;
+    }
+
+    private void OnMenuItemClick(object sender, RoutedEventArgs e)
+    {
+        MenuClickCount++;
+        MenuStatus.Text = "menu click";
+        e.Handled = true;
+    }
+
+    private void OnCheckableMenuItemChecked(object sender, RoutedEventArgs e)
+    {
+        MenuCheckedCount++;
+        if (MenuStatus != null)
+        {
+            MenuStatus.Text = "menu checked";
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnCheckableMenuItemUnchecked(object sender, RoutedEventArgs e)
+    {
+        MenuUncheckedCount++;
+        if (MenuStatus != null)
+        {
+            MenuStatus.Text = "menu unchecked";
+        }
+
         e.Handled = true;
     }
 

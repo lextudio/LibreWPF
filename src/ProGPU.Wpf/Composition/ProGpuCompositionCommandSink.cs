@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Numerics;
@@ -12,12 +13,10 @@ using MediaFormattedText = System.Windows.Media.FormattedText;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
-using MediaFillRule = System.Windows.Media.FillRule;
 using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPathGeometry = System.Windows.Media.PathGeometry;
 using MediaPen = System.Windows.Media.Pen;
 using MediaPenLineCap = System.Windows.Media.PenLineCap;
-using MediaSweepDirection = System.Windows.Media.SweepDirection;
 using MediaTransform = System.Windows.Media.Transform;
 using VectorArcSegment = ProGPU.Vector.ArcSegment;
 using VectorCubicBezierSegment = ProGPU.Vector.CubicBezierSegment;
@@ -385,7 +384,9 @@ public sealed class ProGpuCompositionCommandSink :
         if ((brush != null || pen != null)
             && TryConvertGeometryToNativePath(geometry, Matrix4x4.Identity, out var path))
         {
-            var bounds = geometry.Bounds;
+            var bounds = TryReadGeometryBounds(geometry, out var geometryBounds)
+                ? geometryBounds
+                : WpfReplayRect.Empty;
             var nativeBrush = ToNativeBrush(brush, bounds);
             var nativePen = ToNativePen(pen, bounds);
 
@@ -1984,7 +1985,7 @@ public sealed class ProGpuCompositionCommandSink :
             Op = pathOperation
         };
 
-        var geometryTransform = geometry.Transform?.Value ?? Matrix4x4.Identity;
+        var geometryTransform = ReadGeometryTransform(geometry);
         var combinedTransform = geometryTransform * transform;
         if (!combinedTransform.IsIdentity)
         {
@@ -1992,6 +1993,129 @@ public sealed class ProGpuCompositionCommandSink :
         }
 
         return true;
+    }
+
+    private static bool TryReadGeometryBounds(MediaGeometry geometry, out WpfReplayRect bounds)
+    {
+        if (TryGetPropertyValue(geometry, "Bounds", out var boundsValue)
+            && boundsValue != null
+            && TryReadReplayRect(boundsValue, out bounds))
+        {
+            return true;
+        }
+
+        bounds = default;
+        return false;
+    }
+
+    private static Matrix4x4 ReadGeometryTransform(MediaGeometry geometry)
+    {
+        if (TryGetPropertyValue(geometry, "Transform", out var transformValue)
+            && transformValue != null
+            && TryReadTransformValue(transformValue, out var transform))
+        {
+            return transform;
+        }
+
+        return Matrix4x4.Identity;
+    }
+
+    private static bool TryReadTransformValue(object transformValue, out Matrix4x4 transform)
+    {
+        if (TryGetPropertyValue(transformValue, "Value", out var matrixValue)
+            && matrixValue != null
+            && TryReadMatrix4x4(matrixValue, out transform))
+        {
+            return true;
+        }
+
+        transform = Matrix4x4.Identity;
+        return false;
+    }
+
+    private static bool TryReadMatrix4x4(object matrixValue, out Matrix4x4 transform)
+    {
+        if (matrixValue is Matrix4x4 matrix)
+        {
+            transform = matrix;
+            return true;
+        }
+
+        if (TryReadDoubleProperty(matrixValue, "M11", out var m11)
+            && TryReadDoubleProperty(matrixValue, "M12", out var m12)
+            && TryReadDoubleProperty(matrixValue, "M21", out var m21)
+            && TryReadDoubleProperty(matrixValue, "M22", out var m22)
+            && TryReadDoubleProperty(matrixValue, "OffsetX", out var offsetX)
+            && TryReadDoubleProperty(matrixValue, "OffsetY", out var offsetY))
+        {
+            transform = new Matrix4x4(
+                (float)m11,
+                (float)m12,
+                0,
+                0,
+                (float)m21,
+                (float)m22,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                (float)offsetX,
+                (float)offsetY,
+                0,
+                1);
+            return true;
+        }
+
+        transform = Matrix4x4.Identity;
+        return false;
+    }
+
+    private static bool TryReadReplayRect(object rectValue, out WpfReplayRect rectangle)
+    {
+        if (rectValue is WpfReplayRect replayRect)
+        {
+            rectangle = replayRect;
+            return true;
+        }
+
+        if (TryReadDoubleProperty(rectValue, "X", out var x)
+            && TryReadDoubleProperty(rectValue, "Y", out var y)
+            && TryReadDoubleProperty(rectValue, "Width", out var width)
+            && TryReadDoubleProperty(rectValue, "Height", out var height))
+        {
+            rectangle = new WpfReplayRect(x, y, width, height);
+            return true;
+        }
+
+        rectangle = default;
+        return false;
+    }
+
+    private static bool TryReadDoubleProperty(object value, string propertyName, out double result)
+    {
+        if (TryGetPropertyValue(value, propertyName, out var propertyValue)
+            && propertyValue is IConvertible convertible)
+        {
+            try
+            {
+                result = convertible.ToDouble(CultureInfo.InvariantCulture);
+                return true;
+            }
+            catch (FormatException)
+            {
+            }
+            catch (InvalidCastException)
+            {
+            }
+            catch (OverflowException)
+            {
+            }
+        }
+
+        result = 0;
+        return false;
     }
 
     private static bool TryReadGeometryCombinePathOperation(object? value, out int pathOperation)
@@ -2091,81 +2215,37 @@ public sealed class ProGpuCompositionCommandSink :
     {
         var path = new VectorPathGeometry
         {
-            FillRule = geometry.FillRule == MediaFillRule.Nonzero
-                ? VectorFillRule.Nonzero
-                : VectorFillRule.EvenOdd
+            FillRule = ReadPathFillRule(geometry)
         };
-        var geometryTransform = geometry.Transform?.Value ?? Matrix4x4.Identity;
+        var geometryTransform = ReadGeometryTransform(geometry);
         var combinedTransform = geometryTransform * transform;
 
-        foreach (var figure in geometry.Figures)
+        if (!TryGetPropertyValue(geometry, "Figures", out var figuresValue)
+            || figuresValue == null)
         {
-            var sourceCurrentPoint = ToVector2(figure.StartPoint);
+            return path;
+        }
+
+        foreach (var figure in EnumerateObjects(figuresValue))
+        {
+            if (!TryReadVector2Property(figure, "StartPoint", out var sourceCurrentPoint))
+            {
+                continue;
+            }
+
             var nativeFigure = new VectorPathFigure
             {
-                StartPoint = Vector2.Transform(ToVector2(figure.StartPoint), combinedTransform),
-                IsClosed = figure.IsClosed,
-                IsFilled = figure.IsFilled
+                StartPoint = Vector2.Transform(sourceCurrentPoint, combinedTransform),
+                IsClosed = ReadBooleanProperty(figure, "IsClosed", defaultValue: false),
+                IsFilled = ReadBooleanProperty(figure, "IsFilled", defaultValue: true)
             };
 
-            foreach (var segment in figure.Segments)
+            if (TryGetPropertyValue(figure, "Segments", out var segmentsValue)
+                && segmentsValue != null)
             {
-                switch (segment)
+                foreach (var segment in EnumerateObjects(segmentsValue))
                 {
-                    case LineSegment line:
-                        nativeFigure.Segments.Add(new VectorLineSegment(
-                            Vector2.Transform(ToVector2(line.Point), combinedTransform),
-                            line.IsSmoothJoin,
-                            line.IsStroked));
-                        sourceCurrentPoint = ToVector2(line.Point);
-                        break;
-
-                    case QuadraticBezierSegment quadratic:
-                        nativeFigure.Segments.Add(new VectorQuadraticBezierSegment(
-                            Vector2.Transform(ToVector2(quadratic.Point1), combinedTransform),
-                            Vector2.Transform(ToVector2(quadratic.Point2), combinedTransform),
-                            quadratic.IsSmoothJoin,
-                            quadratic.IsStroked));
-                        sourceCurrentPoint = ToVector2(quadratic.Point2);
-                        break;
-
-                    case BezierSegment cubic:
-                        nativeFigure.Segments.Add(new VectorCubicBezierSegment(
-                            Vector2.Transform(ToVector2(cubic.Point1), combinedTransform),
-                            Vector2.Transform(ToVector2(cubic.Point2), combinedTransform),
-                            Vector2.Transform(ToVector2(cubic.Point3), combinedTransform),
-                            cubic.IsSmoothJoin,
-                            cubic.IsStroked));
-                        sourceCurrentPoint = ToVector2(cubic.Point3);
-                        break;
-
-                    case ArcSegment arc:
-                        if (TryTransformArcSegment(
-                            sourceCurrentPoint,
-                            ToVector2(arc.Point),
-                            ToVector2(arc.Size),
-                            (float)arc.RotationAngle,
-                            arc.IsLargeArc,
-                            arc.SweepDirection == MediaSweepDirection.Clockwise
-                                ? VectorSweepDirection.Clockwise
-                                : VectorSweepDirection.Counterclockwise,
-                            combinedTransform,
-                            out var transformedArc))
-                        {
-                            transformedArc.IsSmoothJoin = arc.IsSmoothJoin;
-                            transformedArc.IsStroked = arc.IsStroked;
-                            nativeFigure.Segments.Add(transformedArc);
-                        }
-                        else
-                        {
-                            nativeFigure.Segments.Add(new VectorLineSegment(
-                                Vector2.Transform(ToVector2(arc.Point), combinedTransform),
-                                arc.IsSmoothJoin,
-                                arc.IsStroked));
-                        }
-
-                        sourceCurrentPoint = ToVector2(arc.Point);
-                        break;
+                    TryAppendPathSegment(segment, ref sourceCurrentPoint, combinedTransform, nativeFigure);
                 }
             }
 
@@ -2173,6 +2253,200 @@ public sealed class ProGpuCompositionCommandSink :
         }
 
         return path;
+    }
+
+    private static VectorFillRule ReadPathFillRule(object geometry)
+    {
+        if (TryGetPropertyValue(geometry, "FillRule", out var fillRuleValue))
+        {
+            if (string.Equals(fillRuleValue?.ToString(), "Nonzero", StringComparison.Ordinal)
+                || (TryConvertToInt32(fillRuleValue, out var intValue) && intValue == 1))
+            {
+                return VectorFillRule.Nonzero;
+            }
+        }
+
+        return VectorFillRule.EvenOdd;
+    }
+
+    private static void TryAppendPathSegment(
+        object segment,
+        ref Vector2 sourceCurrentPoint,
+        Matrix4x4 transform,
+        VectorPathFigure nativeFigure)
+    {
+        var isSmoothJoin = ReadBooleanProperty(segment, "IsSmoothJoin", defaultValue: false);
+        var isStroked = ReadBooleanProperty(segment, "IsStroked", defaultValue: true);
+
+        if (TypeNameEndsWith(segment, "LineSegment")
+            && TryReadVector2Property(segment, "Point", out var linePoint))
+        {
+            nativeFigure.Segments.Add(new VectorLineSegment(
+                Vector2.Transform(linePoint, transform),
+                isSmoothJoin,
+                isStroked));
+            sourceCurrentPoint = linePoint;
+            return;
+        }
+
+        if (TypeNameEndsWith(segment, "QuadraticBezierSegment")
+            && TryReadVector2Property(segment, "Point1", out var quadraticPoint1)
+            && TryReadVector2Property(segment, "Point2", out var quadraticPoint2))
+        {
+            nativeFigure.Segments.Add(new VectorQuadraticBezierSegment(
+                Vector2.Transform(quadraticPoint1, transform),
+                Vector2.Transform(quadraticPoint2, transform),
+                isSmoothJoin,
+                isStroked));
+            sourceCurrentPoint = quadraticPoint2;
+            return;
+        }
+
+        if (TypeNameEndsWith(segment, "BezierSegment")
+            && TryReadVector2Property(segment, "Point1", out var cubicPoint1)
+            && TryReadVector2Property(segment, "Point2", out var cubicPoint2)
+            && TryReadVector2Property(segment, "Point3", out var cubicPoint3))
+        {
+            nativeFigure.Segments.Add(new VectorCubicBezierSegment(
+                Vector2.Transform(cubicPoint1, transform),
+                Vector2.Transform(cubicPoint2, transform),
+                Vector2.Transform(cubicPoint3, transform),
+                isSmoothJoin,
+                isStroked));
+            sourceCurrentPoint = cubicPoint3;
+            return;
+        }
+
+        if (TypeNameEndsWith(segment, "ArcSegment")
+            && TryReadVector2Property(segment, "Point", out var arcPoint)
+            && TryReadSizeVector2Property(segment, "Size", out var arcSize))
+        {
+            var rotationAngle = TryReadDoubleProperty(segment, "RotationAngle", out var angle)
+                ? (float)angle
+                : 0f;
+            var isLargeArc = ReadBooleanProperty(segment, "IsLargeArc", defaultValue: false);
+            var sweepDirection = ReadSweepDirection(segment);
+
+            if (TryTransformArcSegment(
+                sourceCurrentPoint,
+                arcPoint,
+                arcSize,
+                rotationAngle,
+                isLargeArc,
+                sweepDirection,
+                transform,
+                out var transformedArc))
+            {
+                transformedArc.IsSmoothJoin = isSmoothJoin;
+                transformedArc.IsStroked = isStroked;
+                nativeFigure.Segments.Add(transformedArc);
+            }
+            else
+            {
+                nativeFigure.Segments.Add(new VectorLineSegment(
+                    Vector2.Transform(arcPoint, transform),
+                    isSmoothJoin,
+                    isStroked));
+            }
+
+            sourceCurrentPoint = arcPoint;
+        }
+    }
+
+    private static VectorSweepDirection ReadSweepDirection(object segment)
+    {
+        if (TryGetPropertyValue(segment, "SweepDirection", out var sweepDirectionValue))
+        {
+            if (string.Equals(sweepDirectionValue?.ToString(), "Clockwise", StringComparison.Ordinal)
+                || (TryConvertToInt32(sweepDirectionValue, out var intValue) && intValue == 1))
+            {
+                return VectorSweepDirection.Clockwise;
+            }
+        }
+
+        return VectorSweepDirection.Counterclockwise;
+    }
+
+    private static bool TryReadVector2Property(object instance, string propertyName, out Vector2 point)
+    {
+        if (TryGetPropertyValue(instance, propertyName, out var pointValue)
+            && pointValue != null
+            && TryReadPointVector2(pointValue, out point))
+        {
+            return true;
+        }
+
+        point = default;
+        return false;
+    }
+
+    private static bool TryReadPointVector2(object pointValue, out Vector2 point)
+    {
+        if (TryReadDoubleProperty(pointValue, "X", out var x)
+            && TryReadDoubleProperty(pointValue, "Y", out var y))
+        {
+            point = new Vector2((float)x, (float)y);
+            return true;
+        }
+
+        point = default;
+        return false;
+    }
+
+    private static bool TryReadSizeVector2Property(object instance, string propertyName, out Vector2 size)
+    {
+        if (TryGetPropertyValue(instance, propertyName, out var sizeValue)
+            && sizeValue != null
+            && TryReadDoubleProperty(sizeValue, "Width", out var width)
+            && TryReadDoubleProperty(sizeValue, "Height", out var height))
+        {
+            size = new Vector2((float)width, (float)height);
+            return true;
+        }
+
+        size = default;
+        return false;
+    }
+
+    private static bool ReadBooleanProperty(object instance, string propertyName, bool defaultValue)
+    {
+        if (TryGetPropertyValue(instance, propertyName, out var propertyValue))
+        {
+            if (propertyValue is bool boolValue)
+            {
+                return boolValue;
+            }
+
+            if (propertyValue is IConvertible convertible)
+            {
+                try
+                {
+                    return convertible.ToBoolean(CultureInfo.InvariantCulture);
+                }
+                catch (FormatException)
+                {
+                }
+                catch (InvalidCastException)
+                {
+                }
+            }
+        }
+
+        return defaultValue;
+    }
+
+    private static IEnumerable<object> EnumerateObjects(object collection)
+    {
+        if (collection is IEnumerable enumerable)
+        {
+            foreach (var item in enumerable)
+            {
+                if (item != null)
+                {
+                    yield return item;
+                }
+            }
+        }
     }
 
     private static Vector2 ToVector2(Point point)

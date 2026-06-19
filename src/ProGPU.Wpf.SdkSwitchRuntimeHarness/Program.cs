@@ -339,12 +339,65 @@ internal static class Program
         if (object.Equals("command not executed", GetProperty(commandStatus, "Text")))
         {
             InvokeVoid(commandButton, "OnClick");
+            AssertEqual("routed command payload", GetProperty(window, "LastSmokeCommandParameter"), "window routed command executed parameter");
+            AssertEqual("routed command payload", GetProperty(commandStatus, "Text"), "command status after routed command");
+        }
+        else
+        {
+            object lastCommandParameter = GetProperty(window, "LastSmokeCommandParameter");
+            if (!object.Equals("routed command payload", lastCommandParameter)
+                && !object.Equals("menu command payload", lastCommandParameter))
+            {
+                throw new InvalidOperationException($"Unexpected smoke command parameter '{lastCommandParameter}'.");
+            }
         }
 
         AssertAtLeast(1, GetProperty(window, "SmokeCommandCanExecuteCount"), "window routed command CanExecute count");
         AssertAtLeast(1, GetProperty(window, "SmokeCommandExecutionCount"), "window routed command execution count");
-        AssertEqual("routed command payload", GetProperty(window, "LastSmokeCommandParameter"), "window routed command executed parameter");
-        AssertEqual("routed command payload", GetProperty(commandStatus, "Text"), "command status after routed command");
+
+        object smokeMenu = Invoke(window, "FindName", "SmokeMenu");
+        AssertType(smokeMenu, "System.Windows.Controls.Menu", "smoke menu");
+        object smokeRootMenuItem = EnumerateObjects(GetProperty(smokeMenu, "Items")).First();
+        AssertType(smokeRootMenuItem, "System.Windows.Controls.MenuItem", "smoke root menu item");
+        object[] smokeMenuItems = EnumerateObjects(GetProperty(smokeRootMenuItem, "Items")).ToArray();
+        AssertAtLeast(4, smokeMenuItems.Length, "smoke root menu item count");
+        AssertType(smokeMenuItems[2], "System.Windows.Controls.Separator", "smoke menu separator");
+
+        object commandMenuItem = Invoke(window, "FindName", "CommandMenuItem");
+        AssertType(commandMenuItem, "System.Windows.Controls.MenuItem", "command menu item");
+        object commandMenuItemCommand = GetProperty(commandMenuItem, "Command");
+        AssertType(commandMenuItemCommand, "System.Windows.Input.RoutedUICommand", "command menu item command");
+        AssertEqual("SmokeCommand", GetProperty(commandMenuItemCommand, "Name"), "command menu item command name");
+        object commandMenuItemParameter = GetProperty(commandMenuItem, "CommandParameter");
+        AssertEqual("menu command payload", commandMenuItemParameter, "command menu item command parameter");
+        AssertSame(window, GetProperty(commandMenuItem, "CommandTarget"), "command menu item command target");
+        AssertEqual(true, Invoke(commandMenuItemCommand, "CanExecute", commandMenuItemParameter, window), "command menu routed command CanExecute");
+        int commandExecutionCountBeforeMenu = Convert.ToInt32(GetProperty(window, "SmokeCommandExecutionCount"));
+        InvokeVoid(commandMenuItemCommand, "Execute", commandMenuItemParameter, window);
+        AssertAtLeast(commandExecutionCountBeforeMenu + 1, GetProperty(window, "SmokeCommandExecutionCount"), "window routed command execution count after menu");
+        AssertEqual("menu command payload", GetProperty(window, "LastSmokeCommandParameter"), "window routed command menu parameter");
+        AssertEqual("menu command payload", GetProperty(commandStatus, "Text"), "command status after menu routed command");
+
+        object menuStatus = Invoke(window, "FindName", "MenuStatus");
+        AssertType(menuStatus, "System.Windows.Controls.TextBlock", "menu status element");
+        object clickMenuItem = Invoke(window, "FindName", "ClickMenuItem");
+        AssertType(clickMenuItem, "System.Windows.Controls.MenuItem", "click menu item");
+        RaiseRoutedEvent(clickMenuItem, "ClickEvent");
+        AssertAtLeast(1, GetProperty(window, "MenuClickCount"), "window menu click count");
+        AssertEqual("menu click", GetProperty(menuStatus, "Text"), "menu status after click item");
+
+        object checkableMenuItem = Invoke(window, "FindName", "CheckableMenuItem");
+        AssertType(checkableMenuItem, "System.Windows.Controls.MenuItem", "checkable menu item");
+        AssertEqual(true, GetProperty(checkableMenuItem, "IsCheckable"), "checkable menu item IsCheckable");
+        AssertEqual(true, GetProperty(checkableMenuItem, "IsChecked"), "checkable menu item initial IsChecked");
+        SetProperty(checkableMenuItem, "IsChecked", false);
+        AssertEqual(false, GetProperty(checkableMenuItem, "IsChecked"), "checkable menu item toggled unchecked");
+        AssertAtLeast(1, GetProperty(window, "MenuUncheckedCount"), "window menu unchecked count");
+        AssertEqual("menu unchecked", GetProperty(menuStatus, "Text"), "menu status after unchecked item");
+        SetProperty(checkableMenuItem, "IsChecked", true);
+        AssertEqual(true, GetProperty(checkableMenuItem, "IsChecked"), "checkable menu item toggled checked");
+        AssertAtLeast(1, GetProperty(window, "MenuCheckedCount"), "window menu checked count");
+        AssertEqual("menu checked", GetProperty(menuStatus, "Text"), "menu status after checked item");
 
         object propertyTriggerStatus = Invoke(window, "FindName", "PropertyTriggerStatus");
         AssertType(propertyTriggerStatus, "System.Windows.Controls.TextBlock", "property trigger status element");
@@ -710,6 +763,20 @@ internal static class Program
         {
             throw ex.InnerException;
         }
+    }
+
+    private static void RaiseRoutedEvent(object source, string routedEventFieldName)
+    {
+        FieldInfo field = source.GetType().GetField(
+            routedEventFieldName,
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingFieldException(source.GetType().FullName, routedEventFieldName);
+        object routedEvent = field.GetValue(null)
+            ?? throw new InvalidOperationException($"Routed event field '{routedEventFieldName}' returned null.");
+        Type eventArgsType = GetRequiredType(routedEvent.GetType().Assembly, "System.Windows.RoutedEventArgs");
+        object eventArgs = Activator.CreateInstance(eventArgsType, routedEvent, source)
+            ?? throw new InvalidOperationException("Could not create RoutedEventArgs.");
+        InvokeVoid(source, "RaiseEvent", eventArgs);
     }
 
     private static object InvokeStatic(Type type, string methodName, params object?[] args)

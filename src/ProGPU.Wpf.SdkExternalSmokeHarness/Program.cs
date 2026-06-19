@@ -1137,6 +1137,7 @@ internal static class Program
             using System.Windows.Markup;
             using System.Windows.Media;
             using System.Windows.Media.Animation;
+            using System.Windows.Media.Imaging;
             using System.Windows.Navigation;
             using System.Windows.Shell;
             using System.Windows.Threading;
@@ -1689,6 +1690,7 @@ internal static class Program
                     ValidateFileDialogs(window);
                     ValidateClipboard();
                     ValidateFreezableResources();
+                    ValidateManagedImagingObjects();
                     ValidateLooseXamlReaderWriter();
                     ValidateDataProviders(window);
                     ValidateBindings(window);
@@ -2465,6 +2467,67 @@ internal static class Program
                     AssertEqual(3, gradientCurrentValueClone.GradientStops.Count, "external SDK Freezable gradient current-value clone stop count");
                     AssertEqual(false, gradientCurrentValueClone.GradientStops.IsFrozen, "external SDK Freezable gradient current-value clone stop collection");
                     AssertEqual("#FF4B5E9D", gradientCurrentValueClone.GradientStops[2].Color.ToString(), "external SDK Freezable gradient current-value clone third stop color");
+                }
+
+                private static void ValidateManagedImagingObjects()
+                {
+                    byte[] pixels =
+                    [
+                        0x10, 0x20, 0x30, 0xFF,
+                        0x40, 0x50, 0x60, 0xFF,
+                        0x70, 0x80, 0x90, 0xFF,
+                        0xA0, 0xB0, 0xC0, 0xFF
+                    ];
+
+                    var bitmapSource = BitmapSource.Create(
+                        2,
+                        2,
+                        96.0,
+                        96.0,
+                        PixelFormats.Bgra32,
+                        null,
+                        pixels,
+                        8);
+                    AssertEqual(2, bitmapSource.PixelWidth, "external SDK BitmapSource pixel width");
+                    AssertEqual(2, bitmapSource.PixelHeight, "external SDK BitmapSource pixel height");
+                    AssertClose(96.0, bitmapSource.DpiX, "external SDK BitmapSource DpiX");
+                    AssertClose(96.0, bitmapSource.DpiY, "external SDK BitmapSource DpiY");
+                    AssertEqual(PixelFormats.Bgra32, bitmapSource.Format, "external SDK BitmapSource Bgra32 format");
+
+                    var copiedPixels = new byte[pixels.Length];
+                    bitmapSource.CopyPixels(copiedPixels, 8, 0);
+                    AssertEqual(pixels[0], copiedPixels[0], "external SDK BitmapSource copied blue byte");
+                    AssertEqual(pixels[5], copiedPixels[5], "external SDK BitmapSource copied second green byte");
+                    AssertEqual(pixels[14], copiedPixels[14], "external SDK BitmapSource copied final red byte");
+
+                    var writeableBitmap = new WriteableBitmap(2, 2, 96.0, 96.0, PixelFormats.Bgra32, null);
+                    writeableBitmap.WritePixels(new Int32Rect(0, 0, 2, 2), pixels, 8, 0);
+                    var writeablePixels = new byte[pixels.Length];
+                    writeableBitmap.CopyPixels(writeablePixels, 8, 0);
+                    AssertEqual(pixels[8], writeablePixels[8], "external SDK WriteableBitmap copied second-row blue byte");
+                    AssertEqual(pixels[15], writeablePixels[15], "external SDK WriteableBitmap copied final alpha byte");
+
+                    var image = new Image
+                    {
+                        Source = writeableBitmap,
+                        Width = 2,
+                        Height = 2,
+                        Stretch = Stretch.None
+                    };
+                    AssertEqual(writeableBitmap, image.Source, "external SDK Image source WriteableBitmap");
+                    AssertEqual(Stretch.None, image.Stretch, "external SDK Image stretch");
+
+                    var imageBrush = new ImageBrush(bitmapSource)
+                    {
+                        Stretch = Stretch.None,
+                        TileMode = TileMode.Tile,
+                        ViewportUnits = BrushMappingMode.Absolute,
+                        Viewport = new Rect(0, 0, 2, 2)
+                    };
+                    AssertEqual(bitmapSource, imageBrush.ImageSource, "external SDK ImageBrush source BitmapSource");
+                    AssertEqual(TileMode.Tile, imageBrush.TileMode, "external SDK ImageBrush tile mode");
+                    AssertEqual(BrushMappingMode.Absolute, imageBrush.ViewportUnits, "external SDK ImageBrush viewport units");
+                    AssertEqual(new Rect(0, 0, 2, 2), imageBrush.Viewport, "external SDK ImageBrush viewport");
                 }
 
                 private static void ValidateLooseXamlReaderWriter()

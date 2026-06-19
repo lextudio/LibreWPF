@@ -6157,6 +6157,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK Freezable gradient stop collection frozen state", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Freezable gradient clone mutable stop offset", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Freezable gradient current-value clone stop collection", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("using System.Windows.Media.Imaging;", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateManagedImagingObjects()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("BitmapSource.Create(", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("WriteableBitmap(2, 2, 96.0, 96.0, PixelFormats.Bgra32", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapSource copied blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK WriteableBitmap copied second-row blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ImageBrush source BitmapSource", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Markup;", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlReaderWriter()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("XamlReader.Parse(looseXaml)", externalSdkHarnessProgram, StringComparison.Ordinal);

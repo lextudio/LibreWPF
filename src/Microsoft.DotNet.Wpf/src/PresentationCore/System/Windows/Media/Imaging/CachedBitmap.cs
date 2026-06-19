@@ -159,7 +159,27 @@ namespace System.Windows.Media.Imaging
             }
             else
             {
-                InitFromWICSource(sourceBitmap.WicSourceHandle);
+                byte[] managedPixels = sourceBitmap.CloneManagedPixelBuffer();
+                if (managedPixels != null)
+                {
+                    _bitmapInit.BeginInit();
+                    InitializeManagedPixelBuffer(
+                        sourceBitmap.PixelWidth,
+                        sourceBitmap.PixelHeight,
+                        sourceBitmap.DpiX,
+                        sourceBitmap.DpiY,
+                        sourceBitmap.Format,
+                        sourceBitmap.Palette,
+                        managedPixels,
+                        sourceBitmap._managedPixelStride);
+                    _createOptions = BitmapCreateOptions.PreservePixelFormat;
+                    _cacheOption = BitmapCacheOption.OnLoad;
+                    _bitmapInit.EndInit();
+                }
+                else
+                {
+                    InitFromWICSource(sourceBitmap.WicSourceHandle);
+                }
             }
             // The next invalidation will cause Animatable to register an UpdateResource callback
             Animatable_IsResourceInvalidationNecessary = true;
@@ -349,6 +369,34 @@ namespace System.Windows.Media.Imaging
                         SR.Format(SR.Effect_PixelFormat, pixelFormat),
                         nameof(pixelFormat)
                         );
+            }
+
+            if (!OperatingSystem.IsWindows())
+            {
+                _bitmapInit.BeginInit();
+
+                try
+                {
+                    byte[] pixels = CopyManagedPixelBufferFromMemory(
+                        pixelWidth,
+                        pixelHeight,
+                        pixelFormat,
+                        palette,
+                        buffer,
+                        bufferSize,
+                        stride);
+                    InitializeManagedPixelBuffer(pixelWidth, pixelHeight, dpiX, dpiY, pixelFormat, palette, pixels, stride);
+                    _createOptions = BitmapCreateOptions.PreservePixelFormat;
+                    _cacheOption = BitmapCacheOption.OnLoad;
+                }
+                catch
+                {
+                    _bitmapInit.Reset();
+                    throw;
+                }
+
+                _bitmapInit.EndInit();
+                return;
             }
 
             _bitmapInit.BeginInit();

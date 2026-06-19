@@ -603,6 +603,11 @@ namespace System.Windows.Media.Imaging
         {
             EnsureShouldUseVirtuals();
 
+            if (_managedPixelBuffer != null)
+            {
+                return;
+            }
+
             uint pw, ph;
 
             lock (_syncObject)
@@ -699,6 +704,12 @@ namespace System.Windows.Media.Imaging
 
             uint minRequiredDestSize = checked(((uint)stride * (uint)(sourceRect.Height - 1)) + (uint)minStride);
             ArgumentOutOfRangeException.ThrowIfLessThan(bufferSize, minRequiredDestSize);
+
+            if (_managedPixelBuffer != null)
+            {
+                CopyManagedPixels(sourceRect, buffer, bufferSize, stride);
+                return;
+            }
 
             lock (_syncObject)
             {
@@ -941,6 +952,184 @@ namespace System.Windows.Media.Imaging
                         DUCECompatiblePtr
                         );
                 }
+            }
+        }
+
+        internal unsafe void InitializeManagedPixelBuffer(
+            int pixelWidth,
+            int pixelHeight,
+            double dpiX,
+            double dpiY,
+            PixelFormat pixelFormat,
+            BitmapPalette palette,
+            byte[] pixelBuffer,
+            int stride)
+        {
+            ArgumentNullException.ThrowIfNull(pixelBuffer);
+            ValidateManagedBitmapParameters(pixelWidth, pixelHeight, pixelFormat, palette, stride, pixelBuffer.Length);
+
+            _managedPixelBuffer = pixelBuffer;
+            _managedPixelStride = stride;
+            _format = pixelFormat;
+            _pixelWidth = pixelWidth;
+            _pixelHeight = pixelHeight;
+            _dpiX = dpiX;
+            _dpiY = dpiY;
+            _palette = palette;
+            _syncObject = _managedPixelBuffer;
+            _isSourceCached = true;
+            _creationComplete = true;
+        }
+
+        internal byte[] CloneManagedPixelBuffer()
+        {
+            return _managedPixelBuffer == null ? null : (byte[])_managedPixelBuffer.Clone();
+        }
+
+        internal static int GetPixelArrayElementSize(Array pixels)
+        {
+            ArgumentNullException.ThrowIfNull(pixels);
+
+            if (pixels.Rank != 1)
+                throw new ArgumentException(SR.Collection_BadRank, nameof(pixels));
+
+            if (pixels is byte[])
+                return 1;
+            if (pixels is short[] || pixels is ushort[])
+                return 2;
+            if (pixels is int[] || pixels is uint[] || pixels is float[])
+                return 4;
+            if (pixels is double[])
+                return 8;
+
+            throw new ArgumentException(SR.Image_InvalidArrayForPixel);
+        }
+
+        internal static int ValidateManagedBitmapParameters(
+            int pixelWidth,
+            int pixelHeight,
+            PixelFormat pixelFormat,
+            BitmapPalette palette,
+            int stride,
+            int bufferSize)
+        {
+            if (pixelFormat.Palettized && palette == null)
+                throw new InvalidOperationException(SR.Image_IndexedPixelFormatRequiresPalette);
+
+            if (pixelFormat.Format == PixelFormatEnum.Default && pixelFormat.Guid == WICPixelFormatGUIDs.WICPixelFormatDontCare)
+            {
+                throw new ArgumentException(
+                    SR.Format(SR.Effect_PixelFormat, pixelFormat),
+                    nameof(pixelFormat));
+            }
+
+            if (pixelWidth < 0 || pixelHeight < 0)
+                HRESULT.Check((int)WinCodecErrors.WINCODEC_ERR_VALUEOVERFLOW);
+
+            if (pixelWidth == 0 || pixelHeight == 0)
+                HRESULT.Check(MS.Win32.NativeMethods.E_INVALIDARG);
+
+            int minStride = checked(((pixelWidth * pixelFormat.BitsPerPixel) + 7) / 8);
+            ArgumentOutOfRangeException.ThrowIfLessThan(stride, minStride);
+
+            int requiredSize = checked((stride * (pixelHeight - 1)) + minStride);
+            ArgumentOutOfRangeException.ThrowIfLessThan(bufferSize, requiredSize);
+
+            return requiredSize;
+        }
+
+        internal static unsafe byte[] CopyManagedPixelBufferFromMemory(
+            int pixelWidth,
+            int pixelHeight,
+            PixelFormat pixelFormat,
+            BitmapPalette palette,
+            IntPtr buffer,
+            int bufferSize,
+            int stride)
+        {
+            if (buffer == IntPtr.Zero)
+                throw new ArgumentNullException(nameof(buffer));
+
+            int requiredSize = ValidateManagedBitmapParameters(pixelWidth, pixelHeight, pixelFormat, palette, stride, bufferSize);
+            byte[] pixels = new byte[requiredSize];
+            Marshal.Copy(buffer, pixels, 0, requiredSize);
+            return pixels;
+        }
+
+        internal static unsafe void CopyPixelBits(
+            byte* destination,
+            uint destinationBufferSize,
+            int destinationStride,
+            uint destinationBitOffset,
+            byte* source,
+            uint sourceBufferSize,
+            int sourceStride,
+            uint sourceBitOffset,
+            int rowCount,
+            uint copyWidthInBits)
+        {
+            if ((copyWidthInBits % 8) == 0 && sourceBitOffset == 0 && destinationBitOffset == 0)
+            {
+                uint copyWidthInBytes = copyWidthInBits / 8;
+                for (int y = 0; y < rowCount; y++)
+                {
+                    byte* destinationRow = destination + ((uint)y * (uint)destinationStride);
+                    byte* sourceRow = source + ((uint)y * (uint)sourceStride);
+                    System.Buffer.MemoryCopy(sourceRow, destinationRow, destinationBufferSize - ((uint)y * (uint)destinationStride), copyWidthInBytes);
+                }
+
+                return;
+            }
+
+            for (int y = 0; y < rowCount; y++)
+            {
+                byte* destinationRow = destination + ((uint)y * (uint)destinationStride);
+                byte* sourceRow = source + ((uint)y * (uint)sourceStride);
+
+                for (uint bit = 0; bit < copyWidthInBits; bit++)
+                {
+                    uint sourceBit = sourceBitOffset + bit;
+                    uint destinationBit = destinationBitOffset + bit;
+                    byte sourceMask = (byte)(0x80 >> (int)(sourceBit & 7));
+                    byte destinationMask = (byte)(0x80 >> (int)(destinationBit & 7));
+
+                    if ((sourceRow[sourceBit >> 3] & sourceMask) != 0)
+                    {
+                        destinationRow[destinationBit >> 3] |= destinationMask;
+                    }
+                    else
+                    {
+                        destinationRow[destinationBit >> 3] &= (byte)~destinationMask;
+                    }
+                }
+            }
+        }
+
+        private unsafe void CopyManagedPixels(Int32Rect sourceRect, IntPtr buffer, uint bufferSize, int stride)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(sourceRect.X, nameof(sourceRect));
+            ArgumentOutOfRangeException.ThrowIfNegative(sourceRect.Y, nameof(sourceRect));
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(sourceRect.X, PixelWidth - sourceRect.Width, nameof(sourceRect));
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(sourceRect.Y, PixelHeight - sourceRect.Height, nameof(sourceRect));
+
+            uint sourceXbyteOffset = (uint)((sourceRect.X * Format.BitsPerPixel) / 8);
+            uint sourceBitOffset = (uint)((sourceRect.X * Format.BitsPerPixel) % 8);
+            uint sourceOffset = ((uint)sourceRect.Y * (uint)_managedPixelStride) + sourceXbyteOffset;
+            uint copyWidthInBits = (uint)(sourceRect.Width * Format.BitsPerPixel);
+
+            fixed (byte* sourceBase = _managedPixelBuffer)
+            {
+                CopyPixelBits(
+                    (byte*)buffer.ToPointer(),
+                    bufferSize,
+                    stride,
+                    0,
+                    sourceBase + sourceOffset,
+                    (uint)_managedPixelBuffer.Length - sourceOffset,
+                    _managedPixelStride,
+                    sourceBitOffset,
+                    sourceRect.Height,
+                    copyWidthInBits);
             }
         }
 
@@ -1411,8 +1600,18 @@ namespace System.Windows.Media.Imaging
             _useVirtuals = sourceBitmap._useVirtuals;
             _delayCreation = sourceBitmap.DelayCreation;
             _creationComplete = sourceBitmap.CreationCompleted;
-            WicSourceHandle = sourceBitmap.WicSourceHandle; // always do this near the top
-            _syncObject = sourceBitmap.SyncObject;
+            if (sourceBitmap._managedPixelBuffer != null)
+            {
+                _wicSource = null;
+                _convertedDUCEPtr = null;
+                _managedPixelBuffer = sourceBitmap.CloneManagedPixelBuffer();
+                _managedPixelStride = sourceBitmap._managedPixelStride;
+            }
+            else
+            {
+                WicSourceHandle = sourceBitmap.WicSourceHandle; // always do this near the top
+            }
+            _syncObject = _managedPixelBuffer ?? sourceBitmap.SyncObject;
             IsSourceCached = sourceBitmap.IsSourceCached;
 
             //
@@ -1552,6 +1751,8 @@ namespace System.Windows.Media.Imaging
         internal double _dpiX = 96.0;
         internal double _dpiY = 96.0;
         internal BitmapPalette _palette = null;
+        internal byte[] _managedPixelBuffer;
+        internal int _managedPixelStride;
 
         /// Duce resource
         internal DUCE.MultiChannelResource _duceResource = new DUCE.MultiChannelResource();
@@ -1958,4 +2159,3 @@ namespace System.Windows.Media.Imaging
 
     #endregion // BitmapSource
 }
-

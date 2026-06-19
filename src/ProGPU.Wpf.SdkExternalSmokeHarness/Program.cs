@@ -307,6 +307,8 @@ internal static class Program
                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                 xmlns:local="clr-namespace:ExternalSdkApp">
+                <local:ExternalUpperConverter x:Key="ExternalUpperConverter" />
+                <local:ExternalSummaryConverter x:Key="ExternalSummaryConverter" />
                 <SolidColorBrush
                     x:Key="ExternalStaticBrush"
                     Color="#A65A2A" />
@@ -381,6 +383,37 @@ internal static class Program
                         DisplayMemberPath="Name"
                         ItemsSource="{Binding ExternalItems}"
                         SelectedIndex="1" />
+                    <TextBlock
+                        x:Name="ExternalConverterText"
+                        Text="{Binding SelectedExternalItem.Name, Converter={StaticResource ExternalUpperConverter}, ConverterParameter=converted}" />
+                    <TextBlock x:Name="ExternalMultiBindingText">
+                        <TextBlock.Text>
+                            <MultiBinding Converter="{StaticResource ExternalSummaryConverter}">
+                                <Binding Path="SelectedExternalItem.Name" />
+                                <Binding Path="SelectedExternalItem.Kind" />
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
+                    <TextBlock x:Name="ExternalPriorityBindingText">
+                        <TextBlock.Text>
+                            <PriorityBinding>
+                                <Binding Path="MissingExternalItem.Value" />
+                                <Binding Path="SelectedExternalItem.Kind" />
+                            </PriorityBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
+                    <TextBox x:Name="ExternalValidationTextBox">
+                        <TextBox.Text>
+                            <Binding
+                                Path="ValidationText"
+                                Mode="TwoWay"
+                                UpdateSourceTrigger="Explicit">
+                                <Binding.ValidationRules>
+                                    <local:ExternalNonEmptyValidationRule />
+                                </Binding.ValidationRules>
+                            </Binding>
+                        </TextBox.Text>
+                    </TextBox>
                     <Button
                         x:Name="ExternalCommandButton"
                         Command="{x:Static local:MainWindow.ExternalCommand}"
@@ -478,9 +511,12 @@ internal static class Program
             using System;
             using System.Collections.ObjectModel;
             using System.Collections.Generic;
+            using System.Globalization;
+            using System.Linq;
             using System.Windows;
             using System.Windows.Controls;
             using System.Windows.Controls.Primitives;
+            using System.Windows.Data;
             using System.Windows.Input;
             using System.Windows.Media;
             using System.Windows.Navigation;
@@ -509,6 +545,8 @@ internal static class Program
                 ];
 
                 public ExternalItem SelectedExternalItem => ExternalItems[0];
+
+                public string ValidationText { get; set; } = "valid external text";
 
                 public int ExternalCommandCanExecuteCount { get; private set; }
 
@@ -590,6 +628,43 @@ internal static class Program
                 public string Kind { get; }
             }
 
+            public sealed class ExternalUpperConverter : IValueConverter
+            {
+                public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+                {
+                    return $"{value?.ToString()?.ToUpperInvariant()}:{parameter}";
+                }
+
+                public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+                {
+                    throw new NotSupportedException();
+                }
+            }
+
+            public sealed class ExternalSummaryConverter : IMultiValueConverter
+            {
+                public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+                {
+                    return string.Join("|", values.Select(value => value?.ToString()));
+                }
+
+                public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+                {
+                    throw new NotSupportedException();
+                }
+            }
+
+            public sealed class ExternalNonEmptyValidationRule : ValidationRule
+            {
+                public override ValidationResult Validate(object value, CultureInfo cultureInfo)
+                {
+                    string? text = value?.ToString();
+                    return string.IsNullOrWhiteSpace(text)
+                        ? new ValidationResult(false, "External value is required")
+                        : ValidationResult.ValidResult;
+                }
+            }
+
             public partial class App
             {
                 protected override void OnStartup(StartupEventArgs e)
@@ -618,6 +693,7 @@ internal static class Program
                         "external SDK user-control named TextBlock");
                     AssertEqual("External SDK library panel", captionText.Text, "external SDK user-control ElementName binding");
                     ValidateApplicationResources(window);
+                    ValidateBindings(window);
                     ValidateCommandsAndFocus(window);
 
                     var themedControl = RequireType<ExternalThemedControl>(
@@ -769,6 +845,56 @@ internal static class Program
                     window.ExternalItems.Add(new ExternalItem("Gamma", "Data"));
                     DrainDispatcher();
                     AssertEqual(3, itemsList.Items.Count, "external SDK bound items count after collection change");
+                }
+
+                private static void ValidateBindings(MainWindow window)
+                {
+                    var converterText = RequireType<TextBlock>(
+                        window.FindName("ExternalConverterText"),
+                        "external SDK converter text block");
+                    AssertEqual("ALPHA:converted", converterText.Text, "external SDK value converter output");
+
+                    var multiBindingText = RequireType<TextBlock>(
+                        window.FindName("ExternalMultiBindingText"),
+                        "external SDK multibinding text block");
+                    AssertEqual("Alpha|Framework", multiBindingText.Text, "external SDK multibinding converter output");
+                    var multiBindingExpression = BindingOperations.GetMultiBindingExpression(
+                        multiBindingText,
+                        TextBlock.TextProperty);
+                    if (multiBindingExpression is null)
+                    {
+                        throw new InvalidOperationException("Expected external SDK MultiBindingExpression.");
+                    }
+
+                    AssertEqual(2, multiBindingExpression.ParentMultiBinding.Bindings.Count, "external SDK multibinding child binding count");
+
+                    var priorityBindingText = RequireType<TextBlock>(
+                        window.FindName("ExternalPriorityBindingText"),
+                        "external SDK priority binding text block");
+                    AssertEqual("Framework", priorityBindingText.Text, "external SDK priority binding fallback output");
+                    var priorityBindingExpression = BindingOperations.GetPriorityBindingExpression(
+                        priorityBindingText,
+                        TextBlock.TextProperty);
+                    if (priorityBindingExpression is null)
+                    {
+                        throw new InvalidOperationException("Expected external SDK PriorityBindingExpression.");
+                    }
+
+                    AssertEqual(2, priorityBindingExpression.ParentPriorityBinding.Bindings.Count, "external SDK priority binding child binding count");
+
+                    var validationTextBox = RequireType<TextBox>(
+                        window.FindName("ExternalValidationTextBox"),
+                        "external SDK validation text box");
+                    var textBindingExpression = validationTextBox.GetBindingExpression(TextBox.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK validation BindingExpression.");
+                    AssertEqual("valid external text", validationTextBox.Text, "external SDK validation text initial value");
+                    validationTextBox.Text = string.Empty;
+                    textBindingExpression.UpdateSource();
+                    AssertEqual(true, Validation.GetHasError(validationTextBox), "external SDK validation failure state");
+                    validationTextBox.Text = "recovered external text";
+                    textBindingExpression.UpdateSource();
+                    AssertEqual(false, Validation.GetHasError(validationTextBox), "external SDK validation recovery state");
+                    AssertEqual("recovered external text", window.ValidationText, "external SDK validation source update");
                 }
 
                 private static void ValidateCommandsAndFocus(MainWindow window)

@@ -144,6 +144,9 @@ internal static class Program
     {
         using var loadContext = CreateLoadContext(inputs);
         Assembly smokeAssembly = loadContext.LoadFromAssemblyPath(inputs.SmokeAssemblyPath);
+        Assembly presentationFramework = loadContext.LoadFromAssemblyName(new AssemblyName("PresentationFramework"));
+
+        ValidateSdkLooseXamlReaderWriter(presentationFramework);
 
         object app = Create(smokeAssembly, AppTypeName);
         try
@@ -193,6 +196,8 @@ internal static class Program
         Assembly smokeAssembly = loadContext.LoadFromAssemblyPath(inputs.SmokeAssemblyPath);
         Assembly presentationCore = loadContext.LoadFromAssemblyName(new AssemblyName("PresentationCore"));
         Assembly presentationFramework = loadContext.LoadFromAssemblyName(new AssemblyName("PresentationFramework"));
+
+        ValidateSdkLooseXamlReaderWriter(presentationFramework);
 
         object? app = null;
         SdkApplicationRunRecorder? recorder = null;
@@ -319,6 +324,117 @@ internal static class Program
         AssertEqual(false, GetProperty(currentValueClone, "IsFrozen"), "SDK Freezable gradient current-value clone mutable");
         AssertClose(0.8, Convert.ToDouble(GetProperty(currentValueClone, "Opacity")), 0.0001, "SDK Freezable gradient current-value clone opacity");
         AssertEqual(3, GetCount(GetProperty(currentValueClone, "GradientStops")), "SDK Freezable gradient current-value clone stop collection");
+    }
+
+    private static void ValidateSdkLooseXamlReaderWriter(Assembly presentationFramework)
+    {
+        ValidateSdkLooseXamlReader(presentationFramework);
+        ValidateSdkLooseXamlWriterRoundTrip(presentationFramework);
+    }
+
+    private static void ValidateSdkLooseXamlReader(Assembly presentationFramework)
+    {
+        const string looseXaml = """
+<StackPanel
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Name="SdkLooseRoot">
+    <StackPanel.Resources>
+        <SolidColorBrush x:Key="SdkLooseAccentBrush" Color="#4F7CAC" />
+        <Style x:Key="SdkLooseTextStyle" TargetType="{x:Type TextBlock}">
+            <Setter Property="Tag" Value="SDK loose style tag" />
+            <Setter Property="Foreground" Value="{StaticResource SdkLooseAccentBrush}" />
+        </Style>
+    </StackPanel.Resources>
+    <TextBlock
+        x:Name="SdkLooseText"
+        Style="{StaticResource SdkLooseTextStyle}"
+        Text="SDK loose xaml text" />
+    <TextBox
+        x:Name="SdkLooseTextBox"
+        Tag="SDK loose binding text"
+        Text="{Binding Tag, RelativeSource={RelativeSource Self}}" />
+</StackPanel>
+""";
+
+        object root = ParseLooseXaml(presentationFramework, looseXaml);
+        AssertType(root, "System.Windows.Controls.StackPanel", "SDK loose XamlReader root");
+        AssertEqual("SdkLooseRoot", GetProperty(root, "Name"), "SDK loose XamlReader root name");
+        object children = GetProperty(root, "Children");
+        AssertEqual(2, GetCount(children), "SDK loose XamlReader child count");
+
+        object resources = GetProperty(root, "Resources");
+        object accentBrush = GetDictionaryValue(resources, "SdkLooseAccentBrush");
+        AssertType(accentBrush, "System.Windows.Media.SolidColorBrush", "SDK loose XamlReader brush resource");
+        AssertEqual("#FF4F7CAC", GetProperty(accentBrush, "Color").ToString() ?? string.Empty, "SDK loose XamlReader brush color");
+        object textStyle = GetDictionaryValue(resources, "SdkLooseTextStyle");
+        AssertType(textStyle, "System.Windows.Style", "SDK loose XamlReader style resource");
+        AssertEqual("System.Windows.Controls.TextBlock", GetProperty(textStyle, "TargetType").ToString() ?? string.Empty, "SDK loose XamlReader style target");
+
+        object textBlock = Invoke(root, "FindName", "SdkLooseText");
+        AssertType(textBlock, "System.Windows.Controls.TextBlock", "SDK loose XamlReader named TextBlock");
+        AssertSame(GetCollectionItem(children, 0), textBlock, "SDK loose XamlReader TextBlock child");
+        AssertSame(textStyle, GetProperty(textBlock, "Style"), "SDK loose XamlReader StaticResource style");
+        AssertEqual("SDK loose xaml text", GetProperty(textBlock, "Text"), "SDK loose XamlReader text");
+        AssertEqual("SDK loose style tag", GetProperty(textBlock, "Tag"), "SDK loose XamlReader style setter tag");
+        AssertSame(accentBrush, GetProperty(textBlock, "Foreground"), "SDK loose XamlReader style StaticResource brush");
+
+        object textBox = Invoke(root, "FindName", "SdkLooseTextBox");
+        AssertType(textBox, "System.Windows.Controls.TextBox", "SDK loose XamlReader named TextBox");
+        AssertSame(GetCollectionItem(children, 1), textBox, "SDK loose XamlReader TextBox child");
+        AssertEqual("SDK loose binding text", GetProperty(textBox, "Tag"), "SDK loose XamlReader TextBox tag");
+        AssertEqual("SDK loose binding text", GetProperty(textBox, "Text"), "SDK loose XamlReader RelativeSource binding text");
+        AssertBindingPath(presentationFramework, textBox, "TextProperty", "Tag", "SDK loose XamlReader Binding path");
+    }
+
+    private static void ValidateSdkLooseXamlWriterRoundTrip(Assembly presentationFramework)
+    {
+        const string writableXaml = """
+<LinearGradientBrush
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    StartPoint="0,0"
+    EndPoint="1,1"
+    Opacity="0.625"
+    SpreadMethod="Reflect">
+    <GradientStop Color="#4F7CAC" Offset="0" />
+    <GradientStop Color="#B15E3B" Offset="1" />
+</LinearGradientBrush>
+""";
+
+        object brush = ParseLooseXaml(presentationFramework, writableXaml);
+        string serialized = SaveLooseXaml(presentationFramework, brush);
+        AssertContains("LinearGradientBrush", serialized, "SDK loose XamlWriter serialized brush");
+        AssertContains("GradientStop", serialized, "SDK loose XamlWriter serialized GradientStop");
+
+        object roundTrippedBrush = ParseLooseXaml(presentationFramework, serialized);
+        AssertType(roundTrippedBrush, "System.Windows.Media.LinearGradientBrush", "SDK loose XamlWriter round-trip brush");
+        AssertClose(0.625, Convert.ToDouble(GetProperty(roundTrippedBrush, "Opacity")), 0.0001, "SDK loose XamlWriter round-trip brush opacity");
+        AssertEqual("Reflect", GetProperty(roundTrippedBrush, "SpreadMethod").ToString() ?? string.Empty, "SDK loose XamlWriter round-trip brush spread method");
+        object roundTrippedStops = GetProperty(roundTrippedBrush, "GradientStops");
+        AssertEqual(2, GetCount(roundTrippedStops), "SDK loose XamlWriter round-trip GradientStop count");
+        ValidateSdkLooseGradientStop(GetCollectionItem(roundTrippedStops, 0), "#FF4F7CAC", 0.0, "first");
+        ValidateSdkLooseGradientStop(GetCollectionItem(roundTrippedStops, 1), "#FFB15E3B", 1.0, "second");
+    }
+
+    private static void ValidateSdkLooseGradientStop(object stop, string expectedColor, double expectedOffset, string description)
+    {
+        AssertType(stop, "System.Windows.Media.GradientStop", $"SDK loose XamlWriter round-trip {description} stop");
+        AssertEqual(expectedColor, GetProperty(stop, "Color").ToString() ?? string.Empty, $"SDK loose XamlWriter round-trip {description} stop color");
+        AssertClose(expectedOffset, Convert.ToDouble(GetProperty(stop, "Offset")), 0.0001, $"SDK loose XamlWriter round-trip {description} stop offset");
+    }
+
+    private static object ParseLooseXaml(Assembly presentationFramework, string xaml)
+    {
+        Type xamlReaderType = GetRequiredType(presentationFramework, "System.Windows.Markup.XamlReader");
+        return InvokeStatic(xamlReaderType, "Parse", xaml);
+    }
+
+    private static string SaveLooseXaml(Assembly presentationFramework, object value)
+    {
+        Type xamlWriterType = GetRequiredType(presentationFramework, "System.Windows.Markup.XamlWriter");
+        return InvokeStatic(xamlWriterType, "Save", value).ToString()
+            ?? throw new InvalidOperationException("Loose XamlWriter.Save returned null.");
     }
 
     private static void ValidateWindow(
@@ -1662,6 +1778,20 @@ internal static class Program
         return GetProperty(propertyPath, "Path").ToString() ?? string.Empty;
     }
 
+    private static void AssertBindingPath(
+        Assembly presentationFramework,
+        object target,
+        string dependencyPropertyFieldName,
+        string expectedPath,
+        string description)
+    {
+        Type bindingOperationsType = GetRequiredType(presentationFramework, "System.Windows.Data.BindingOperations");
+        object dependencyProperty = GetStaticField(target.GetType(), dependencyPropertyFieldName);
+        object bindingExpression = InvokeStatic(bindingOperationsType, "GetBindingExpression", target, dependencyProperty);
+        AssertType(bindingExpression, "System.Windows.Data.BindingExpression", $"{description} expression");
+        AssertEqual(expectedPath, GetBindingPath(GetProperty(bindingExpression, "ParentBinding")), description);
+    }
+
     private static object GetStaticProperty(Type type, string propertyName)
     {
         PropertyInfo property = type.GetProperty(
@@ -1707,6 +1837,22 @@ internal static class Program
         }
 
         throw new MissingMemberException(collection.GetType().FullName, "Count");
+    }
+
+    private static object GetDictionaryValue(object dictionary, object key)
+    {
+        if (dictionary is IDictionary nonGenericDictionary && nonGenericDictionary.Contains(key))
+        {
+            return nonGenericDictionary[key]
+                ?? throw new InvalidOperationException($"Dictionary key '{key}' returned null.");
+        }
+
+        throw new InvalidOperationException($"Dictionary does not contain key '{key}'.");
+    }
+
+    private static object GetCollectionItem(object collection, int index)
+    {
+        return EnumerateObjects(collection).ElementAt(index);
     }
 
     private static IEnumerable<object> EnumerateObjects(object collection)
@@ -1766,6 +1912,14 @@ internal static class Program
         if (!object.Equals(expected, actual))
         {
             throw new InvalidOperationException($"{description}: expected '{expected}', actual '{actual}'.");
+        }
+    }
+
+    private static void AssertContains(string expected, string actual, string description)
+    {
+        if (!actual.Contains(expected, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException($"{description}: expected text containing '{expected}'.");
         }
     }
 

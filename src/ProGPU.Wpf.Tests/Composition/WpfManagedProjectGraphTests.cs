@@ -5245,6 +5245,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SDK Freezable brush clone mutable opacity", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK Freezable gradient clone mutable stop offset", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK Freezable gradient current-value clone stop collection", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateSdkLooseXamlReaderWriter(presentationFramework)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Markup.XamlReader", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Markup.XamlWriter", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK loose XamlReader style StaticResource brush", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK loose XamlReader Binding path", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK loose XamlWriter serialized GradientStop", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateSdkLooseGradientStop(GetCollectionItem(roundTrippedStops, 1)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(\"#FF356D9E\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("loaded storyboard TextBlock", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("loaded storyboard EventTrigger", runtimeHarnessProgram, StringComparison.Ordinal);

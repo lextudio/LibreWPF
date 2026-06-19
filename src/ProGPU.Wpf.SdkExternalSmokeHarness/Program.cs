@@ -2929,6 +2929,46 @@ internal static class Program
                     AssertEqual("ExternalWriterGroupItemsPanel", groupPanel.Name, "external SDK loose XamlWriter round-trip GroupStyle panel name");
                     AssertEqual("external writer group panel", groupPanel.Tag, "external SDK loose XamlWriter round-trip GroupStyle panel tag");
                     AssertEqual(Orientation.Horizontal, groupPanel.Orientation, "external SDK loose XamlWriter round-trip GroupStyle panel orientation");
+
+                    string frameworkElementXaml =
+                        "<StackPanel xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" " +
+                        "xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\" " +
+                        "x:Name=\"ExternalWriterElementRoot\" Orientation=\"Vertical\" Tag=\"external writer root\">" +
+                        "<Button x:Name=\"ExternalWriterButton\" Content=\"external writer button\" Tag=\"external writer button tag\" MinWidth=\"96\" Background=\"#2F6E8E\" />" +
+                        "<TextBox x:Name=\"ExternalWriterTextBox\" Text=\"external writer text\" MinWidth=\"120\" />" +
+                        "</StackPanel>";
+                    var frameworkElementRoot = RequireType<StackPanel>(
+                        XamlReader.Parse(frameworkElementXaml),
+                        "external SDK loose XamlWriter FrameworkElement source root");
+                    string frameworkElementSerialized = XamlWriter.Save(frameworkElementRoot);
+                    AssertContains("StackPanel", frameworkElementSerialized, "external SDK loose XamlWriter serialized FrameworkElement root");
+                    AssertContains("ExternalWriterElementRoot", frameworkElementSerialized, "external SDK loose XamlWriter serialized FrameworkElement root name");
+                    AssertContains("ExternalWriterButton", frameworkElementSerialized, "external SDK loose XamlWriter serialized FrameworkElement button");
+                    AssertContains("ExternalWriterTextBox", frameworkElementSerialized, "external SDK loose XamlWriter serialized FrameworkElement TextBox");
+
+                    var roundTrippedFrameworkElementRoot = RequireType<StackPanel>(
+                        XamlReader.Parse(frameworkElementSerialized),
+                        "external SDK loose XamlWriter round-trip FrameworkElement root");
+                    AssertEqual("ExternalWriterElementRoot", roundTrippedFrameworkElementRoot.Name, "external SDK loose XamlWriter round-trip FrameworkElement root name");
+                    AssertEqual(Orientation.Vertical, roundTrippedFrameworkElementRoot.Orientation, "external SDK loose XamlWriter round-trip FrameworkElement root orientation");
+                    AssertEqual("external writer root", roundTrippedFrameworkElementRoot.Tag, "external SDK loose XamlWriter round-trip FrameworkElement root tag");
+                    AssertEqual(2, roundTrippedFrameworkElementRoot.Children.Count, "external SDK loose XamlWriter round-trip FrameworkElement child count");
+
+                    var roundTrippedFrameworkElementButton = RequireType<Button>(
+                        roundTrippedFrameworkElementRoot.Children[0],
+                        "external SDK loose XamlWriter round-trip FrameworkElement button");
+                    AssertEqual("ExternalWriterButton", roundTrippedFrameworkElementButton.Name, "external SDK loose XamlWriter round-trip FrameworkElement button name");
+                    AssertEqual("external writer button", roundTrippedFrameworkElementButton.Content, "external SDK loose XamlWriter round-trip FrameworkElement button content");
+                    AssertEqual("external writer button tag", roundTrippedFrameworkElementButton.Tag, "external SDK loose XamlWriter round-trip FrameworkElement button tag");
+                    AssertEqual(96.0, roundTrippedFrameworkElementButton.MinWidth, "external SDK loose XamlWriter round-trip FrameworkElement button min width");
+                    AssertBrushColor(roundTrippedFrameworkElementButton.Background, "#FF2F6E8E", "external SDK loose XamlWriter round-trip FrameworkElement button background");
+
+                    var roundTrippedFrameworkElementTextBox = RequireType<TextBox>(
+                        roundTrippedFrameworkElementRoot.Children[1],
+                        "external SDK loose XamlWriter round-trip FrameworkElement TextBox");
+                    AssertEqual("ExternalWriterTextBox", roundTrippedFrameworkElementTextBox.Name, "external SDK loose XamlWriter round-trip FrameworkElement TextBox name");
+                    AssertEqual("external writer text", roundTrippedFrameworkElementTextBox.Text, "external SDK loose XamlWriter round-trip FrameworkElement TextBox text");
+                    AssertEqual(120.0, roundTrippedFrameworkElementTextBox.MinWidth, "external SDK loose XamlWriter round-trip FrameworkElement TextBox min width");
                 }
 
                 private static void ValidateDataProviders(MainWindow window)

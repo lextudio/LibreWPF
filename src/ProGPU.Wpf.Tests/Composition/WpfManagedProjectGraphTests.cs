@@ -6207,6 +6207,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK loose XamlWriter round-trip GroupStyle HidesIfEmpty", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK loose XamlWriter round-trip GroupStyle header TextBlock name", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK loose XamlWriter round-trip GroupStyle panel orientation", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalWriterElementRoot", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("XamlWriter.Save(frameworkElementRoot)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter serialized FrameworkElement button", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter round-trip FrameworkElement root name", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter round-trip FrameworkElement button background", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter round-trip FrameworkElement TextBox text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateDataProviders(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ObjectDataProvider data", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ObjectDataProvider bound text", externalSdkHarnessProgram, StringComparison.Ordinal);

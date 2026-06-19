@@ -4132,6 +4132,15 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Input",
             "InputLanguageManager.cs"));
+        var inputMethod = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Input",
+            "InputMethod.cs"));
         var systemResources = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4387,6 +4396,14 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(inputLanguageSource, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetKeyboardLayout(_dispatcherThreadId)");
         AssertGuardBefore(inputLanguageManager, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetKeyboardLayout(0)");
         AssertGuardBefore(inputLanguageManager, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetKeyboardLayoutList(0, null)");
+        Assert.Contains("private InputMethodState _portableImeState = InputMethodState.Off", inputMethod, StringComparison.Ordinal);
+        Assert.Contains("private ImeConversionModeValues _portableImeConversionMode = ImeConversionModeValues.Alphanumeric", inputMethod, StringComparison.Ordinal);
+        Assert.Contains("private ImeSentenceModeValues _portableImeSentenceMode = ImeSentenceModeValues.None", inputMethod, StringComparison.Ordinal);
+        Assert.Contains("SetPortableInputMethodState(ref _portableImeState, value, InputMethodStateType.ImeState)", inputMethod, StringComparison.Ordinal);
+        Assert.Contains("RaisePortableInputMethodStateChanged(stateType)", inputMethod, StringComparison.Ordinal);
+        AssertGuardBefore(inputMethod, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetKeyboardLayout(0)");
+        AssertGuardBefore(inputMethod, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.ImmGetContext(new HandleRef(this, hwnd))");
+        AssertGuardBefore(inputMethod, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.ImmGetDefaultIMEWnd");
         AssertGuardBefore(systemResources, "if (!OperatingSystem.IsWindows())", "new HwndWrapper(");
         AssertGuardBefore(systemResources, "if (OperatingSystem.IsWindows())", "XamlAccessLevel.AssemblyAccessTo(assembly)");
         AssertGuardBefore(xamlReader, "if (internalTypeHelper != null && OperatingSystem.IsWindows())", "XamlAccessLevel.AssemblyAccessTo(streamInfo.Assembly)");
@@ -4434,6 +4451,8 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetSystemPowerStatus(ref status)");
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetDC(desktopWnd)");
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETCARETWIDTH");
+        Assert.Contains("InputLanguageManager.Current.AvailableInputLanguages", textSelection, StringComparison.Ordinal);
+        AssertGuardBefore(textSelection, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetKeyboardLayoutList(0, null)");
         AssertGuardBefore(textSelection, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetLocaleInfoW");
         Assert.Contains("return cultureInfo.TextInfo.IsRightToLeft", textSelection, StringComparison.Ordinal);
         AssertGuardBefore(caretElement, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.CreateBitmap");

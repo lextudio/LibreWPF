@@ -1666,6 +1666,19 @@ namespace System.Windows.Documents
 
             bidiInputLanguageInstalled = false;
 
+            if (!OperatingSystem.IsWindows())
+            {
+                foreach (CultureInfo cultureInfo in InputLanguageManager.Current.AvailableInputLanguages)
+                {
+                    if (IsBidiInputLanguage(cultureInfo))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
             int keyboardListCount = (int)SafeNativeMethods.GetKeyboardLayoutList(0, null);
             if (keyboardListCount > 0)
             {

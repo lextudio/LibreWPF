@@ -514,6 +514,11 @@ namespace System.Windows.Input
         {
             get
             {
+                if (!OperatingSystem.IsWindows())
+                {
+                    return _portableImeState;
+                }
+
                 if (!IsImm32ImeCurrent())
                 {
                     //
@@ -548,6 +553,12 @@ namespace System.Windows.Input
             set
             {
                 Debug.Assert(value != InputMethodState.DoNotCare);
+
+                if (!OperatingSystem.IsWindows())
+                {
+                    SetPortableInputMethodState(ref _portableImeState, value, InputMethodStateType.ImeState);
+                    return;
+                }
 
                 //
                 // Update Cicero's keyboard Open/Close status.
@@ -595,6 +606,11 @@ namespace System.Windows.Input
         {
             get
             {
+                if (!OperatingSystem.IsWindows())
+                {
+                    return _portableMicrophoneState;
+                }
+
                 TextServicesCompartment compartment;
                 compartment = TextServicesCompartmentContext.Current.GetCompartment(InputMethodStateType.MicrophoneState);
                 if (compartment != null)
@@ -609,6 +625,12 @@ namespace System.Windows.Input
             {
 
                 Debug.Assert(value != InputMethodState.DoNotCare);
+
+                if (!OperatingSystem.IsWindows())
+                {
+                    SetPortableInputMethodState(ref _portableMicrophoneState, value, InputMethodStateType.MicrophoneState);
+                    return;
+                }
 
                 TextServicesCompartment compartment;
                 compartment = TextServicesCompartmentContext.Current.GetCompartment(InputMethodStateType.MicrophoneState);
@@ -630,6 +652,11 @@ namespace System.Windows.Input
         {
             get
             {
+                if (!OperatingSystem.IsWindows())
+                {
+                    return _portableHandwritingState;
+                }
+
                 TextServicesCompartment compartment;
                 compartment = TextServicesCompartmentContext.Current.GetCompartment(InputMethodStateType.HandwritingState);
                 if (compartment != null)
@@ -643,6 +670,12 @@ namespace System.Windows.Input
             set
             {
                 Debug.Assert(value != InputMethodState.DoNotCare);
+
+                if (!OperatingSystem.IsWindows())
+                {
+                    SetPortableInputMethodState(ref _portableHandwritingState, value, InputMethodStateType.HandwritingState);
+                    return;
+                }
 
                 TextServicesCompartment compartment;
                 compartment = TextServicesCompartmentContext.Current.GetCompartment(InputMethodStateType.HandwritingState);
@@ -665,6 +698,11 @@ namespace System.Windows.Input
         {
             get
             {
+                if (!OperatingSystem.IsWindows())
+                {
+                    return _portableSpeechMode;
+                }
+
                 TextServicesCompartment compartment;
                 compartment = TextServicesCompartmentContext.Current.GetCompartment(InputMethodStateType.SpeechMode);
 
@@ -682,6 +720,17 @@ namespace System.Windows.Input
 
             set
             {
+
+                if (!OperatingSystem.IsWindows())
+                {
+                    if (_portableSpeechMode != value)
+                    {
+                        _portableSpeechMode = value;
+                        RaisePortableInputMethodStateChanged(InputMethodStateType.SpeechMode);
+                    }
+
+                    return;
+                }
 
                 TextServicesCompartment compartment;
                 compartment = TextServicesCompartmentContext.Current.GetCompartment(InputMethodStateType.SpeechMode);
@@ -724,6 +773,11 @@ namespace System.Windows.Input
         {
             get
             {
+                if (!OperatingSystem.IsWindows())
+                {
+                    return _portableImeConversionMode;
+                }
+
                 if (!IsImm32ImeCurrent())
                 {
                     //
@@ -812,6 +866,17 @@ namespace System.Windows.Input
                 }
 
                 Debug.Assert((value & ImeConversionModeValues.DoNotCare) == 0);
+
+                if (!OperatingSystem.IsWindows())
+                {
+                    if (_portableImeConversionMode != value)
+                    {
+                        _portableImeConversionMode = value;
+                        RaisePortableInputMethodStateChanged(InputMethodStateType.ImeConversionModeValues);
+                    }
+
+                    return;
+                }
 
                 IntPtr hwnd = IntPtr.Zero;
                 if (_immEnabled)
@@ -987,6 +1052,11 @@ namespace System.Windows.Input
         {
             get
             {
+                if (!OperatingSystem.IsWindows())
+                {
+                    return _portableImeSentenceMode;
+                }
+
                 if (!IsImm32ImeCurrent())
                 {
                     //
@@ -1063,6 +1133,17 @@ namespace System.Windows.Input
                 }
 
                 Debug.Assert((value & ImeSentenceModeValues.DoNotCare) == 0);
+
+                if (!OperatingSystem.IsWindows())
+                {
+                    if (_portableImeSentenceMode != value)
+                    {
+                        _portableImeSentenceMode = value;
+                        RaisePortableInputMethodStateChanged(InputMethodStateType.ImeSentenceModeValues);
+                    }
+
+                    return;
+                }
 
                 //
                 // Update Cicero's sentence mode.
@@ -1260,6 +1341,11 @@ namespace System.Windows.Input
         /// </summary>
         internal static bool IsImm32ImeCurrent()
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return false;
+            }
+
             if (!_immEnabled)
             {
                 return false;
@@ -1398,6 +1484,11 @@ namespace System.Windows.Input
         /// <returns></returns>
         private UnsafeNativeMethods.ConversionModeFlags Imm32ConversionModeToTSFConversionMode(IntPtr hwnd)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return 0;
+            }
+
             UnsafeNativeMethods.ConversionModeFlags convMode = 0;
             if (hwnd != IntPtr.Zero)
             {
@@ -1481,6 +1572,11 @@ namespace System.Windows.Input
         {
 
             bool bCanShown = false;
+            if (!OperatingSystem.IsWindows())
+            {
+                return bCanShown;
+            }
+
             IntPtr hkl = SafeNativeMethods.GetKeyboardLayout(0);
 
             if (!IsImm32Ime(hkl))
@@ -1534,6 +1630,11 @@ namespace System.Windows.Input
         {
 
             bool bCanShown = false;
+            if (!OperatingSystem.IsWindows())
+            {
+                return bCanShown;
+            }
+
             IntPtr hkl = SafeNativeMethods.GetKeyboardLayout(0);
 
             if (!IsImm32Ime(hkl))
@@ -1588,6 +1689,11 @@ namespace System.Windows.Input
         /// </summary> 
         private static IntPtr HwndFromInputElement(IInputElement element)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return IntPtr.Zero;
+            }
+
             IntPtr hwnd = (IntPtr)0;
             // We allow null element.
             if (element != null)
@@ -1715,6 +1821,20 @@ namespace System.Windows.Input
            return true;
         }
 
+        private void SetPortableInputMethodState(ref InputMethodState storage, InputMethodState value, InputMethodStateType stateType)
+        {
+            if (storage != value)
+            {
+                storage = value;
+                RaisePortableInputMethodStateChanged(stateType);
+            }
+        }
+
+        private void RaisePortableInputMethodStateChanged(InputMethodStateType stateType)
+        {
+            _StateChanged?.Invoke(this, new InputMethodStateChangedEventArgs(stateType));
+        }
+
 
         //------------------------------------------------------
         //
@@ -1734,6 +1854,11 @@ namespace System.Windows.Input
         {
             get
             {
+                if (!OperatingSystem.IsWindows())
+                {
+                    return IntPtr.Zero;
+                }
+
                 if (_defaultImc == 0)
                 {
                     // 
@@ -1778,7 +1903,14 @@ namespace System.Windows.Input
         private DefaultTextStore _defaulttextstore;
 
         // If the system is IMM enabled, this is true.
-        private static bool _immEnabled = SafeSystemMetrics.IsImmEnabled ; 
+        private static bool _immEnabled = OperatingSystem.IsWindows() && SafeSystemMetrics.IsImmEnabled;
+
+        private InputMethodState _portableImeState = InputMethodState.Off;
+        private InputMethodState _portableMicrophoneState = InputMethodState.Off;
+        private InputMethodState _portableHandwritingState = InputMethodState.Off;
+        private SpeechMode _portableSpeechMode = SpeechMode.Indeterminate;
+        private ImeConversionModeValues _portableImeConversionMode = ImeConversionModeValues.Alphanumeric;
+        private ImeSentenceModeValues _portableImeSentenceMode = ImeSentenceModeValues.None;
 
         // the default imc. The default imc is per thread and we cache it in ThreadStatic.
         [ThreadStatic]
@@ -1800,4 +1932,3 @@ namespace System.Windows.Input
     /// </summary>
     public delegate void InputMethodStateChangedEventHandler(Object sender, InputMethodStateChangedEventArgs e);
 }
-

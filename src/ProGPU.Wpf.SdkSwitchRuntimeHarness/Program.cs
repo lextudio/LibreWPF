@@ -219,6 +219,7 @@ internal static class Program
             object window = Create(smokeAssembly, MainWindowTypeName);
             ValidateWindow(window, validateFrameContent: false, flushDispatcherOperations: null);
             ValidatePortableInputLanguageManager(presentationCore, window);
+            ValidatePortableInputMethod(presentationCore, window);
             ValidatePortableMessageBox(presentationFramework, window);
         }
         finally
@@ -565,6 +566,65 @@ internal static class Program
             "portable SDK InputLanguageManager attached language");
 
         SetProperty(manager, "CurrentInputLanguage", CultureInfo.CurrentCulture);
+    }
+
+    private static void ValidatePortableInputMethod(Assembly presentationCore, object target)
+    {
+        Type inputMethodType = GetRequiredType(presentationCore, "System.Windows.Input.InputMethod");
+        object inputMethod = GetStaticProperty(inputMethodType, "Current");
+        AssertType(inputMethod, "System.Windows.Input.InputMethod", "SDK InputMethod current instance");
+
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        Type inputMethodStateType = GetRequiredType(presentationCore, "System.Windows.Input.InputMethodState");
+        Type conversionModeType = GetRequiredType(presentationCore, "System.Windows.Input.ImeConversionModeValues");
+        Type sentenceModeType = GetRequiredType(presentationCore, "System.Windows.Input.ImeSentenceModeValues");
+        Type speechModeType = GetRequiredType(presentationCore, "System.Windows.Input.SpeechMode");
+
+        object offState = Enum.Parse(inputMethodStateType, "Off");
+        object onState = Enum.Parse(inputMethodStateType, "On");
+        object conversionMode = Enum.ToObject(
+            conversionModeType,
+            Convert.ToInt32(Enum.Parse(conversionModeType, "Native")) |
+            Convert.ToInt32(Enum.Parse(conversionModeType, "FullShape")));
+        object sentenceMode = Enum.Parse(sentenceModeType, "Automatic");
+        object dictationMode = Enum.Parse(speechModeType, "Dictation");
+
+        AssertEqual("Off", GetProperty(inputMethod, "ImeState").ToString() ?? string.Empty, "portable SDK InputMethod default IME state");
+        AssertEqual("Alphanumeric", GetProperty(inputMethod, "ImeConversionMode").ToString() ?? string.Empty, "portable SDK InputMethod default conversion mode");
+        AssertEqual("None", GetProperty(inputMethod, "ImeSentenceMode").ToString() ?? string.Empty, "portable SDK InputMethod default sentence mode");
+        AssertEqual(false, GetProperty(inputMethod, "CanShowConfigurationUI"), "portable SDK InputMethod configure UI availability");
+        AssertEqual(false, GetProperty(inputMethod, "CanShowRegisterWordUI"), "portable SDK InputMethod register-word UI availability");
+
+        SetProperty(inputMethod, "ImeState", onState);
+        SetProperty(inputMethod, "MicrophoneState", onState);
+        SetProperty(inputMethod, "HandwritingState", onState);
+        SetProperty(inputMethod, "SpeechMode", dictationMode);
+        SetProperty(inputMethod, "ImeConversionMode", conversionMode);
+        SetProperty(inputMethod, "ImeSentenceMode", sentenceMode);
+
+        AssertEqual("On", GetProperty(inputMethod, "ImeState").ToString() ?? string.Empty, "portable SDK InputMethod set IME state");
+        AssertEqual("On", GetProperty(inputMethod, "MicrophoneState").ToString() ?? string.Empty, "portable SDK InputMethod set microphone state");
+        AssertEqual("On", GetProperty(inputMethod, "HandwritingState").ToString() ?? string.Empty, "portable SDK InputMethod set handwriting state");
+        AssertEqual("Dictation", GetProperty(inputMethod, "SpeechMode").ToString() ?? string.Empty, "portable SDK InputMethod set speech mode");
+        AssertEqual("Native, FullShape", GetProperty(inputMethod, "ImeConversionMode").ToString() ?? string.Empty, "portable SDK InputMethod set conversion mode");
+        AssertEqual("Automatic", GetProperty(inputMethod, "ImeSentenceMode").ToString() ?? string.Empty, "portable SDK InputMethod set sentence mode");
+
+        InvokeStaticVoid(inputMethodType, "SetPreferredImeState", target, onState);
+        InvokeStaticVoid(inputMethodType, "SetPreferredImeConversionMode", target, conversionMode);
+        InvokeStaticVoid(inputMethodType, "SetPreferredImeSentenceMode", target, sentenceMode);
+        AssertEqual("On", InvokeStatic(inputMethodType, "GetPreferredImeState", target).ToString() ?? string.Empty, "portable SDK InputMethod attached preferred IME state");
+        AssertEqual("Native, FullShape", InvokeStatic(inputMethodType, "GetPreferredImeConversionMode", target).ToString() ?? string.Empty, "portable SDK InputMethod attached preferred conversion mode");
+        AssertEqual("Automatic", InvokeStatic(inputMethodType, "GetPreferredImeSentenceMode", target).ToString() ?? string.Empty, "portable SDK InputMethod attached preferred sentence mode");
+
+        SetProperty(inputMethod, "ImeState", offState);
+        SetProperty(inputMethod, "MicrophoneState", offState);
+        SetProperty(inputMethod, "HandwritingState", offState);
+        SetProperty(inputMethod, "ImeConversionMode", Enum.Parse(conversionModeType, "Alphanumeric"));
+        SetProperty(inputMethod, "ImeSentenceMode", Enum.Parse(sentenceModeType, "None"));
     }
 
     private static void AssertPortableSystemParameterMetric(

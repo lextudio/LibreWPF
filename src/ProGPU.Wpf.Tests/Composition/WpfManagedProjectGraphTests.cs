@@ -300,6 +300,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("_doubleClickDeltaTime = 500;", mouseDevice, StringComparison.Ordinal);
         Assert.Contains("inputSource?.CompositionTarget != null && !inputSource.CompositionTarget.IsDisposed", mouseDevice, StringComparison.Ordinal);
         Assert.Contains("LocalHitTest(clientUnits, pt, inputSource, out enabledHit, out originalHit)", mouseDevice, StringComparison.Ordinal);
+        AssertGuardBefore(mouseDevice, "if (OperatingSystem.IsWindows() && source != null", "UnsafeNativeMethods.WindowFromPoint");
+        AssertGuardBefore(mouseDevice, "if (OperatingSystem.IsWindows() && source != null", "SafeNativeMethods.IsWindowEnabled");
         Assert.True(
             inputManager.IndexOf("if (OperatingSystem.IsWindows())", StringComparison.Ordinal)
                 < inputManager.IndexOf("new Win32KeyboardDevice(this)", StringComparison.Ordinal),

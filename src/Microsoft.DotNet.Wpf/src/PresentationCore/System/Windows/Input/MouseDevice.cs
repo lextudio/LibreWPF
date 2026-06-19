@@ -2107,7 +2107,7 @@ namespace System.Windows.Input
 
             // Note: this only works for HWNDs for now.
             HwndSource source = inputSource as HwndSource;
-            if (source != null && source.CompositionTarget != null && !source.IsHandleNull)
+            if (OperatingSystem.IsWindows() && source != null && source.CompositionTarget != null && !source.IsHandleNull)
             {
                 Point ptScreen = PointUtil.ClientToScreen(ptClient, source);
                 IntPtr hwndHit = IntPtr.Zero ;

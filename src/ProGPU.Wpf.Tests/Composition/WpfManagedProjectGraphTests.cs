@@ -4188,6 +4188,15 @@ public sealed class WpfManagedProjectGraphTests
             "Controls",
             "Primitives",
             "Popup.cs"));
+        var menu = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Controls",
+            "Menu.cs"));
         var menuBase = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4484,6 +4493,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("return false;\n                }\n\n                IntPtr foregroundWindow", popup, StringComparison.Ordinal);
         Assert.Contains("return IntPtr.Zero;\n                }\n\n                if (hwnd != null)", popup, StringComparison.Ordinal);
         AssertGuardBefore(menuBase, "(!OperatingSystem.IsWindows()", "MS.Win32.SafeNativeMethods.GetCapture()");
+        AssertGuardBefore(menu, "if (OperatingSystem.IsWindows())", "PresentationSource.CriticalFromVisual(this) as System.Windows.Interop.HwndSource");
+        Assert.Contains("else\n                {\n                    e.Handled = true;\n                }", menu, StringComparison.Ordinal);
         AssertGuardBefore(menuBase, "if (OperatingSystem.IsWindows())", "MS.Win32.UnsafeNativeMethods.GetFocus()");
         Assert.Contains("AreComponentResourceUrisEquivalent(loadBamlSyncInfo.BamlUri, curComponentUri)", application, StringComparison.Ordinal);
         Assert.Contains("BaseUriHelper.GetAssemblyNameAndPart(", application, StringComparison.Ordinal);

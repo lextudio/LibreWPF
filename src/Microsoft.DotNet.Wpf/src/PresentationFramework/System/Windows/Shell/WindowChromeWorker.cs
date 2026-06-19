@@ -122,18 +122,21 @@ namespace Microsoft.Windows.Shell
 
             _window = window;
 
+            Utility.AddDependencyPropertyChangeListener(_window, Window.TemplateProperty, _OnWindowPropertyChangedThatRequiresTemplateFixup);
+            Utility.AddDependencyPropertyChangeListener(_window, Window.FlowDirectionProperty, _OnWindowPropertyChangedThatRequiresTemplateFixup);
+
+            _window.Closed += _UnsetWindow;
+
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
             // There are potentially a couple funny states here.
             // The window may have been shown and closed, in which case it's no longer usable.
             // We shouldn't add any hooks in that case, just exit early.
             // If the window hasn't yet been shown, then we need to make sure to remove hooks after it's closed.
             _hwnd = new WindowInteropHelper(_window).Handle;
-
-            // On older versions of the framework the client size of the window is incorrectly calculated.
-            // We need to modify the template to fix this on behalf of the user.
-            Utility.AddDependencyPropertyChangeListener(_window, Window.TemplateProperty, _OnWindowPropertyChangedThatRequiresTemplateFixup);
-            Utility.AddDependencyPropertyChangeListener(_window, Window.FlowDirectionProperty, _OnWindowPropertyChangedThatRequiresTemplateFixup);
-
-            _window.Closed += _UnsetWindow;
 
             // Use whether we can get an HWND to determine if the Window has been loaded.
             if (IntPtr.Zero != _hwnd)
@@ -157,6 +160,12 @@ namespace Microsoft.Windows.Shell
 
         private void _WindowSourceInitialized(object sender, EventArgs e)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                _ApplyNewCustomChrome();
+                return;
+            }
+
             _hwnd = new WindowInteropHelper(_window).Handle;
             Assert.IsNotDefault(_hwnd);
             _hwndSource = HwndSource.FromHwnd(_hwnd);
@@ -203,7 +212,7 @@ namespace Microsoft.Windows.Shell
 
         private void _OnWindowPropertyChangedThatRequiresTemplateFixup(object sender, EventArgs e)
         {
-            if (_chromeInfo != null && _hwnd != IntPtr.Zero)
+            if (_chromeInfo != null && (!OperatingSystem.IsWindows() || _hwnd != IntPtr.Zero))
             {
                 // Assume that when the template changes it's going to be applied.
                 // We don't have a good way to externally hook into the template
@@ -219,6 +228,12 @@ namespace Microsoft.Windows.Shell
 
         private void _ApplyNewCustomChrome()
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                _ApplyPortableCustomChrome();
+                return;
+            }
+
             if (_hwnd == IntPtr.Zero || _hwndSource.IsDisposed)
             {
                 // Not yet hooked.
@@ -244,6 +259,26 @@ namespace Microsoft.Windows.Shell
             _UpdateFrameState(true);
 
             NativeMethods.SetWindowPos(_hwnd, IntPtr.Zero, 0, 0, 0, 0, _SwpFlags);
+        }
+
+        private void _ApplyPortableCustomChrome()
+        {
+            if (_window == null)
+            {
+                return;
+            }
+
+            if (_chromeInfo == null)
+            {
+                _RestoreFrameworkIssueFixups();
+            }
+            else
+            {
+                _window.ApplyTemplate();
+                _FixupTemplateIssues();
+            }
+
+            _window.InvalidateMeasure();
         }
 
         /// <summary>
@@ -700,7 +735,7 @@ namespace Microsoft.Windows.Shell
 
         private void _UpdateFrameState(bool force)
         {
-            if (IntPtr.Zero == _hwnd || _hwndSource.IsDisposed)
+            if (!OperatingSystem.IsWindows() || IntPtr.Zero == _hwnd || _hwndSource == null || _hwndSource.IsDisposed)
             {
                 return;
             }
@@ -1063,7 +1098,7 @@ namespace Microsoft.Windows.Shell
         // agree on the signature.
         private bool GetEffectiveClientArea(ref MS.Win32.NativeMethods.RECT rcClient)
         {
-            if (_window == null || _chromeInfo == null)
+            if (_window == null || _chromeInfo == null || !OperatingSystem.IsWindows() || _hwnd == IntPtr.Zero)
                 return false;
 
             DpiScale dpi = _window.GetDpi();
@@ -1095,9 +1130,20 @@ namespace Microsoft.Windows.Shell
         {
             VerifyAccess();
 
+            if (!OperatingSystem.IsWindows())
+            {
+                if (!isClosing)
+                {
+                    _RestoreFrameworkIssueFixups();
+                    _window?.InvalidateMeasure();
+                }
+
+                return;
+            }
+
             _UnhookCustomChrome();
 
-            if (!isClosing && !_hwndSource.IsDisposed)
+            if (!isClosing && _hwndSource != null && !_hwndSource.IsDisposed)
             {
                 _RestoreFrameworkIssueFixups();
                 _RestoreGlassFrame();
@@ -1109,10 +1155,16 @@ namespace Microsoft.Windows.Shell
 
         private void _UnhookCustomChrome()
         {
+            if (!OperatingSystem.IsWindows() || _hwnd == IntPtr.Zero || _hwndSource == null)
+            {
+                _isHooked = false;
+                return;
+            }
+
             Assert.IsNotDefault(_hwnd);
             Assert.IsNotNull(_window);
 
-            if (_isHooked)
+            if (_isHooked && !_hwndSource.IsDisposed)
             {
                 _hwndSource.RemoveHook(_WndProc);
                 _isHooked = false;
@@ -1121,6 +1173,11 @@ namespace Microsoft.Windows.Shell
 
         private void _RestoreFrameworkIssueFixups()
         {
+            if (_window == null || VisualTreeHelper.GetChildrenCount(_window) == 0)
+            {
+                return;
+            }
+
             FrameworkElement rootElement = (FrameworkElement)VisualTreeHelper.GetChild(_window, 0);
 
             // Undo anything that was done before.

@@ -4416,6 +4416,15 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Appearance",
             "WindowBackdropManager.cs"));
+        var windowChromeWorker = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Shell",
+            "WindowChromeWorker.cs"));
         var application = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4722,6 +4731,11 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(windowBackdropManager, "if (!OperatingSystem.IsWindows())", "new WindowInteropHelper(window).Handle");
         AssertGuardBefore(windowBackdropManager, "if (!OperatingSystem.IsWindows())", "NativeMethods.DwmSetWindowAttributeSystemBackdropType");
         Assert.Contains("OperatingSystem.IsWindows() &&\n                                                                        Utility.IsWindows11_22H2OrNewer", windowBackdropManager, StringComparison.Ordinal);
+        AssertGuardBefore(windowChromeWorker, "if (!OperatingSystem.IsWindows())", "new WindowInteropHelper(_window).Handle");
+        AssertGuardBefore(windowChromeWorker, "if (!OperatingSystem.IsWindows())", "HwndSource.FromHwnd(_hwnd)");
+        AssertGuardBefore(windowChromeWorker, "if (!OperatingSystem.IsWindows() || IntPtr.Zero == _hwnd || _hwndSource == null || _hwndSource.IsDisposed)", "NativeMethods.DwmIsCompositionEnabled()");
+        AssertGuardBefore(windowChromeWorker, "if (!OperatingSystem.IsWindows() || _hwnd == IntPtr.Zero || _hwndSource == null)", "_hwndSource.RemoveHook(_WndProc)");
+        Assert.Contains("private void _ApplyPortableCustomChrome()", windowChromeWorker, StringComparison.Ordinal);
         AssertGuardBefore(dpiAwareness, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetWindowDpiAwarenessContext(hWnd)");
         AssertGuardBefore(osVersionHelper, "if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))", "IsWindows10RS5OrGreater()");
         AssertGuardBefore(osVersionHelper, "return OperatingSystemVersion.WindowsXPSP2;", "throw new Exception(\"OSVersionHelper.GetOsVersion Could not detect OS!\")");
@@ -6061,6 +6075,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("appResources[\"ExternalDynamicBrush\"] = new SolidColorBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK updated dynamic resource foreground", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateSystemParameters(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateWindowChrome(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("WindowChrome.SetWindowChrome(window, chrome)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK WindowChrome attached value", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SystemParameters.FocusBorderWidth", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SystemParameters.PrimaryScreenWidthKey", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SystemParameters.WorkArea", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6127,6 +6144,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableFileDialogServiceTypeName = \"Microsoft.Win32.PortableFileDialogService\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableMessageBoxServiceTypeName = \"System.Windows.PortableMessageBoxService\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableSystemParameters(presentationFramework, app)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableWindowChrome(presentationFramework, window)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Shell.WindowChrome", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable SDK WindowChrome attached value", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.SystemParameters", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable SDK SystemParameters.{propertyName}", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable SDK SystemParameters.{propertyName} resource", runtimeHarnessProgram, StringComparison.Ordinal);

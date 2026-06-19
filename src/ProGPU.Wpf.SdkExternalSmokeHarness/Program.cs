@@ -1055,6 +1055,7 @@ internal static class Program
             using System.Windows.Media;
             using System.Windows.Media.Animation;
             using System.Windows.Navigation;
+            using System.Windows.Shell;
             using System.Windows.Threading;
             using ExternalSdkLibrary;
             using Microsoft.Win32;
@@ -1550,6 +1551,7 @@ internal static class Program
                     AssertEqual("External SDK library panel", captionText.Text, "external SDK user-control ElementName binding");
                     ValidateApplicationResources(window);
                     ValidateSystemParameters(window);
+                    ValidateWindowChrome(window);
                     ValidateMessageBox(window);
                     ValidateFileDialogs(window);
                     ValidateClipboard();
@@ -2039,6 +2041,32 @@ internal static class Program
                     object resourceValue = resourceOwner.TryFindResource(resourceKey)
                         ?? throw new InvalidOperationException($"Expected external SDK SystemParameters.{propertyName} resource.");
                     AssertEqual(value, (T)resourceValue, $"external SDK SystemParameters.{propertyName} resource");
+                }
+
+                private static void ValidateWindowChrome(MainWindow window)
+                {
+                    var chrome = new WindowChrome
+                    {
+                        CaptionHeight = 32.0,
+                        ResizeBorderThickness = new Thickness(6.0),
+                        GlassFrameThickness = new Thickness(0.0),
+                        NonClientFrameEdges = NonClientFrameEdges.Top,
+                        UseAeroCaptionButtons = false
+                    };
+
+                    WindowChrome.SetWindowChrome(window, chrome);
+                    AssertEqual(chrome, WindowChrome.GetWindowChrome(window), "external SDK WindowChrome attached value");
+                    AssertEqual(32.0, chrome.CaptionHeight, "external SDK WindowChrome caption height");
+                    AssertEqual(NonClientFrameEdges.Top, chrome.NonClientFrameEdges, "external SDK WindowChrome non-client frame edges");
+
+                    WindowChrome.SetIsHitTestVisibleInChrome(window, true);
+                    AssertEqual(true, WindowChrome.GetIsHitTestVisibleInChrome(window), "external SDK WindowChrome hit-test attached value");
+
+                    WindowChrome.SetWindowChrome(window, null);
+                    if (WindowChrome.GetWindowChrome(window) is not null)
+                    {
+                        throw new InvalidOperationException("Expected external SDK WindowChrome cleared value to be null.");
+                    }
                 }
 
                 private static void ValidateMessageBox(Window window)

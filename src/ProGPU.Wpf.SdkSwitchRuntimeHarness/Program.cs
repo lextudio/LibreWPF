@@ -220,6 +220,7 @@ internal static class Program
             ValidateWindow(window, validateFrameContent: false, flushDispatcherOperations: null);
             ValidatePortableInputLanguageManager(presentationCore, window);
             ValidatePortableInputMethod(presentationCore, window);
+            ValidatePortableWindowChrome(presentationFramework, window);
             ValidatePortableMessageBox(presentationFramework, window);
         }
         finally
@@ -642,6 +643,36 @@ internal static class Program
         SetProperty(inputMethod, "HandwritingState", offState);
         SetProperty(inputMethod, "ImeConversionMode", Enum.Parse(conversionModeType, "Alphanumeric"));
         SetProperty(inputMethod, "ImeSentenceMode", Enum.Parse(sentenceModeType, "None"));
+    }
+
+    private static void ValidatePortableWindowChrome(Assembly presentationFramework, object window)
+    {
+        Type windowChromeType = GetRequiredType(presentationFramework, "System.Windows.Shell.WindowChrome");
+        Type nonClientFrameEdgesType = GetRequiredType(presentationFramework, "System.Windows.Shell.NonClientFrameEdges");
+        Type thicknessType = windowChromeType.GetProperty(
+                "ResizeBorderThickness",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.PropertyType
+            ?? throw new MissingMemberException(windowChromeType.FullName, "ResizeBorderThickness");
+
+        object chrome = Create(windowChromeType);
+        SetProperty(chrome, "CaptionHeight", 32.0);
+        SetProperty(chrome, "ResizeBorderThickness", Create(thicknessType, 6.0));
+        SetProperty(chrome, "GlassFrameThickness", Create(thicknessType, 0.0));
+        SetProperty(chrome, "NonClientFrameEdges", Enum.Parse(nonClientFrameEdgesType, "Top"));
+        SetProperty(chrome, "UseAeroCaptionButtons", false);
+
+        InvokeStaticVoid(windowChromeType, "SetWindowChrome", window, chrome);
+        AssertSame(chrome, InvokeStatic(windowChromeType, "GetWindowChrome", window), "portable SDK WindowChrome attached value");
+        AssertEqual(32.0, GetProperty(chrome, "CaptionHeight"), "portable SDK WindowChrome caption height");
+
+        InvokeStaticVoid(windowChromeType, "SetIsHitTestVisibleInChrome", window, true);
+        AssertEqual(
+            true,
+            InvokeStatic(windowChromeType, "GetIsHitTestVisibleInChrome", window),
+            "portable SDK WindowChrome hit-test attached value");
+
+        InvokeStaticVoid(windowChromeType, "SetWindowChrome", window, null);
+        AssertNull(InvokeStaticOrNull(windowChromeType, "GetWindowChrome", window), "portable SDK WindowChrome cleared value");
     }
 
     private static void AssertPortableSystemParameterMetric(
@@ -2316,6 +2347,21 @@ internal static class Program
         {
             return method.Invoke(null, args)
                 ?? throw new InvalidOperationException($"Method '{methodName}' returned null.");
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException is not null)
+        {
+            throw ex.InnerException;
+        }
+    }
+
+    private static object? InvokeStaticOrNull(Type type, string methodName, params object?[] args)
+    {
+        MethodInfo method = GetCompatibleStaticMethod(type, methodName, args)
+            ?? throw new MissingMethodException(type.FullName, methodName);
+
+        try
+        {
+            return method.Invoke(null, args);
         }
         catch (TargetInvocationException ex) when (ex.InnerException is not null)
         {

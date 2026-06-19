@@ -6167,6 +6167,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK loose XamlReader Binding path", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK loose XamlWriter serialized GradientStop", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK loose XamlWriter round-trip second stop color", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("MenuItem.SeparatorStyleKey", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("XamlWriter.Save(systemResourceDictionary)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter serialized system resource key member", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter round-trip system-key style target", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalWriterBaseButtonStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalWriterButtonStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("XamlWriter.Save(styleDictionary)", externalSdkHarnessProgram, StringComparison.Ordinal);

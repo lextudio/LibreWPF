@@ -2541,6 +2541,25 @@ internal static class Program
                     AssertEqual("#FFB15E3B", roundTrippedBrush.GradientStops[1].Color.ToString(), "external SDK loose XamlWriter round-trip second stop color");
                     AssertEqual(1.0, roundTrippedBrush.GradientStops[1].Offset, "external SDK loose XamlWriter round-trip second stop offset");
 
+                    var systemResourceKey = MenuItem.SeparatorStyleKey;
+                    var systemResourceStyle = new Style(typeof(MenuItem));
+                    var systemResourceDictionary = new ResourceDictionary
+                    {
+                        { systemResourceKey, systemResourceStyle }
+                    };
+                    string systemResourceSerialized = XamlWriter.Save(systemResourceDictionary);
+                    AssertContains("ResourceDictionary", systemResourceSerialized, "external SDK loose XamlWriter serialized system ResourceDictionary");
+                    AssertContains("x:Key", systemResourceSerialized, "external SDK loose XamlWriter serialized system resource key directive");
+                    AssertContains("MenuItem", systemResourceSerialized, "external SDK loose XamlWriter serialized system resource key owner");
+                    AssertContains("SeparatorStyleKey", systemResourceSerialized, "external SDK loose XamlWriter serialized system resource key member");
+                    var roundTrippedSystemResources = RequireType<ResourceDictionary>(
+                        XamlReader.Parse(systemResourceSerialized),
+                        "external SDK loose XamlWriter round-trip system ResourceDictionary");
+                    var roundTrippedSystemStyle = RequireType<Style>(
+                        roundTrippedSystemResources[systemResourceKey],
+                        "external SDK loose XamlWriter round-trip system-key style");
+                    AssertEqual(typeof(MenuItem), roundTrippedSystemStyle.TargetType, "external SDK loose XamlWriter round-trip system-key style target");
+
                     string styleDictionaryXaml =
                         "<ResourceDictionary xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" " +
                         "xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\">" +

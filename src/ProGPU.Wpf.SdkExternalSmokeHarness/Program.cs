@@ -320,7 +320,8 @@ internal static class Program
             <ResourceDictionary
                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                xmlns:local="clr-namespace:ExternalSdkApp">
+                xmlns:local="clr-namespace:ExternalSdkApp"
+                xmlns:sys="clr-namespace:System;assembly=System.Private.CoreLib">
                 <local:ExternalUpperConverter x:Key="ExternalUpperConverter" />
                 <local:ExternalSummaryConverter x:Key="ExternalSummaryConverter" />
                 <SolidColorBrush
@@ -330,8 +331,27 @@ internal static class Program
                     x:Key="ExternalDynamicBrush"
                     Color="#225588" />
                 <sys:String
-                    x:Key="ExternalStaticText"
-                    xmlns:sys="clr-namespace:System;assembly=System.Private.CoreLib">External SDK resource text</sys:String>
+                    x:Key="ExternalStaticText">External SDK resource text</sys:String>
+                <ObjectDataProvider
+                    x:Key="ExternalObjectDataProvider"
+                    IsAsynchronous="False"
+                    MethodName="CreateSummary"
+                    ObjectType="{x:Type local:ExternalResourceFactory}">
+                    <ObjectDataProvider.MethodParameters>
+                        <sys:String>external-provider</sys:String>
+                        <sys:Int32>3</sys:Int32>
+                    </ObjectDataProvider.MethodParameters>
+                </ObjectDataProvider>
+                <XmlDataProvider
+                    x:Key="ExternalXmlDataProvider"
+                    IsAsynchronous="False"
+                    XPath="/external/item">
+                    <x:XData>
+                        <external xmlns="">
+                            <item name="external-xml" value="provider" />
+                        </external>
+                    </x:XData>
+                </XmlDataProvider>
                 <ControlTemplate
                     x:Key="ExternalButtonTemplate"
                     TargetType="{x:Type Button}">
@@ -445,6 +465,12 @@ internal static class Program
                         x:Name="ExternalStartupResourceText"
                         Foreground="{DynamicResource ExternalStartupBrush}"
                         Text="{DynamicResource ExternalStartupText}" />
+                    <TextBlock
+                        x:Name="ExternalObjectProviderText"
+                        Text="{Binding Source={StaticResource ExternalObjectDataProvider}}" />
+                    <TextBlock
+                        x:Name="ExternalXmlProviderText"
+                        Text="{Binding Source={StaticResource ExternalXmlDataProvider}, XPath=@name}" />
                     <Button
                         x:Name="ExternalStyledButton"
                         Style="{StaticResource ExternalTriggeredButtonStyle}" />
@@ -1198,6 +1224,14 @@ internal static class Program
                 public bool IsActive { get; set; }
             }
 
+            public static class ExternalResourceFactory
+            {
+                public static string CreateSummary(string prefix, int value)
+                {
+                    return $"{prefix}:{value}";
+                }
+            }
+
             public sealed class ExternalNode
             {
                 public ExternalNode(string name, string kind)
@@ -1336,6 +1370,7 @@ internal static class Program
                         "external SDK user-control named TextBlock");
                     AssertEqual("External SDK library panel", captionText.Text, "external SDK user-control ElementName binding");
                     ValidateApplicationResources(window);
+                    ValidateDataProviders(window);
                     ValidateBindings(window);
                     ValidateStylesAndTemplates(window);
                     ValidateMenusAndChoiceControls(window);
@@ -1553,6 +1588,43 @@ internal static class Program
                     window.ExternalItems.Add(new ExternalItem("Gamma", "Data"));
                     DrainDispatcher();
                     AssertEqual(3, itemsList.Items.Count, "external SDK bound items count after collection change");
+                }
+
+                private static void ValidateDataProviders(MainWindow window)
+                {
+                    var objectProvider = RequireType<ObjectDataProvider>(
+                        window.FindResource("ExternalObjectDataProvider"),
+                        "external SDK ObjectDataProvider resource");
+                    AssertEqual(false, objectProvider.IsAsynchronous, "external SDK ObjectDataProvider synchronous flag");
+                    AssertEqual("CreateSummary", objectProvider.MethodName, "external SDK ObjectDataProvider method name");
+                    AssertEqual(typeof(ExternalResourceFactory), objectProvider.ObjectType, "external SDK ObjectDataProvider object type");
+                    AssertEqual(2, objectProvider.MethodParameters.Count, "external SDK ObjectDataProvider method parameter count");
+                    AssertEqual("external-provider", RequireType<string>(objectProvider.MethodParameters[0], "external SDK ObjectDataProvider first parameter"), "external SDK ObjectDataProvider first parameter");
+                    AssertEqual(3, RequireType<int>(objectProvider.MethodParameters[1], "external SDK ObjectDataProvider second parameter"), "external SDK ObjectDataProvider second parameter");
+                    AssertEqual("external-provider:3", objectProvider.Data, "external SDK ObjectDataProvider data");
+
+                    var objectProviderText = RequireType<TextBlock>(
+                        window.FindName("ExternalObjectProviderText"),
+                        "external SDK ObjectDataProvider text block");
+                    AssertEqual("external-provider:3", objectProviderText.Text, "external SDK ObjectDataProvider bound text");
+                    var objectProviderBinding = objectProviderText.GetBindingExpression(TextBlock.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK ObjectDataProvider text BindingExpression.");
+                    AssertEqual(objectProvider, objectProviderBinding.ParentBinding.Source, "external SDK ObjectDataProvider binding source");
+
+                    var xmlProvider = RequireType<XmlDataProvider>(
+                        window.FindResource("ExternalXmlDataProvider"),
+                        "external SDK XmlDataProvider resource");
+                    AssertEqual(false, xmlProvider.IsAsynchronous, "external SDK XmlDataProvider synchronous flag");
+                    AssertEqual("/external/item", xmlProvider.XPath, "external SDK XmlDataProvider XPath");
+
+                    var xmlProviderText = RequireType<TextBlock>(
+                        window.FindName("ExternalXmlProviderText"),
+                        "external SDK XmlDataProvider text block");
+                    AssertEqual("external-xml", xmlProviderText.Text, "external SDK XmlDataProvider bound text");
+                    var xmlProviderBinding = xmlProviderText.GetBindingExpression(TextBlock.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK XmlDataProvider text BindingExpression.");
+                    AssertEqual(xmlProvider, xmlProviderBinding.ParentBinding.Source, "external SDK XmlDataProvider binding source");
+                    AssertEqual("@name", xmlProviderBinding.ParentBinding.XPath, "external SDK XmlDataProvider binding XPath");
                 }
 
                 private static void ValidateBindings(MainWindow window)

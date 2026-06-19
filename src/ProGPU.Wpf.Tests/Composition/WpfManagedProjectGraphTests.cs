@@ -5446,6 +5446,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalStaticBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalDynamicBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalStaticText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalObjectDataProvider", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ObjectDataProvider.MethodParameters", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalResourceFactory", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalXmlDataProvider", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:XData", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalObjectProviderText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalXmlProviderText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalButtonTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalBasedButtonStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalTriggeredButtonStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -5569,6 +5576,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DataType=\"{x:Type local:ExternalItem}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ObservableCollection<ExternalItem>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateApplicationResources(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateDataProviders(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ObjectDataProvider data", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ObjectDataProvider bound text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ObjectDataProvider binding source", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK XmlDataProvider bound text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK XmlDataProvider binding XPath", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalUpperConverter", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalSummaryConverter", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalNonEmptyValidationRule", externalSdkHarnessProgram, StringComparison.Ordinal);

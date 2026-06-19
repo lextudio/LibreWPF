@@ -556,6 +556,25 @@ internal static class Program
         object standaloneAccessText = Invoke(window, "FindName", "StandaloneAccessText");
         AssertType(standaloneAccessText, "System.Windows.Controls.AccessText", "standalone access text");
         AssertEqual("_Standalone access", GetProperty(standaloneAccessText, "Text"), "standalone access text");
+        object ancestorBindingBorder = Invoke(window, "FindName", "AncestorBindingBorder");
+        AssertType(ancestorBindingBorder, "System.Windows.Controls.Border", "ancestor binding border");
+        AssertEqual("ancestor binding value", GetProperty(ancestorBindingBorder, "Tag"), "ancestor binding border tag");
+        object ancestorBindingText = Invoke(window, "FindName", "AncestorBindingText");
+        AssertType(ancestorBindingText, "System.Windows.Controls.TextBlock", "ancestor binding text");
+        Type ancestorBindingOperationsType = GetRequiredType(presentationFramework, "System.Windows.Data.BindingOperations");
+        object ancestorTextProperty = GetStaticField(ancestorBindingText.GetType(), "TextProperty");
+        object ancestorBindingExpression = InvokeStatic(ancestorBindingOperationsType, "GetBindingExpression", ancestorBindingText, ancestorTextProperty);
+        AssertType(ancestorBindingExpression, "System.Windows.Data.BindingExpression", "ancestor binding expression");
+        object ancestorParentBinding = GetProperty(ancestorBindingExpression, "ParentBinding");
+        AssertEqual("Tag", GetBindingPath(ancestorParentBinding), "ancestor binding path");
+        object ancestorRelativeSource = GetProperty(ancestorParentBinding, "RelativeSource");
+        AssertEqual("FindAncestor", GetProperty(ancestorRelativeSource, "Mode").ToString() ?? string.Empty, "ancestor binding relative-source mode");
+        AssertEqual("System.Windows.Controls.Border", GetProperty(ancestorRelativeSource, "AncestorType").ToString() ?? string.Empty, "ancestor binding relative-source type");
+        if (flushDispatcherOperations is not null)
+        {
+            flushDispatcherOperations(window);
+            AssertEqual("ancestor binding value", GetProperty(ancestorBindingText, "Text"), "ancestor binding resolved text");
+        }
         object mutableStatusText = Invoke(window, "FindName", "MutableStatusText");
         AssertType(mutableStatusText, "System.Windows.Controls.TextBlock", "mutable status text element");
         AssertEqual("initial binding status", GetProperty(mutableStatusText, "Text"), "mutable status initial binding text");

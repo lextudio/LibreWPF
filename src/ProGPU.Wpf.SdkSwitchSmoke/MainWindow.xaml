@@ -340,6 +340,16 @@
                 x:Name="StandaloneAccessText"
                 Text="_Standalone access" />
         </StackPanel>
+        <Border
+            x:Name="AncestorBindingBorder"
+            Margin="0,6,0,0"
+            Tag="ancestor binding value">
+            <StackPanel>
+                <TextBlock
+                    x:Name="AncestorBindingText"
+                    Text="{Binding Tag, RelativeSource={RelativeSource AncestorType={x:Type Border}}}" />
+            </StackPanel>
+        </Border>
         <TextBlock
             x:Name="MutableStatusText"
             Margin="0,6,0,0"

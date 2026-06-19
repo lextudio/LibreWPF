@@ -4755,6 +4755,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Target=\"{Binding ElementName=InputBox}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"StandaloneAccessText\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"_Standalone access\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"AncestorBindingBorder\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Tag=\"ancestor binding value\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"AncestorBindingText\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("RelativeSource={RelativeSource AncestorType={x:Type Border}}", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MutableStatusText\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding MutableStatus}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ValidatedInputBox\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -5273,6 +5277,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("input access label target", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"StandaloneAccessText\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("standalone access text", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"AncestorBindingBorder\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ancestor binding border tag", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"AncestorBindingText\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ancestor binding relative-source mode", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ancestor binding resolved text", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetAssemblyFromContext", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"MutableStatusText\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("mutable status initial binding text", runtimeHarnessProgram, StringComparison.Ordinal);

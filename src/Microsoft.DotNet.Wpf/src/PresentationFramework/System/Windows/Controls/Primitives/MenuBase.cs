@@ -547,7 +547,9 @@ namespace System.Windows.Controls.Primitives
                     if (MenuBase.IsDescendant(menu, e.OriginalSource as DependencyObject))
                     {
                         // Take capture if one of our children gave up capture
-                        if (menu.IsMenuMode && Mouse.Captured == null && MS.Win32.SafeNativeMethods.GetCapture() == IntPtr.Zero)
+                        if (menu.IsMenuMode &&
+                            Mouse.Captured == null &&
+                            (!OperatingSystem.IsWindows() || MS.Win32.SafeNativeMethods.GetCapture() == IntPtr.Zero))
                         {
                             Mouse.Capture(menu, CaptureMode.SubTree);
                             e.Handled = true;
@@ -607,9 +609,14 @@ namespace System.Windows.Controls.Primitives
                 // HwndSource.  This enables child HWNDs, other top-level
                 // non-WPF HWNDs, or even child HWNDs of other WPF top-level
                 // windows to retain focus when menus are dismissed.
-                IntPtr hwndWithFocus = MS.Win32.UnsafeNativeMethods.GetFocus();
-                HwndSource hwndSourceWithFocus = hwndWithFocus != IntPtr.Zero ? HwndSource.CriticalFromHwnd(hwndWithFocus) : null;
-                if(hwndSourceWithFocus != null)
+                HwndSource hwndSourceWithFocus = null;
+                if (OperatingSystem.IsWindows())
+                {
+                    IntPtr hwndWithFocus = MS.Win32.UnsafeNativeMethods.GetFocus();
+                    hwndSourceWithFocus = hwndWithFocus != IntPtr.Zero ? HwndSource.CriticalFromHwnd(hwndWithFocus) : null;
+                }
+
+                if(!OperatingSystem.IsWindows() || hwndSourceWithFocus != null)
                 {
                     // We restore focus by setting focus to the parent's focus
                     // scope.  This may not seem correct, because it presumes

@@ -4,6 +4,10 @@
 
 The ProGPU branch should add reusable native primitives and shim behavior only where they let the WPF port keep real managed WPF code on the active path. Rendering, text rasterization, shader effects, vector geometry, image upload, cache/lifetime, and backend resource fixes belong in ProGPU when the alternative would be a WPF-bridge workaround or managed-side pixel/vector emulation. XAML, controls, resources, styles/templates, routed events/commands, layout metadata, application lifetime, and theme dictionaries should stay in the WPF superproject and continue to use upstream managed WPF code.
 
+## SDK Delivery Requirement
+
+The deliverable shape is a custom `ProGPU.Wpf.Sdk` that existing WPF applications can select by changing only the project `Sdk`. The SDK must hide the portable WPF transport, ProGPU/Silk.NET package graph, runtime assets, and bootstrap registration behind MSBuild imports while preserving normal WPF `ApplicationDefinition`, `Page`, `Resource`, BAML, theme, code-behind, dependency-property, binding, command, layout, and control-manager behavior. Any required source or XAML edit in a normal app is a compatibility bug unless it is an explicitly documented Windows-only interop exception. ProGPU branch work should therefore favor native primitives and platform services that let this SDK contract keep upstream managed WPF code active, not managed bridge workarounds that customers would need to opt into.
+
 ## Current Branch State
 
 The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and-leaks`. The branch has been fast-forwarded to the latest origin commits and now includes:

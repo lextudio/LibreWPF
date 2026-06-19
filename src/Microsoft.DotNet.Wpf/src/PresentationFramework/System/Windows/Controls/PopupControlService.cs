@@ -94,7 +94,7 @@ namespace System.Windows.Controls
                             // the mouse to the same item, the tooltip will reappear.  If
                             // the deactivation is coming from a window grabbing capture
                             // (such as Drag and Drop) do not clear the property.
-                            if (MS.Win32.SafeNativeMethods.GetCapture() == IntPtr.Zero)
+                            if (!OperatingSystem.IsWindows() || MS.Win32.SafeNativeMethods.GetCapture() == IntPtr.Zero)
                             {
                                 LastMouseToolTipOwner = null;
                             }
@@ -1750,5 +1750,4 @@ namespace System.Windows.Controls
         #endregion
     }
 }
-
 

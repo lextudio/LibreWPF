@@ -4131,6 +4131,44 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Markup",
             "XamlReader.cs"));
+        var popupControlService = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Controls",
+            "PopupControlService.cs"));
+        var comboBox = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Controls",
+            "ComboBox.cs"));
+        var popup = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Controls",
+            "Primitives",
+            "Popup.cs"));
+        var menuBase = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Controls",
+            "Primitives",
+            "MenuBase.cs"));
         var systemParameters = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4326,6 +4364,11 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(systemResources, "if (!OperatingSystem.IsWindows())", "new HwndWrapper(");
         AssertGuardBefore(systemResources, "if (OperatingSystem.IsWindows())", "XamlAccessLevel.AssemblyAccessTo(assembly)");
         AssertGuardBefore(xamlReader, "if (internalTypeHelper != null && OperatingSystem.IsWindows())", "XamlAccessLevel.AssemblyAccessTo(streamInfo.Assembly)");
+        AssertGuardBefore(popupControlService, "if (!OperatingSystem.IsWindows()", "MS.Win32.SafeNativeMethods.GetCapture()");
+        AssertGuardBefore(comboBox, "(!OperatingSystem.IsWindows()", "MS.Win32.SafeNativeMethods.GetCapture()");
+        AssertGuardBefore(popup, "(!OperatingSystem.IsWindows()", "MS.Win32.SafeNativeMethods.GetCapture()");
+        AssertGuardBefore(menuBase, "(!OperatingSystem.IsWindows()", "MS.Win32.SafeNativeMethods.GetCapture()");
+        AssertGuardBefore(menuBase, "if (OperatingSystem.IsWindows())", "MS.Win32.UnsafeNativeMethods.GetFocus()");
         Assert.Contains("AreComponentResourceUrisEquivalent(loadBamlSyncInfo.BamlUri, curComponentUri)", application, StringComparison.Ordinal);
         Assert.Contains("BaseUriHelper.GetAssemblyNameAndPart(", application, StringComparison.Ordinal);
         Assert.Contains("AreComponentPartNamesEquivalent(firstPartName, secondPartName)", application, StringComparison.Ordinal);

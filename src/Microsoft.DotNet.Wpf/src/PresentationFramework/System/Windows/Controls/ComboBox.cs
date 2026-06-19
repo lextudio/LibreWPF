@@ -1671,7 +1671,9 @@ namespace System.Windows.Controls
                     if (MenuBase.IsDescendant(comboBox, e.OriginalSource as DependencyObject))
                     {
                         // Take capture if one of our children gave up capture (by closing their drop down)
-                        if (comboBox.IsDropDownOpen && Mouse.Captured == null && MS.Win32.SafeNativeMethods.GetCapture() == IntPtr.Zero)
+                        if (comboBox.IsDropDownOpen &&
+                            Mouse.Captured == null &&
+                            (!OperatingSystem.IsWindows() || MS.Win32.SafeNativeMethods.GetCapture() == IntPtr.Zero))
                         {
                             Mouse.Capture(comboBox, CaptureMode.SubTree);
                             e.Handled = true;
@@ -2027,5 +2029,4 @@ namespace System.Windows.Controls
         #endregion DTypeThemeStyleKey
     }
 }
-
 

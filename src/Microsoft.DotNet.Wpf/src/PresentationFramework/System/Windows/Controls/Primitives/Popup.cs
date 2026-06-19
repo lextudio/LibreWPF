@@ -1225,7 +1225,9 @@ namespace System.Windows.Controls.Primitives
                 //
                 // Note we do not reestablish capture if we are losing capture
                 // ourselves.
-                bool reestablishCapture = e.OriginalSource != root && Mouse.Captured == null && MS.Win32.SafeNativeMethods.GetCapture() == IntPtr.Zero;
+                bool reestablishCapture = e.OriginalSource != root &&
+                    Mouse.Captured == null &&
+                    (!OperatingSystem.IsWindows() || MS.Win32.SafeNativeMethods.GetCapture() == IntPtr.Zero);
 
                 if(reestablishCapture)
                 {

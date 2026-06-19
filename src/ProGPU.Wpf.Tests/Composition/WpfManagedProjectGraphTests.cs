@@ -5697,6 +5697,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK x:Shared=false dictionary lookup", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("appResources[\"ExternalDynamicBrush\"] = new SolidColorBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK updated dynamic resource foreground", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateSystemParameters(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SystemParameters.FocusBorderWidth", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SystemParameters.PrimaryScreenWidthKey", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SystemParameters.WheelScrollLines", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK SystemParameters.{propertyName} resource", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("template.LoadContent()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK item template name binding", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window.ExternalItems.Add(new ExternalItem(\"Gamma\", \"Data\"))", externalSdkHarnessProgram, StringComparison.Ordinal);

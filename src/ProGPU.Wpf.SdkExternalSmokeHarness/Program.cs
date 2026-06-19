@@ -1546,6 +1546,7 @@ internal static class Program
                         "external SDK user-control named TextBlock");
                     AssertEqual("External SDK library panel", captionText.Text, "external SDK user-control ElementName binding");
                     ValidateApplicationResources(window);
+                    ValidateSystemParameters(window);
                     ValidateFreezableResources();
                     ValidateLooseXamlReaderWriter();
                     ValidateDataProviders(window);
@@ -1795,6 +1796,115 @@ internal static class Program
                     window.ExternalItems.Add(new ExternalItem("Gamma", "Data"));
                     DrainDispatcher();
                     AssertEqual(3, itemsList.Items.Count, "external SDK bound items count after collection change");
+                }
+
+                private static void ValidateSystemParameters(FrameworkElement resourceOwner)
+                {
+                    AssertSystemParameterMetric(
+                        resourceOwner,
+                        "FocusBorderWidth",
+                        SystemParameters.FocusBorderWidth,
+                        SystemParameters.FocusBorderWidthKey,
+                        1.0);
+                    AssertSystemParameterMetric(
+                        resourceOwner,
+                        "FocusBorderHeight",
+                        SystemParameters.FocusBorderHeight,
+                        SystemParameters.FocusBorderHeightKey,
+                        1.0);
+                    AssertSystemParameterMetric(
+                        resourceOwner,
+                        "PrimaryScreenWidth",
+                        SystemParameters.PrimaryScreenWidth,
+                        SystemParameters.PrimaryScreenWidthKey,
+                        1024.0);
+                    AssertSystemParameterMetric(
+                        resourceOwner,
+                        "PrimaryScreenHeight",
+                        SystemParameters.PrimaryScreenHeight,
+                        SystemParameters.PrimaryScreenHeightKey,
+                        768.0);
+                    AssertSystemParameterMetric(
+                        resourceOwner,
+                        "VerticalScrollBarWidth",
+                        SystemParameters.VerticalScrollBarWidth,
+                        SystemParameters.VerticalScrollBarWidthKey,
+                        17.0);
+                    AssertSystemParameterMetric(
+                        resourceOwner,
+                        "HorizontalScrollBarHeight",
+                        SystemParameters.HorizontalScrollBarHeight,
+                        SystemParameters.HorizontalScrollBarHeightKey,
+                        17.0);
+                    AssertSystemParameterMetric(
+                        resourceOwner,
+                        "CaretWidth",
+                        SystemParameters.CaretWidth,
+                        SystemParameters.CaretWidthKey,
+                        1.0);
+                    AssertSystemParameterValue(
+                        resourceOwner,
+                        "HighContrast",
+                        SystemParameters.HighContrast,
+                        SystemParameters.HighContrastKey,
+                        false);
+                    AssertSystemParameterValue(
+                        resourceOwner,
+                        "DropShadow",
+                        SystemParameters.DropShadow,
+                        SystemParameters.DropShadowKey,
+                        false);
+                    AssertSystemParameterValue(
+                        resourceOwner,
+                        "WheelScrollLines",
+                        SystemParameters.WheelScrollLines,
+                        SystemParameters.WheelScrollLinesKey,
+                        3);
+                }
+
+                private static void AssertSystemParameterMetric(
+                    FrameworkElement resourceOwner,
+                    string propertyName,
+                    double value,
+                    object resourceKey,
+                    double expectedNonWindowsValue)
+                {
+                    if (OperatingSystem.IsWindows())
+                    {
+                        if (value < 0)
+                        {
+                            throw new InvalidOperationException(
+                                $"Expected external SDK SystemParameters.{propertyName} to be non-negative, but found '{value}'.");
+                        }
+                    }
+                    else
+                    {
+                        AssertClose(expectedNonWindowsValue, value, $"external SDK SystemParameters.{propertyName}");
+                    }
+
+                    object resourceValue = resourceOwner.TryFindResource(resourceKey)
+                        ?? throw new InvalidOperationException($"Expected external SDK SystemParameters.{propertyName} resource.");
+                    AssertClose(
+                        value,
+                        Convert.ToDouble(resourceValue, CultureInfo.InvariantCulture),
+                        $"external SDK SystemParameters.{propertyName} resource");
+                }
+
+                private static void AssertSystemParameterValue<T>(
+                    FrameworkElement resourceOwner,
+                    string propertyName,
+                    T value,
+                    object resourceKey,
+                    T expectedNonWindowsValue)
+                {
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        AssertEqual(expectedNonWindowsValue, value, $"external SDK SystemParameters.{propertyName}");
+                    }
+
+                    object resourceValue = resourceOwner.TryFindResource(resourceKey)
+                        ?? throw new InvalidOperationException($"Expected external SDK SystemParameters.{propertyName} resource.");
+                    AssertEqual(value, (T)resourceValue, $"external SDK SystemParameters.{propertyName} resource");
                 }
 
                 private static void ValidateFreezableResources()

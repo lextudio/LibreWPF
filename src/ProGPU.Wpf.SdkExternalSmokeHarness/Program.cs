@@ -330,6 +330,19 @@ internal static class Program
                 <SolidColorBrush
                     x:Key="ExternalDynamicBrush"
                     Color="#225588" />
+                <SolidColorBrush
+                    x:Key="ExternalFreezableBrush"
+                    Color="#5B8C7A"
+                    Opacity="0.75" />
+                <LinearGradientBrush
+                    x:Key="ExternalFreezableGradientBrush"
+                    StartPoint="0,0"
+                    EndPoint="1,1"
+                    Opacity="0.8">
+                    <GradientStop Color="#2F6B54" Offset="0" />
+                    <GradientStop Color="#B15E3B" Offset="0.5" />
+                    <GradientStop Color="#4B5E9D" Offset="1" />
+                </LinearGradientBrush>
                 <sys:String
                     x:Key="ExternalStaticText">External SDK resource text</sys:String>
                 <ObjectDataProvider
@@ -1397,6 +1410,7 @@ internal static class Program
                         "external SDK user-control named TextBlock");
                     AssertEqual("External SDK library panel", captionText.Text, "external SDK user-control ElementName binding");
                     ValidateApplicationResources(window);
+                    ValidateFreezableResources();
                     ValidateDataProviders(window);
                     ValidateBindings(window);
                     ValidateStylesAndTemplates(window);
@@ -1615,6 +1629,59 @@ internal static class Program
                     window.ExternalItems.Add(new ExternalItem("Gamma", "Data"));
                     DrainDispatcher();
                     AssertEqual(3, itemsList.Items.Count, "external SDK bound items count after collection change");
+                }
+
+                private static void ValidateFreezableResources()
+                {
+                    var appResources = Application.Current?.Resources
+                        ?? throw new InvalidOperationException("External SDK validation requires Application resources.");
+                    var brush = RequireType<SolidColorBrush>(
+                        appResources["ExternalFreezableBrush"],
+                        "external SDK Freezable brush resource");
+                    AssertEqual("#FF5B8C7A", brush.Color.ToString(), "external SDK Freezable brush color");
+                    AssertEqual(0.75, brush.Opacity, "external SDK Freezable brush opacity");
+                    AssertEqual(true, brush.CanFreeze, "external SDK Freezable brush can freeze");
+                    if (!brush.IsFrozen)
+                    {
+                        brush.Freeze();
+                    }
+
+                    AssertEqual(true, brush.IsFrozen, "external SDK Freezable brush frozen state");
+                    var brushClone = brush.Clone();
+                    AssertEqual(false, brushClone.IsFrozen, "external SDK Freezable brush clone mutable state");
+                    brushClone.Opacity = 0.33;
+                    AssertEqual(0.33, brushClone.Opacity, "external SDK Freezable brush clone mutable opacity");
+                    var brushCurrentValueClone = brush.CloneCurrentValue();
+                    AssertEqual(false, brushCurrentValueClone.IsFrozen, "external SDK Freezable brush current-value clone mutable state");
+                    AssertEqual("#FF5B8C7A", brushCurrentValueClone.Color.ToString(), "external SDK Freezable brush current-value clone color");
+                    AssertEqual(0.75, brushCurrentValueClone.Opacity, "external SDK Freezable brush current-value clone opacity");
+
+                    var gradient = RequireType<LinearGradientBrush>(
+                        appResources["ExternalFreezableGradientBrush"],
+                        "external SDK Freezable gradient resource");
+                    AssertEqual(0.8, gradient.Opacity, "external SDK Freezable gradient opacity");
+                    AssertEqual(3, gradient.GradientStops.Count, "external SDK Freezable gradient stop count");
+                    AssertEqual("#FF2F6B54", gradient.GradientStops[0].Color.ToString(), "external SDK Freezable gradient first stop color");
+                    AssertEqual(0.5, gradient.GradientStops[1].Offset, "external SDK Freezable gradient second stop offset");
+                    AssertEqual(true, gradient.CanFreeze, "external SDK Freezable gradient can freeze");
+                    if (!gradient.IsFrozen)
+                    {
+                        gradient.Freeze();
+                    }
+
+                    AssertEqual(true, gradient.IsFrozen, "external SDK Freezable gradient frozen state");
+                    AssertEqual(true, gradient.GradientStops.IsFrozen, "external SDK Freezable gradient stop collection frozen state");
+                    AssertEqual(true, gradient.GradientStops[1].IsFrozen, "external SDK Freezable gradient stop frozen state");
+                    var gradientClone = gradient.Clone();
+                    AssertEqual(false, gradientClone.IsFrozen, "external SDK Freezable gradient clone mutable state");
+                    AssertEqual(false, gradientClone.GradientStops.IsFrozen, "external SDK Freezable gradient clone stop collection mutable state");
+                    gradientClone.GradientStops[1].Offset = 0.65;
+                    AssertEqual(0.65, gradientClone.GradientStops[1].Offset, "external SDK Freezable gradient clone mutable stop offset");
+                    AssertEqual(0.5, gradient.GradientStops[1].Offset, "external SDK Freezable gradient original stop offset");
+                    var gradientCurrentValueClone = gradient.CloneCurrentValue();
+                    AssertEqual(3, gradientCurrentValueClone.GradientStops.Count, "external SDK Freezable gradient current-value clone stop count");
+                    AssertEqual(false, gradientCurrentValueClone.GradientStops.IsFrozen, "external SDK Freezable gradient current-value clone stop collection");
+                    AssertEqual("#FF4B5E9D", gradientCurrentValueClone.GradientStops[2].Color.ToString(), "external SDK Freezable gradient current-value clone third stop color");
                 }
 
                 private static void ValidateDataProviders(MainWindow window)

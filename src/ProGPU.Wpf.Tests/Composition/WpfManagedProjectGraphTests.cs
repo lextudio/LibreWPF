@@ -5445,6 +5445,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<ResourceDictionary Source=\"ExternalResources.xaml\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalStaticBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalDynamicBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalFreezableBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalFreezableGradientBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("LinearGradientBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GradientStop Color=\"#2F6B54\" Offset=\"0\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GradientStop Color=\"#B15E3B\" Offset=\"0.5\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalStaticText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalObjectDataProvider", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ObjectDataProvider.MethodParameters", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -5591,6 +5596,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DataType=\"{x:Type local:ExternalItem}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ObservableCollection<ExternalItem>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateApplicationResources(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateFreezableResources()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Freezable brush clone mutable opacity", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Freezable brush current-value clone opacity", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Freezable gradient stop collection frozen state", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Freezable gradient clone mutable stop offset", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Freezable gradient current-value clone stop collection", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateDataProviders(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ObjectDataProvider data", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ObjectDataProvider bound text", externalSdkHarnessProgram, StringComparison.Ordinal);

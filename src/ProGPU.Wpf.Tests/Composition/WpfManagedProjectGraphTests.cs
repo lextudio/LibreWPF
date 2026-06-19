@@ -4308,6 +4308,9 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(xamlReader, "if (internalTypeHelper != null && OperatingSystem.IsWindows())", "XamlAccessLevel.AssemblyAccessTo(streamInfo.Assembly)");
         Assert.Contains("AreComponentResourceUrisEquivalent(loadBamlSyncInfo.BamlUri, curComponentUri)", application, StringComparison.Ordinal);
         Assert.Contains("BaseUriHelper.GetAssemblyNameAndPart(", application, StringComparison.Ordinal);
+        Assert.Contains("AreComponentPartNamesEquivalent(firstPartName, secondPartName)", application, StringComparison.Ordinal);
+        Assert.Contains("IsXamlBamlExtensionPair(firstExtension, secondExtension)", application, StringComparison.Ordinal);
+        Assert.Contains("Path.ChangeExtension(firstPartName, null)", application, StringComparison.Ordinal);
         Assert.Contains("AreOptionalComponentAssemblyPartsCompatible(firstAssemblyVersion, secondAssemblyVersion)", application, StringComparison.Ordinal);
         Assert.Contains("IsResourceAssemblyName", application, StringComparison.Ordinal);
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETFOCUSBORDERWIDTH");
@@ -4458,6 +4461,22 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
             "Directory.Build.props");
+        var libraryProjectPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchLibrary",
+            "ProGPU.Wpf.SdkSwitchLibrary.csproj");
+        var libraryDirectoryBuildPropsPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchLibrary",
+            "Directory.Build.props");
+        var libraryPanelXamlPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchLibrary",
+            "LibraryPanel.xaml");
+        var libraryPanelCodeBehindPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchLibrary",
+            "LibraryPanel.xaml.cs");
         var smokeNuGetConfigPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
@@ -4575,6 +4594,10 @@ public sealed class WpfManagedProjectGraphTests
         var portableBootstrap = File.ReadAllText(portableBootstrapPath);
         var smokeProject = File.ReadAllText(smokeProjectPath);
         var smokeDirectoryBuildProps = File.ReadAllText(smokeDirectoryBuildPropsPath);
+        var libraryProject = File.ReadAllText(libraryProjectPath);
+        var libraryDirectoryBuildProps = File.ReadAllText(libraryDirectoryBuildPropsPath);
+        var libraryPanelXaml = File.ReadAllText(libraryPanelXamlPath);
+        var libraryPanelCodeBehind = File.ReadAllText(libraryPanelCodeBehindPath);
         var smokeNuGetConfig = File.ReadAllText(smokeNuGetConfigPath);
         var smokeAppXaml = File.ReadAllText(smokeAppXamlPath);
         var smokeAppCodeBehind = File.ReadAllText(smokeAppCodeBehindPath);
@@ -4661,7 +4684,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<PackageReference Include=\"System.Windows.Extensions\" Version=\"$(ProGpuWpfSystemWindowsExtensionsVersion)\" />", portableProps, StringComparison.Ordinal);
 
         Assert.Contains("<FrameworkReference Remove=\"Microsoft.WindowsDesktop.App.WPF\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<CopyLocalLockFileAssemblies Condition=\"'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'\">true</CopyLocalLockFileAssemblies>", portableTargets, StringComparison.Ordinal);
         Assert.Contains("$(ProGpuWpfEnablePortableBootstrap)", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("And ('$(OutputType)' == 'Exe' Or '$(OutputType)' == 'WinExe')", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<Compile Include=\"$(MSBuildThisFileDirectory)ProGPU.Wpf.Sdk.PortableBootstrap.cs\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("Link=\"ProGPU.Wpf.Sdk.PortableBootstrap.cs\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("Visible=\"false\"", portableTargets, StringComparison.Ordinal);
@@ -4671,9 +4696,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<PackageReference Include=\"ProGPU.Wpf\" Version=\"$(ProGpuWpfPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"ProGPU.Backend\" Version=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"ProGPU.Scene\" Version=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"ProGPU.Vector\" Version=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"ProGPU.Text\" Version=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"ProGPU.Compute\" Version=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"ProGPU.Transpiler\" Version=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<Reference Include=\"WindowsBase\" HintPath=\"$(_ProGpuWpfManagedReferenceRoot)WindowsBase.dll\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<Reference Include=\"PresentationFramework\" HintPath=\"$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.dll\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<Reference Include=\"ProGPU.Wpf\" HintPath=\"$(_ProGpuReferenceRoot)ProGPU.Wpf.dll\"", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<Reference Include=\"ProGPU.Compute\" HintPath=\"$(_ProGpuReferenceRoot)ProGPU.Compute.dll\"", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<Reference Include=\"ProGPU.Transpiler\" HintPath=\"$(_ProGpuReferenceRoot)ProGPU.Transpiler.dll\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("Condition=\"Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationUI.dll')\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("Condition=\"Exists('$(_ProGpuWpfManagedReferenceRoot)UIAutomationTypes.dll')\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("Condition=\"Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Fluent.dll')\"", portableTargets, StringComparison.Ordinal);
@@ -4698,6 +4729,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<OutputType>WinExe</OutputType>", smokeProject, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>net11.0</TargetFramework>", smokeProject, StringComparison.Ordinal);
         Assert.Contains("<UseWPF>true</UseWPF>", smokeProject, StringComparison.Ordinal);
+        Assert.Contains(@"<ProjectReference Include=""..\ProGPU.Wpf.SdkSwitchLibrary\ProGPU.Wpf.SdkSwitchLibrary.csproj"" />", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("EnableDefaultItems", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("ApplicationDefinition Include", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("Page Include", smokeProject, StringComparison.Ordinal);
@@ -4719,6 +4751,28 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains(@"..\..\Directory.Build.props", smokeDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<EnableNETAnalyzers>false</EnableNETAnalyzers>", smokeDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>", smokeDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<ProGpuWpfReferenceMode>LocalArtifacts</ProGpuWpfReferenceMode>", smokeDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains(@"artifacts\progpu-wpf-sdk-smoke\wpf\", smokeDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains(@"artifacts\progpu-wpf-sdk-smoke\progpu\", smokeDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", libraryProject, StringComparison.Ordinal);
+        Assert.Contains("<TargetFramework>net11.0</TargetFramework>", libraryProject, StringComparison.Ordinal);
+        Assert.Contains("<UseWPF>true</UseWPF>", libraryProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("OutputType", libraryProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProGpuWpf", libraryProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("ImplicitUsings", libraryProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("EnableNETAnalyzers", libraryProject, StringComparison.Ordinal);
+        Assert.Contains(@"..\..\Directory.Build.props", libraryDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<EnableNETAnalyzers>false</EnableNETAnalyzers>", libraryDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<ProGpuWpfReferenceMode>LocalArtifacts</ProGpuWpfReferenceMode>", libraryDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains(@"artifacts\progpu-wpf-sdk-smoke\wpf\", libraryDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains(@"artifacts\progpu-wpf-sdk-smoke\progpu\", libraryDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("x:Class=\"ProGPU.Wpf.SdkSwitchLibrary.LibraryPanel\"", libraryPanelXaml, StringComparison.Ordinal);
+        Assert.Contains("LibraryAccentBrush", libraryPanelXaml, StringComparison.Ordinal);
+        Assert.Contains("ElementName=LibraryOwner", libraryPanelXaml, StringComparison.Ordinal);
+        Assert.Contains("compiled library BAML", libraryPanelXaml, StringComparison.Ordinal);
+        Assert.Contains("public partial class LibraryPanel : UserControl", libraryPanelCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DependencyProperty.Register", libraryPanelCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("InitializeComponent();", libraryPanelCodeBehind, StringComparison.Ordinal);
         Assert.Contains("artifacts/packages/Release/NonShipping", smokeNuGetConfig, StringComparison.Ordinal);
         Assert.Contains("ResourceDictionary Source=\"SmokeResources.xaml\"", smokeAppXaml, StringComparison.Ordinal);
         Assert.Contains("SmokeAccentBrush", smokeAppXaml, StringComparison.Ordinal);
@@ -5040,6 +5094,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"CompiledSmokePanel\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Caption=\"Compiled user control\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("PanelContent=\"{Binding SelectedItem.Value, ElementName=ItemsList}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("clr-namespace:ProGPU.Wpf.SdkSwitchLibrary;assembly=ProGPU.Wpf.SdkSwitchLibrary", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("library:LibraryPanel", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"CompiledLibraryPanel\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Title=\"SDK library panel\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("local:SmokeThemedControl", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ThemedSmokeControl\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"Generic theme default style\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -5297,6 +5355,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("ProGPU.Wpf.Sdk", runtimeHarnessProject, StringComparison.Ordinal);
 
         Assert.Contains("ProGPU.Wpf.SdkSwitchSmoke", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("LibraryAssemblyName = \"ProGPU.Wpf.SdkSwitchLibrary\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK switch library assembly", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("TryFindAssembly(_appOutputRoot, fileName)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("LoadUnmanagedDll(string unmanagedDllName)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetUnmanagedDllCandidates(unmanagedDllName)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PreloadSdkWindowingPlatform(loadContext, inputs.AppOutputRoot)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RegisterSdkNativeResolver(glfwAssembly, appOutputRoot)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Silk.NET.Windowing.Glfw", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ClearPortableActivation(activationServiceType);", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertDelegateTarget(\"_show\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FlushDispatcherOperations(window, \"ApplicationIdle\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"artifacts\",", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"Microsoft.DotNet.Wpf.GitHub.Debug\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"UIAutomationTypes\"", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -5655,6 +5724,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled user control relative-source binding", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"PanelContentPresenter\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled user control content binding", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"CompiledLibraryPanel\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.SdkSwitchLibrary.LibraryPanel", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled SDK library user control dependency property", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled SDK library element-name title binding", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled SDK library element-name tag binding", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled SDK library BAML text", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled SDK library resource brush color", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"ThemedSmokeControl\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("themed custom control default template", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"ThemeText\"", runtimeHarnessProgram, StringComparison.Ordinal);

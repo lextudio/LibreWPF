@@ -2470,7 +2470,7 @@ namespace System.Windows
             Invariant.Assert(firstPath != null, "firstPath should not be null");
             Invariant.Assert(secondPath != null, "secondPath should not be null");
 
-            if (string.Equals(firstPath, secondPath, StringComparison.OrdinalIgnoreCase))
+            if (AreComponentPartNamesEquivalent(firstPath, secondPath))
             {
                 return true;
             }
@@ -2493,7 +2493,7 @@ namespace System.Windows
                     out string secondAssemblyVersion,
                     out string secondAssemblyKey);
 
-                return string.Equals(firstPartName, secondPartName, StringComparison.OrdinalIgnoreCase)
+                return AreComponentPartNamesEquivalent(firstPartName, secondPartName)
                     && AreComponentAssemblyNamesEquivalent(firstAssemblyName, secondAssemblyName)
                     && AreOptionalComponentAssemblyPartsCompatible(firstAssemblyVersion, secondAssemblyVersion)
                     && AreOptionalComponentAssemblyPartsCompatible(firstAssemblyKey, secondAssemblyKey);
@@ -2522,6 +2522,33 @@ namespace System.Windows
             }
 
             return false;
+        }
+
+        private static bool AreComponentPartNamesEquivalent(string firstPartName, string secondPartName)
+        {
+            if (string.Equals(firstPartName, secondPartName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            string firstExtension = Path.GetExtension(firstPartName);
+            string secondExtension = Path.GetExtension(secondPartName);
+            if (!IsXamlBamlExtensionPair(firstExtension, secondExtension))
+            {
+                return false;
+            }
+
+            string firstWithoutExtension = Path.ChangeExtension(firstPartName, null);
+            string secondWithoutExtension = Path.ChangeExtension(secondPartName, null);
+            return string.Equals(firstWithoutExtension, secondWithoutExtension, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsXamlBamlExtensionPair(string firstExtension, string secondExtension)
+        {
+            return (string.Equals(firstExtension, ".xaml", StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(secondExtension, ".baml", StringComparison.OrdinalIgnoreCase))
+                || (string.Equals(firstExtension, ".baml", StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(secondExtension, ".xaml", StringComparison.OrdinalIgnoreCase));
         }
 
         private static bool AreOptionalComponentAssemblyPartsCompatible(string firstValue, string secondValue)

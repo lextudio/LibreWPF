@@ -1,11 +1,14 @@
 using System.Collections;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 
 internal static class Program
 {
     private const string SmokeAssemblyName = "ProGPU.Wpf.SdkSwitchSmoke";
+    private const string LibraryAssemblyName = "ProGPU.Wpf.SdkSwitchLibrary";
     private const string AppTypeName = "ProGPU.Wpf.SdkSwitchSmoke.App";
     private const string MainWindowTypeName = "ProGPU.Wpf.SdkSwitchSmoke.MainWindow";
     private const string PortableMediaContextRenderServiceTypeName = "System.Windows.Media.PortableMediaContextRenderService";
@@ -103,6 +106,9 @@ internal static class Program
         string proGpuRoot = Path.Combine(repoRoot, "artifacts", "progpu-wpf-sdk-smoke", "progpu");
 
         RequireFile(smokeAssemblyPath, "SDK switch smoke assembly");
+        RequireFile(
+            Path.Combine(appOutputRoot, LibraryAssemblyName + ".dll"),
+            "SDK switch library assembly");
         RequireOutputRuntimeAssets(appOutputRoot);
         RequireDirectory(wpfRoot, "ported WPF artifact root");
         RequireDirectory(proGpuRoot, "ProGPU artifact root");
@@ -143,12 +149,49 @@ internal static class Program
         };
     }
 
+    private static IEnumerable<string> GetUnmanagedDllCandidates(string unmanagedDllName)
+    {
+        yield return Path.GetFileName(unmanagedDllName);
+
+        if (unmanagedDllName.Contains("glfw", StringComparison.OrdinalIgnoreCase))
+        {
+            foreach (string candidate in GetNativeAssetCandidates("glfw"))
+            {
+                yield return candidate;
+            }
+        }
+
+        if (unmanagedDllName.Contains("wgpu", StringComparison.OrdinalIgnoreCase))
+        {
+            foreach (string candidate in GetNativeAssetCandidates("wgpu"))
+            {
+                yield return candidate;
+            }
+        }
+
+        string nameWithoutExtension = Path.GetFileNameWithoutExtension(unmanagedDllName);
+        if (OperatingSystem.IsWindows())
+        {
+            yield return nameWithoutExtension + ".dll";
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            yield return "lib" + nameWithoutExtension + ".dylib";
+        }
+        else
+        {
+            yield return "lib" + nameWithoutExtension + ".so";
+        }
+    }
+
     private static void RunObjectGraphSmoke(SmokeInputs inputs)
     {
         using var loadContext = CreateLoadContext(inputs);
         Assembly smokeAssembly = loadContext.LoadFromAssemblyPath(inputs.SmokeAssemblyPath);
         Assembly presentationCore = loadContext.LoadFromAssemblyName(new AssemblyName("PresentationCore"));
         Assembly presentationFramework = loadContext.LoadFromAssemblyName(new AssemblyName("PresentationFramework"));
+        PreloadSdkWindowingPlatform(loadContext, inputs.AppOutputRoot);
+        RuntimeHelpers.RunModuleConstructor(smokeAssembly.ManifestModule.ModuleHandle);
 
         ValidateSdkLooseXamlReaderWriter(presentationFramework);
         ValidatePortableClipboard(presentationCore);
@@ -213,16 +256,20 @@ internal static class Program
         Assembly smokeAssembly = loadContext.LoadFromAssemblyPath(inputs.SmokeAssemblyPath);
         Assembly presentationCore = loadContext.LoadFromAssemblyName(new AssemblyName("PresentationCore"));
         Assembly presentationFramework = loadContext.LoadFromAssemblyName(new AssemblyName("PresentationFramework"));
+        PreloadSdkWindowingPlatform(loadContext, inputs.AppOutputRoot);
+        RuntimeHelpers.RunModuleConstructor(smokeAssembly.ManifestModule.ModuleHandle);
 
         ValidateSdkLooseXamlReaderWriter(presentationFramework);
 
         object? app = null;
         SdkApplicationRunRecorder? recorder = null;
-        Type? activationServiceType = null;
+        Type? activationServiceType = GetRequiredType(presentationFramework, PortableWindowActivationServiceTypeName);
         bool runCompleted = false;
 
         try
         {
+            ClearPortableActivation(activationServiceType);
+
             app = Create(smokeAssembly, AppTypeName);
             InvokeVoid(app, "InitializeComponent");
             ValidateApp(app);
@@ -236,6 +283,7 @@ internal static class Program
                 presentationCore,
                 app,
                 out activationServiceType);
+            recorder.AssertRegistered();
 
             object exitCode = Invoke(app, "Run");
             runCompleted = true;
@@ -266,6 +314,35 @@ internal static class Program
             inputs.SmokeAssemblyPath,
             inputs.WpfRoot,
             inputs.ProGpuRoot);
+    }
+
+    private static void PreloadSdkWindowingPlatform(AssemblyLoadContext loadContext, string appOutputRoot)
+    {
+        Assembly glfwAssembly = loadContext.LoadFromAssemblyName(new AssemblyName("Silk.NET.GLFW"));
+        RegisterSdkNativeResolver(glfwAssembly, appOutputRoot);
+        Assembly webGpuAssembly = loadContext.LoadFromAssemblyName(new AssemblyName("Silk.NET.WebGPU"));
+        RegisterSdkNativeResolver(webGpuAssembly, appOutputRoot);
+        loadContext.LoadFromAssemblyName(new AssemblyName("Silk.NET.Windowing.Glfw"));
+        loadContext.LoadFromAssemblyName(new AssemblyName("Silk.NET.Input.Glfw"));
+    }
+
+    private static void RegisterSdkNativeResolver(Assembly assembly, string appOutputRoot)
+    {
+        NativeLibrary.SetDllImportResolver(
+            assembly,
+            (libraryName, _, _) =>
+            {
+                foreach (string candidate in GetUnmanagedDllCandidates(libraryName))
+                {
+                    string path = Path.Combine(appOutputRoot, candidate);
+                    if (File.Exists(path) && NativeLibrary.TryLoad(path, out IntPtr handle))
+                    {
+                        return handle;
+                    }
+                }
+
+                return IntPtr.Zero;
+            });
     }
 
     private static void ValidateApp(object app)
@@ -1489,6 +1566,24 @@ internal static class Program
         AssertType(panelContentPresenter, "System.Windows.Controls.ContentPresenter", "compiled user control content presenter");
         AssertEqual("ProGPU", GetProperty(panelContentPresenter, "Content"), "compiled user control content binding");
 
+        object compiledLibraryPanel = Invoke(window, "FindName", "CompiledLibraryPanel");
+        AssertType(compiledLibraryPanel, "ProGPU.Wpf.SdkSwitchLibrary.LibraryPanel", "compiled SDK library user control");
+        AssertAssignableTo(compiledLibraryPanel, "System.Windows.Controls.UserControl", "compiled SDK library user control base type");
+        AssertEqual("SDK library panel", GetProperty(compiledLibraryPanel, "Title"), "compiled SDK library user control dependency property");
+        AssertEqual("library tag value", GetProperty(compiledLibraryPanel, "LibraryTag"), "compiled SDK library user control tag property");
+        object libraryTitle = Invoke(compiledLibraryPanel, "FindName", "LibraryTitle");
+        AssertType(libraryTitle, "System.Windows.Controls.TextBlock", "compiled SDK library title element");
+        AssertEqual("SDK library panel", GetProperty(libraryTitle, "Text"), "compiled SDK library element-name title binding");
+        object libraryMessage = Invoke(compiledLibraryPanel, "FindName", "LibraryMessage");
+        AssertType(libraryMessage, "System.Windows.Controls.TextBlock", "compiled SDK library message element");
+        AssertEqual("compiled library BAML", GetProperty(libraryMessage, "Text"), "compiled SDK library BAML text");
+        object libraryRoot = Invoke(compiledLibraryPanel, "FindName", "LibraryRoot");
+        AssertType(libraryRoot, "System.Windows.Controls.Border", "compiled SDK library root element");
+        AssertEqual("library tag value", GetProperty(libraryRoot, "Tag"), "compiled SDK library element-name tag binding");
+        object libraryBackground = GetProperty(libraryRoot, "Background");
+        AssertType(libraryBackground, "System.Windows.Media.SolidColorBrush", "compiled SDK library resource brush");
+        AssertEqual("#FF3E7B64", GetProperty(libraryBackground, "Color").ToString() ?? string.Empty, "compiled SDK library resource brush color");
+
         object themedSmokeControl = Invoke(window, "FindName", "ThemedSmokeControl");
         AssertType(themedSmokeControl, "ProGPU.Wpf.SdkSwitchSmoke.SmokeThemedControl", "themed custom control");
         AssertAssignableTo(themedSmokeControl, "System.Windows.Controls.Control", "themed custom control base type");
@@ -1699,6 +1794,7 @@ internal static class Program
             });
 
         AssertEqual(true, GetStaticProperty(activationServiceType, "IsEnabled"), "portable activation enabled");
+        recorder.AssertRegistered();
         return recorder;
     }
 
@@ -1943,7 +2039,8 @@ internal static class Program
         }
         catch (TargetInvocationException ex) when (ex.InnerException is not null)
         {
-            throw ex.InnerException;
+            ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
+            throw;
         }
     }
 
@@ -2417,6 +2514,18 @@ internal static class Program
 
         public object Activate(object window)
         {
+            try
+            {
+                return ActivateCore(window);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("SDK startup window activation callback failed.", ex);
+            }
+        }
+
+        private object ActivateCore(object window)
+        {
             if (ActivateCount != 0)
             {
                 throw new InvalidOperationException("Expected exactly one SDK startup window activation.");
@@ -2437,6 +2546,18 @@ internal static class Program
         }
 
         public void Show(object activation)
+        {
+            try
+            {
+                ShowCore(activation);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("SDK startup window show callback failed.", ex);
+            }
+        }
+
+        private void ShowCore(object activation)
         {
             var typedActivation = AssertSameActivation(activation);
             ShowCount++;
@@ -2479,6 +2600,18 @@ internal static class Program
 
         public void Run(object activation)
         {
+            try
+            {
+                RunCore(activation);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("SDK startup window run callback failed.", ex);
+            }
+        }
+
+        private void RunCore(object activation)
+        {
             var typedActivation = AssertSameActivation(activation);
             RunCount++;
             AssertEqual(true, typedActivation.IsVisible, "SDK startup window visible before run");
@@ -2497,7 +2630,7 @@ internal static class Program
             ValidateWindow(
                 typedActivation.Window,
                 validateFrameContent: true,
-                flushDispatcherOperations: window => FlushDispatcherOperations(window, "DataBind", "Loaded", "Render", "ApplicationIdle"));
+                flushDispatcherOperations: window => FlushDispatcherOperations(window, "ApplicationIdle"));
             ValidatePortableMessageBox(_presentationFramework, typedActivation.Window);
             ValidatePortableFileDialogs(_presentationFramework, typedActivation.Window);
         }
@@ -2526,6 +2659,19 @@ internal static class Program
             AssertEqual(true, _activation.IsClosed, "SDK recording activation close state");
             AssertEqual(true, _activation.IsDisposed, "SDK recording activation dispose state");
             AssertEqual(0, HideCount, "SDK startup window hide count");
+        }
+
+        public void AssertRegistered()
+        {
+            AssertDelegateTarget("_activate", "SDK portable activation recorder activate target");
+            AssertDelegateTarget("_show", "SDK portable activation recorder show target");
+            AssertDelegateTarget("_run", "SDK portable activation recorder run target");
+        }
+
+        private void AssertDelegateTarget(string fieldName, string description)
+        {
+            object activationDelegate = GetStaticField(_activationServiceType, fieldName);
+            AssertSame(this, GetProperty(activationDelegate, "Target"), description);
         }
 
         public void Dispose()
@@ -2651,6 +2797,20 @@ internal static class Program
             return assemblyPath is null ? null : LoadFromAssemblyPath(assemblyPath);
         }
 
+        protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)
+        {
+            foreach (string candidate in GetUnmanagedDllCandidates(unmanagedDllName))
+            {
+                string path = Path.Combine(_appOutputRoot, candidate);
+                if (File.Exists(path) && NativeLibrary.TryLoad(path, out IntPtr handle))
+                {
+                    return handle;
+                }
+            }
+
+            return IntPtr.Zero;
+        }
+
         private string? TryResolveAssemblyPath(AssemblyName assemblyName)
         {
             string fileName = assemblyName.Name + ".dll";
@@ -2669,10 +2829,46 @@ internal static class Program
                 return path;
             }
 
-            path = TryFindArtifactAssembly(assemblyName.Name, "net11.0")
+            path = TryFindAssembly(_appOutputRoot, fileName)
+                ?? TryFindArtifactAssembly(assemblyName.Name, "net11.0")
                 ?? TryFindArtifactAssembly(assemblyName.Name, "net10.0")
                 ?? _resolver.ResolveAssemblyToPath(assemblyName);
             return path is not null && File.Exists(path) ? path : null;
+        }
+
+        private static IEnumerable<string> GetUnmanagedDllCandidates(string unmanagedDllName)
+        {
+            yield return Path.GetFileName(unmanagedDllName);
+
+            if (unmanagedDllName.Contains("glfw", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (string candidate in GetNativeAssetCandidates("glfw"))
+                {
+                    yield return candidate;
+                }
+            }
+
+            if (unmanagedDllName.Contains("wgpu", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (string candidate in GetNativeAssetCandidates("wgpu"))
+                {
+                    yield return candidate;
+                }
+            }
+
+            string nameWithoutExtension = Path.GetFileNameWithoutExtension(unmanagedDllName);
+            if (OperatingSystem.IsWindows())
+            {
+                yield return nameWithoutExtension + ".dll";
+            }
+            else if (OperatingSystem.IsMacOS())
+            {
+                yield return "lib" + nameWithoutExtension + ".dylib";
+            }
+            else
+            {
+                yield return "lib" + nameWithoutExtension + ".so";
+            }
         }
 
         private static string? TryFindAssembly(string root, string fileName)

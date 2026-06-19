@@ -4,4 +4,8 @@
     <TargetFramework>net11.0</TargetFramework>
     <UseWPF>true</UseWPF>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ProGPU.Wpf.SdkSwitchLibrary\ProGPU.Wpf.SdkSwitchLibrary.csproj" />
+  </ItemGroup>
 </Project>

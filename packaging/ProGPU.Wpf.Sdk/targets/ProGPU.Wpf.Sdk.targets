@@ -1,10 +1,14 @@
 <Project>
 
+  <PropertyGroup>
+    <CopyLocalLockFileAssemblies Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'">true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'">
     <FrameworkReference Remove="Microsoft.WindowsDesktop.App.WPF" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfEnablePortableBootstrap)' == 'true'">
+  <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfEnablePortableBootstrap)' == 'true' And ('$(OutputType)' == 'Exe' Or '$(OutputType)' == 'WinExe')">
     <Compile Include="$(MSBuildThisFileDirectory)ProGPU.Wpf.Sdk.PortableBootstrap.cs"
              Link="ProGPU.Wpf.Sdk.PortableBootstrap.cs"
              Visible="false" />
@@ -25,6 +29,8 @@
     <PackageReference Include="ProGPU.Scene" Version="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.Vector" Version="$(ProGpuPackageVersion)" />
     <PackageReference Include="ProGPU.Text" Version="$(ProGpuPackageVersion)" />
+    <PackageReference Include="ProGPU.Compute" Version="$(ProGpuPackageVersion)" />
+    <PackageReference Include="ProGPU.Transpiler" Version="$(ProGpuPackageVersion)" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'LocalArtifacts' And '$(_ProGpuWpfManagedReferenceRoot)' != ''">
@@ -65,6 +71,8 @@
     <Reference Include="ProGPU.Scene" HintPath="$(_ProGpuReferenceRoot)ProGPU.Scene.dll" Private="true" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Scene.dll')" />
     <Reference Include="ProGPU.Vector" HintPath="$(_ProGpuReferenceRoot)ProGPU.Vector.dll" Private="true" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Vector.dll')" />
     <Reference Include="ProGPU.Text" HintPath="$(_ProGpuReferenceRoot)ProGPU.Text.dll" Private="true" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Text.dll')" />
+    <Reference Include="ProGPU.Compute" HintPath="$(_ProGpuReferenceRoot)ProGPU.Compute.dll" Private="true" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Compute.dll')" />
+    <Reference Include="ProGPU.Transpiler" HintPath="$(_ProGpuReferenceRoot)ProGPU.Transpiler.dll" Private="true" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Transpiler.dll')" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'LocalArtifacts' And '$(_ProGpuReferenceRoot)' != ''">
@@ -73,6 +81,8 @@
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuReferenceRoot)ProGPU.Scene.dll" TargetPath="ProGPU.Scene.dll" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Scene.dll')" />
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuReferenceRoot)ProGPU.Vector.dll" TargetPath="ProGPU.Vector.dll" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Vector.dll')" />
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuReferenceRoot)ProGPU.Text.dll" TargetPath="ProGPU.Text.dll" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Text.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuReferenceRoot)ProGPU.Compute.dll" TargetPath="ProGPU.Compute.dll" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Compute.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuReferenceRoot)ProGPU.Transpiler.dll" TargetPath="ProGPU.Transpiler.dll" Condition="Exists('$(_ProGpuReferenceRoot)ProGPU.Transpiler.dll')" />
   </ItemGroup>
 
   <Target Name="_ProGpuWpfSdkValidatePortableReferences"

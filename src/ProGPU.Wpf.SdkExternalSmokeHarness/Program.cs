@@ -593,6 +593,39 @@ internal static class Program
                         ItemsPanel="{StaticResource ExternalItemsPanelTemplate}"
                         ItemsSource="{Binding ExternalItems}"
                         ItemStringFormat="External item {0}" />
+                    <ListView
+                        x:Name="ExternalListView"
+                        ItemsSource="{Binding ExternalItems}"
+                        SelectedIndex="0">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn
+                                    Header="Name"
+                                    DisplayMemberBinding="{Binding Name}" />
+                                <GridViewColumn
+                                    Header="Kind"
+                                    DisplayMemberBinding="{Binding Kind}" />
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                    <DataGrid
+                        x:Name="ExternalDataGrid"
+                        AutoGenerateColumns="False"
+                        CanUserAddRows="False"
+                        ItemsSource="{Binding ExternalItems}"
+                        SelectedIndex="1">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn
+                                Header="Name"
+                                Binding="{Binding Name}" />
+                            <DataGridTextColumn
+                                Header="Kind"
+                                Binding="{Binding Kind}" />
+                            <DataGridCheckBoxColumn
+                                Header="Active"
+                                Binding="{Binding IsActive}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
                     <TreeView
                         x:Name="ExternalTreeView"
                         ItemTemplate="{StaticResource ExternalNodeTemplate}"
@@ -872,8 +905,8 @@ internal static class Program
 
                 public ObservableCollection<ExternalItem> ExternalItems { get; } =
                 [
-                    new ExternalItem("Alpha", "Framework"),
-                    new ExternalItem("Beta", "Rendering")
+                    new ExternalItem("Alpha", "Framework", true),
+                    new ExternalItem("Beta", "Rendering", false)
                 ];
 
                 public ObservableCollection<ExternalNode> ExternalNodes { get; } =
@@ -1151,15 +1184,18 @@ internal static class Program
 
             public sealed class ExternalItem
             {
-                public ExternalItem(string name, string kind)
+                public ExternalItem(string name, string kind, bool isActive = false)
                 {
                     Name = name;
                     Kind = kind;
+                    IsActive = isActive;
                 }
 
                 public string Name { get; }
 
                 public string Kind { get; }
+
+                public bool IsActive { get; set; }
             }
 
             public sealed class ExternalNode
@@ -1864,6 +1900,66 @@ internal static class Program
                     AssertEqual(4, itemPanelList.AlternationCount, "external SDK item panel list alternation count");
                     AssertEqual("External item {0}", itemPanelList.ItemStringFormat, "external SDK item panel list string format");
                     AssertEqual(3, itemPanelList.Items.Count, "external SDK item panel list collection count after mutation");
+
+                    var listView = RequireType<ListView>(
+                        window.FindName("ExternalListView"),
+                        "external SDK list view");
+                    AssertEqual(3, listView.Items.Count, "external SDK list view collection count after mutation");
+                    AssertEqual(0, listView.SelectedIndex, "external SDK list view selected index");
+                    AssertEqual(window.ExternalItems[0], listView.SelectedItem, "external SDK list view selected item");
+                    var gridView = RequireType<GridView>(
+                        listView.View,
+                        "external SDK list view grid view");
+                    AssertEqual(2, gridView.Columns.Count, "external SDK list view grid-view column count");
+                    var listViewNameColumn = gridView.Columns[0];
+                    var listViewKindColumn = gridView.Columns[1];
+                    AssertEqual("Name", RequireType<string>(listViewNameColumn.Header, "external SDK list view name column header"), "external SDK list view name column header");
+                    AssertEqual("Kind", RequireType<string>(listViewKindColumn.Header, "external SDK list view kind column header"), "external SDK list view kind column header");
+                    var listViewNameBinding = RequireType<Binding>(
+                        listViewNameColumn.DisplayMemberBinding,
+                        "external SDK list view name column binding");
+                    var listViewKindBinding = RequireType<Binding>(
+                        listViewKindColumn.DisplayMemberBinding,
+                        "external SDK list view kind column binding");
+                    AssertEqual("Name", listViewNameBinding.Path.Path, "external SDK list view name binding path");
+                    AssertEqual("Kind", listViewKindBinding.Path.Path, "external SDK list view kind binding path");
+
+                    var dataGrid = RequireType<DataGrid>(
+                        window.FindName("ExternalDataGrid"),
+                        "external SDK data grid");
+                    AssertEqual(false, dataGrid.AutoGenerateColumns, "external SDK data grid auto-generate flag");
+                    AssertEqual(false, dataGrid.CanUserAddRows, "external SDK data grid add-row flag");
+                    AssertEqual(3, dataGrid.Items.Count, "external SDK data grid collection count after mutation");
+                    AssertEqual(1, dataGrid.SelectedIndex, "external SDK data grid selected index");
+                    AssertEqual(window.ExternalItems[1], dataGrid.SelectedItem, "external SDK data grid selected item");
+                    AssertEqual(3, dataGrid.Columns.Count, "external SDK data grid column count");
+                    var dataGridNameColumn = RequireType<DataGridTextColumn>(
+                        dataGrid.Columns[0],
+                        "external SDK data grid name column");
+                    var dataGridKindColumn = RequireType<DataGridTextColumn>(
+                        dataGrid.Columns[1],
+                        "external SDK data grid kind column");
+                    var dataGridActiveColumn = RequireType<DataGridCheckBoxColumn>(
+                        dataGrid.Columns[2],
+                        "external SDK data grid active column");
+                    AssertEqual("Name", RequireType<string>(dataGridNameColumn.Header, "external SDK data grid name column header"), "external SDK data grid name column header");
+                    AssertEqual("Kind", RequireType<string>(dataGridKindColumn.Header, "external SDK data grid kind column header"), "external SDK data grid kind column header");
+                    AssertEqual("Active", RequireType<string>(dataGridActiveColumn.Header, "external SDK data grid active column header"), "external SDK data grid active column header");
+                    var dataGridNameBinding = RequireType<Binding>(
+                        dataGridNameColumn.Binding,
+                        "external SDK data grid name binding");
+                    var dataGridKindBinding = RequireType<Binding>(
+                        dataGridKindColumn.Binding,
+                        "external SDK data grid kind binding");
+                    var dataGridActiveBinding = RequireType<Binding>(
+                        dataGridActiveColumn.Binding,
+                        "external SDK data grid active binding");
+                    AssertEqual("Name", dataGridNameBinding.Path.Path, "external SDK data grid name binding path");
+                    AssertEqual("Kind", dataGridKindBinding.Path.Path, "external SDK data grid kind binding path");
+                    AssertEqual("IsActive", dataGridActiveBinding.Path.Path, "external SDK data grid active binding path");
+                    dataGrid.SelectedIndex = 2;
+                    DrainDispatcher();
+                    AssertEqual(window.ExternalItems[2], dataGrid.SelectedItem, "external SDK data grid selected item after change");
 
                     var nodeTemplate = RequireType<HierarchicalDataTemplate>(
                         window.FindResource("ExternalNodeTemplate"),

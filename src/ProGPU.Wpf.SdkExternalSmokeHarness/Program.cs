@@ -2724,6 +2724,95 @@ internal static class Program
                             dataTemplateRoot.Children[1],
                             "external SDK loose XamlWriter round-trip DataTemplate kind text").Name,
                         "external SDK loose XamlWriter round-trip DataTemplate kind TextBlock name");
+
+                    string hierarchicalTemplateDictionaryXaml =
+                        "<ResourceDictionary xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" " +
+                        "xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\">" +
+                        "<HierarchicalDataTemplate x:Key=\"ExternalWriterNodeTemplate\" ItemsSource=\"{Binding Children}\">" +
+                        "<StackPanel x:Name=\"ExternalNodeTemplateRoot\" Tag=\"external writer hierarchical template root\">" +
+                        "<TextBlock x:Name=\"ExternalNodeNameText\" Text=\"{Binding Name}\" />" +
+                        "<TextBlock x:Name=\"ExternalNodeKindText\" Text=\"{Binding Kind}\" />" +
+                        "</StackPanel>" +
+                        "<HierarchicalDataTemplate.Triggers>" +
+                        "<DataTrigger Binding=\"{Binding IsActive}\" Value=\"True\">" +
+                        "<Setter TargetName=\"ExternalNodeNameText\" Property=\"Tag\" Value=\"external active writer node\" />" +
+                        "</DataTrigger>" +
+                        "</HierarchicalDataTemplate.Triggers>" +
+                        "</HierarchicalDataTemplate>" +
+                        "</ResourceDictionary>";
+                    var hierarchicalTemplateDictionary = RequireType<ResourceDictionary>(
+                        XamlReader.Parse(hierarchicalTemplateDictionaryXaml),
+                        "external SDK loose XamlWriter HierarchicalDataTemplate dictionary source");
+                    var parsedHierarchicalTemplate = RequireType<HierarchicalDataTemplate>(
+                        hierarchicalTemplateDictionary["ExternalWriterNodeTemplate"],
+                        "external SDK loose XamlReader HierarchicalDataTemplate");
+                    var parsedItemsSource = RequireType<Binding>(
+                        parsedHierarchicalTemplate.ItemsSource,
+                        "external SDK loose XamlReader HierarchicalDataTemplate ItemsSource");
+                    AssertEqual("Children", parsedItemsSource.Path.Path, "external SDK loose XamlReader HierarchicalDataTemplate ItemsSource path");
+                    var parsedHierarchicalRoot = RequireType<StackPanel>(
+                        parsedHierarchicalTemplate.LoadContent(),
+                        "external SDK loose XamlReader HierarchicalDataTemplate root");
+                    AssertEqual(2, parsedHierarchicalRoot.Children.Count, "external SDK loose XamlReader HierarchicalDataTemplate child count");
+                    var parsedNodeNameText = RequireType<TextBlock>(
+                        parsedHierarchicalRoot.Children[0],
+                        "external SDK loose XamlReader HierarchicalDataTemplate name text");
+                    var parsedNodeKindText = RequireType<TextBlock>(
+                        parsedHierarchicalRoot.Children[1],
+                        "external SDK loose XamlReader HierarchicalDataTemplate kind text");
+                    AssertEqual("Name", parsedNodeNameText.GetBindingExpression(TextBlock.TextProperty)?.ParentBinding.Path.Path, "external SDK loose XamlReader HierarchicalDataTemplate name binding path");
+                    AssertEqual("Kind", parsedNodeKindText.GetBindingExpression(TextBlock.TextProperty)?.ParentBinding.Path.Path, "external SDK loose XamlReader HierarchicalDataTemplate kind binding path");
+
+                    string hierarchicalTemplateSerialized = XamlWriter.Save(hierarchicalTemplateDictionary);
+                    AssertContains("HierarchicalDataTemplate", hierarchicalTemplateSerialized, "external SDK loose XamlWriter serialized HierarchicalDataTemplate");
+                    AssertContains("ExternalWriterNodeTemplate", hierarchicalTemplateSerialized, "external SDK loose XamlWriter serialized HierarchicalDataTemplate key");
+                    AssertContains("ItemsSource", hierarchicalTemplateSerialized, "external SDK loose XamlWriter serialized HierarchicalDataTemplate ItemsSource");
+                    AssertContains("HierarchicalDataTemplate.Triggers", hierarchicalTemplateSerialized, "external SDK loose XamlWriter serialized HierarchicalDataTemplate triggers");
+                    var roundTrippedHierarchicalTemplates = RequireType<ResourceDictionary>(
+                        XamlReader.Parse(hierarchicalTemplateSerialized),
+                        "external SDK loose XamlWriter round-trip HierarchicalDataTemplate dictionary");
+                    var hierarchicalTemplate = RequireType<HierarchicalDataTemplate>(
+                        roundTrippedHierarchicalTemplates["ExternalWriterNodeTemplate"],
+                        "external SDK loose XamlWriter round-trip HierarchicalDataTemplate");
+                    var itemsSource = RequireType<Binding>(
+                        hierarchicalTemplate.ItemsSource,
+                        "external SDK loose XamlWriter round-trip HierarchicalDataTemplate ItemsSource");
+                    AssertEqual("Children", itemsSource.Path.Path, "external SDK loose XamlWriter round-trip HierarchicalDataTemplate ItemsSource path");
+                    AssertEqual(1, hierarchicalTemplate.Triggers.Count, "external SDK loose XamlWriter round-trip HierarchicalDataTemplate trigger count");
+                    var hierarchicalTrigger = RequireType<DataTrigger>(
+                        hierarchicalTemplate.Triggers[0],
+                        "external SDK loose XamlWriter round-trip HierarchicalDataTemplate trigger");
+                    var hierarchicalTriggerBinding = RequireType<Binding>(
+                        hierarchicalTrigger.Binding,
+                        "external SDK loose XamlWriter round-trip HierarchicalDataTemplate trigger binding");
+                    AssertEqual("IsActive", hierarchicalTriggerBinding.Path.Path, "external SDK loose XamlWriter round-trip HierarchicalDataTemplate trigger binding path");
+                    AssertEqual("True", hierarchicalTrigger.Value?.ToString(), "external SDK loose XamlWriter round-trip HierarchicalDataTemplate trigger value");
+                    AssertEqual(1, hierarchicalTrigger.Setters.Count, "external SDK loose XamlWriter round-trip HierarchicalDataTemplate trigger setter count");
+                    var hierarchicalTriggerSetter = AssertLooseStyleSetter(
+                        hierarchicalTrigger.Setters[0],
+                        FrameworkElement.TagProperty,
+                        "external active writer node",
+                        "external SDK loose XamlWriter HierarchicalDataTemplate trigger Tag setter");
+                    AssertEqual("ExternalNodeNameText", hierarchicalTriggerSetter.TargetName, "external SDK loose XamlWriter HierarchicalDataTemplate trigger setter target");
+
+                    var hierarchicalRoot = RequireType<StackPanel>(
+                        hierarchicalTemplate.LoadContent(),
+                        "external SDK loose XamlWriter round-trip HierarchicalDataTemplate root");
+                    AssertEqual("ExternalNodeTemplateRoot", hierarchicalRoot.Name, "external SDK loose XamlWriter round-trip HierarchicalDataTemplate root name");
+                    AssertEqual("external writer hierarchical template root", hierarchicalRoot.Tag, "external SDK loose XamlWriter round-trip HierarchicalDataTemplate root tag");
+                    AssertEqual(2, hierarchicalRoot.Children.Count, "external SDK loose XamlWriter round-trip HierarchicalDataTemplate child count");
+                    AssertEqual(
+                        "ExternalNodeNameText",
+                        RequireType<TextBlock>(
+                            hierarchicalRoot.Children[0],
+                            "external SDK loose XamlWriter round-trip HierarchicalDataTemplate name text").Name,
+                        "external SDK loose XamlWriter round-trip HierarchicalDataTemplate name TextBlock name");
+                    AssertEqual(
+                        "ExternalNodeKindText",
+                        RequireType<TextBlock>(
+                            hierarchicalRoot.Children[1],
+                            "external SDK loose XamlWriter round-trip HierarchicalDataTemplate kind text").Name,
+                        "external SDK loose XamlWriter round-trip HierarchicalDataTemplate kind TextBlock name");
                 }
 
                 private static void ValidateDataProviders(MainWindow window)

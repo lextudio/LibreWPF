@@ -4451,6 +4451,15 @@ public sealed class WpfManagedProjectGraphTests
             "MS",
             "Internal",
             "PointUtil.cs"));
+        var inputElement = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Input",
+            "InputElement.cs"));
         var uiElementAutomationPeer = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4680,6 +4689,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static Rect ClientToScreen(Rect rectClient, PresentationSource presentationSource)", pointUtil, StringComparison.Ordinal);
         Assert.Contains("Point corner1 = ClientToScreen(rectClient.TopLeft, presentationSource);", pointUtil, StringComparison.Ordinal);
         Assert.DoesNotContain("ClientToScreen(Rect rectClient, HwndSource hwndSource)", pointUtil, StringComparison.Ordinal);
+        Assert.Contains("PresentationSource sourceFrom = PresentationSource.CriticalFromVisual(rootFrom);", inputElement, StringComparison.Ordinal);
+        Assert.Contains("PresentationSource sourceTo = PresentationSource.CriticalFromVisual(rootTo);", inputElement, StringComparison.Ordinal);
+        Assert.Contains("PointUtil.ClientToScreen(ptTranslated, sourceFrom)", inputElement, StringComparison.Ordinal);
+        Assert.Contains("PointUtil.ScreenToClient(ptScreen, sourceTo)", inputElement, StringComparison.Ordinal);
+        Assert.DoesNotContain("PresentationSource.CriticalFromVisual(rootFrom) as HwndSource", inputElement, StringComparison.Ordinal);
+        Assert.DoesNotContain("sourceFrom.Handle", inputElement, StringComparison.Ordinal);
         Assert.Contains("PointUtil.ClientToScreen(rectClient, presentationSource)", uiElementAutomationPeer, StringComparison.Ordinal);
         Assert.Contains("PointUtil.ClientToScreen(rectClient, presentationSource)", uiElement3DAutomationPeer, StringComparison.Ordinal);
         AssertGuardBefore(genericRootAutomationPeer, "if(name == string.Empty && OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetWindowText");

@@ -2969,6 +2969,112 @@ internal static class Program
                     AssertEqual("ExternalWriterTextBox", roundTrippedFrameworkElementTextBox.Name, "external SDK loose XamlWriter round-trip FrameworkElement TextBox name");
                     AssertEqual("external writer text", roundTrippedFrameworkElementTextBox.Text, "external SDK loose XamlWriter round-trip FrameworkElement TextBox text");
                     AssertEqual(120.0, roundTrippedFrameworkElementTextBox.MinWidth, "external SDK loose XamlWriter round-trip FrameworkElement TextBox min width");
+
+                    string flowDocumentXaml =
+                        "<FlowDocument xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" " +
+                        "xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\" " +
+                        "FontSize=\"14\" Tag=\"external writer document\">" +
+                        "<Paragraph Name=\"ExternalWriterParagraph\" Tag=\"external writer paragraph\">" +
+                        "external writer paragraph <Bold>bold text</Bold><Italic> italic text</Italic><Underline> underline text</Underline>" +
+                        "<Hyperlink NavigateUri=\"https://example.test/external-sdk-writer\">link text</Hyperlink>" +
+                        "</Paragraph>" +
+                        "<Section Name=\"ExternalWriterSection\"><Paragraph>external writer section text</Paragraph></Section>" +
+                        "<Table CellSpacing=\"2\">" +
+                        "<Table.Columns><TableColumn /><TableColumn /></Table.Columns>" +
+                        "<TableRowGroup><TableRow>" +
+                        "<TableCell><Paragraph>external writer table alpha</Paragraph></TableCell>" +
+                        "<TableCell><Paragraph>external writer table beta</Paragraph></TableCell>" +
+                        "</TableRow></TableRowGroup>" +
+                        "</Table>" +
+                        "<List MarkerStyle=\"Decimal\">" +
+                        "<ListItem><Paragraph>external writer first item</Paragraph></ListItem>" +
+                        "<ListItem><Paragraph>external writer second item</Paragraph></ListItem>" +
+                        "</List>" +
+                        "</FlowDocument>";
+                    var flowDocument = RequireType<FlowDocument>(
+                        XamlReader.Parse(flowDocumentXaml),
+                        "external SDK loose XamlWriter FlowDocument source");
+                    string flowDocumentSerialized = XamlWriter.Save(flowDocument);
+                    AssertContains("FlowDocument", flowDocumentSerialized, "external SDK loose XamlWriter serialized FlowDocument root");
+                    AssertContains("ExternalWriterParagraph", flowDocumentSerialized, "external SDK loose XamlWriter serialized FlowDocument paragraph name");
+                    AssertContains("Bold", flowDocumentSerialized, "external SDK loose XamlWriter serialized FlowDocument Bold");
+                    AssertContains("Hyperlink", flowDocumentSerialized, "external SDK loose XamlWriter serialized FlowDocument Hyperlink");
+                    AssertContains("Table", flowDocumentSerialized, "external SDK loose XamlWriter serialized FlowDocument Table");
+                    AssertContains("List", flowDocumentSerialized, "external SDK loose XamlWriter serialized FlowDocument List");
+                    if (flowDocumentSerialized.Contains(" Name=\"\"", StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException($"Expected external SDK loose XamlWriter serialized FlowDocument not to emit empty runtime names, got '{flowDocumentSerialized}'.");
+                    }
+
+                    var roundTrippedFlowDocument = RequireType<FlowDocument>(
+                        XamlReader.Parse(flowDocumentSerialized),
+                        "external SDK loose XamlWriter round-trip FlowDocument");
+                    AssertEqual(14.0, roundTrippedFlowDocument.FontSize, "external SDK loose XamlWriter round-trip FlowDocument font size");
+                    AssertEqual("external writer document", roundTrippedFlowDocument.Tag, "external SDK loose XamlWriter round-trip FlowDocument tag");
+                    AssertEqual(4, roundTrippedFlowDocument.Blocks.Count, "external SDK loose XamlWriter round-trip FlowDocument block count");
+
+                    var roundTrippedParagraph = RequireType<Paragraph>(
+                        roundTrippedFlowDocument.Blocks.FirstBlock,
+                        "external SDK loose XamlWriter round-trip FlowDocument paragraph");
+                    AssertEqual("ExternalWriterParagraph", roundTrippedParagraph.Name, "external SDK loose XamlWriter round-trip FlowDocument paragraph name");
+                    AssertEqual("external writer paragraph", roundTrippedParagraph.Tag, "external SDK loose XamlWriter round-trip FlowDocument paragraph tag");
+                    var roundTrippedBold = RequireFirstInline<Bold>(
+                        roundTrippedParagraph.Inlines,
+                        "external SDK loose XamlWriter round-trip FlowDocument bold inline");
+                    AssertEqual("bold text", RequireFirstInline<Run>(roundTrippedBold.Inlines, "external SDK loose XamlWriter round-trip FlowDocument bold run").Text, "external SDK loose XamlWriter round-trip FlowDocument bold text");
+                    var roundTrippedItalic = RequireFirstInline<Italic>(
+                        roundTrippedParagraph.Inlines,
+                        "external SDK loose XamlWriter round-trip FlowDocument italic inline");
+                    AssertEqual("italic text", RequireFirstInline<Run>(roundTrippedItalic.Inlines, "external SDK loose XamlWriter round-trip FlowDocument italic run").Text, "external SDK loose XamlWriter round-trip FlowDocument italic text");
+                    var roundTrippedUnderline = RequireFirstInline<Underline>(
+                        roundTrippedParagraph.Inlines,
+                        "external SDK loose XamlWriter round-trip FlowDocument underline inline");
+                    AssertEqual("underline text", RequireFirstInline<Run>(roundTrippedUnderline.Inlines, "external SDK loose XamlWriter round-trip FlowDocument underline run").Text, "external SDK loose XamlWriter round-trip FlowDocument underline text");
+                    var roundTrippedHyperlink = RequireFirstInline<Hyperlink>(
+                        roundTrippedParagraph.Inlines,
+                        "external SDK loose XamlWriter round-trip FlowDocument hyperlink");
+                    AssertEqual("https://example.test/external-sdk-writer", roundTrippedHyperlink.NavigateUri?.ToString(), "external SDK loose XamlWriter round-trip FlowDocument hyperlink URI");
+
+                    var roundTrippedSection = RequireType<Section>(
+                        roundTrippedParagraph.NextBlock,
+                        "external SDK loose XamlWriter round-trip FlowDocument section");
+                    AssertEqual("ExternalWriterSection", roundTrippedSection.Name, "external SDK loose XamlWriter round-trip FlowDocument section name");
+                    AssertParagraphText(
+                        RequireType<Paragraph>(roundTrippedSection.Blocks.FirstBlock, "external SDK loose XamlWriter round-trip FlowDocument section paragraph"),
+                        "external writer section text",
+                        "writer section");
+
+                    var roundTrippedTable = RequireType<Table>(
+                        roundTrippedSection.NextBlock,
+                        "external SDK loose XamlWriter round-trip FlowDocument table");
+                    AssertEqual(2, roundTrippedTable.Columns.Count, "external SDK loose XamlWriter round-trip FlowDocument table columns");
+                    AssertEqual(1, roundTrippedTable.RowGroups.Count, "external SDK loose XamlWriter round-trip FlowDocument table row group count");
+                    var roundTrippedRow = roundTrippedTable.RowGroups[0].Rows[0];
+                    AssertEqual(2, roundTrippedRow.Cells.Count, "external SDK loose XamlWriter round-trip FlowDocument table cell count");
+                    AssertTableCellText(roundTrippedRow.Cells[0], "external writer table alpha", "writer first");
+                    AssertTableCellText(roundTrippedRow.Cells[1], "external writer table beta", "writer second");
+
+                    var roundTrippedList = RequireType<System.Windows.Documents.List>(
+                        roundTrippedTable.NextBlock,
+                        "external SDK loose XamlWriter round-trip FlowDocument list");
+                    AssertEqual(TextMarkerStyle.Decimal, roundTrippedList.MarkerStyle, "external SDK loose XamlWriter round-trip FlowDocument list marker style");
+                    AssertEqual(2, roundTrippedList.ListItems.Count, "external SDK loose XamlWriter round-trip FlowDocument list item count");
+                    AssertListItemText(roundTrippedList.ListItems.FirstListItem, "external writer first item", "writer first");
+                    AssertListItemText(roundTrippedList.ListItems.FirstListItem.NextListItem, "external writer second item", "writer second");
+
+                    string flowDocumentText = new TextRange(
+                        roundTrippedFlowDocument.ContentStart,
+                        roundTrippedFlowDocument.ContentEnd).Text;
+                    AssertContains("external writer paragraph", flowDocumentText, "external SDK loose XamlWriter round-trip FlowDocument TextRange paragraph text");
+                    AssertContains("bold text", flowDocumentText, "external SDK loose XamlWriter round-trip FlowDocument TextRange bold text");
+                    AssertContains("italic text", flowDocumentText, "external SDK loose XamlWriter round-trip FlowDocument TextRange italic text");
+                    AssertContains("underline text", flowDocumentText, "external SDK loose XamlWriter round-trip FlowDocument TextRange underline text");
+                    AssertContains("link text", flowDocumentText, "external SDK loose XamlWriter round-trip FlowDocument TextRange hyperlink text");
+                    AssertContains("external writer section text", flowDocumentText, "external SDK loose XamlWriter round-trip FlowDocument TextRange section text");
+                    AssertContains("external writer table alpha", flowDocumentText, "external SDK loose XamlWriter round-trip FlowDocument TextRange first table cell");
+                    AssertContains("external writer table beta", flowDocumentText, "external SDK loose XamlWriter round-trip FlowDocument TextRange second table cell");
+                    AssertContains("external writer first item", flowDocumentText, "external SDK loose XamlWriter round-trip FlowDocument TextRange first list item");
+                    AssertContains("external writer second item", flowDocumentText, "external SDK loose XamlWriter round-trip FlowDocument TextRange second list item");
                 }
 
                 private static void ValidateDataProviders(MainWindow window)

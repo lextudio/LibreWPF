@@ -6213,6 +6213,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK loose XamlWriter round-trip FrameworkElement root name", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK loose XamlWriter round-trip FrameworkElement button background", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK loose XamlWriter round-trip FrameworkElement TextBox text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalWriterParagraph", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("XamlWriter.Save(flowDocument)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter serialized FlowDocument root", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter round-trip FlowDocument paragraph name", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter round-trip FlowDocument table cell count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter round-trip FlowDocument TextRange second list item", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateDataProviders(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ObjectDataProvider data", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ObjectDataProvider bound text", externalSdkHarnessProgram, StringComparison.Ordinal);

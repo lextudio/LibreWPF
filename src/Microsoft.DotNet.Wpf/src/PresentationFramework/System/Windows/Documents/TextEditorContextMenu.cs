@@ -295,8 +295,11 @@ namespace System.Windows.Documents
 
             // Clip to the window client rect.
             PresentationSource source = PresentationSource.CriticalFromVisual(This.UiScope);
-            IWin32Window window = source as IWin32Window;
-            if (window != null)
+            if (!OperatingSystem.IsWindows())
+            {
+                ClipToPresentationSourceRoot(source, This.UiScope, ref horizontalOffset, ref verticalOffset);
+            }
+            else if (source is IWin32Window window)
             {
                 IntPtr hwnd = IntPtr.Zero;
                 hwnd = window.Handle;
@@ -326,6 +329,38 @@ namespace System.Windows.Documents
 
                 // ContextMenu code takes care of clipping to desktop.
             }
+        }
+
+        private static void ClipToPresentationSourceRoot(PresentationSource source, Visual uiScope,
+            ref double horizontalOffset, ref double verticalOffset)
+        {
+            CompositionTarget compositionTarget = source?.CompositionTarget;
+            FrameworkElement rootElement = compositionTarget?.RootVisual as FrameworkElement;
+            if (rootElement == null)
+            {
+                return;
+            }
+
+            Size renderSize = rootElement.RenderSize;
+            if (renderSize.Width == 0 && renderSize.Height == 0)
+            {
+                return;
+            }
+
+            GeneralTransform transform = rootElement.TransformToDescendant(uiScope);
+            if (transform == null)
+            {
+                return;
+            }
+
+            Point minPoint = new Point(0, 0);
+            Point maxPoint = new Point(renderSize.Width, renderSize.Height);
+
+            transform.TryTransform(minPoint, out minPoint);
+            transform.TryTransform(maxPoint, out maxPoint);
+
+            horizontalOffset = ClipToBounds(minPoint.X, horizontalOffset, maxPoint.X);
+            verticalOffset = ClipToBounds(minPoint.Y, verticalOffset, maxPoint.Y);
         }
 
         // Clips a Point to the ActualWidth/Height of a containing FrameworkElement.

@@ -4276,6 +4276,15 @@ public sealed class WpfManagedProjectGraphTests
             "windows",
             "Documents",
             "TextEditorDragDrop.cs"));
+        var textEditorContextMenu = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "windows",
+            "Documents",
+            "TextEditorContextMenu.cs"));
         var caretElement = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4524,6 +4533,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("return window.IsEnabled", textEditorDragDrop, StringComparison.Ordinal);
         AssertGuardBefore(textEditorDragDrop, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.IsWindowEnabled");
         AssertGuardBefore(textEditorDragDrop, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SetForegroundWindow");
+        Assert.Contains("ClipToPresentationSourceRoot(source, This.UiScope", textEditorContextMenu, StringComparison.Ordinal);
+        AssertGuardBefore(textEditorContextMenu, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetClientRect");
         AssertGuardBefore(caretElement, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.CreateBitmap");
         AssertGuardBefore(caretElement, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.DestroyCaret()");
         AssertGuardBefore(caretElement, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.SetCaretPos");

@@ -742,6 +742,21 @@ internal static class Program
         AssertType(multiBindingSummaryText, "System.Windows.Controls.TextBlock", "multi binding summary text element");
         AssertEqual("Scene:ProGPU", GetProperty(multiBindingSummaryText, "Text"), "multi binding converter text");
 
+        object priorityBindingText = Invoke(window, "FindName", "PriorityBindingText");
+        AssertType(priorityBindingText, "System.Windows.Controls.TextBlock", "priority binding text");
+        AssertEqual("ProGPU WPF SDK switch managed subsystem smoke", GetProperty(priorityBindingText, "Text"), "priority binding fallback text");
+        Type bindingOperationsType = GetRequiredType(presentationFramework, "System.Windows.Data.BindingOperations");
+        object textProperty = GetStaticField(priorityBindingText.GetType(), "TextProperty");
+        object priorityBindingExpression = InvokeStatic(bindingOperationsType, "GetPriorityBindingExpression", priorityBindingText, textProperty);
+        AssertType(priorityBindingExpression, "System.Windows.Data.PriorityBindingExpression", "priority binding expression");
+        object priorityBindingExpressions = GetProperty(priorityBindingExpression, "BindingExpressions");
+        AssertEqual(2, GetCount(priorityBindingExpressions), "priority binding expression child count");
+        object parentPriorityBinding = GetProperty(priorityBindingExpression, "ParentPriorityBinding");
+        AssertEqual(2, GetCount(GetProperty(parentPriorityBinding, "Bindings")), "priority binding child binding count");
+        object activeBindingExpression = GetProperty(priorityBindingExpression, "ActiveBindingExpression");
+        AssertType(activeBindingExpression, "System.Windows.Data.BindingExpression", "priority binding active expression");
+        AssertEqual("Title", GetBindingPath(GetProperty(activeBindingExpression, "ParentBinding")), "priority binding active path");
+
         object selectedItemPresenter = Invoke(window, "FindName", "SelectedItemPresenter");
         AssertType(selectedItemPresenter, "System.Windows.Controls.ContentControl", "selected item presenter");
         AssertSame(selectedItem, GetProperty(selectedItemPresenter, "Content"), "selected item presenter content");
@@ -1483,6 +1498,16 @@ internal static class Program
             ?? throw new MissingMemberException(type.FullName, propertyName);
         return property.GetValue(null)
             ?? throw new InvalidOperationException($"Property '{propertyName}' returned null.");
+    }
+
+    private static object GetStaticField(Type type, string fieldName)
+    {
+        FieldInfo field = type.GetField(
+            fieldName,
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy)
+            ?? throw new MissingFieldException(type.FullName, fieldName);
+        return field.GetValue(null)
+            ?? throw new InvalidOperationException($"Field '{fieldName}' returned null.");
     }
 
     private static void SetProperty(object instance, string propertyName, object? value)

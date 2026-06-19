@@ -457,6 +457,16 @@
                 </MultiBinding>
             </TextBlock.Text>
         </TextBlock>
+        <TextBlock
+            x:Name="PriorityBindingText"
+            Margin="0,6,0,0">
+            <TextBlock.Text>
+                <PriorityBinding>
+                    <Binding Path="MissingPriorityTitle" />
+                    <Binding Path="Title" />
+                </PriorityBinding>
+            </TextBlock.Text>
+        </TextBlock>
         <ContentControl
             x:Name="SelectedItemPresenter"
             Margin="0,8,0,0"

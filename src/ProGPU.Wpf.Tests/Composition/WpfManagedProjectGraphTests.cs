@@ -4816,6 +4816,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<MultiBinding Converter=\"{StaticResource SmokeItemSummaryConverter}\">", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Path=\"SelectedItem.Name\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Path=\"SelectedItem.Value\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"PriorityBindingText\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<PriorityBinding>", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Path=\"MissingPriorityTitle\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Path=\"Title\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"{Binding SelectedItem, ElementName=ItemsList}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("local:SmokeItemDisplayConverter", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("local:SmokeItemSummaryConverter", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -5327,6 +5331,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("list view changed selected text", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"MultiBindingSummaryText\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("multi binding converter text", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"PriorityBindingText\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("priority binding fallback text", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetPriorityBindingExpression", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("priority binding expression child count", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("priority binding active path", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"SelectedItemPresenter\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"LayoutGrid\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("layout grid row definition count", runtimeHarnessProgram, StringComparison.Ordinal);

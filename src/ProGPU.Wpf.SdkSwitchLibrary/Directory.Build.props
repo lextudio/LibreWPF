@@ -7,8 +7,5 @@
     <EnableNETAnalyzers>false</EnableNETAnalyzers>
     <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
     <NoWarn>$(NoWarn);IDE0073</NoWarn>
-    <ProGpuWpfReferenceMode>LocalArtifacts</ProGpuWpfReferenceMode>
-    <ProGpuWpfManagedReferenceRoot Condition="'$(ProGpuWpfManagedReferenceRoot)' == ''">$(MSBuildThisFileDirectory)..\..\artifacts\progpu-wpf-sdk-smoke\wpf\</ProGpuWpfManagedReferenceRoot>
-    <ProGpuReferenceRoot Condition="'$(ProGpuReferenceRoot)' == ''">$(MSBuildThisFileDirectory)..\..\artifacts\progpu-wpf-sdk-smoke\progpu\</ProGpuReferenceRoot>
   </PropertyGroup>
 </Project>

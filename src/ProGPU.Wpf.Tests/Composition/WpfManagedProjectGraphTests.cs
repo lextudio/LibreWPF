@@ -4751,9 +4751,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains(@"..\..\Directory.Build.props", smokeDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<EnableNETAnalyzers>false</EnableNETAnalyzers>", smokeDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>", smokeDirectoryBuildProps, StringComparison.Ordinal);
-        Assert.Contains("<ProGpuWpfReferenceMode>LocalArtifacts</ProGpuWpfReferenceMode>", smokeDirectoryBuildProps, StringComparison.Ordinal);
-        Assert.Contains(@"artifacts\progpu-wpf-sdk-smoke\wpf\", smokeDirectoryBuildProps, StringComparison.Ordinal);
-        Assert.Contains(@"artifacts\progpu-wpf-sdk-smoke\progpu\", smokeDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProGpuWpfReferenceMode", smokeDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProGpuWpfManagedReferenceRoot", smokeDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProGpuReferenceRoot", smokeDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", libraryProject, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>net11.0</TargetFramework>", libraryProject, StringComparison.Ordinal);
         Assert.Contains("<UseWPF>true</UseWPF>", libraryProject, StringComparison.Ordinal);
@@ -4763,9 +4763,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("EnableNETAnalyzers", libraryProject, StringComparison.Ordinal);
         Assert.Contains(@"..\..\Directory.Build.props", libraryDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<EnableNETAnalyzers>false</EnableNETAnalyzers>", libraryDirectoryBuildProps, StringComparison.Ordinal);
-        Assert.Contains("<ProGpuWpfReferenceMode>LocalArtifacts</ProGpuWpfReferenceMode>", libraryDirectoryBuildProps, StringComparison.Ordinal);
-        Assert.Contains(@"artifacts\progpu-wpf-sdk-smoke\wpf\", libraryDirectoryBuildProps, StringComparison.Ordinal);
-        Assert.Contains(@"artifacts\progpu-wpf-sdk-smoke\progpu\", libraryDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProGpuWpfReferenceMode", libraryDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProGpuWpfManagedReferenceRoot", libraryDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProGpuReferenceRoot", libraryDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("x:Class=\"ProGPU.Wpf.SdkSwitchLibrary.LibraryPanel\"", libraryPanelXaml, StringComparison.Ordinal);
         Assert.Contains("LibraryAccentBrush", libraryPanelXaml, StringComparison.Ordinal);
         Assert.Contains("ElementName=LibraryOwner", libraryPanelXaml, StringComparison.Ordinal);
@@ -5345,6 +5345,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public double Thickness", proGpuWpfPen, StringComparison.Ordinal);
         Assert.Contains("$([MSBuild]::IsOSPlatform('Windows'))", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("<_PowerShellExe Condition=\"'$(_PowerShellExe)' == ''\">pwsh</_PowerShellExe>", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains("ValidateManagedWpfTransportPayload", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains("$(PackageName.Contains('Microsoft.DotNet.Wpf.GitHub'))", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains(@"lib\$(TargetFramework)\PresentationFramework.dll", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains(@"ref\$(TargetFramework)\PresentationFramework.dll", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains(@"lib\$(TargetFramework)\PresentationFramework.Fluent.dll", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains("Build the managed WPF assemblies for $(Configuration)|$(TargetFramework) before packing $(PackageName).", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("<IncludeAssembliesInArchNeutralPackage>true</IncludeAssembliesInArchNeutralPackage>", wpfTransportArchNeutralProject, StringComparison.Ordinal);
 
         Assert.Contains("<Project Sdk=\"Microsoft.NET.Sdk\">", runtimeHarnessProject, StringComparison.Ordinal);
@@ -5367,11 +5373,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AssertDelegateTarget(\"_show\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FlushDispatcherOperations(window, \"ApplicationIdle\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"artifacts\",", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"Release\",", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"Microsoft.DotNet.Wpf.GitHub\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"Microsoft.DotNet.Wpf.GitHub.Debug\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"UIAutomationTypes\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"System.Windows.Primitives\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"PresentationFramework.Fluent\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"PresentationFramework.Aero2\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"ProGPU.Compute\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"ProGPU.Transpiler\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"Silk.NET.Windowing.Common\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"Silk.NET.WebGPU\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetNativeAssetCandidates(\"wgpu\")", runtimeHarnessProgram, StringComparison.Ordinal);

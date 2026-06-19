@@ -38,7 +38,9 @@ internal static class Program
         "ProGPU.Backend",
         "ProGPU.Scene",
         "ProGPU.Vector",
-        "ProGPU.Text"
+        "ProGPU.Text",
+        "ProGPU.Compute",
+        "ProGPU.Transpiler"
     ];
     private static readonly string[] SilkNetRuntimeAssemblies =
     [
@@ -92,7 +94,15 @@ internal static class Program
             "Debug",
             "net11.0");
         string smokeAssemblyPath = Path.Combine(appOutputRoot, SmokeAssemblyName + ".dll");
-        string packagedWpfRoot = Path.Combine(
+        string releasePackagedWpfRoot = Path.Combine(
+            repoRoot,
+            "artifacts",
+            "packaging",
+            "Release",
+            "Microsoft.DotNet.Wpf.GitHub",
+            "lib",
+            "net11.0");
+        string debugPackagedWpfRoot = Path.Combine(
             repoRoot,
             "artifacts",
             "packaging",
@@ -100,8 +110,10 @@ internal static class Program
             "Microsoft.DotNet.Wpf.GitHub.Debug",
             "lib",
             "net11.0");
-        string wpfRoot = Directory.Exists(packagedWpfRoot)
-            ? packagedWpfRoot
+        string wpfRoot = Directory.Exists(releasePackagedWpfRoot)
+            ? releasePackagedWpfRoot
+            : Directory.Exists(debugPackagedWpfRoot)
+                ? debugPackagedWpfRoot
             : Path.Combine(repoRoot, "artifacts", "progpu-wpf-sdk-smoke", "wpf");
         string proGpuRoot = Path.Combine(repoRoot, "artifacts", "progpu-wpf-sdk-smoke", "progpu");
 
@@ -110,8 +122,6 @@ internal static class Program
             Path.Combine(appOutputRoot, LibraryAssemblyName + ".dll"),
             "SDK switch library assembly");
         RequireOutputRuntimeAssets(appOutputRoot);
-        RequireDirectory(wpfRoot, "ported WPF artifact root");
-        RequireDirectory(proGpuRoot, "ProGPU artifact root");
 
         return new SmokeInputs(repoRoot, appOutputRoot, smokeAssemblyPath, wpfRoot, proGpuRoot);
     }
@@ -2818,9 +2828,9 @@ internal static class Program
             {
                 SmokeAssemblyName => _smokeAssemblyPath,
                 "WindowsBase" or "System.Xaml" or "PresentationCore" or "PresentationFramework" or "PresentationUI" or "ReachFramework" or "System.Printing" or "UIAutomationTypes" or "UIAutomationProvider" or "System.Windows.Input.Manipulations" or "System.Windows.Primitives" or "PresentationFramework.Aero2" or "PresentationFramework.Fluent" =>
-                    TryFindAssembly(_appOutputRoot, fileName) ?? Path.Combine(_wpfRoot, fileName),
-                "ProGPU.Wpf" or "ProGPU.Backend" or "ProGPU.Scene" or "ProGPU.Vector" or "ProGPU.Text" =>
-                    TryFindAssembly(_appOutputRoot, fileName) ?? Path.Combine(_proGpuRoot, fileName),
+                    TryFindAssembly(_appOutputRoot, fileName) ?? TryFindAssembly(_wpfRoot, fileName),
+                "ProGPU.Wpf" or "ProGPU.Backend" or "ProGPU.Scene" or "ProGPU.Vector" or "ProGPU.Text" or "ProGPU.Compute" or "ProGPU.Transpiler" =>
+                    TryFindAssembly(_appOutputRoot, fileName) ?? TryFindAssembly(_proGpuRoot, fileName),
                 _ => null
             };
 

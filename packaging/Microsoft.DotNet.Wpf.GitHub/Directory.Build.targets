@@ -42,4 +42,43 @@
 
   </Target>
 
+  <Target Name="ValidateManagedWpfTransportPayload"
+          BeforeTargets="GenerateNuspec"
+          DependsOnTargets="CreateContentFolder"
+          Condition="'$(IsPackable)' == 'true' And '$(CreateArchNeutralPackage)' == 'true' And '$(IncludeAssembliesInArchNeutralPackage)' == 'true' And $(PackageName.Contains('Microsoft.DotNet.Wpf.GitHub'))">
+    <PropertyGroup>
+      <_ManagedWpfTransportRoot>$(ArtifactsPackagingDir)$(NormalizedPackageName)</_ManagedWpfTransportRoot>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\WindowsBase.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\System.Xaml.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationCore.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationFramework.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationUI.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\ReachFramework.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\UIAutomationTypes.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\UIAutomationProvider.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\System.Windows.Input.Manipulations.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\System.Windows.Primitives.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationFramework.Aero2.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationFramework.Fluent.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\WindowsBase.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\System.Xaml.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationCore.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationFramework.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationUI.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\ReachFramework.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\UIAutomationTypes.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\UIAutomationProvider.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\System.Windows.Input.Manipulations.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\System.Windows.Primitives.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationFramework.Aero2.dll" />
+    </ItemGroup>
+
+    <Error
+        Condition="!Exists('%(_RequiredManagedWpfTransportPayload.Identity)')"
+        Text="The WPF transport package is missing required payload '%(_RequiredManagedWpfTransportPayload.Identity)'. Build the managed WPF assemblies for $(Configuration)|$(TargetFramework) before packing $(PackageName)." />
+  </Target>
+
 </Project>

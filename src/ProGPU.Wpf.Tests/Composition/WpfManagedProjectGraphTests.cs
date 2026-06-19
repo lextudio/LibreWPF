@@ -4471,6 +4471,16 @@ public sealed class WpfManagedProjectGraphTests
             "Automation",
             "Peers",
             "UIElement3DAutomationPeer.cs"));
+        var genericRootAutomationPeer = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Automation",
+            "Peers",
+            "GenericRootAutomationPeer.cs"));
         var documentAutomationPeer = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4672,6 +4682,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("ClientToScreen(Rect rectClient, HwndSource hwndSource)", pointUtil, StringComparison.Ordinal);
         Assert.Contains("PointUtil.ClientToScreen(rectClient, presentationSource)", uiElementAutomationPeer, StringComparison.Ordinal);
         Assert.Contains("PointUtil.ClientToScreen(rectClient, presentationSource)", uiElement3DAutomationPeer, StringComparison.Ordinal);
+        AssertGuardBefore(genericRootAutomationPeer, "if(name == string.Empty && OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetWindowText");
+        AssertGuardBefore(genericRootAutomationPeer, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetWindowRect");
+        Assert.Contains("return base.GetBoundingRectangleCore();", genericRootAutomationPeer, StringComparison.Ordinal);
         Assert.Contains("PointUtil.ClientToScreen(boundingRect, presentationSource)", documentAutomationPeer, StringComparison.Ordinal);
         Assert.Contains("PointUtil.ClientToScreen(rectClient, presentationSource)", textElementAutomationPeer, StringComparison.Ordinal);
         Assert.DoesNotContain("presentationSource as HwndSource", uiElementAutomationPeer, StringComparison.Ordinal);

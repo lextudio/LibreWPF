@@ -366,6 +366,39 @@
             Margin="{StaticResource SmokePanelMargin}"
             ItemTemplateSelector="{StaticResource SmokeItemTemplateSelector}"
             ItemsSource="{Binding Items}" />
+        <ComboBox
+            x:Name="SmokeComboBox"
+            Margin="{StaticResource SmokePanelMargin}"
+            DisplayMemberPath="Name"
+            ItemsSource="{Binding Items}"
+            SelectedIndex="1"
+            SelectedValuePath="Value"
+            SelectionChanged="OnSelectorSelectionChanged" />
+        <TextBlock
+            x:Name="SelectorStatus"
+            Margin="0,6,0,0"
+            Text="selector idle" />
+        <TabControl
+            x:Name="SmokeTabs"
+            Height="82"
+            Margin="{StaticResource SmokePanelMargin}"
+            SelectedIndex="1"
+            SelectionChanged="OnTabsSelectionChanged">
+            <TabItem
+                x:Name="FrameworkTab"
+                Header="Framework">
+                <TextBlock Text="{Binding Title}" />
+            </TabItem>
+            <TabItem
+                x:Name="RenderingTab"
+                Header="Rendering">
+                <TextBlock Text="{Binding SelectedItem.Name, ElementName=ItemsList}" />
+            </TabItem>
+        </TabControl>
+        <TextBlock
+            x:Name="TabStatus"
+            Margin="0,6,0,0"
+            Text="tab idle" />
         <TreeView
             x:Name="HierarchyTree"
             Height="72"

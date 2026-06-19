@@ -565,6 +565,53 @@ internal static class Program
         object firstItem = EnumerateObjects(GetProperty(itemsList, "Items")).First();
         AssertSame(frameworkItemTemplate, Invoke(itemTemplateSelector, "SelectTemplate", firstItem, selectorItemsControl), "framework item selected template");
         AssertSame(renderingItemTemplate, Invoke(itemTemplateSelector, "SelectTemplate", selectedItem, selectorItemsControl), "rendering item selected template");
+
+        object smokeComboBox = Invoke(window, "FindName", "SmokeComboBox");
+        AssertType(smokeComboBox, "System.Windows.Controls.ComboBox", "smoke combo box");
+        AssertAtLeast(3, GetCount(GetProperty(smokeComboBox, "Items")), "smoke combo box item count");
+        AssertEqual("Name", GetProperty(smokeComboBox, "DisplayMemberPath"), "smoke combo box display member path");
+        AssertEqual("Value", GetProperty(smokeComboBox, "SelectedValuePath"), "smoke combo box selected value path");
+        AssertEqual(1, GetProperty(smokeComboBox, "SelectedIndex"), "smoke combo box initial selected index");
+        AssertEqual("ProGPU", GetProperty(smokeComboBox, "SelectedValue"), "smoke combo box initial selected value");
+        object comboSelectedItem = GetProperty(smokeComboBox, "SelectedItem");
+        AssertEqual("Scene", GetProperty(comboSelectedItem, "Name"), "smoke combo box initial selected item name");
+        object selectorStatus = Invoke(window, "FindName", "SelectorStatus");
+        AssertType(selectorStatus, "System.Windows.Controls.TextBlock", "selector status element");
+        if (validateFrameContent)
+        {
+            int selectorSelectionCountBefore = Convert.ToInt32(GetProperty(window, "SelectorSelectionChangedCount"));
+            SetProperty(smokeComboBox, "SelectedIndex", 2);
+            AssertEqual(2, GetProperty(smokeComboBox, "SelectedIndex"), "smoke combo box changed selected index");
+            AssertEqual("compiled", GetProperty(smokeComboBox, "SelectedValue"), "smoke combo box changed selected value");
+            object changedComboSelectedItem = GetProperty(smokeComboBox, "SelectedItem");
+            AssertEqual("XAML", GetProperty(changedComboSelectedItem, "Name"), "smoke combo box changed selected item");
+            AssertAtLeast(selectorSelectionCountBefore + 1, GetProperty(window, "SelectorSelectionChangedCount"), "selector selection changed count");
+            AssertEqual("selector selected: compiled", GetProperty(selectorStatus, "Text"), "selector status after combo selection");
+        }
+
+        object smokeTabs = Invoke(window, "FindName", "SmokeTabs");
+        AssertType(smokeTabs, "System.Windows.Controls.TabControl", "smoke tab control");
+        AssertAtLeast(2, GetCount(GetProperty(smokeTabs, "Items")), "smoke tab item count");
+        AssertEqual(1, GetProperty(smokeTabs, "SelectedIndex"), "smoke tab initial selected index");
+        object frameworkTab = Invoke(window, "FindName", "FrameworkTab");
+        AssertType(frameworkTab, "System.Windows.Controls.TabItem", "framework tab item");
+        AssertEqual("Framework", GetProperty(frameworkTab, "Header"), "framework tab header");
+        object renderingTab = Invoke(window, "FindName", "RenderingTab");
+        AssertType(renderingTab, "System.Windows.Controls.TabItem", "rendering tab item");
+        AssertEqual("Rendering", GetProperty(renderingTab, "Header"), "rendering tab header");
+        AssertSame(renderingTab, GetProperty(smokeTabs, "SelectedItem"), "smoke tab initial selected item");
+        object tabStatus = Invoke(window, "FindName", "TabStatus");
+        AssertType(tabStatus, "System.Windows.Controls.TextBlock", "tab status element");
+        if (validateFrameContent)
+        {
+            int tabSelectionCountBefore = Convert.ToInt32(GetProperty(window, "TabSelectionChangedCount"));
+            SetProperty(smokeTabs, "SelectedIndex", 0);
+            AssertEqual(0, GetProperty(smokeTabs, "SelectedIndex"), "smoke tab changed selected index");
+            AssertSame(frameworkTab, GetProperty(smokeTabs, "SelectedItem"), "smoke tab changed selected item");
+            AssertAtLeast(tabSelectionCountBefore + 1, GetProperty(window, "TabSelectionChangedCount"), "tab selection changed count");
+            AssertEqual("tab selected: Framework", GetProperty(tabStatus, "Text"), "tab status after tab selection");
+        }
+
         if (validateFrameContent)
         {
             object viewModel = GetProperty(window, "DataContext");

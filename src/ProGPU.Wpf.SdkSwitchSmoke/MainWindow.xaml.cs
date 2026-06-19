@@ -35,6 +35,10 @@ public partial class MainWindow : Window
 
     public int MenuUncheckedCount { get; private set; }
 
+    public int SelectorSelectionChangedCount { get; private set; }
+
+    public int TabSelectionChangedCount { get; private set; }
+
     public object? LastSmokeRoutedEventSender { get; private set; }
 
     public object? LastSmokeRoutedEventSource { get; private set; }
@@ -83,6 +87,33 @@ public partial class MainWindow : Window
         if (MenuStatus != null)
         {
             MenuStatus.Text = "menu unchecked";
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnSelectorSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        SelectorSelectionChangedCount++;
+        if (SelectorStatus != null)
+        {
+            SelectorStatus.Text = $"selector selected: {SmokeComboBox.SelectedValue}";
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnTabsSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!ReferenceEquals(e.OriginalSource, sender))
+        {
+            return;
+        }
+
+        TabSelectionChangedCount++;
+        if (TabStatus != null && SmokeTabs.SelectedItem is TabItem selectedTab)
+        {
+            TabStatus.Text = $"tab selected: {selectedTab.Header}";
         }
 
         e.Handled = true;

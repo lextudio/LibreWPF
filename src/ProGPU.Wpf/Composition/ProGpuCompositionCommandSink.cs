@@ -2479,8 +2479,31 @@ public sealed class ProGpuCompositionCommandSink :
 
     private static bool TryRecordGeometryPath(MediaGeometry geometry, out VectorPathGeometry path)
     {
+        var drawMethod = geometry.GetType().GetMethod(
+            "Draw",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            types:
+            [
+                typeof(global::ProGPU.Scene.DrawingContext),
+                typeof(VectorBrush),
+                typeof(VectorPen)
+            ],
+            modifiers: null);
+        if (drawMethod == null)
+        {
+            path = new VectorPathGeometry();
+            return false;
+        }
+
         var recordingContext = new global::ProGPU.Scene.DrawingContext();
-        geometry.Draw(recordingContext, new VectorSolidColorBrush(new Vector4(1f, 1f, 1f, 1f)), null);
+        drawMethod.Invoke(
+            geometry,
+            [
+                recordingContext,
+                new VectorSolidColorBrush(new Vector4(1f, 1f, 1f, 1f)),
+                null
+            ]);
 
         foreach (var command in recordingContext.Commands)
         {

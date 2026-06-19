@@ -181,6 +181,9 @@ internal static class Program
             $"""
             <?xml version="1.0" encoding="utf-8"?>
             <configuration>
+              <config>
+                <add key="globalPackagesFolder" value="{SecurityElement.Escape(Path.Combine(workRoot, ".packages"))}" />
+              </config>
               <packageSources>
                 <clear />
                 <add key="ProGPUWpfLocalArtifacts" value="{SecurityElement.Escape(packageFeed)}" />

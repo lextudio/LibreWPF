@@ -4969,6 +4969,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.SdkSwitchLibrary",
             "Directory.Build.props");
+        var libraryNuGetConfigPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchLibrary",
+            "NuGet.config");
         var libraryPanelXamlPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.SdkSwitchLibrary",
@@ -5104,6 +5108,7 @@ public sealed class WpfManagedProjectGraphTests
         var smokeDirectoryBuildProps = File.ReadAllText(smokeDirectoryBuildPropsPath);
         var libraryProject = File.ReadAllText(libraryProjectPath);
         var libraryDirectoryBuildProps = File.ReadAllText(libraryDirectoryBuildPropsPath);
+        var libraryNuGetConfig = File.ReadAllText(libraryNuGetConfigPath);
         var libraryPanelXaml = File.ReadAllText(libraryPanelXamlPath);
         var libraryPanelCodeBehind = File.ReadAllText(libraryPanelCodeBehindPath);
         var smokeNuGetConfig = File.ReadAllText(smokeNuGetConfigPath);
@@ -5285,6 +5290,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DependencyProperty.Register", libraryPanelCodeBehind, StringComparison.Ordinal);
         Assert.Contains("InitializeComponent();", libraryPanelCodeBehind, StringComparison.Ordinal);
         Assert.Contains("artifacts/packages/Release/NonShipping", smokeNuGetConfig, StringComparison.Ordinal);
+        Assert.Contains("globalPackagesFolder", smokeNuGetConfig, StringComparison.Ordinal);
+        Assert.Contains("artifacts/nuget/ProGPU.Wpf.SdkSwitchSmoke", smokeNuGetConfig, StringComparison.Ordinal);
+        Assert.Contains("dotnet-eng", smokeNuGetConfig, StringComparison.Ordinal);
+        Assert.Contains("dotnet11-transport", smokeNuGetConfig, StringComparison.Ordinal);
+        Assert.Contains("artifacts/packages/Release/NonShipping", libraryNuGetConfig, StringComparison.Ordinal);
+        Assert.Contains("globalPackagesFolder", libraryNuGetConfig, StringComparison.Ordinal);
+        Assert.Contains("artifacts/nuget/ProGPU.Wpf.SdkSwitchSmoke", libraryNuGetConfig, StringComparison.Ordinal);
+        Assert.Contains("dotnet-eng", libraryNuGetConfig, StringComparison.Ordinal);
+        Assert.Contains("dotnet11-transport", libraryNuGetConfig, StringComparison.Ordinal);
         Assert.Contains("ResourceDictionary Source=\"SmokeResources.xaml\"", smokeAppXaml, StringComparison.Ordinal);
         Assert.Contains("SmokeAccentBrush", smokeAppXaml, StringComparison.Ordinal);
         Assert.Contains("Startup=\"OnAppStartup\"", smokeAppXaml, StringComparison.Ordinal);
@@ -6273,6 +6287,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AssertNoPackageEntryPrefix(package, \"ref/\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkCopyNativeRuntimeAssets", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("External SDK smoke must not rely on generated Directory.Build.props or Directory.Build.targets files.", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("globalPackagesFolder", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Path.Combine(workRoot, \".packages\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfManagedReferenceRoot", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Microsoft.DotNet.Wpf.GitHub", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Compute", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -799,6 +799,19 @@ internal static class Program
             flushDispatcherOperations(window);
             AssertEqual("implicit: Scene", GetProperty(implicitTemplateRoot, "Text"), "implicit item template resolved text");
         }
+        object implicitStylePanel = Invoke(window, "FindName", "ImplicitStylePanel");
+        AssertType(implicitStylePanel, "System.Windows.Controls.StackPanel", "implicit style panel");
+        object implicitStyledText = Invoke(window, "FindName", "ImplicitStyledText");
+        AssertType(implicitStyledText, "System.Windows.Controls.TextBlock", "implicit styled text");
+        AssertEqual("implicit style text", GetProperty(implicitStyledText, "Text"), "implicit styled text content");
+        AssertEqual("implicit style active", GetProperty(implicitStyledText, "Tag"), "implicit styled text tag");
+        object implicitTextStyle = GetProperty(implicitStyledText, "Style");
+        AssertType(implicitTextStyle, "System.Windows.Style", "implicit text style");
+        AssertEqual("System.Windows.Controls.TextBlock", GetProperty(implicitTextStyle, "TargetType").ToString() ?? string.Empty, "implicit text style target type");
+        AssertAtLeast(2, GetCount(GetProperty(implicitTextStyle, "Setters")), "implicit text style setter count");
+        object implicitStyledForeground = GetProperty(implicitStyledText, "Foreground");
+        AssertType(implicitStyledForeground, "System.Windows.Media.SolidColorBrush", "implicit styled text foreground");
+        AssertEqual("#FF356D9E", GetProperty(implicitStyledForeground, "Color").ToString() ?? string.Empty, "implicit styled text foreground color");
 
         object layoutGrid = Invoke(window, "FindName", "LayoutGrid");
         AssertType(layoutGrid, "System.Windows.Controls.Grid", "layout grid");

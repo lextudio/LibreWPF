@@ -492,6 +492,19 @@
             x:Name="ImplicitItemPresenter"
             Margin="0,6,0,0"
             Content="{Binding SelectedItem, ElementName=ItemsList}" />
+        <StackPanel
+            x:Name="ImplicitStylePanel"
+            Margin="0,6,0,0">
+            <StackPanel.Resources>
+                <Style TargetType="{x:Type TextBlock}">
+                    <Setter Property="Tag" Value="implicit style active" />
+                    <Setter Property="Foreground" Value="{DynamicResource SmokeAccentBrush}" />
+                </Style>
+            </StackPanel.Resources>
+            <TextBlock
+                x:Name="ImplicitStyledText"
+                Text="implicit style text" />
+        </StackPanel>
         <Grid
             x:Name="LayoutGrid"
             Height="54"

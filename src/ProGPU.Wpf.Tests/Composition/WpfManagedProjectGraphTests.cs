@@ -4797,6 +4797,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"ImplicitSmokeItemText\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding Name, StringFormat=implicit: {0}}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ImplicitItemPresenter\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ImplicitStylePanel\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<Style TargetType=\"{x:Type TextBlock}\">", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Value=\"implicit style active\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Value=\"{DynamicResource SmokeAccentBrush}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ImplicitStyledText\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<HierarchicalDataTemplate", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"SmokeHierarchyTemplate\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Children}\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -5359,6 +5364,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("implicit item template binding path", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"ImplicitItemPresenter\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("implicit item template resolved text", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"ImplicitStylePanel\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"ImplicitStyledText\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("implicit text style target type", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("implicit styled text foreground color", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"LayoutGrid\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("layout grid row definition count", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"LayoutLabel\"", runtimeHarnessProgram, StringComparison.Ordinal);

@@ -938,13 +938,33 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private static object ShowPortableMessageBox(object request)
     {
-        if (TryReadRequestProperty(request, "FallbackResult", out object? fallbackResult) &&
-            fallbackResult != null)
+        var options = new WpfMessageBoxOptions
         {
-            return fallbackResult;
-        }
+            MessageBoxText = ReadRequestString(request, "MessageBoxText", string.Empty),
+            Caption = ReadRequestString(request, "Caption", string.Empty),
+            Button = ReadRequestValueName(request, "Button", "OK"),
+            Icon = ReadRequestValueName(request, "Icon", "None"),
+            DefaultResult = ReadRequestValueName(request, "DefaultResult", "None"),
+            Options = ReadRequestValueName(request, "Options", "None"),
+            FallbackResult = ReadRequestValueName(request, "FallbackResult", "OK")
+        };
 
-        return "OK";
+        try
+        {
+            return CrossPlatformWpfPlatformServices.Instance.MessageBoxes.Show(options);
+        }
+        catch (PlatformNotSupportedException)
+        {
+            return options.FallbackResult;
+        }
+        catch (InvalidOperationException)
+        {
+            return options.FallbackResult;
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            return options.FallbackResult;
+        }
     }
 
     private static string? GetPortableClipboardText()
@@ -1031,6 +1051,13 @@ public sealed class WpfPortableWindowActivation : IDisposable
     {
         return TryReadRequestProperty(request, propertyName, out object? value) && value is string text
             ? text
+            : fallback;
+    }
+
+    private static string ReadRequestValueName(object request, string propertyName, string fallback)
+    {
+        return TryReadRequestProperty(request, propertyName, out object? value) && value != null
+            ? value.ToString() ?? fallback
             : fallback;
     }
 

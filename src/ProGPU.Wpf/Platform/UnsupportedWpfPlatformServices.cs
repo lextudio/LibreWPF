@@ -23,6 +23,8 @@ public sealed class UnsupportedWpfPlatformServices : IWpfPlatformServices
 
     public IWpfLauncher Launcher { get; } = new UnsupportedLauncher();
 
+    public IWpfMessageBoxService MessageBoxes { get; } = new UnsupportedMessageBoxService();
+
     public IWpfMonitorService Monitors { get; } = new UnsupportedMonitorService();
 
     public IWpfTimerService Timers { get; } = new UnsupportedTimerService();
@@ -118,6 +120,14 @@ public sealed class UnsupportedWpfPlatformServices : IWpfPlatformServices
         public ValueTask OpenFileAsync(string path, CancellationToken cancellationToken = default)
         {
             throw new PlatformNotSupportedException("Launcher services are not configured for this WPF ProGPU host.");
+        }
+    }
+
+    private sealed class UnsupportedMessageBoxService : IWpfMessageBoxService
+    {
+        public string Show(WpfMessageBoxOptions options)
+        {
+            throw new PlatformNotSupportedException("Message box services are not configured for this WPF ProGPU host.");
         }
     }
 

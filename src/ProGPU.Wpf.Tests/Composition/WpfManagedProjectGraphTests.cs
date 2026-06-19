@@ -265,6 +265,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Compositor.RenderScene(\n            SceneRootVisual,\n            logicalWidth,\n            logicalHeight,\n            pixelWidth,\n            pixelHeight,\n            dpiScale,\n            targetView)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("IWpfWindowDecorationService WindowDecorations", proGpuPlatformServices, StringComparison.Ordinal);
         Assert.Contains("bool TryBeginDragMove(object window)", proGpuPlatformServices, StringComparison.Ordinal);
+        Assert.Contains("IWpfMessageBoxService MessageBoxes", proGpuPlatformServices, StringComparison.Ordinal);
+        Assert.Contains("string Show(WpfMessageBoxOptions options)", proGpuPlatformServices, StringComparison.Ordinal);
         Assert.Contains("_window.Update += OnUpdate", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_window.Update -= OnUpdate", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("private void OnUpdate(double deltaSeconds)", proGpuHost, StringComparison.Ordinal);
@@ -653,6 +655,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryRegisterPresentationFrameworkMessageBoxService(presentationFrameworkAssembly)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("typeof(Func<object, object>)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("ShowPortableMessageBox", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("new WpfMessageBoxOptions", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("CrossPlatformWpfPlatformServices.Instance.MessageBoxes.Show(options)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("\"FallbackResult\"", proGpuActivation, StringComparison.Ordinal);
 
         Assert.Contains("PortableMessageBoxServiceTypeName = \"System.Windows.PortableMessageBoxService\"", runtimeHarness, StringComparison.Ordinal);
@@ -6151,6 +6155,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateMessageBox(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.PortableMessageBoxService", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK portable MessageBox service enabled", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RegisterDeterministicMessageBox(serviceType)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ShowDeterministicMessageBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK MessageBox no-owner default result", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK MessageBox owner fallback result", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateFileDialogs(window)", externalSdkHarnessProgram, StringComparison.Ordinal);

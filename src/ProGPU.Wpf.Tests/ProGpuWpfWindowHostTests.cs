@@ -81,6 +81,7 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.IsType<ProcessWpfFileDialogService>(services.FileDialogs);
         Assert.IsType<SilkNetWpfInputService>(services.Input);
         Assert.IsType<ProcessWpfLauncher>(services.Launcher);
+        Assert.IsType<ProcessWpfMessageBoxService>(services.MessageBoxes);
         Assert.IsType<SilkNetWpfMonitorService>(services.Monitors);
         Assert.IsType<ThreadPoolWpfTimerService>(services.Timers);
         Assert.IsType<SilkNetWpfWindowDecorationService>(services.WindowDecorations);

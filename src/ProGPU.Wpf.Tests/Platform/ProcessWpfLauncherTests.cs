@@ -37,6 +37,7 @@ public sealed class ProcessWpfLauncherTests
         Assert.IsType<SilkNetWpfDragDropService>(services.DragDrop);
         Assert.IsType<ProcessWpfFileDialogService>(services.FileDialogs);
         Assert.IsType<ProcessWpfLauncher>(services.Launcher);
+        Assert.IsType<ProcessWpfMessageBoxService>(services.MessageBoxes);
         Assert.IsType<SilkNetWpfMonitorService>(services.Monitors);
         Assert.IsType<ThreadPoolWpfTimerService>(services.Timers);
     }

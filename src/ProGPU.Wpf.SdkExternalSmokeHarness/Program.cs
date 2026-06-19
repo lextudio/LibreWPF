@@ -2159,30 +2159,58 @@ internal static class Program
                             "external SDK portable MessageBox service enabled");
                     }
 
-                    var noOwnerResult = MessageBox.Show(
-                        "external SDK message",
-                        "external SDK caption",
-                        MessageBoxButton.YesNoCancel,
-                        MessageBoxImage.Warning,
-                        MessageBoxResult.No,
-                        MessageBoxOptions.None);
-                    AssertEqual(
-                        MessageBoxResult.No,
-                        noOwnerResult,
-                        "external SDK MessageBox no-owner default result");
+                    IDisposable? registration = RegisterDeterministicMessageBox(serviceType);
+                    try
+                    {
+                        var noOwnerResult = MessageBox.Show(
+                            "external SDK message",
+                            "external SDK caption",
+                            MessageBoxButton.YesNoCancel,
+                            MessageBoxImage.Warning,
+                            MessageBoxResult.No,
+                            MessageBoxOptions.None);
+                        AssertEqual(
+                            MessageBoxResult.No,
+                            noOwnerResult,
+                            "external SDK MessageBox no-owner default result");
 
-                    var ownerResult = MessageBox.Show(
-                        window,
-                        "external SDK owner message",
-                        "external SDK owner caption",
-                        MessageBoxButton.OKCancel,
-                        MessageBoxImage.Information,
-                        MessageBoxResult.None,
-                        MessageBoxOptions.None);
-                    AssertEqual(
-                        MessageBoxResult.OK,
-                        ownerResult,
-                        "external SDK MessageBox owner fallback result");
+                        var ownerResult = MessageBox.Show(
+                            window,
+                            "external SDK owner message",
+                            "external SDK owner caption",
+                            MessageBoxButton.OKCancel,
+                            MessageBoxImage.Information,
+                            MessageBoxResult.None,
+                            MessageBoxOptions.None);
+                        AssertEqual(
+                            MessageBoxResult.OK,
+                            ownerResult,
+                            "external SDK MessageBox owner fallback result");
+                    }
+                    finally
+                    {
+                        registration?.Dispose();
+                    }
+                }
+
+                private static IDisposable? RegisterDeterministicMessageBox(Type serviceType)
+                {
+                    var registerMethod = serviceType.GetMethod(
+                            "Register",
+                            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                            binder: null,
+                            types: new[] { typeof(Func<object, object>) },
+                            modifiers: null)
+                        ?? throw new MissingMethodException(serviceType.FullName, "Register");
+
+                    return registerMethod.Invoke(
+                        null,
+                        new object[] { (Func<object, object>)ShowDeterministicMessageBox }) as IDisposable;
+                }
+
+                private static object ShowDeterministicMessageBox(object request)
+                {
+                    return ReadPortableRequestString(request, "FallbackResult");
                 }
 
                 private static void ValidateFileDialogs(Window window)

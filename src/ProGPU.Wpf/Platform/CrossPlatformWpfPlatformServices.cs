@@ -25,6 +25,7 @@ public sealed class CrossPlatformWpfPlatformServices : IWpfPlatformServices
             new QueuedWpfDispatcherService(),
             new ProcessWpfFileDialogService(),
             new SilkNetWpfInputService(),
+            new ProcessWpfMessageBoxService(),
             new ThreadPoolWpfTimerService(),
             new SilkNetWpfWindowEventService())
     {
@@ -139,7 +140,22 @@ public sealed class CrossPlatformWpfPlatformServices : IWpfPlatformServices
         IWpfInputService input,
         IWpfTimerService timers,
         IWpfWindowEventService windowEvents)
-        : this(launcher, monitors, clipboard, cursors, dispatcher, fileDialogs, input, timers, windowEvents, new SilkNetWpfWindowDecorationService(), new SilkNetWpfDragDropService())
+        : this(launcher, monitors, clipboard, cursors, dispatcher, fileDialogs, input, new ProcessWpfMessageBoxService(), timers, windowEvents, new SilkNetWpfWindowDecorationService(), new SilkNetWpfDragDropService())
+    {
+    }
+
+    public CrossPlatformWpfPlatformServices(
+        IWpfLauncher launcher,
+        IWpfMonitorService monitors,
+        IWpfClipboard clipboard,
+        IWpfCursorService cursors,
+        IWpfDispatcherService dispatcher,
+        IWpfFileDialogService fileDialogs,
+        IWpfInputService input,
+        IWpfMessageBoxService messageBoxes,
+        IWpfTimerService timers,
+        IWpfWindowEventService windowEvents)
+        : this(launcher, monitors, clipboard, cursors, dispatcher, fileDialogs, input, messageBoxes, timers, windowEvents, new SilkNetWpfWindowDecorationService(), new SilkNetWpfDragDropService())
     {
     }
 
@@ -154,7 +170,7 @@ public sealed class CrossPlatformWpfPlatformServices : IWpfPlatformServices
         IWpfTimerService timers,
         IWpfWindowEventService windowEvents,
         IWpfDragDropService dragDrop)
-        : this(launcher, monitors, clipboard, cursors, dispatcher, fileDialogs, input, timers, windowEvents, new SilkNetWpfWindowDecorationService(), dragDrop)
+        : this(launcher, monitors, clipboard, cursors, dispatcher, fileDialogs, input, new ProcessWpfMessageBoxService(), timers, windowEvents, new SilkNetWpfWindowDecorationService(), dragDrop)
     {
     }
 
@@ -166,6 +182,7 @@ public sealed class CrossPlatformWpfPlatformServices : IWpfPlatformServices
         IWpfDispatcherService dispatcher,
         IWpfFileDialogService fileDialogs,
         IWpfInputService input,
+        IWpfMessageBoxService messageBoxes,
         IWpfTimerService timers,
         IWpfWindowEventService windowEvents,
         IWpfWindowDecorationService windowDecorations,
@@ -178,6 +195,7 @@ public sealed class CrossPlatformWpfPlatformServices : IWpfPlatformServices
         ArgumentNullException.ThrowIfNull(dispatcher);
         ArgumentNullException.ThrowIfNull(fileDialogs);
         ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(messageBoxes);
         ArgumentNullException.ThrowIfNull(timers);
         ArgumentNullException.ThrowIfNull(windowEvents);
         ArgumentNullException.ThrowIfNull(windowDecorations);
@@ -190,6 +208,7 @@ public sealed class CrossPlatformWpfPlatformServices : IWpfPlatformServices
         FileDialogs = fileDialogs;
         Input = input;
         Launcher = launcher;
+        MessageBoxes = messageBoxes;
         Monitors = monitors;
         Timers = timers;
         WindowDecorations = windowDecorations;
@@ -209,6 +228,8 @@ public sealed class CrossPlatformWpfPlatformServices : IWpfPlatformServices
     public IWpfInputService Input { get; }
 
     public IWpfLauncher Launcher { get; }
+
+    public IWpfMessageBoxService MessageBoxes { get; }
 
     public IWpfMonitorService Monitors { get; }
 

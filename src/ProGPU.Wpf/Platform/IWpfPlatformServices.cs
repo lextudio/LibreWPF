@@ -21,6 +21,8 @@ public interface IWpfPlatformServices
 
     IWpfLauncher Launcher { get; }
 
+    IWpfMessageBoxService MessageBoxes { get; }
+
     IWpfMonitorService Monitors { get; }
 
     IWpfTimerService Timers { get; }
@@ -87,6 +89,11 @@ public interface IWpfLauncher
     ValueTask OpenFileAsync(string path, CancellationToken cancellationToken = default);
 }
 
+public interface IWpfMessageBoxService
+{
+    string Show(WpfMessageBoxOptions options);
+}
+
 public interface IWpfInputService
 {
     event EventHandler<WpfInputEventArgs>? InputReceived;
@@ -134,6 +141,23 @@ public sealed class WpfFileDialogOptions
     public string? SuggestedFileName { get; set; }
 
     public IReadOnlyList<string> FileTypePatterns { get; set; } = Array.Empty<string>();
+}
+
+public sealed class WpfMessageBoxOptions
+{
+    public string MessageBoxText { get; set; } = string.Empty;
+
+    public string Caption { get; set; } = string.Empty;
+
+    public string Button { get; set; } = "OK";
+
+    public string Icon { get; set; } = "None";
+
+    public string DefaultResult { get; set; } = "None";
+
+    public string Options { get; set; } = "None";
+
+    public string FallbackResult { get; set; } = "OK";
 }
 
 public enum WpfCursor

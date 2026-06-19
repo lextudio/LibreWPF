@@ -4425,6 +4425,14 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Shell",
             "WindowChromeWorker.cs"));
+        var systemCommands = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "SystemCommands.cs"));
         var application = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4736,6 +4744,11 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(windowChromeWorker, "if (!OperatingSystem.IsWindows() || IntPtr.Zero == _hwnd || _hwndSource == null || _hwndSource.IsDisposed)", "NativeMethods.DwmIsCompositionEnabled()");
         AssertGuardBefore(windowChromeWorker, "if (!OperatingSystem.IsWindows() || _hwnd == IntPtr.Zero || _hwndSource == null)", "_hwndSource.RemoveHook(_WndProc)");
         Assert.Contains("private void _ApplyPortableCustomChrome()", windowChromeWorker, StringComparison.Ordinal);
+        AssertGuardBefore(systemCommands, "if (!OperatingSystem.IsWindows())", "new WindowInteropHelper(window).Handle");
+        AssertGuardBefore(systemCommands, "if (!OperatingSystem.IsWindows())", "NativeMethods.GetSystemMenu(hwnd, false)");
+        Assert.Contains("window.WindowState = WindowState.Maximized", systemCommands, StringComparison.Ordinal);
+        Assert.Contains("window.WindowState = WindowState.Minimized", systemCommands, StringComparison.Ordinal);
+        Assert.Contains("window.WindowState = WindowState.Normal", systemCommands, StringComparison.Ordinal);
         AssertGuardBefore(dpiAwareness, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetWindowDpiAwarenessContext(hWnd)");
         AssertGuardBefore(osVersionHelper, "if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))", "IsWindows10RS5OrGreater()");
         AssertGuardBefore(osVersionHelper, "return OperatingSystemVersion.WindowsXPSP2;", "throw new Exception(\"OSVersionHelper.GetOsVersion Could not detect OS!\")");
@@ -5783,6 +5796,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SDK portable bootstrap MessageBox enabled", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK portable bootstrap file dialog enabled", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK portable bootstrap loaded ProGPU.Wpf", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableSystemCommands(presentationFramework, window)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.SystemCommands", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable SDK SystemCommands restore state", runtimeHarnessProgram, StringComparison.Ordinal);
 
         Assert.Contains("<Project Sdk=\"Microsoft.NET.Sdk\">", externalSdkHarnessProject, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>net11.0</TargetFramework>", externalSdkHarnessProject, StringComparison.Ordinal);
@@ -5805,6 +5821,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PROGPU_WPF_EXTERNAL_VALIDATE", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_EXTERNAL_RUN_VALIDATE", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("External SDK Application.Run validation succeeded.", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateSystemCommands(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SystemCommands.MaximizeWindow(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK SystemCommands show system menu no-op state", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Startup=\"OnExternalAppStartup\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Exit=\"OnExternalAppExit\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalStartupResourceText", externalSdkHarnessProgram, StringComparison.Ordinal);

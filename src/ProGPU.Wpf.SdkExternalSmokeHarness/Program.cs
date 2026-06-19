@@ -1552,6 +1552,7 @@ internal static class Program
                     ValidateApplicationResources(window);
                     ValidateSystemParameters(window);
                     ValidateWindowChrome(window);
+                    ValidateSystemCommands(window);
                     ValidateMessageBox(window);
                     ValidateFileDialogs(window);
                     ValidateClipboard();
@@ -2067,6 +2068,21 @@ internal static class Program
                     {
                         throw new InvalidOperationException("Expected external SDK WindowChrome cleared value to be null.");
                     }
+                }
+
+                private static void ValidateSystemCommands(MainWindow window)
+                {
+                    SystemCommands.MaximizeWindow(window);
+                    AssertEqual(WindowState.Maximized, window.WindowState, "external SDK SystemCommands maximize state");
+
+                    SystemCommands.MinimizeWindow(window);
+                    AssertEqual(WindowState.Minimized, window.WindowState, "external SDK SystemCommands minimize state");
+
+                    SystemCommands.RestoreWindow(window);
+                    AssertEqual(WindowState.Normal, window.WindowState, "external SDK SystemCommands restore state");
+
+                    SystemCommands.ShowSystemMenu(window, new Point(12.0, 24.0));
+                    AssertEqual(WindowState.Normal, window.WindowState, "external SDK SystemCommands show system menu no-op state");
                 }
 
                 private static void ValidateMessageBox(Window window)

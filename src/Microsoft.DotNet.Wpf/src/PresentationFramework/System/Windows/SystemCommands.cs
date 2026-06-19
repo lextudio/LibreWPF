@@ -27,6 +27,27 @@ namespace System.Windows
 
         private static void _PostSystemCommand(Window window, SC command)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                switch (command)
+                {
+                    case SC.CLOSE:
+                        window.Close();
+                        break;
+                    case SC.MAXIMIZE:
+                        window.WindowState = WindowState.Maximized;
+                        break;
+                    case SC.MINIMIZE:
+                        window.WindowState = WindowState.Minimized;
+                        break;
+                    case SC.RESTORE:
+                        window.WindowState = WindowState.Normal;
+                        break;
+                }
+
+                return;
+            }
+
             IntPtr hwnd = new WindowInteropHelper(window).Handle;
             if (hwnd == IntPtr.Zero || !NativeMethods.IsWindow(hwnd))
             {
@@ -76,6 +97,11 @@ namespace System.Windows
             const uint TPM_RIGHTBUTTON = 0x2;
 
             Verify.IsNotNull(window, "window");
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
+
             IntPtr hwnd = new WindowInteropHelper(window).Handle;
             if (hwnd == IntPtr.Zero || !NativeMethods.IsWindow(hwnd))
             {

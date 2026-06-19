@@ -221,6 +221,7 @@ internal static class Program
             ValidatePortableInputLanguageManager(presentationCore, window);
             ValidatePortableInputMethod(presentationCore, window);
             ValidatePortableWindowChrome(presentationFramework, window);
+            ValidatePortableSystemCommands(presentationFramework, window);
             ValidatePortableMessageBox(presentationFramework, window);
         }
         finally
@@ -673,6 +674,28 @@ internal static class Program
 
         InvokeStaticVoid(windowChromeType, "SetWindowChrome", window, null);
         AssertNull(InvokeStaticOrNull(windowChromeType, "GetWindowChrome", window), "portable SDK WindowChrome cleared value");
+    }
+
+    private static void ValidatePortableSystemCommands(Assembly presentationFramework, object window)
+    {
+        Type systemCommandsType = GetRequiredType(presentationFramework, "System.Windows.SystemCommands");
+        Type windowStateType = GetRequiredType(presentationFramework, "System.Windows.WindowState");
+        Type pointType = AppDomain.CurrentDomain.GetAssemblies()
+            .Select(assembly => assembly.GetType("System.Windows.Point", throwOnError: false))
+            .FirstOrDefault(type => type is not null)
+            ?? throw new TypeLoadException("System.Windows.Point");
+
+        InvokeStaticVoid(systemCommandsType, "MaximizeWindow", window);
+        AssertEqual(Enum.Parse(windowStateType, "Maximized"), GetProperty(window, "WindowState"), "portable SDK SystemCommands maximize state");
+
+        InvokeStaticVoid(systemCommandsType, "MinimizeWindow", window);
+        AssertEqual(Enum.Parse(windowStateType, "Minimized"), GetProperty(window, "WindowState"), "portable SDK SystemCommands minimize state");
+
+        InvokeStaticVoid(systemCommandsType, "RestoreWindow", window);
+        AssertEqual(Enum.Parse(windowStateType, "Normal"), GetProperty(window, "WindowState"), "portable SDK SystemCommands restore state");
+
+        InvokeStaticVoid(systemCommandsType, "ShowSystemMenu", window, Create(pointType, 12.0, 24.0));
+        AssertEqual(Enum.Parse(windowStateType, "Normal"), GetProperty(window, "WindowState"), "portable SDK SystemCommands show system menu no-op state");
     }
 
     private static void AssertPortableSystemParameterMetric(

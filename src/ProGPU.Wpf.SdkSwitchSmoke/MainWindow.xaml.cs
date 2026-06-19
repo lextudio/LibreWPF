@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Navigation;
 
 namespace ProGPU.Wpf.SdkSwitchSmoke;
 
@@ -64,6 +65,12 @@ public partial class MainWindow : Window
     public int ExpanderCollapsedCount { get; private set; }
 
     public int RangeValueChangedCount { get; private set; }
+
+    public int DocumentLinkRequestNavigateCount { get; private set; }
+
+    public string? LastDocumentLinkRequestNavigateUri { get; private set; }
+
+    public string? LastDocumentLinkRequestNavigateRoutedEventName { get; private set; }
 
     public object? LastSmokeRoutedEventSender { get; private set; }
 
@@ -254,6 +261,14 @@ public partial class MainWindow : Window
         LastSmokeRoutedEventSender = sender;
         LastSmokeRoutedEventSource = e.OriginalSource;
         RoutedEventStatus.Text = e.RoutedEvent.Name;
+        e.Handled = true;
+    }
+
+    private void OnDocumentLinkRequestNavigate(object sender, RequestNavigateEventArgs e)
+    {
+        DocumentLinkRequestNavigateCount++;
+        LastDocumentLinkRequestNavigateUri = e.Uri?.ToString();
+        LastDocumentLinkRequestNavigateRoutedEventName = e.RoutedEvent?.Name;
         e.Handled = true;
     }
 }

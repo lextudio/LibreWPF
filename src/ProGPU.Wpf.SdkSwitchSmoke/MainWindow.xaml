@@ -713,7 +713,9 @@
                     <Run Text=" rich text" />
                     <LineBreak />
                     <Italic>loaded from SDK-built BAML</Italic>
-                    <Hyperlink NavigateUri="https://example.com/progpu-wpf">
+                    <Hyperlink
+                        NavigateUri="https://example.com/progpu-wpf"
+                        RequestNavigate="OnDocumentLinkRequestNavigate">
                         <Run Text=" linked document content" />
                     </Hyperlink>
                     <InlineUIContainer>

@@ -1115,6 +1115,14 @@ internal static class Program
         AssertAtLeast(6, GetCount(paragraphInlines), "rich text first paragraph inline count");
         object documentHyperlink = FindFirstByType(paragraphInlines, "System.Windows.Documents.Hyperlink", "rich text hyperlink");
         AssertEqual("https://example.com/progpu-wpf", GetProperty(documentHyperlink, "NavigateUri").ToString() ?? string.Empty, "rich text hyperlink URI");
+        if (validateFrameContent)
+        {
+            int requestNavigateCountBefore = Convert.ToInt32(GetProperty(window, "DocumentLinkRequestNavigateCount"));
+            InvokeVoid(documentHyperlink, "DoClick");
+            AssertAtLeast(requestNavigateCountBefore + 1, GetProperty(window, "DocumentLinkRequestNavigateCount"), "SDK rich text hyperlink RequestNavigate count");
+            AssertEqual("https://example.com/progpu-wpf", GetProperty(window, "LastDocumentLinkRequestNavigateUri"), "SDK rich text hyperlink RequestNavigate URI");
+            AssertEqual("RequestNavigate", GetProperty(window, "LastDocumentLinkRequestNavigateRoutedEventName"), "SDK rich text hyperlink RequestNavigate routed event");
+        }
         object inlineUiContainer = FindFirstByType(paragraphInlines, "System.Windows.Documents.InlineUIContainer", "rich text inline UI container");
         object inlineButton = GetProperty(inlineUiContainer, "Child");
         AssertType(inlineButton, "System.Windows.Controls.Button", "rich text inline UI button");

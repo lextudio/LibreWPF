@@ -4911,7 +4911,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Source=\"SmokePage.xaml\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<RichTextBox", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<FlowDocument>", smokeMainWindowXaml, StringComparison.Ordinal);
-        Assert.Contains("<Hyperlink NavigateUri=\"https://example.com/progpu-wpf\">", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("NavigateUri=\"https://example.com/progpu-wpf\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("RequestNavigate=\"OnDocumentLinkRequestNavigate\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Inline document button", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<List MarkerStyle=\"Square\">", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Document list item one", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -5022,6 +5023,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void OnRangeValueChanged", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RangeValueChangedCount++", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("e.NewValue.ToString(\"0.##\", CultureInfo.InvariantCulture)", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("using System.Windows.Navigation;", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int DocumentLinkRequestNavigateCount", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public string? LastDocumentLinkRequestNavigateUri", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public string? LastDocumentLinkRequestNavigateRoutedEventName", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnDocumentLinkRequestNavigate(object sender, RequestNavigateEventArgs e)", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DocumentLinkRequestNavigateCount++", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastDocumentLinkRequestNavigateUri = e.Uri?.ToString()", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastDocumentLinkRequestNavigateRoutedEventName = e.RoutedEvent?.Name", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SmokeRoutedEventCount++", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnSmokeBubbled", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastSmokeRoutedEventSender = sender;", smokeMainWindowCodeBehind, StringComparison.Ordinal);
@@ -5391,6 +5400,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled page subtitle text", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"DocumentBox\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("rich text hyperlink URI", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("InvokeVoid(documentHyperlink, \"DoClick\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK rich text hyperlink RequestNavigate count", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK rich text hyperlink RequestNavigate URI", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK rich text hyperlink RequestNavigate routed event", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("rich text inline UI button content", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("rich text list marker style", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("rich text table column count", runtimeHarnessProgram, StringComparison.Ordinal);

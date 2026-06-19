@@ -6193,6 +6193,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK loose XamlWriter round-trip HierarchicalDataTemplate trigger binding path", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK loose XamlWriter HierarchicalDataTemplate trigger setter target", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK loose XamlWriter round-trip HierarchicalDataTemplate kind TextBlock name", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalWriterItemsPanelTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("XamlWriter.Save(itemsPanelTemplateDictionary)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter serialized ItemsPanelTemplate panel", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter round-trip ItemsPanelTemplate panel name", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter round-trip ItemsPanelTemplate orientation", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter round-trip ItemsPanelTemplate item width", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateDataProviders(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ObjectDataProvider data", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ObjectDataProvider bound text", externalSdkHarnessProgram, StringComparison.Ordinal);

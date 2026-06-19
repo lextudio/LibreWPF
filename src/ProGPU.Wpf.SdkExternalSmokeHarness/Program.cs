@@ -2813,6 +2813,36 @@ internal static class Program
                             hierarchicalRoot.Children[1],
                             "external SDK loose XamlWriter round-trip HierarchicalDataTemplate kind text").Name,
                         "external SDK loose XamlWriter round-trip HierarchicalDataTemplate kind TextBlock name");
+
+                    string itemsPanelTemplateDictionaryXaml =
+                        "<ResourceDictionary xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" " +
+                        "xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\">" +
+                        "<ItemsPanelTemplate x:Key=\"ExternalWriterItemsPanelTemplate\">" +
+                        "<WrapPanel x:Name=\"ExternalWriterItemsHostPanel\" Orientation=\"Horizontal\" ItemWidth=\"48\" ItemHeight=\"24\" Tag=\"external writer items panel\" />" +
+                        "</ItemsPanelTemplate>" +
+                        "</ResourceDictionary>";
+                    var itemsPanelTemplateDictionary = RequireType<ResourceDictionary>(
+                        XamlReader.Parse(itemsPanelTemplateDictionaryXaml),
+                        "external SDK loose XamlWriter ItemsPanelTemplate dictionary source");
+                    string itemsPanelTemplateSerialized = XamlWriter.Save(itemsPanelTemplateDictionary);
+                    AssertContains("ItemsPanelTemplate", itemsPanelTemplateSerialized, "external SDK loose XamlWriter serialized ItemsPanelTemplate");
+                    AssertContains("ExternalWriterItemsPanelTemplate", itemsPanelTemplateSerialized, "external SDK loose XamlWriter serialized ItemsPanelTemplate key");
+                    AssertContains("WrapPanel", itemsPanelTemplateSerialized, "external SDK loose XamlWriter serialized ItemsPanelTemplate panel");
+                    AssertContains("ExternalWriterItemsHostPanel", itemsPanelTemplateSerialized, "external SDK loose XamlWriter serialized ItemsPanelTemplate panel name");
+                    var roundTrippedItemsPanelTemplates = RequireType<ResourceDictionary>(
+                        XamlReader.Parse(itemsPanelTemplateSerialized),
+                        "external SDK loose XamlWriter round-trip ItemsPanelTemplate dictionary");
+                    var itemsPanelTemplate = RequireType<ItemsPanelTemplate>(
+                        roundTrippedItemsPanelTemplates["ExternalWriterItemsPanelTemplate"],
+                        "external SDK loose XamlWriter round-trip ItemsPanelTemplate");
+                    var itemsPanel = RequireType<WrapPanel>(
+                        itemsPanelTemplate.LoadContent(),
+                        "external SDK loose XamlWriter round-trip ItemsPanelTemplate panel");
+                    AssertEqual("ExternalWriterItemsHostPanel", itemsPanel.Name, "external SDK loose XamlWriter round-trip ItemsPanelTemplate panel name");
+                    AssertEqual("external writer items panel", itemsPanel.Tag, "external SDK loose XamlWriter round-trip ItemsPanelTemplate panel tag");
+                    AssertEqual(Orientation.Horizontal, itemsPanel.Orientation, "external SDK loose XamlWriter round-trip ItemsPanelTemplate orientation");
+                    AssertEqual(48.0, itemsPanel.ItemWidth, "external SDK loose XamlWriter round-trip ItemsPanelTemplate item width");
+                    AssertEqual(24.0, itemsPanel.ItemHeight, "external SDK loose XamlWriter round-trip ItemsPanelTemplate item height");
                 }
 
                 private static void ValidateDataProviders(MainWindow window)

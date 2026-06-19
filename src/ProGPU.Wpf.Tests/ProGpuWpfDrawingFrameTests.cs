@@ -78,7 +78,7 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
-    public void ConstructorKeepsWpfLayersInLogicalDipsForHighDpiFrames()
+    public void ConstructorKeepsWpfLayerBoundsLogicalAndScalesRetainedLayerForHighDpiFrames()
     {
         var sceneRoot = new ProGpuContainerVisual();
         var retainedRoot = new ProGpuContainerVisual();
@@ -105,7 +105,7 @@ public sealed class ProGpuWpfDrawingFrameTests
         Assert.Equal(new Vector2(420, 840), retainedRoot.Size);
         Assert.Equal(new Vector2(420, 840), flatRoot.Size);
         Assert.Equal(Matrix4x4.Identity, retainedRoot.Transform);
-        Assert.Equal(Vector3.One, retainedRoot.Scale);
+        Assert.Equal(new Vector3(2f, 2f, 1f), retainedRoot.Scale);
         Assert.Equal(Vector2.Zero, retainedRoot.RenderTransformOrigin);
 
         using var sink = new ProGpuRetainedCompositionCommandSink(frame, context: null, viewport3DTextureCache: null);

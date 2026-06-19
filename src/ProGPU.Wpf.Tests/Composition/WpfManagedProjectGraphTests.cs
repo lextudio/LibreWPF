@@ -195,6 +195,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf",
             "ProGpuWpfWindowHost.cs");
+        var proGpuDrawingFramePath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "ProGpuWpfDrawingFrame.cs");
         var proGpuCompositionTargetPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -214,6 +218,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuScheduler = File.ReadAllText(proGpuSchedulerPath);
         var proGpuPlatformServices = File.ReadAllText(proGpuPlatformServicesPath);
         var proGpuHost = File.ReadAllText(proGpuHostPath);
+        var proGpuDrawingFrame = File.ReadAllText(proGpuDrawingFramePath);
         var proGpuCompositionTarget = File.ReadAllText(proGpuCompositionTargetPath);
         var proGpuCompositor = File.ReadAllText(proGpuCompositorPath);
 
@@ -255,6 +260,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var logicalHeight = (uint)Math.Max(1, _clientHeight)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var dpiScaleX = pixelWidth / (double)logicalWidth", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var dpiScaleY = pixelHeight / (double)logicalHeight", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_retainedWpfVisualRoot.Scale = new Vector3((float)DpiScaleX, (float)DpiScaleY, 1f)", proGpuDrawingFrame, StringComparison.Ordinal);
         Assert.Contains("logicalWidth,\n                logicalHeight,\n                dpiScaleX,\n                dpiScaleY", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("Present(logicalWidth, logicalHeight, pixelWidth, pixelHeight, dpiScale)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_target.Render(logicalWidth, logicalHeight, pixelWidth, pixelHeight, (float)dpiScale, targetView)", proGpuHost, StringComparison.Ordinal);

@@ -10,7 +10,7 @@ The SDK owns the package dependency closure. The WPF transport package supplies 
 
 Existing WPF application projects should keep their normal WPF project shape and switch only the project SDK. The SDK treats `UseWPF=true` as the app's markup intent, then internally redirects framework references to the portable WPF transport and ProGPU/Silk.NET package graph.
 
-The SDK also supplies the WPF markup compiler defaults needed by the portable build lane, so applications do not need ProGPU-specific item includes or PresentationBuildTasks compatibility properties.
+The SDK also supplies the WPF markup compiler defaults and portable runtime-framework default needed by the current build lane, so applications do not need ProGPU-specific item includes, PresentationBuildTasks compatibility properties, or runtime-version pins.
 
 ```xml
 <Project Sdk="ProGPU.Wpf.Sdk/11.0.0-dev">

@@ -4622,6 +4622,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<ProGpuWpfPlatform Condition=\"'$(ProGpuWpfPlatform)' == ''\">SilkNet</ProGpuWpfPlatform>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfRenderingBackend Condition=\"'$(ProGpuWpfRenderingBackend)' == ''\">ProGPU</ProGpuWpfRenderingBackend>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfSdkVersion Condition=\"'$(ProGpuWpfSdkVersion)' == ''\">11.0.0-dev</ProGpuWpfSdkVersion>", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("<ProGpuWpfRuntimeFrameworkVersion Condition=\"'$(ProGpuWpfRuntimeFrameworkVersion)' == ''\">11.0.0-preview.4.26210.111</ProGpuWpfRuntimeFrameworkVersion>", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("<RuntimeFrameworkVersion Condition=\"'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(RuntimeFrameworkVersion)' == '' And '$(ProGpuWpfRuntimeFrameworkVersion)' != ''\">$(ProGpuWpfRuntimeFrameworkVersion)</RuntimeFrameworkVersion>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfReferenceMode Condition=\"'$(ProGpuWpfReferenceMode)' == '' And ('$(ProGpuWpfManagedReferenceRoot)' != '' Or '$(ProGpuReferenceRoot)' != '')\">LocalArtifacts</ProGpuWpfReferenceMode>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfManagedPackageId Condition=\"'$(ProGpuWpfManagedPackageId)' == ''\">Microsoft.DotNet.Wpf.GitHub</ProGpuWpfManagedPackageId>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfManagedPackageVersion Condition=\"'$(ProGpuWpfManagedPackageVersion)' == ''\">$(ProGpuWpfPackageVersion)</ProGpuWpfManagedPackageVersion>", sdkProps, StringComparison.Ordinal);
@@ -4700,6 +4702,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("ProGpuWpfReferenceMode", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("InternalMarkupCompilation", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("AlwaysCompileMarkupFilesInSeparateDomain", smokeProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("RuntimeFrameworkVersion", smokeProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("AssemblyName", smokeProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("RootNamespace", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("GenerateDependencyFile", smokeProject, StringComparison.Ordinal);
         Assert.Contains("artifacts/packages/Release/NonShipping", smokeNuGetConfig, StringComparison.Ordinal);
         Assert.Contains("ResourceDictionary Source=\"SmokeResources.xaml\"", smokeAppXaml, StringComparison.Ordinal);

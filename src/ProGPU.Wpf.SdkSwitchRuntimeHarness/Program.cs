@@ -346,7 +346,8 @@ internal static class Program
         {
             object lastCommandParameter = GetProperty(window, "LastSmokeCommandParameter");
             if (!object.Equals("routed command payload", lastCommandParameter)
-                && !object.Equals("menu command payload", lastCommandParameter))
+                && !object.Equals("menu command payload", lastCommandParameter)
+                && !object.Equals("toolbar command payload", lastCommandParameter))
             {
                 throw new InvalidOperationException($"Unexpected smoke command parameter '{lastCommandParameter}'.");
             }
@@ -504,6 +505,16 @@ internal static class Program
         object selectedItem = GetProperty(itemsList, "SelectedItem");
         AssertEqual("Scene", GetProperty(selectedItem, "Name"), "selected item name");
         AssertEqual("ProGPU", GetProperty(selectedItem, "Value"), "selected item value");
+        object smokeStatusBar = Invoke(window, "FindName", "SmokeStatusBar");
+        AssertType(smokeStatusBar, "System.Windows.Controls.Primitives.StatusBar", "smoke status bar");
+        AssertAtLeast(3, GetCount(GetProperty(smokeStatusBar, "Items")), "smoke status bar item count");
+        object statusReadyItem = Invoke(window, "FindName", "StatusReadyItem");
+        AssertType(statusReadyItem, "System.Windows.Controls.Primitives.StatusBarItem", "status ready item");
+        AssertEqual("Ready", GetProperty(statusReadyItem, "Content"), "status ready item content");
+        object statusTextBlock = Invoke(window, "FindName", "StatusTextBlock");
+        AssertType(statusTextBlock, "System.Windows.Controls.TextBlock", "status text block");
+        AssertEqual("status text", GetProperty(statusTextBlock, "Tag"), "status text block tag");
+        AssertEqual(GetProperty(selectedItem, "Name"), GetProperty(statusTextBlock, "Text"), "status selected item text");
         object itemsCountText = Invoke(window, "FindName", "ItemsCountText");
         AssertType(itemsCountText, "System.Windows.Controls.TextBlock", "items count text element");
         AssertEqual("items: 3", GetProperty(itemsCountText, "Text"), "initial items count binding text");
@@ -611,6 +622,43 @@ internal static class Program
             AssertAtLeast(tabSelectionCountBefore + 1, GetProperty(window, "TabSelectionChangedCount"), "tab selection changed count");
             AssertEqual("tab selected: Framework", GetProperty(tabStatus, "Text"), "tab status after tab selection");
         }
+
+        object smokeToolBarTray = Invoke(window, "FindName", "SmokeToolBarTray");
+        AssertType(smokeToolBarTray, "System.Windows.Controls.ToolBarTray", "smoke toolbar tray");
+        AssertAtLeast(1, GetCount(GetProperty(smokeToolBarTray, "ToolBars")), "smoke toolbar tray toolbar count");
+        object smokeToolBar = Invoke(window, "FindName", "SmokeToolBar");
+        AssertType(smokeToolBar, "System.Windows.Controls.ToolBar", "smoke toolbar");
+        AssertEqual("Smoke tools", GetProperty(smokeToolBar, "Header"), "smoke toolbar header");
+        AssertAtLeast(3, GetCount(GetProperty(smokeToolBar, "Items")), "smoke toolbar item count");
+
+        object toolBarCommandButton = Invoke(window, "FindName", "ToolBarCommandButton");
+        AssertType(toolBarCommandButton, "System.Windows.Controls.Button", "toolbar command button");
+        object toolbarCommand = GetProperty(toolBarCommandButton, "Command");
+        AssertType(toolbarCommand, "System.Windows.Input.RoutedUICommand", "toolbar command button command");
+        object toolbarCommandParameter = GetProperty(toolBarCommandButton, "CommandParameter");
+        AssertEqual("toolbar command payload", toolbarCommandParameter, "toolbar command parameter");
+        AssertSame(window, GetProperty(toolBarCommandButton, "CommandTarget"), "toolbar command target");
+        int commandExecutionCountBeforeToolbar = Convert.ToInt32(GetProperty(window, "SmokeCommandExecutionCount"));
+        InvokeVoid(toolBarCommandButton, "OnClick");
+        AssertAtLeast(commandExecutionCountBeforeToolbar + 1, GetProperty(window, "SmokeCommandExecutionCount"), "toolbar command execution count");
+        AssertEqual("toolbar command payload", GetProperty(window, "LastSmokeCommandParameter"), "toolbar command payload observed");
+        AssertEqual("toolbar command payload", GetProperty(commandStatus, "Text"), "command status after toolbar command");
+
+        object toolBarSeparator = Invoke(window, "FindName", "ToolBarSeparator");
+        AssertType(toolBarSeparator, "System.Windows.Controls.Separator", "toolbar separator");
+        object toolBarToggle = Invoke(window, "FindName", "ToolBarToggle");
+        AssertType(toolBarToggle, "System.Windows.Controls.Primitives.ToggleButton", "toolbar toggle");
+        object toolBarToggleChecked = GetProperty(toolBarToggle, "IsChecked");
+        if (!object.Equals(true, toolBarToggleChecked)
+            && !object.Equals(false, toolBarToggleChecked))
+        {
+            throw new InvalidOperationException($"Unexpected toolbar toggle checked state '{toolBarToggleChecked}'.");
+        }
+
+        SetProperty(toolBarToggle, "IsChecked", true);
+        AssertEqual(true, GetProperty(toolBarToggle, "IsChecked"), "toolbar toggle checked");
+        SetProperty(toolBarToggle, "IsChecked", false);
+        AssertEqual(false, GetProperty(toolBarToggle, "IsChecked"), "toolbar toggle unchecked");
 
         if (validateFrameContent)
         {

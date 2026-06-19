@@ -399,6 +399,39 @@
             x:Name="TabStatus"
             Margin="0,6,0,0"
             Text="tab idle" />
+        <ToolBarTray
+            x:Name="SmokeToolBarTray"
+            Margin="{StaticResource SmokePanelMargin}">
+            <ToolBar
+                x:Name="SmokeToolBar"
+                Header="Smoke tools">
+                <Button
+                    x:Name="ToolBarCommandButton"
+                    Command="{x:Static local:MainWindow.SmokeCommand}"
+                    CommandParameter="toolbar command payload"
+                    CommandTarget="{Binding ElementName=RootWindow}"
+                    Content="Run toolbar" />
+                <Separator x:Name="ToolBarSeparator" />
+                <ToggleButton
+                    x:Name="ToolBarToggle"
+                    Content="Toggle toolbar"
+                    IsChecked="True" />
+            </ToolBar>
+        </ToolBarTray>
+        <StatusBar
+            x:Name="SmokeStatusBar"
+            Margin="0,6,0,0">
+            <StatusBarItem
+                x:Name="StatusReadyItem"
+                Content="Ready" />
+            <Separator />
+            <StatusBarItem>
+                <TextBlock
+                    x:Name="StatusTextBlock"
+                    Tag="status text"
+                    Text="{Binding SelectedItem.Name, ElementName=ItemsList}" />
+            </StatusBarItem>
+        </StatusBar>
         <TreeView
             x:Name="HierarchyTree"
             Height="72"

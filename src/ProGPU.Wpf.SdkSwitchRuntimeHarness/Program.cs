@@ -219,6 +219,7 @@ internal static class Program
             object exitCode = Invoke(app, "Run");
             runCompleted = true;
             AssertEqual(0, exitCode, "Application.Run exit code");
+            ValidateApplicationRunLifetime(app);
             recorder.ValidateAfterRun();
         }
         finally
@@ -246,6 +247,9 @@ internal static class Program
     private static void ValidateApp(object app)
     {
         AssertEqual("MainWindow.xaml", GetProperty(app, "StartupUri").ToString() ?? string.Empty, "startup URI");
+        AssertEqual(0, GetProperty(app, "StartupEventCount"), "application startup event initial count");
+        AssertEqual(0, GetProperty(app, "ExitEventCount"), "application exit event initial count");
+        AssertEqual(-1, GetProperty(app, "LastExitCode"), "application exit code initial value");
 
         object resources = GetProperty(app, "Resources");
         object accentBrush = Invoke(app, "TryFindResource", "SmokeAccentBrush");
@@ -267,6 +271,14 @@ internal static class Program
         ValidateFreezableBrushResource(app);
         ValidateFreezableGradientBrushResource(app);
         AssertAtLeast(1, GetCount(GetProperty(resources, "Keys")), "application resource key count");
+    }
+
+    private static void ValidateApplicationRunLifetime(object app)
+    {
+        AssertEqual(1, GetProperty(app, "StartupEventCount"), "application Startup event count");
+        AssertEqual(0, GetProperty(app, "StartupArgsLength"), "application Startup args length");
+        AssertEqual(1, GetProperty(app, "ExitEventCount"), "application Exit event count");
+        AssertEqual(0, GetProperty(app, "LastExitCode"), "application Exit code");
     }
 
     private static void ValidateFreezableBrushResource(object app)

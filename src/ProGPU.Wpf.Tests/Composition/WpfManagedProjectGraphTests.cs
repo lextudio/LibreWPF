@@ -4425,6 +4425,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
             "App.xaml");
+        var smokeAppCodeBehindPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchSmoke",
+            "App.xaml.cs");
         var smokeResourcesXamlPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
@@ -4531,6 +4535,7 @@ public sealed class WpfManagedProjectGraphTests
         var smokeProject = File.ReadAllText(smokeProjectPath);
         var smokeNuGetConfig = File.ReadAllText(smokeNuGetConfigPath);
         var smokeAppXaml = File.ReadAllText(smokeAppXamlPath);
+        var smokeAppCodeBehind = File.ReadAllText(smokeAppCodeBehindPath);
         var smokeResourcesXaml = File.ReadAllText(smokeResourcesXamlPath);
         var smokeMainWindowXaml = File.ReadAllText(smokeMainWindowXamlPath);
         var smokeMainWindowCodeBehind = File.ReadAllText(smokeMainWindowCodeBehindPath);
@@ -4658,6 +4663,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("artifacts/packages/Release/NonShipping", smokeNuGetConfig, StringComparison.Ordinal);
         Assert.Contains("ResourceDictionary Source=\"SmokeResources.xaml\"", smokeAppXaml, StringComparison.Ordinal);
         Assert.Contains("SmokeAccentBrush", smokeAppXaml, StringComparison.Ordinal);
+        Assert.Contains("Startup=\"OnAppStartup\"", smokeAppXaml, StringComparison.Ordinal);
+        Assert.Contains("Exit=\"OnAppExit\"", smokeAppXaml, StringComparison.Ordinal);
+        Assert.Contains("public int StartupEventCount", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int StartupArgsLength", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int ExitEventCount", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int LastExitCode", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnAppStartup(object sender, StartupEventArgs e)", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("StartupEventCount++", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("StartupArgsLength = e.Args.Length", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnAppExit(object sender, ExitEventArgs e)", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ExitEventCount++", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastExitCode = e.ApplicationExitCode", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MergedAccentBrush", smokeResourcesXaml, StringComparison.Ordinal);
         Assert.Contains("UnsharedAccentBrush", smokeResourcesXaml, StringComparison.Ordinal);
         Assert.Contains("x:Shared=\"False\"", smokeResourcesXaml, StringComparison.Ordinal);
@@ -5252,6 +5269,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SDK loose XamlReader Binding path", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK loose XamlWriter serialized GradientStop", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateSdkLooseGradientStop(GetCollectionItem(roundTrippedStops, 1)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateApplicationRunLifetime(app)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("application startup event initial count", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("application Startup event count", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("application Startup args length", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("application Exit event count", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("application Exit code", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(\"#FF356D9E\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("loaded storyboard TextBlock", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("loaded storyboard EventTrigger", runtimeHarnessProgram, StringComparison.Ordinal);

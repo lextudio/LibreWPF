@@ -6178,6 +6178,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK loose XamlWriter serialized ControlTemplate triggers", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK loose XamlWriter round-trip ControlTemplate trigger property", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK loose XamlWriter applied ControlTemplate content presenter", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalWriterDataTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("XamlWriter.Save(dataTemplateDictionary)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlReader DataTemplate name binding path", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter serialized DataTemplate triggers", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter round-trip DataTemplate trigger binding path", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter DataTemplate trigger setter target", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter round-trip DataTemplate kind TextBlock name", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateDataProviders(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ObjectDataProvider data", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ObjectDataProvider bound text", externalSdkHarnessProgram, StringComparison.Ordinal);

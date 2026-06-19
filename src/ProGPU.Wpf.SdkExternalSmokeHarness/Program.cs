@@ -2643,6 +2643,87 @@ internal static class Program
                         true,
                         template.FindName("ExternalTemplateContent", templatedButton) is ContentPresenter,
                         "external SDK loose XamlWriter applied ControlTemplate content presenter");
+
+                    string dataTemplateDictionaryXaml =
+                        "<ResourceDictionary xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" " +
+                        "xmlns:x=\"http://schemas.microsoft.com/winfx/2006/xaml\">" +
+                        "<DataTemplate x:Key=\"ExternalWriterDataTemplate\">" +
+                        "<StackPanel x:Name=\"ExternalTemplateRoot\" Tag=\"external writer data template root\">" +
+                        "<TextBlock x:Name=\"ExternalTemplateNameText\" Text=\"{Binding Name}\" />" +
+                        "<TextBlock x:Name=\"ExternalTemplateKindText\" Text=\"{Binding Kind}\" />" +
+                        "</StackPanel>" +
+                        "<DataTemplate.Triggers>" +
+                        "<DataTrigger Binding=\"{Binding IsActive}\" Value=\"True\">" +
+                        "<Setter TargetName=\"ExternalTemplateNameText\" Property=\"Tag\" Value=\"external active template item\" />" +
+                        "</DataTrigger>" +
+                        "</DataTemplate.Triggers>" +
+                        "</DataTemplate>" +
+                        "</ResourceDictionary>";
+                    var dataTemplateDictionary = RequireType<ResourceDictionary>(
+                        XamlReader.Parse(dataTemplateDictionaryXaml),
+                        "external SDK loose XamlWriter DataTemplate dictionary source");
+                    var parsedDataTemplate = RequireType<DataTemplate>(
+                        dataTemplateDictionary["ExternalWriterDataTemplate"],
+                        "external SDK loose XamlReader DataTemplate");
+                    var parsedDataTemplateRoot = RequireType<StackPanel>(
+                        parsedDataTemplate.LoadContent(),
+                        "external SDK loose XamlReader DataTemplate root");
+                    AssertEqual(2, parsedDataTemplateRoot.Children.Count, "external SDK loose XamlReader DataTemplate child count");
+                    var parsedNameText = RequireType<TextBlock>(
+                        parsedDataTemplateRoot.Children[0],
+                        "external SDK loose XamlReader DataTemplate name text");
+                    var parsedKindText = RequireType<TextBlock>(
+                        parsedDataTemplateRoot.Children[1],
+                        "external SDK loose XamlReader DataTemplate kind text");
+                    AssertEqual("Name", parsedNameText.GetBindingExpression(TextBlock.TextProperty)?.ParentBinding.Path.Path, "external SDK loose XamlReader DataTemplate name binding path");
+                    AssertEqual("Kind", parsedKindText.GetBindingExpression(TextBlock.TextProperty)?.ParentBinding.Path.Path, "external SDK loose XamlReader DataTemplate kind binding path");
+
+                    string dataTemplateSerialized = XamlWriter.Save(dataTemplateDictionary);
+                    AssertContains("DataTemplate", dataTemplateSerialized, "external SDK loose XamlWriter serialized DataTemplate");
+                    AssertContains("ExternalWriterDataTemplate", dataTemplateSerialized, "external SDK loose XamlWriter serialized DataTemplate key");
+                    AssertContains("TextBlock", dataTemplateSerialized, "external SDK loose XamlWriter serialized DataTemplate TextBlock");
+                    AssertContains("DataTemplate.Triggers", dataTemplateSerialized, "external SDK loose XamlWriter serialized DataTemplate triggers");
+                    var roundTrippedDataTemplates = RequireType<ResourceDictionary>(
+                        XamlReader.Parse(dataTemplateSerialized),
+                        "external SDK loose XamlWriter round-trip DataTemplate dictionary");
+                    var dataTemplate = RequireType<DataTemplate>(
+                        roundTrippedDataTemplates["ExternalWriterDataTemplate"],
+                        "external SDK loose XamlWriter round-trip DataTemplate");
+                    AssertEqual(1, dataTemplate.Triggers.Count, "external SDK loose XamlWriter round-trip DataTemplate trigger count");
+                    var dataTrigger = RequireType<DataTrigger>(
+                        dataTemplate.Triggers[0],
+                        "external SDK loose XamlWriter round-trip DataTemplate trigger");
+                    var dataTriggerBinding = RequireType<Binding>(
+                        dataTrigger.Binding,
+                        "external SDK loose XamlWriter round-trip DataTemplate trigger binding");
+                    AssertEqual("IsActive", dataTriggerBinding.Path.Path, "external SDK loose XamlWriter round-trip DataTemplate trigger binding path");
+                    AssertEqual("True", dataTrigger.Value?.ToString(), "external SDK loose XamlWriter round-trip DataTemplate trigger value");
+                    AssertEqual(1, dataTrigger.Setters.Count, "external SDK loose XamlWriter round-trip DataTemplate trigger setter count");
+                    var dataTriggerSetter = AssertLooseStyleSetter(
+                        dataTrigger.Setters[0],
+                        FrameworkElement.TagProperty,
+                        "external active template item",
+                        "external SDK loose XamlWriter DataTemplate trigger Tag setter");
+                    AssertEqual("ExternalTemplateNameText", dataTriggerSetter.TargetName, "external SDK loose XamlWriter DataTemplate trigger setter target");
+
+                    var dataTemplateRoot = RequireType<StackPanel>(
+                        dataTemplate.LoadContent(),
+                        "external SDK loose XamlWriter round-trip DataTemplate root");
+                    AssertEqual("ExternalTemplateRoot", dataTemplateRoot.Name, "external SDK loose XamlWriter round-trip DataTemplate root name");
+                    AssertEqual("external writer data template root", dataTemplateRoot.Tag, "external SDK loose XamlWriter round-trip DataTemplate root tag");
+                    AssertEqual(2, dataTemplateRoot.Children.Count, "external SDK loose XamlWriter round-trip DataTemplate child count");
+                    AssertEqual(
+                        "ExternalTemplateNameText",
+                        RequireType<TextBlock>(
+                            dataTemplateRoot.Children[0],
+                            "external SDK loose XamlWriter round-trip DataTemplate name text").Name,
+                        "external SDK loose XamlWriter round-trip DataTemplate name TextBlock name");
+                    AssertEqual(
+                        "ExternalTemplateKindText",
+                        RequireType<TextBlock>(
+                            dataTemplateRoot.Children[1],
+                            "external SDK loose XamlWriter round-trip DataTemplate kind text").Name,
+                        "external SDK loose XamlWriter round-trip DataTemplate kind TextBlock name");
                 }
 
                 private static void ValidateDataProviders(MainWindow window)

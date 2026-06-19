@@ -9,6 +9,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
 {
     private const string PortableWindowActivationServiceTypeName = "System.Windows.PortableWindowActivationService";
     private const string PortableClipboardServiceTypeName = "System.Windows.PortableClipboardService";
+    private const string PortableLauncherServiceTypeName = "System.Windows.PortableLauncherService";
     private const string PortableMessageBoxServiceTypeName = "System.Windows.PortableMessageBoxService";
     private const string PortableFileDialogServiceTypeName = "Microsoft.Win32.PortableFileDialogService";
     private const string PortableMediaContextRenderServiceTypeName = "System.Windows.Media.PortableMediaContextRenderService";
@@ -132,6 +133,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         registerMethod.Invoke(
             obj: null,
             parameters: parameters);
+        TryRegisterPresentationFrameworkLauncherService(presentationFrameworkAssembly);
         TryRegisterPresentationFrameworkMessageBoxService(presentationFrameworkAssembly);
         TryRegisterPresentationFrameworkFileDialogService(presentationFrameworkAssembly);
         return true;
@@ -167,6 +169,35 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 (Func<string?>)GetPortableClipboardText,
                 (Action<string?>)SetPortableClipboardText
             });
+        return true;
+    }
+
+    public static bool TryRegisterPresentationFrameworkLauncherService(Assembly presentationFrameworkAssembly)
+    {
+        ArgumentNullException.ThrowIfNull(presentationFrameworkAssembly);
+
+        var serviceType = presentationFrameworkAssembly.GetType(
+            PortableLauncherServiceTypeName,
+            throwOnError: false);
+        if (serviceType == null)
+        {
+            return false;
+        }
+
+        var registerMethod = serviceType.GetMethod(
+            "Register",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            types: new[] { typeof(Func<object, bool>) },
+            modifiers: null);
+        if (registerMethod == null || !typeof(IDisposable).IsAssignableFrom(registerMethod.ReturnType))
+        {
+            return false;
+        }
+
+        registerMethod.Invoke(
+            obj: null,
+            parameters: new object[] { (Func<object, bool>)LaunchPortableUri });
         return true;
     }
 
@@ -967,6 +998,36 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
     }
 
+    private static bool LaunchPortableUri(object request)
+    {
+        if (!TryReadRequestUri(request, "Uri", out Uri? uri))
+        {
+            return false;
+        }
+
+        try
+        {
+            CrossPlatformWpfPlatformServices.Instance.Launcher
+                .OpenUriAsync(uri!)
+                .AsTask()
+                .GetAwaiter()
+                .GetResult();
+            return true;
+        }
+        catch (PlatformNotSupportedException)
+        {
+            return false;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            return false;
+        }
+    }
+
     private static string? GetPortableClipboardText()
     {
         try
@@ -1059,6 +1120,30 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return TryReadRequestProperty(request, propertyName, out object? value) && value != null
             ? value.ToString() ?? fallback
             : fallback;
+    }
+
+    private static bool TryReadRequestUri(object request, string propertyName, out Uri? uri)
+    {
+        uri = null;
+        if (!TryReadRequestProperty(request, propertyName, out object? value) || value == null)
+        {
+            return false;
+        }
+
+        if (value is Uri typedUri)
+        {
+            uri = typedUri;
+            return true;
+        }
+
+        if (value is string text &&
+            Uri.TryCreate(text, UriKind.RelativeOrAbsolute, out Uri? parsedUri))
+        {
+            uri = parsedUri;
+            return true;
+        }
+
+        return false;
     }
 
     private static IReadOnlyList<string> ReadFileDialogPatterns(object request)

@@ -681,6 +681,70 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void PresentationFrameworkBrowserLaunchUsesPortableServiceOutsideWindows()
+    {
+        var appSecurityManagerPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "MS",
+            "Internal",
+            "AppModel",
+            "AppSecurityManager.cs");
+        var launcherServicePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "PortableLauncherService.cs");
+        var projectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "PresentationFramework.csproj");
+        var proGpuActivationPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "WpfPortableWindowActivation.cs");
+
+        var appSecurityManager = File.ReadAllText(appSecurityManagerPath);
+        var launcherService = File.ReadAllText(launcherServicePath);
+        var project = File.ReadAllText(projectPath);
+        var proGpuActivation = File.ReadAllText(proGpuActivationPath);
+
+        Assert.Contains(@"<Compile Include=""System\Windows\PortableLauncherService.cs"" />", project, StringComparison.Ordinal);
+        Assert.Contains("internal readonly struct PortableLaunchRequest", launcherService, StringComparison.Ordinal);
+        Assert.Contains("internal static class PortableLauncherService", launcherService, StringComparison.Ordinal);
+        Assert.Contains("internal static IDisposable Register(Func<object, bool> launch)", launcherService, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TryLaunch(Uri uri, string targetFrame, bool isTopLevel, out bool launched)", launcherService, StringComparison.Ordinal);
+        Assert.Contains("return !s_isWindows && Volatile.Read(ref s_launch) != null", launcherService, StringComparison.Ordinal);
+
+        Assert.Contains("if (!OperatingSystem.IsWindows() && isSafeLaunch)", appSecurityManager, StringComparison.Ordinal);
+        Assert.Contains("PortableLauncherService.TryLaunch(destinationUri, targetName, fIsTopLevel", appSecurityManager, StringComparison.Ordinal);
+        Assert.Contains("PortableLauncherService.TryLaunch(uri, null, true", appSecurityManager, StringComparison.Ordinal);
+        Assert.Contains("throw new InvalidOperationException(SR.FailToLaunchDefaultBrowser)", appSecurityManager, StringComparison.Ordinal);
+        Assert.True(
+            appSecurityManager.IndexOf("if (!OperatingSystem.IsWindows() && isSafeLaunch)", StringComparison.Ordinal)
+                < appSecurityManager.IndexOf("UnsafeNativeMethods.ShellExecute", StringComparison.Ordinal),
+            "Safe browser launch must try the portable launcher before the Win32 ShellExecute path.");
+        Assert.True(
+            appSecurityManager.IndexOf("if (!OperatingSystem.IsWindows())", StringComparison.Ordinal)
+                < appSecurityManager.IndexOf("UnsafeNativeMethods.ShellExecuteInfo", StringComparison.Ordinal),
+            "Default browser launch must avoid ShellExecuteEx on non-Windows.");
+
+        Assert.Contains("PortableLauncherServiceTypeName = \"System.Windows.PortableLauncherService\"", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("TryRegisterPresentationFrameworkLauncherService(presentationFrameworkAssembly)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("typeof(Func<object, bool>)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("LaunchPortableUri", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("CrossPlatformWpfPlatformServices.Instance.Launcher", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains(".OpenUriAsync(uri!)", proGpuActivation, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void PresentationCoreClipboardUsesPortableServiceOutsideWindows()
     {
         var clipboardPath = FindRepoPath(

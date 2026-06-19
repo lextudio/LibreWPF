@@ -5667,11 +5667,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Gesture=\"Ctrl+E\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FocusManager.FocusedElement=\"{Binding ElementName=ExternalCommandButton}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("KeyboardNavigation.TabNavigation=\"Cycle\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalAccessLabel", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Target=\"{Binding ElementName=ExternalValidationTextBox}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalStandaloneAccessText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Text=\"_External standalone access\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Click=\"OnExternalCommandButtonClick\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateCommandsAndFocus(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window.CommandBindings.Count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window.InputBindings.Count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("KeyboardNavigation.GetDirectionalNavigation(focusPanel)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK label access-key target", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK standalone access text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("MainWindow.ExternalCommand.Execute(\"DirectCommandParameter\", commandButton)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("commandButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, commandButton))", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("commandButton.CommandParameter, commandButton", externalSdkHarnessProgram, StringComparison.Ordinal);

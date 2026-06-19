@@ -664,6 +664,13 @@ internal static class Program
                         Minimum="0"
                         Maximum="100"
                         Value="{Binding Value, ElementName=ExternalSlider}" />
+                    <Label
+                        x:Name="ExternalAccessLabel"
+                        Target="{Binding ElementName=ExternalValidationTextBox}"
+                        Content="_External access target" />
+                    <AccessText
+                        x:Name="ExternalStandaloneAccessText"
+                        Text="_External standalone access" />
                     <Grid x:Name="ExternalLayoutGrid">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -2776,11 +2783,23 @@ internal static class Program
                     var commandButton = RequireType<Button>(
                         window.FindName("ExternalCommandButton"),
                         "external SDK command button");
+                    var validationTextBox = RequireType<TextBox>(
+                        window.FindName("ExternalValidationTextBox"),
+                        "external SDK access-key target text box");
+                    var accessLabel = RequireType<Label>(
+                        window.FindName("ExternalAccessLabel"),
+                        "external SDK access label");
+                    var standaloneAccessText = RequireType<AccessText>(
+                        window.FindName("ExternalStandaloneAccessText"),
+                        "external SDK standalone access text");
                     AssertEqual(commandButton, FocusManager.GetFocusedElement(focusPanel), "external SDK focus manager focused element");
                     AssertEqual(true, FocusManager.GetIsFocusScope(focusPanel), "external SDK focus manager scope flag");
                     AssertEqual(KeyboardNavigationMode.Cycle, KeyboardNavigation.GetTabNavigation(focusPanel), "external SDK tab navigation mode");
                     AssertEqual(KeyboardNavigationMode.Cycle, KeyboardNavigation.GetControlTabNavigation(focusPanel), "external SDK control-tab navigation mode");
                     AssertEqual(KeyboardNavigationMode.Contained, KeyboardNavigation.GetDirectionalNavigation(focusPanel), "external SDK directional navigation mode");
+                    AssertEqual(validationTextBox, accessLabel.Target, "external SDK label access-key target");
+                    AssertEqual("_External access target", accessLabel.Content, "external SDK label access-key content");
+                    AssertEqual("_External standalone access", standaloneAccessText.Text, "external SDK standalone access text");
                     AssertEqual(MainWindow.ExternalCommand, commandButton.Command, "external SDK command button command");
                     AssertEqual("ExternalCommandParameter", commandButton.CommandParameter, "external SDK command button parameter");
 

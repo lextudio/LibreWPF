@@ -8,8 +8,6 @@
     <RootNamespace>ProGPU.Wpf.SdkSwitchSmoke</RootNamespace>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <InternalMarkupCompilation>true</InternalMarkupCompilation>
-    <AlwaysCompileMarkupFilesInSeparateDomain>false</AlwaysCompileMarkupFilesInSeparateDomain>
     <EnableNETAnalyzers>false</EnableNETAnalyzers>
     <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
     <NoWarn>$(NoWarn);IDE0073</NoWarn>

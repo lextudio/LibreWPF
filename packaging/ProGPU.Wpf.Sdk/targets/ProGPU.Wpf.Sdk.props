@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <DefaultXamlRuntime Condition="'$(DefaultXamlRuntime)' == ''">Wpf</DefaultXamlRuntime>
+    <InternalMarkupCompilation Condition="'$(ProGpuWpfUseWpfMarkup)' == 'true' And '$(InternalMarkupCompilation)' == ''">true</InternalMarkupCompilation>
+    <AlwaysCompileMarkupFilesInSeparateDomain Condition="'$(ProGpuWpfUseWpfMarkup)' == 'true' And '$(AlwaysCompileMarkupFilesInSeparateDomain)' == ''">false</AlwaysCompileMarkupFilesInSeparateDomain>
     <ProGpuWpfEnableSdkDiagnostics Condition="'$(ProGpuWpfEnableSdkDiagnostics)' == ''">false</ProGpuWpfEnableSdkDiagnostics>
     <_ProGpuWpfManagedReferenceRoot Condition="'$(ProGpuWpfManagedReferenceRoot)' != ''">$([MSBuild]::EnsureTrailingSlash('$(ProGpuWpfManagedReferenceRoot)'))</_ProGpuWpfManagedReferenceRoot>
     <_ProGpuReferenceRoot Condition="'$(ProGpuReferenceRoot)' != ''">$([MSBuild]::EnsureTrailingSlash('$(ProGpuReferenceRoot)'))</_ProGpuReferenceRoot>

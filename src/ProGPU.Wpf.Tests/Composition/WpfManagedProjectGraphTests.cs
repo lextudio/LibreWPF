@@ -4637,6 +4637,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGPU.Wpf.Sdk.targets", sdkTargets, StringComparison.Ordinal);
 
         Assert.Contains("<DefaultXamlRuntime Condition=\"'$(DefaultXamlRuntime)' == ''\">Wpf</DefaultXamlRuntime>", portableProps, StringComparison.Ordinal);
+        Assert.Contains("<InternalMarkupCompilation Condition=\"'$(ProGpuWpfUseWpfMarkup)' == 'true' And '$(InternalMarkupCompilation)' == ''\">true</InternalMarkupCompilation>", portableProps, StringComparison.Ordinal);
+        Assert.Contains("<AlwaysCompileMarkupFilesInSeparateDomain Condition=\"'$(ProGpuWpfUseWpfMarkup)' == 'true' And '$(AlwaysCompileMarkupFilesInSeparateDomain)' == ''\">false</AlwaysCompileMarkupFilesInSeparateDomain>", portableProps, StringComparison.Ordinal);
         Assert.Contains("<_ProGpuWpfManagedReferenceRoot Condition=\"'$(ProGpuWpfManagedReferenceRoot)' != ''\">$([MSBuild]::EnsureTrailingSlash('$(ProGpuWpfManagedReferenceRoot)'))</_ProGpuWpfManagedReferenceRoot>", portableProps, StringComparison.Ordinal);
         Assert.Contains("<_ProGpuReferenceRoot Condition=\"'$(ProGpuReferenceRoot)' != ''\">$([MSBuild]::EnsureTrailingSlash('$(ProGpuReferenceRoot)'))</_ProGpuReferenceRoot>", portableProps, StringComparison.Ordinal);
         Assert.Contains("<ApplicationDefinition Include=\"App.xaml\"", portableProps, StringComparison.Ordinal);
@@ -4696,6 +4698,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("ProGpuWpfUseWpfMarkup", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuWpfUsePortableFrameworkReferences", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuWpfReferenceMode", smokeProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("InternalMarkupCompilation", smokeProject, StringComparison.Ordinal);
+        Assert.DoesNotContain("AlwaysCompileMarkupFilesInSeparateDomain", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("GenerateDependencyFile", smokeProject, StringComparison.Ordinal);
         Assert.Contains("artifacts/packages/Release/NonShipping", smokeNuGetConfig, StringComparison.Ordinal);
         Assert.Contains("ResourceDictionary Source=\"SmokeResources.xaml\"", smokeAppXaml, StringComparison.Ordinal);

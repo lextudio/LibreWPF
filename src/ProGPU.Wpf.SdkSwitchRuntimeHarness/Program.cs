@@ -279,6 +279,10 @@ internal static class Program
         AssertEqual(0, GetProperty(app, "StartupArgsLength"), "application Startup args length");
         AssertEqual(1, GetProperty(app, "ExitEventCount"), "application Exit event count");
         AssertEqual(0, GetProperty(app, "LastExitCode"), "application Exit code");
+        object startupInjectedBrush = Invoke(app, "TryFindResource", "StartupInjectedBrush");
+        AssertType(startupInjectedBrush, "System.Windows.Media.SolidColorBrush", "application Startup injected brush");
+        AssertEqual("#FF7A4EB2", GetProperty(startupInjectedBrush, "Color").ToString() ?? string.Empty, "application Startup injected brush color");
+        AssertEqual("startup resource value", Invoke(app, "TryFindResource", "StartupInjectedText"), "application Startup injected text resource");
     }
 
     private static void ValidateFreezableBrushResource(object app)
@@ -469,6 +473,15 @@ internal static class Program
         AssertEqual("#FF6B8F3A", GetProperty(messageForeground, "Color").ToString() ?? string.Empty, "message foreground color");
         object rootPanel = Invoke(window, "FindName", "RootPanel");
         AssertType(rootPanel, "System.Windows.Controls.StackPanel", "root panel element");
+        object startupResourceText = Invoke(window, "FindName", "StartupResourceText");
+        AssertType(startupResourceText, "System.Windows.Controls.TextBlock", "startup resource text element");
+        if (validateFrameContent)
+        {
+            AssertEqual("startup resource value", GetProperty(startupResourceText, "Text"), "startup resource text value");
+            object startupResourceForeground = GetProperty(startupResourceText, "Foreground");
+            AssertType(startupResourceForeground, "System.Windows.Media.SolidColorBrush", "startup resource foreground");
+            AssertEqual("#FF7A4EB2", GetProperty(startupResourceForeground, "Color").ToString() ?? string.Empty, "startup resource foreground color");
+        }
 
         object actionButton = Invoke(window, "FindName", "ActionButton");
         AssertType(actionButton, "System.Windows.Controls.Button", "action button");

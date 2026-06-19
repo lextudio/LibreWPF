@@ -193,6 +193,10 @@
             x:Name="Message"
             Foreground="{DynamicResource MergedAccentBrush}"
             Text="{Binding Title}" />
+        <TextBlock
+            x:Name="StartupResourceText"
+            Foreground="{DynamicResource StartupInjectedBrush}"
+            Text="{DynamicResource StartupInjectedText}" />
         <Button
             x:Name="ActionButton"
             Margin="{StaticResource SmokePanelMargin}"

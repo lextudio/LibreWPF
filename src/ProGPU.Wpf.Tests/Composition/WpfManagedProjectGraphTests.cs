@@ -4669,9 +4669,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public int StartupArgsLength", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int ExitEventCount", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int LastExitCode", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("using System.Windows.Media;", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnAppStartup(object sender, StartupEventArgs e)", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("StartupEventCount++", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("StartupArgsLength = e.Args.Length", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Resources[\"StartupInjectedBrush\"]", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("new SolidColorBrush(Color.FromRgb(0x7A, 0x4E, 0xB2))", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Resources[\"StartupInjectedText\"]", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnAppExit(object sender, ExitEventArgs e)", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ExitEventCount++", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastExitCode = e.ApplicationExitCode", smokeAppCodeBehind, StringComparison.Ordinal);
@@ -4758,6 +4762,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Unchecked=\"OnManagedRadioUnchecked\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"CheckChoiceStatus\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"RootPanel\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"StartupResourceText\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Foreground=\"{DynamicResource StartupInjectedBrush}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{DynamicResource StartupInjectedText}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("local:SmokeRoutedEventSource.SmokeBubbled=\"OnSmokeBubbled\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"PropertyTriggerStatus\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"DataTriggerStatus\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -5275,6 +5282,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("application Startup args length", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("application Exit event count", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("application Exit code", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("application Startup injected brush", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("application Startup injected text resource", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(\"#FF356D9E\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("loaded storyboard TextBlock", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("loaded storyboard EventTrigger", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -5289,6 +5298,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AssertAssignableTo(window, \"System.Windows.Window\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"Message\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"RootPanel\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"StartupResourceText\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("startup resource foreground color", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"ActionButton\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"CommandButton\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Window.CommandBindings", runtimeHarnessProgram, StringComparison.Ordinal);

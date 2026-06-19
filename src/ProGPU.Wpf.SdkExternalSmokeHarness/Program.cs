@@ -427,11 +427,31 @@ internal static class Program
                 x:Class="ExternalSdkApp.MainWindow"
                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
                 xmlns:local="clr-namespace:ExternalSdkApp"
                 xmlns:library="clr-namespace:ExternalSdkLibrary;assembly=ExternalSdkLibrary"
                 Title="External SDK App"
                 Width="320"
                 Height="200">
+                <Window.Resources>
+                    <DataTemplate x:Key="ExternalGroupHeaderTemplate">
+                        <TextBlock
+                            x:Name="ExternalGroupHeaderText"
+                            Text="{Binding Name, StringFormat=Group: {0}}" />
+                    </DataTemplate>
+                    <CollectionViewSource
+                        x:Key="ExternalGroupedItems"
+                        Source="{Binding ExternalItems}">
+                        <CollectionViewSource.SortDescriptions>
+                            <componentModel:SortDescription
+                                PropertyName="Name"
+                                Direction="Ascending" />
+                        </CollectionViewSource.SortDescriptions>
+                        <CollectionViewSource.GroupDescriptions>
+                            <PropertyGroupDescription PropertyName="Kind" />
+                        </CollectionViewSource.GroupDescriptions>
+                    </CollectionViewSource>
+                </Window.Resources>
                 <Window.CommandBindings>
                     <CommandBinding
                         Command="{x:Static local:MainWindow.ExternalCommand}"
@@ -619,6 +639,13 @@ internal static class Program
                         ItemsPanel="{StaticResource ExternalItemsPanelTemplate}"
                         ItemsSource="{Binding ExternalItems}"
                         ItemStringFormat="External item {0}" />
+                    <ListBox
+                        x:Name="ExternalGroupedItemsList"
+                        ItemsSource="{Binding Source={StaticResource ExternalGroupedItems}}">
+                        <ListBox.GroupStyle>
+                            <GroupStyle HeaderTemplate="{StaticResource ExternalGroupHeaderTemplate}" />
+                        </ListBox.GroupStyle>
+                    </ListBox>
                     <ListView
                         x:Name="ExternalListView"
                         ItemsSource="{Binding ExternalItems}"
@@ -1973,6 +2000,50 @@ internal static class Program
                     AssertEqual("External item {0}", itemPanelList.ItemStringFormat, "external SDK item panel list string format");
                     AssertEqual(3, itemPanelList.Items.Count, "external SDK item panel list collection count after mutation");
 
+                    var groupedItems = RequireType<CollectionViewSource>(
+                        window.FindResource("ExternalGroupedItems"),
+                        "external SDK grouped CollectionViewSource");
+                    AssertEqual(1, groupedItems.SortDescriptions.Count, "external SDK grouped CollectionViewSource sort count");
+                    AssertEqual("Name", groupedItems.SortDescriptions[0].PropertyName, "external SDK grouped CollectionViewSource sort property");
+                    AssertEqual("Ascending", groupedItems.SortDescriptions[0].Direction.ToString(), "external SDK grouped CollectionViewSource sort direction");
+                    AssertEqual(1, groupedItems.GroupDescriptions.Count, "external SDK grouped CollectionViewSource group count");
+                    var groupDescription = RequireType<PropertyGroupDescription>(
+                        groupedItems.GroupDescriptions[0],
+                        "external SDK grouped CollectionViewSource group description");
+                    AssertEqual("Kind", groupDescription.PropertyName, "external SDK grouped CollectionViewSource group property");
+
+                    var groupedList = RequireType<ListBox>(
+                        window.FindName("ExternalGroupedItemsList"),
+                        "external SDK grouped items list");
+                    AssertEqual(groupedItems.View, groupedList.ItemsSource, "external SDK grouped ListBox ItemsSource view");
+                    AssertEqual(3, groupedList.Items.Count, "external SDK grouped ListBox item count");
+                    AssertEqual(1, groupedList.GroupStyle.Count, "external SDK grouped ListBox GroupStyle count");
+                    var groupHeaderTemplate = RequireType<DataTemplate>(
+                        window.FindResource("ExternalGroupHeaderTemplate"),
+                        "external SDK group header template");
+                    AssertEqual(groupHeaderTemplate, groupedList.GroupStyle[0].HeaderTemplate, "external SDK grouped ListBox header template");
+                    var viewItems = groupedItems.View.Cast<object>().ToArray();
+                    AssertEqual(3, viewItems.Length, "external SDK grouped CollectionViewSource view item count");
+                    AssertEqual(window.ExternalItems[0], viewItems[0], "external SDK grouped CollectionViewSource first sorted item");
+                    AssertEqual(window.ExternalItems[1], viewItems[1], "external SDK grouped CollectionViewSource second sorted item");
+                    AssertEqual(window.ExternalItems[2], viewItems[2], "external SDK grouped CollectionViewSource third sorted item");
+                    var viewGroups = groupedItems.View.Groups
+                        ?? throw new InvalidOperationException("Expected external SDK grouped CollectionViewSource groups.");
+                    AssertEqual(3, viewGroups.Count, "external SDK grouped CollectionViewSource view group count");
+                    AssertEqual(true, ContainsGroup(viewGroups, "Framework"), "external SDK grouped CollectionViewSource Framework group");
+                    AssertEqual(true, ContainsGroup(viewGroups, "Rendering"), "external SDK grouped CollectionViewSource Rendering group");
+                    AssertEqual(true, ContainsGroup(viewGroups, "Data"), "external SDK grouped CollectionViewSource Data group");
+
+                    var firstGroup = RequireType<CollectionViewGroup>(
+                        viewGroups[0],
+                        "external SDK grouped CollectionViewSource first group");
+                    var groupHeaderRoot = RequireType<TextBlock>(
+                        groupHeaderTemplate.LoadContent(),
+                        "external SDK group header template root");
+                    groupHeaderRoot.DataContext = firstGroup;
+                    DrainDispatcher();
+                    AssertContains("Group: ", groupHeaderRoot.Text, "external SDK group header generated text");
+
                     var listView = RequireType<ListView>(
                         window.FindName("ExternalListView"),
                         "external SDK list view");
@@ -2379,6 +2450,20 @@ internal static class Program
 
                     throw new InvalidOperationException(
                         $"Expected {description} to be {typeof(T).FullName}, but found {value?.GetType().FullName ?? "<null>"}.");
+                }
+
+                private static bool ContainsGroup(System.Collections.IEnumerable groups, string name)
+                {
+                    foreach (object group in groups)
+                    {
+                        if (group is CollectionViewGroup collectionViewGroup
+                            && string.Equals(collectionViewGroup.Name?.ToString(), name, StringComparison.Ordinal))
+                        {
+                            return true;
+                        }
+                    }
+
+                    return false;
                 }
 
                 private static void AssertBrushColor(Brush brush, string expected, string description)

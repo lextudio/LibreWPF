@@ -5469,6 +5469,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK TemplateBinding triggered background", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalItemsPanelTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalItemContainerStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalGroupedItems", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalGroupHeaderTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<CollectionViewSource.SortDescriptions>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("componentModel:SortDescription", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PropertyName=\"Name\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<CollectionViewSource.GroupDescriptions>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PropertyGroupDescription PropertyName=\"Kind\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalGroupedItemsList", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<ListBox.GroupStyle>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GroupStyle HeaderTemplate=\"{StaticResource ExternalGroupHeaderTemplate}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalLayoutGrid", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalDockPanel", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalCanvasChild", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -5493,6 +5503,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("itemsPanelTemplate.LoadContent()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("itemPanelList.ItemContainerStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK item panel list collection count after mutation", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK grouped CollectionViewSource sort property", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK grouped CollectionViewSource group property", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK grouped ListBox ItemsSource view", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK grouped CollectionViewSource view group count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK group header generated text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK list view grid-view column count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK list view name binding path", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK data grid column count", externalSdkHarnessProgram, StringComparison.Ordinal);

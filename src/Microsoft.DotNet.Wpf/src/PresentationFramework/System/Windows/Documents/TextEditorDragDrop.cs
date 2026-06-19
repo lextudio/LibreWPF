@@ -632,6 +632,11 @@ namespace System.Windows.Documents
                         return true;
                     }
 
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        return window.IsEnabled;
+                    }
+
                     WindowInteropHelper helper = new WindowInteropHelper(window);
                     if (SafeNativeMethods.IsWindowEnabled(new HandleRef(null, helper.Handle)))
                     {
@@ -648,12 +653,17 @@ namespace System.Windows.Documents
             /// </summary>
             private void Win32SetForegroundWindow()
             {
+                if (!OperatingSystem.IsWindows())
+                {
+                    return;
+                }
+
                 PresentationSource source = null;
                 IntPtr hwnd = IntPtr.Zero;
                 source = PresentationSource.CriticalFromVisual(_textEditor.UiScope);
                 if (source != null)
                 {
-                    hwnd = (source as IWin32Window).Handle;
+                    hwnd = (source as IWin32Window)?.Handle ?? IntPtr.Zero;
                 }
 
                 if (hwnd != IntPtr.Zero)

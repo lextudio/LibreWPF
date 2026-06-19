@@ -4267,6 +4267,15 @@ public sealed class WpfManagedProjectGraphTests
             "windows",
             "Documents",
             "MoveSizeWinEventHandler.cs"));
+        var textEditorDragDrop = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "windows",
+            "Documents",
+            "TextEditorDragDrop.cs"));
         var caretElement = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4512,6 +4521,9 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(winEventHandler, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SetWinEventHook");
         AssertGuardBefore(winEventHandler, "if (OperatingSystem.IsWindows())", "UnsafeNativeMethods.UnhookWinEvent");
         AssertGuardBefore(moveSizeWinEventHandler, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetParent");
+        Assert.Contains("return window.IsEnabled", textEditorDragDrop, StringComparison.Ordinal);
+        AssertGuardBefore(textEditorDragDrop, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.IsWindowEnabled");
+        AssertGuardBefore(textEditorDragDrop, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SetForegroundWindow");
         AssertGuardBefore(caretElement, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.CreateBitmap");
         AssertGuardBefore(caretElement, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.DestroyCaret()");
         AssertGuardBefore(caretElement, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.SetCaretPos");

@@ -1108,7 +1108,35 @@ internal static class Program
         AssertType(documentBox, "System.Windows.Controls.RichTextBox", "rich text box");
         object document = GetProperty(documentBox, "Document");
         AssertType(document, "System.Windows.Documents.FlowDocument", "rich text document");
-        AssertAtLeast(2, GetCount(GetProperty(document, "Blocks")), "rich text block count");
+        object documentBlocks = GetProperty(document, "Blocks");
+        AssertAtLeast(5, GetCount(documentBlocks), "rich text block count");
+        object firstParagraph = FindFirstByType(documentBlocks, "System.Windows.Documents.Paragraph", "rich text first paragraph");
+        object paragraphInlines = GetProperty(firstParagraph, "Inlines");
+        AssertAtLeast(6, GetCount(paragraphInlines), "rich text first paragraph inline count");
+        object documentHyperlink = FindFirstByType(paragraphInlines, "System.Windows.Documents.Hyperlink", "rich text hyperlink");
+        AssertEqual("https://example.com/progpu-wpf", GetProperty(documentHyperlink, "NavigateUri").ToString() ?? string.Empty, "rich text hyperlink URI");
+        object inlineUiContainer = FindFirstByType(paragraphInlines, "System.Windows.Documents.InlineUIContainer", "rich text inline UI container");
+        object inlineButton = GetProperty(inlineUiContainer, "Child");
+        AssertType(inlineButton, "System.Windows.Controls.Button", "rich text inline UI button");
+        AssertEqual("Inline document button", GetProperty(inlineButton, "Content"), "rich text inline UI button content");
+        object documentSection = FindFirstByType(documentBlocks, "System.Windows.Documents.Section", "rich text section");
+        AssertAtLeast(1, GetCount(GetProperty(documentSection, "Blocks")), "rich text section block count");
+        object documentList = FindFirstByType(documentBlocks, "System.Windows.Documents.List", "rich text list");
+        AssertEqual("Square", GetProperty(documentList, "MarkerStyle").ToString() ?? string.Empty, "rich text list marker style");
+        AssertEqual(2, GetCount(GetProperty(documentList, "ListItems")), "rich text list item count");
+        object documentTable = FindFirstByType(documentBlocks, "System.Windows.Documents.Table", "rich text table");
+        AssertEqual(2, GetCount(GetProperty(documentTable, "Columns")), "rich text table column count");
+        object tableRowGroups = GetProperty(documentTable, "RowGroups");
+        AssertEqual(1, GetCount(tableRowGroups), "rich text table row group count");
+        object firstRowGroup = EnumerateObjects(tableRowGroups).First();
+        object tableRows = GetProperty(firstRowGroup, "Rows");
+        AssertEqual(1, GetCount(tableRows), "rich text table row count");
+        object firstTableRow = EnumerateObjects(tableRows).First();
+        AssertEqual(2, GetCount(GetProperty(firstTableRow, "Cells")), "rich text table cell count");
+        object blockUiContainer = FindFirstByType(documentBlocks, "System.Windows.Documents.BlockUIContainer", "rich text block UI container");
+        object blockUiText = GetProperty(blockUiContainer, "Child");
+        AssertType(blockUiText, "System.Windows.Controls.TextBlock", "rich text block UI text");
+        AssertEqual("Block UI document content", GetProperty(blockUiText, "Text"), "rich text block UI text content");
     }
 
     private static SdkApplicationRunRecorder RegisterPortableActivation(
@@ -1407,6 +1435,19 @@ internal static class Program
                 yield return item;
             }
         }
+    }
+
+    private static object FindFirstByType(object collection, string typeName, string description)
+    {
+        foreach (object item in EnumerateObjects(collection))
+        {
+            if (string.Equals(item.GetType().FullName, typeName, StringComparison.Ordinal))
+            {
+                return item;
+            }
+        }
+
+        throw new InvalidOperationException($"Expected {description} of type '{typeName}'.");
     }
 
     private static void AssertType(object value, string expectedTypeName, string description)

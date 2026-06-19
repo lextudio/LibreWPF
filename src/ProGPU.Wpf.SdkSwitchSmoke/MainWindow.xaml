@@ -713,10 +713,43 @@
                     <Run Text=" rich text" />
                     <LineBreak />
                     <Italic>loaded from SDK-built BAML</Italic>
+                    <Hyperlink NavigateUri="https://example.com/progpu-wpf">
+                        <Run Text=" linked document content" />
+                    </Hyperlink>
+                    <InlineUIContainer>
+                        <Button Content="Inline document button" />
+                    </InlineUIContainer>
                 </Paragraph>
                 <Section>
                     <Paragraph>FlowDocument subsystem smoke.</Paragraph>
                 </Section>
+                <List MarkerStyle="Square">
+                    <ListItem>
+                        <Paragraph>Document list item one</Paragraph>
+                    </ListItem>
+                    <ListItem>
+                        <Paragraph>Document list item two</Paragraph>
+                    </ListItem>
+                </List>
+                <Table CellSpacing="2">
+                    <Table.Columns>
+                        <TableColumn Width="120" />
+                        <TableColumn Width="140" />
+                    </Table.Columns>
+                    <TableRowGroup>
+                        <TableRow>
+                            <TableCell>
+                                <Paragraph>Column A</Paragraph>
+                            </TableCell>
+                            <TableCell>
+                                <Paragraph>Column B</Paragraph>
+                            </TableCell>
+                        </TableRow>
+                    </TableRowGroup>
+                </Table>
+                <BlockUIContainer>
+                    <TextBlock Text="Block UI document content" />
+                </BlockUIContainer>
             </FlowDocument>
         </RichTextBox>
     </StackPanel>

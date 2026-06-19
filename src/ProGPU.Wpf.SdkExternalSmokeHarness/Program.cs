@@ -328,6 +328,10 @@ internal static class Program
                     x:Key="ExternalStaticBrush"
                     Color="#A65A2A" />
                 <SolidColorBrush
+                    x:Key="ExternalUnsharedBrush"
+                    x:Shared="False"
+                    Color="#C45A2B" />
+                <SolidColorBrush
                     x:Key="ExternalDynamicBrush"
                     Color="#225588" />
                 <SolidColorBrush
@@ -512,6 +516,14 @@ internal static class Program
                         x:Name="StaticResourceText"
                         Foreground="{StaticResource ExternalStaticBrush}"
                         Text="{StaticResource ExternalStaticText}" />
+                    <TextBlock
+                        x:Name="ExternalUnsharedBrushTextA"
+                        Foreground="{StaticResource ExternalUnsharedBrush}"
+                        Text="External SDK unshared resource A" />
+                    <TextBlock
+                        x:Name="ExternalUnsharedBrushTextB"
+                        Foreground="{StaticResource ExternalUnsharedBrush}"
+                        Text="External SDK unshared resource B" />
                     <TextBlock
                         x:Name="DynamicResourceText"
                         Foreground="{DynamicResource ExternalDynamicBrush}"
@@ -1716,6 +1728,31 @@ internal static class Program
                         "external SDK static resource text block");
                     AssertEqual("External SDK resource text", staticResourceText.Text, "external SDK static resource text");
                     AssertBrushColor(staticResourceText.Foreground, "#FFA65A2A", "external SDK static resource foreground");
+
+                    var unsharedBrushTextA = RequireType<TextBlock>(
+                        window.FindName("ExternalUnsharedBrushTextA"),
+                        "external SDK x:Shared=false first consumer text block");
+                    var unsharedBrushTextB = RequireType<TextBlock>(
+                        window.FindName("ExternalUnsharedBrushTextB"),
+                        "external SDK x:Shared=false second consumer text block");
+                    AssertBrushColor(unsharedBrushTextA.Foreground, "#FFC45A2B", "external SDK x:Shared=false StaticResource first consumer foreground");
+                    AssertBrushColor(unsharedBrushTextB.Foreground, "#FFC45A2B", "external SDK x:Shared=false StaticResource second consumer foreground");
+                    AssertEqual(
+                        false,
+                        ReferenceEquals(unsharedBrushTextA.Foreground, unsharedBrushTextB.Foreground),
+                        "external SDK x:Shared=false StaticResource consumers");
+                    var unsharedBrushLookupA = RequireType<SolidColorBrush>(
+                        appResources["ExternalUnsharedBrush"],
+                        "external SDK x:Shared=false first dictionary brush lookup");
+                    var unsharedBrushLookupB = RequireType<SolidColorBrush>(
+                        appResources["ExternalUnsharedBrush"],
+                        "external SDK x:Shared=false second dictionary brush lookup");
+                    AssertBrushColor(unsharedBrushLookupA, "#FFC45A2B", "external SDK x:Shared=false first dictionary brush color");
+                    AssertBrushColor(unsharedBrushLookupB, "#FFC45A2B", "external SDK x:Shared=false second dictionary brush color");
+                    AssertEqual(
+                        false,
+                        ReferenceEquals(unsharedBrushLookupA, unsharedBrushLookupB),
+                        "external SDK x:Shared=false dictionary lookup");
 
                     var dynamicResourceText = RequireType<TextBlock>(
                         window.FindName("DynamicResourceText"),

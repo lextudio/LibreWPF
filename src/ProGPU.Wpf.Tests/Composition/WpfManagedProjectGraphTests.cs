@@ -5689,6 +5689,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("commandButton.CommandParameter, commandButton", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK button command parameter", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("appResources.MergedDictionaries.Count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalUnsharedBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Shared=\"False\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalUnsharedBrushTextA", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalUnsharedBrushTextB", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK x:Shared=false StaticResource consumers", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK x:Shared=false dictionary lookup", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("appResources[\"ExternalDynamicBrush\"] = new SolidColorBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK updated dynamic resource foreground", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("template.LoadContent()", externalSdkHarnessProgram, StringComparison.Ordinal);

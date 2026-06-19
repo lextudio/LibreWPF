@@ -347,6 +347,7 @@ internal static class Program
             object lastCommandParameter = GetProperty(window, "LastSmokeCommandParameter");
             if (!object.Equals("routed command payload", lastCommandParameter)
                 && !object.Equals("menu command payload", lastCommandParameter)
+                && !object.Equals("context menu command payload", lastCommandParameter)
                 && !object.Equals("toolbar command payload", lastCommandParameter))
             {
                 throw new InvalidOperationException($"Unexpected smoke command parameter '{lastCommandParameter}'.");
@@ -355,6 +356,43 @@ internal static class Program
 
         AssertAtLeast(1, GetProperty(window, "SmokeCommandCanExecuteCount"), "window routed command CanExecute count");
         AssertAtLeast(1, GetProperty(window, "SmokeCommandExecutionCount"), "window routed command execution count");
+
+        object actionToolTip = GetProperty(actionButton, "ToolTip");
+        AssertType(actionToolTip, "System.Windows.Controls.ToolTip", "action button tooltip");
+        AssertEqual("Action tooltip content", GetProperty(actionToolTip, "Content"), "action tooltip content");
+        AssertEqual("Right", GetProperty(actionToolTip, "Placement").ToString() ?? string.Empty, "action tooltip placement");
+
+        object actionContextMenu = GetProperty(actionButton, "ContextMenu");
+        AssertType(actionContextMenu, "System.Windows.Controls.ContextMenu", "action button context menu");
+        object[] actionContextMenuItems = EnumerateObjects(GetProperty(actionContextMenu, "Items")).ToArray();
+        AssertAtLeast(3, actionContextMenuItems.Length, "action context menu item count");
+        object contextCommandMenuItem = actionContextMenuItems[0];
+        AssertType(contextCommandMenuItem, "System.Windows.Controls.MenuItem", "context command menu item");
+        AssertEqual("_Context command", GetProperty(contextCommandMenuItem, "Header"), "context command menu item header");
+        object contextCommand = GetProperty(contextCommandMenuItem, "Command");
+        AssertType(contextCommand, "System.Windows.Input.RoutedUICommand", "context command menu item command");
+        object contextCommandParameter = GetProperty(contextCommandMenuItem, "CommandParameter");
+        AssertEqual("context menu command payload", contextCommandParameter, "context command menu item parameter");
+        int commandExecutionCountBeforeContextMenu = Convert.ToInt32(GetProperty(window, "SmokeCommandExecutionCount"));
+        InvokeVoid(contextCommand, "Execute", contextCommandParameter, window);
+        AssertAtLeast(commandExecutionCountBeforeContextMenu + 1, GetProperty(window, "SmokeCommandExecutionCount"), "context menu command execution count");
+        AssertEqual("context menu command payload", GetProperty(window, "LastSmokeCommandParameter"), "context menu command payload observed");
+        AssertEqual("context menu command payload", GetProperty(commandStatus, "Text"), "command status after context menu command");
+        AssertType(actionContextMenuItems[1], "System.Windows.Controls.Separator", "action context menu separator");
+        object contextCheckableMenuItem = actionContextMenuItems[2];
+        AssertType(contextCheckableMenuItem, "System.Windows.Controls.MenuItem", "context checkable menu item");
+        AssertEqual(true, GetProperty(contextCheckableMenuItem, "IsCheckable"), "context checkable menu item IsCheckable");
+        object contextCheckableMenuItemChecked = GetProperty(contextCheckableMenuItem, "IsChecked");
+        if (!object.Equals(true, contextCheckableMenuItemChecked)
+            && !object.Equals(false, contextCheckableMenuItemChecked))
+        {
+            throw new InvalidOperationException($"Unexpected context checkable menu item checked state '{contextCheckableMenuItemChecked}'.");
+        }
+
+        SetProperty(contextCheckableMenuItem, "IsChecked", true);
+        AssertEqual(true, GetProperty(contextCheckableMenuItem, "IsChecked"), "context checkable menu item checked");
+        SetProperty(contextCheckableMenuItem, "IsChecked", false);
+        AssertEqual(false, GetProperty(contextCheckableMenuItem, "IsChecked"), "context checkable menu item unchecked");
 
         object smokeMenu = Invoke(window, "FindName", "SmokeMenu");
         AssertType(smokeMenu, "System.Windows.Controls.Menu", "smoke menu");

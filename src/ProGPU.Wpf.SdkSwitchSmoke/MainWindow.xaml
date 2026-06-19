@@ -179,7 +179,29 @@
             Margin="{StaticResource SmokePanelMargin}"
             Click="OnActionButtonClick"
             Content="{Binding ElementName=Message, Path=Text}"
-            Style="{StaticResource ActionButtonStyle}" />
+            Style="{StaticResource ActionButtonStyle}">
+            <Button.ToolTip>
+                <ToolTip
+                    x:Name="ActionToolTip"
+                    Content="Action tooltip content"
+                    Placement="Right" />
+            </Button.ToolTip>
+            <Button.ContextMenu>
+                <ContextMenu x:Name="ActionContextMenu">
+                    <MenuItem
+                        x:Name="ContextCommandMenuItem"
+                        Command="{x:Static local:MainWindow.SmokeCommand}"
+                        CommandParameter="context menu command payload"
+                        Header="_Context command" />
+                    <Separator />
+                    <MenuItem
+                        x:Name="ContextCheckableMenuItem"
+                        Header="_Context checked"
+                        IsCheckable="True"
+                        IsChecked="True" />
+                </ContextMenu>
+            </Button.ContextMenu>
+        </Button>
         <TextBlock
             x:Name="ClickStatus"
             Margin="0,6,0,0"

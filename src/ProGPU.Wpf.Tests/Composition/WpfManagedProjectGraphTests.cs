@@ -4249,6 +4249,24 @@ public sealed class WpfManagedProjectGraphTests
             "windows",
             "Documents",
             "TextFindEngine.cs"));
+        var winEventHandler = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "windows",
+            "Documents",
+            "WinEventHandler.cs"));
+        var moveSizeWinEventHandler = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "windows",
+            "Documents",
+            "MoveSizeWinEventHandler.cs"));
         var caretElement = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4491,6 +4509,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CharUnicodeInfo.GetUnicodeCategory(ch)", selectionWordBreaker, StringComparison.Ordinal);
         Assert.DoesNotContain("SafeNativeMethods.GetStringTypeEx", textFindEngine, StringComparison.Ordinal);
         Assert.Contains("SelectionWordBreaker.IsBlankOrWhiteSpaceCharacter", textFindEngine, StringComparison.Ordinal);
+        AssertGuardBefore(winEventHandler, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SetWinEventHook");
+        AssertGuardBefore(winEventHandler, "if (OperatingSystem.IsWindows())", "UnsafeNativeMethods.UnhookWinEvent");
+        AssertGuardBefore(moveSizeWinEventHandler, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetParent");
         AssertGuardBefore(caretElement, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.CreateBitmap");
         AssertGuardBefore(caretElement, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.DestroyCaret()");
         AssertGuardBefore(caretElement, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.SetCaretPos");

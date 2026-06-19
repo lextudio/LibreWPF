@@ -39,6 +39,12 @@ public partial class MainWindow : Window
 
     public int TabSelectionChangedCount { get; private set; }
 
+    public int ExpanderExpandedCount { get; private set; }
+
+    public int ExpanderCollapsedCount { get; private set; }
+
+    public int RangeValueChangedCount { get; private set; }
+
     public object? LastSmokeRoutedEventSender { get; private set; }
 
     public object? LastSmokeRoutedEventSource { get; private set; }
@@ -114,6 +120,39 @@ public partial class MainWindow : Window
         if (TabStatus != null && SmokeTabs.SelectedItem is TabItem selectedTab)
         {
             TabStatus.Text = $"tab selected: {selectedTab.Header}";
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnSmokeExpanderExpanded(object sender, RoutedEventArgs e)
+    {
+        ExpanderExpandedCount++;
+        if (RangeStatus != null)
+        {
+            RangeStatus.Text = "range expanded";
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnSmokeExpanderCollapsed(object sender, RoutedEventArgs e)
+    {
+        ExpanderCollapsedCount++;
+        if (RangeStatus != null)
+        {
+            RangeStatus.Text = "range collapsed";
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnRangeValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        RangeValueChangedCount++;
+        if (RangeStatus != null)
+        {
+            RangeStatus.Text = "range value: " + e.NewValue.ToString("0.##", CultureInfo.InvariantCulture);
         }
 
         e.Handled = true;

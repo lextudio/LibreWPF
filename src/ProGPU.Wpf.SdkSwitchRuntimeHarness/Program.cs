@@ -698,6 +698,63 @@ internal static class Program
         SetProperty(toolBarToggle, "IsChecked", false);
         AssertEqual(false, GetProperty(toolBarToggle, "IsChecked"), "toolbar toggle unchecked");
 
+        object smokeGroupBox = Invoke(window, "FindName", "SmokeGroupBox");
+        AssertType(smokeGroupBox, "System.Windows.Controls.GroupBox", "smoke group box");
+        AssertEqual("Managed range", GetProperty(smokeGroupBox, "Header"), "smoke group box header");
+        AssertType(GetProperty(smokeGroupBox, "Content"), "System.Windows.Controls.StackPanel", "smoke group box content");
+
+        object smokeExpander = Invoke(window, "FindName", "SmokeExpander");
+        AssertType(smokeExpander, "System.Windows.Controls.Expander", "smoke expander");
+        AssertEqual("Range details", GetProperty(smokeExpander, "Header"), "smoke expander header");
+        object smokeExpanderIsExpanded = GetProperty(smokeExpander, "IsExpanded");
+        if (!object.Equals(true, smokeExpanderIsExpanded)
+            && !object.Equals(false, smokeExpanderIsExpanded))
+        {
+            throw new InvalidOperationException($"Unexpected smoke expander state '{smokeExpanderIsExpanded}'.");
+        }
+
+        object smokeScrollViewer = Invoke(window, "FindName", "SmokeScrollViewer");
+        AssertType(smokeScrollViewer, "System.Windows.Controls.ScrollViewer", "smoke scroll viewer");
+        AssertEqual("Auto", GetProperty(smokeScrollViewer, "VerticalScrollBarVisibility").ToString() ?? string.Empty, "smoke scroll viewer vertical visibility");
+        AssertEqual("Disabled", GetProperty(smokeScrollViewer, "HorizontalScrollBarVisibility").ToString() ?? string.Empty, "smoke scroll viewer horizontal visibility");
+        object scrollContentPanel = Invoke(window, "FindName", "ScrollContentPanel");
+        AssertType(scrollContentPanel, "System.Windows.Controls.StackPanel", "scroll content panel");
+        AssertAtLeast(3, GetCount(GetProperty(scrollContentPanel, "Children")), "scroll content child count");
+
+        object rangeStatus = Invoke(window, "FindName", "RangeStatus");
+        AssertType(rangeStatus, "System.Windows.Controls.TextBlock", "range status element");
+        SetProperty(smokeExpander, "IsExpanded", true);
+        int expanderCollapsedCountBefore = Convert.ToInt32(GetProperty(window, "ExpanderCollapsedCount"));
+        SetProperty(smokeExpander, "IsExpanded", false);
+        AssertEqual(false, GetProperty(smokeExpander, "IsExpanded"), "smoke expander collapsed state");
+        AssertAtLeast(expanderCollapsedCountBefore + 1, GetProperty(window, "ExpanderCollapsedCount"), "smoke expander collapsed count");
+        AssertEqual("range collapsed", GetProperty(rangeStatus, "Text"), "range status after collapse");
+        int expanderExpandedCountBefore = Convert.ToInt32(GetProperty(window, "ExpanderExpandedCount"));
+        SetProperty(smokeExpander, "IsExpanded", true);
+        AssertEqual(true, GetProperty(smokeExpander, "IsExpanded"), "smoke expander expanded state");
+        AssertAtLeast(expanderExpandedCountBefore + 1, GetProperty(window, "ExpanderExpandedCount"), "smoke expander expanded count");
+        AssertEqual("range expanded", GetProperty(rangeStatus, "Text"), "range status after expand");
+
+        object smokeSlider = Invoke(window, "FindName", "SmokeSlider");
+        AssertType(smokeSlider, "System.Windows.Controls.Slider", "smoke slider");
+        AssertEqual(0.0, GetProperty(smokeSlider, "Minimum"), "smoke slider minimum");
+        AssertEqual(10.0, GetProperty(smokeSlider, "Maximum"), "smoke slider maximum");
+        object smokeProgressBar = Invoke(window, "FindName", "SmokeProgressBar");
+        AssertType(smokeProgressBar, "System.Windows.Controls.ProgressBar", "smoke progress bar");
+        AssertEqual(0.0, GetProperty(smokeProgressBar, "Minimum"), "smoke progress bar minimum");
+        AssertEqual(10.0, GetProperty(smokeProgressBar, "Maximum"), "smoke progress bar maximum");
+        SetProperty(smokeSlider, "Value", 4.0);
+        flushDispatcherOperations?.Invoke(window);
+        AssertEqual(4.0, GetProperty(smokeSlider, "Value"), "smoke slider normalized value");
+        AssertEqual(4.0, GetProperty(smokeProgressBar, "Value"), "smoke progress bound value");
+        int rangeValueChangedCountBefore = Convert.ToInt32(GetProperty(window, "RangeValueChangedCount"));
+        SetProperty(smokeSlider, "Value", 6.5);
+        flushDispatcherOperations?.Invoke(window);
+        AssertEqual(6.5, GetProperty(smokeSlider, "Value"), "smoke slider changed value");
+        AssertEqual(6.5, GetProperty(smokeProgressBar, "Value"), "smoke progress changed bound value");
+        AssertAtLeast(rangeValueChangedCountBefore + 1, GetProperty(window, "RangeValueChangedCount"), "range value changed count");
+        AssertEqual("range value: 6.5", GetProperty(rangeStatus, "Text"), "range status after slider value");
+
         if (validateFrameContent)
         {
             object viewModel = GetProperty(window, "DataContext");

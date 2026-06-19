@@ -454,6 +454,47 @@
                     Text="{Binding SelectedItem.Name, ElementName=ItemsList}" />
             </StatusBarItem>
         </StatusBar>
+        <GroupBox
+            x:Name="SmokeGroupBox"
+            Header="Managed range"
+            Margin="{StaticResource SmokePanelMargin}">
+            <StackPanel>
+                <Expander
+                    x:Name="SmokeExpander"
+                    Collapsed="OnSmokeExpanderCollapsed"
+                    Expanded="OnSmokeExpanderExpanded"
+                    Header="Range details"
+                    IsExpanded="True">
+                    <ScrollViewer
+                        x:Name="SmokeScrollViewer"
+                        Height="48"
+                        HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="ScrollContentPanel">
+                            <TextBlock Text="Scroll row 1" />
+                            <TextBlock Text="Scroll row 2" />
+                            <TextBlock Text="Scroll row 3" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </Expander>
+                <Slider
+                    x:Name="SmokeSlider"
+                    Maximum="10"
+                    Minimum="0"
+                    Value="4"
+                    ValueChanged="OnRangeValueChanged" />
+                <ProgressBar
+                    x:Name="SmokeProgressBar"
+                    Height="12"
+                    Maximum="10"
+                    Minimum="0"
+                    Value="{Binding Value, ElementName=SmokeSlider}" />
+                <TextBlock
+                    x:Name="RangeStatus"
+                    Margin="0,6,0,0"
+                    Text="range idle" />
+            </StackPanel>
+        </GroupBox>
         <TreeView
             x:Name="HierarchyTree"
             Height="72"

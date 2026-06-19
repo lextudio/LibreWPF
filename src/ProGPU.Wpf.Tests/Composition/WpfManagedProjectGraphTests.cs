@@ -4491,6 +4491,16 @@ public sealed class WpfManagedProjectGraphTests
             "Automation",
             "Peers",
             "TextElementAutomationPeer.cs"));
+        var windowAutomationPeer = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Automation",
+            "Peers",
+            "WindowAutomationPeer.cs"));
 
         AssertGuardBefore(compositionExports, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.MilCoreApi.EnterCompositionEngineLock()");
         AssertGuardBefore(uiElement, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetDC(desktopWnd)");
@@ -4668,6 +4678,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("presentationSource as HwndSource", uiElement3DAutomationPeer, StringComparison.Ordinal);
         Assert.DoesNotContain("as HwndSource", documentAutomationPeer, StringComparison.Ordinal);
         Assert.DoesNotContain("presentationSource as HwndSource", textElementAutomationPeer, StringComparison.Ordinal);
+        AssertGuardBefore(windowAutomationPeer, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetWindowRect");
+        Assert.Contains("return GetPortableBoundingRectangle(window);", windowAutomationPeer, StringComparison.Ordinal);
+        Assert.Contains("PresentationSource.CriticalFromVisual(window)", windowAutomationPeer, StringComparison.Ordinal);
         AssertGuardBefore(application, "if (!global::System.OperatingSystem.IsWindows())", "UnsafeNativeMethods.PlaySound(soundFile");
         AssertGuardBefore(application, "if (!global::System.OperatingSystem.IsWindows())", "Registry.CurrentUser.OpenSubKey(regPath)");
         AssertGuardBefore(application, "if (!WindowsInternal.HasItem(wnd))", "wnd.Visibility = Visibility.Visible");

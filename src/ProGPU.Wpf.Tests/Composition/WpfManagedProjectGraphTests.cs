@@ -5981,6 +5981,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:XData", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalObjectProviderText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalXmlProviderText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalMarkupExtensionText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{local:ExternalText Prefix=external, Value=markup}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("public sealed class ExternalTextExtension : MarkupExtension", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("public override object ProvideValue(IServiceProvider serviceProvider)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("IProvideValueTarget", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateMarkupExtensions(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK compiled MarkupExtension provided text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalButtonTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalBasedButtonStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalTriggeredButtonStyle", externalSdkHarnessProgram, StringComparison.Ordinal);

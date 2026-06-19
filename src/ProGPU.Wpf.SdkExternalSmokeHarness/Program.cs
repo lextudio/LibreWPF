@@ -608,6 +608,9 @@ internal static class Program
                     <TextBlock
                         x:Name="ExternalXmlProviderText"
                         Text="{Binding Source={StaticResource ExternalXmlDataProvider}, XPath=@name}" />
+                    <TextBlock
+                        x:Name="ExternalMarkupExtensionText"
+                        Text="{local:ExternalText Prefix=external, Value=markup}" />
                     <Button
                         x:Name="ExternalStyledButton"
                         Style="{StaticResource ExternalTriggeredButtonStyle}" />
@@ -1524,6 +1527,33 @@ internal static class Program
                 }
             }
 
+            public sealed class ExternalTextExtension : MarkupExtension
+            {
+                public static int ProvideValueCount { get; private set; }
+
+                public static string? LastTargetPropertyName { get; private set; }
+
+                public string Prefix { get; set; } = string.Empty;
+
+                public string Value { get; set; } = string.Empty;
+
+                public override object ProvideValue(IServiceProvider serviceProvider)
+                {
+                    ProvideValueCount++;
+                    if (serviceProvider.GetService(typeof(IProvideValueTarget)) is IProvideValueTarget target)
+                    {
+                        LastTargetPropertyName = target.TargetProperty switch
+                        {
+                            DependencyProperty dependencyProperty => dependencyProperty.Name,
+                            PropertyInfo propertyInfo => propertyInfo.Name,
+                            _ => target.TargetProperty?.ToString()
+                        };
+                    }
+
+                    return $"{Prefix}:{Value}";
+                }
+            }
+
             public sealed class ExternalNode
             {
                 public ExternalNode(string name, string kind)
@@ -1723,6 +1753,7 @@ internal static class Program
                     ValidateFreezableResources();
                     ValidateManagedImagingObjects();
                     ValidateLooseXamlReaderWriter();
+                    ValidateMarkupExtensions(window);
                     ValidateDataProviders(window);
                     ValidateBindings(window);
                     ValidateBindingGroup(window);
@@ -3367,6 +3398,16 @@ internal static class Program
                         ?? throw new InvalidOperationException("Expected external SDK XmlDataProvider text BindingExpression.");
                     AssertEqual(xmlProvider, xmlProviderBinding.ParentBinding.Source, "external SDK XmlDataProvider binding source");
                     AssertEqual("@name", xmlProviderBinding.ParentBinding.XPath, "external SDK XmlDataProvider binding XPath");
+                }
+
+                private static void ValidateMarkupExtensions(MainWindow window)
+                {
+                    var markupText = RequireType<TextBlock>(
+                        window.FindName("ExternalMarkupExtensionText"),
+                        "external SDK markup extension text block");
+                    AssertEqual("external:markup", markupText.Text, "external SDK compiled MarkupExtension provided text");
+                    AssertAtLeast(1, ExternalTextExtension.ProvideValueCount, "external SDK compiled MarkupExtension ProvideValue count");
+                    AssertEqual("Text", ExternalTextExtension.LastTargetPropertyName, "external SDK compiled MarkupExtension target property");
                 }
 
                 private static void ValidateBindings(MainWindow window)

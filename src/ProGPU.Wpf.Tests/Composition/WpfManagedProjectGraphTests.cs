@@ -6493,6 +6493,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK ProGPU WPF composition render logical/physical surface", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU compositor render logical/physical surface", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU compositor canvas pixel width explicit render target", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(proGpuWpf, proGpuScene, \"external SDK\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGPU retained WPF layer logical size", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGPU retained WPF layer scale", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPropertyGetterReferencesField", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("[\"root\", \"logicalWidth\", \"logicalHeight\", \"renderTargetWidth\", \"renderTargetHeight\", \"dpiScale\", \"targetView\"]", externalSdkHarnessProgram, StringComparison.Ordinal);
 
@@ -6501,6 +6504,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SDK ProGPU WPF composition render logical/physical surface", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU compositor render logical/physical surface", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU compositor canvas pixel width explicit render target", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(proGpuWpf, proGpuScene, \"SDK\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGPU retained WPF layer logical size", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGPU retained WPF layer scale", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPropertyGetterReferencesField", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("[\"logicalWidth\", \"logicalHeight\", \"pixelWidth\", \"pixelHeight\", \"dpiScale\", \"targetView\"]", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableClipboardServiceTypeName = \"System.Windows.PortableClipboardService\"", runtimeHarnessProgram, StringComparison.Ordinal);

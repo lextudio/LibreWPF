@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Globalization;
+using System.Numerics;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Runtime.CompilerServices;
@@ -383,6 +384,47 @@ internal static class Program
             "CurrentCanvasPixelHeight",
             "_explicitRenderTargetHeight",
             "SDK ProGPU compositor canvas pixel height explicit render target");
+        AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(proGpuWpf, proGpuScene, "SDK");
+    }
+
+    private static void AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(
+        Assembly proGpuWpf,
+        Assembly proGpuScene,
+        string descriptionPrefix)
+    {
+        Type drawingFrameType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfDrawingFrame");
+        Type containerVisualType = GetRequiredType(proGpuScene, "ProGPU.Scene.ContainerVisual");
+        Type drawingVisualType = GetRequiredType(proGpuScene, "ProGPU.Scene.DrawingVisual");
+        object sceneRoot = Create(containerVisualType);
+        object retainedRoot = Create(containerVisualType);
+        object flatRoot = Create(drawingVisualType);
+        object frame = Create(
+            drawingFrameType,
+            sceneRoot,
+            retainedRoot,
+            flatRoot,
+            840u,
+            1680u,
+            null,
+            null,
+            true,
+            null,
+            420u,
+            840u,
+            2.0,
+            2.0);
+
+        AssertEqual(420u, GetProperty(frame, "LogicalWidth"), $"{descriptionPrefix} ProGPU WPF drawing frame logical width");
+        AssertEqual(840u, GetProperty(frame, "LogicalHeight"), $"{descriptionPrefix} ProGPU WPF drawing frame logical height");
+        AssertEqual(840u, GetProperty(frame, "PixelWidth"), $"{descriptionPrefix} ProGPU WPF drawing frame pixel width");
+        AssertEqual(1680u, GetProperty(frame, "PixelHeight"), $"{descriptionPrefix} ProGPU WPF drawing frame pixel height");
+        AssertEqual(2.0, GetProperty(frame, "DpiScaleX"), $"{descriptionPrefix} ProGPU WPF drawing frame DPI scale X");
+        AssertEqual(2.0, GetProperty(frame, "DpiScaleY"), $"{descriptionPrefix} ProGPU WPF drawing frame DPI scale Y");
+        AssertEqual(new Vector2(420f, 840f), GetProperty(sceneRoot, "Size"), $"{descriptionPrefix} ProGPU scene root logical size");
+        AssertEqual(new Vector2(420f, 840f), GetProperty(retainedRoot, "Size"), $"{descriptionPrefix} ProGPU retained WPF layer logical size");
+        AssertEqual(new Vector2(420f, 840f), GetProperty(flatRoot, "Size"), $"{descriptionPrefix} ProGPU flat WPF layer logical size");
+        AssertEqual(new Vector3(2f, 2f, 1f), GetProperty(retainedRoot, "Scale"), $"{descriptionPrefix} ProGPU retained WPF layer scale");
+        AssertEqual(Vector2.Zero, GetProperty(retainedRoot, "RenderTransformOrigin"), $"{descriptionPrefix} ProGPU retained WPF layer transform origin");
     }
 
     private static void PreloadSdkWindowingPlatform(AssemblyLoadContext loadContext, string appOutputRoot)

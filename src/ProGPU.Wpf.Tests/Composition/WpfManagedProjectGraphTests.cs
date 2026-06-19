@@ -4739,6 +4739,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ItemsSource=\"{Binding Children}\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ItemsCountText\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding Items.Count, StringFormat=items: {0}}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SmokeListView\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<ListView.View>", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<GridView>", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("GridViewColumn", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DisplayMemberBinding=\"{Binding Name}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DisplayMemberBinding=\"{Binding Value}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ListViewStatus\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("StringFormat=list view: {0}", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MultiBindingSummaryText\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<MultiBinding Converter=\"{StaticResource SmokeItemSummaryConverter}\">", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Path=\"SelectedItem.Name\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -5117,6 +5125,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("status selected item text", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"ItemsCountText\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("initial items count binding text", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"SmokeListView\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("smoke list view grid view", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("smoke list view name binding path", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("smoke list view value binding path", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"ListViewStatus\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("list view initial selected text", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("smoke list view changed selected item", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("list view changed selected text", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"MultiBindingSummaryText\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("multi binding converter text", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"SelectedItemPresenter\"", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -5189,6 +5205,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("data grid changed selected text", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("data grid items count after collection change", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("items list count after collection change", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("list view count after collection change", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("selector items count after collection change", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("items count binding text after collection change", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("dynamic framework item selected template", runtimeHarnessProgram, StringComparison.Ordinal);

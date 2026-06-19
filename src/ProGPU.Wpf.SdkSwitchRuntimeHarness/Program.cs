@@ -556,6 +556,43 @@ internal static class Program
         object itemsCountText = Invoke(window, "FindName", "ItemsCountText");
         AssertType(itemsCountText, "System.Windows.Controls.TextBlock", "items count text element");
         AssertEqual("items: 3", GetProperty(itemsCountText, "Text"), "initial items count binding text");
+        object smokeListView = Invoke(window, "FindName", "SmokeListView");
+        AssertType(smokeListView, "System.Windows.Controls.ListView", "smoke list view");
+        AssertAtLeast(3, GetCount(GetProperty(smokeListView, "Items")), "smoke list view item count");
+        AssertEqual(2, GetProperty(smokeListView, "SelectedIndex"), "smoke list view initial selected index");
+        object listViewSelectedItem = GetProperty(smokeListView, "SelectedItem");
+        AssertEqual("XAML", GetProperty(listViewSelectedItem, "Name"), "smoke list view selected item name");
+        AssertEqual("compiled", GetProperty(listViewSelectedItem, "Value"), "smoke list view selected item value");
+        object smokeGridView = GetProperty(smokeListView, "View");
+        AssertType(smokeGridView, "System.Windows.Controls.GridView", "smoke list view grid view");
+        object[] gridViewColumns = EnumerateObjects(GetProperty(smokeGridView, "Columns")).ToArray();
+        AssertEqual(2, gridViewColumns.Length, "smoke list view grid view column count");
+        AssertType(gridViewColumns[0], "System.Windows.Controls.GridViewColumn", "smoke list view name column");
+        AssertEqual("Name", GetProperty(gridViewColumns[0], "Header"), "smoke list view name column header");
+        object listViewNameBinding = GetProperty(gridViewColumns[0], "DisplayMemberBinding");
+        AssertType(listViewNameBinding, "System.Windows.Data.Binding", "smoke list view name binding");
+        AssertEqual("Name", GetBindingPath(listViewNameBinding), "smoke list view name binding path");
+        AssertType(gridViewColumns[1], "System.Windows.Controls.GridViewColumn", "smoke list view value column");
+        AssertEqual("Value", GetProperty(gridViewColumns[1], "Header"), "smoke list view value column header");
+        object listViewValueBinding = GetProperty(gridViewColumns[1], "DisplayMemberBinding");
+        AssertType(listViewValueBinding, "System.Windows.Data.Binding", "smoke list view value binding");
+        AssertEqual("Value", GetBindingPath(listViewValueBinding), "smoke list view value binding path");
+        object listViewStatus = Invoke(window, "FindName", "ListViewStatus");
+        AssertType(listViewStatus, "System.Windows.Controls.TextBlock", "list view status element");
+        AssertEqual("list view: compiled", GetProperty(listViewStatus, "Text"), "list view initial selected text");
+        if (validateFrameContent)
+        {
+            SetProperty(smokeListView, "SelectedIndex", 1);
+            flushDispatcherOperations?.Invoke(window);
+            AssertEqual(1, GetProperty(smokeListView, "SelectedIndex"), "smoke list view changed selected index");
+            object changedListViewSelectedItem = GetProperty(smokeListView, "SelectedItem");
+            AssertEqual("Scene", GetProperty(changedListViewSelectedItem, "Name"), "smoke list view changed selected item");
+            AssertEqual("list view: ProGPU", GetProperty(listViewStatus, "Text"), "list view changed selected text");
+            SetProperty(smokeListView, "SelectedIndex", 2);
+            flushDispatcherOperations?.Invoke(window);
+            AssertEqual("list view: compiled", GetProperty(listViewStatus, "Text"), "list view restored selected text");
+        }
+
         object multiBindingSummaryText = Invoke(window, "FindName", "MultiBindingSummaryText");
         AssertType(multiBindingSummaryText, "System.Windows.Controls.TextBlock", "multi binding summary text element");
         AssertEqual("Scene:ProGPU", GetProperty(multiBindingSummaryText, "Text"), "multi binding converter text");
@@ -806,6 +843,7 @@ internal static class Program
             InvokeVoid(items, "Add", dynamicItem);
             flushDispatcherOperations?.Invoke(window);
             AssertEqual(4, GetCount(GetProperty(itemsList, "Items")), "items list count after collection change");
+            AssertEqual(4, GetCount(GetProperty(smokeListView, "Items")), "list view count after collection change");
             AssertEqual(4, GetCount(GetProperty(selectorItemsControl, "Items")), "selector items count after collection change");
             AssertEqual(4, GetCount(GetProperty(smokeDataGrid, "Items")), "data grid items count after collection change");
             AssertEqual("items: 4", GetProperty(itemsCountText, "Text"), "items count binding text after collection change");

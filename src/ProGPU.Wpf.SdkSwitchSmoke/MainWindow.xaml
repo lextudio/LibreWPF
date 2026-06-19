@@ -327,6 +327,29 @@
             x:Name="ItemsCountText"
             Margin="0,6,0,0"
             Text="{Binding Items.Count, StringFormat=items: {0}}" />
+        <ListView
+            x:Name="SmokeListView"
+            Height="82"
+            Margin="{StaticResource SmokePanelMargin}"
+            ItemsSource="{Binding Items}"
+            SelectedIndex="2">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn
+                        Width="120"
+                        DisplayMemberBinding="{Binding Name}"
+                        Header="Name" />
+                    <GridViewColumn
+                        Width="120"
+                        DisplayMemberBinding="{Binding Value}"
+                        Header="Value" />
+                </GridView>
+            </ListView.View>
+        </ListView>
+        <TextBlock
+            x:Name="ListViewStatus"
+            Margin="0,6,0,0"
+            Text="{Binding SelectedItem.Value, ElementName=SmokeListView, StringFormat=list view: {0}}" />
         <TextBlock
             x:Name="MultiBindingSummaryText"
             Margin="0,6,0,0">

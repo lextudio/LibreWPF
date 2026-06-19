@@ -1524,7 +1524,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.ToolTipAnimation] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETTOOLTIPANIMATION, 0, ref _toolTipAnimation, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _toolTipAnimation = false;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETTOOLTIPANIMATION, 0, ref _toolTipAnimation, 0))
                         {
                         }
                         else
@@ -1552,7 +1556,11 @@ namespace System.Windows
                     {
                         _cacheValid[(int)CacheSlot.ToolTipFade] = true;
 
-                        if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETTOOLTIPFADE, 0, ref _tooltipFade, 0))
+                        if (!OperatingSystem.IsWindows())
+                        {
+                            _tooltipFade = false;
+                        }
+                        else if (UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETTOOLTIPFADE, 0, ref _tooltipFade, 0))
                         {
                         }
                         else

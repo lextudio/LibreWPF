@@ -4407,6 +4407,15 @@ public sealed class WpfManagedProjectGraphTests
             "MS",
             "Win32",
             "UxThemeWrapper.cs"));
+        var windowBackdropManager = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Appearance",
+            "WindowBackdropManager.cs"));
         var application = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4598,6 +4607,8 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETDROPSHADOW");
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETCOMBOBOXANIMATION");
         AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETMENUANIMATION");
+        AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETTOOLTIPANIMATION");
+        AssertGuardBefore(systemParameters, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SystemParametersInfo(NativeMethods.SPI_GETTOOLTIPFADE");
         Assert.Contains("private const int DefaultScrollBarMetric = 17", systemParameters, StringComparison.Ordinal);
         Assert.Contains("private const int DefaultFocusBorderMetric = 1", systemParameters, StringComparison.Ordinal);
         Assert.Contains("private const int DefaultPrimaryScreenWidth = 1024", systemParameters, StringComparison.Ordinal);
@@ -4689,6 +4700,9 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(typeface, "if (!OperatingSystem.IsWindows())", "TypographyAvailabilities typography");
         AssertGuardBefore(uxThemeWrapper, "_themeState = OperatingSystem.IsWindows()", "SafeNativeMethods.IsUxThemeActive()");
         Assert.Contains("new ThemeState(true, \"Aero2\", \"NormalColor\")", uxThemeWrapper, StringComparison.Ordinal);
+        AssertGuardBefore(windowBackdropManager, "if (!OperatingSystem.IsWindows())", "new WindowInteropHelper(window).Handle");
+        AssertGuardBefore(windowBackdropManager, "if (!OperatingSystem.IsWindows())", "NativeMethods.DwmSetWindowAttributeSystemBackdropType");
+        Assert.Contains("OperatingSystem.IsWindows() &&\n                                                                        Utility.IsWindows11_22H2OrNewer", windowBackdropManager, StringComparison.Ordinal);
         AssertGuardBefore(dpiAwareness, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetWindowDpiAwarenessContext(hWnd)");
         AssertGuardBefore(osVersionHelper, "if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))", "IsWindows10RS5OrGreater()");
         AssertGuardBefore(osVersionHelper, "return OperatingSystemVersion.WindowsXPSP2;", "throw new Exception(\"OSVersionHelper.GetOsVersion Could not detect OS!\")");

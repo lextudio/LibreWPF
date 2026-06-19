@@ -14,6 +14,11 @@ internal static class WindowBackdropManager
 {
     internal static bool IsSupported(WindowBackdropType backdropType)
     {
+        if (!OperatingSystem.IsWindows())
+        {
+            return false;
+        }
+
         return backdropType switch
         {
             WindowBackdropType.Auto => Utility.IsWindows11_22H2OrNewer,
@@ -27,6 +32,11 @@ internal static class WindowBackdropManager
 
     internal static bool SetBackdrop(Window window, WindowBackdropType backdropType)
     {
+        if (!OperatingSystem.IsWindows())
+        {
+            return false;
+        }
+
         if (window is null ||
                 !IsSupported(backdropType) ||
                 window.AllowsTransparency ||
@@ -138,7 +148,8 @@ internal static class WindowBackdropManager
 
     #region Internal Properties
 
-    internal static bool IsBackdropEnabled => _isBackdropEnabled ??= Utility.IsWindows11_22H2OrNewer && 
+    internal static bool IsBackdropEnabled => _isBackdropEnabled ??= OperatingSystem.IsWindows() &&
+                                                                        Utility.IsWindows11_22H2OrNewer &&
                                                                         !FrameworkAppContextSwitches.DisableFluentThemeWindowBackdrop;
 
     private static bool? _isBackdropEnabled = null;

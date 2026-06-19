@@ -556,6 +556,19 @@ internal static class Program
         object itemsCountText = Invoke(window, "FindName", "ItemsCountText");
         AssertType(itemsCountText, "System.Windows.Controls.TextBlock", "items count text element");
         AssertEqual("items: 3", GetProperty(itemsCountText, "Text"), "initial items count binding text");
+        object panelItemsControl = Invoke(window, "FindName", "PanelItemsControl");
+        AssertType(panelItemsControl, "System.Windows.Controls.ItemsControl", "panel items control");
+        AssertAtLeast(3, GetCount(GetProperty(panelItemsControl, "Items")), "panel items control item count");
+        AssertEqual(3, GetProperty(panelItemsControl, "AlternationCount"), "panel items alternation count");
+        AssertEqual("panel item: {0}", GetProperty(panelItemsControl, "ItemStringFormat"), "panel items string format");
+        object panelItemContainerStyle = GetProperty(panelItemsControl, "ItemContainerStyle");
+        AssertType(panelItemContainerStyle, "System.Windows.Style", "panel items container style");
+        AssertAtLeast(1, GetCount(GetProperty(panelItemContainerStyle, "Setters")), "panel items container style setter count");
+        object panelItemsPanelTemplate = GetProperty(panelItemsControl, "ItemsPanel");
+        AssertType(panelItemsPanelTemplate, "System.Windows.Controls.ItemsPanelTemplate", "panel items panel template");
+        object panelItemsPanelRoot = Invoke(panelItemsPanelTemplate, "LoadContent");
+        AssertType(panelItemsPanelRoot, "System.Windows.Controls.WrapPanel", "panel items panel root");
+        AssertEqual("Horizontal", GetProperty(panelItemsPanelRoot, "Orientation").ToString() ?? string.Empty, "panel items panel orientation");
         object smokeListView = Invoke(window, "FindName", "SmokeListView");
         AssertType(smokeListView, "System.Windows.Controls.ListView", "smoke list view");
         AssertAtLeast(3, GetCount(GetProperty(smokeListView, "Items")), "smoke list view item count");
@@ -843,6 +856,7 @@ internal static class Program
             InvokeVoid(items, "Add", dynamicItem);
             flushDispatcherOperations?.Invoke(window);
             AssertEqual(4, GetCount(GetProperty(itemsList, "Items")), "items list count after collection change");
+            AssertEqual(4, GetCount(GetProperty(panelItemsControl, "Items")), "panel items count after collection change");
             AssertEqual(4, GetCount(GetProperty(smokeListView, "Items")), "list view count after collection change");
             AssertEqual(4, GetCount(GetProperty(selectorItemsControl, "Items")), "selector items count after collection change");
             AssertEqual(4, GetCount(GetProperty(smokeDataGrid, "Items")), "data grid items count after collection change");

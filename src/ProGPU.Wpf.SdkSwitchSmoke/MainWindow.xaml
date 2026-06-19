@@ -121,6 +121,14 @@
             <TextBlock Text="{Binding Name}" />
         </HierarchicalDataTemplate>
 
+        <ItemsPanelTemplate x:Key="SmokeWrapPanelTemplate">
+            <WrapPanel Orientation="Horizontal" />
+        </ItemsPanelTemplate>
+
+        <Style x:Key="SmokeItemContainerStyle" TargetType="{x:Type ContentPresenter}">
+            <Setter Property="Tag" Value="container style active" />
+        </Style>
+
         <DataTemplate x:Key="SmokeGroupHeaderTemplate">
             <TextBlock
                 FontWeight="Bold"
@@ -327,6 +335,15 @@
             x:Name="ItemsCountText"
             Margin="0,6,0,0"
             Text="{Binding Items.Count, StringFormat=items: {0}}" />
+        <ItemsControl
+            x:Name="PanelItemsControl"
+            Height="48"
+            Margin="{StaticResource SmokePanelMargin}"
+            AlternationCount="3"
+            ItemContainerStyle="{StaticResource SmokeItemContainerStyle}"
+            ItemStringFormat="panel item: {0}"
+            ItemsPanel="{StaticResource SmokeWrapPanelTemplate}"
+            ItemsSource="{Binding Items}" />
         <ListView
             x:Name="SmokeListView"
             Height="82"

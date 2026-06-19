@@ -4449,6 +4449,14 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
             "SmokePage.xaml.cs");
+        var smokeSecondPageXamlPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchSmoke",
+            "SmokeSecondPage.xaml");
+        var smokeSecondPageCodeBehindPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchSmoke",
+            "SmokeSecondPage.xaml.cs");
         var smokeItemDisplayConverterPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
@@ -4526,6 +4534,8 @@ public sealed class WpfManagedProjectGraphTests
         var smokePanelCodeBehind = File.ReadAllText(smokePanelCodeBehindPath);
         var smokePageXaml = File.ReadAllText(smokePageXamlPath);
         var smokePageCodeBehind = File.ReadAllText(smokePageCodeBehindPath);
+        var smokeSecondPageXaml = File.ReadAllText(smokeSecondPageXamlPath);
+        var smokeSecondPageCodeBehind = File.ReadAllText(smokeSecondPageCodeBehindPath);
         var smokeItemDisplayConverter = File.ReadAllText(smokeItemDisplayConverterPath);
         var smokeThemedControl = File.ReadAllText(smokeThemedControlPath);
         var smokeGenericThemeXaml = File.ReadAllText(smokeGenericThemeXamlPath);
@@ -4946,6 +4956,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Text=\"Frame loaded SDK-built BAML\"", smokePageXaml, StringComparison.Ordinal);
         Assert.Contains("public partial class SmokePage : Page", smokePageCodeBehind, StringComparison.Ordinal);
         Assert.Contains("InitializeComponent();", smokePageCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("x:Class=\"ProGPU.Wpf.SdkSwitchSmoke.SmokeSecondPage\"", smokeSecondPageXaml, StringComparison.Ordinal);
+        Assert.Contains("Title=\"Compiled Second Page\"", smokeSecondPageXaml, StringComparison.Ordinal);
+        Assert.Contains("Compiled second page content", smokeSecondPageXaml, StringComparison.Ordinal);
+        Assert.Contains("Frame navigated to SDK-built BAML", smokeSecondPageXaml, StringComparison.Ordinal);
+        Assert.Contains("public partial class SmokeSecondPage : Page", smokeSecondPageCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("InitializeComponent();", smokeSecondPageCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeItemDisplayConverter : IValueConverter", smokeItemDisplayConverter, StringComparison.Ordinal);
         Assert.Contains("item.Name}={item.Value}/{item.Category", smokeItemDisplayConverter, StringComparison.Ordinal);
         Assert.Contains("Binding.DoNothing", smokeItemDisplayConverter, StringComparison.Ordinal);
@@ -5416,6 +5432,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled frame load completed count", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled frame navigation mode", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled frame navigated content type", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SmokeSecondPage.xaml", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled frame second page navigate result", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled second frame page", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled second page child count", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled frame second page content type", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled frame journal can go back", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("InvokeVoid(smokeFrame, \"GoBack\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled frame back navigation mode", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled frame back content type", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"PageTitle\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled page dynamic resource foreground", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"PageSubtitle\"", runtimeHarnessProgram, StringComparison.Ordinal);

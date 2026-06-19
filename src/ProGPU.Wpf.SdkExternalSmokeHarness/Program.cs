@@ -313,8 +313,83 @@ internal static class Program
                     <library:ExternalThemedControl
                         x:Name="ExternalThemedControl"
                         Text="External SDK themed control" />
+                    <Frame
+                        x:Name="ExternalFrame"
+                        Source="ExternalPage.xaml"
+                        NavigationUIVisibility="Hidden"
+                        Navigating="OnExternalFrameNavigating"
+                        Navigated="OnExternalFrameNavigated"
+                        LoadCompleted="OnExternalFrameLoadCompleted" />
                 </StackPanel>
             </Window>
+            """);
+
+        WriteFile(
+            Path.Combine(appRoot, "ExternalPage.xaml"),
+            """
+            <Page
+                x:Class="ExternalSdkApp.ExternalPage"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:library="clr-namespace:ExternalSdkLibrary;assembly=ExternalSdkLibrary"
+                Title="External Page">
+                <StackPanel>
+                    <TextBlock
+                        x:Name="ExternalPageTitle"
+                        Text="External SDK page" />
+                    <library:ExternalPanel
+                        x:Name="ExternalPagePanel"
+                        Caption="External SDK page panel" />
+                </StackPanel>
+            </Page>
+            """);
+
+        WriteFile(
+            Path.Combine(appRoot, "ExternalPage.xaml.cs"),
+            """
+            using System.Windows.Controls;
+
+            namespace ExternalSdkApp;
+
+            public partial class ExternalPage : Page
+            {
+                public ExternalPage()
+                {
+                    InitializeComponent();
+                }
+            }
+            """);
+
+        WriteFile(
+            Path.Combine(appRoot, "ExternalSecondPage.xaml"),
+            """
+            <Page
+                x:Class="ExternalSdkApp.ExternalSecondPage"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                Title="External Second Page">
+                <StackPanel>
+                    <TextBlock
+                        x:Name="ExternalSecondPageTitle"
+                        Text="External SDK second page" />
+                </StackPanel>
+            </Page>
+            """);
+
+        WriteFile(
+            Path.Combine(appRoot, "ExternalSecondPage.xaml.cs"),
+            """
+            using System.Windows.Controls;
+
+            namespace ExternalSdkApp;
+
+            public partial class ExternalSecondPage : Page
+            {
+                public ExternalSecondPage()
+                {
+                    InitializeComponent();
+                }
+            }
             """);
 
         WriteFile(
@@ -325,6 +400,8 @@ internal static class Program
             using System.Windows;
             using System.Windows.Controls;
             using System.Windows.Media;
+            using System.Windows.Navigation;
+            using System.Windows.Threading;
             using ExternalSdkLibrary;
 
             namespace ExternalSdkApp;
@@ -334,6 +411,42 @@ internal static class Program
                 public MainWindow()
                 {
                     InitializeComponent();
+                }
+
+                public int ExternalFrameNavigatingCount { get; private set; }
+
+                public int ExternalFrameNavigatedCount { get; private set; }
+
+                public int ExternalFrameLoadCompletedCount { get; private set; }
+
+                public string? LastExternalFrameNavigatingUri { get; private set; }
+
+                public string? LastExternalFrameNavigatedUri { get; private set; }
+
+                public string? LastExternalFrameLoadCompletedUri { get; private set; }
+
+                public string? LastExternalFrameNavigationMode { get; private set; }
+
+                public string? LastExternalFrameContentType { get; private set; }
+
+                private void OnExternalFrameNavigating(object sender, NavigatingCancelEventArgs e)
+                {
+                    ExternalFrameNavigatingCount++;
+                    LastExternalFrameNavigatingUri = e.Uri?.ToString();
+                    LastExternalFrameNavigationMode = e.NavigationMode.ToString();
+                }
+
+                private void OnExternalFrameNavigated(object sender, NavigationEventArgs e)
+                {
+                    ExternalFrameNavigatedCount++;
+                    LastExternalFrameNavigatedUri = e.Uri?.ToString();
+                    LastExternalFrameContentType = e.Content?.GetType().FullName;
+                }
+
+                private void OnExternalFrameLoadCompleted(object sender, NavigationEventArgs e)
+                {
+                    ExternalFrameLoadCompletedCount++;
+                    LastExternalFrameLoadCompletedUri = e.Uri?.ToString();
                 }
             }
 
@@ -390,6 +503,76 @@ internal static class Program
                     AssertEqual(2.0, themeRoot.BorderThickness.Top, "external SDK themed control border top");
                     AssertEqual(2.0, themeRoot.BorderThickness.Right, "external SDK themed control border right");
                     AssertEqual(2.0, themeRoot.BorderThickness.Bottom, "external SDK themed control border bottom");
+
+                    var frame = RequireType<Frame>(
+                        window.FindName("ExternalFrame"),
+                        "external SDK compiled page frame");
+                    DrainDispatcher();
+
+                    var page = RequireType<ExternalPage>(
+                        frame.Content,
+                        "external SDK initial compiled page");
+                    var pageTitle = RequireType<TextBlock>(
+                        page.FindName("ExternalPageTitle"),
+                        "external SDK initial compiled page title");
+                    var pagePanel = RequireType<ExternalPanel>(
+                        page.FindName("ExternalPagePanel"),
+                        "external SDK initial compiled page library user-control");
+                    var pagePanelCaption = RequireType<TextBlock>(
+                        pagePanel.FindName("CaptionText"),
+                        "external SDK initial compiled page library user-control caption");
+                    AssertEqual("External SDK page", pageTitle.Text, "external SDK initial compiled page text");
+                    AssertEqual("External SDK page panel", pagePanelCaption.Text, "external SDK initial compiled page library binding");
+                    AssertAtLeast(1, window.ExternalFrameNavigatingCount, "external SDK initial frame navigating count");
+                    AssertAtLeast(1, window.ExternalFrameNavigatedCount, "external SDK initial frame navigated count");
+                    AssertAtLeast(1, window.ExternalFrameLoadCompletedCount, "external SDK initial frame load completed count");
+                    AssertEndsWith(window.LastExternalFrameNavigatingUri, "ExternalPage.xaml", "external SDK initial frame navigating URI");
+                    AssertEndsWith(window.LastExternalFrameNavigatedUri, "ExternalPage.xaml", "external SDK initial frame navigated URI");
+                    AssertEndsWith(window.LastExternalFrameLoadCompletedUri, "ExternalPage.xaml", "external SDK initial frame load completed URI");
+                    AssertEqual("New", window.LastExternalFrameNavigationMode, "external SDK initial frame navigation mode");
+                    AssertEqual(typeof(ExternalPage).FullName, window.LastExternalFrameContentType, "external SDK initial frame content type");
+
+                    int navigatingCountBeforeSecondPage = window.ExternalFrameNavigatingCount;
+                    int navigatedCountBeforeSecondPage = window.ExternalFrameNavigatedCount;
+                    int loadCompletedCountBeforeSecondPage = window.ExternalFrameLoadCompletedCount;
+                    AssertEqual(true, frame.Navigate(new Uri("ExternalSecondPage.xaml", UriKind.Relative)), "external SDK second page navigate result");
+                    DrainDispatcher();
+
+                    var secondPage = RequireType<ExternalSecondPage>(
+                        frame.Content,
+                        "external SDK second compiled page");
+                    var secondPageTitle = RequireType<TextBlock>(
+                        secondPage.FindName("ExternalSecondPageTitle"),
+                        "external SDK second compiled page title");
+                    AssertEqual("External SDK second page", secondPageTitle.Text, "external SDK second compiled page text");
+                    AssertAtLeast(navigatingCountBeforeSecondPage + 1, window.ExternalFrameNavigatingCount, "external SDK second frame navigating count");
+                    AssertAtLeast(navigatedCountBeforeSecondPage + 1, window.ExternalFrameNavigatedCount, "external SDK second frame navigated count");
+                    AssertAtLeast(loadCompletedCountBeforeSecondPage + 1, window.ExternalFrameLoadCompletedCount, "external SDK second frame load completed count");
+                    AssertEndsWith(window.LastExternalFrameNavigatedUri, "ExternalSecondPage.xaml", "external SDK second frame navigated URI");
+                    AssertEqual(typeof(ExternalSecondPage).FullName, window.LastExternalFrameContentType, "external SDK second frame content type");
+                    AssertEqual(true, frame.CanGoBack, "external SDK frame can go back");
+
+                    int navigatingCountBeforeBack = window.ExternalFrameNavigatingCount;
+                    int navigatedCountBeforeBack = window.ExternalFrameNavigatedCount;
+                    frame.GoBack();
+                    DrainDispatcher();
+
+                    RequireType<ExternalPage>(
+                        frame.Content,
+                        "external SDK returned compiled page");
+                    AssertAtLeast(navigatingCountBeforeBack + 1, window.ExternalFrameNavigatingCount, "external SDK back frame navigating count");
+                    AssertAtLeast(navigatedCountBeforeBack + 1, window.ExternalFrameNavigatedCount, "external SDK back frame navigated count");
+                    AssertEqual("Back", window.LastExternalFrameNavigationMode, "external SDK back frame navigation mode");
+                    AssertEqual(typeof(ExternalPage).FullName, window.LastExternalFrameContentType, "external SDK back frame content type");
+                }
+
+                private static void DrainDispatcher()
+                {
+                    var frame = new DispatcherFrame();
+                    Dispatcher.CurrentDispatcher.BeginInvoke(
+                        DispatcherPriority.ApplicationIdle,
+                        new Action(() => frame.Continue = false));
+                    Dispatcher.PushFrame(frame);
                 }
 
                 private static T RequireType<T>(object? value, string description)
@@ -417,6 +600,24 @@ internal static class Program
                             $"Expected {description} to be '{expected}', but found '{actual}'.");
                     }
                 }
+
+                private static void AssertAtLeast(int expectedMinimum, int actual, string description)
+                {
+                    if (actual < expectedMinimum)
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected {description} to be at least '{expectedMinimum}', but found '{actual}'.");
+                    }
+                }
+
+                private static void AssertEndsWith(string? value, string expectedSuffix, string description)
+                {
+                    if (value is null || !value.EndsWith(expectedSuffix, StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected {description} to end with '{expectedSuffix}', but found '{value ?? "<null>"}'.");
+                    }
+                }
             }
             """);
 
@@ -436,6 +637,8 @@ internal static class Program
         AssertContains(libraryProject, "<UseWPF>true</UseWPF>", "external library WPF property");
         RequireFile(Path.Combine(workRoot, LibraryAssemblyName, "Properties", "AssemblyInfo.cs"), "external SDK library ThemeInfo source");
         RequireFile(Path.Combine(workRoot, LibraryAssemblyName, "Themes", "Generic.xaml"), "external SDK library Generic.xaml source");
+        RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalPage.xaml"), "external SDK app compiled page source");
+        RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalSecondPage.xaml"), "external SDK app second compiled page source");
 
         AssertDoesNotContain(appProject, "ProGpuWpfReferenceMode", "external app local artifact mode");
         AssertDoesNotContain(appProject, "ProGpuWpfManagedReferenceRoot", "external app managed artifact root");

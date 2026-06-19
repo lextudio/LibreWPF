@@ -562,6 +562,37 @@ internal static class Program
                             Handler="OnExternalStyleEventButtonClick" />
                     </Style>
                     <Style
+                        x:Key="ExternalPropertyTriggerActionTextStyle"
+                        TargetType="{x:Type TextBlock}">
+                        <Setter Property="Text" Value="External property trigger action target" />
+                        <Setter Property="Opacity" Value="0.91" />
+                        <Setter Property="IsEnabled" Value="False" />
+                        <Style.Triggers>
+                            <Trigger Property="IsEnabled" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation
+                                                Storyboard.TargetProperty="Opacity"
+                                                To="0.43"
+                                                Duration="0:0:0" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation
+                                                Storyboard.TargetProperty="Opacity"
+                                                To="0.91"
+                                                Duration="0:0:0" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                    <Style
                         x:Key="ExternalDataTriggeredTextStyle"
                         TargetType="{x:Type TextBlock}">
                         <Setter Property="Text" Value="External data trigger inactive" />
@@ -717,6 +748,9 @@ internal static class Program
                     <Button
                         x:Name="ExternalEventSetterButton"
                         Style="{StaticResource ExternalEventSetterButtonStyle}" />
+                    <TextBlock
+                        x:Name="ExternalPropertyTriggerActionText"
+                        Style="{StaticResource ExternalPropertyTriggerActionTextStyle}" />
                     <TextBlock
                         x:Name="ExternalDataTriggerText"
                         Style="{StaticResource ExternalDataTriggeredTextStyle}" />
@@ -1983,6 +2017,7 @@ internal static class Program
                     ValidateBindingGroup(window);
                     ValidateStylesAndTemplates(window);
                     ValidateLoadedStoryboardMetadata(window);
+                    ValidatePropertyTriggerActionsMetadata(window);
                     ValidateDataTriggerActionsMetadata(window);
                     ValidateMultiDataTriggerActionsMetadata(window);
                     ValidateMenusAndChoiceControls(window);
@@ -2128,6 +2163,7 @@ internal static class Program
                     AssertEqual("External SDK startup resource", startupResourceText.Text, "external SDK startup dynamic resource text");
                     AssertBrushColor(startupResourceText.Foreground, "#FF176283", "external SDK startup dynamic resource foreground");
                     ValidateLoadedStoryboardAfterRun(window);
+                    ValidatePropertyTriggerActionsAfterRun(window);
                     ValidateDataTriggerActionsAfterRun(window);
                     ValidateMultiDataTriggerActionsAfterRun(window);
                     ValidateVisualStateTransitions(window);
@@ -3854,6 +3890,51 @@ internal static class Program
                     AssertClose(0.37, loadedStoryboardText.Opacity, "external SDK Application.Run loaded storyboard opacity");
                     AssertAtLeast(1, window.ExternalLoadedStoryboardTextLoadedCount, "external SDK loaded storyboard handler count");
                     AssertEqual("Loaded", window.LastExternalLoadedStoryboardTextRoutedEventName, "external SDK loaded storyboard routed event name");
+                }
+
+                private static void ValidatePropertyTriggerActionsMetadata(MainWindow window)
+                {
+                    var actionStyle = RequireType<Style>(
+                        window.FindResource("ExternalPropertyTriggerActionTextStyle"),
+                        "external SDK property trigger action style");
+                    AssertEqual(typeof(TextBlock), actionStyle.TargetType, "external SDK property trigger action style target type");
+                    AssertEqual(3, actionStyle.Setters.Count, "external SDK property trigger action style setter count");
+                    AssertEqual(1, actionStyle.Triggers.Count, "external SDK property trigger action style trigger count");
+                    var trigger = RequireType<Trigger>(
+                        actionStyle.Triggers[0],
+                        "external SDK property trigger action trigger");
+                    AssertEqual(UIElement.IsEnabledProperty, trigger.Property, "external SDK property trigger action property");
+                    AssertEqual("True", trigger.Value?.ToString(), "external SDK property trigger action value");
+                    AssertEqual(1, trigger.EnterActions.Count, "external SDK property trigger action EnterActions count");
+                    AssertTriggerActionStoryboard(trigger.EnterActions[0], 0.43, "external SDK property trigger action EnterActions");
+                    AssertEqual(1, trigger.ExitActions.Count, "external SDK property trigger action ExitActions count");
+                    AssertTriggerActionStoryboard(trigger.ExitActions[0], 0.91, "external SDK property trigger action ExitActions");
+
+                    var actionText = RequireType<TextBlock>(
+                        window.FindName("ExternalPropertyTriggerActionText"),
+                        "external SDK property trigger action text");
+                    AssertEqual(actionStyle, actionText.Style, "external SDK property trigger action text style");
+                    AssertEqual("External property trigger action target", actionText.Text, "external SDK property trigger action text content");
+                    AssertEqual(false, actionText.IsEnabled, "external SDK property trigger action initial IsEnabled");
+                    AssertClose(0.91, actionText.Opacity, "external SDK property trigger action initial opacity");
+                }
+
+                private static void ValidatePropertyTriggerActionsAfterRun(MainWindow window)
+                {
+                    DrainDispatcher();
+
+                    var actionText = RequireType<TextBlock>(
+                        window.FindName("ExternalPropertyTriggerActionText"),
+                        "external SDK Application.Run property trigger action text");
+                    AssertClose(0.91, actionText.Opacity, "external SDK Application.Run property trigger action initial opacity");
+
+                    actionText.IsEnabled = true;
+                    DrainDispatcher();
+                    AssertClose(0.43, actionText.Opacity, "external SDK Application.Run property trigger EnterActions opacity");
+
+                    actionText.IsEnabled = false;
+                    DrainDispatcher();
+                    AssertClose(0.91, actionText.Opacity, "external SDK Application.Run property trigger ExitActions opacity");
                 }
 
                 private static void ValidateDataTriggerActionsMetadata(MainWindow window)

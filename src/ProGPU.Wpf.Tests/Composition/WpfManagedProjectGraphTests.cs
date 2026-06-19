@@ -6014,6 +6014,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("EventTrigger RoutedEvent=\"FrameworkElement.Loaded\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("BeginStoryboard", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Storyboard.TargetName=\"ExternalLoadedStoryboardText\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"ExternalPropertyTriggerActionTextStyle\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Trigger.EnterActions", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Trigger.ExitActions", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalPropertyTriggerActionText\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"ExternalDataTriggerActionTextStyle\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DataTrigger.EnterActions", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DataTrigger.ExitActions", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6033,6 +6037,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateStylesAndTemplates(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLoadedStoryboardMetadata(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLoadedStoryboardAfterRun(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePropertyTriggerActionsMetadata(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePropertyTriggerActionsAfterRun(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateDataTriggerActionsMetadata(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateDataTriggerActionsAfterRun(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMultiDataTriggerActionsMetadata(window)", externalSdkHarnessProgram, StringComparison.Ordinal);

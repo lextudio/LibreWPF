@@ -32,7 +32,23 @@ namespace System.Windows.Media.Imaging
 
             Debug.Assert(source != null);
             _source = source;
-            WicSourceHandle = _source.WicSourceHandle;
+            byte[] managedPixels = _source.CloneManagedPixelBuffer();
+            if (!OperatingSystem.IsWindows() && managedPixels != null)
+            {
+                InitializeManagedPixelBuffer(
+                    _source.PixelWidth,
+                    _source.PixelHeight,
+                    _source.DpiX,
+                    _source.DpiY,
+                    _source.Format,
+                    _source.Palette,
+                    managedPixels,
+                    _source._managedPixelStride);
+            }
+            else
+            {
+                WicSourceHandle = _source.WicSourceHandle;
+            }
             IsSourceCached = _source.IsSourceCached;
             _isColorCorrected = _source._isColorCorrected;
             _thumbnail = thumbnail;
@@ -265,4 +281,3 @@ namespace System.Windows.Media.Imaging
 
     #endregion // BitmapFrameEncode
 }
-

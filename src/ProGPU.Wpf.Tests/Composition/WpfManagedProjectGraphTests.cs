@@ -6160,9 +6160,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("using System.Windows.Media.Imaging;", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateManagedImagingObjects()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("BitmapSource.Create(", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("BitmapFrame.Create(bitmapSource)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("WriteableBitmap(2, 2, 96.0, 96.0, PixelFormats.Bgra32", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapSource copied blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapFrame copied red byte", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK WriteableBitmap copied second-row blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Image source BitmapFrame", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ImageBrush source BitmapSource", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Markup;", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlReaderWriter()", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -2500,6 +2500,14 @@ internal static class Program
                     AssertEqual(pixels[5], copiedPixels[5], "external SDK BitmapSource copied second green byte");
                     AssertEqual(pixels[14], copiedPixels[14], "external SDK BitmapSource copied final red byte");
 
+                    var bitmapFrame = BitmapFrame.Create(bitmapSource);
+                    AssertEqual(2, bitmapFrame.PixelWidth, "external SDK BitmapFrame pixel width");
+                    AssertEqual(2, bitmapFrame.PixelHeight, "external SDK BitmapFrame pixel height");
+                    AssertEqual(PixelFormats.Bgra32, bitmapFrame.Format, "external SDK BitmapFrame Bgra32 format");
+                    var framePixels = new byte[pixels.Length];
+                    bitmapFrame.CopyPixels(framePixels, 8, 0);
+                    AssertEqual(pixels[10], framePixels[10], "external SDK BitmapFrame copied red byte");
+
                     var writeableBitmap = new WriteableBitmap(2, 2, 96.0, 96.0, PixelFormats.Bgra32, null);
                     writeableBitmap.WritePixels(new Int32Rect(0, 0, 2, 2), pixels, 8, 0);
                     var writeablePixels = new byte[pixels.Length];
@@ -2516,6 +2524,15 @@ internal static class Program
                     };
                     AssertEqual(writeableBitmap, image.Source, "external SDK Image source WriteableBitmap");
                     AssertEqual(Stretch.None, image.Stretch, "external SDK Image stretch");
+
+                    var frameImage = new Image
+                    {
+                        Source = bitmapFrame,
+                        Width = 2,
+                        Height = 2,
+                        Stretch = Stretch.None
+                    };
+                    AssertEqual(bitmapFrame, frameImage.Source, "external SDK Image source BitmapFrame");
 
                     var imageBrush = new ImageBrush(bitmapSource)
                     {

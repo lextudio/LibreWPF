@@ -1185,6 +1185,49 @@ internal static class Program
         object blockUiText = GetProperty(blockUiContainer, "Child");
         AssertType(blockUiText, "System.Windows.Controls.TextBlock", "rich text block UI text");
         AssertEqual("Block UI document content", GetProperty(blockUiText, "Text"), "rich text block UI text content");
+
+        if (flushDispatcherOperations is not null)
+        {
+            ValidateApplicationDynamicResourceInvalidation(
+                window,
+                flushDispatcherOperations,
+                message,
+                actionButton);
+        }
+    }
+
+    private static void ValidateApplicationDynamicResourceInvalidation(
+        object window,
+        Action<object> flushDispatcherOperations,
+        object message,
+        object actionButton)
+    {
+        Assembly presentationFramework = GetAssemblyFromContext(window.GetType().Assembly, "PresentationFramework");
+        Type applicationType = GetRequiredType(presentationFramework, "System.Windows.Application");
+        object application = GetStaticProperty(applicationType, "Current");
+        object resources = GetProperty(application, "Resources");
+        Assembly presentationCore = GetAssemblyFromContext(window.GetType().Assembly, "PresentationCore");
+
+        InvokeVoid(resources, "set_Item", "SmokeAccentBrush", CreateSolidColorBrush(presentationCore, "#9E4A70"));
+        InvokeVoid(resources, "set_Item", "MergedAccentBrush", CreateSolidColorBrush(presentationCore, "#234E7A"));
+        flushDispatcherOperations(window);
+        InvokeVoid(window, "UpdateLayout");
+
+        object updatedMessageForeground = GetProperty(message, "Foreground");
+        AssertType(updatedMessageForeground, "System.Windows.Media.SolidColorBrush", "message dynamic resource updated foreground");
+        AssertEqual("#FF234E7A", GetProperty(updatedMessageForeground, "Color").ToString() ?? string.Empty, "message dynamic resource updated color");
+
+        object updatedActionButtonBackground = GetProperty(actionButton, "Background");
+        AssertType(updatedActionButtonBackground, "System.Windows.Media.SolidColorBrush", "action button dynamic resource updated background");
+        AssertEqual("#FF9E4A70", GetProperty(updatedActionButtonBackground, "Color").ToString() ?? string.Empty, "action button dynamic resource updated color");
+    }
+
+    private static object CreateSolidColorBrush(Assembly presentationCore, string colorText)
+    {
+        Type colorConverterType = GetRequiredType(presentationCore, "System.Windows.Media.ColorConverter");
+        object color = InvokeStatic(colorConverterType, "ConvertFromString", colorText);
+        Type brushType = GetRequiredType(presentationCore, "System.Windows.Media.SolidColorBrush");
+        return Create(brushType, color);
     }
 
     private static SdkApplicationRunRecorder RegisterPortableActivation(

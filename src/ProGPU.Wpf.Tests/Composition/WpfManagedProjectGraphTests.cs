@@ -5185,6 +5185,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryFindResource\", \"ProviderGreeting\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("application object data provider result", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(\"#FF356D9E\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateApplicationDynamicResourceInvalidation", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("set_Item\", \"SmokeAccentBrush\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("set_Item\", \"MergedAccentBrush\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("message dynamic resource updated color", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("action button dynamic resource updated color", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertAssignableTo(window, \"System.Windows.Window\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"Message\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"RootPanel\"", runtimeHarnessProgram, StringComparison.Ordinal);

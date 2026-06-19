@@ -261,6 +261,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("uint renderTargetWidth", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("_explicitRenderTargetWidth = Math.Max(1, renderTargetWidth)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("uint renderWidth = _explicitRenderTargetWidth ?? width", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("CurrentCanvasPixelWidth => _explicitRenderTargetWidth.HasValue", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("CurrentCanvasPixelHeight => _explicitRenderTargetHeight.HasValue", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("float dpiScale", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("Compositor.RenderScene(\n            SceneRootVisual,\n            logicalWidth,\n            logicalHeight,\n            pixelWidth,\n            pixelHeight,\n            dpiScale,\n            targetView)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("IWpfWindowDecorationService WindowDecorations", proGpuPlatformServices, StringComparison.Ordinal);
@@ -6406,12 +6408,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK ProGPU WPF host logical width property", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU WPF composition render logical/physical surface", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU compositor render logical/physical surface", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ProGPU compositor canvas pixel width explicit render target", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertPropertyGetterReferencesField", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("[\"root\", \"logicalWidth\", \"logicalHeight\", \"renderTargetWidth\", \"renderTargetHeight\", \"dpiScale\", \"targetView\"]", externalSdkHarnessProgram, StringComparison.Ordinal);
 
         Assert.Contains("ValidateProGpuHiDpiRenderSurface(inputs)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU WPF host logical width property", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU WPF composition render logical/physical surface", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU compositor render logical/physical surface", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK ProGPU compositor canvas pixel width explicit render target", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertPropertyGetterReferencesField", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("[\"logicalWidth\", \"logicalHeight\", \"pixelWidth\", \"pixelHeight\", \"dpiScale\", \"targetView\"]", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableClipboardServiceTypeName = \"System.Windows.PortableClipboardService\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableFileDialogServiceTypeName = \"Microsoft.Win32.PortableFileDialogService\"", runtimeHarnessProgram, StringComparison.Ordinal);

@@ -373,6 +373,16 @@ internal static class Program
             [visualType, typeof(uint), typeof(uint), typeof(uint), typeof(uint), typeof(float)],
             "SDK ProGPU compositor render logical/physical surface");
         AssertEqual(true, compositorRenderScene.GetParameters()[6].ParameterType.IsPointer, "SDK ProGPU compositor render target view pointer");
+        AssertPropertyGetterReferencesField(
+            compositorType,
+            "CurrentCanvasPixelWidth",
+            "_explicitRenderTargetWidth",
+            "SDK ProGPU compositor canvas pixel width explicit render target");
+        AssertPropertyGetterReferencesField(
+            compositorType,
+            "CurrentCanvasPixelHeight",
+            "_explicitRenderTargetHeight",
+            "SDK ProGPU compositor canvas pixel height explicit render target");
     }
 
     private static void PreloadSdkWindowingPlatform(AssemblyLoadContext loadContext, string appOutputRoot)
@@ -2714,6 +2724,35 @@ internal static class Program
                     $"{description}: expected parameter '{parameters[i].Name}' type '{expectedParameterTypes[i].FullName}', actual '{parameters[i].ParameterType.FullName}'.");
             }
         }
+    }
+
+    private static void AssertPropertyGetterReferencesField(
+        Type type,
+        string propertyName,
+        string fieldName,
+        string description)
+    {
+        PropertyInfo property = type.GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(type.FullName, propertyName);
+        MethodInfo getter = property.GetMethod
+            ?? throw new MissingMethodException(type.FullName, propertyName + ".get");
+        FieldInfo field = type.GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new MissingFieldException(type.FullName, fieldName);
+        byte[] il = getter.GetMethodBody()?.GetILAsByteArray()
+            ?? throw new InvalidOperationException($"{description}: expected getter IL.");
+        byte[] fieldToken = BitConverter.GetBytes(field.MetadataToken);
+
+        for (int i = 0; i <= il.Length - fieldToken.Length; i++)
+        {
+            if (il.AsSpan(i, fieldToken.Length).SequenceEqual(fieldToken))
+            {
+                return;
+            }
+        }
+
+        throw new InvalidOperationException($"{description}: expected getter to reference '{fieldName}'.");
     }
 
     private static void AssertAssignableTo(object value, string expectedBaseTypeName, string description)

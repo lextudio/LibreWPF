@@ -9,6 +9,8 @@ internal static class Program
     private const string AppTypeName = "ProGPU.Wpf.SdkSwitchSmoke.App";
     private const string MainWindowTypeName = "ProGPU.Wpf.SdkSwitchSmoke.MainWindow";
     private const string PortableMediaContextRenderServiceTypeName = "System.Windows.Media.PortableMediaContextRenderService";
+    private const string PortableClipboardServiceTypeName = "System.Windows.PortableClipboardService";
+    private const string PortableMessageBoxServiceTypeName = "System.Windows.PortableMessageBoxService";
     private const string PortablePresentationSourceTypeName = "System.Windows.PortablePresentationSource";
     private const string PortableWindowActivationServiceTypeName = "System.Windows.PortableWindowActivationService";
     private static readonly string[] RequiredWpfRuntimeAssemblies =
@@ -144,9 +146,12 @@ internal static class Program
     {
         using var loadContext = CreateLoadContext(inputs);
         Assembly smokeAssembly = loadContext.LoadFromAssemblyPath(inputs.SmokeAssemblyPath);
+        Assembly presentationCore = loadContext.LoadFromAssemblyName(new AssemblyName("PresentationCore"));
         Assembly presentationFramework = loadContext.LoadFromAssemblyName(new AssemblyName("PresentationFramework"));
 
         ValidateSdkLooseXamlReaderWriter(presentationFramework);
+        ValidatePortableClipboard(presentationCore);
+        RegisterPortableMessageBox(presentationFramework);
 
         object app = Create(smokeAssembly, AppTypeName);
         try
@@ -156,10 +161,13 @@ internal static class Program
 
             object window = Create(smokeAssembly, MainWindowTypeName);
             ValidateWindow(window, validateFrameContent: false, flushDispatcherOperations: null);
+            ValidatePortableMessageBox(presentationFramework, window);
         }
         finally
         {
             TryInvoke(app, "Shutdown");
+            ClearPortableService(presentationFramework, PortableMessageBoxServiceTypeName);
+            ClearPortableService(presentationCore, PortableClipboardServiceTypeName);
         }
     }
 
@@ -178,6 +186,8 @@ internal static class Program
         try
         {
             AssertEqual(true, GetStaticProperty(activationServiceType, "IsEnabled"), "SDK portable bootstrap activation enabled");
+            Type messageBoxServiceType = GetRequiredType(presentationFramework, PortableMessageBoxServiceTypeName);
+            AssertEqual(true, GetStaticProperty(messageBoxServiceType, "IsEnabled"), "SDK portable bootstrap MessageBox enabled");
             AssertEqual(
                 true,
                 loadContext.Assemblies.Any(assembly => string.Equals(assembly.GetName().Name, "ProGPU.Wpf", StringComparison.Ordinal)),
@@ -186,6 +196,7 @@ internal static class Program
         }
         finally
         {
+            ClearPortableService(presentationFramework, PortableMessageBoxServiceTypeName);
             ClearPortableActivation(activationServiceType);
         }
     }
@@ -209,6 +220,8 @@ internal static class Program
             app = Create(smokeAssembly, AppTypeName);
             InvokeVoid(app, "InitializeComponent");
             ValidateApp(app);
+            ValidatePortableClipboard(presentationCore);
+            RegisterPortableMessageBox(presentationFramework);
 
             recorder = RegisterPortableActivation(
                 presentationFramework,
@@ -226,6 +239,8 @@ internal static class Program
         {
             recorder?.Dispose();
             ClearPortableActivation(activationServiceType);
+            ClearPortableService(presentationFramework, PortableMessageBoxServiceTypeName);
+            ClearPortableService(presentationCore, PortableClipboardServiceTypeName);
 
             if (!runCompleted && app is not null)
             {
@@ -1571,6 +1586,7 @@ internal static class Program
             ?? throw new MissingMethodException(activationServiceType.FullName, "Register");
 
         var recorder = new SdkApplicationRunRecorder(
+            presentationFramework,
             presentationCore,
             application,
             activationServiceType);
@@ -1595,9 +1611,119 @@ internal static class Program
         return recorder;
     }
 
+    private static void RegisterPortableMessageBox(Assembly presentationFramework)
+    {
+        Type serviceType = GetRequiredType(presentationFramework, PortableMessageBoxServiceTypeName);
+        MethodInfo register = serviceType.GetMethod(
+                "Register",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: new[] { typeof(Func<object, object>) },
+                modifiers: null)
+            ?? throw new MissingMethodException(serviceType.FullName, "Register");
+
+        register.Invoke(
+            null,
+            new object[] { (Func<object, object>)ShowPortableMessageBox });
+        AssertEqual(true, GetStaticProperty(serviceType, "IsEnabled"), "portable MessageBox service enabled");
+    }
+
+    private static object ShowPortableMessageBox(object request)
+    {
+        return GetProperty(request, "FallbackResult");
+    }
+
+    private static void ValidatePortableMessageBox(Assembly presentationFramework, object window)
+    {
+        Type serviceType = GetRequiredType(presentationFramework, PortableMessageBoxServiceTypeName);
+        AssertEqual(true, GetStaticProperty(serviceType, "IsEnabled"), "portable MessageBox service enabled");
+
+        Type messageBoxType = GetRequiredType(presentationFramework, "System.Windows.MessageBox");
+        Type windowType = GetRequiredType(presentationFramework, "System.Windows.Window");
+        Type buttonType = GetRequiredType(presentationFramework, "System.Windows.MessageBoxButton");
+        Type imageType = GetRequiredType(presentationFramework, "System.Windows.MessageBoxImage");
+        Type resultType = GetRequiredType(presentationFramework, "System.Windows.MessageBoxResult");
+        Type optionsType = GetRequiredType(presentationFramework, "System.Windows.MessageBoxOptions");
+
+        object yesNoCancel = Enum.Parse(buttonType, "YesNoCancel");
+        object okCancel = Enum.Parse(buttonType, "OKCancel");
+        object warning = Enum.Parse(imageType, "Warning");
+        object information = Enum.Parse(imageType, "Information");
+        object noneResult = Enum.Parse(resultType, "None");
+        object no = Enum.Parse(resultType, "No");
+        object ok = Enum.Parse(resultType, "OK");
+        object noneOptions = Enum.Parse(optionsType, "None");
+
+        MethodInfo noOwnerShow = messageBoxType.GetMethod(
+                "Show",
+                BindingFlags.Static | BindingFlags.Public,
+                binder: null,
+                types: new[] { typeof(string), typeof(string), buttonType, imageType, resultType, optionsType },
+                modifiers: null)
+            ?? throw new MissingMethodException(messageBoxType.FullName, "Show");
+        object noOwnerResult = noOwnerShow.Invoke(
+                null,
+                new[] { "portable SDK message", "portable SDK caption", yesNoCancel, warning, no, noneOptions })
+            ?? throw new InvalidOperationException("MessageBox.Show returned null.");
+        AssertEqual(no, noOwnerResult, "portable MessageBox SDK no-owner default result");
+
+        MethodInfo ownerShow = messageBoxType.GetMethod(
+                "Show",
+                BindingFlags.Static | BindingFlags.Public,
+                binder: null,
+                types: new[] { windowType, typeof(string), typeof(string), buttonType, imageType, resultType, optionsType },
+                modifiers: null)
+            ?? throw new MissingMethodException(messageBoxType.FullName, "Show");
+        object ownerResult = ownerShow.Invoke(
+                null,
+                new[] { window, "portable SDK owner message", "portable SDK owner caption", okCancel, information, noneResult, noneOptions })
+            ?? throw new InvalidOperationException("MessageBox.Show returned null.");
+        AssertEqual(ok, ownerResult, "portable MessageBox SDK owner fallback result");
+    }
+
+    private static void ValidatePortableClipboard(Assembly presentationCore)
+    {
+        Type serviceType = GetRequiredType(presentationCore, PortableClipboardServiceTypeName);
+        AssertEqual(true, GetStaticProperty(serviceType, "IsEnabled"), "portable Clipboard service enabled");
+
+        Type clipboardType = GetRequiredType(presentationCore, "System.Windows.Clipboard");
+        Type dataFormatsType = GetRequiredType(presentationCore, "System.Windows.DataFormats");
+        Type dataObjectInterfaceType = GetRequiredType(presentationCore, "System.Windows.IDataObject");
+        object unicodeText = GetStaticField(dataFormatsType, "UnicodeText");
+
+        InvokeStaticVoid(clipboardType, "Clear");
+        AssertEqual(false, InvokeStatic(clipboardType, "ContainsText"), "portable Clipboard SDK initial text state");
+
+        InvokeStaticVoid(clipboardType, "SetText", "portable SDK clipboard text");
+        AssertEqual(true, InvokeStatic(clipboardType, "ContainsText"), "portable Clipboard SDK text state after SetText");
+        AssertEqual("portable SDK clipboard text", InvokeStatic(clipboardType, "GetText"), "portable Clipboard SDK GetText");
+
+        object dataObject = InvokeStatic(clipboardType, "GetDataObject");
+        AssertEqual(true, dataObjectInterfaceType.IsInstanceOfType(dataObject), "portable Clipboard SDK data object contract");
+        AssertEqual(
+            "portable SDK clipboard text",
+            Invoke(dataObject, "GetData", unicodeText, false),
+            "portable Clipboard SDK data object unicode text");
+        AssertEqual(true, InvokeStatic(clipboardType, "IsCurrent", dataObject), "portable Clipboard SDK current data object");
+
+        InvokeStaticVoid(clipboardType, "Flush");
+        AssertEqual("portable SDK clipboard text", InvokeStatic(clipboardType, "GetText"), "portable Clipboard SDK flushed text");
+
+        InvokeStaticVoid(clipboardType, "Clear");
+        AssertEqual(false, InvokeStatic(clipboardType, "ContainsText"), "portable Clipboard SDK cleared text state");
+        AssertEqual(string.Empty, InvokeStatic(clipboardType, "GetText"), "portable Clipboard SDK cleared text");
+    }
+
     private static void ClearPortableActivation(Type? activationServiceType)
     {
         activationServiceType?.GetMethod(
+            "Clear",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.Invoke(null, null);
+    }
+
+    private static void ClearPortableService(Assembly assembly, string typeName)
+    {
+        assembly.GetType(typeName, throwOnError: false)?.GetMethod(
             "Clear",
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.Invoke(null, null);
     }
@@ -2052,16 +2178,19 @@ internal static class Program
     private sealed class SdkApplicationRunRecorder : IDisposable
     {
         private readonly Assembly _presentationCore;
+        private readonly Assembly _presentationFramework;
         private readonly object _application;
         private readonly Type _activationServiceType;
         private IDisposable? _mediaContextRenderRegistration;
         private RecordingActivation? _activation;
 
         public SdkApplicationRunRecorder(
+            Assembly presentationFramework,
             Assembly presentationCore,
             object application,
             Type activationServiceType)
         {
+            _presentationFramework = presentationFramework;
             _presentationCore = presentationCore;
             _application = application;
             _activationServiceType = activationServiceType;
@@ -2167,6 +2296,7 @@ internal static class Program
                 typedActivation.Window,
                 validateFrameContent: true,
                 flushDispatcherOperations: window => FlushDispatcherOperations(window, "DataBind", "Loaded", "Render", "ApplicationIdle"));
+            ValidatePortableMessageBox(_presentationFramework, typedActivation.Window);
         }
 
         public void Dispose(object activation)

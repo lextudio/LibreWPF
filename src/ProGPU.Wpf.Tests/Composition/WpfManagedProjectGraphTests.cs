@@ -571,6 +571,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.RealApplicationRunHarness",
             "Program.cs");
+        var sdkRuntimeHarnessPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchRuntimeHarness",
+            "Program.cs");
 
         var messageBox = File.ReadAllText(messageBoxPath);
         var messageBoxService = File.ReadAllText(messageBoxServicePath);
@@ -578,6 +582,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuActivation = File.ReadAllText(proGpuActivationPath);
         var runtimeHarness = File.ReadAllText(runtimeHarnessPath);
         var applicationRunHarness = File.ReadAllText(applicationRunHarnessPath);
+        var sdkRuntimeHarness = File.ReadAllText(sdkRuntimeHarnessPath);
 
         Assert.Contains(@"<Compile Include=""System\Windows\PortableMessageBoxService.cs"" />", project, StringComparison.Ordinal);
         Assert.Contains("internal readonly struct PortableMessageBoxRequest", messageBoxService, StringComparison.Ordinal);
@@ -616,6 +621,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePortableMessageBox(_presentationFramework, typedActivation.Window)", applicationRunHarness, StringComparison.Ordinal);
         Assert.Contains("portable MessageBox owner fallback result", applicationRunHarness, StringComparison.Ordinal);
         Assert.Contains("ClearPortableService(presentationFramework, PortableMessageBoxServiceTypeName)", applicationRunHarness, StringComparison.Ordinal);
+
+        Assert.Contains("PortableMessageBoxServiceTypeName = \"System.Windows.PortableMessageBoxService\"", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("RegisterPortableMessageBox(presentationFramework)", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableMessageBox(presentationFramework, window)", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableMessageBox(_presentationFramework, typedActivation.Window)", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("portable MessageBox SDK no-owner default result", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("portable MessageBox SDK owner fallback result", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("ClearPortableService(presentationFramework, PortableMessageBoxServiceTypeName)", sdkRuntimeHarness, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -651,12 +664,17 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.RealApplicationRunHarness",
             "Program.cs");
+        var sdkRuntimeHarnessPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchRuntimeHarness",
+            "Program.cs");
 
         var clipboard = File.ReadAllText(clipboardPath);
         var clipboardService = File.ReadAllText(clipboardServicePath);
         var project = File.ReadAllText(projectPath);
         var runtimeHarness = File.ReadAllText(runtimeHarnessPath);
         var applicationRunHarness = File.ReadAllText(applicationRunHarnessPath);
+        var sdkRuntimeHarness = File.ReadAllText(sdkRuntimeHarnessPath);
 
         Assert.Contains(@"<Compile Include=""System\Windows\PortableClipboardService.cs"" />", project, StringComparison.Ordinal);
         Assert.Contains("internal static class PortableClipboardService", clipboardService, StringComparison.Ordinal);
@@ -700,6 +718,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePortableClipboard(presentationCore)", applicationRunHarness, StringComparison.Ordinal);
         Assert.Contains("portable Clipboard current data object", applicationRunHarness, StringComparison.Ordinal);
         Assert.Contains("ClearPortableService(presentationCore, PortableClipboardServiceTypeName)", applicationRunHarness, StringComparison.Ordinal);
+
+        Assert.Contains("PortableClipboardServiceTypeName = \"System.Windows.PortableClipboardService\"", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableClipboard(presentationCore)", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("portable Clipboard SDK data object unicode text", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("portable Clipboard SDK current data object", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("ClearPortableService(presentationCore, PortableClipboardServiceTypeName)", sdkRuntimeHarness, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -5255,7 +5279,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGPU.Wpf.Sdk.ProGpuWpfSdkPortableBootstrap", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RuntimeHelpers.RunModuleConstructor", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK portable bootstrap activation enabled", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK portable bootstrap MessageBox enabled", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK portable bootstrap loaded ProGPU.Wpf", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PortableClipboardServiceTypeName = \"System.Windows.PortableClipboardService\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PortableMessageBoxServiceTypeName = \"System.Windows.PortableMessageBoxService\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableClipboard(presentationCore)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RegisterPortableMessageBox(presentationFramework)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableMessageBox(presentationFramework, window)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable Clipboard SDK data object unicode text", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable MessageBox SDK no-owner default result", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable MessageBox SDK owner fallback result", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ClearPortableService(presentationFramework, PortableMessageBoxServiceTypeName)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ClearPortableService(presentationCore, PortableClipboardServiceTypeName)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(\"MainWindow.xaml\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindResource\", \"SmokeAccentBrush\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindResource\", \"MergedAccentBrush\"", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -5610,6 +5645,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableWindowActivationService", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortablePresentationSource", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableMediaContextRenderService", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableMessageBox(_presentationFramework, typedActivation.Window)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("object exitCode = Invoke(app, \"Run\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(0, exitCode", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertSame(typedActivation.Window, GetProperty(_application, \"MainWindow\")", runtimeHarnessProgram, StringComparison.Ordinal);

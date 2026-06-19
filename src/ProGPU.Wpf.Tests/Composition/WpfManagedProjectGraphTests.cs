@@ -6308,7 +6308,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGPU.Transpiler", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetNativeAssetCandidates(\"wgpu\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetNativeAssetCandidates(\"glfw\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateProGpuHiDpiRenderSurface(outputRoot)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ProGPU WPF host logical width property", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ProGPU WPF composition render logical/physical surface", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ProGPU compositor render logical/physical surface", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("[\"root\", \"logicalWidth\", \"logicalHeight\", \"renderTargetWidth\", \"renderTargetHeight\", \"dpiScale\", \"targetView\"]", externalSdkHarnessProgram, StringComparison.Ordinal);
 
+        Assert.Contains("ValidateProGpuHiDpiRenderSurface(inputs)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK ProGPU WPF host logical width property", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK ProGPU WPF composition render logical/physical surface", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK ProGPU compositor render logical/physical surface", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("[\"logicalWidth\", \"logicalHeight\", \"pixelWidth\", \"pixelHeight\", \"dpiScale\", \"targetView\"]", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableClipboardServiceTypeName = \"System.Windows.PortableClipboardService\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableFileDialogServiceTypeName = \"Microsoft.Win32.PortableFileDialogService\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableMessageBoxServiceTypeName = \"System.Windows.PortableMessageBoxService\"", runtimeHarnessProgram, StringComparison.Ordinal);

@@ -70,6 +70,7 @@ internal static class Program
         try
         {
             SmokeInputs inputs = ResolveSmokeInputs();
+            ValidateProGpuHiDpiRenderSurface(inputs);
             RunObjectGraphSmoke(inputs);
             RunSdkPortableBootstrapSmoke(inputs);
             RunApplicationRunSmoke(inputs);
@@ -329,6 +330,49 @@ internal static class Program
             inputs.SmokeAssemblyPath,
             inputs.WpfRoot,
             inputs.ProGpuRoot);
+    }
+
+    private static void ValidateProGpuHiDpiRenderSurface(SmokeInputs inputs)
+    {
+        using var loadContext = CreateLoadContext(inputs);
+        Assembly proGpuWpf = loadContext.LoadFromAssemblyName(new AssemblyName("ProGPU.Wpf"));
+        Assembly proGpuScene = loadContext.LoadFromAssemblyName(new AssemblyName("ProGPU.Scene"));
+
+        Type windowHostType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfWindowHost");
+        AssertPropertyType(windowHostType, "Width", typeof(int), "SDK ProGPU WPF host logical width property");
+        AssertPropertyType(windowHostType, "Height", typeof(int), "SDK ProGPU WPF host logical height property");
+
+        MethodInfo setClientSize = windowHostType.GetMethod(
+            "SetClientSize",
+            BindingFlags.Instance | BindingFlags.Public,
+            binder: null,
+            [typeof(int), typeof(int)],
+            modifiers: null)
+            ?? throw new MissingMethodException(windowHostType.FullName, "SetClientSize");
+        AssertEqual(2, setClientSize.GetParameters().Length, "SDK ProGPU WPF host client-size method parameter count");
+
+        Type compositionTargetType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfCompositionTarget");
+        MethodInfo compositionRender = FindMethodByParameterNames(
+            compositionTargetType,
+            "Render",
+            ["logicalWidth", "logicalHeight", "pixelWidth", "pixelHeight", "dpiScale", "targetView"]);
+        AssertParameterTypes(
+            compositionRender,
+            [typeof(uint), typeof(uint), typeof(uint), typeof(uint), typeof(float)],
+            "SDK ProGPU WPF composition render logical/physical surface");
+        AssertEqual(true, compositionRender.GetParameters()[5].ParameterType.IsPointer, "SDK ProGPU WPF composition render target view pointer");
+
+        Type compositorType = GetRequiredType(proGpuScene, "ProGPU.Scene.Compositor");
+        Type visualType = GetRequiredType(proGpuScene, "ProGPU.Scene.Visual");
+        MethodInfo compositorRenderScene = FindMethodByParameterNames(
+            compositorType,
+            "RenderScene",
+            ["root", "logicalWidth", "logicalHeight", "renderTargetWidth", "renderTargetHeight", "dpiScale", "targetView"]);
+        AssertParameterTypes(
+            compositorRenderScene,
+            [visualType, typeof(uint), typeof(uint), typeof(uint), typeof(uint), typeof(float)],
+            "SDK ProGPU compositor render logical/physical surface");
+        AssertEqual(true, compositorRenderScene.GetParameters()[6].ParameterType.IsPointer, "SDK ProGPU compositor render target view pointer");
     }
 
     private static void PreloadSdkWindowingPlatform(AssemblyLoadContext loadContext, string appOutputRoot)
@@ -2617,6 +2661,58 @@ internal static class Program
         {
             throw new InvalidOperationException(
                 $"{description}: expected type '{expectedTypeName}', actual '{value.GetType().FullName}'.");
+        }
+    }
+
+    private static void AssertPropertyType(Type type, string propertyName, Type expectedType, string description)
+    {
+        PropertyInfo property = type.GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(type.FullName, propertyName);
+
+        if (property.PropertyType != expectedType)
+        {
+            throw new InvalidOperationException(
+                $"{description}: expected property type '{expectedType.FullName}', actual '{property.PropertyType.FullName}'.");
+        }
+    }
+
+    private static MethodInfo FindMethodByParameterNames(Type type, string methodName, string[] parameterNames)
+    {
+        MethodInfo? method = type
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .Where(method => string.Equals(method.Name, methodName, StringComparison.Ordinal))
+            .FirstOrDefault(method =>
+            {
+                ParameterInfo[] parameters = method.GetParameters();
+                return parameters.Length == parameterNames.Length &&
+                    parameters
+                        .Select(parameter => parameter.Name ?? string.Empty)
+                        .SequenceEqual(parameterNames, StringComparer.Ordinal);
+            });
+
+        return method ?? throw new MissingMethodException(
+            type.FullName,
+            $"{methodName}({string.Join(", ", parameterNames)})");
+    }
+
+    private static void AssertParameterTypes(MethodInfo method, Type[] expectedParameterTypes, string description)
+    {
+        ParameterInfo[] parameters = method.GetParameters();
+        if (parameters.Length < expectedParameterTypes.Length)
+        {
+            throw new InvalidOperationException(
+                $"{description}: expected at least {expectedParameterTypes.Length} parameters, actual {parameters.Length}.");
+        }
+
+        for (int i = 0; i < expectedParameterTypes.Length; i++)
+        {
+            if (parameters[i].ParameterType != expectedParameterTypes[i])
+            {
+                throw new InvalidOperationException(
+                    $"{description}: expected parameter '{parameters[i].Name}' type '{expectedParameterTypes[i].FullName}', actual '{parameters[i].ParameterType.FullName}'.");
+            }
         }
     }
 

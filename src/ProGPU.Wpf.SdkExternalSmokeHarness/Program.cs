@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.Loader;
 using System.Security;
 
 internal static class Program
@@ -3716,6 +3718,70 @@ internal static class Program
         AssertContains(depsJson, "ProGPU.Compute", "external SDK ProGPU compute package dependency");
         AssertContains(depsJson, "ProGPU.Transpiler", "external SDK ProGPU transpiler package dependency");
         AssertContains(depsJson, LibraryAssemblyName, "external SDK referenced library dependency");
+
+        ValidateProGpuHiDpiRenderSurface(outputRoot);
+    }
+
+    private static void ValidateProGpuHiDpiRenderSurface(string outputRoot)
+    {
+        var loadContext = new AssemblyLoadContext("ProGPU WPF external SDK output validation", isCollectible: true);
+        loadContext.Resolving += (_, assemblyName) =>
+        {
+            string? assemblyNameText = assemblyName.Name;
+            if (string.IsNullOrEmpty(assemblyNameText))
+            {
+                return null;
+            }
+
+            string candidate = Path.Combine(outputRoot, assemblyNameText + ".dll");
+            return File.Exists(candidate) ? loadContext.LoadFromAssemblyPath(candidate) : null;
+        };
+
+        try
+        {
+            Assembly proGpuWpf = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "ProGPU.Wpf.dll"));
+            Assembly proGpuScene = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "ProGPU.Scene.dll"));
+
+            Type windowHostType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfWindowHost");
+            AssertPropertyType(windowHostType, "Width", typeof(int), "external SDK ProGPU WPF host logical width property");
+            AssertPropertyType(windowHostType, "Height", typeof(int), "external SDK ProGPU WPF host logical height property");
+
+            MethodInfo setClientSize = windowHostType.GetMethod(
+                "SetClientSize",
+                BindingFlags.Instance | BindingFlags.Public,
+                binder: null,
+                [typeof(int), typeof(int)],
+                modifiers: null)
+                ?? throw new MissingMethodException(windowHostType.FullName, "SetClientSize");
+            AssertEqual(2, setClientSize.GetParameters().Length, "external SDK ProGPU WPF host client-size method parameter count");
+
+            Type compositionTargetType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfCompositionTarget");
+            MethodInfo compositionRender = FindMethodByParameterNames(
+                compositionTargetType,
+                "Render",
+                ["logicalWidth", "logicalHeight", "pixelWidth", "pixelHeight", "dpiScale", "targetView"]);
+            AssertParameterTypes(
+                compositionRender,
+                [typeof(uint), typeof(uint), typeof(uint), typeof(uint), typeof(float)],
+                "external SDK ProGPU WPF composition render logical/physical surface");
+            AssertEqual(true, compositionRender.GetParameters()[5].ParameterType.IsPointer, "external SDK ProGPU WPF composition render target view pointer");
+
+            Type compositorType = GetRequiredType(proGpuScene, "ProGPU.Scene.Compositor");
+            Type visualType = GetRequiredType(proGpuScene, "ProGPU.Scene.Visual");
+            MethodInfo compositorRenderScene = FindMethodByParameterNames(
+                compositorType,
+                "RenderScene",
+                ["root", "logicalWidth", "logicalHeight", "renderTargetWidth", "renderTargetHeight", "dpiScale", "targetView"]);
+            AssertParameterTypes(
+                compositorRenderScene,
+                [visualType, typeof(uint), typeof(uint), typeof(uint), typeof(uint), typeof(float)],
+                "external SDK ProGPU compositor render logical/physical surface");
+            AssertEqual(true, compositorRenderScene.GetParameters()[6].ParameterType.IsPointer, "external SDK ProGPU compositor render target view pointer");
+        }
+        finally
+        {
+            loadContext.Unload();
+        }
     }
 
     private static string RunProcess(string fileName, string workingDirectory, params string[] arguments)
@@ -3871,6 +3937,72 @@ internal static class Program
         if (value.Contains(unexpected, StringComparison.Ordinal))
         {
             throw new InvalidOperationException($"Expected {description} not to contain '{unexpected}'.");
+        }
+    }
+
+    private static Type GetRequiredType(Assembly assembly, string typeName)
+    {
+        return assembly.GetType(typeName, throwOnError: true)!
+            ?? throw new TypeLoadException(typeName);
+    }
+
+    private static void AssertEqual(object expected, object actual, string description)
+    {
+        if (!object.Equals(expected, actual))
+        {
+            throw new InvalidOperationException($"Expected {description} to be '{expected}', but found '{actual}'.");
+        }
+    }
+
+    private static void AssertPropertyType(Type type, string propertyName, Type expectedType, string description)
+    {
+        PropertyInfo property = type.GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(type.FullName, propertyName);
+
+        if (property.PropertyType != expectedType)
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} type to be '{expectedType.FullName}', but found '{property.PropertyType.FullName}'.");
+        }
+    }
+
+    private static MethodInfo FindMethodByParameterNames(Type type, string methodName, string[] parameterNames)
+    {
+        MethodInfo? method = type
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .Where(method => string.Equals(method.Name, methodName, StringComparison.Ordinal))
+            .FirstOrDefault(method =>
+            {
+                ParameterInfo[] parameters = method.GetParameters();
+                return parameters.Length == parameterNames.Length &&
+                    parameters
+                        .Select(parameter => parameter.Name ?? string.Empty)
+                        .SequenceEqual(parameterNames, StringComparer.Ordinal);
+            });
+
+        return method ?? throw new MissingMethodException(
+            type.FullName,
+            $"{methodName}({string.Join(", ", parameterNames)})");
+    }
+
+    private static void AssertParameterTypes(MethodInfo method, Type[] expectedParameterTypes, string description)
+    {
+        ParameterInfo[] parameters = method.GetParameters();
+        if (parameters.Length < expectedParameterTypes.Length)
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to have at least {expectedParameterTypes.Length} parameters, but found {parameters.Length}.");
+        }
+
+        for (int i = 0; i < expectedParameterTypes.Length; i++)
+        {
+            if (parameters[i].ParameterType != expectedParameterTypes[i])
+            {
+                throw new InvalidOperationException(
+                    $"Expected {description} parameter '{parameters[i].Name}' type to be '{expectedParameterTypes[i].FullName}', but found '{parameters[i].ParameterType.FullName}'.");
+            }
         }
     }
 }

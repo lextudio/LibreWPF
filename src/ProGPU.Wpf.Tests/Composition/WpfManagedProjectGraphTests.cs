@@ -4222,6 +4222,15 @@ public sealed class WpfManagedProjectGraphTests
             "windows",
             "Documents",
             "TextSelection.cs"));
+        var textEditorTyping = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "windows",
+            "Documents",
+            "TextEditorTyping.cs"));
         var caretElement = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4455,6 +4464,9 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(textSelection, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetKeyboardLayoutList(0, null)");
         AssertGuardBefore(textSelection, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetLocaleInfoW");
         Assert.Contains("return cultureInfo.TextInfo.IsRightToLeft", textSelection, StringComparison.Ordinal);
+        AssertGuardBefore(textEditorTyping, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.ShowCursor(true)");
+        AssertGuardBefore(textEditorTyping, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.PeekMessage");
+        AssertGuardBefore(textEditorTyping, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.ShowCursor(false)");
         AssertGuardBefore(caretElement, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.CreateBitmap");
         AssertGuardBefore(caretElement, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.DestroyCaret()");
         AssertGuardBefore(caretElement, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.SetCaretPos");

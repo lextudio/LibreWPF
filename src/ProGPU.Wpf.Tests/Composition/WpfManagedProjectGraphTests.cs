@@ -6305,6 +6305,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("KeyboardNavigation.TabNavigation=\"Cycle\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalAccessLabel", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Target=\"{Binding ElementName=ExternalValidationTextBox}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.AutomationId=\"ExternalValidationTextBoxAutomation\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.LabeledBy=\"{Binding ElementName=ExternalAccessLabel}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.GetAutomationId(validationTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.GetLabeledBy(validationTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("UIElementAutomationPeer.CreatePeerForElement(validationTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("UIElementAutomationPeer.CreatePeerForElement(accessLabel)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalStandaloneAccessText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Text=\"_External standalone access\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Click=\"OnExternalCommandButtonClick\"", externalSdkHarnessProgram, StringComparison.Ordinal);

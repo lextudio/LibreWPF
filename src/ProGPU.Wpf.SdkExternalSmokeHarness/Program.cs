@@ -995,6 +995,10 @@ internal static class Program
                     </TextBlock>
                     <TextBox
                         x:Name="ExternalValidationTextBox"
+                        AutomationProperties.AutomationId="ExternalValidationTextBoxAutomation"
+                        AutomationProperties.HelpText="External SDK validation text"
+                        AutomationProperties.LabeledBy="{Binding ElementName=ExternalAccessLabel}"
+                        AutomationProperties.Name="External validation input"
                         TextChanged="OnExternalValidationTextChanged">
                         <TextBox.Text>
                             <Binding
@@ -1129,6 +1133,8 @@ internal static class Program
             using System.Linq;
             using System.Reflection;
             using System.Windows;
+            using System.Windows.Automation;
+            using System.Windows.Automation.Peers;
             using System.Windows.Controls;
             using System.Windows.Controls.Primitives;
             using System.Windows.Data;
@@ -4363,6 +4369,20 @@ internal static class Program
                     AssertEqual(validationTextBox, accessLabel.Target, "external SDK label access-key target");
                     AssertEqual("_External access target", accessLabel.Content, "external SDK label access-key content");
                     AssertEqual("_External standalone access", standaloneAccessText.Text, "external SDK standalone access text");
+                    AssertEqual("ExternalValidationTextBoxAutomation", AutomationProperties.GetAutomationId(validationTextBox), "external SDK automation id");
+                    AssertEqual("External validation input", AutomationProperties.GetName(validationTextBox), "external SDK automation name");
+                    AssertEqual("External SDK validation text", AutomationProperties.GetHelpText(validationTextBox), "external SDK automation help text");
+                    AssertEqual(accessLabel, AutomationProperties.GetLabeledBy(validationTextBox), "external SDK automation labeled-by element");
+                    var validationPeer = RequireType<TextBoxAutomationPeer>(
+                        UIElementAutomationPeer.CreatePeerForElement(validationTextBox),
+                        "external SDK text box automation peer");
+                    AssertEqual("ExternalValidationTextBoxAutomation", validationPeer.GetAutomationId(), "external SDK automation peer id");
+                    AssertEqual("External validation input", validationPeer.GetName(), "external SDK automation peer name");
+                    AssertEqual("External SDK validation text", validationPeer.GetHelpText(), "external SDK automation peer help text");
+                    var labelPeer = RequireType<LabelAutomationPeer>(
+                        UIElementAutomationPeer.CreatePeerForElement(accessLabel),
+                        "external SDK label automation peer");
+                    AssertEqual(accessLabel, labelPeer.Owner, "external SDK label automation peer owner");
                     AssertEqual(MainWindow.ExternalCommand, commandButton.Command, "external SDK command button command");
                     AssertEqual("ExternalCommandParameter", commandButton.CommandParameter, "external SDK command button parameter");
 

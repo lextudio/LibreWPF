@@ -658,6 +658,25 @@ internal static class Program
                     <TextBlock
                         x:Name="ExternalMultiDataTriggerText"
                         Style="{StaticResource ExternalMultiDataTriggeredTextStyle}" />
+                    <TextBlock
+                        x:Name="ExternalLoadedStoryboardText"
+                        Loaded="OnExternalLoadedStoryboardTextLoaded"
+                        Opacity="1"
+                        Text="External loaded storyboard target">
+                        <TextBlock.Triggers>
+                            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="ExternalLoadedStoryboardText"
+                                            Storyboard.TargetProperty="Opacity"
+                                            To="0.37"
+                                            Duration="0:0:0" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </TextBlock.Triggers>
+                    </TextBlock>
                     <Menu x:Name="ExternalMenu">
                         <MenuItem
                             x:Name="ExternalRootMenuItem"
@@ -1367,6 +1386,10 @@ internal static class Program
 
                 public string? LastExternalStyleEventRoutedEventName { get; private set; }
 
+                public int ExternalLoadedStoryboardTextLoadedCount { get; private set; }
+
+                public string? LastExternalLoadedStoryboardTextRoutedEventName { get; private set; }
+
                 public object? LastExternalCommandParameter { get; private set; }
 
                 public string? LastExternalCommandName { get; private set; }
@@ -1570,6 +1593,12 @@ internal static class Program
                     ExternalStyleEventButtonClickCount++;
                     LastExternalStyleEventSenderName = (sender as FrameworkElement)?.Name;
                     LastExternalStyleEventRoutedEventName = e.RoutedEvent?.Name;
+                }
+
+                private void OnExternalLoadedStoryboardTextLoaded(object sender, RoutedEventArgs e)
+                {
+                    ExternalLoadedStoryboardTextLoadedCount++;
+                    LastExternalLoadedStoryboardTextRoutedEventName = e.RoutedEvent?.Name;
                 }
 
                 private void OnPropertyChanged(string propertyName)
@@ -1837,6 +1866,7 @@ internal static class Program
                     ValidateBindings(window);
                     ValidateBindingGroup(window);
                     ValidateStylesAndTemplates(window);
+                    ValidateLoadedStoryboardMetadata(window);
                     ValidateMenusAndChoiceControls(window);
                     ValidateToolbarStatusRangePasswordDateControls(window);
                     ValidateAdornerDecorator(window);
@@ -1979,6 +2009,7 @@ internal static class Program
                         "external SDK startup resource text block");
                     AssertEqual("External SDK startup resource", startupResourceText.Text, "external SDK startup dynamic resource text");
                     AssertBrushColor(startupResourceText.Foreground, "#FF176283", "external SDK startup dynamic resource foreground");
+                    ValidateLoadedStoryboardAfterRun(window);
                     ValidateVisualStateTransitions(window);
                     ValidateAdornerLayer(window);
 
@@ -3657,6 +3688,52 @@ internal static class Program
                     AssertEqual(true, VisualStateManager.GoToState(styledButton, "Normal", false), "external SDK Application.Run VisualStateManager Normal transition");
                     DrainDispatcher();
                     AssertClose(1.0, templateContent.Opacity, "external SDK Application.Run VisualStateManager Normal opacity");
+                }
+
+                private static void ValidateLoadedStoryboardMetadata(MainWindow window)
+                {
+                    var loadedStoryboardText = RequireType<TextBlock>(
+                        window.FindName("ExternalLoadedStoryboardText"),
+                        "external SDK loaded storyboard text");
+                    AssertEqual("External loaded storyboard target", loadedStoryboardText.Text, "external SDK loaded storyboard text content");
+                    AssertClose(1.0, loadedStoryboardText.Opacity, "external SDK loaded storyboard initial opacity");
+                    AssertEqual(1, loadedStoryboardText.Triggers.Count, "external SDK loaded storyboard trigger count");
+                    var eventTrigger = RequireType<EventTrigger>(
+                        loadedStoryboardText.Triggers[0],
+                        "external SDK loaded storyboard event trigger");
+                    AssertEqual(FrameworkElement.LoadedEvent, eventTrigger.RoutedEvent, "external SDK loaded storyboard routed event");
+                    AssertEqual(1, eventTrigger.Actions.Count, "external SDK loaded storyboard action count");
+                    var beginStoryboard = RequireType<BeginStoryboard>(
+                        eventTrigger.Actions[0],
+                        "external SDK loaded storyboard begin action");
+                    var storyboard = RequireType<Storyboard>(
+                        beginStoryboard.Storyboard,
+                        "external SDK loaded storyboard");
+                    AssertEqual(1, storyboard.Children.Count, "external SDK loaded storyboard child count");
+                    var doubleAnimation = RequireType<DoubleAnimation>(
+                        storyboard.Children[0],
+                        "external SDK loaded storyboard double animation");
+                    AssertEqual(0.37, doubleAnimation.To ?? double.NaN, "external SDK loaded storyboard animation target value");
+                    AssertEqual(TimeSpan.Zero, doubleAnimation.Duration.TimeSpan, "external SDK loaded storyboard animation duration");
+                    AssertEqual(FillBehavior.HoldEnd, doubleAnimation.FillBehavior, "external SDK loaded storyboard fill behavior");
+                    AssertEqual("ExternalLoadedStoryboardText", Storyboard.GetTargetName(doubleAnimation), "external SDK loaded storyboard target name");
+                    var targetProperty = RequireType<PropertyPath>(
+                        Storyboard.GetTargetProperty(doubleAnimation),
+                        "external SDK loaded storyboard target property");
+                    AssertEqual("Opacity", targetProperty.Path?.ToString() ?? string.Empty, "external SDK loaded storyboard target property path");
+                    AssertEqual(0, window.ExternalLoadedStoryboardTextLoadedCount, "external SDK loaded storyboard initial handler count");
+                }
+
+                private static void ValidateLoadedStoryboardAfterRun(MainWindow window)
+                {
+                    DrainDispatcher();
+
+                    var loadedStoryboardText = RequireType<TextBlock>(
+                        window.FindName("ExternalLoadedStoryboardText"),
+                        "external SDK Application.Run loaded storyboard text");
+                    AssertClose(0.37, loadedStoryboardText.Opacity, "external SDK Application.Run loaded storyboard opacity");
+                    AssertAtLeast(1, window.ExternalLoadedStoryboardTextLoadedCount, "external SDK loaded storyboard handler count");
+                    AssertEqual("Loaded", window.LastExternalLoadedStoryboardTextRoutedEventName, "external SDK loaded storyboard routed event name");
                 }
 
                 private static void ValidateStylesAndTemplates(MainWindow window)

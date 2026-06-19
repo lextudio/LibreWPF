@@ -1549,6 +1549,7 @@ internal static class Program
                     ValidateApplicationResources(window);
                     ValidateSystemParameters(window);
                     ValidateMessageBox(window);
+                    ValidateClipboard();
                     ValidateFreezableResources();
                     ValidateLooseXamlReaderWriter();
                     ValidateDataProviders(window);
@@ -1951,6 +1952,31 @@ internal static class Program
                         MessageBoxResult.OK,
                         ownerResult,
                         "external SDK MessageBox owner fallback result");
+                }
+
+                private static void ValidateClipboard()
+                {
+                    Clipboard.Clear();
+                    AssertEqual(false, Clipboard.ContainsText(), "external SDK Clipboard initial text state");
+
+                    Clipboard.SetText("external SDK clipboard text");
+                    AssertEqual(true, Clipboard.ContainsText(), "external SDK Clipboard text state after SetText");
+                    AssertEqual("external SDK clipboard text", Clipboard.GetText(), "external SDK Clipboard GetText");
+
+                    var dataObject = Clipboard.GetDataObject()
+                        ?? throw new InvalidOperationException("Expected external SDK Clipboard data object.");
+                    AssertEqual(
+                        "external SDK clipboard text",
+                        dataObject.GetData(DataFormats.UnicodeText, autoConvert: false),
+                        "external SDK Clipboard data object unicode text");
+                    AssertEqual(true, Clipboard.IsCurrent(dataObject), "external SDK Clipboard current data object");
+
+                    Clipboard.Flush();
+                    AssertEqual("external SDK clipboard text", Clipboard.GetText(), "external SDK Clipboard flushed text");
+
+                    Clipboard.Clear();
+                    AssertEqual(false, Clipboard.ContainsText(), "external SDK Clipboard cleared text state");
+                    AssertEqual(string.Empty, Clipboard.GetText(), "external SDK Clipboard cleared text");
                 }
 
                 private static void ValidateFreezableResources()

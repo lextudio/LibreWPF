@@ -8,6 +8,7 @@ namespace System.Windows.Media.ProGPU;
 public sealed class WpfPortableWindowActivation : IDisposable
 {
     private const string PortableWindowActivationServiceTypeName = "System.Windows.PortableWindowActivationService";
+    private const string PortableClipboardServiceTypeName = "System.Windows.PortableClipboardService";
     private const string PortableMessageBoxServiceTypeName = "System.Windows.PortableMessageBoxService";
     private const string PortableFileDialogServiceTypeName = "Microsoft.Win32.PortableFileDialogService";
     private const string PortableMediaContextRenderServiceTypeName = "System.Windows.Media.PortableMediaContextRenderService";
@@ -127,6 +128,39 @@ public sealed class WpfPortableWindowActivation : IDisposable
             parameters: parameters);
         TryRegisterPresentationFrameworkMessageBoxService(presentationFrameworkAssembly);
         TryRegisterPresentationFrameworkFileDialogService(presentationFrameworkAssembly);
+        return true;
+    }
+
+    public static bool TryRegisterPresentationCoreClipboardService(Assembly presentationCoreAssembly)
+    {
+        ArgumentNullException.ThrowIfNull(presentationCoreAssembly);
+
+        var serviceType = presentationCoreAssembly.GetType(
+            PortableClipboardServiceTypeName,
+            throwOnError: false);
+        if (serviceType == null)
+        {
+            return false;
+        }
+
+        var registerMethod = serviceType.GetMethod(
+            "Register",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            types: new[] { typeof(Func<string?>), typeof(Action<string?>) },
+            modifiers: null);
+        if (registerMethod == null || !typeof(IDisposable).IsAssignableFrom(registerMethod.ReturnType))
+        {
+            return false;
+        }
+
+        registerMethod.Invoke(
+            obj: null,
+            parameters: new object[]
+            {
+                (Func<string?>)GetPortableClipboardText,
+                (Action<string?>)SetPortableClipboardText
+            });
         return true;
     }
 
@@ -899,6 +933,52 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
 
         return "OK";
+    }
+
+    private static string? GetPortableClipboardText()
+    {
+        try
+        {
+            string? text = CrossPlatformWpfPlatformServices.Instance.Clipboard
+                .GetTextAsync()
+                .AsTask()
+                .GetAwaiter()
+                .GetResult();
+            return string.IsNullOrEmpty(text) ? null : text;
+        }
+        catch (PlatformNotSupportedException)
+        {
+            return null;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            return null;
+        }
+    }
+
+    private static void SetPortableClipboardText(string? text)
+    {
+        try
+        {
+            CrossPlatformWpfPlatformServices.Instance.Clipboard
+                .SetTextAsync(text)
+                .AsTask()
+                .GetAwaiter()
+                .GetResult();
+        }
+        catch (PlatformNotSupportedException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+        }
     }
 
     private static string? ShowPortableFileDialog(object request)

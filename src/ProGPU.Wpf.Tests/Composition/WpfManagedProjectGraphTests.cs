@@ -668,6 +668,15 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.SdkSwitchRuntimeHarness",
             "Program.cs");
+        var proGpuActivationPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "WpfPortableWindowActivation.cs");
+        var portableBootstrapPath = FindRepoPath(
+            "packaging",
+            "ProGPU.Wpf.Sdk",
+            "targets",
+            "ProGPU.Wpf.Sdk.PortableBootstrap.cs");
 
         var clipboard = File.ReadAllText(clipboardPath);
         var clipboardService = File.ReadAllText(clipboardServicePath);
@@ -675,6 +684,8 @@ public sealed class WpfManagedProjectGraphTests
         var runtimeHarness = File.ReadAllText(runtimeHarnessPath);
         var applicationRunHarness = File.ReadAllText(applicationRunHarnessPath);
         var sdkRuntimeHarness = File.ReadAllText(sdkRuntimeHarnessPath);
+        var proGpuActivation = File.ReadAllText(proGpuActivationPath);
+        var portableBootstrap = File.ReadAllText(portableBootstrapPath);
 
         Assert.Contains(@"<Compile Include=""System\Windows\PortableClipboardService.cs"" />", project, StringComparison.Ordinal);
         Assert.Contains("internal static class PortableClipboardService", clipboardService, StringComparison.Ordinal);
@@ -724,6 +735,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("portable Clipboard SDK data object unicode text", sdkRuntimeHarness, StringComparison.Ordinal);
         Assert.Contains("portable Clipboard SDK current data object", sdkRuntimeHarness, StringComparison.Ordinal);
         Assert.Contains("ClearPortableService(presentationCore, PortableClipboardServiceTypeName)", sdkRuntimeHarness, StringComparison.Ordinal);
+
+        Assert.Contains("PortableClipboardServiceTypeName", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("TryRegisterPresentationCoreClipboardService", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("typeof(Func<string?>), typeof(Action<string?>)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("GetPortableClipboardText", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("SetPortableClipboardText", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("CrossPlatformWpfPlatformServices.Instance.Clipboard", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("return string.IsNullOrEmpty(text) ? null : text", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationCoreClipboardService(typeof(Clipboard).Assembly)", portableBootstrap, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -4734,6 +4754,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("[ModuleInitializer]", portableBootstrap, StringComparison.Ordinal);
         Assert.Contains("if (OperatingSystem.IsWindows())", portableBootstrap, StringComparison.Ordinal);
         Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation(typeof(Application).Assembly)", portableBootstrap, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationCoreClipboardService(typeof(Clipboard).Assembly)", portableBootstrap, StringComparison.Ordinal);
 
         Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", smokeProject, StringComparison.Ordinal);
         Assert.Contains("<OutputType>WinExe</OutputType>", smokeProject, StringComparison.Ordinal);
@@ -5707,6 +5728,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK portable MessageBox service enabled", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK MessageBox no-owner default result", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK MessageBox owner fallback result", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateClipboard()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Clipboard.SetText(\"external SDK clipboard text\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Clipboard data object unicode text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Clipboard current data object", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Clipboard cleared text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("template.LoadContent()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK item template name binding", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window.ExternalItems.Add(new ExternalItem(\"Gamma\", \"Data\"))", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -277,7 +277,15 @@ internal static class Program
                 x:Class="ExternalSdkApp.App"
                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                StartupUri="MainWindow.xaml" />
+                StartupUri="MainWindow.xaml">
+                <Application.Resources>
+                    <ResourceDictionary>
+                        <ResourceDictionary.MergedDictionaries>
+                            <ResourceDictionary Source="ExternalResources.xaml" />
+                        </ResourceDictionary.MergedDictionaries>
+                    </ResourceDictionary>
+                </Application.Resources>
+            </Application>
             """);
 
         WriteFile(
@@ -293,12 +301,44 @@ internal static class Program
             """);
 
         WriteFile(
+            Path.Combine(appRoot, "ExternalResources.xaml"),
+            """
+            <ResourceDictionary
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:local="clr-namespace:ExternalSdkApp">
+                <SolidColorBrush
+                    x:Key="ExternalStaticBrush"
+                    Color="#A65A2A" />
+                <SolidColorBrush
+                    x:Key="ExternalDynamicBrush"
+                    Color="#225588" />
+                <sys:String
+                    x:Key="ExternalStaticText"
+                    xmlns:sys="clr-namespace:System;assembly=System.Private.CoreLib">External SDK resource text</sys:String>
+                <DataTemplate
+                    x:Key="ExternalItemTemplate"
+                    DataType="{x:Type local:ExternalItem}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock
+                            x:Name="ExternalItemNameText"
+                            Text="{Binding Name}" />
+                        <TextBlock
+                            x:Name="ExternalItemKindText"
+                            Text="{Binding Kind}" />
+                    </StackPanel>
+                </DataTemplate>
+            </ResourceDictionary>
+            """);
+
+        WriteFile(
             Path.Combine(appRoot, "MainWindow.xaml"),
             """
             <Window
                 x:Class="ExternalSdkApp.MainWindow"
                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:local="clr-namespace:ExternalSdkApp"
                 xmlns:library="clr-namespace:ExternalSdkLibrary;assembly=ExternalSdkLibrary"
                 Title="External SDK App"
                 Width="320"
@@ -307,6 +347,23 @@ internal static class Program
                     <TextBlock
                         x:Name="TitleText"
                         Text="External SDK app" />
+                    <TextBlock
+                        x:Name="StaticResourceText"
+                        Foreground="{StaticResource ExternalStaticBrush}"
+                        Text="{StaticResource ExternalStaticText}" />
+                    <TextBlock
+                        x:Name="DynamicResourceText"
+                        Foreground="{DynamicResource ExternalDynamicBrush}"
+                        Text="External SDK dynamic resource" />
+                    <ContentControl
+                        x:Name="ExternalTemplatePresenter"
+                        Content="{Binding SelectedExternalItem}"
+                        ContentTemplate="{StaticResource ExternalItemTemplate}" />
+                    <ListBox
+                        x:Name="ExternalItemsList"
+                        DisplayMemberPath="Name"
+                        ItemsSource="{Binding ExternalItems}"
+                        SelectedIndex="1" />
                     <library:ExternalPanel
                         x:Name="ExternalPanel"
                         Caption="External SDK library panel" />
@@ -396,6 +453,7 @@ internal static class Program
             Path.Combine(appRoot, "MainWindow.xaml.cs"),
             """
             using System;
+            using System.Collections.ObjectModel;
             using System.Collections.Generic;
             using System.Windows;
             using System.Windows.Controls;
@@ -410,8 +468,17 @@ internal static class Program
             {
                 public MainWindow()
                 {
+                    DataContext = this;
                     InitializeComponent();
                 }
+
+                public ObservableCollection<ExternalItem> ExternalItems { get; } =
+                [
+                    new ExternalItem("Alpha", "Framework"),
+                    new ExternalItem("Beta", "Rendering")
+                ];
+
+                public ExternalItem SelectedExternalItem => ExternalItems[0];
 
                 public int ExternalFrameNavigatingCount { get; private set; }
 
@@ -450,6 +517,19 @@ internal static class Program
                 }
             }
 
+            public sealed class ExternalItem
+            {
+                public ExternalItem(string name, string kind)
+                {
+                    Name = name;
+                    Kind = kind;
+                }
+
+                public string Name { get; }
+
+                public string Kind { get; }
+            }
+
             public partial class App
             {
                 protected override void OnStartup(StartupEventArgs e)
@@ -477,6 +557,7 @@ internal static class Program
                         panel.FindName("CaptionText"),
                         "external SDK user-control named TextBlock");
                     AssertEqual("External SDK library panel", captionText.Text, "external SDK user-control ElementName binding");
+                    ValidateApplicationResources(window);
 
                     var themedControl = RequireType<ExternalThemedControl>(
                         window.FindName("ExternalThemedControl"),
@@ -566,6 +647,69 @@ internal static class Program
                     AssertEqual(typeof(ExternalPage).FullName, window.LastExternalFrameContentType, "external SDK back frame content type");
                 }
 
+                private static void ValidateApplicationResources(MainWindow window)
+                {
+                    var appResources = Application.Current?.Resources
+                        ?? throw new InvalidOperationException("External SDK validation requires Application resources.");
+                    AssertAtLeast(1, appResources.MergedDictionaries.Count, "external SDK application merged dictionary count");
+                    AssertEqual(
+                        "External SDK resource text",
+                        appResources["ExternalStaticText"],
+                        "external SDK application static text resource");
+                    AssertBrushColor(
+                        RequireType<Brush>(appResources["ExternalStaticBrush"], "external SDK application static brush resource"),
+                        "#FFA65A2A",
+                        "external SDK application static brush resource");
+
+                    var staticResourceText = RequireType<TextBlock>(
+                        window.FindName("StaticResourceText"),
+                        "external SDK static resource text block");
+                    AssertEqual("External SDK resource text", staticResourceText.Text, "external SDK static resource text");
+                    AssertBrushColor(staticResourceText.Foreground, "#FFA65A2A", "external SDK static resource foreground");
+
+                    var dynamicResourceText = RequireType<TextBlock>(
+                        window.FindName("DynamicResourceText"),
+                        "external SDK dynamic resource text block");
+                    AssertBrushColor(dynamicResourceText.Foreground, "#FF225588", "external SDK initial dynamic resource foreground");
+                    appResources["ExternalDynamicBrush"] = new SolidColorBrush(Color.FromRgb(0x45, 0x76, 0x23));
+                    DrainDispatcher();
+                    AssertBrushColor(dynamicResourceText.Foreground, "#FF457623", "external SDK updated dynamic resource foreground");
+
+                    var template = RequireType<DataTemplate>(
+                        window.FindResource("ExternalItemTemplate"),
+                        "external SDK item data template");
+                    var templateRoot = RequireType<StackPanel>(
+                        template.LoadContent(),
+                        "external SDK item template root");
+                    templateRoot.DataContext = window.SelectedExternalItem;
+                    DrainDispatcher();
+                    AssertAtLeast(2, templateRoot.Children.Count, "external SDK item template child count");
+                    var itemNameText = RequireType<TextBlock>(
+                        templateRoot.Children[0],
+                        "external SDK item template name text");
+                    var itemKindText = RequireType<TextBlock>(
+                        templateRoot.Children[1],
+                        "external SDK item template kind text");
+                    AssertEqual("Alpha", itemNameText.Text, "external SDK item template name binding");
+                    AssertEqual("Framework", itemKindText.Text, "external SDK item template kind binding");
+
+                    var templatePresenter = RequireType<ContentControl>(
+                        window.FindName("ExternalTemplatePresenter"),
+                        "external SDK content template presenter");
+                    AssertEqual(window.SelectedExternalItem, templatePresenter.Content, "external SDK content presenter content binding");
+                    AssertEqual(template, templatePresenter.ContentTemplate, "external SDK content presenter template");
+
+                    var itemsList = RequireType<ListBox>(
+                        window.FindName("ExternalItemsList"),
+                        "external SDK bound items list");
+                    AssertEqual(2, itemsList.Items.Count, "external SDK bound items count");
+                    AssertEqual(1, itemsList.SelectedIndex, "external SDK selected item index");
+                    AssertEqual(window.ExternalItems[1], itemsList.SelectedItem, "external SDK selected item");
+                    window.ExternalItems.Add(new ExternalItem("Gamma", "Data"));
+                    DrainDispatcher();
+                    AssertEqual(3, itemsList.Items.Count, "external SDK bound items count after collection change");
+                }
+
                 private static void DrainDispatcher()
                 {
                     var frame = new DispatcherFrame();
@@ -637,6 +781,7 @@ internal static class Program
         AssertContains(libraryProject, "<UseWPF>true</UseWPF>", "external library WPF property");
         RequireFile(Path.Combine(workRoot, LibraryAssemblyName, "Properties", "AssemblyInfo.cs"), "external SDK library ThemeInfo source");
         RequireFile(Path.Combine(workRoot, LibraryAssemblyName, "Themes", "Generic.xaml"), "external SDK library Generic.xaml source");
+        RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalResources.xaml"), "external SDK app merged resource dictionary source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalPage.xaml"), "external SDK app compiled page source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalSecondPage.xaml"), "external SDK app second compiled page source");
 

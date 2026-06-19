@@ -10,6 +10,7 @@ internal static class Program
     private const string MainWindowTypeName = "ProGPU.Wpf.SdkSwitchSmoke.MainWindow";
     private const string PortableMediaContextRenderServiceTypeName = "System.Windows.Media.PortableMediaContextRenderService";
     private const string PortableClipboardServiceTypeName = "System.Windows.PortableClipboardService";
+    private const string PortableFileDialogServiceTypeName = "Microsoft.Win32.PortableFileDialogService";
     private const string PortableMessageBoxServiceTypeName = "System.Windows.PortableMessageBoxService";
     private const string PortablePresentationSourceTypeName = "System.Windows.PortablePresentationSource";
     private const string PortableWindowActivationServiceTypeName = "System.Windows.PortableWindowActivationService";
@@ -151,6 +152,7 @@ internal static class Program
 
         ValidateSdkLooseXamlReaderWriter(presentationFramework);
         ValidatePortableClipboard(presentationCore);
+        ValidatePortableFileDialogs(presentationFramework);
         RegisterPortableMessageBox(presentationFramework);
 
         object app = Create(smokeAssembly, AppTypeName);
@@ -188,6 +190,8 @@ internal static class Program
             AssertEqual(true, GetStaticProperty(activationServiceType, "IsEnabled"), "SDK portable bootstrap activation enabled");
             Type messageBoxServiceType = GetRequiredType(presentationFramework, PortableMessageBoxServiceTypeName);
             AssertEqual(true, GetStaticProperty(messageBoxServiceType, "IsEnabled"), "SDK portable bootstrap MessageBox enabled");
+            Type fileDialogServiceType = GetRequiredType(presentationFramework, PortableFileDialogServiceTypeName);
+            AssertEqual(true, GetStaticProperty(fileDialogServiceType, "IsEnabled"), "SDK portable bootstrap file dialog enabled");
             AssertEqual(
                 true,
                 loadContext.Assemblies.Any(assembly => string.Equals(assembly.GetName().Name, "ProGPU.Wpf", StringComparison.Ordinal)),
@@ -197,6 +201,7 @@ internal static class Program
         finally
         {
             ClearPortableService(presentationFramework, PortableMessageBoxServiceTypeName);
+            ClearPortableService(presentationFramework, PortableFileDialogServiceTypeName);
             ClearPortableActivation(activationServiceType);
         }
     }
@@ -221,6 +226,7 @@ internal static class Program
             InvokeVoid(app, "InitializeComponent");
             ValidateApp(app);
             ValidatePortableClipboard(presentationCore);
+            ValidatePortableFileDialogs(presentationFramework);
             RegisterPortableMessageBox(presentationFramework);
 
             recorder = RegisterPortableActivation(
@@ -240,6 +246,7 @@ internal static class Program
             recorder?.Dispose();
             ClearPortableActivation(activationServiceType);
             ClearPortableService(presentationFramework, PortableMessageBoxServiceTypeName);
+            ClearPortableService(presentationFramework, PortableFileDialogServiceTypeName);
             ClearPortableService(presentationCore, PortableClipboardServiceTypeName);
 
             if (!runCompleted && app is not null)
@@ -1714,6 +1721,85 @@ internal static class Program
         AssertEqual(string.Empty, InvokeStatic(clipboardType, "GetText"), "portable Clipboard SDK cleared text");
     }
 
+    private static void ValidatePortableFileDialogs(Assembly presentationFramework, object? owner = null)
+    {
+        Type serviceType = GetRequiredType(presentationFramework, PortableFileDialogServiceTypeName);
+        AssertEqual(true, GetStaticProperty(serviceType, "IsEnabled"), "portable file dialog service enabled");
+
+        MethodInfo registerMethod = serviceType.GetMethod(
+                "Register",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: new[] { typeof(Func<object, string?>) },
+                modifiers: null)
+            ?? throw new MissingMethodException(serviceType.FullName, "Register");
+
+        string tempDirectory = Path.Combine(Path.GetTempPath(), "progpu-wpf-sdk-file-dialog-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDirectory);
+        string openPath = Path.Combine(tempDirectory, "open.txt");
+        string savePathWithoutExtension = Path.Combine(tempDirectory, "saved");
+        string savePath = savePathWithoutExtension + ".txt";
+        File.WriteAllText(openPath, "portable SDK file dialog");
+
+        int requestCount = 0;
+        var seenKinds = new List<string>();
+        Func<object, string?> handler = request =>
+        {
+            string kind = GetProperty(request, "Kind").ToString() ?? string.Empty;
+            seenKinds.Add(kind);
+            requestCount++;
+
+            return kind switch
+            {
+                "SaveFile" => savePathWithoutExtension,
+                "PickFolder" => tempDirectory,
+                _ => openPath
+            };
+        };
+
+        IDisposable? registration = null;
+        try
+        {
+            registration = (IDisposable?)registerMethod.Invoke(null, new object[] { handler });
+
+            string ownerPrefix = owner is null ? "no-owner" : "owner";
+            object openDialog = Create(presentationFramework, "Microsoft.Win32.OpenFileDialog");
+            SetProperty(openDialog, "Filter", "Text files (*.txt)|*.txt|All files (*.*)|*.*");
+            AssertEqual(true, ShowDialog(openDialog, owner), $"portable SDK {ownerPrefix} OpenFileDialog result");
+            AssertEqual(openPath, GetProperty(openDialog, "FileName"), $"portable SDK {ownerPrefix} OpenFileDialog FileName");
+            AssertEqual("open.txt", GetProperty(openDialog, "SafeFileName"), $"portable SDK {ownerPrefix} OpenFileDialog SafeFileName");
+
+            object saveDialog = Create(presentationFramework, "Microsoft.Win32.SaveFileDialog");
+            SetProperty(saveDialog, "DefaultExt", "txt");
+            SetProperty(saveDialog, "OverwritePrompt", false);
+            AssertEqual(true, ShowDialog(saveDialog, owner), $"portable SDK {ownerPrefix} SaveFileDialog result");
+            AssertEqual(savePath, GetProperty(saveDialog, "FileName"), $"portable SDK {ownerPrefix} SaveFileDialog FileName");
+            AssertEqual("saved.txt", GetProperty(saveDialog, "SafeFileName"), $"portable SDK {ownerPrefix} SaveFileDialog SafeFileName");
+
+            object folderDialog = Create(presentationFramework, "Microsoft.Win32.OpenFolderDialog");
+            AssertEqual(true, ShowDialog(folderDialog, owner), $"portable SDK {ownerPrefix} OpenFolderDialog result");
+            AssertEqual(tempDirectory, GetProperty(folderDialog, "FolderName"), $"portable SDK {ownerPrefix} OpenFolderDialog FolderName");
+            AssertEqual(Path.GetFileName(tempDirectory), GetProperty(folderDialog, "SafeFolderName"), $"portable SDK {ownerPrefix} OpenFolderDialog SafeFolderName");
+
+            AssertEqual(3, requestCount, $"portable SDK {ownerPrefix} file dialog request count");
+            AssertEqual("OpenFile", seenKinds[0], $"portable SDK {ownerPrefix} file dialog open request kind");
+            AssertEqual("SaveFile", seenKinds[1], $"portable SDK {ownerPrefix} file dialog save request kind");
+            AssertEqual("PickFolder", seenKinds[2], $"portable SDK {ownerPrefix} file dialog folder request kind");
+        }
+        finally
+        {
+            registration?.Dispose();
+            Directory.Delete(tempDirectory, recursive: true);
+        }
+    }
+
+    private static object ShowDialog(object dialog, object? owner)
+    {
+        return owner is null
+            ? Invoke(dialog, "ShowDialog")
+            : Invoke(dialog, "ShowDialog", owner);
+    }
+
     private static void ClearPortableActivation(Type? activationServiceType)
     {
         activationServiceType?.GetMethod(
@@ -2297,6 +2383,7 @@ internal static class Program
                 validateFrameContent: true,
                 flushDispatcherOperations: window => FlushDispatcherOperations(window, "DataBind", "Loaded", "Render", "ApplicationIdle"));
             ValidatePortableMessageBox(_presentationFramework, typedActivation.Window);
+            ValidatePortableFileDialogs(_presentationFramework, typedActivation.Window);
         }
 
         public void Dispose(object activation)

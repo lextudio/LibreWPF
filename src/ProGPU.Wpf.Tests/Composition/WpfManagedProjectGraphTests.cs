@@ -779,6 +779,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.RealApplicationRunHarness",
             "Program.cs");
+        var sdkRuntimeHarnessPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchRuntimeHarness",
+            "Program.cs");
 
         var project = File.ReadAllText(projectPath);
         var commonDialog = File.ReadAllText(commonDialogPath);
@@ -788,6 +792,7 @@ public sealed class WpfManagedProjectGraphTests
         var activation = File.ReadAllText(activationPath);
         var runtimeHarness = File.ReadAllText(runtimeHarnessPath);
         var applicationRunHarness = File.ReadAllText(applicationRunHarnessPath);
+        var sdkRuntimeHarness = File.ReadAllText(sdkRuntimeHarnessPath);
 
         Assert.Contains(@"<Compile Include=""Microsoft\Win32\PortableFileDialogService.cs"" />", project, StringComparison.Ordinal);
         Assert.Contains("internal static class PortableFileDialogService", service, StringComparison.Ordinal);
@@ -829,6 +834,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableFileDialogServiceTypeName = \"Microsoft.Win32.PortableFileDialogService\"", applicationRunHarness, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableFileDialogs(presentationFramework)", applicationRunHarness, StringComparison.Ordinal);
         Assert.Contains("portable OpenFolderDialog FolderName", applicationRunHarness, StringComparison.Ordinal);
+
+        Assert.Contains("PortableFileDialogServiceTypeName = \"Microsoft.Win32.PortableFileDialogService\"", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableFileDialogs(presentationFramework)", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableFileDialogs(_presentationFramework, typedActivation.Window)", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("ownerPrefix = owner is null ? \"no-owner\" : \"owner\"", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("portable SDK {ownerPrefix} SaveFileDialog FileName", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("portable SDK {ownerPrefix} OpenFolderDialog FolderName", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("ClearPortableService(presentationFramework, PortableFileDialogServiceTypeName)", sdkRuntimeHarness, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -5280,16 +5293,23 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RuntimeHelpers.RunModuleConstructor", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK portable bootstrap activation enabled", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK portable bootstrap MessageBox enabled", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK portable bootstrap file dialog enabled", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK portable bootstrap loaded ProGPU.Wpf", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableClipboardServiceTypeName = \"System.Windows.PortableClipboardService\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PortableFileDialogServiceTypeName = \"Microsoft.Win32.PortableFileDialogService\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableMessageBoxServiceTypeName = \"System.Windows.PortableMessageBoxService\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableClipboard(presentationCore)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableFileDialogs(presentationFramework)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RegisterPortableMessageBox(presentationFramework)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableMessageBox(presentationFramework, window)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable Clipboard SDK data object unicode text", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ownerPrefix = owner is null ? \"no-owner\" : \"owner\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable SDK {ownerPrefix} SaveFileDialog FileName", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable SDK {ownerPrefix} OpenFolderDialog FolderName", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable MessageBox SDK no-owner default result", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("portable MessageBox SDK owner fallback result", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ClearPortableService(presentationFramework, PortableMessageBoxServiceTypeName)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ClearPortableService(presentationFramework, PortableFileDialogServiceTypeName)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ClearPortableService(presentationCore, PortableClipboardServiceTypeName)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(\"MainWindow.xaml\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindResource\", \"SmokeAccentBrush\"", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -5646,6 +5666,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortablePresentationSource", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableMediaContextRenderService", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableMessageBox(_presentationFramework, typedActivation.Window)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableFileDialogs(_presentationFramework, typedActivation.Window)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("object exitCode = Invoke(app, \"Run\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(0, exitCode", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertSame(typedActivation.Window, GetProperty(_application, \"MainWindow\")", runtimeHarnessProgram, StringComparison.Ordinal);

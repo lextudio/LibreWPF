@@ -6194,6 +6194,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("validationTextBox.AppendText(\" appended\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK TextBox selected text replacement", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK TextBox editing source update", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("validationTextBox.UndoLimit = 8", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("validationTextBox.Undo()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("validationTextBox.Redo()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK TextBox empty Undo text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK TextBox empty Redo text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Window.CommandBindings>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Window.InputBindings>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Command=\"{x:Static local:MainWindow.ExternalCommand}\"", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -2587,6 +2587,21 @@ internal static class Program
                     AssertEqual("external selection text appended", validationTextBox.Text, "external SDK TextBox AppendText result");
                     textBindingExpression.UpdateSource();
                     AssertEqual("external selection text appended", window.ValidationText, "external SDK TextBox editing source update");
+
+                    validationTextBox.IsUndoEnabled = false;
+                    validationTextBox.Text = string.Empty;
+                    validationTextBox.IsUndoEnabled = true;
+                    validationTextBox.UndoLimit = 8;
+                    AssertEqual(false, validationTextBox.CanUndo, "external SDK TextBox undo stack reset state");
+                    validationTextBox.Text = "external undo base";
+                    validationTextBox.AppendText(" changed");
+                    AssertEqual(false, validationTextBox.CanUndo, "external SDK TextBox programmatic append CanUndo state");
+                    AssertEqual(false, validationTextBox.CanRedo, "external SDK TextBox programmatic append CanRedo state");
+                    AssertEqual(false, validationTextBox.Undo(), "external SDK TextBox empty Undo result");
+                    AssertEqual("external undo base changed", validationTextBox.Text, "external SDK TextBox empty Undo text");
+                    AssertEqual(false, validationTextBox.Redo(), "external SDK TextBox empty Redo result");
+                    AssertEqual("external undo base changed", validationTextBox.Text, "external SDK TextBox empty Redo text");
+                    AssertEqual(8, validationTextBox.UndoLimit, "external SDK TextBox UndoLimit");
                 }
 
                 private static void ValidateVisualStateTransitions(MainWindow window)

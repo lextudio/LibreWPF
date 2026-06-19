@@ -550,6 +550,55 @@ internal static class Program
                             <TextBlock Text="External scroll row 2" />
                         </StackPanel>
                     </ScrollViewer>
+                    <RichTextBox
+                        x:Name="ExternalRichTextBox"
+                        IsReadOnly="False">
+                        <FlowDocument PagePadding="4">
+                            <Paragraph>
+                                <Run Text="External " />
+                                <Bold><Run Text="rich" /></Bold>
+                                <Italic><Run Text=" italic" /></Italic>
+                                <Underline><Run Text=" underline" /></Underline>
+                                <Span><Run Text=" span" /></Span>
+                                <LineBreak />
+                                <Hyperlink
+                                    x:Name="ExternalDocumentLink"
+                                    NavigateUri="https://example.test/external-sdk"
+                                    RequestNavigate="OnExternalDocumentLinkRequestNavigate">
+                                    <Run Text="link" />
+                                </Hyperlink>
+                                <InlineUIContainer>
+                                    <Button Content="external inline button" />
+                                </InlineUIContainer>
+                            </Paragraph>
+                            <List MarkerStyle="Decimal">
+                                <ListItem>
+                                    <Paragraph><Run Text="External list one" /></Paragraph>
+                                </ListItem>
+                                <ListItem>
+                                    <Paragraph><Run Text="External list two" /></Paragraph>
+                                </ListItem>
+                            </List>
+                            <Section>
+                                <Paragraph><Run Text="External section" /></Paragraph>
+                            </Section>
+                            <BlockUIContainer>
+                                <Button Content="external block button" />
+                            </BlockUIContainer>
+                            <Table CellSpacing="0">
+                                <Table.Columns>
+                                    <TableColumn Width="96" />
+                                    <TableColumn Width="96" />
+                                </Table.Columns>
+                                <TableRowGroup>
+                                    <TableRow>
+                                        <TableCell><Paragraph><Run Text="External cell alpha" /></Paragraph></TableCell>
+                                        <TableCell><Paragraph><Run Text="External cell beta" /></Paragraph></TableCell>
+                                    </TableRow>
+                                </TableRowGroup>
+                            </Table>
+                        </FlowDocument>
+                    </RichTextBox>
                     <TextBlock
                         x:Name="ExternalConverterText"
                         Text="{Binding SelectedExternalItem.Name, Converter={StaticResource ExternalUpperConverter}, ConverterParameter=converted}" />
@@ -684,6 +733,7 @@ internal static class Program
             using System.Windows.Controls;
             using System.Windows.Controls.Primitives;
             using System.Windows.Data;
+            using System.Windows.Documents;
             using System.Windows.Input;
             using System.Windows.Media;
             using System.Windows.Navigation;
@@ -725,6 +775,14 @@ internal static class Program
 
                 public int ExternalExpanderCollapsedCount { get; private set; }
 
+                public int ExternalDocumentLinkRequestNavigateCount { get; private set; }
+
+                public string? LastExternalDocumentLinkRequestNavigateSenderName { get; private set; }
+
+                public string? LastExternalDocumentLinkRequestNavigateUri { get; private set; }
+
+                public string? LastExternalDocumentLinkRequestNavigateRoutedEventName { get; private set; }
+
                 public int ExternalCommandCanExecuteCount { get; private set; }
 
                 public int ExternalCommandExecutedCount { get; private set; }
@@ -765,6 +823,15 @@ internal static class Program
                 private void OnExternalExpanderCollapsed(object sender, RoutedEventArgs e)
                 {
                     ExternalExpanderCollapsedCount++;
+                }
+
+                private void OnExternalDocumentLinkRequestNavigate(object sender, RequestNavigateEventArgs e)
+                {
+                    ExternalDocumentLinkRequestNavigateCount++;
+                    LastExternalDocumentLinkRequestNavigateSenderName = (sender as TextElement)?.Name;
+                    LastExternalDocumentLinkRequestNavigateUri = e.Uri?.ToString();
+                    LastExternalDocumentLinkRequestNavigateRoutedEventName = e.RoutedEvent?.Name;
+                    e.Handled = true;
                 }
 
                 private void OnExternalFrameNavigating(object sender, NavigatingCancelEventArgs e)
@@ -942,6 +1009,7 @@ internal static class Program
                     ValidateStylesAndTemplates(window);
                     ValidateLayoutsAndItems(window);
                     ValidateSelectorsAndContent(window);
+                    ValidateRichDocuments(window);
                     ValidateCommandsAndFocus(window);
 
                     var themedControl = RequireType<ExternalThemedControl>(
@@ -1418,6 +1486,84 @@ internal static class Program
                     AssertEqual(2, scrollContent.Children.Count, "external SDK scroll content child count");
                 }
 
+                private static void ValidateRichDocuments(MainWindow window)
+                {
+                    var richTextBox = RequireType<RichTextBox>(
+                        window.FindName("ExternalRichTextBox"),
+                        "external SDK rich text box");
+                    var document = richTextBox.Document;
+                    AssertEqual(5, document.Blocks.Count, "external SDK FlowDocument block count");
+
+                    var introParagraph = RequireType<Paragraph>(
+                        document.Blocks.FirstBlock,
+                        "external SDK FlowDocument intro paragraph");
+                    var inlines = introParagraph.Inlines;
+                    var bold = RequireFirstInline<Bold>(inlines, "external SDK FlowDocument bold inline");
+                    AssertEqual("rich", RequireFirstInline<Run>(bold.Inlines, "external SDK FlowDocument bold run").Text, "external SDK FlowDocument bold run text");
+                    var italic = RequireFirstInline<Italic>(inlines, "external SDK FlowDocument italic inline");
+                    AssertEqual(" italic", RequireFirstInline<Run>(italic.Inlines, "external SDK FlowDocument italic run").Text, "external SDK FlowDocument italic run text");
+                    var underline = RequireFirstInline<Underline>(inlines, "external SDK FlowDocument underline inline");
+                    AssertEqual(" underline", RequireFirstInline<Run>(underline.Inlines, "external SDK FlowDocument underline run").Text, "external SDK FlowDocument underline run text");
+                    var span = RequireFirstInlineExact<Span>(inlines, "external SDK FlowDocument span inline");
+                    AssertEqual(" span", RequireFirstInline<Run>(span.Inlines, "external SDK FlowDocument span run").Text, "external SDK FlowDocument span run text");
+                    RequireFirstInline<LineBreak>(inlines, "external SDK FlowDocument line break inline");
+
+                    var hyperlink = RequireFirstInline<Hyperlink>(inlines, "external SDK FlowDocument hyperlink");
+                    AssertEqual("ExternalDocumentLink", hyperlink.Name, "external SDK FlowDocument hyperlink name");
+                    AssertEqual("https://example.test/external-sdk", hyperlink.NavigateUri?.ToString(), "external SDK FlowDocument hyperlink URI");
+                    AssertEqual("link", RequireFirstInline<Run>(hyperlink.Inlines, "external SDK FlowDocument hyperlink run").Text, "external SDK FlowDocument hyperlink run text");
+                    AssertEqual(0, window.ExternalDocumentLinkRequestNavigateCount, "external SDK Hyperlink initial RequestNavigate count");
+                    hyperlink.DoClick();
+                    AssertEqual(1, window.ExternalDocumentLinkRequestNavigateCount, "external SDK Hyperlink RequestNavigate handler count");
+                    AssertEqual("ExternalDocumentLink", window.LastExternalDocumentLinkRequestNavigateSenderName, "external SDK Hyperlink RequestNavigate sender");
+                    AssertEqual("https://example.test/external-sdk", window.LastExternalDocumentLinkRequestNavigateUri, "external SDK Hyperlink RequestNavigate URI");
+                    AssertEqual("RequestNavigate", window.LastExternalDocumentLinkRequestNavigateRoutedEventName, "external SDK Hyperlink RequestNavigate routed event");
+
+                    var inlineContainer = RequireFirstInline<InlineUIContainer>(inlines, "external SDK FlowDocument inline UI container");
+                    var inlineButton = RequireType<Button>(inlineContainer.Child, "external SDK FlowDocument inline button");
+                    AssertEqual("external inline button", inlineButton.Content, "external SDK FlowDocument inline button content");
+
+                    var documentList = RequireType<System.Windows.Documents.List>(
+                        introParagraph.NextBlock,
+                        "external SDK FlowDocument list");
+                    AssertEqual(TextMarkerStyle.Decimal, documentList.MarkerStyle, "external SDK FlowDocument list marker style");
+                    AssertEqual(2, documentList.ListItems.Count, "external SDK FlowDocument list item count");
+                    AssertListItemText(documentList.ListItems.FirstListItem, "External list one", "first");
+                    AssertListItemText(documentList.ListItems.FirstListItem.NextListItem, "External list two", "second");
+
+                    var section = RequireType<Section>(
+                        documentList.NextBlock,
+                        "external SDK FlowDocument section");
+                    AssertEqual(1, section.Blocks.Count, "external SDK FlowDocument section block count");
+                    AssertParagraphText(
+                        RequireType<Paragraph>(section.Blocks.FirstBlock, "external SDK FlowDocument section paragraph"),
+                        "External section",
+                        "section");
+
+                    var blockContainer = RequireType<BlockUIContainer>(
+                        section.NextBlock,
+                        "external SDK FlowDocument block UI container");
+                    var blockButton = RequireType<Button>(blockContainer.Child, "external SDK FlowDocument block button");
+                    AssertEqual("external block button", blockButton.Content, "external SDK FlowDocument block button content");
+
+                    var table = RequireType<Table>(
+                        blockContainer.NextBlock,
+                        "external SDK FlowDocument table");
+                    AssertEqual(2, table.Columns.Count, "external SDK FlowDocument table column count");
+                    AssertEqual(1, table.RowGroups.Count, "external SDK FlowDocument table row group count");
+                    var rowGroup = table.RowGroups[0];
+                    AssertEqual(1, rowGroup.Rows.Count, "external SDK FlowDocument table row count");
+                    var row = rowGroup.Rows[0];
+                    AssertEqual(2, row.Cells.Count, "external SDK FlowDocument table cell count");
+                    AssertTableCellText(row.Cells[0], "External cell alpha", "first");
+                    AssertTableCellText(row.Cells[1], "External cell beta", "second");
+
+                    richTextBox.Selection.Select(document.ContentStart, document.ContentEnd);
+                    AssertContains("External section", richTextBox.Selection.Text, "external SDK RichTextBox selection text");
+                    var documentText = new TextRange(document.ContentStart, document.ContentEnd).Text;
+                    AssertContains("External cell beta", documentText, "external SDK FlowDocument TextRange table text");
+                }
+
                 private static void ValidateCommandsAndFocus(MainWindow window)
                 {
                     AssertEqual(1, window.CommandBindings.Count, "external SDK command binding count");
@@ -1477,6 +1623,36 @@ internal static class Program
                     Dispatcher.PushFrame(frame);
                 }
 
+                private static T RequireFirstInline<T>(InlineCollection inlines, string description)
+                    where T : Inline
+                {
+                    foreach (Inline inline in inlines)
+                    {
+                        if (inline is T typed)
+                        {
+                            return typed;
+                        }
+                    }
+
+                    throw new InvalidOperationException(
+                        $"Expected {description} to contain {typeof(T).FullName}.");
+                }
+
+                private static T RequireFirstInlineExact<T>(InlineCollection inlines, string description)
+                    where T : Inline
+                {
+                    foreach (Inline inline in inlines)
+                    {
+                        if (inline.GetType() == typeof(T))
+                        {
+                            return (T)inline;
+                        }
+                    }
+
+                    throw new InvalidOperationException(
+                        $"Expected {description} to contain exact {typeof(T).FullName}.");
+                }
+
                 private static T RequireType<T>(object? value, string description)
                 {
                     if (value is T typed)
@@ -1494,12 +1670,48 @@ internal static class Program
                     AssertEqual(expected, solidColorBrush.Color.ToString(), description);
                 }
 
+                private static void AssertParagraphText(Paragraph paragraph, string expectedText, string description)
+                {
+                    var run = RequireFirstInline<Run>(
+                        paragraph.Inlines,
+                        $"external SDK FlowDocument {description} run");
+                    AssertEqual(expectedText, run.Text, $"external SDK FlowDocument {description} text");
+                }
+
+                private static void AssertListItemText(ListItem? listItem, string expectedText, string description)
+                {
+                    var item = RequireType<ListItem>(
+                        listItem,
+                        $"external SDK FlowDocument {description} list item");
+                    var paragraph = RequireType<Paragraph>(
+                        item.Blocks.FirstBlock,
+                        $"external SDK FlowDocument {description} list item paragraph");
+                    AssertParagraphText(paragraph, expectedText, $"{description} list item");
+                }
+
+                private static void AssertTableCellText(TableCell tableCell, string expectedText, string description)
+                {
+                    var paragraph = RequireType<Paragraph>(
+                        tableCell.Blocks.FirstBlock,
+                        $"external SDK FlowDocument {description} table cell paragraph");
+                    AssertParagraphText(paragraph, expectedText, $"{description} table cell");
+                }
+
                 private static void AssertEqual<T>(T expected, T actual, string description)
                 {
                     if (!EqualityComparer<T>.Default.Equals(expected, actual))
                     {
                         throw new InvalidOperationException(
                             $"Expected {description} to be '{expected}', but found '{actual}'.");
+                    }
+                }
+
+                private static void AssertContains(string expectedSubstring, string actual, string description)
+                {
+                    if (!actual.Contains(expectedSubstring, StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected {description} to contain '{expectedSubstring}', but found '{actual}'.");
                     }
                 }
 

@@ -5984,7 +5984,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalButtonTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalBasedButtonStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalTriggeredButtonStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalEventSetterButtonStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("BasedOn=\"{StaticResource ExternalBasedButtonStyle}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<EventSetter", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Handler=\"OnExternalStyleEventButtonClick\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Trigger Property=\"IsEnabled\" Value=\"False\">", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Background=\"{TemplateBinding Background}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Content=\"{TemplateBinding Content}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -5994,9 +5997,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Storyboard.TargetProperty=\"Opacity\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Media.Animation;", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Style=\"{StaticResource ExternalTriggeredButtonStyle}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalEventSetterButton\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Style=\"{StaticResource ExternalEventSetterButtonStyle}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalStyleEventButtonClickCount", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OnExternalStyleEventButtonClick", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateStylesAndTemplates(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("triggeredStyle.BasedOn", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("triggeredStyle.Triggers.Count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("eventSetterStyle.Setters.OfType<EventSetter>()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("eventSetterButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, eventSetterButton))", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK EventSetter routed event", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("buttonTemplate.FindName(\"ExternalTemplateRoot\", styledButton)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("VisualStateManager.GetVisualStateGroups(templateRoot)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateVisualStateTransitions(window)", externalSdkHarnessProgram, StringComparison.Ordinal);

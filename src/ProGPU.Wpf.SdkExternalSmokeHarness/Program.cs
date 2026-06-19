@@ -551,6 +551,15 @@ internal static class Program
                             <PropertyGroupDescription PropertyName="Kind" />
                         </CollectionViewSource.GroupDescriptions>
                     </CollectionViewSource>
+                    <Style
+                        x:Key="ExternalEventSetterButtonStyle"
+                        TargetType="{x:Type Button}">
+                        <Setter Property="Content" Value="External event setter button" />
+                        <Setter Property="Tag" Value="event-setter-style" />
+                        <EventSetter
+                            Event="Click"
+                            Handler="OnExternalStyleEventButtonClick" />
+                    </Style>
                 </Window.Resources>
                 <Window.CommandBindings>
                     <CommandBinding
@@ -602,6 +611,9 @@ internal static class Program
                     <Button
                         x:Name="ExternalStyledButton"
                         Style="{StaticResource ExternalTriggeredButtonStyle}" />
+                    <Button
+                        x:Name="ExternalEventSetterButton"
+                        Style="{StaticResource ExternalEventSetterButtonStyle}" />
                     <Menu x:Name="ExternalMenu">
                         <MenuItem
                             x:Name="ExternalRootMenuItem"
@@ -1276,6 +1288,12 @@ internal static class Program
 
                 public int ExternalCommandButtonClickCount { get; private set; }
 
+                public int ExternalStyleEventButtonClickCount { get; private set; }
+
+                public string? LastExternalStyleEventSenderName { get; private set; }
+
+                public string? LastExternalStyleEventRoutedEventName { get; private set; }
+
                 public object? LastExternalCommandParameter { get; private set; }
 
                 public string? LastExternalCommandName { get; private set; }
@@ -1472,6 +1490,13 @@ internal static class Program
                 private void OnExternalCommandButtonClick(object sender, RoutedEventArgs e)
                 {
                     ExternalCommandButtonClickCount++;
+                }
+
+                private void OnExternalStyleEventButtonClick(object sender, RoutedEventArgs e)
+                {
+                    ExternalStyleEventButtonClickCount++;
+                    LastExternalStyleEventSenderName = (sender as FrameworkElement)?.Name;
+                    LastExternalStyleEventRoutedEventName = e.RoutedEvent?.Name;
                 }
             }
 
@@ -3508,26 +3533,46 @@ internal static class Program
                     var triggeredStyle = RequireType<Style>(
                         window.FindResource("ExternalTriggeredButtonStyle"),
                         "external SDK triggered button style");
+                    var eventSetterStyle = RequireType<Style>(
+                        window.FindResource("ExternalEventSetterButtonStyle"),
+                        "external SDK event setter button style");
                     var buttonTemplate = RequireType<ControlTemplate>(
                         window.FindResource("ExternalButtonTemplate"),
                         "external SDK button control template");
 
                     AssertEqual(typeof(Button), basedStyle.TargetType, "external SDK based style target type");
                     AssertEqual(typeof(Button), triggeredStyle.TargetType, "external SDK triggered style target type");
+                    AssertEqual(typeof(Button), eventSetterStyle.TargetType, "external SDK event setter style target type");
                     AssertEqual(basedStyle, triggeredStyle.BasedOn, "external SDK style BasedOn link");
                     AssertEqual(3, basedStyle.Setters.Count, "external SDK based style setter count");
                     AssertEqual(2, triggeredStyle.Setters.Count, "external SDK triggered style setter count");
+                    AssertEqual(3, eventSetterStyle.Setters.Count, "external SDK event setter style setter count");
                     AssertEqual(1, triggeredStyle.Triggers.Count, "external SDK triggered style trigger count");
+                    var eventSetter = RequireType<EventSetter>(
+                        eventSetterStyle.Setters.OfType<EventSetter>().SingleOrDefault(),
+                        "external SDK event setter style click event setter");
+                    AssertEqual(ButtonBase.ClickEvent, eventSetter.Event, "external SDK event setter routed event");
                     AssertEqual(typeof(Button), buttonTemplate.TargetType, "external SDK control template target type");
 
                     var styledButton = RequireType<Button>(
                         window.FindName("ExternalStyledButton"),
                         "external SDK styled button");
+                    var eventSetterButton = RequireType<Button>(
+                        window.FindName("ExternalEventSetterButton"),
+                        "external SDK event setter styled button");
                     AssertEqual(triggeredStyle, styledButton.Style, "external SDK styled button style");
                     AssertEqual("External styled button", styledButton.Content, "external SDK styled button content setter");
                     AssertEqual("base-style", styledButton.Tag, "external SDK BasedOn style tag setter");
                     AssertBrushColor(styledButton.Background, "#FF254C6A", "external SDK BasedOn style background");
                     AssertBrushColor(styledButton.Foreground, "#FFF4D35E", "external SDK BasedOn style foreground");
+                    AssertEqual(eventSetterStyle, eventSetterButton.Style, "external SDK event setter button style");
+                    AssertEqual("External event setter button", eventSetterButton.Content, "external SDK event setter content setter");
+                    AssertEqual("event-setter-style", eventSetterButton.Tag, "external SDK event setter tag setter");
+                    AssertEqual(0, window.ExternalStyleEventButtonClickCount, "external SDK event setter initial click count");
+                    eventSetterButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, eventSetterButton));
+                    AssertEqual(1, window.ExternalStyleEventButtonClickCount, "external SDK EventSetter click count");
+                    AssertEqual("ExternalEventSetterButton", window.LastExternalStyleEventSenderName, "external SDK EventSetter sender name");
+                    AssertEqual("Click", window.LastExternalStyleEventRoutedEventName, "external SDK EventSetter routed event");
 
                     styledButton.ApplyTemplate();
                     var templateRoot = RequireType<Border>(

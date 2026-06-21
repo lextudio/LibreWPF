@@ -6423,6 +6423,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("FrameworkPropertyMetadataOptions.Inherits", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CoerceNumber", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("TextChanged=\"OnExternalValidationTextChanged\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Validation.Error=\"OnExternalValidationError\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("NotifyOnValidationError=\"True\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("InputLanguageManager.InputLanguage=\"en-US\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("InputMethod.PreferredImeState=\"On\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("InputMethod.PreferredImeConversionMode=\"Native, FullShape\"", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6436,6 +6438,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("BindingGroupLastName { get; set; } = \"group: Lovelace\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalValidationTextChangedCount", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("OnExternalValidationTextChanged", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalValidationErrorAddedCount", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalValidationErrorRemovedCount", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OnExternalValidationError", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateBindings(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateInputManagers(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateBindingGroup(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6447,6 +6452,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RelativeSourceMode.FindAncestor", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK RelativeSource ancestor binding value", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Validation.GetHasError(validationTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Validation.GetErrors(validationTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK validation error added count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK validation error added routed event", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK validation error removed count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK validation error removed sender", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("InputMethod.GetInputScope(validationTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK compiled InputScopeName value", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK compiled InputScopePhrase text", externalSdkHarnessProgram, StringComparison.Ordinal);

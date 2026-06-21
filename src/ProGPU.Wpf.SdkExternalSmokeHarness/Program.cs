@@ -1299,11 +1299,13 @@ internal static class Program
                         InputMethod.PreferredImeConversionMode="Native, FullShape"
                         InputMethod.PreferredImeSentenceMode="Automatic"
                         InputMethod.PreferredImeState="On"
+                        Validation.Error="OnExternalValidationError"
                         TextChanged="OnExternalValidationTextChanged">
                         <TextBox.Text>
                             <Binding
                                 Path="ValidationText"
                                 Mode="TwoWay"
+                                NotifyOnValidationError="True"
                                 UpdateSourceTrigger="Explicit">
                                 <Binding.ValidationRules>
                                     <local:ExternalNonEmptyValidationRule />
@@ -1657,6 +1659,18 @@ internal static class Program
 
                 public string? LastExternalValidationText { get; private set; }
 
+                public int ExternalValidationErrorAddedCount { get; private set; }
+
+                public int ExternalValidationErrorRemovedCount { get; private set; }
+
+                public string? LastExternalValidationErrorAction { get; private set; }
+
+                public string? LastExternalValidationErrorContent { get; private set; }
+
+                public string? LastExternalValidationErrorRoutedEventName { get; private set; }
+
+                public string? LastExternalValidationErrorSenderName { get; private set; }
+
                 public int ExternalSliderValueChangedCount { get; private set; }
 
                 public double LastExternalSliderValue { get; private set; }
@@ -1853,6 +1867,23 @@ internal static class Program
                 {
                     ExternalValidationTextChangedCount++;
                     LastExternalValidationText = (sender as TextBox)?.Text;
+                }
+
+                private void OnExternalValidationError(object sender, ValidationErrorEventArgs e)
+                {
+                    if (e.Action == ValidationErrorEventAction.Added)
+                    {
+                        ExternalValidationErrorAddedCount++;
+                    }
+                    else if (e.Action == ValidationErrorEventAction.Removed)
+                    {
+                        ExternalValidationErrorRemovedCount++;
+                    }
+
+                    LastExternalValidationErrorAction = e.Action.ToString();
+                    LastExternalValidationErrorContent = e.Error.ErrorContent?.ToString();
+                    LastExternalValidationErrorRoutedEventName = e.RoutedEvent?.Name;
+                    LastExternalValidationErrorSenderName = (sender as FrameworkElement)?.Name;
                 }
 
                 private void OnExternalSliderValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -4137,6 +4168,7 @@ internal static class Program
                         "external SDK validation text box");
                     var textBindingExpression = validationTextBox.GetBindingExpression(TextBox.TextProperty)
                         ?? throw new InvalidOperationException("Expected external SDK validation BindingExpression.");
+                    AssertEqual(true, textBindingExpression.ParentBinding.NotifyOnValidationError, "external SDK validation binding NotifyOnValidationError");
                     AssertEqual("valid external text", validationTextBox.Text, "external SDK validation text initial value");
                     var validationInputScope = InputMethod.GetInputScope(validationTextBox)
                         ?? throw new InvalidOperationException("Expected external SDK validation TextBox InputScope.");
@@ -4153,14 +4185,29 @@ internal static class Program
                         "external SDK compiled InputScopePhrase");
                     AssertEqual("external package phrase", validationInputScopePhrase.Name, "external SDK compiled InputScopePhrase text");
                     int textChangedBeforeValidation = window.ExternalValidationTextChangedCount;
+                    int validationAddedBefore = window.ExternalValidationErrorAddedCount;
+                    int validationRemovedBefore = window.ExternalValidationErrorRemovedCount;
                     validationTextBox.Text = string.Empty;
                     textBindingExpression.UpdateSource();
                     AssertEqual(true, Validation.GetHasError(validationTextBox), "external SDK validation failure state");
+                    AssertEqual(1, Validation.GetErrors(validationTextBox).Count, "external SDK validation failure error count");
+                    AssertAtLeast(validationAddedBefore + 1, window.ExternalValidationErrorAddedCount, "external SDK validation error added count");
+                    AssertEqual(validationRemovedBefore, window.ExternalValidationErrorRemovedCount, "external SDK validation error removed count before recovery");
+                    AssertEqual("Added", window.LastExternalValidationErrorAction, "external SDK validation error added action");
+                    AssertEqual("External value is required", window.LastExternalValidationErrorContent, "external SDK validation error added content");
+                    AssertEqual("ValidationError", window.LastExternalValidationErrorRoutedEventName, "external SDK validation error added routed event");
+                    AssertEqual("ExternalValidationTextBox", window.LastExternalValidationErrorSenderName, "external SDK validation error added sender");
                     AssertAtLeast(textChangedBeforeValidation + 1, window.ExternalValidationTextChangedCount, "external SDK TextBox validation TextChanged failure count");
                     AssertEqual(string.Empty, window.LastExternalValidationText, "external SDK TextBox validation TextChanged failure text");
                     validationTextBox.Text = "recovered external text";
                     textBindingExpression.UpdateSource();
                     AssertEqual(false, Validation.GetHasError(validationTextBox), "external SDK validation recovery state");
+                    AssertEqual(0, Validation.GetErrors(validationTextBox).Count, "external SDK validation recovery error count");
+                    AssertAtLeast(validationRemovedBefore + 1, window.ExternalValidationErrorRemovedCount, "external SDK validation error removed count");
+                    AssertEqual("Removed", window.LastExternalValidationErrorAction, "external SDK validation error removed action");
+                    AssertEqual("External value is required", window.LastExternalValidationErrorContent, "external SDK validation error removed content");
+                    AssertEqual("ValidationError", window.LastExternalValidationErrorRoutedEventName, "external SDK validation error removed routed event");
+                    AssertEqual("ExternalValidationTextBox", window.LastExternalValidationErrorSenderName, "external SDK validation error removed sender");
                     AssertEqual("recovered external text", window.ValidationText, "external SDK validation source update");
                     AssertAtLeast(textChangedBeforeValidation + 2, window.ExternalValidationTextChangedCount, "external SDK TextBox validation TextChanged recovery count");
                     AssertEqual("recovered external text", window.LastExternalValidationText, "external SDK TextBox validation TextChanged recovery text");

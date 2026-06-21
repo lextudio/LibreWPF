@@ -566,6 +566,32 @@ internal static class Program
                             x:Name="ExternalGroupHeaderText"
                             Text="{Binding Name, StringFormat=Group: {0}}" />
                     </DataTemplate>
+                    <DataTemplate
+                        x:Key="ExternalFrameworkItemTemplate"
+                        DataType="{x:Type local:ExternalItem}">
+                        <TextBlock
+                            x:Name="ExternalFrameworkTemplateText"
+                            Text="{Binding Name, StringFormat=Framework template {0}}" />
+                    </DataTemplate>
+                    <DataTemplate
+                        x:Key="ExternalRenderingItemTemplate"
+                        DataType="{x:Type local:ExternalItem}">
+                        <TextBlock
+                            x:Name="ExternalRenderingTemplateText"
+                            Text="{Binding Name, StringFormat=Rendering template {0}}" />
+                    </DataTemplate>
+                    <DataTemplate
+                        x:Key="ExternalDefaultItemTemplate"
+                        DataType="{x:Type local:ExternalItem}">
+                        <TextBlock
+                            x:Name="ExternalDefaultTemplateText"
+                            Text="{Binding Kind, StringFormat=Default template {0}}" />
+                    </DataTemplate>
+                    <local:ExternalItemTemplateSelector
+                        x:Key="ExternalItemTemplateSelector"
+                        DefaultTemplate="{StaticResource ExternalDefaultItemTemplate}"
+                        FrameworkTemplate="{StaticResource ExternalFrameworkItemTemplate}"
+                        RenderingTemplate="{StaticResource ExternalRenderingItemTemplate}" />
                     <CollectionViewSource
                         x:Key="ExternalGroupedItems"
                         Source="{Binding ExternalItems}">
@@ -1053,6 +1079,14 @@ internal static class Program
                         x:Name="ExternalTemplatePresenter"
                         Content="{Binding SelectedExternalItem}"
                         ContentTemplate="{StaticResource ExternalItemTemplate}" />
+                    <ContentControl
+                        x:Name="ExternalTemplateSelectorPresenter"
+                        Content="{Binding SelectedExternalItem}"
+                        ContentTemplateSelector="{StaticResource ExternalItemTemplateSelector}" />
+                    <ItemsControl
+                        x:Name="ExternalTemplateSelectorItems"
+                        ItemTemplateSelector="{StaticResource ExternalItemTemplateSelector}"
+                        ItemsSource="{Binding ExternalItems}" />
                     <ListBox
                         x:Name="ExternalItemsList"
                         DisplayMemberPath="Name"
@@ -1934,6 +1968,27 @@ internal static class Program
                 public bool IsActive { get; set; }
             }
 
+            public sealed class ExternalItemTemplateSelector : DataTemplateSelector
+            {
+                public DataTemplate? FrameworkTemplate { get; set; }
+
+                public DataTemplate? RenderingTemplate { get; set; }
+
+                public DataTemplate? DefaultTemplate { get; set; }
+
+                public override DataTemplate? SelectTemplate(object item, DependencyObject container)
+                {
+                    return item is ExternalItem externalItem
+                        ? externalItem.Kind switch
+                        {
+                            "Framework" => FrameworkTemplate,
+                            "Rendering" => RenderingTemplate,
+                            _ => DefaultTemplate
+                        }
+                        : DefaultTemplate;
+                }
+            }
+
             public static class ExternalResourceFactory
             {
                 public static string CreateSummary(string prefix, int value)
@@ -2545,6 +2600,37 @@ internal static class Program
                     AssertEqual(window.SelectedExternalItem, templatePresenter.Content, "external SDK content presenter content binding");
                     AssertEqual(template, templatePresenter.ContentTemplate, "external SDK content presenter template");
 
+                    var frameworkTemplate = RequireType<DataTemplate>(
+                        window.FindResource("ExternalFrameworkItemTemplate"),
+                        "external SDK framework item selector template");
+                    var renderingTemplate = RequireType<DataTemplate>(
+                        window.FindResource("ExternalRenderingItemTemplate"),
+                        "external SDK rendering item selector template");
+                    var defaultTemplate = RequireType<DataTemplate>(
+                        window.FindResource("ExternalDefaultItemTemplate"),
+                        "external SDK default item selector template");
+                    var selector = RequireType<ExternalItemTemplateSelector>(
+                        window.FindResource("ExternalItemTemplateSelector"),
+                        "external SDK item template selector resource");
+                    AssertEqual(frameworkTemplate, selector.FrameworkTemplate, "external SDK item template selector framework template");
+                    AssertEqual(renderingTemplate, selector.RenderingTemplate, "external SDK item template selector rendering template");
+                    AssertEqual(defaultTemplate, selector.DefaultTemplate, "external SDK item template selector default template");
+
+                    var selectorPresenter = RequireType<ContentControl>(
+                        window.FindName("ExternalTemplateSelectorPresenter"),
+                        "external SDK content template selector presenter");
+                    AssertEqual(window.SelectedExternalItem, selectorPresenter.Content, "external SDK content template selector content");
+                    AssertEqual(selector, selectorPresenter.ContentTemplateSelector, "external SDK content template selector binding");
+                    AssertEqual(frameworkTemplate, selector.SelectTemplate(window.ExternalItems[0], selectorPresenter), "external SDK content template selector selected template");
+                    AssertTemplateText(frameworkTemplate, window.ExternalItems[0], "Framework template Alpha", "external SDK framework selected template text");
+                    AssertTemplateText(renderingTemplate, window.ExternalItems[1], "Rendering template Beta", "external SDK rendering selected template text");
+
+                    var selectorItems = RequireType<ItemsControl>(
+                        window.FindName("ExternalTemplateSelectorItems"),
+                        "external SDK item template selector items control");
+                    AssertEqual(selector, selectorItems.ItemTemplateSelector, "external SDK ItemsControl ItemTemplateSelector");
+                    AssertEqual(2, selectorItems.Items.Count, "external SDK item template selector item count");
+
                     var itemsList = RequireType<ListBox>(
                         window.FindName("ExternalItemsList"),
                         "external SDK bound items list");
@@ -2554,6 +2640,9 @@ internal static class Program
                     window.ExternalItems.Add(new ExternalItem("Gamma", "Data"));
                     DrainDispatcher();
                     AssertEqual(3, itemsList.Items.Count, "external SDK bound items count after collection change");
+                    AssertEqual(3, selectorItems.Items.Count, "external SDK item template selector collection count after mutation");
+                    AssertEqual(defaultTemplate, selector.SelectTemplate(window.ExternalItems[2], selectorItems), "external SDK item template selector default selected template");
+                    AssertTemplateText(defaultTemplate, window.ExternalItems[2], "Default template Data", "external SDK default selected template text");
                 }
 
                 private static void ValidateSystemParameters(FrameworkElement resourceOwner)
@@ -5754,6 +5843,16 @@ internal static class Program
                 {
                     var solidColorBrush = RequireType<SolidColorBrush>(brush, description);
                     AssertEqual(expected, solidColorBrush.Color.ToString(), description);
+                }
+
+                private static void AssertTemplateText(DataTemplate template, object dataContext, string expectedText, string description)
+                {
+                    var text = RequireType<TextBlock>(
+                        template.LoadContent(),
+                        description + " root");
+                    text.DataContext = dataContext;
+                    DrainDispatcher();
+                    AssertEqual(expectedText, text.Text, description);
                 }
 
                 private static void AssertParagraphText(Paragraph paragraph, string expectedText, string description)

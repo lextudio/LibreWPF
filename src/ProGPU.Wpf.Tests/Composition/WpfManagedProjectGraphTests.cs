@@ -6114,6 +6114,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalItemContainerStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalGroupedItems", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalGroupHeaderTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalFrameworkItemTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalRenderingItemTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalDefaultItemTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalItemTemplateSelector", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultTemplate=\"{StaticResource ExternalDefaultItemTemplate}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalFilteredItems", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Filter=\"OnExternalItemsFilter\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalCurrencyItems", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6131,6 +6136,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalCanvasChild", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalUniformGrid", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalItemsPanelList", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalTemplateSelectorPresenter", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ContentTemplateSelector=\"{StaticResource ExternalItemTemplateSelector}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalTemplateSelectorItems", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ItemTemplateSelector=\"{StaticResource ExternalItemTemplateSelector}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalListView", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ListView.View>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GridViewColumn", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6150,6 +6159,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("itemsPanelTemplate.LoadContent()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("itemPanelList.ItemContainerStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK item panel list collection count after mutation", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK item template selector framework template", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK content template selector selected template", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertTemplateText(frameworkTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK rendering selected template text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK item template selector collection count after mutation", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK item template selector default selected template", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK grouped CollectionViewSource sort property", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK grouped CollectionViewSource group property", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK grouped ListBox ItemsSource view", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6375,6 +6390,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK XmlDataProvider binding XPath", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalUpperConverter", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalSummaryConverter", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("public sealed class ExternalItemTemplateSelector : DataTemplateSelector", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FrameworkTemplate { get; set; }", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RenderingTemplate { get; set; }", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultTemplate { get; set; }", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalNonEmptyValidationRule", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalBindingGroupValidationRule", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Converter={StaticResource ExternalUpperConverter}", externalSdkHarnessProgram, StringComparison.Ordinal);

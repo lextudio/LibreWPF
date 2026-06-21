@@ -6125,6 +6125,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Filter=\"OnExternalItemsFilter\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalCurrencyItems", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("IsSynchronizedWithCurrentItem=\"True\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalCompositeItemsList", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<CompositeCollection>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CollectionContainer Collection=\"{x:Static local:ExternalCompositeProvider.Items}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("public static class ExternalCompositeProvider", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<CollectionViewSource.SortDescriptions>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("componentModel:SortDescription", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PropertyName=\"Name\"", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6178,6 +6182,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK currency current item from selection", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("currencyItems.View.MoveCurrentToPosition(2)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK currency ListBox selected item after current move", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK CompositeCollection source part count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK CompositeCollection static source items", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK CompositeCollection initial flattened item count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK CompositeCollection collection-change appended source item", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK list view grid-view column count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK list view name binding path", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK data grid column count", externalSdkHarnessProgram, StringComparison.Ordinal);

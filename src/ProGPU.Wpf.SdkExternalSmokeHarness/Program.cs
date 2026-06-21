@@ -557,6 +557,7 @@ internal static class Program
                 xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
                 xmlns:local="clr-namespace:ExternalSdkApp"
                 xmlns:library="clr-namespace:ExternalSdkLibrary;assembly=ExternalSdkLibrary"
+                xmlns:sys="clr-namespace:System;assembly=System.Runtime"
                 Title="External SDK App"
                 Width="320"
                 Height="200">
@@ -1116,6 +1117,15 @@ internal static class Program
                         IsSynchronizedWithCurrentItem="True"
                         ItemsSource="{Binding Source={StaticResource ExternalCurrencyItems}}"
                         SelectedIndex="1" />
+                    <ListBox x:Name="ExternalCompositeItemsList">
+                        <ListBox.ItemsSource>
+                            <CompositeCollection>
+                                <sys:String>External composite header</sys:String>
+                                <CollectionContainer Collection="{x:Static local:ExternalCompositeProvider.Items}" />
+                                <ListBoxItem Content="External composite item container" />
+                            </CompositeCollection>
+                        </ListBox.ItemsSource>
+                    </ListBox>
                     <ListView
                         x:Name="ExternalListView"
                         ItemsSource="{Binding ExternalItems}"
@@ -2026,6 +2036,15 @@ internal static class Program
                 {
                     return $"{prefix}:{value}";
                 }
+            }
+
+            public static class ExternalCompositeProvider
+            {
+                public static ObservableCollection<ExternalItem> Items { get; } =
+                [
+                    new ExternalItem("Composite Alpha", "Framework"),
+                    new ExternalItem("Composite Beta", "Rendering")
+                ];
             }
 
             public sealed class ExternalRoutedEventControl : Button
@@ -5436,6 +5455,36 @@ internal static class Program
                     DrainDispatcher();
                     AssertEqual(window.ExternalItems[2], currencyItems.View.CurrentItem, "external SDK currency current item after move");
                     AssertEqual(window.ExternalItems[2], currencyList.SelectedItem, "external SDK currency ListBox selected item after current move");
+
+                    var compositeList = RequireType<ListBox>(
+                        window.FindName("ExternalCompositeItemsList"),
+                        "external SDK composite items list");
+                    var compositeItems = RequireType<CompositeCollection>(
+                        compositeList.ItemsSource,
+                        "external SDK CompositeCollection source");
+                    AssertEqual(3, compositeItems.Count, "external SDK CompositeCollection source part count");
+                    AssertEqual("External composite header", compositeItems[0], "external SDK CompositeCollection static item");
+                    var compositeContainer = RequireType<CollectionContainer>(
+                        compositeItems[1],
+                        "external SDK CompositeCollection container");
+                    AssertEqual(ExternalCompositeProvider.Items, compositeContainer.Collection, "external SDK CompositeCollection static source items");
+                    var compositeContainerItem = RequireType<ListBoxItem>(
+                        compositeItems[2],
+                        "external SDK CompositeCollection inline list item");
+                    AssertEqual(
+                        "External composite item container",
+                        compositeContainerItem.Content,
+                        "external SDK CompositeCollection inline item content");
+                    AssertEqual(4, compositeList.Items.Count, "external SDK CompositeCollection initial flattened item count");
+                    AssertEqual("External composite header", compositeList.Items[0], "external SDK CompositeCollection initial static item");
+                    AssertEqual(ExternalCompositeProvider.Items[0], compositeList.Items[1], "external SDK CompositeCollection first source item");
+                    AssertEqual(ExternalCompositeProvider.Items[1], compositeList.Items[2], "external SDK CompositeCollection second source item");
+                    AssertEqual(compositeContainerItem, compositeList.Items[3], "external SDK CompositeCollection initial inline item");
+                    ExternalCompositeProvider.Items.Add(new ExternalItem("Composite Gamma", "Data"));
+                    DrainDispatcher();
+                    AssertEqual(5, compositeList.Items.Count, "external SDK CompositeCollection collection-change flattened item count");
+                    AssertEqual(ExternalCompositeProvider.Items[2], compositeList.Items[3], "external SDK CompositeCollection collection-change appended source item");
+                    AssertEqual(compositeContainerItem, compositeList.Items[4], "external SDK CompositeCollection collection-change inline item");
 
                     var listView = RequireType<ListView>(
                         window.FindName("ExternalListView"),

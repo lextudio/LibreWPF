@@ -1255,6 +1255,18 @@ internal static class Program
                                 </Binding.ValidationRules>
                             </Binding>
                         </TextBox.Text>
+                        <InputMethod.InputScope>
+                            <InputScope
+                                RegularExpression="[A-Z0-9]+"
+                                SrgsMarkup="external-sdk-input-scope">
+                                <InputScope.Names>
+                                    <InputScopeName>EmailSmtpAddress</InputScopeName>
+                                </InputScope.Names>
+                                <InputScope.PhraseList>
+                                    <InputScopePhrase>external package phrase</InputScopePhrase>
+                                </InputScope.PhraseList>
+                            </InputScope>
+                        </InputMethod.InputScope>
                     </TextBox>
                     <StackPanel
                         x:Name="ExternalBindingGroupPanel"
@@ -3082,12 +3094,24 @@ internal static class Program
                         "</StackPanel.Resources>" +
                         "<TextBlock x:Name=\"ExternalLooseText\" Style=\"{StaticResource ExternalLooseTextStyle}\" Text=\"External loose xaml text\" />" +
                         "<TextBox x:Name=\"ExternalLooseTextBox\" Tag=\"External loose binding text\" Text=\"{Binding Tag, RelativeSource={RelativeSource Self}}\" />" +
+                        "<TextBox x:Name=\"ExternalLooseInputScopeTextBox\" Text=\"External loose input scope text\">" +
+                        "<InputMethod.InputScope>" +
+                        "<InputScope RegularExpression=\"[a-z]+\" SrgsMarkup=\"external-loose-input-scope\">" +
+                        "<InputScope.Names>" +
+                        "<InputScopeName>EmailUserName</InputScopeName>" +
+                        "</InputScope.Names>" +
+                        "<InputScope.PhraseList>" +
+                        "<InputScopePhrase>external loose phrase</InputScopePhrase>" +
+                        "</InputScope.PhraseList>" +
+                        "</InputScope>" +
+                        "</InputMethod.InputScope>" +
+                        "</TextBox>" +
                         "</StackPanel>";
                     var root = RequireType<StackPanel>(
                         XamlReader.Parse(looseXaml),
                         "external SDK loose XamlReader root");
                     AssertEqual("ExternalLooseRoot", root.Name, "external SDK loose XamlReader root name");
-                    AssertEqual(2, root.Children.Count, "external SDK loose XamlReader child count");
+                    AssertEqual(3, root.Children.Count, "external SDK loose XamlReader child count");
                     var accentBrush = RequireType<SolidColorBrush>(
                         root.Resources["ExternalLooseAccentBrush"],
                         "external SDK loose XamlReader brush resource");
@@ -3116,6 +3140,26 @@ internal static class Program
                     var textBoxBinding = textBox.GetBindingExpression(TextBox.TextProperty)
                         ?? throw new InvalidOperationException("Expected external SDK loose XamlReader TextBox BindingExpression.");
                     AssertEqual("Tag", textBoxBinding.ParentBinding.Path.Path, "external SDK loose XamlReader Binding path");
+
+                    var inputScopeTextBox = RequireType<TextBox>(
+                        root.FindName("ExternalLooseInputScopeTextBox"),
+                        "external SDK loose XamlReader InputScope TextBox");
+                    AssertEqual(true, ReferenceEquals(root.Children[2], inputScopeTextBox), "external SDK loose XamlReader InputScope TextBox child");
+                    AssertEqual("External loose input scope text", inputScopeTextBox.Text, "external SDK loose XamlReader InputScope TextBox text");
+                    var looseInputScope = InputMethod.GetInputScope(inputScopeTextBox)
+                        ?? throw new InvalidOperationException("Expected external SDK loose XamlReader TextBox InputScope.");
+                    AssertEqual("[a-z]+", looseInputScope.RegularExpression, "external SDK loose XamlReader InputScope regular expression");
+                    AssertEqual("external-loose-input-scope", looseInputScope.SrgsMarkup, "external SDK loose XamlReader InputScope SRGS markup");
+                    AssertEqual(1, looseInputScope.Names.Count, "external SDK loose XamlReader InputScope names");
+                    var looseInputScopeName = RequireType<InputScopeName>(
+                        looseInputScope.Names[0],
+                        "external SDK loose XamlReader InputScopeName");
+                    AssertEqual(InputScopeNameValue.EmailUserName, looseInputScopeName.NameValue, "external SDK loose XamlReader InputScopeName value");
+                    AssertEqual(1, looseInputScope.PhraseList.Count, "external SDK loose XamlReader InputScope phrases");
+                    var looseInputScopePhrase = RequireType<InputScopePhrase>(
+                        looseInputScope.PhraseList[0],
+                        "external SDK loose XamlReader InputScopePhrase");
+                    AssertEqual("external loose phrase", looseInputScopePhrase.Name, "external SDK loose XamlReader InputScopePhrase text");
 
                     string writableXaml =
                         "<LinearGradientBrush xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\" " +
@@ -3798,6 +3842,20 @@ internal static class Program
                     var textBindingExpression = validationTextBox.GetBindingExpression(TextBox.TextProperty)
                         ?? throw new InvalidOperationException("Expected external SDK validation BindingExpression.");
                     AssertEqual("valid external text", validationTextBox.Text, "external SDK validation text initial value");
+                    var validationInputScope = InputMethod.GetInputScope(validationTextBox)
+                        ?? throw new InvalidOperationException("Expected external SDK validation TextBox InputScope.");
+                    AssertEqual("[A-Z0-9]+", validationInputScope.RegularExpression, "external SDK compiled InputScope regular expression");
+                    AssertEqual("external-sdk-input-scope", validationInputScope.SrgsMarkup, "external SDK compiled InputScope SRGS markup");
+                    AssertEqual(1, validationInputScope.Names.Count, "external SDK compiled InputScope names");
+                    var validationInputScopeName = RequireType<InputScopeName>(
+                        validationInputScope.Names[0],
+                        "external SDK compiled InputScopeName");
+                    AssertEqual(InputScopeNameValue.EmailSmtpAddress, validationInputScopeName.NameValue, "external SDK compiled InputScopeName value");
+                    AssertEqual(1, validationInputScope.PhraseList.Count, "external SDK compiled InputScope phrases");
+                    var validationInputScopePhrase = RequireType<InputScopePhrase>(
+                        validationInputScope.PhraseList[0],
+                        "external SDK compiled InputScopePhrase");
+                    AssertEqual("external package phrase", validationInputScopePhrase.Name, "external SDK compiled InputScopePhrase text");
                     int textChangedBeforeValidation = window.ExternalValidationTextChangedCount;
                     validationTextBox.Text = string.Empty;
                     textBindingExpression.UpdateSource();

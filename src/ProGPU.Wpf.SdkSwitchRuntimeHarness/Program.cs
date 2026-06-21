@@ -206,7 +206,7 @@ internal static class Program
         PreloadSdkWindowingPlatform(loadContext, inputs.AppOutputRoot);
         RuntimeHelpers.RunModuleConstructor(smokeAssembly.ManifestModule.ModuleHandle);
 
-        ValidateSdkLooseXamlReaderWriter(presentationFramework);
+        ValidateSdkLooseXamlReaderWriter(presentationFramework, presentationCore);
         ValidatePortableClipboard(presentationCore);
         ValidatePortableFileDialogs(presentationFramework);
         RegisterPortableMessageBox(presentationFramework);
@@ -276,7 +276,7 @@ internal static class Program
         PreloadSdkWindowingPlatform(loadContext, inputs.AppOutputRoot);
         RuntimeHelpers.RunModuleConstructor(smokeAssembly.ManifestModule.ModuleHandle);
 
-        ValidateSdkLooseXamlReaderWriter(presentationFramework);
+        ValidateSdkLooseXamlReaderWriter(presentationFramework, presentationCore);
 
         object? app = null;
         SdkApplicationRunRecorder? recorder = null;
@@ -896,13 +896,13 @@ internal static class Program
         return Invoke(resourceOwner, "TryFindResource", key);
     }
 
-    private static void ValidateSdkLooseXamlReaderWriter(Assembly presentationFramework)
+    private static void ValidateSdkLooseXamlReaderWriter(Assembly presentationFramework, Assembly presentationCore)
     {
-        ValidateSdkLooseXamlReader(presentationFramework);
+        ValidateSdkLooseXamlReader(presentationFramework, presentationCore);
         ValidateSdkLooseXamlWriterRoundTrip(presentationFramework);
     }
 
-    private static void ValidateSdkLooseXamlReader(Assembly presentationFramework)
+    private static void ValidateSdkLooseXamlReader(Assembly presentationFramework, Assembly presentationCore)
     {
         const string looseXaml = """
 <StackPanel
@@ -924,6 +924,22 @@ internal static class Program
         x:Name="SdkLooseTextBox"
         Tag="SDK loose binding text"
         Text="{Binding Tag, RelativeSource={RelativeSource Self}}" />
+    <TextBox
+        x:Name="SdkLooseInputScopeTextBox"
+        Text="SDK loose input scope text">
+        <InputMethod.InputScope>
+            <InputScope
+                RegularExpression="[a-z]+"
+                SrgsMarkup="sdk-loose-input-scope">
+                <InputScope.Names>
+                    <InputScopeName>EmailUserName</InputScopeName>
+                </InputScope.Names>
+                <InputScope.PhraseList>
+                    <InputScopePhrase>sdk loose phrase</InputScopePhrase>
+                </InputScope.PhraseList>
+            </InputScope>
+        </InputMethod.InputScope>
+    </TextBox>
 </StackPanel>
 """;
 
@@ -931,7 +947,7 @@ internal static class Program
         AssertType(root, "System.Windows.Controls.StackPanel", "SDK loose XamlReader root");
         AssertEqual("SdkLooseRoot", GetProperty(root, "Name"), "SDK loose XamlReader root name");
         object children = GetProperty(root, "Children");
-        AssertEqual(2, GetCount(children), "SDK loose XamlReader child count");
+        AssertEqual(3, GetCount(children), "SDK loose XamlReader child count");
 
         object resources = GetProperty(root, "Resources");
         object accentBrush = GetDictionaryValue(resources, "SdkLooseAccentBrush");
@@ -955,6 +971,47 @@ internal static class Program
         AssertEqual("SDK loose binding text", GetProperty(textBox, "Tag"), "SDK loose XamlReader TextBox tag");
         AssertEqual("SDK loose binding text", GetProperty(textBox, "Text"), "SDK loose XamlReader RelativeSource binding text");
         AssertBindingPath(presentationFramework, textBox, "TextProperty", "Tag", "SDK loose XamlReader Binding path");
+
+        object inputScopeTextBox = Invoke(root, "FindName", "SdkLooseInputScopeTextBox");
+        AssertType(inputScopeTextBox, "System.Windows.Controls.TextBox", "SDK loose XamlReader InputScope TextBox");
+        AssertSame(GetCollectionItem(children, 2), inputScopeTextBox, "SDK loose XamlReader InputScope TextBox child");
+        AssertEqual("SDK loose input scope text", GetProperty(inputScopeTextBox, "Text"), "SDK loose XamlReader InputScope TextBox text");
+        ValidateInputScope(
+            presentationCore,
+            inputScopeTextBox,
+            "[a-z]+",
+            "sdk-loose-input-scope",
+            "EmailUserName",
+            "sdk loose phrase",
+            "SDK loose XamlReader");
+    }
+
+    private static void ValidateInputScope(
+        Assembly presentationCore,
+        object target,
+        string expectedRegularExpression,
+        string expectedSrgsMarkup,
+        string expectedName,
+        string expectedPhrase,
+        string description)
+    {
+        Type inputMethodType = GetRequiredType(presentationCore, "System.Windows.Input.InputMethod");
+        object inputScope = InvokeStatic(inputMethodType, "GetInputScope", target);
+        AssertType(inputScope, "System.Windows.Input.InputScope", $"{description} InputScope attached value");
+        AssertEqual(expectedRegularExpression, GetProperty(inputScope, "RegularExpression"), $"{description} InputScope regular expression");
+        AssertEqual(expectedSrgsMarkup, GetProperty(inputScope, "SrgsMarkup"), $"{description} InputScope SRGS markup");
+
+        object names = GetProperty(inputScope, "Names");
+        AssertEqual(1, GetCount(names), $"{description} InputScope names");
+        object scopeName = GetCollectionItem(names, 0);
+        AssertType(scopeName, "System.Windows.Input.InputScopeName", $"{description} InputScopeName");
+        AssertEqual(expectedName, GetProperty(scopeName, "NameValue").ToString() ?? string.Empty, $"{description} InputScopeName value");
+
+        object phrases = GetProperty(inputScope, "PhraseList");
+        AssertEqual(1, GetCount(phrases), $"{description} InputScope phrases");
+        object phrase = GetCollectionItem(phrases, 0);
+        AssertType(phrase, "System.Windows.Input.InputScopePhrase", $"{description} InputScopePhrase");
+        AssertEqual(expectedPhrase, GetProperty(phrase, "Name"), $"{description} InputScopePhrase text");
     }
 
     private static void ValidateSdkLooseXamlWriterRoundTrip(Assembly presentationFramework)
@@ -1346,9 +1403,17 @@ internal static class Program
         object inputBox = Invoke(window, "FindName", "InputBox");
         AssertType(inputBox, "System.Windows.Controls.TextBox", "input box");
         AssertEqual("editable package text", GetProperty(inputBox, "Text"), "input box bound text");
+        Assembly presentationCore = GetAssemblyFromContext(window.GetType().Assembly, "PresentationCore");
+        ValidateInputScope(
+            presentationCore,
+            inputBox,
+            "[0-9a-z]+",
+            "sdk-input-scope",
+            "EmailSmtpAddress",
+            "package phrase",
+            "SDK compiled BAML");
         object accessKeyFocusPanel = Invoke(window, "FindName", "AccessKeyFocusPanel");
         AssertType(accessKeyFocusPanel, "System.Windows.Controls.StackPanel", "access key focus panel");
-        Assembly presentationCore = GetAssemblyFromContext(window.GetType().Assembly, "PresentationCore");
         Type focusManagerType = GetRequiredType(presentationCore, "System.Windows.Input.FocusManager");
         AssertEqual(true, InvokeStatic(focusManagerType, "GetIsFocusScope", accessKeyFocusPanel), "access key focus scope flag");
         AssertSame(inputBox, InvokeStatic(focusManagerType, "GetFocusedElement", accessKeyFocusPanel), "access key focus initial focused element");

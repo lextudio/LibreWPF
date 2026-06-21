@@ -369,7 +369,20 @@
         <TextBox
             x:Name="InputBox"
             Margin="{StaticResource SmokePanelMargin}"
-            Text="{Binding InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            Text="{Binding InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+            <InputMethod.InputScope>
+                <InputScope
+                    RegularExpression="[0-9a-z]+"
+                    SrgsMarkup="sdk-input-scope">
+                    <InputScope.Names>
+                        <InputScopeName>EmailSmtpAddress</InputScopeName>
+                    </InputScope.Names>
+                    <InputScope.PhraseList>
+                        <InputScopePhrase>package phrase</InputScopePhrase>
+                    </InputScope.PhraseList>
+                </InputScope>
+            </InputMethod.InputScope>
+        </TextBox>
         <StackPanel
             x:Name="AccessKeyFocusPanel"
             Margin="0,6,0,0"

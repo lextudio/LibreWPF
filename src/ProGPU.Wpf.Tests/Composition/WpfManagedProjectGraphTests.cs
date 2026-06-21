@@ -258,6 +258,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public int Height => _clientHeight;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ResolveCurrentRenderSurfaceGeometry()", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ResolveRenderSurfaceGeometry(", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("UpdateClientSizeFromNativeResize(size);", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("var clientSize = _window.Size;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("var clientWidth = clientSize.X > 0 ? clientSize.X : _clientWidth;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("var clientHeight = clientSize.Y > 0 ? clientSize.Y : _clientHeight;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var logicalWidth = (uint)Math.Max(1, clientWidth);", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var logicalHeight = (uint)Math.Max(1, clientHeight);", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var fallbackScale = NormalizeMonitorDpiScale(monitorDpiScale);", proGpuHost, StringComparison.Ordinal);

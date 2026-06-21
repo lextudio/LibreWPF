@@ -400,8 +400,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void OnResize(Vector2D<int> size)
     {
+        UpdateClientSizeFromNativeResize(size);
+
         if (_target == null || _window == null)
         {
+            WpfRenderScheduler.RequestRender();
             return;
         }
 
@@ -664,11 +667,28 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 1.0);
         }
 
+        var clientSize = _window.Size;
+        var clientWidth = clientSize.X > 0 ? clientSize.X : _clientWidth;
+        var clientHeight = clientSize.Y > 0 ? clientSize.Y : _clientHeight;
         return ResolveRenderSurfaceGeometry(
-            _clientWidth,
-            _clientHeight,
+            clientWidth,
+            clientHeight,
             _window.FramebufferSize,
             ResolveCurrentMonitorDpiScale());
+    }
+
+    internal bool UpdateClientSizeFromNativeResize(Vector2D<int> size)
+    {
+        var clientWidth = Math.Max(1, size.X);
+        var clientHeight = Math.Max(1, size.Y);
+        if (_clientWidth == clientWidth && _clientHeight == clientHeight)
+        {
+            return false;
+        }
+
+        _clientWidth = clientWidth;
+        _clientHeight = clientHeight;
+        return true;
     }
 
     private double ResolveCurrentMonitorDpiScale()

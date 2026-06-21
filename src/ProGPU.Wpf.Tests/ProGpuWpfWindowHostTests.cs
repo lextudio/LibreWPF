@@ -374,6 +374,49 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void NativeResizeCorrectsStalePhysicalClientSizeBeforeTargetLoad()
+    {
+        using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
+        {
+            Width = 840,
+            Height = 1680
+        });
+
+        Assert.True(host.UpdateClientSizeFromNativeResize(new Vector2D<int>(420, 840)));
+
+        Assert.Equal(420, host.Width);
+        Assert.Equal(840, host.Height);
+
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            host.Width,
+            host.Height,
+            framebufferSize: new Vector2D<int>(840, 1680),
+            monitorDpiScale: 2.0);
+        Assert.Equal(420u, geometry.LogicalWidth);
+        Assert.Equal(840u, geometry.LogicalHeight);
+        Assert.Equal(840u, geometry.PixelWidth);
+        Assert.Equal(1680u, geometry.PixelHeight);
+        Assert.Equal(2.0, geometry.DpiScaleX);
+        Assert.Equal(2.0, geometry.DpiScaleY);
+    }
+
+    [Fact]
+    public void NativeResizeIgnoresZeroSizeAndReturnsFalseForUnchangedClientSize()
+    {
+        using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
+        {
+            Width = 420,
+            Height = 840
+        });
+
+        Assert.False(host.UpdateClientSizeFromNativeResize(new Vector2D<int>(420, 840)));
+        Assert.True(host.UpdateClientSizeFromNativeResize(new Vector2D<int>(0, -4)));
+
+        Assert.Equal(1, host.Width);
+        Assert.Equal(1, host.Height);
+    }
+
+    [Fact]
     public void ProcessDispatcherQueueRunsQueuedPlatformCallbacks()
     {
         var dispatcher = new TestDispatcherService(raiseWorkAvailableOnPost: false);

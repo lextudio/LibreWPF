@@ -61,7 +61,7 @@ internal static class Program
             application = Create(compilerHarness, AppTypeName);
             Invoke(application, "InitializeComponent");
             ValidateSystemXamlNameScopeDictionary(systemXaml);
-            ValidateLooseXamlReader(presentationFramework);
+            ValidateLooseXamlReader(presentationFramework, presentationCore);
             ValidateLooseXamlWriterRoundTrip(presentationFramework);
             ValidateLooseXamlWriterSystemResourceKeyRoundTrip(presentationFramework);
             ValidatePortableSystemParameters(presentationFramework);
@@ -190,7 +190,7 @@ internal static class Program
         AssertEqual(8.0, GetProperty(mergedBlockMargin, "Top"), "merged block margin top");
     }
 
-    private static void ValidateLooseXamlReader(Assembly presentationFramework)
+    private static void ValidateLooseXamlReader(Assembly presentationFramework, Assembly presentationCore)
     {
         const string looseXaml = """
 <StackPanel
@@ -212,6 +212,22 @@ internal static class Program
         x:Name="LooseTextBox"
         Tag="loose binding text"
         Text="{Binding Tag, RelativeSource={RelativeSource Self}}" />
+    <TextBox
+        x:Name="LooseInputScopeTextBox"
+        Text="input scope text">
+        <InputMethod.InputScope>
+            <InputScope
+                RegularExpression="[a-z]+"
+                SrgsMarkup="external-input-scope">
+                <InputScope.Names>
+                    <InputScopeName>EmailSmtpAddress</InputScopeName>
+                </InputScope.Names>
+                <InputScope.PhraseList>
+                    <InputScopePhrase>external phrase</InputScopePhrase>
+                </InputScope.PhraseList>
+            </InputScope>
+        </InputMethod.InputScope>
+    </TextBox>
 </StackPanel>
 """;
 
@@ -219,7 +235,7 @@ internal static class Program
         AssertType(root, "System.Windows.Controls.StackPanel", "loose XamlReader root");
         AssertEqual("LooseRoot", GetProperty(root, "Name"), "loose XamlReader root name");
         object children = GetProperty(root, "Children");
-        AssertCollectionCount(children, expected: 2, "loose XamlReader children");
+        AssertCollectionCount(children, expected: 3, "loose XamlReader children");
 
         object resources = GetProperty(root, "Resources");
         object accentBrush = GetDictionaryValue(resources, "LooseAccentBrush");
@@ -243,6 +259,33 @@ internal static class Program
         AssertEqual("loose binding text", GetProperty(textBox, "Tag"), "loose XamlReader TextBox tag");
         AssertEqual("loose binding text", GetProperty(textBox, "Text"), "loose XamlReader RelativeSource binding text");
         AssertBindingPath(textBox, "TextProperty", "Tag", "loose XamlReader Binding path");
+
+        object inputScopeTextBox = Invoke(root, "FindName", "LooseInputScopeTextBox");
+        AssertType(inputScopeTextBox, "System.Windows.Controls.TextBox", "loose XamlReader named InputScope TextBox");
+        AssertSame(GetCollectionItem(children, 2), inputScopeTextBox, "loose XamlReader InputScope TextBox child");
+        AssertEqual("input scope text", GetProperty(inputScopeTextBox, "Text"), "loose XamlReader InputScope TextBox text");
+        ValidateLooseInputScope(presentationCore, inputScopeTextBox);
+    }
+
+    private static void ValidateLooseInputScope(Assembly presentationCore, object target)
+    {
+        Type inputMethodType = GetRequiredType(presentationCore, "System.Windows.Input.InputMethod");
+        object inputScope = InvokeStatic(inputMethodType, "GetInputScope", target);
+        AssertType(inputScope, "System.Windows.Input.InputScope", "loose XamlReader InputScope attached value");
+        AssertEqual("[a-z]+", GetProperty(inputScope, "RegularExpression"), "loose XamlReader InputScope regular expression");
+        AssertEqual("external-input-scope", GetProperty(inputScope, "SrgsMarkup"), "loose XamlReader InputScope SRGS markup");
+
+        object names = GetProperty(inputScope, "Names");
+        AssertCollectionCount(names, expected: 1, "loose XamlReader InputScope names");
+        object scopeName = GetCollectionItem(names, 0);
+        AssertType(scopeName, "System.Windows.Input.InputScopeName", "loose XamlReader InputScopeName");
+        AssertEqual("EmailSmtpAddress", GetProperty(scopeName, "NameValue").ToString(), "loose XamlReader InputScopeName text content");
+
+        object phrases = GetProperty(inputScope, "PhraseList");
+        AssertCollectionCount(phrases, expected: 1, "loose XamlReader InputScope phrases");
+        object phrase = GetCollectionItem(phrases, 0);
+        AssertType(phrase, "System.Windows.Input.InputScopePhrase", "loose XamlReader InputScopePhrase");
+        AssertEqual("external phrase", GetProperty(phrase, "Name"), "loose XamlReader InputScopePhrase text content");
     }
 
     private static object ParseLooseXaml(Assembly presentationFramework, string xaml)

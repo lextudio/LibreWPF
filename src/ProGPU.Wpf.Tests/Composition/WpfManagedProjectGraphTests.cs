@@ -2251,7 +2251,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("wrapped System.Xaml NameScopeDictionary clear preserves external name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("wrapped System.Xaml NameScopeDictionary underlying registration", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("wrapped System.Xaml NameScopeDictionary clear unregisters underlying name", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("ValidateLooseXamlReader(presentationFramework)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseXamlReader(presentationFramework, presentationCore)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlWriterRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlWriterSystemResourceKeyRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableSystemParameters(presentationFramework)", harnessProgram, StringComparison.Ordinal);
@@ -2264,6 +2264,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("loose XamlReader style StaticResource brush", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlReader RelativeSource binding text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlReader Binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("LooseInputScopeTextBox", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<InputMethod.InputScope>", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<InputScopeName>EmailSmtpAddress</InputScopeName>", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<InputScopePhrase>external phrase</InputScopePhrase>", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseInputScope(presentationCore, inputScopeTextBox)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Input.InputMethod", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlReader InputScopeName text content", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlReader InputScopePhrase text content", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter serialized GradientStop", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip {description} stop color", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Controls.MenuItem", harnessProgram, StringComparison.Ordinal);
@@ -3016,7 +3024,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("wrapped System.Xaml NameScopeDictionary clear preserves external name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("wrapped System.Xaml NameScopeDictionary underlying registration", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("wrapped System.Xaml NameScopeDictionary clear unregisters underlying name", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("ValidateLooseXamlReader(presentationFramework)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseXamlReader(presentationFramework, presentationCore)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlWriterRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlWriterSystemResourceKeyRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableSystemParameters(presentationFramework)", harnessProgram, StringComparison.Ordinal);
@@ -3029,6 +3037,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("loose XamlReader style StaticResource brush", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlReader RelativeSource binding text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlReader Binding path", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("LooseInputScopeTextBox", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<InputMethod.InputScope>", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<InputScopeName>EmailSmtpAddress</InputScopeName>", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<InputScopePhrase>external phrase</InputScopePhrase>", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseInputScope(presentationCore, inputScopeTextBox)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Input.InputMethod", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlReader InputScopeName text content", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("loose XamlReader InputScopePhrase text content", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter serialized GradientStop", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip {description} stop color", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Controls.MenuItem", harnessProgram, StringComparison.Ordinal);

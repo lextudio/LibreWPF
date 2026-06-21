@@ -806,6 +806,12 @@ internal static class Program
                         x:Name="TitleText"
                         Text="External SDK app" />
                     <TextBlock
+                        x:Name="ExternalLocalizedText"
+                        x:Uid="ExternalLocalizedText"
+                        Localization.Attributes="$Content (Readable Modifiable Text)"
+                        Localization.Comments="$Content (External SDK localization comment)"
+                        Text="External localized text" />
+                    <TextBlock
                         x:Name="StaticResourceText"
                         Foreground="{StaticResource ExternalStaticBrush}"
                         Text="{StaticResource ExternalStaticText}" />
@@ -2585,6 +2591,19 @@ internal static class Program
                     var appResources = Application.Current?.Resources
                         ?? throw new InvalidOperationException("External SDK validation requires Application resources.");
                     AssertAtLeast(1, appResources.MergedDictionaries.Count, "external SDK application merged dictionary count");
+                    var localizedText = RequireType<TextBlock>(
+                        window.FindName("ExternalLocalizedText"),
+                        "external SDK localized text block");
+                    AssertEqual("External localized text", localizedText.Text, "external SDK x:Uid text");
+                    AssertEqual("ExternalLocalizedText", localizedText.Uid, "external SDK x:Uid value");
+                    AssertEqual(
+                        "$Content (External SDK localization comment)",
+                        Localization.GetComments(localizedText),
+                        "external SDK Localization.Comments");
+                    AssertEqual(
+                        "$Content (Readable Modifiable Text)",
+                        Localization.GetAttributes(localizedText),
+                        "external SDK Localization.Attributes");
                     AssertEqual(
                         "External SDK resource text",
                         appResources["ExternalStaticText"],

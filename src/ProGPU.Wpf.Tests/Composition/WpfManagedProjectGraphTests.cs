@@ -5998,6 +5998,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("app.MainWindow", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("app.Windows.Count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ShutdownMode.OnLastWindowClose", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Uid=\"ExternalLocalizedText\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Localization.Attributes=\"$Content (Readable Modifiable Text)\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Localization.Comments=\"$Content (External SDK localization comment)\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Path.Combine(appRoot, \"ExternalResources.xaml\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ResourceDictionary Source=\"ExternalResources.xaml\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalStaticBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6299,6 +6302,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK ComponentResourceKey application brush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ComponentResourceKey window lookup", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ComponentResourceKey foreground", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Localization.GetComments(localizedText)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Localization.GetAttributes(localizedText)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK x:Uid value", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Localization.Attributes", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateFreezableResources()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Freezable brush clone mutable opacity", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Freezable brush current-value clone opacity", externalSdkHarnessProgram, StringComparison.Ordinal);

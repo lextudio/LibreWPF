@@ -1244,6 +1244,10 @@ internal static class Program
                         AutomationProperties.HelpText="External SDK validation text"
                         AutomationProperties.LabeledBy="{Binding ElementName=ExternalAccessLabel}"
                         AutomationProperties.Name="External validation input"
+                        InputLanguageManager.InputLanguage="en-US"
+                        InputMethod.PreferredImeConversionMode="Native, FullShape"
+                        InputMethod.PreferredImeSentenceMode="Automatic"
+                        InputMethod.PreferredImeState="On"
                         TextChanged="OnExternalValidationTextChanged">
                         <TextBox.Text>
                             <Binding
@@ -2091,6 +2095,7 @@ internal static class Program
                     ValidateMarkupExtensions(window);
                     ValidateDataProviders(window);
                     ValidateBindings(window);
+                    ValidateInputManagers(window);
                     ValidateBindingGroup(window);
                     ValidateStylesAndTemplates(window);
                     ValidateLoadedStoryboardMetadata(window);
@@ -3900,6 +3905,60 @@ internal static class Program
                     AssertEqual(false, validationTextBox.Redo(), "external SDK TextBox empty Redo result");
                     AssertEqual("external undo base changed", validationTextBox.Text, "external SDK TextBox empty Redo text");
                     AssertEqual(8, validationTextBox.UndoLimit, "external SDK TextBox UndoLimit");
+                }
+
+                private static void ValidateInputManagers(MainWindow window)
+                {
+                    var validationTextBox = RequireType<TextBox>(
+                        window.FindName("ExternalValidationTextBox"),
+                        "external SDK input manager text box");
+
+                    var inputLanguageManager = InputLanguageManager.Current;
+                    AssertEqual(true, inputLanguageManager.AvailableInputLanguages.Cast<object>().Any(), "external SDK InputLanguageManager available language count");
+                    var attachedLanguage = InputLanguageManager.GetInputLanguage(validationTextBox);
+                    AssertEqual("en-US", attachedLanguage.Name, "external SDK compiled InputLanguageManager attached language");
+
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        AssertEqual(CultureInfo.CurrentCulture.Name, inputLanguageManager.CurrentInputLanguage.Name, "external SDK InputLanguageManager current culture");
+                        var requestedLanguage = CultureInfo.GetCultureInfo("en-US");
+                        inputLanguageManager.CurrentInputLanguage = requestedLanguage;
+                        AssertEqual("en-US", inputLanguageManager.CurrentInputLanguage.Name, "external SDK InputLanguageManager set current language");
+                        inputLanguageManager.CurrentInputLanguage = CultureInfo.CurrentCulture;
+                    }
+
+                    AssertEqual(InputMethodState.On, InputMethod.GetPreferredImeState(validationTextBox), "external SDK compiled InputMethod preferred IME state");
+                    AssertEqual(ImeConversionModeValues.Native | ImeConversionModeValues.FullShape, InputMethod.GetPreferredImeConversionMode(validationTextBox), "external SDK compiled InputMethod preferred conversion mode");
+                    AssertEqual(ImeSentenceModeValues.Automatic, InputMethod.GetPreferredImeSentenceMode(validationTextBox), "external SDK compiled InputMethod preferred sentence mode");
+
+                    var inputMethod = InputMethod.Current;
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        AssertEqual(InputMethodState.Off, inputMethod.ImeState, "external SDK InputMethod default IME state");
+                        AssertEqual(ImeConversionModeValues.Alphanumeric, inputMethod.ImeConversionMode, "external SDK InputMethod default conversion mode");
+                        AssertEqual(ImeSentenceModeValues.None, inputMethod.ImeSentenceMode, "external SDK InputMethod default sentence mode");
+                        AssertEqual(false, inputMethod.CanShowConfigurationUI, "external SDK InputMethod configure UI availability");
+                        AssertEqual(false, inputMethod.CanShowRegisterWordUI, "external SDK InputMethod register-word UI availability");
+
+                        inputMethod.ImeState = InputMethodState.On;
+                        inputMethod.MicrophoneState = InputMethodState.On;
+                        inputMethod.HandwritingState = InputMethodState.On;
+                        inputMethod.SpeechMode = SpeechMode.Dictation;
+                        inputMethod.ImeConversionMode = ImeConversionModeValues.Native | ImeConversionModeValues.FullShape;
+                        inputMethod.ImeSentenceMode = ImeSentenceModeValues.Automatic;
+                        AssertEqual(InputMethodState.On, inputMethod.ImeState, "external SDK InputMethod set IME state");
+                        AssertEqual(InputMethodState.On, inputMethod.MicrophoneState, "external SDK InputMethod set microphone state");
+                        AssertEqual(InputMethodState.On, inputMethod.HandwritingState, "external SDK InputMethod set handwriting state");
+                        AssertEqual(SpeechMode.Dictation, inputMethod.SpeechMode, "external SDK InputMethod set speech mode");
+                        AssertEqual(ImeConversionModeValues.Native | ImeConversionModeValues.FullShape, inputMethod.ImeConversionMode, "external SDK InputMethod set conversion mode");
+                        AssertEqual(ImeSentenceModeValues.Automatic, inputMethod.ImeSentenceMode, "external SDK InputMethod set sentence mode");
+
+                        inputMethod.ImeState = InputMethodState.Off;
+                        inputMethod.MicrophoneState = InputMethodState.Off;
+                        inputMethod.HandwritingState = InputMethodState.Off;
+                        inputMethod.ImeConversionMode = ImeConversionModeValues.Alphanumeric;
+                        inputMethod.ImeSentenceMode = ImeSentenceModeValues.None;
+                    }
                 }
 
                 private static void ValidateBindingGroup(MainWindow window)

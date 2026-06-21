@@ -1299,6 +1299,18 @@ internal static class Program
                             ExternalBubble="OnExternalCustomBubble"
                             ExternalTunnel="OnExternalCustomTunnel" />
                     </StackPanel>
+                    <StackPanel
+                        x:Name="ExternalDependencyPropertyPanel"
+                        local:ExternalDependencyPropertyControl.InheritedLabel="External inherited label">
+                        <local:ExternalDependencyPropertyControl
+                            x:Name="ExternalDependencyPropertyControl"
+                            CoercedNumber="120"
+                            TrackedText="compiled tracked text" />
+                        <local:ExternalDependencyPropertyControl
+                            x:Name="ExternalDependencyPropertyLocalControl"
+                            local:ExternalDependencyPropertyControl.InheritedLabel="External local label"
+                            CoercedNumber="42" />
+                    </StackPanel>
                     <Button
                         x:Name="ExternalCommandButton"
                         Command="{x:Static local:MainWindow.ExternalCommand}"
@@ -1942,6 +1954,93 @@ internal static class Program
                 }
             }
 
+            public sealed class ExternalDependencyPropertyControl : Control
+            {
+                public static readonly DependencyProperty InheritedLabelProperty =
+                    DependencyProperty.RegisterAttached(
+                        "InheritedLabel",
+                        typeof(string),
+                        typeof(ExternalDependencyPropertyControl),
+                        new FrameworkPropertyMetadata(
+                            "default inherited label",
+                            FrameworkPropertyMetadataOptions.Inherits));
+
+                public static readonly DependencyProperty CoercedNumberProperty =
+                    DependencyProperty.Register(
+                        nameof(CoercedNumber),
+                        typeof(int),
+                        typeof(ExternalDependencyPropertyControl),
+                        new FrameworkPropertyMetadata(
+                            0,
+                            OnCoercedNumberChanged,
+                            CoerceNumber),
+                        value => value is int);
+
+                public static readonly DependencyProperty TrackedTextProperty =
+                    DependencyProperty.Register(
+                        nameof(TrackedText),
+                        typeof(string),
+                        typeof(ExternalDependencyPropertyControl),
+                        new FrameworkPropertyMetadata(
+                            "default tracked text",
+                            OnTrackedTextChanged));
+
+                public int CoercedNumber
+                {
+                    get => (int)GetValue(CoercedNumberProperty);
+                    set => SetValue(CoercedNumberProperty, value);
+                }
+
+                public string TrackedText
+                {
+                    get => (string)GetValue(TrackedTextProperty);
+                    set => SetValue(TrackedTextProperty, value);
+                }
+
+                public int CoercedNumberChangeCount { get; private set; }
+
+                public int LastCoercedNumberOldValue { get; private set; }
+
+                public int LastCoercedNumberNewValue { get; private set; }
+
+                public int TrackedTextChangeCount { get; private set; }
+
+                public string? LastTrackedTextOldValue { get; private set; }
+
+                public string? LastTrackedTextNewValue { get; private set; }
+
+                public static string GetInheritedLabel(DependencyObject element)
+                {
+                    return (string)element.GetValue(InheritedLabelProperty);
+                }
+
+                public static void SetInheritedLabel(DependencyObject element, string value)
+                {
+                    element.SetValue(InheritedLabelProperty, value);
+                }
+
+                private static object CoerceNumber(DependencyObject element, object baseValue)
+                {
+                    return Math.Clamp((int)baseValue, 0, 100);
+                }
+
+                private static void OnCoercedNumberChanged(DependencyObject element, DependencyPropertyChangedEventArgs e)
+                {
+                    var control = (ExternalDependencyPropertyControl)element;
+                    control.CoercedNumberChangeCount++;
+                    control.LastCoercedNumberOldValue = (int)e.OldValue;
+                    control.LastCoercedNumberNewValue = (int)e.NewValue;
+                }
+
+                private static void OnTrackedTextChanged(DependencyObject element, DependencyPropertyChangedEventArgs e)
+                {
+                    var control = (ExternalDependencyPropertyControl)element;
+                    control.TrackedTextChangeCount++;
+                    control.LastTrackedTextOldValue = (string)e.OldValue;
+                    control.LastTrackedTextNewValue = (string)e.NewValue;
+                }
+            }
+
             public sealed class ExternalTextExtension : MarkupExtension
             {
                 public static int ProvideValueCount { get; private set; }
@@ -2174,6 +2273,7 @@ internal static class Program
                     ValidateInputManagers(window);
                     ValidateBindingGroup(window);
                     ValidateRoutedEvents(window);
+                    ValidateDependencyProperties(window);
                     ValidateStylesAndTemplates(window);
                     ValidateLoadedStoryboardMetadata(window);
                     ValidatePropertyTriggerActionsMetadata(window);
@@ -4134,6 +4234,65 @@ internal static class Program
                     AssertEqual("ExternalTunnel", window.LastExternalTunnelRoutedEventName, "external SDK custom tunnel routed event name from args");
                     AssertEqual("ExternalRoutedEventPanel", tunnelPanelSenderName, "external SDK custom tunnel AddHandler panel sender");
                     AssertEqual("ExternalRoutedEventControl", tunnelPanelOriginalSourceName, "external SDK custom tunnel AddHandler original source");
+                }
+
+                private static void ValidateDependencyProperties(MainWindow window)
+                {
+                    var panel = RequireType<StackPanel>(
+                        window.FindName("ExternalDependencyPropertyPanel"),
+                        "external SDK dependency-property panel");
+                    var control = RequireType<ExternalDependencyPropertyControl>(
+                        window.FindName("ExternalDependencyPropertyControl"),
+                        "external SDK dependency-property control");
+                    var localControl = RequireType<ExternalDependencyPropertyControl>(
+                        window.FindName("ExternalDependencyPropertyLocalControl"),
+                        "external SDK local dependency-property control");
+
+                    AssertEqual("External inherited label", ExternalDependencyPropertyControl.GetInheritedLabel(control), "external SDK inherited attached property value");
+                    var inheritedSource = DependencyPropertyHelper.GetValueSource(
+                        control,
+                        ExternalDependencyPropertyControl.InheritedLabelProperty);
+                    AssertEqual(BaseValueSource.Inherited, inheritedSource.BaseValueSource, "external SDK inherited attached property value source");
+
+                    AssertEqual("External local label", ExternalDependencyPropertyControl.GetInheritedLabel(localControl), "external SDK local attached property value");
+                    var localSource = DependencyPropertyHelper.GetValueSource(
+                        localControl,
+                        ExternalDependencyPropertyControl.InheritedLabelProperty);
+                    AssertEqual(BaseValueSource.Local, localSource.BaseValueSource, "external SDK local attached property value source");
+
+                    ExternalDependencyPropertyControl.SetInheritedLabel(panel, "External inherited label updated");
+                    AssertEqual("External inherited label updated", ExternalDependencyPropertyControl.GetInheritedLabel(control), "external SDK inherited attached property update");
+                    AssertEqual("External local label", ExternalDependencyPropertyControl.GetInheritedLabel(localControl), "external SDK local attached property precedence");
+
+                    AssertEqual(100, control.CoercedNumber, "external SDK coerced dependency property value");
+                    var coercedSource = DependencyPropertyHelper.GetValueSource(
+                        control,
+                        ExternalDependencyPropertyControl.CoercedNumberProperty);
+                    AssertEqual(BaseValueSource.Local, coercedSource.BaseValueSource, "external SDK coerced dependency property base source");
+                    AssertEqual(true, coercedSource.IsCoerced, "external SDK coerced dependency property source flag");
+                    AssertAtLeast(1, control.CoercedNumberChangeCount, "external SDK coerced dependency property initial callback count");
+                    AssertEqual(100, control.LastCoercedNumberNewValue, "external SDK coerced dependency property initial callback new value");
+
+                    control.CoercedNumber = -7;
+                    AssertEqual(0, control.CoercedNumber, "external SDK coerced dependency property lower clamp");
+                    AssertEqual(0, control.LastCoercedNumberNewValue, "external SDK coerced dependency property lower callback new value");
+
+                    control.CoercedNumber = 64;
+                    AssertEqual(64, control.CoercedNumber, "external SDK coerced dependency property in-range value");
+                    var inRangeSource = DependencyPropertyHelper.GetValueSource(
+                        control,
+                        ExternalDependencyPropertyControl.CoercedNumberProperty);
+                    AssertEqual(false, inRangeSource.IsCoerced, "external SDK in-range dependency property coercion flag");
+
+                    AssertEqual(42, localControl.CoercedNumber, "external SDK local dependency property in-range XAML value");
+                    AssertEqual("compiled tracked text", control.TrackedText, "external SDK dependency property tracked text value");
+                    AssertEqual("compiled tracked text", control.ReadLocalValue(ExternalDependencyPropertyControl.TrackedTextProperty), "external SDK dependency property tracked text local value");
+                    var trackedTextChangeCount = control.TrackedTextChangeCount;
+                    control.TrackedText = "runtime tracked text";
+                    AssertEqual("runtime tracked text", control.TrackedText, "external SDK dependency property runtime text value");
+                    AssertEqual(trackedTextChangeCount + 1, control.TrackedTextChangeCount, "external SDK dependency property changed callback count");
+                    AssertEqual("compiled tracked text", control.LastTrackedTextOldValue, "external SDK dependency property changed callback old value");
+                    AssertEqual("runtime tracked text", control.LastTrackedTextNewValue, "external SDK dependency property changed callback new value");
                 }
 
                 private static void ValidateVisualStateTransitions(MainWindow window)

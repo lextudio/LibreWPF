@@ -6387,6 +6387,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RegisterRoutedEvent(", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RoutingStrategy.Bubble", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RoutingStrategy.Tunnel", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalDependencyPropertyControl\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("local:ExternalDependencyPropertyControl.InheritedLabel=\"External inherited label\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CoercedNumber=\"120\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("TrackedText=\"compiled tracked text\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FrameworkPropertyMetadataOptions.Inherits", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CoerceNumber", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("TextChanged=\"OnExternalValidationTextChanged\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("InputLanguageManager.InputLanguage=\"en-US\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("InputMethod.PreferredImeState=\"On\"", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6405,6 +6411,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateInputManagers(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateBindingGroup(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateRoutedEvents(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateDependencyProperties(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("BindingOperations.GetMultiBindingExpression", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("BindingOperations.GetPriorityBindingExpression", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ancestorBindingExpression.ParentBinding.RelativeSource", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6428,6 +6435,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK custom bubble AddHandler panel sender", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("control.RaiseExternalTunnel()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK custom tunnel AddHandler panel sender", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DependencyPropertyHelper.GetValueSource(", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK inherited attached property value source", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK coerced dependency property source flag", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK dependency property changed callback new value", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("validationTextBox.Select(9, 7)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("validationTextBox.SelectedText = \"selection\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("validationTextBox.AppendText(\" appended\")", externalSdkHarnessProgram, StringComparison.Ordinal);

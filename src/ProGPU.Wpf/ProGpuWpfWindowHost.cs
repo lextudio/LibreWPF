@@ -400,7 +400,16 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void OnResize(Vector2D<int> size)
     {
-        UpdateClientSizeFromNativeResize(size);
+        if (_window == null)
+        {
+            UpdateClientSizeFromNativeResize(size);
+        }
+        else
+        {
+            var framebufferSize = _window.FramebufferSize;
+            var monitorDpiScale = ResolveCurrentMonitorDpiScale();
+            UpdateClientSizeFromNativeResize(size, framebufferSize, monitorDpiScale);
+        }
 
         if (_target == null || _window == null)
         {
@@ -668,19 +677,39 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         var clientSize = _window.Size;
-        var clientWidth = clientSize.X > 0 ? clientSize.X : _clientWidth;
-        var clientHeight = clientSize.Y > 0 ? clientSize.Y : _clientHeight;
+        var framebufferSize = _window.FramebufferSize;
+        var monitorDpiScale = ResolveCurrentMonitorDpiScale();
+        var logicalSize = ResolveLogicalClientSize(
+            clientSize,
+            framebufferSize,
+            _clientWidth,
+            _clientHeight,
+            monitorDpiScale);
         return ResolveRenderSurfaceGeometry(
-            clientWidth,
-            clientHeight,
-            _window.FramebufferSize,
-            ResolveCurrentMonitorDpiScale());
+            logicalSize.X,
+            logicalSize.Y,
+            framebufferSize,
+            monitorDpiScale);
     }
 
     internal bool UpdateClientSizeFromNativeResize(Vector2D<int> size)
     {
-        var clientWidth = Math.Max(1, size.X);
-        var clientHeight = Math.Max(1, size.Y);
+        return UpdateClientSizeFromNativeResize(size, size, 1.0);
+    }
+
+    internal bool UpdateClientSizeFromNativeResize(
+        Vector2D<int> size,
+        Vector2D<int> framebufferSize,
+        double monitorDpiScale)
+    {
+        var logicalSize = ResolveLogicalClientSize(
+            size,
+            framebufferSize,
+            _clientWidth,
+            _clientHeight,
+            monitorDpiScale);
+        var clientWidth = logicalSize.X;
+        var clientHeight = logicalSize.Y;
         if (_clientWidth == clientWidth && _clientHeight == clientHeight)
         {
             return false;
@@ -689,6 +718,80 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _clientWidth = clientWidth;
         _clientHeight = clientHeight;
         return true;
+    }
+
+    internal static Vector2D<int> ResolveLogicalClientSize(
+        Vector2D<int> nativeSize,
+        Vector2D<int> framebufferSize,
+        int cachedWidth,
+        int cachedHeight,
+        double monitorDpiScale)
+    {
+        return new Vector2D<int>(
+            ResolveLogicalClientDimension(nativeSize.X, framebufferSize.X, cachedWidth, monitorDpiScale),
+            ResolveLogicalClientDimension(nativeSize.Y, framebufferSize.Y, cachedHeight, monitorDpiScale));
+    }
+
+    private static int ResolveLogicalClientDimension(
+        int nativeDimension,
+        int framebufferDimension,
+        int cachedDimension,
+        double monitorDpiScale)
+    {
+        var cached = Math.Max(1, cachedDimension);
+        var fallback = Math.Max(1, nativeDimension > 0 ? nativeDimension : cached);
+        var nativeMatchesFramebuffer = nativeDimension > 0 &&
+            Math.Abs(nativeDimension - framebufferDimension) <= 1;
+        var dpiScale = ResolveLogicalClientDpiScale(
+            monitorDpiScale,
+            nativeMatchesFramebuffer,
+            framebufferDimension,
+            cached);
+        if (dpiScale <= 1.0 || framebufferDimension <= 0)
+        {
+            return fallback;
+        }
+
+        var scaledLogical = Math.Max(
+            1,
+            (int)Math.Round(framebufferDimension / dpiScale, MidpointRounding.AwayFromZero));
+        var nativeDiffersFromCached = nativeDimension > 0 &&
+            Math.Abs(nativeDimension - cached) > 1;
+        var framebufferMatchesCachedScale =
+            Math.Abs(framebufferDimension - cached * dpiScale) <= Math.Max(2.0, dpiScale);
+
+        if (nativeMatchesFramebuffer && nativeDiffersFromCached)
+        {
+            return scaledLogical;
+        }
+
+        if (framebufferMatchesCachedScale)
+        {
+            return cached;
+        }
+
+        return fallback;
+    }
+
+    private static double ResolveLogicalClientDpiScale(
+        double monitorDpiScale,
+        bool nativeMatchesFramebuffer,
+        int framebufferDimension,
+        int cachedDimension)
+    {
+        var dpiScale = NormalizeMonitorDpiScale(monitorDpiScale);
+        if (dpiScale > 1.0 ||
+            !nativeMatchesFramebuffer ||
+            framebufferDimension <= 0 ||
+            cachedDimension <= 0)
+        {
+            return dpiScale;
+        }
+
+        var inferredScale = framebufferDimension / (double)cachedDimension;
+        return double.IsFinite(inferredScale) && inferredScale >= 1.25 && inferredScale <= 8.0
+            ? inferredScale
+            : dpiScale;
     }
 
     private double ResolveCurrentMonitorDpiScale()

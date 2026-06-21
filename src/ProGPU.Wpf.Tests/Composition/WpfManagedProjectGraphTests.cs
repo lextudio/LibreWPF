@@ -6008,6 +6008,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<VisualStateGroup x:Name=\"ExternalCommonStates\">", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<VisualState x:Name=\"Pressed\">", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Storyboard.TargetProperty=\"Opacity\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<ControlTemplate.Triggers>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<Trigger Property=\"Tag\" Value=\"template-trigger-active\">", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK control template trigger action EnterActions target name", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Application.Run control template trigger EnterActions MinWidth", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Media.Animation;", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ExternalLoadedStoryboardText\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Loaded=\"OnExternalLoadedStoryboardTextLoaded\"", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -464,6 +464,32 @@ internal static class Program
                             x:Name="ExternalTemplateContent"
                             Content="{TemplateBinding Content}" />
                     </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Tag" Value="template-trigger-active">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="ExternalTemplateContent"
+                                            Storyboard.TargetProperty="MinWidth"
+                                            To="23"
+                                            Duration="0:0:0" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="ExternalTemplateContent"
+                                            Storyboard.TargetProperty="MinWidth"
+                                            To="0"
+                                            Duration="0:0:0" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
                 <Style
                     x:Key="ExternalBasedButtonStyle"
@@ -3844,6 +3870,14 @@ internal static class Program
                     AssertEqual(true, VisualStateManager.GoToState(styledButton, "Normal", false), "external SDK Application.Run VisualStateManager Normal transition");
                     DrainDispatcher();
                     AssertClose(1.0, templateContent.Opacity, "external SDK Application.Run VisualStateManager Normal opacity");
+
+                    styledButton.Tag = "template-trigger-active";
+                    DrainDispatcher();
+                    AssertClose(23.0, templateContent.MinWidth, "external SDK Application.Run control template trigger EnterActions MinWidth");
+
+                    styledButton.Tag = "base-style";
+                    DrainDispatcher();
+                    AssertClose(0.0, templateContent.MinWidth, "external SDK Application.Run control template trigger ExitActions MinWidth");
                 }
 
                 private static void ValidateLoadedStoryboardMetadata(MainWindow window)
@@ -3966,7 +4000,11 @@ internal static class Program
                     AssertClose(0.82, actionText.Opacity, "external SDK data trigger action initial opacity");
                 }
 
-                private static void AssertTriggerActionStoryboard(TriggerAction action, double expectedTo, string description)
+                private static DoubleAnimation AssertTriggerActionStoryboard(
+                    TriggerAction action,
+                    double expectedTo,
+                    string description,
+                    string expectedTargetProperty = "Opacity")
                 {
                     var beginStoryboard = RequireType<BeginStoryboard>(
                         action,
@@ -3984,7 +4022,8 @@ internal static class Program
                     var targetProperty = RequireType<PropertyPath>(
                         Storyboard.GetTargetProperty(doubleAnimation),
                         description + " target property");
-                    AssertEqual("Opacity", targetProperty.Path?.ToString() ?? string.Empty, description + " target property path");
+                    AssertEqual(expectedTargetProperty, targetProperty.Path?.ToString() ?? string.Empty, description + " target property path");
+                    return doubleAnimation;
                 }
 
                 private static void ValidateDataTriggerActionsAfterRun(MainWindow window)
@@ -4127,6 +4166,26 @@ internal static class Program
                         "external SDK event setter style click event setter");
                     AssertEqual(ButtonBase.ClickEvent, eventSetter.Event, "external SDK event setter routed event");
                     AssertEqual(typeof(Button), buttonTemplate.TargetType, "external SDK control template target type");
+                    AssertEqual(1, buttonTemplate.Triggers.Count, "external SDK control template trigger action count");
+                    var templateTrigger = RequireType<Trigger>(
+                        buttonTemplate.Triggers[0],
+                        "external SDK control template trigger action trigger");
+                    AssertEqual(FrameworkElement.TagProperty, templateTrigger.Property, "external SDK control template trigger action property");
+                    AssertEqual("template-trigger-active", templateTrigger.Value?.ToString(), "external SDK control template trigger action value");
+                    AssertEqual(1, templateTrigger.EnterActions.Count, "external SDK control template trigger action EnterActions count");
+                    var templateEnterAnimation = AssertTriggerActionStoryboard(
+                        templateTrigger.EnterActions[0],
+                        23.0,
+                        "external SDK control template trigger action EnterActions",
+                        "MinWidth");
+                    AssertEqual("ExternalTemplateContent", Storyboard.GetTargetName(templateEnterAnimation), "external SDK control template trigger action EnterActions target name");
+                    AssertEqual(1, templateTrigger.ExitActions.Count, "external SDK control template trigger action ExitActions count");
+                    var templateExitAnimation = AssertTriggerActionStoryboard(
+                        templateTrigger.ExitActions[0],
+                        0.0,
+                        "external SDK control template trigger action ExitActions",
+                        "MinWidth");
+                    AssertEqual("ExternalTemplateContent", Storyboard.GetTargetName(templateExitAnimation), "external SDK control template trigger action ExitActions target name");
 
                     var styledButton = RequireType<Button>(
                         window.FindName("ExternalStyledButton"),

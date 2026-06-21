@@ -854,9 +854,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("new PortableManagedDataObject()", clipboardService, StringComparison.Ordinal);
         Assert.Contains("internal sealed class PortableManagedDataObject : ITypedDataObject", portableManagedDataObject, StringComparison.Ordinal);
         Assert.Contains("private readonly Dictionary<string, Entry> _data", portableManagedDataObject, StringComparison.Ordinal);
+        Assert.Contains("using System.Text.Json;", portableManagedDataObject, StringComparison.Ordinal);
+        Assert.Contains("internal void SetDataAsJson<T>(string format, T data)", portableManagedDataObject, StringComparison.Ordinal);
+        Assert.Contains("private static bool TryDeserializeJsonPayload<T>", portableManagedDataObject, StringComparison.Ordinal);
+        Assert.Contains("private sealed class JsonPayload", portableManagedDataObject, StringComparison.Ordinal);
         Assert.Contains("public bool TryGetData<T>", portableManagedDataObject, StringComparison.Ordinal);
         Assert.Contains("private readonly ITypedDataObject? _portableData;", dataObject, StringComparison.Ordinal);
         Assert.Contains("_portableData = new PortableManagedDataObject();", dataObject, StringComparison.Ordinal);
+        Assert.Contains("portableManagedData.SetDataAsJson(format, data);", dataObject, StringComparison.Ordinal);
         Assert.Contains("return !s_isWindows;", clipboardService, StringComparison.Ordinal);
         Assert.Contains("s_dataObject = dataObject;", clipboardService, StringComparison.Ordinal);
 
@@ -893,6 +898,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePortableClipboard(presentationCore)", sdkRuntimeHarness, StringComparison.Ordinal);
         Assert.Contains("portable Clipboard SDK data object unicode text", sdkRuntimeHarness, StringComparison.Ordinal);
         Assert.Contains("portable Clipboard SDK current data object", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableJsonDataObject(presentationCore)", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("PortableClipboardJsonPayload", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("portable Clipboard SDK JSON DataObject typed retrieval state", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("portable Clipboard SDK JSON clipboard typed retrieval state", sdkRuntimeHarness, StringComparison.Ordinal);
         Assert.Contains("ClearPortableService(presentationCore, PortableClipboardServiceTypeName)", sdkRuntimeHarness, StringComparison.Ordinal);
 
         Assert.Contains("PortableClipboardServiceTypeName", proGpuActivation, StringComparison.Ordinal);

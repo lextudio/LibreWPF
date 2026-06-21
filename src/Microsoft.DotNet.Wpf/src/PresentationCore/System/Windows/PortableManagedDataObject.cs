@@ -6,6 +6,7 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection.Metadata;
+using System.Text.Json;
 
 namespace System.Windows;
 
@@ -72,6 +73,17 @@ internal sealed class PortableManagedDataObject : ITypedDataObject
         _data[format] = new Entry(data, autoConvert);
     }
 
+    internal void SetDataAsJson<T>(string format, T data)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(format);
+        string json = JsonSerializer.Serialize(data);
+        Type payloadType = typeof(T);
+        var payload = new JsonPayload(
+            json,
+            TypeName.Parse(payloadType.AssemblyQualifiedName ?? payloadType.FullName ?? payloadType.Name));
+        _data[format] = new Entry(data, autoConvert: false, payload);
+    }
+
     public bool TryGetData<T>([NotNullWhen(true), MaybeNullWhen(false)] out T data)
     {
         return TryGetData(typeof(T).FullName ?? typeof(T).Name, autoConvert: true, out data);
@@ -90,14 +102,23 @@ internal sealed class PortableManagedDataObject : ITypedDataObject
         [NotNullWhen(true), MaybeNullWhen(false)] out T data)
     {
         data = default;
-        object? value = GetData(format, autoConvert);
-        if (value is not T typed)
+        if (!TryGetEntry(format, autoConvert, out Entry entry))
         {
             return false;
         }
 
-        data = typed;
-        return true;
+        if (entry.Payload is JsonPayload payload)
+        {
+            return TryDeserializeJsonPayload(payload, resolver: null, out data);
+        }
+
+        if (entry.Data is T typed)
+        {
+            data = typed;
+            return true;
+        }
+
+        return false;
     }
 
     public bool TryGetData<T>(
@@ -107,7 +128,24 @@ internal sealed class PortableManagedDataObject : ITypedDataObject
         [NotNullWhen(true), MaybeNullWhen(false)] out T data)
     {
         ArgumentNullException.ThrowIfNull(resolver);
-        return TryGetData(format, autoConvert, out data);
+        data = default;
+        if (!TryGetEntry(format, autoConvert, out Entry entry))
+        {
+            return false;
+        }
+
+        if (entry.Payload is JsonPayload payload)
+        {
+            return TryDeserializeJsonPayload(payload, resolver, out data);
+        }
+
+        if (entry.Data is T typed)
+        {
+            data = typed;
+            return true;
+        }
+
+        return false;
     }
 
     private bool TryGetEntry(string format, bool autoConvert, out Entry entry)
@@ -141,16 +179,70 @@ internal sealed class PortableManagedDataObject : ITypedDataObject
             || format == DataFormats.StringFormat;
     }
 
+    private static bool TryDeserializeJsonPayload<T>(
+        JsonPayload payload,
+        Func<TypeName, Type?>? resolver,
+        [NotNullWhen(true), MaybeNullWhen(false)] out T data)
+    {
+        data = default;
+
+        Type? targetType = resolver is null
+            ? typeof(T)
+            : resolver(payload.TypeName);
+        if (targetType is null || !typeof(T).IsAssignableFrom(targetType))
+        {
+            return false;
+        }
+
+        try
+        {
+            object? value = targetType == typeof(T)
+                ? JsonSerializer.Deserialize<T>(payload.Json)
+                : JsonSerializer.Deserialize(payload.Json, targetType);
+            if (value is not T typed)
+            {
+                return false;
+            }
+
+            data = typed;
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+        catch (NotSupportedException)
+        {
+            return false;
+        }
+    }
+
     private readonly struct Entry
     {
-        internal Entry(object? data, bool autoConvert)
+        internal Entry(object? data, bool autoConvert, JsonPayload? payload = null)
         {
             Data = data;
             AutoConvert = autoConvert;
+            Payload = payload;
         }
 
         internal object? Data { get; }
 
         internal bool AutoConvert { get; }
+
+        internal JsonPayload? Payload { get; }
+    }
+
+    private sealed class JsonPayload
+    {
+        internal JsonPayload(string json, TypeName typeName)
+        {
+            Json = json;
+            TypeName = typeName;
+        }
+
+        internal string Json { get; }
+
+        internal TypeName TypeName { get; }
     }
 }

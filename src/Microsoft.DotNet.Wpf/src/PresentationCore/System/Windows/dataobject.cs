@@ -710,7 +710,17 @@ public sealed unsafe partial class DataObject :
     {
         if (_portableData is not null)
         {
-            _portableData.SetData(typeof(T).FullName ?? typeof(T).Name, data, autoConvert: false);
+            ArgumentNullException.ThrowIfNull(data);
+            string format = typeof(T).FullName ?? typeof(T).Name;
+            if (_portableData is PortableManagedDataObject portableManagedData)
+            {
+                portableManagedData.SetDataAsJson(format, data);
+            }
+            else
+            {
+                _portableData.SetData(format, data, autoConvert: false);
+            }
+
             return;
         }
 
@@ -748,7 +758,17 @@ public sealed unsafe partial class DataObject :
     {
         if (_portableData is not null)
         {
-            _portableData.SetData(format, data, autoConvert: false);
+            ArgumentException.ThrowIfNullOrWhiteSpace(format);
+            ArgumentNullException.ThrowIfNull(data);
+            if (_portableData is PortableManagedDataObject portableManagedData)
+            {
+                portableManagedData.SetDataAsJson(format, data);
+            }
+            else
+            {
+                _portableData.SetData(format, data, autoConvert: false);
+            }
+
             return;
         }
 

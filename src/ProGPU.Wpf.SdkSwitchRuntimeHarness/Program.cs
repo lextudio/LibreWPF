@@ -66,6 +66,13 @@ internal static class Program
         "System.Windows.Extensions"
     ];
 
+    public sealed class PortableClipboardJsonPayload
+    {
+        public string? Message { get; set; }
+
+        public int Count { get; set; }
+    }
+
     [STAThread]
     private static int Main()
     {
@@ -2334,9 +2341,93 @@ internal static class Program
         InvokeStaticVoid(clipboardType, "Flush");
         AssertEqual("portable SDK clipboard text", InvokeStatic(clipboardType, "GetText"), "portable Clipboard SDK flushed text");
 
+        ValidatePortableJsonDataObject(presentationCore);
+
         InvokeStaticVoid(clipboardType, "Clear");
         AssertEqual(false, InvokeStatic(clipboardType, "ContainsText"), "portable Clipboard SDK cleared text state");
         AssertEqual(string.Empty, InvokeStatic(clipboardType, "GetText"), "portable Clipboard SDK cleared text");
+    }
+
+    private static void ValidatePortableJsonDataObject(Assembly presentationCore)
+    {
+        const string dataObjectFormat = "PortableSdkJsonDataObjectFormat";
+        const string clipboardFormat = "PortableSdkJsonClipboardFormat";
+
+        Type dataObjectType = GetRequiredType(presentationCore, "System.Windows.DataObject");
+        Type clipboardType = GetRequiredType(presentationCore, "System.Windows.Clipboard");
+        var payload = new PortableClipboardJsonPayload
+        {
+            Message = "portable SDK JSON payload",
+            Count = 42
+        };
+
+        object dataObject = Create(dataObjectType);
+        MethodInfo dataObjectSetDataAsJson = GetGenericMethod(
+            dataObjectType,
+            "SetDataAsJson",
+            isStatic: false,
+            parameterCount: 2,
+            parameters => parameters[0].ParameterType == typeof(string));
+        InvokeMethod(
+            dataObjectSetDataAsJson.MakeGenericMethod(typeof(PortableClipboardJsonPayload)),
+            dataObject,
+            dataObjectFormat,
+            payload);
+        AssertEqual(
+            true,
+            Invoke(dataObject, "GetDataPresent", dataObjectFormat, false),
+            "portable Clipboard SDK JSON DataObject format present");
+
+        MethodInfo dataObjectTryGetData = GetGenericMethod(
+            dataObjectType,
+            "TryGetData",
+            isStatic: false,
+            parameterCount: 3,
+            parameters => parameters[0].ParameterType == typeof(string)
+                && parameters[1].ParameterType == typeof(bool));
+        object?[] dataObjectTryGetArgs = [dataObjectFormat, false, null];
+        AssertEqual(
+            true,
+            InvokeMethod(
+                dataObjectTryGetData.MakeGenericMethod(typeof(PortableClipboardJsonPayload)),
+                dataObject,
+                dataObjectTryGetArgs) is true,
+            "portable Clipboard SDK JSON DataObject typed retrieval state");
+        var dataObjectRoundTrip = (PortableClipboardJsonPayload?)dataObjectTryGetArgs[2]
+            ?? throw new InvalidOperationException("Expected portable DataObject JSON payload.");
+        AssertEqual("portable SDK JSON payload", dataObjectRoundTrip.Message ?? string.Empty, "portable Clipboard SDK JSON DataObject message");
+        AssertEqual(42, dataObjectRoundTrip.Count, "portable Clipboard SDK JSON DataObject count");
+
+        MethodInfo clipboardSetDataAsJson = GetGenericMethod(
+            clipboardType,
+            "SetDataAsJson",
+            isStatic: true,
+            parameterCount: 2,
+            parameters => parameters[0].ParameterType == typeof(string));
+        InvokeMethod(
+            clipboardSetDataAsJson.MakeGenericMethod(typeof(PortableClipboardJsonPayload)),
+            instance: null,
+            clipboardFormat,
+            payload);
+
+        MethodInfo clipboardTryGetData = GetGenericMethod(
+            clipboardType,
+            "TryGetData",
+            isStatic: true,
+            parameterCount: 2,
+            parameters => parameters[0].ParameterType == typeof(string));
+        object?[] clipboardTryGetArgs = [clipboardFormat, null];
+        AssertEqual(
+            true,
+            InvokeMethod(
+                clipboardTryGetData.MakeGenericMethod(typeof(PortableClipboardJsonPayload)),
+                instance: null,
+                clipboardTryGetArgs) is true,
+            "portable Clipboard SDK JSON clipboard typed retrieval state");
+        var clipboardRoundTrip = (PortableClipboardJsonPayload?)clipboardTryGetArgs[1]
+            ?? throw new InvalidOperationException("Expected portable Clipboard JSON payload.");
+        AssertEqual("portable SDK JSON payload", clipboardRoundTrip.Message ?? string.Empty, "portable Clipboard SDK JSON clipboard message");
+        AssertEqual(42, clipboardRoundTrip.Count, "portable Clipboard SDK JSON clipboard count");
     }
 
     private static void ValidatePortableFileDialogs(Assembly presentationFramework, object? owner = null)
@@ -2448,6 +2539,39 @@ internal static class Program
             args,
             culture: null)
             ?? throw new InvalidOperationException($"Could not create '{type.FullName}'.");
+    }
+
+    private static MethodInfo GetGenericMethod(
+        Type type,
+        string methodName,
+        bool isStatic,
+        int parameterCount,
+        Func<ParameterInfo[], bool> parameterPredicate)
+    {
+        BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic |
+            (isStatic ? BindingFlags.Static : BindingFlags.Instance);
+        return type.GetMethods(flags)
+            .Where(method => string.Equals(method.Name, methodName, StringComparison.Ordinal))
+            .Where(method => method.IsGenericMethodDefinition)
+            .Where(method =>
+            {
+                ParameterInfo[] parameters = method.GetParameters();
+                return parameters.Length == parameterCount && parameterPredicate(parameters);
+            })
+            .Single();
+    }
+
+    private static object? InvokeMethod(MethodInfo method, object? instance, params object?[] args)
+    {
+        try
+        {
+            return method.Invoke(instance, args);
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException is not null)
+        {
+            ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
+            throw;
+        }
     }
 
     private static Type GetRequiredType(Assembly assembly, string typeName)

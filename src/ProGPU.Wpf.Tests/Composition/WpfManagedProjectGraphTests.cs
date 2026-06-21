@@ -6114,6 +6114,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalItemContainerStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalGroupedItems", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalGroupHeaderTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalFilteredItems", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Filter=\"OnExternalItemsFilter\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalCurrencyItems", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("IsSynchronizedWithCurrentItem=\"True\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<CollectionViewSource.SortDescriptions>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("componentModel:SortDescription", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PropertyName=\"Name\"", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6151,6 +6155,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK grouped ListBox ItemsSource view", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK grouped CollectionViewSource view group count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK group header generated text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK filtered CollectionViewSource filter event count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("filteredItems.View.Refresh()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK filtered ListBox refreshed item count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK currency current item from selection", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("currencyItems.View.MoveCurrentToPosition(2)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK currency ListBox selected item after current move", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK list view grid-view column count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK list view name binding path", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK data grid column count", externalSdkHarnessProgram, StringComparison.Ordinal);

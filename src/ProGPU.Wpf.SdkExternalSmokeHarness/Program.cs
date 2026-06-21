@@ -578,6 +578,13 @@ internal static class Program
                             <PropertyGroupDescription PropertyName="Kind" />
                         </CollectionViewSource.GroupDescriptions>
                     </CollectionViewSource>
+                    <CollectionViewSource
+                        x:Key="ExternalFilteredItems"
+                        Source="{Binding ExternalItems}"
+                        Filter="OnExternalItemsFilter" />
+                    <CollectionViewSource
+                        x:Key="ExternalCurrencyItems"
+                        Source="{Binding ExternalItems}" />
                     <Style
                         x:Key="ExternalEventSetterButtonStyle"
                         TargetType="{x:Type Button}">
@@ -1065,6 +1072,16 @@ internal static class Program
                             <GroupStyle HeaderTemplate="{StaticResource ExternalGroupHeaderTemplate}" />
                         </ListBox.GroupStyle>
                     </ListBox>
+                    <ListBox
+                        x:Name="ExternalFilteredItemsList"
+                        DisplayMemberPath="Name"
+                        ItemsSource="{Binding Source={StaticResource ExternalFilteredItems}}" />
+                    <ListBox
+                        x:Name="ExternalCurrencyItemsList"
+                        DisplayMemberPath="Name"
+                        IsSynchronizedWithCurrentItem="True"
+                        ItemsSource="{Binding Source={StaticResource ExternalCurrencyItems}}"
+                        SelectedIndex="1" />
                     <ListView
                         x:Name="ExternalListView"
                         ItemsSource="{Binding ExternalItems}"
@@ -1650,6 +1667,8 @@ internal static class Program
 
                 public string? LastExternalLoadedStoryboardTextRoutedEventName { get; private set; }
 
+                public int ExternalItemsFilterCount { get; private set; }
+
                 public object? LastExternalCommandParameter { get; private set; }
 
                 public string? LastExternalCommandName { get; private set; }
@@ -1875,6 +1894,12 @@ internal static class Program
                 {
                     ExternalLoadedStoryboardTextLoadedCount++;
                     LastExternalLoadedStoryboardTextRoutedEventName = e.RoutedEvent?.Name;
+                }
+
+                private void OnExternalItemsFilter(object sender, FilterEventArgs e)
+                {
+                    ExternalItemsFilterCount++;
+                    e.Accepted = e.Item is ExternalItem item && item.IsActive;
                 }
 
                 private void OnPropertyChanged(string propertyName)
@@ -5238,6 +5263,43 @@ internal static class Program
                     groupHeaderRoot.DataContext = firstGroup;
                     DrainDispatcher();
                     AssertContains("Group: ", groupHeaderRoot.Text, "external SDK group header generated text");
+
+                    var filteredItems = RequireType<CollectionViewSource>(
+                        window.FindResource("ExternalFilteredItems"),
+                        "external SDK filtered CollectionViewSource");
+                    var filteredList = RequireType<ListBox>(
+                        window.FindName("ExternalFilteredItemsList"),
+                        "external SDK filtered items list");
+                    AssertEqual(filteredItems.View, filteredList.ItemsSource, "external SDK filtered ListBox ItemsSource view");
+                    AssertAtLeast(1, window.ExternalItemsFilterCount, "external SDK filtered CollectionViewSource filter event count");
+                    var filteredViewItems = filteredItems.View.Cast<object>().ToArray();
+                    AssertEqual(1, filteredViewItems.Length, "external SDK filtered CollectionViewSource active item count");
+                    AssertEqual(window.ExternalItems[0], filteredViewItems[0], "external SDK filtered CollectionViewSource active item");
+                    AssertEqual(1, filteredList.Items.Count, "external SDK filtered ListBox item count");
+                    window.ExternalItems[2].IsActive = true;
+                    filteredItems.View.Refresh();
+                    DrainDispatcher();
+                    var refreshedFilteredViewItems = filteredItems.View.Cast<object>().ToArray();
+                    AssertEqual(2, refreshedFilteredViewItems.Length, "external SDK filtered CollectionViewSource refreshed item count");
+                    AssertEqual(window.ExternalItems[2], refreshedFilteredViewItems[1], "external SDK filtered CollectionViewSource refreshed active item");
+                    AssertEqual(2, filteredList.Items.Count, "external SDK filtered ListBox refreshed item count");
+
+                    var currencyItems = RequireType<CollectionViewSource>(
+                        window.FindResource("ExternalCurrencyItems"),
+                        "external SDK currency CollectionViewSource");
+                    var currencyList = RequireType<ListBox>(
+                        window.FindName("ExternalCurrencyItemsList"),
+                        "external SDK currency items list");
+                    AssertEqual(currencyItems.View, currencyList.ItemsSource, "external SDK currency ListBox ItemsSource view");
+                    AssertEqual(true, currencyList.IsSynchronizedWithCurrentItem, "external SDK currency ListBox synchronized current item");
+                    currencyList.SelectedIndex = 1;
+                    DrainDispatcher();
+                    AssertEqual(window.ExternalItems[1], currencyList.SelectedItem, "external SDK currency ListBox selected item");
+                    AssertEqual(window.ExternalItems[1], currencyItems.View.CurrentItem, "external SDK currency current item from selection");
+                    AssertEqual(true, currencyItems.View.MoveCurrentToPosition(2), "external SDK currency move current result");
+                    DrainDispatcher();
+                    AssertEqual(window.ExternalItems[2], currencyItems.View.CurrentItem, "external SDK currency current item after move");
+                    AssertEqual(window.ExternalItems[2], currencyList.SelectedItem, "external SDK currency ListBox selected item after current move");
 
                     var listView = RequireType<ListView>(
                         window.FindName("ExternalListView"),

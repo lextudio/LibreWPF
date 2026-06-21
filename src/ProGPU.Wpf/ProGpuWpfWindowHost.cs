@@ -757,6 +757,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             (int)Math.Round(framebufferDimension / dpiScale, MidpointRounding.AwayFromZero));
         var nativeDiffersFromCached = nativeDimension > 0 &&
             Math.Abs(nativeDimension - cached) > 1;
+        if (nativeDiffersFromCached &&
+            NativeDimensionLooksPhysicalForCachedDips(nativeDimension, cached, dpiScale))
+        {
+            return cached;
+        }
+
         var framebufferMatchesCachedScale =
             Math.Abs(framebufferDimension - cached * dpiScale) <= Math.Max(2.0, dpiScale);
 
@@ -771,6 +777,21 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         return fallback;
+    }
+
+    private static bool NativeDimensionLooksPhysicalForCachedDips(
+        int nativeDimension,
+        int cachedDimension,
+        double dpiScale)
+    {
+        if (dpiScale <= 1.0 ||
+            nativeDimension <= 0 ||
+            cachedDimension <= 0)
+        {
+            return false;
+        }
+
+        return Math.Abs(nativeDimension - cachedDimension * dpiScale) <= Math.Max(2.0, dpiScale);
     }
 
     private static double ResolveLogicalClientDpiScale(

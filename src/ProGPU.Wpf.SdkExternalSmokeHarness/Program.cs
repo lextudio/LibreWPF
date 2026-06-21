@@ -340,9 +340,14 @@ internal static class Program
 
               <ItemGroup>
                 <ProjectReference Include="../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj" />
+                <Resource Include="Assets/ExternalResource.txt" />
               </ItemGroup>
             </Project>
             """);
+
+        WriteFile(
+            Path.Combine(appRoot, "Assets", "ExternalResource.txt"),
+            "External SDK pack resource text");
 
         WriteFile(
             Path.Combine(appRoot, "App.xaml"),
@@ -2401,6 +2406,7 @@ internal static class Program
                         "external SDK user-control named TextBlock");
                     AssertEqual("External SDK library panel", captionText.Text, "external SDK user-control ElementName binding");
                     ValidateApplicationResources(window);
+                    ValidatePackResources();
                     ValidateSystemParameters(window);
                     ValidateWindowChrome(window);
                     ValidateSystemCommands(window);
@@ -2734,6 +2740,26 @@ internal static class Program
                     AssertEqual(3, selectorItems.Items.Count, "external SDK item template selector collection count after mutation");
                     AssertEqual(defaultTemplate, selector.SelectTemplate(window.ExternalItems[2], selectorItems), "external SDK item template selector default selected template");
                     AssertTemplateText(defaultTemplate, window.ExternalItems[2], "Default template Data", "external SDK default selected template text");
+                }
+
+                private static void ValidatePackResources()
+                {
+                    AssertEqual(
+                        "External SDK pack resource text",
+                        ReadPackResourceText(new Uri("Assets/ExternalResource.txt", UriKind.Relative)),
+                        "external SDK relative Resource stream text");
+                    AssertEqual(
+                        "External SDK pack resource text",
+                        ReadPackResourceText(new Uri("pack://application:,,,/Assets/ExternalResource.txt", UriKind.Absolute)),
+                        "external SDK absolute pack Resource stream text");
+                }
+
+                private static string ReadPackResourceText(Uri resourceUri)
+                {
+                    var resourceInfo = Application.GetResourceStream(resourceUri)
+                        ?? throw new InvalidOperationException($"Expected external SDK resource stream for '{resourceUri}'.");
+                    using var reader = new StreamReader(resourceInfo.Stream);
+                    return reader.ReadToEnd();
                 }
 
                 private static void ValidateSystemParameters(FrameworkElement resourceOwner)
@@ -6092,10 +6118,12 @@ internal static class Program
         AssertContains(appProject, "<OutputType>WinExe</OutputType>", "external app output type");
         AssertContains(appProject, "<UseWPF>true</UseWPF>", "external app WPF property");
         AssertContains(appProject, $"<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", "external app project reference");
+        AssertContains(appProject, "<Resource Include=\"Assets/ExternalResource.txt\" />", "external app WPF resource item");
         AssertContains(libraryProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external library SDK");
         AssertContains(libraryProject, "<UseWPF>true</UseWPF>", "external library WPF property");
         RequireFile(Path.Combine(workRoot, LibraryAssemblyName, "Properties", "AssemblyInfo.cs"), "external SDK library ThemeInfo source");
         RequireFile(Path.Combine(workRoot, LibraryAssemblyName, "Themes", "Generic.xaml"), "external SDK library Generic.xaml source");
+        RequireFile(Path.Combine(workRoot, AppAssemblyName, "Assets", "ExternalResource.txt"), "external SDK app WPF resource source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalResources.xaml"), "external SDK app merged resource dictionary source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalPage.xaml"), "external SDK app compiled page source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalSecondPage.xaml"), "external SDK app second compiled page source");

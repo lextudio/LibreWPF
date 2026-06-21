@@ -271,6 +271,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PlatformServices.Monitors.GetMonitors()", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var dpiScaleX = pixelWidth / (double)logicalWidth", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var dpiScaleY = pixelHeight / (double)logicalHeight", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("NativeDimensionLooksPhysicalForCachedDips(nativeDimension, cached, dpiScale)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("private static bool NativeDimensionLooksPhysicalForCachedDips", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_retainedWpfVisualRoot.Scale = new Vector3((float)DpiScaleX, (float)DpiScaleY, 1f)", proGpuDrawingFrame, StringComparison.Ordinal);
         Assert.Contains("logicalWidth,\n                logicalHeight,\n                dpiScaleX,\n                dpiScaleY", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("Present(logicalWidth, logicalHeight, pixelWidth, pixelHeight, dpiScale)", proGpuHost, StringComparison.Ordinal);
@@ -4579,6 +4581,14 @@ public sealed class WpfManagedProjectGraphTests
             "System",
             "Windows",
             "SystemCommands.cs"));
+        var mimeTypeMapper = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "Shared",
+            "MS",
+            "Internal",
+            "MimeTypeMapper.cs"));
         var application = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4895,6 +4905,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("window.WindowState = WindowState.Maximized", systemCommands, StringComparison.Ordinal);
         Assert.Contains("window.WindowState = WindowState.Minimized", systemCommands, StringComparison.Ordinal);
         Assert.Contains("window.WindowState = WindowState.Normal", systemCommands, StringComparison.Ordinal);
+        Assert.Contains("GetPortableMimeTypeFromExtension", mimeTypeMapper, StringComparison.Ordinal);
+        Assert.Contains("if (OperatingSystem.IsWindows())", mimeTypeMapper, StringComparison.Ordinal);
+        AssertGuardBefore(mimeTypeMapper, "if (OperatingSystem.IsWindows())", "GetMimeTypeFromUrlMon(uriSource)");
+        Assert.Contains("\"txt\" => TextPlainMime", mimeTypeMapper, StringComparison.Ordinal);
+        Assert.Contains("_ => OctetMime", mimeTypeMapper, StringComparison.Ordinal);
         AssertGuardBefore(dpiAwareness, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetWindowDpiAwarenessContext(hWnd)");
         AssertGuardBefore(osVersionHelper, "if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))", "IsWindows10RS5OrGreater()");
         AssertGuardBefore(osVersionHelper, "return OperatingSystemVersion.WindowsXPSP2;", "throw new Exception(\"OSVersionHelper.GetOsVersion Could not detect OS!\")");
@@ -5973,6 +5988,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<OutputType>WinExe</OutputType>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<UseWPF>true</UseWPF>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<Resource Include=\"Assets/ExternalResource.txt\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Path.Combine(appRoot, \"Assets\", \"ExternalResource.txt\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ThemeInfo(ResourceDictionaryLocation.None, ResourceDictionaryLocation.SourceAssembly)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalThemedControl : Control", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultStyleKeyProperty.OverrideMetadata", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6298,6 +6315,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DataType=\"{x:Type local:ExternalItem}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ObservableCollection<ExternalItem>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateApplicationResources(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePackResources()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Application.GetResourceStream(resourceUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("pack://application:,,,/Assets/ExternalResource.txt", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK relative Resource stream text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK absolute pack Resource stream text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new ComponentResourceKey(typeof(MainWindow), \"ExternalComponentAccentBrush\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ComponentResourceKey application brush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ComponentResourceKey window lookup", externalSdkHarnessProgram, StringComparison.Ordinal);

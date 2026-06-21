@@ -61,6 +61,7 @@ internal static class Program
         "System.Formats.Nrbf",
         "System.IO.Packaging",
         "System.Security.Cryptography.ProtectedData",
+        "System.Private.Windows.Core",
         "System.Windows.Extensions"
     ];
 
@@ -1488,6 +1489,7 @@ internal static class Program
             """
             using System;
             using System.Collections.ObjectModel;
+            using System.Collections.Specialized;
             using System.Collections.Generic;
             using System.ComponentModel;
             using System.Globalization;
@@ -3231,8 +3233,52 @@ internal static class Program
                     Clipboard.Flush();
                     AssertEqual("external SDK clipboard text", Clipboard.GetText(), "external SDK Clipboard flushed text");
 
+                    var customDataObject = new DataObject();
+                    customDataObject.SetData(DataFormats.UnicodeText, "external SDK data object text", autoConvert: false);
+                    customDataObject.SetData("ExternalSdkCustomFormat", "external SDK custom payload", autoConvert: false);
+                    Clipboard.SetDataObject(customDataObject, copy: true);
+                    AssertEqual(true, Clipboard.ContainsText(), "external SDK Clipboard data object text state");
+                    AssertEqual(
+                        "external SDK data object text",
+                        Clipboard.GetText(),
+                        "external SDK Clipboard data object text");
+                    AssertEqual(
+                        "external SDK custom payload",
+                        Clipboard.GetData("ExternalSdkCustomFormat"),
+                        "external SDK Clipboard custom data format");
+                    var currentDataObject = RequireType<DataObject>(
+                        Clipboard.GetDataObject(),
+                        "external SDK Clipboard current data object after SetDataObject");
+                    AssertEqual(true, currentDataObject.GetDataPresent("ExternalSdkCustomFormat", autoConvert: false), "external SDK Clipboard custom format present");
+                    AssertEqual(
+                        "external SDK custom payload",
+                        currentDataObject.GetData("ExternalSdkCustomFormat", autoConvert: false),
+                        "external SDK Clipboard custom data object payload");
+                    AssertEqual(
+                        true,
+                        currentDataObject.TryGetData("ExternalSdkCustomFormat", autoConvert: false, out string typedCustomPayload),
+                        "external SDK Clipboard typed custom data retrieval state");
+                    AssertEqual(
+                        "external SDK custom payload",
+                        typedCustomPayload,
+                        "external SDK Clipboard typed custom data retrieval");
+                    AssertEqual(true, Clipboard.IsCurrent(currentDataObject), "external SDK Clipboard SetDataObject current state");
+
+                    var fileDropList = new StringCollection
+                    {
+                        "/tmp/external-sdk-alpha.txt",
+                        "/tmp/external-sdk-beta.txt"
+                    };
+                    Clipboard.SetFileDropList(fileDropList);
+                    AssertEqual(true, Clipboard.ContainsFileDropList(), "external SDK Clipboard file-drop state");
+                    var roundTripFileDropList = Clipboard.GetFileDropList();
+                    AssertEqual(2, roundTripFileDropList.Count, "external SDK Clipboard file-drop count");
+                    AssertEqual("/tmp/external-sdk-alpha.txt", roundTripFileDropList[0], "external SDK Clipboard first file-drop item");
+                    AssertEqual("/tmp/external-sdk-beta.txt", roundTripFileDropList[1], "external SDK Clipboard second file-drop item");
+
                     Clipboard.Clear();
                     AssertEqual(false, Clipboard.ContainsText(), "external SDK Clipboard cleared text state");
+                    AssertEqual(false, Clipboard.ContainsFileDropList(), "external SDK Clipboard cleared file-drop state");
                     AssertEqual(string.Empty, Clipboard.GetText(), "external SDK Clipboard cleared text");
                 }
 

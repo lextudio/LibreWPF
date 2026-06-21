@@ -5926,6 +5926,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains(@"lib\$(TargetFramework)\PresentationFramework.dll", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains(@"ref\$(TargetFramework)\PresentationFramework.dll", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains(@"lib\$(TargetFramework)\PresentationFramework.Fluent.dll", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains("AddManagedWpfTransportPrivateWinFormsPayload", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains("$(PkgMicrosoft_Private_Winforms)", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains(@"lib\$(TargetFramework)\System.Private.Windows.Core.dll", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("Build the managed WPF assemblies for $(Configuration)|$(TargetFramework) before packing $(PackageName).", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("<IncludeAssembliesInArchNeutralPackage>true</IncludeAssembliesInArchNeutralPackage>", wpfTransportArchNeutralProject, StringComparison.Ordinal);
 
@@ -6602,6 +6605,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Clipboard.SetText(\"external SDK clipboard text\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Clipboard data object unicode text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Clipboard current data object", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Clipboard.SetDataObject(customDataObject, copy: true)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalSdkCustomFormat", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("currentDataObject.TryGetData(\"ExternalSdkCustomFormat\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Clipboard typed custom data retrieval", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Clipboard.SetFileDropList(fileDropList)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Clipboard.GetFileDropList()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Clipboard file-drop count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Clipboard cleared file-drop state", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Clipboard cleared text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"ExternalDataTriggeredTextStyle\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<DataTrigger Binding=\"{Binding IsExternalDataTriggerActive}\" Value=\"True\">", externalSdkHarnessProgram, StringComparison.Ordinal);

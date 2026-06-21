@@ -63,6 +63,7 @@
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\System.Windows.Primitives.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationFramework.Aero2.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationFramework.Fluent.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\System.Private.Windows.Core.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\WindowsBase.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\System.Xaml.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationCore.dll" />
@@ -79,6 +80,34 @@
     <Error
         Condition="!Exists('%(_RequiredManagedWpfTransportPayload.Identity)')"
         Text="The WPF transport package is missing required payload '%(_RequiredManagedWpfTransportPayload.Identity)'. Build the managed WPF assemblies for $(Configuration)|$(TargetFramework) before packing $(PackageName)." />
+  </Target>
+
+  <Target Name="AddManagedWpfTransportPrivateWinFormsPayload"
+          BeforeTargets="CreateContentFolder"
+          Condition="'$(IsPackable)' == 'true' And '$(CreateArchNeutralPackage)' == 'true' And '$(IncludeAssembliesInArchNeutralPackage)' == 'true' And $(PackageName.Contains('Microsoft.DotNet.Wpf.GitHub'))">
+    <PropertyGroup>
+      <_ManagedWpfTransportLibRoot>$(ArtifactsPackagingDir)$(NormalizedPackageName)\lib\$(TargetFramework)</_ManagedWpfTransportLibRoot>
+      <_PrivateWinFormsLibRoot>$(PkgMicrosoft_Private_Winforms)\lib\$(TargetFramework)</_PrivateWinFormsLibRoot>
+    </PropertyGroup>
+
+    <Error
+        Condition="'$(PkgMicrosoft_Private_Winforms)' == ''"
+        Text="Microsoft.Private.WinForms package path is unavailable while packing $(PackageName). Restore the package before creating the WPF transport package." />
+    <Error
+        Condition="!Exists('$(_PrivateWinFormsLibRoot)\System.Private.Windows.Core.dll')"
+        Text="Microsoft.Private.WinForms is missing '$(_PrivateWinFormsLibRoot)\System.Private.Windows.Core.dll', which is required by the WPF transport package." />
+
+    <ItemGroup>
+      <_ManagedWpfTransportPrivateWinFormsPayload Include="$(_PrivateWinFormsLibRoot)\System.Private.Windows.Core.dll" />
+      <_ManagedWpfTransportPrivateWinFormsPayload Include="$(_PrivateWinFormsLibRoot)\System.Private.Windows.Core.pdb"
+                                                  Condition="Exists('$(_PrivateWinFormsLibRoot)\System.Private.Windows.Core.pdb')" />
+    </ItemGroup>
+
+    <MakeDir Directories="$(_ManagedWpfTransportLibRoot)" />
+    <Copy
+        SourceFiles="@(_ManagedWpfTransportPrivateWinFormsPayload)"
+        DestinationFolder="$(_ManagedWpfTransportLibRoot)"
+        SkipUnchangedFiles="true" />
   </Target>
 
 </Project>

@@ -62,6 +62,7 @@ internal static class Program
         "System.Formats.Nrbf",
         "System.IO.Packaging",
         "System.Security.Cryptography.ProtectedData",
+        "System.Private.Windows.Core",
         "System.Windows.Extensions"
     ];
 

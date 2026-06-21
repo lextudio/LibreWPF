@@ -7,8 +7,11 @@ using Xunit;
 using ProGpuBlurEffect = ProGPU.Scene.BlurEffect;
 using ProGpuContainerVisual = ProGPU.Scene.ContainerVisual;
 using ProGpuDrawingVisual = ProGPU.Scene.DrawingVisual;
+using ProGpuTexture = ProGPU.Backend.GpuTexture;
 using ProGpuRetainedDrawingVisual = System.Windows.Media.ProGPU.Composition.ProGpuRetainedDrawingVisual;
 using ProGpuRenderCommandType = ProGPU.Scene.RenderCommandType;
+using WgpuTextureFormat = Silk.NET.WebGPU.TextureFormat;
+using WgpuTextureUsage = Silk.NET.WebGPU.TextureUsage;
 
 namespace ProGPU.Wpf.Tests;
 
@@ -111,6 +114,55 @@ public sealed class ProGpuWpfDrawingFrameTests
         using var sink = new ProGpuRetainedCompositionCommandSink(frame, context: null, viewport3DTextureCache: null);
         var retainedFrameRoot = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
         Assert.Equal(new Vector2(420, 840), retainedFrameRoot.Size);
+    }
+
+    [Fact]
+    public unsafe void HighDpiRetainedWpfLayerRendersAcrossPhysicalFramebuffer()
+    {
+        using var target = ProGpuWpfCompositionTarget.CreateHeadless(WgpuTextureFormat.Rgba8Unorm);
+        using var texture = new ProGpuTexture(
+            target.Context,
+            840,
+            1680,
+            WgpuTextureFormat.Rgba8Unorm,
+            WgpuTextureUsage.RenderAttachment | WgpuTextureUsage.CopySrc,
+            "WPF retained HiDPI framebuffer target");
+
+        var frame = target.BeginDrawingFrame(
+            pixelWidth: 840,
+            pixelHeight: 1680,
+            clearRetainedWpfVisualRoot: true,
+            logicalWidth: 420,
+            logicalHeight: 840,
+            dpiScaleX: 2.0,
+            dpiScaleY: 2.0);
+
+        using (var sink = new ProGpuRetainedCompositionCommandSink(
+                   frame,
+                   target.Context,
+                   target.Viewport3DTextureCache))
+        {
+            sink.DrawRectangle(
+                new SolidColorBrush(Color.FromRgb(0xF0, 0x20, 0x20)),
+                pen: null,
+                new Rect(0, 0, 420, 840));
+        }
+
+        target.Render(
+            logicalWidth: 420,
+            logicalHeight: 840,
+            pixelWidth: 840,
+            pixelHeight: 1680,
+            dpiScale: 2f,
+            texture.ViewPtr);
+
+        var pixels = texture.ReadPixels();
+        var lowerRight = ReadPixel(pixels, texture.Width, x: 780, y: 1560);
+
+        Assert.True(lowerRight.R >= 220, $"Expected retained WPF content to fill the physical framebuffer width, found {lowerRight}.");
+        Assert.True(lowerRight.G <= 50, $"Expected retained WPF content green channel to stay low, found {lowerRight}.");
+        Assert.True(lowerRight.B <= 50, $"Expected retained WPF content blue channel to stay low, found {lowerRight}.");
+        Assert.Equal(255, lowerRight.A);
     }
 
     [Fact]
@@ -942,4 +994,16 @@ public sealed class ProGpuWpfDrawingFrameTests
         Assert.Same(ownerVisual, target.Source);
         Assert.Same(ownerBranch, target.Visual);
     }
+
+    private static RgbaPixel ReadPixel(byte[] pixels, uint width, int x, int y)
+    {
+        var index = ((y * (int)width) + x) * 4;
+        return new RgbaPixel(
+            pixels[index + 0],
+            pixels[index + 1],
+            pixels[index + 2],
+            pixels[index + 3]);
+    }
+
+    private readonly record struct RgbaPixel(byte R, byte G, byte B, byte A);
 }

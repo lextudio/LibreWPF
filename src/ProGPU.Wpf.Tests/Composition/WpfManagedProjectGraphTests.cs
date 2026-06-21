@@ -256,8 +256,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PlatformServices.WindowDecorations.TryBeginDragMove(_window)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("public int Width => _clientWidth;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("public int Height => _clientHeight;", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("var logicalWidth = (uint)Math.Max(1, _clientWidth)", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("var logicalHeight = (uint)Math.Max(1, _clientHeight)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("ResolveCurrentRenderSurfaceGeometry()", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("ResolveRenderSurfaceGeometry(", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("var logicalWidth = (uint)Math.Max(1, clientWidth);", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("var logicalHeight = (uint)Math.Max(1, clientHeight);", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("var fallbackScale = NormalizeMonitorDpiScale(monitorDpiScale);", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("var scaledPixelWidth = (uint)Math.Max(1, (int)Math.Ceiling(logicalWidth * fallbackScale));", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("PlatformServices.Monitors.GetMonitors()", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var dpiScaleX = pixelWidth / (double)logicalWidth", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var dpiScaleY = pixelHeight / (double)logicalHeight", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_retainedWpfVisualRoot.Scale = new Vector3((float)DpiScaleX, (float)DpiScaleY, 1f)", proGpuDrawingFrame, StringComparison.Ordinal);

@@ -3,6 +3,7 @@ using System.Windows.Media;
 using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Composition;
 using System.Windows.Media.ProGPU.Platform;
+using Silk.NET.Maths;
 using Xunit;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
 using ProGpuDrawingContext = ProGPU.Scene.DrawingContext;
@@ -334,6 +335,42 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.True(drawHost.ShouldRenderFrame(frameState));
         Assert.True(wpfDrawHost.ShouldRenderFrame(frameState));
         Assert.True(renderHost.ShouldRenderFrame(frameState));
+    }
+
+    [Fact]
+    public void ResolveRenderSurfaceGeometryScalesLogicalFramebufferOnHighDpiMonitor()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 420,
+            clientHeight: 840,
+            framebufferSize: new Vector2D<int>(420, 840),
+            monitorDpiScale: 2.0);
+
+        Assert.Equal(420u, geometry.LogicalWidth);
+        Assert.Equal(840u, geometry.LogicalHeight);
+        Assert.Equal(840u, geometry.PixelWidth);
+        Assert.Equal(1680u, geometry.PixelHeight);
+        Assert.Equal(2.0, geometry.DpiScaleX);
+        Assert.Equal(2.0, geometry.DpiScaleY);
+        Assert.Equal(2.0, geometry.DpiScale);
+    }
+
+    [Fact]
+    public void ResolveRenderSurfaceGeometryKeepsReportedPhysicalFramebuffer()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 420,
+            clientHeight: 840,
+            framebufferSize: new Vector2D<int>(840, 1680),
+            monitorDpiScale: 2.0);
+
+        Assert.Equal(420u, geometry.LogicalWidth);
+        Assert.Equal(840u, geometry.LogicalHeight);
+        Assert.Equal(840u, geometry.PixelWidth);
+        Assert.Equal(1680u, geometry.PixelHeight);
+        Assert.Equal(2.0, geometry.DpiScaleX);
+        Assert.Equal(2.0, geometry.DpiScaleY);
+        Assert.Equal(2.0, geometry.DpiScale);
     }
 
     [Fact]

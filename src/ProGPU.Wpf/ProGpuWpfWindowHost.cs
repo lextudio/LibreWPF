@@ -41,6 +41,15 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private int _clientWidth;
     private int _clientHeight;
 
+    internal readonly record struct RenderSurfaceGeometry(
+        uint LogicalWidth,
+        uint LogicalHeight,
+        uint PixelWidth,
+        uint PixelHeight,
+        double DpiScaleX,
+        double DpiScaleY,
+        double DpiScale);
+
     public ProGpuWpfWindowHost(ProGpuWpfWindowOptions? options = null)
     {
         _options = options ?? new ProGpuWpfWindowOptions();
@@ -396,10 +405,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return;
         }
 
-        var framebufferSize = _window.FramebufferSize;
+        var geometry = ResolveCurrentRenderSurfaceGeometry();
         _target.Context.ConfigureSwapChain(
-            (uint)Math.Max(1, framebufferSize.X),
-            (uint)Math.Max(1, framebufferSize.Y));
+            geometry.PixelWidth,
+            geometry.PixelHeight);
         _target.SceneRootVisual.Invalidate();
         _target.RootVisual.Invalidate();
         WpfRenderScheduler.RequestRender();
@@ -427,15 +436,15 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 return;
             }
 
-            var framebufferSize = _window.FramebufferSize;
-            var pixelWidth = (uint)Math.Max(1, framebufferSize.X);
-            var pixelHeight = (uint)Math.Max(1, framebufferSize.Y);
-            var logicalWidth = (uint)Math.Max(1, _clientWidth);
-            var logicalHeight = (uint)Math.Max(1, _clientHeight);
-            var dpiScaleX = pixelWidth / (double)logicalWidth;
-            var dpiScaleY = pixelHeight / (double)logicalHeight;
-            var dpiScale = (dpiScaleX + dpiScaleY) / 2.0;
-            UpdatePortablePresentationSourceDpiScale(dpiScaleX, dpiScaleY);
+            var geometry = ResolveCurrentRenderSurfaceGeometry();
+            var pixelWidth = geometry.PixelWidth;
+            var pixelHeight = geometry.PixelHeight;
+            var logicalWidth = geometry.LogicalWidth;
+            var logicalHeight = geometry.LogicalHeight;
+            var dpiScaleX = geometry.DpiScaleX;
+            var dpiScaleY = geometry.DpiScaleY;
+            var dpiScale = geometry.DpiScale;
+            UpdatePortablePresentationSourceDpiScale(geometry.DpiScaleX, geometry.DpiScaleY);
             _target.DetectWpfSourceChanges();
             var frameState = CaptureFrameState(_target, pixelWidth, pixelHeight);
 
@@ -601,6 +610,98 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 _target.Context.Wgpu.TextureViewRelease(targetView);
             }
         }
+    }
+
+    internal static RenderSurfaceGeometry ResolveRenderSurfaceGeometry(
+        int clientWidth,
+        int clientHeight,
+        Vector2D<int> framebufferSize,
+        double monitorDpiScale)
+    {
+        var logicalWidth = (uint)Math.Max(1, clientWidth);
+        var logicalHeight = (uint)Math.Max(1, clientHeight);
+        var pixelWidth = (uint)Math.Max(1, framebufferSize.X);
+        var pixelHeight = (uint)Math.Max(1, framebufferSize.Y);
+        var fallbackScale = NormalizeMonitorDpiScale(monitorDpiScale);
+
+        if (fallbackScale > 1.0)
+        {
+            var scaledPixelWidth = (uint)Math.Max(1, (int)Math.Ceiling(logicalWidth * fallbackScale));
+            var scaledPixelHeight = (uint)Math.Max(1, (int)Math.Ceiling(logicalHeight * fallbackScale));
+
+            if (pixelWidth <= logicalWidth)
+            {
+                pixelWidth = Math.Max(pixelWidth, scaledPixelWidth);
+            }
+
+            if (pixelHeight <= logicalHeight)
+            {
+                pixelHeight = Math.Max(pixelHeight, scaledPixelHeight);
+            }
+        }
+
+        var dpiScaleX = pixelWidth / (double)logicalWidth;
+        var dpiScaleY = pixelHeight / (double)logicalHeight;
+
+        return new RenderSurfaceGeometry(
+            logicalWidth,
+            logicalHeight,
+            pixelWidth,
+            pixelHeight,
+            dpiScaleX,
+            dpiScaleY,
+            (dpiScaleX + dpiScaleY) / 2.0);
+    }
+
+    private RenderSurfaceGeometry ResolveCurrentRenderSurfaceGeometry()
+    {
+        if (_window == null)
+        {
+            return ResolveRenderSurfaceGeometry(
+                _clientWidth,
+                _clientHeight,
+                new Vector2D<int>(_clientWidth, _clientHeight),
+                1.0);
+        }
+
+        return ResolveRenderSurfaceGeometry(
+            _clientWidth,
+            _clientHeight,
+            _window.FramebufferSize,
+            ResolveCurrentMonitorDpiScale());
+    }
+
+    private double ResolveCurrentMonitorDpiScale()
+    {
+        try
+        {
+            var monitors = PlatformServices.Monitors.GetMonitors();
+            if (monitors.Count == 0)
+            {
+                return 1.0;
+            }
+
+            foreach (var monitor in monitors)
+            {
+                if (monitor.IsPrimary)
+                {
+                    return NormalizeMonitorDpiScale(monitor.DpiScale);
+                }
+            }
+
+            return NormalizeMonitorDpiScale(monitors[0].DpiScale);
+        }
+        catch
+        {
+            return 1.0;
+        }
+    }
+
+    private static double NormalizeMonitorDpiScale(double dpiScale)
+    {
+        return double.IsFinite(dpiScale) && dpiScale > 0.0 && dpiScale <= 8.0
+            ? dpiScale
+            : 1.0;
     }
 
     private void OnClosing()

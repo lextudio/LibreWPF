@@ -2341,11 +2341,81 @@ internal static class Program
         InvokeStaticVoid(clipboardType, "Flush");
         AssertEqual("portable SDK clipboard text", InvokeStatic(clipboardType, "GetText"), "portable Clipboard SDK flushed text");
 
+        ValidatePortableRichClipboardFormats(presentationCore);
         ValidatePortableJsonDataObject(presentationCore);
 
         InvokeStaticVoid(clipboardType, "Clear");
         AssertEqual(false, InvokeStatic(clipboardType, "ContainsText"), "portable Clipboard SDK cleared text state");
         AssertEqual(string.Empty, InvokeStatic(clipboardType, "GetText"), "portable Clipboard SDK cleared text");
+    }
+
+    private static void ValidatePortableRichClipboardFormats(Assembly presentationCore)
+    {
+        Type clipboardType = GetRequiredType(presentationCore, "System.Windows.Clipboard");
+        Type dataFormatsType = GetRequiredType(presentationCore, "System.Windows.DataFormats");
+
+        string fileOne = Path.Combine(Path.GetTempPath(), "progpu-sdk-file-drop-one.txt");
+        string fileTwo = Path.Combine(Path.GetTempPath(), "progpu-sdk-file-drop-two.txt");
+        var fileDropList = new System.Collections.Specialized.StringCollection
+        {
+            fileOne,
+            fileTwo
+        };
+        InvokeStaticVoid(clipboardType, "SetFileDropList", fileDropList);
+        AssertEqual(true, InvokeStatic(clipboardType, "ContainsFileDropList"), "portable Clipboard SDK file drop state");
+        object roundTripFileDropList = InvokeStatic(clipboardType, "GetFileDropList");
+        AssertEqual(2, GetCount(roundTripFileDropList), "portable Clipboard SDK file drop count");
+        AssertEqual(fileOne, GetCollectionItem(roundTripFileDropList, 0), "portable Clipboard SDK file drop first path");
+        AssertEqual(fileTwo, GetCollectionItem(roundTripFileDropList, 1), "portable Clipboard SDK file drop second path");
+
+        const string customFormat = "PortableSdkCustomClipboardFormat";
+        InvokeStaticVoid(clipboardType, "SetData", customFormat, "portable SDK custom data");
+        AssertEqual(true, InvokeStatic(clipboardType, "ContainsData", customFormat), "portable Clipboard SDK custom data state");
+        AssertEqual("portable SDK custom data", InvokeStatic(clipboardType, "GetData", customFormat), "portable Clipboard SDK custom data value");
+
+        byte[] audioBytes = [0x52, 0x49, 0x46, 0x46];
+        InvokeStaticVoid(clipboardType, "SetAudio", audioBytes);
+        AssertEqual(true, InvokeStatic(clipboardType, "ContainsAudio"), "portable Clipboard SDK audio state");
+        object audioStream = InvokeStatic(clipboardType, "GetAudioStream");
+        AssertAssignableTo(audioStream, "System.IO.Stream", "portable Clipboard SDK audio stream");
+        AssertEqual(4L, GetProperty(audioStream, "Length"), "portable Clipboard SDK audio stream length");
+
+        object bitmapSource = CreatePortableBitmapSource(presentationCore);
+        InvokeStaticVoid(clipboardType, "SetImage", bitmapSource);
+        AssertEqual(true, InvokeStatic(clipboardType, "ContainsImage"), "portable Clipboard SDK image state");
+        object roundTripImage = InvokeStatic(clipboardType, "GetImage");
+        AssertAssignableTo(roundTripImage, "System.Windows.Media.Imaging.BitmapSource", "portable Clipboard SDK image value");
+        AssertEqual(2, GetProperty(roundTripImage, "PixelWidth"), "portable Clipboard SDK image width");
+        AssertEqual(2, GetProperty(roundTripImage, "PixelHeight"), "portable Clipboard SDK image height");
+
+        string bitmapFormat = GetStaticField(dataFormatsType, "Bitmap").ToString() ?? string.Empty;
+        AssertEqual(true, InvokeStatic(clipboardType, "ContainsData", bitmapFormat), "portable Clipboard SDK image data format state");
+    }
+
+    private static object CreatePortableBitmapSource(Assembly presentationCore)
+    {
+        Type bitmapSourceType = GetRequiredType(presentationCore, "System.Windows.Media.Imaging.BitmapSource");
+        Type pixelFormatsType = GetRequiredType(presentationCore, "System.Windows.Media.PixelFormats");
+        object bgra32 = GetStaticProperty(pixelFormatsType, "Bgra32");
+        byte[] pixels =
+        [
+            0x20, 0x40, 0x80, 0xFF,
+            0x40, 0x80, 0x20, 0xFF,
+            0x80, 0x20, 0x40, 0xFF,
+            0xFF, 0xFF, 0xFF, 0xFF
+        ];
+
+        return InvokeStatic(
+            bitmapSourceType,
+            "Create",
+            2,
+            2,
+            96.0,
+            96.0,
+            bgra32,
+            null,
+            pixels,
+            8);
     }
 
     private static void ValidatePortableJsonDataObject(Assembly presentationCore)

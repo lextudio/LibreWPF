@@ -898,6 +898,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePortableClipboard(presentationCore)", sdkRuntimeHarness, StringComparison.Ordinal);
         Assert.Contains("portable Clipboard SDK data object unicode text", sdkRuntimeHarness, StringComparison.Ordinal);
         Assert.Contains("portable Clipboard SDK current data object", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableRichClipboardFormats(presentationCore)", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("portable Clipboard SDK file drop state", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("portable Clipboard SDK custom data state", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("portable Clipboard SDK audio state", sdkRuntimeHarness, StringComparison.Ordinal);
+        Assert.Contains("portable Clipboard SDK image data format state", sdkRuntimeHarness, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableJsonDataObject(presentationCore)", sdkRuntimeHarness, StringComparison.Ordinal);
         Assert.Contains("PortableClipboardJsonPayload", sdkRuntimeHarness, StringComparison.Ordinal);
         Assert.Contains("portable Clipboard SDK JSON DataObject typed retrieval state", sdkRuntimeHarness, StringComparison.Ordinal);

@@ -6027,6 +6027,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Trigger.EnterActions", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Trigger.ExitActions", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ExternalPropertyTriggerActionText\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"ExternalMultiTriggerActionTextStyle\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("MultiTrigger.EnterActions", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("MultiTrigger.ExitActions", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalMultiTriggerActionText\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"ExternalDataTriggerActionTextStyle\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DataTrigger.EnterActions", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DataTrigger.ExitActions", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6048,6 +6052,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateLoadedStoryboardAfterRun(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePropertyTriggerActionsMetadata(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePropertyTriggerActionsAfterRun(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateMultiTriggerActionsMetadata(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateMultiTriggerActionsAfterRun(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateDataTriggerActionsMetadata(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateDataTriggerActionsAfterRun(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMultiDataTriggerActionsMetadata(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6062,10 +6068,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Storyboard.GetTargetProperty(doubleAnimation)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK loaded storyboard target property path", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Application.Run loaded storyboard opacity", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertTriggerActionStoryboard(multiTrigger.EnterActions[0], 0.58, \"external SDK multi trigger action EnterActions\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertTriggerActionStoryboard(multiTrigger.ExitActions[0], 0.88, \"external SDK multi trigger action ExitActions\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertTriggerActionStoryboard(dataTrigger.EnterActions[0], 0.31, \"external SDK data trigger action EnterActions\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertTriggerActionStoryboard(dataTrigger.ExitActions[0], 0.82, \"external SDK data trigger action ExitActions\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertTriggerActionStoryboard(multiDataTrigger.EnterActions[0], 0.24, \"external SDK multi data trigger action EnterActions\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertTriggerActionStoryboard(multiDataTrigger.ExitActions[0], 0.76, \"external SDK multi data trigger action ExitActions\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Application.Run multi trigger action partial-condition opacity", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Application.Run multi trigger EnterActions opacity", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Application.Run multi trigger ExitActions opacity", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Application.Run multi trigger re-enter opacity", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Application.Run data trigger EnterActions opacity", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Application.Run data trigger ExitActions opacity", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Application.Run multi data trigger action partial-condition opacity", externalSdkHarnessProgram, StringComparison.Ordinal);

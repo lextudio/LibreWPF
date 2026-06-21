@@ -647,6 +647,42 @@ internal static class Program
                         </Style.Triggers>
                     </Style>
                     <Style
+                        x:Key="ExternalMultiTriggerActionTextStyle"
+                        TargetType="{x:Type TextBlock}">
+                        <Setter Property="Text" Value="External multi trigger action target" />
+                        <Setter Property="Opacity" Value="0.88" />
+                        <Setter Property="IsEnabled" Value="False" />
+                        <Setter Property="Tag" Value="Disarmed" />
+                        <Style.Triggers>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsEnabled" Value="True" />
+                                    <Condition Property="Tag" Value="Armed" />
+                                </MultiTrigger.Conditions>
+                                <MultiTrigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation
+                                                Storyboard.TargetProperty="Opacity"
+                                                To="0.58"
+                                                Duration="0:0:0" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </MultiTrigger.EnterActions>
+                                <MultiTrigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation
+                                                Storyboard.TargetProperty="Opacity"
+                                                To="0.88"
+                                                Duration="0:0:0" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </MultiTrigger.ExitActions>
+                            </MultiTrigger>
+                        </Style.Triggers>
+                    </Style>
+                    <Style
                         x:Key="ExternalDataTriggerActionTextStyle"
                         TargetType="{x:Type TextBlock}">
                         <Setter Property="Text" Value="External data trigger action target" />
@@ -777,6 +813,9 @@ internal static class Program
                     <TextBlock
                         x:Name="ExternalPropertyTriggerActionText"
                         Style="{StaticResource ExternalPropertyTriggerActionTextStyle}" />
+                    <TextBlock
+                        x:Name="ExternalMultiTriggerActionText"
+                        Style="{StaticResource ExternalMultiTriggerActionTextStyle}" />
                     <TextBlock
                         x:Name="ExternalDataTriggerText"
                         Style="{StaticResource ExternalDataTriggeredTextStyle}" />
@@ -2044,6 +2083,7 @@ internal static class Program
                     ValidateStylesAndTemplates(window);
                     ValidateLoadedStoryboardMetadata(window);
                     ValidatePropertyTriggerActionsMetadata(window);
+                    ValidateMultiTriggerActionsMetadata(window);
                     ValidateDataTriggerActionsMetadata(window);
                     ValidateMultiDataTriggerActionsMetadata(window);
                     ValidateMenusAndChoiceControls(window);
@@ -2190,6 +2230,7 @@ internal static class Program
                     AssertBrushColor(startupResourceText.Foreground, "#FF176283", "external SDK startup dynamic resource foreground");
                     ValidateLoadedStoryboardAfterRun(window);
                     ValidatePropertyTriggerActionsAfterRun(window);
+                    ValidateMultiTriggerActionsAfterRun(window);
                     ValidateDataTriggerActionsAfterRun(window);
                     ValidateMultiDataTriggerActionsAfterRun(window);
                     ValidateVisualStateTransitions(window);
@@ -3969,6 +4010,67 @@ internal static class Program
                     actionText.IsEnabled = false;
                     DrainDispatcher();
                     AssertClose(0.91, actionText.Opacity, "external SDK Application.Run property trigger ExitActions opacity");
+                }
+
+                private static void ValidateMultiTriggerActionsMetadata(MainWindow window)
+                {
+                    var actionStyle = RequireType<Style>(
+                        window.FindResource("ExternalMultiTriggerActionTextStyle"),
+                        "external SDK multi trigger action style");
+                    AssertEqual(typeof(TextBlock), actionStyle.TargetType, "external SDK multi trigger action style target type");
+                    AssertEqual(4, actionStyle.Setters.Count, "external SDK multi trigger action style setter count");
+                    AssertEqual(1, actionStyle.Triggers.Count, "external SDK multi trigger action style trigger count");
+                    var multiTrigger = RequireType<MultiTrigger>(
+                        actionStyle.Triggers[0],
+                        "external SDK multi trigger action trigger");
+                    AssertEqual(2, multiTrigger.Conditions.Count, "external SDK multi trigger action condition count");
+                    AssertEqual(UIElement.IsEnabledProperty, multiTrigger.Conditions[0].Property, "external SDK multi trigger action first property");
+                    AssertEqual("True", multiTrigger.Conditions[0].Value?.ToString(), "external SDK multi trigger action first value");
+                    AssertEqual(FrameworkElement.TagProperty, multiTrigger.Conditions[1].Property, "external SDK multi trigger action second property");
+                    AssertEqual("Armed", multiTrigger.Conditions[1].Value?.ToString(), "external SDK multi trigger action second value");
+                    AssertEqual(1, multiTrigger.EnterActions.Count, "external SDK multi trigger action EnterActions count");
+                    AssertTriggerActionStoryboard(multiTrigger.EnterActions[0], 0.58, "external SDK multi trigger action EnterActions");
+                    AssertEqual(1, multiTrigger.ExitActions.Count, "external SDK multi trigger action ExitActions count");
+                    AssertTriggerActionStoryboard(multiTrigger.ExitActions[0], 0.88, "external SDK multi trigger action ExitActions");
+
+                    var actionText = RequireType<TextBlock>(
+                        window.FindName("ExternalMultiTriggerActionText"),
+                        "external SDK multi trigger action text");
+                    AssertEqual(actionStyle, actionText.Style, "external SDK multi trigger action text style");
+                    AssertEqual("External multi trigger action target", actionText.Text, "external SDK multi trigger action text content");
+                    AssertEqual(false, actionText.IsEnabled, "external SDK multi trigger action initial IsEnabled");
+                    AssertEqual("Disarmed", actionText.Tag?.ToString() ?? string.Empty, "external SDK multi trigger action initial Tag");
+                    AssertClose(0.88, actionText.Opacity, "external SDK multi trigger action initial opacity");
+                }
+
+                private static void ValidateMultiTriggerActionsAfterRun(MainWindow window)
+                {
+                    DrainDispatcher();
+
+                    var actionText = RequireType<TextBlock>(
+                        window.FindName("ExternalMultiTriggerActionText"),
+                        "external SDK Application.Run multi trigger action text");
+                    AssertClose(0.88, actionText.Opacity, "external SDK Application.Run multi trigger action initial opacity");
+
+                    actionText.IsEnabled = true;
+                    DrainDispatcher();
+                    AssertClose(0.88, actionText.Opacity, "external SDK Application.Run multi trigger action partial-condition opacity");
+
+                    actionText.Tag = "Armed";
+                    DrainDispatcher();
+                    AssertClose(0.58, actionText.Opacity, "external SDK Application.Run multi trigger EnterActions opacity");
+
+                    actionText.IsEnabled = false;
+                    DrainDispatcher();
+                    AssertClose(0.88, actionText.Opacity, "external SDK Application.Run multi trigger ExitActions opacity");
+
+                    actionText.IsEnabled = true;
+                    DrainDispatcher();
+                    AssertClose(0.58, actionText.Opacity, "external SDK Application.Run multi trigger re-enter opacity");
+
+                    actionText.Tag = "Disarmed";
+                    DrainDispatcher();
+                    AssertClose(0.88, actionText.Opacity, "external SDK Application.Run multi trigger final ExitActions opacity");
                 }
 
                 private static void ValidateDataTriggerActionsMetadata(MainWindow window)

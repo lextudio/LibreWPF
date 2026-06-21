@@ -6381,6 +6381,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Text=\"{Binding BindingGroupFirstName, UpdateSourceTrigger=Explicit}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ExternalBindingGroupLastBox\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding BindingGroupLastName, UpdateSourceTrigger=Explicit}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalRoutedEventControl\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalBubble=\"OnExternalCustomBubble\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalTunnel=\"OnExternalCustomTunnel\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RegisterRoutedEvent(", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RoutingStrategy.Bubble", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RoutingStrategy.Tunnel", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("TextChanged=\"OnExternalValidationTextChanged\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("InputLanguageManager.InputLanguage=\"en-US\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("InputMethod.PreferredImeState=\"On\"", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6398,6 +6404,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateBindings(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateInputManagers(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateBindingGroup(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateRoutedEvents(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("BindingOperations.GetMultiBindingExpression", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("BindingOperations.GetPriorityBindingExpression", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ancestorBindingExpression.ParentBinding.RelativeSource", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6417,6 +6424,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("bindingGroup.CommitEdit()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BindingGroup rejected commit", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BindingGroup accepted first source", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("control.RaiseExternalBubble()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK custom bubble AddHandler panel sender", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("control.RaiseExternalTunnel()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK custom tunnel AddHandler panel sender", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("validationTextBox.Select(9, 7)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("validationTextBox.SelectedText = \"selection\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("validationTextBox.AppendText(\" appended\")", externalSdkHarnessProgram, StringComparison.Ordinal);

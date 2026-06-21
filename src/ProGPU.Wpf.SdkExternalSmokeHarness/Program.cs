@@ -1292,6 +1292,13 @@ internal static class Program
                             x:Name="ExternalBindingGroupLastBox"
                             Text="{Binding BindingGroupLastName, UpdateSourceTrigger=Explicit}" />
                     </StackPanel>
+                    <StackPanel x:Name="ExternalRoutedEventPanel">
+                        <local:ExternalRoutedEventControl
+                            x:Name="ExternalRoutedEventControl"
+                            Content="External routed event source"
+                            ExternalBubble="OnExternalCustomBubble"
+                            ExternalTunnel="OnExternalCustomTunnel" />
+                    </StackPanel>
                     <Button
                         x:Name="ExternalCommandButton"
                         Command="{x:Static local:MainWindow.ExternalCommand}"
@@ -1611,6 +1618,22 @@ internal static class Program
 
                 public string? LastExternalStyleEventRoutedEventName { get; private set; }
 
+                public int ExternalBubbleRoutedEventCount { get; private set; }
+
+                public string? LastExternalBubbleSenderName { get; private set; }
+
+                public string? LastExternalBubbleOriginalSourceName { get; private set; }
+
+                public string? LastExternalBubbleRoutedEventName { get; private set; }
+
+                public int ExternalTunnelRoutedEventCount { get; private set; }
+
+                public string? LastExternalTunnelSenderName { get; private set; }
+
+                public string? LastExternalTunnelOriginalSourceName { get; private set; }
+
+                public string? LastExternalTunnelRoutedEventName { get; private set; }
+
                 public int ExternalLoadedStoryboardTextLoadedCount { get; private set; }
 
                 public string? LastExternalLoadedStoryboardTextRoutedEventName { get; private set; }
@@ -1820,6 +1843,22 @@ internal static class Program
                     LastExternalStyleEventRoutedEventName = e.RoutedEvent?.Name;
                 }
 
+                private void OnExternalCustomBubble(object sender, RoutedEventArgs e)
+                {
+                    ExternalBubbleRoutedEventCount++;
+                    LastExternalBubbleSenderName = (sender as FrameworkElement)?.Name;
+                    LastExternalBubbleOriginalSourceName = (e.OriginalSource as FrameworkElement)?.Name;
+                    LastExternalBubbleRoutedEventName = e.RoutedEvent?.Name;
+                }
+
+                private void OnExternalCustomTunnel(object sender, RoutedEventArgs e)
+                {
+                    ExternalTunnelRoutedEventCount++;
+                    LastExternalTunnelSenderName = (sender as FrameworkElement)?.Name;
+                    LastExternalTunnelOriginalSourceName = (e.OriginalSource as FrameworkElement)?.Name;
+                    LastExternalTunnelRoutedEventName = e.RoutedEvent?.Name;
+                }
+
                 private void OnExternalLoadedStoryboardTextLoaded(object sender, RoutedEventArgs e)
                 {
                     ExternalLoadedStoryboardTextLoadedCount++;
@@ -1863,6 +1902,43 @@ internal static class Program
                 public static string CreateSummary(string prefix, int value)
                 {
                     return $"{prefix}:{value}";
+                }
+            }
+
+            public sealed class ExternalRoutedEventControl : Button
+            {
+                public static readonly RoutedEvent ExternalBubbleEvent = EventManager.RegisterRoutedEvent(
+                    nameof(ExternalBubble),
+                    RoutingStrategy.Bubble,
+                    typeof(RoutedEventHandler),
+                    typeof(ExternalRoutedEventControl));
+
+                public static readonly RoutedEvent ExternalTunnelEvent = EventManager.RegisterRoutedEvent(
+                    nameof(ExternalTunnel),
+                    RoutingStrategy.Tunnel,
+                    typeof(RoutedEventHandler),
+                    typeof(ExternalRoutedEventControl));
+
+                public event RoutedEventHandler ExternalBubble
+                {
+                    add => AddHandler(ExternalBubbleEvent, value);
+                    remove => RemoveHandler(ExternalBubbleEvent, value);
+                }
+
+                public event RoutedEventHandler ExternalTunnel
+                {
+                    add => AddHandler(ExternalTunnelEvent, value);
+                    remove => RemoveHandler(ExternalTunnelEvent, value);
+                }
+
+                public void RaiseExternalBubble()
+                {
+                    RaiseEvent(new RoutedEventArgs(ExternalBubbleEvent, this));
+                }
+
+                public void RaiseExternalTunnel()
+                {
+                    RaiseEvent(new RoutedEventArgs(ExternalTunnelEvent, this));
                 }
             }
 
@@ -2097,6 +2173,7 @@ internal static class Program
                     ValidateBindings(window);
                     ValidateInputManagers(window);
                     ValidateBindingGroup(window);
+                    ValidateRoutedEvents(window);
                     ValidateStylesAndTemplates(window);
                     ValidateLoadedStoryboardMetadata(window);
                     ValidatePropertyTriggerActionsMetadata(window);
@@ -4008,6 +4085,55 @@ internal static class Program
                     AssertEqual("group: Grace", window.BindingGroupFirstName, "external SDK BindingGroup accepted first source");
                     AssertEqual("group: Hopper", window.BindingGroupLastName, "external SDK BindingGroup accepted last source");
                     AssertEqual(false, Validation.GetHasError(panel), "external SDK BindingGroup accepted error state");
+                }
+
+                private static void ValidateRoutedEvents(MainWindow window)
+                {
+                    var panel = RequireType<StackPanel>(
+                        window.FindName("ExternalRoutedEventPanel"),
+                        "external SDK routed event panel");
+                    var control = RequireType<ExternalRoutedEventControl>(
+                        window.FindName("ExternalRoutedEventControl"),
+                        "external SDK custom routed event control");
+
+                    AssertEqual("ExternalBubble", ExternalRoutedEventControl.ExternalBubbleEvent.Name, "external SDK custom bubble routed event name");
+                    AssertEqual(RoutingStrategy.Bubble, ExternalRoutedEventControl.ExternalBubbleEvent.RoutingStrategy, "external SDK custom bubble routing strategy");
+                    AssertEqual("ExternalTunnel", ExternalRoutedEventControl.ExternalTunnelEvent.Name, "external SDK custom tunnel routed event name");
+                    AssertEqual(RoutingStrategy.Tunnel, ExternalRoutedEventControl.ExternalTunnelEvent.RoutingStrategy, "external SDK custom tunnel routing strategy");
+
+                    var bubblePanelSenderName = string.Empty;
+                    var bubblePanelOriginalSourceName = string.Empty;
+                    panel.AddHandler(
+                        ExternalRoutedEventControl.ExternalBubbleEvent,
+                        new RoutedEventHandler((sender, e) =>
+                        {
+                            bubblePanelSenderName = (sender as FrameworkElement)?.Name ?? string.Empty;
+                            bubblePanelOriginalSourceName = (e.OriginalSource as FrameworkElement)?.Name ?? string.Empty;
+                        }));
+                    control.RaiseExternalBubble();
+                    AssertEqual(1, window.ExternalBubbleRoutedEventCount, "external SDK custom bubble routed event XAML handler count");
+                    AssertEqual("ExternalRoutedEventControl", window.LastExternalBubbleSenderName, "external SDK custom bubble source handler sender");
+                    AssertEqual("ExternalRoutedEventControl", window.LastExternalBubbleOriginalSourceName, "external SDK custom bubble original source");
+                    AssertEqual("ExternalBubble", window.LastExternalBubbleRoutedEventName, "external SDK custom bubble routed event name from args");
+                    AssertEqual("ExternalRoutedEventPanel", bubblePanelSenderName, "external SDK custom bubble AddHandler panel sender");
+                    AssertEqual("ExternalRoutedEventControl", bubblePanelOriginalSourceName, "external SDK custom bubble AddHandler original source");
+
+                    var tunnelPanelSenderName = string.Empty;
+                    var tunnelPanelOriginalSourceName = string.Empty;
+                    panel.AddHandler(
+                        ExternalRoutedEventControl.ExternalTunnelEvent,
+                        new RoutedEventHandler((sender, e) =>
+                        {
+                            tunnelPanelSenderName = (sender as FrameworkElement)?.Name ?? string.Empty;
+                            tunnelPanelOriginalSourceName = (e.OriginalSource as FrameworkElement)?.Name ?? string.Empty;
+                        }));
+                    control.RaiseExternalTunnel();
+                    AssertEqual(1, window.ExternalTunnelRoutedEventCount, "external SDK custom tunnel routed event XAML handler count");
+                    AssertEqual("ExternalRoutedEventControl", window.LastExternalTunnelSenderName, "external SDK custom tunnel source handler sender");
+                    AssertEqual("ExternalRoutedEventControl", window.LastExternalTunnelOriginalSourceName, "external SDK custom tunnel original source");
+                    AssertEqual("ExternalTunnel", window.LastExternalTunnelRoutedEventName, "external SDK custom tunnel routed event name from args");
+                    AssertEqual("ExternalRoutedEventPanel", tunnelPanelSenderName, "external SDK custom tunnel AddHandler panel sender");
+                    AssertEqual("ExternalRoutedEventControl", tunnelPanelOriginalSourceName, "external SDK custom tunnel AddHandler original source");
                 }
 
                 private static void ValidateVisualStateTransitions(MainWindow window)

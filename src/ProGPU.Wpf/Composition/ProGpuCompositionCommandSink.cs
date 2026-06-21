@@ -20,12 +20,10 @@ using MediaPenLineCap = System.Windows.Media.PenLineCap;
 using MediaTransform = System.Windows.Media.Transform;
 using VectorArcSegment = ProGPU.Vector.ArcSegment;
 using VectorCubicBezierSegment = ProGPU.Vector.CubicBezierSegment;
-using VectorDashPattern = ProGPU.Vector.DashPattern;
 using VectorLineSegment = ProGPU.Vector.LineSegment;
 using VectorPen = ProGPU.Vector.Pen;
 using VectorPathFigure = ProGPU.Vector.PathFigure;
 using VectorPathGeometry = ProGPU.Vector.PathGeometry;
-using VectorPrimitivePathGeometry = ProGPU.Vector.PrimitivePathGeometry;
 using VectorQuadraticBezierSegment = ProGPU.Vector.QuadraticBezierSegment;
 using VectorBrush = ProGPU.Vector.Brush;
 using VectorFillRule = ProGPU.Vector.FillRule;
@@ -1073,556 +1071,6 @@ public sealed class ProGpuCompositionCommandSink :
         return new WpfReplayRect(minX, minY, Math.Max(0, maxX - minX), Math.Max(0, maxY - minY));
     }
 
-    private bool TryDrawDashedRectangle(VectorPen nativePen, ProGpuWpfPen pen, Rect rectangle)
-    {
-        if (rectangle.Width <= TransformEpsilon || rectangle.Height <= TransformEpsilon)
-        {
-            return false;
-        }
-
-        return TryDrawDashedPolyline(
-            nativePen,
-            pen,
-            new[]
-            {
-                new Point(rectangle.X, rectangle.Y),
-                new Point(rectangle.X + rectangle.Width, rectangle.Y),
-                new Point(rectangle.X + rectangle.Width, rectangle.Y + rectangle.Height),
-                new Point(rectangle.X, rectangle.Y + rectangle.Height),
-                new Point(rectangle.X, rectangle.Y)
-            });
-    }
-
-    private bool TryDrawDashedRoundedRectangle(
-        VectorPen nativePen,
-        ProGpuWpfPen pen,
-        Rect rectangle,
-        double radiusX,
-        double radiusY)
-    {
-        if (rectangle.Width <= TransformEpsilon || rectangle.Height <= TransformEpsilon)
-        {
-            return false;
-        }
-
-        radiusX = Math.Min(Math.Abs(radiusX), rectangle.Width / 2);
-        radiusY = Math.Min(Math.Abs(radiusY), rectangle.Height / 2);
-        if (radiusX <= TransformEpsilon || radiusY <= TransformEpsilon)
-        {
-            return TryDrawDashedRectangle(nativePen, pen, rectangle);
-        }
-
-        return TryDrawDashedPath(
-            nativePen,
-            pen,
-            VectorPrimitivePathGeometry.CreateRoundedRectangle(
-                (float)rectangle.X,
-                (float)rectangle.Y,
-                (float)rectangle.Width,
-                (float)rectangle.Height,
-                (float)radiusX,
-                (float)radiusY));
-    }
-
-    private bool TryDrawDashedEllipse(
-        VectorPen nativePen,
-        ProGpuWpfPen pen,
-        Point center,
-        double radiusX,
-        double radiusY)
-    {
-        if (radiusX <= TransformEpsilon || radiusY <= TransformEpsilon)
-        {
-            return false;
-        }
-
-        return TryDrawDashedPath(
-            nativePen,
-            pen,
-            VectorPrimitivePathGeometry.CreateEllipse(
-                new Vector2((float)center.X, (float)center.Y),
-                (float)radiusX,
-                (float)radiusY));
-    }
-
-    private bool TryDrawDashedPath(VectorPen nativePen, ProGpuWpfPen pen, VectorPathGeometry path)
-    {
-        return TryDrawDashedPath(nativePen, pen, path, depth: 0);
-    }
-
-    private bool TryDrawDashedPath(VectorPen nativePen, ProGpuWpfPen pen, VectorPathGeometry path, int depth)
-    {
-        if (path.IsCombined)
-        {
-            if (depth > 32)
-            {
-                return false;
-            }
-
-            if (TryResolveCombinedPathForDashing(path, out var resolvedPath)
-                && !resolvedPath.IsCombined)
-            {
-                if (resolvedPath.Figures.Count == 0)
-                {
-                    return true;
-                }
-
-                return TryDrawDashedPath(nativePen, pen, resolvedPath, depth + 1);
-            }
-
-            UnsupportedStateCount++;
-            var combinedEmitted = false;
-            if (path.PathA != null)
-            {
-                combinedEmitted |= TryDrawDashedPath(nativePen, pen, path.PathA, depth + 1);
-            }
-
-            if (path.PathB != null)
-            {
-                combinedEmitted |= TryDrawDashedPath(nativePen, pen, path.PathB, depth + 1);
-            }
-
-            return combinedEmitted;
-        }
-
-        var handled = false;
-        foreach (var figure in path.Figures)
-        {
-            handled |= TryDrawDashedPathFigure(nativePen, pen, figure);
-        }
-
-        return handled;
-    }
-
-    private bool TryResolveCombinedPathForDashing(
-        VectorPathGeometry path,
-        out VectorPathGeometry resolvedPath)
-    {
-        if (!path.IsCombined)
-        {
-            resolvedPath = path;
-            return true;
-        }
-
-        if (_pathOperationResolver != null)
-        {
-            var resolved = _pathOperationResolver(path);
-            if (resolved == null)
-            {
-                resolvedPath = new VectorPathGeometry();
-                return false;
-            }
-
-            resolvedPath = resolved;
-            return true;
-        }
-
-        if (_context == null)
-        {
-            resolvedPath = new VectorPathGeometry();
-            return false;
-        }
-
-        try
-        {
-            return TryResolveCombinedPathWithProGpuSolver(path, out resolvedPath);
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or TimeoutException)
-        {
-            resolvedPath = new VectorPathGeometry();
-            return false;
-        }
-    }
-
-    private static bool TryResolveCombinedPathWithProGpuSolver(
-        VectorPathGeometry path,
-        out VectorPathGeometry resolvedPath,
-        int depth = 0)
-    {
-        if (depth > 32)
-        {
-            resolvedPath = new VectorPathGeometry();
-            return false;
-        }
-
-        if (!path.IsCombined)
-        {
-            resolvedPath = path;
-            return true;
-        }
-
-        if (path.PathA == null || path.PathB == null)
-        {
-            resolvedPath = new VectorPathGeometry();
-            return false;
-        }
-
-        if (!TryResolveCombinedPathWithProGpuSolver(path.PathA, out var pathA, depth + 1)
-            || !TryResolveCombinedPathWithProGpuSolver(path.PathB, out var pathB, depth + 1))
-        {
-            resolvedPath = new VectorPathGeometry();
-            return false;
-        }
-
-        resolvedPath = global::ProGPU.Vector.PathOpGeometrySolver.Combine(pathA, pathB, path.Op);
-        return true;
-    }
-
-    private bool TryDrawDashedPathFigure(VectorPen nativePen, ProGpuWpfPen pen, VectorPathFigure figure)
-    {
-        if (!TryInitializeDashPattern(pen, out var pattern, out var patternIndex, out var distanceInPattern))
-        {
-            return false;
-        }
-
-        var handled = false;
-        var current = figure.StartPoint;
-
-        foreach (var segment in figure.Segments)
-        {
-            switch (segment)
-            {
-                case VectorLineSegment line:
-                    handled |= TryDrawDashedLineSegment(
-                        nativePen,
-                        pen,
-                        current,
-                        line.Point,
-                        pattern,
-                        ref patternIndex,
-                        ref distanceInPattern);
-                    current = line.Point;
-                    break;
-
-                case VectorQuadraticBezierSegment quadratic:
-                    handled |= TryDrawDashedQuadraticBezierSegment(
-                        nativePen,
-                        pen,
-                        current,
-                        quadratic,
-                        pattern,
-                        ref patternIndex,
-                        ref distanceInPattern);
-                    current = quadratic.Point;
-                    break;
-
-                case VectorCubicBezierSegment cubic:
-                    handled |= TryDrawDashedCubicBezierSegment(
-                        nativePen,
-                        pen,
-                        current,
-                        cubic,
-                        pattern,
-                        ref patternIndex,
-                        ref distanceInPattern);
-                    current = cubic.Point;
-                    break;
-
-                case VectorArcSegment arc:
-                    handled |= TryDrawDashedArcSegment(
-                        nativePen,
-                        pen,
-                        current,
-                        arc,
-                        pattern,
-                        ref patternIndex,
-                        ref distanceInPattern);
-                    current = arc.Point;
-                    break;
-            }
-        }
-
-        if (figure.IsClosed && Vector2.DistanceSquared(current, figure.StartPoint) > TransformEpsilon * TransformEpsilon)
-        {
-            handled |= TryDrawDashedLineSegment(
-                nativePen,
-                pen,
-                current,
-                figure.StartPoint,
-                pattern,
-                ref patternIndex,
-                ref distanceInPattern);
-        }
-
-        return handled;
-    }
-
-    private static Point ToPoint(Vector2 point)
-    {
-        return new Point(point.X, point.Y);
-    }
-
-    private bool TryDrawDashedPolyline(VectorPen nativePen, ProGpuWpfPen pen, IReadOnlyList<Point> points)
-    {
-        if (!TryInitializeDashPattern(pen, out var pattern, out var patternIndex, out var distanceInPattern))
-        {
-            return false;
-        }
-
-        if (points.Count < 2)
-        {
-            return false;
-        }
-
-        return TryDrawDashedPolylineSegments(
-            nativePen,
-            pen,
-            points,
-            pattern,
-            ref patternIndex,
-            ref distanceInPattern);
-    }
-
-    private bool TryDrawDashedPolylineSegments(
-        VectorPen nativePen,
-        ProGpuWpfPen pen,
-        IReadOnlyList<Point> points,
-        VectorDashPattern pattern,
-        ref int patternIndex,
-        ref float distanceInPattern)
-    {
-        if (points.Count < 2)
-        {
-            return true;
-        }
-
-        for (var i = 0; i < points.Count - 1; i++)
-        {
-            TryDrawDashedLineSegment(
-                nativePen,
-                pen,
-                new Vector2((float)points[i].X, (float)points[i].Y),
-                new Vector2((float)points[i + 1].X, (float)points[i + 1].Y),
-                pattern,
-                ref patternIndex,
-                ref distanceInPattern);
-        }
-
-        return true;
-    }
-
-    private bool TryDrawDashedLineSegment(
-        VectorPen nativePen,
-        ProGpuWpfPen pen,
-        Vector2 start,
-        Vector2 end,
-        VectorDashPattern pattern,
-        ref int patternIndex,
-        ref float distanceInPattern)
-    {
-        if (!pattern.TryCreateLineSegments(
-                start,
-                end,
-                patternIndex,
-                distanceInPattern,
-                out var dashSegments,
-                out var finalPatternIndex,
-                out var finalDistanceInPattern))
-        {
-            return Vector2.DistanceSquared(start, end) <= TransformEpsilon * TransformEpsilon;
-        }
-
-        foreach (var dashSegment in dashSegments)
-        {
-            AddNativeLine(
-                nativePen,
-                new Point(dashSegment.Start.X, dashSegment.Start.Y),
-                new Point(dashSegment.End.X, dashSegment.End.Y),
-                pen.DashCap,
-                pen.DashCap);
-        }
-
-        patternIndex = finalPatternIndex;
-        distanceInPattern = finalDistanceInPattern;
-        return true;
-    }
-
-    private bool TryDrawDashedQuadraticBezierSegment(
-        VectorPen nativePen,
-        ProGpuWpfPen pen,
-        Vector2 start,
-        VectorQuadraticBezierSegment segment,
-        VectorDashPattern pattern,
-        ref int patternIndex,
-        ref float distanceInPattern)
-    {
-        if (!global::ProGPU.Vector.BezierSegmentGeometry.TryCreateDashedQuadraticBezierSegments(
-                start,
-                segment,
-                pattern.Intervals,
-                patternIndex,
-                distanceInPattern,
-                out var dashSegments,
-                out var finalPatternIndex,
-                out var finalDistanceInPattern))
-        {
-            return TryDrawDashedLineSegment(
-                nativePen,
-                pen,
-                start,
-                segment.Point,
-                pattern,
-                ref patternIndex,
-                ref distanceInPattern);
-        }
-
-        foreach (var dashSegment in dashSegments)
-        {
-            AddNativeQuadraticBezierDash(nativePen, pen.DashCap, dashSegment.Start, dashSegment.Segment);
-        }
-
-        patternIndex = finalPatternIndex;
-        distanceInPattern = finalDistanceInPattern;
-        return true;
-    }
-
-    private bool TryDrawDashedCubicBezierSegment(
-        VectorPen nativePen,
-        ProGpuWpfPen pen,
-        Vector2 start,
-        VectorCubicBezierSegment segment,
-        VectorDashPattern pattern,
-        ref int patternIndex,
-        ref float distanceInPattern)
-    {
-        if (!global::ProGPU.Vector.BezierSegmentGeometry.TryCreateDashedCubicBezierSegments(
-                start,
-                segment,
-                pattern.Intervals,
-                patternIndex,
-                distanceInPattern,
-                out var dashSegments,
-                out var finalPatternIndex,
-                out var finalDistanceInPattern))
-        {
-            return TryDrawDashedLineSegment(
-                nativePen,
-                pen,
-                start,
-                segment.Point,
-                pattern,
-                ref patternIndex,
-                ref distanceInPattern);
-        }
-
-        foreach (var dashSegment in dashSegments)
-        {
-            AddNativeCubicBezierDash(nativePen, pen.DashCap, dashSegment.Start, dashSegment.Segment);
-        }
-
-        patternIndex = finalPatternIndex;
-        distanceInPattern = finalDistanceInPattern;
-        return true;
-    }
-
-    private bool TryDrawDashedArcSegment(
-        VectorPen nativePen,
-        ProGpuWpfPen pen,
-        Vector2 start,
-        VectorArcSegment arc,
-        VectorDashPattern pattern,
-        ref int patternIndex,
-        ref float distanceInPattern)
-    {
-        if (!global::ProGPU.Vector.ArcSegmentGeometry.TryCreateDashedArcSegments(
-                start,
-                arc,
-                pattern.Intervals,
-                patternIndex,
-                distanceInPattern,
-                out var dashSegments,
-                out var finalPatternIndex,
-                out var finalDistanceInPattern))
-        {
-            return TryDrawDashedLineSegment(
-                nativePen,
-                pen,
-                start,
-                arc.Point,
-                pattern,
-                ref patternIndex,
-                ref distanceInPattern);
-        }
-
-        foreach (var dashSegment in dashSegments)
-        {
-            AddNativeArcDash(nativePen, pen.DashCap, dashSegment.Start, dashSegment.Arc);
-        }
-
-        patternIndex = finalPatternIndex;
-        distanceInPattern = finalDistanceInPattern;
-        return true;
-    }
-
-    private static bool TryInitializeDashPattern(
-        ProGpuWpfPen pen,
-        out VectorDashPattern pattern,
-        out int patternIndex,
-        out float distanceInPattern)
-    {
-        patternIndex = 0;
-        distanceInPattern = 0;
-        if (!VectorDashPattern.TryCreate(pen.DashArray, pen.DashOffset, pen.Thickness, out pattern))
-        {
-            return false;
-        }
-
-        patternIndex = pattern.InitialIndex;
-        distanceInPattern = pattern.InitialDistance;
-        return true;
-    }
-
-    private void AddNativeArcDash(
-        VectorPen nativePen,
-        MediaPenLineCap dashCap,
-        Vector2 start,
-        VectorArcSegment arc)
-    {
-        var path = new VectorPathGeometry();
-        var figure = new VectorPathFigure(start)
-        {
-            IsFilled = false
-        };
-        figure.Segments.Add(arc);
-        path.Figures.Add(figure);
-
-        AddNativePath(null, WithLineCaps(nativePen, dashCap, dashCap), path);
-    }
-
-    private void AddNativeQuadraticBezierDash(
-        VectorPen nativePen,
-        MediaPenLineCap dashCap,
-        Vector2 start,
-        VectorQuadraticBezierSegment segment)
-    {
-        var path = new VectorPathGeometry();
-        var figure = new VectorPathFigure(start)
-        {
-            IsFilled = false
-        };
-        figure.Segments.Add(segment);
-        path.Figures.Add(figure);
-
-        AddNativePath(null, WithLineCaps(nativePen, dashCap, dashCap), path);
-    }
-
-    private void AddNativeCubicBezierDash(
-        VectorPen nativePen,
-        MediaPenLineCap dashCap,
-        Vector2 start,
-        VectorCubicBezierSegment segment)
-    {
-        var path = new VectorPathGeometry();
-        var figure = new VectorPathFigure(start)
-        {
-            IsFilled = false
-        };
-        figure.Segments.Add(segment);
-        path.Figures.Add(figure);
-
-        AddNativePath(null, WithLineCaps(nativePen, dashCap, dashCap), path);
-    }
-
     private Point SnapGuideline(Point point)
     {
         var x = TrySnapGuidelineX(point.X, out var snappedX) ? snappedX : point.X;
@@ -1880,16 +1328,57 @@ public sealed class ProGpuCompositionCommandSink :
         }
 
         var brush = ToNativeBrush(pen.Brush, bounds);
-        return brush == null
-            ? null
-            : new VectorPen(
-                brush,
-                (float)pen.Thickness,
-                ToNativeLineJoin(pen.LineJoin),
-                (float)Math.Max(1.0, pen.MiterLimit),
-                ToNativeLineCap(pen.StartLineCap),
-                ToNativeLineCap(pen.EndLineCap),
-                ToNativeLineCap(pen.DashCap));
+        if (brush == null)
+        {
+            return null;
+        }
+
+        var nativeDashArray = TryReadDashStyle(pen, out var dashArray, out var dashOffset)
+            ? dashArray
+            : null;
+        return new VectorPen(
+            brush,
+            (float)pen.Thickness,
+            ToNativeLineJoin(pen.LineJoin),
+            (float)Math.Max(1.0, pen.MiterLimit),
+            ToNativeLineCap(pen.StartLineCap),
+            ToNativeLineCap(pen.EndLineCap),
+            ToNativeLineCap(pen.DashCap),
+            nativeDashArray,
+            dashOffset);
+    }
+
+    private static bool TryReadDashStyle(MediaPen pen, out double[] dashArray, out double dashOffset)
+    {
+        dashArray = Array.Empty<double>();
+        dashOffset = 0.0;
+
+        if (pen.DashStyle?.Dashes is not { Length: > 0 } dashes)
+        {
+            return false;
+        }
+
+        var dashScale = pen.Thickness;
+        if (!double.IsFinite(dashScale) || dashScale < 0.0)
+        {
+            dashScale = 0.0;
+        }
+
+        var scaledDashes = new double[dashes.Length];
+        for (var i = 0; i < dashes.Length; i++)
+        {
+            var dash = dashes[i];
+            if (!double.IsFinite(dash) || dash < 0.0)
+            {
+                return false;
+            }
+
+            scaledDashes[i] = dash * dashScale;
+        }
+
+        dashArray = scaledDashes;
+        dashOffset = double.IsFinite(pen.DashStyle.Offset) ? pen.DashStyle.Offset : 0.0;
+        return true;
     }
 
     private static VectorPenLineJoin ToNativeLineJoin(PenLineJoin lineJoin)

@@ -161,7 +161,7 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
-    public void DecodeRectangleThroughProGpuSinkCountsUnrecognizedGradientColorInterpolationMode()
+    public void DecodeRectangleThroughProGpuSinkDefaultsUnrecognizedGradientColorInterpolationMode()
     {
         var brush = new FakeLinearGradientBrush(
             new FakePoint(0, 0),
@@ -184,8 +184,8 @@ public sealed class WpfReplayToProGpuCommandTests
             sink,
             resolver);
 
-        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 1), result);
-        Assert.Equal(1, sink.UnsupportedStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        Assert.Equal(0, sink.UnsupportedStateCount);
         var nativeBrush = Assert.IsType<ProGpuLinearGradientBrush>(Assert.Single(nativeContext.Commands).Brush);
         Assert.Equal(ProGPU.Vector.GradientColorInterpolationMode.SRgbLinearInterpolation, nativeBrush.ColorInterpolationMode);
     }
@@ -393,7 +393,7 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
-    public void DecodeRectangleThroughProGpuSinkCountsNonInvertibleGradientTransform()
+    public void DecodeRectangleThroughProGpuSinkDropsNonInvertibleGradientTransform()
     {
         var brush = new FakeLinearGradientBrush(
             new FakePoint(0, 0),
@@ -416,8 +416,8 @@ public sealed class WpfReplayToProGpuCommandTests
             sink,
             resolver);
 
-        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 1), result);
-        Assert.Equal(1, sink.UnsupportedStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        Assert.Equal(0, sink.UnsupportedStateCount);
         var nativeBrush = Assert.IsType<ProGpuLinearGradientBrush>(Assert.Single(nativeContext.Commands).Brush);
         Assert.Equal(Matrix4x4.Identity, nativeBrush.CoordinateTransform);
     }
@@ -486,7 +486,7 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
-    public void DecodeSquareCappedLineThroughProGpuSinkExtendsEndpoints()
+    public void DecodeSquareCappedLineThroughProGpuSinkPreservesNativeLineCapMetadata()
     {
         var pen = new FakePen(
             new FakeSolidColorBrush(new FakeColor(255, 0, 0, 0)),
@@ -512,12 +512,15 @@ public sealed class WpfReplayToProGpuCommandTests
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
         var command = Assert.Single(nativeContext.Commands);
         Assert.Equal(RenderCommandType.DrawLine, command.Type);
-        Assert.Equal(-1, command.Position.X);
-        Assert.Equal(11, command.Position2.X);
+        Assert.Equal(0, command.Position.X);
+        Assert.Equal(10, command.Position2.X);
+        Assert.NotNull(command.Pen);
+        Assert.Equal(global::ProGPU.Vector.PenLineCap.Square, command.Pen!.StartLineCap);
+        Assert.Equal(global::ProGPU.Vector.PenLineCap.Square, command.Pen.EndLineCap);
     }
 
     [Fact]
-    public void DecodeTriangleCappedLineThroughProGpuSinkEmitsTriangleCapCommands()
+    public void DecodeTriangleCappedLineThroughProGpuSinkPreservesNativeLineCapMetadata()
     {
         var pen = new FakePen(
             new FakeSolidColorBrush(new FakeColor(255, 0, 0, 0)),
@@ -541,24 +544,11 @@ public sealed class WpfReplayToProGpuCommandTests
             resolver);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        Assert.Equal(new[]
-        {
-            RenderCommandType.DrawLine,
-            RenderCommandType.FillTriangle,
-            RenderCommandType.FillTriangle
-        }, nativeContext.Commands.Select(command => command.Type).ToArray());
-        Assert.Equal(0, nativeContext.Commands[1].Position.X);
-        Assert.Equal(-1, nativeContext.Commands[1].Position.Y);
-        Assert.Equal(-1, nativeContext.Commands[1].Position2.X);
-        Assert.Equal(0, nativeContext.Commands[1].Position2.Y);
-        Assert.Equal(0, nativeContext.Commands[1].Position3.X);
-        Assert.Equal(1, nativeContext.Commands[1].Position3.Y);
-        Assert.Equal(10, nativeContext.Commands[2].Position.X);
-        Assert.Equal(-1, nativeContext.Commands[2].Position.Y);
-        Assert.Equal(11, nativeContext.Commands[2].Position2.X);
-        Assert.Equal(0, nativeContext.Commands[2].Position2.Y);
-        Assert.Equal(10, nativeContext.Commands[2].Position3.X);
-        Assert.Equal(1, nativeContext.Commands[2].Position3.Y);
+        var command = Assert.Single(nativeContext.Commands);
+        Assert.Equal(RenderCommandType.DrawLine, command.Type);
+        Assert.NotNull(command.Pen);
+        Assert.Equal(global::ProGPU.Vector.PenLineCap.Triangle, command.Pen!.StartLineCap);
+        Assert.Equal(global::ProGPU.Vector.PenLineCap.Triangle, command.Pen.EndLineCap);
     }
 
     [Fact]
@@ -635,7 +625,7 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
-    public void DecodeDashedLineThroughProGpuSinkEmitsDashSegmentCommands()
+    public void DecodeDashedLineThroughProGpuSinkPreservesNativeDashMetadata()
     {
         var pen = new FakePen(
             new FakeSolidColorBrush(new FakeColor(255, 0, 0, 0)),
@@ -658,18 +648,15 @@ public sealed class WpfReplayToProGpuCommandTests
             resolver);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        Assert.Equal(3, nativeContext.Commands.Count);
-        Assert.All(nativeContext.Commands, command => Assert.Equal(RenderCommandType.DrawLine, command.Type));
-        Assert.Equal(0, nativeContext.Commands[0].Position.X);
-        Assert.Equal(2, nativeContext.Commands[0].Position2.X);
-        Assert.Equal(4, nativeContext.Commands[1].Position.X);
-        Assert.Equal(6, nativeContext.Commands[1].Position2.X);
-        Assert.Equal(8, nativeContext.Commands[2].Position.X);
-        Assert.Equal(10, nativeContext.Commands[2].Position2.X);
+        var command = Assert.Single(nativeContext.Commands);
+        Assert.Equal(RenderCommandType.DrawLine, command.Type);
+        Assert.Equal(0, command.Position.X);
+        Assert.Equal(10, command.Position2.X);
+        AssertNativeDashPattern(command.Pen, new[] { 2.0, 2.0 });
     }
 
     [Fact]
-    public void DecodeDottedLineThroughProGpuSinkEmitsDotSegmentCommands()
+    public void DecodeDottedLineThroughProGpuSinkPreservesNativeDotDashMetadata()
     {
         var pen = new FakePen(
             new FakeSolidColorBrush(new FakeColor(255, 0, 0, 0)),
@@ -692,16 +679,13 @@ public sealed class WpfReplayToProGpuCommandTests
             resolver);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        Assert.Equal(2, nativeContext.Commands.Count);
-        Assert.All(nativeContext.Commands, command => Assert.Equal(RenderCommandType.DrawLine, command.Type));
-        Assert.Equal(0, nativeContext.Commands[0].Position.X);
-        Assert.Equal(2, nativeContext.Commands[0].Position2.X);
-        Assert.Equal(6, nativeContext.Commands[1].Position.X);
-        Assert.Equal(8, nativeContext.Commands[1].Position2.X);
+        var command = Assert.Single(nativeContext.Commands);
+        Assert.Equal(RenderCommandType.DrawLine, command.Type);
+        AssertNativeDashPattern(command.Pen, new[] { 0.0, 4.0 });
     }
 
     [Fact]
-    public void DecodeRoundDashCappedLineThroughProGpuSinkEmitsRoundCapCommands()
+    public void DecodeRoundDashCappedLineThroughProGpuSinkPreservesNativeDashCapMetadata()
     {
         var pen = new FakePen(
             new FakeSolidColorBrush(new FakeColor(255, 0, 0, 0)),
@@ -725,23 +709,14 @@ public sealed class WpfReplayToProGpuCommandTests
             resolver);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        Assert.Equal(new[]
-        {
-            RenderCommandType.DrawLine,
-            RenderCommandType.DrawEllipse,
-            RenderCommandType.DrawEllipse,
-            RenderCommandType.DrawLine,
-            RenderCommandType.DrawEllipse,
-            RenderCommandType.DrawEllipse
-        }, nativeContext.Commands.Select(command => command.Type).ToArray());
-        Assert.Equal(0, nativeContext.Commands[1].Position2.X);
-        Assert.Equal(2, nativeContext.Commands[2].Position2.X);
-        Assert.Equal(4, nativeContext.Commands[4].Position2.X);
-        Assert.Equal(6, nativeContext.Commands[5].Position2.X);
+        var command = Assert.Single(nativeContext.Commands);
+        Assert.Equal(RenderCommandType.DrawLine, command.Type);
+        AssertNativeDashPattern(command.Pen, new[] { 2.0, 2.0 });
+        Assert.Equal(global::ProGPU.Vector.PenLineCap.Round, command.Pen!.DashCap);
     }
 
     [Fact]
-    public void DecodeTriangleDashCappedLineThroughProGpuSinkEmitsTriangleCapCommands()
+    public void DecodeTriangleDashCappedLineThroughProGpuSinkPreservesNativeDashCapMetadata()
     {
         var pen = new FakePen(
             new FakeSolidColorBrush(new FakeColor(255, 0, 0, 0)),
@@ -765,23 +740,14 @@ public sealed class WpfReplayToProGpuCommandTests
             resolver);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        Assert.Equal(new[]
-        {
-            RenderCommandType.DrawLine,
-            RenderCommandType.FillTriangle,
-            RenderCommandType.FillTriangle,
-            RenderCommandType.DrawLine,
-            RenderCommandType.FillTriangle,
-            RenderCommandType.FillTriangle
-        }, nativeContext.Commands.Select(command => command.Type).ToArray());
-        Assert.Equal(-1, nativeContext.Commands[1].Position2.X);
-        Assert.Equal(3, nativeContext.Commands[2].Position2.X);
-        Assert.Equal(3, nativeContext.Commands[4].Position2.X);
-        Assert.Equal(7, nativeContext.Commands[5].Position2.X);
+        var command = Assert.Single(nativeContext.Commands);
+        Assert.Equal(RenderCommandType.DrawLine, command.Type);
+        AssertNativeDashPattern(command.Pen, new[] { 2.0, 2.0 });
+        Assert.Equal(global::ProGPU.Vector.PenLineCap.Triangle, command.Pen!.DashCap);
     }
 
     [Fact]
-    public void DecodeFilledDashedRectangleThroughProGpuSinkEmitsFillThenDashSegmentCommands()
+    public void DecodeFilledDashedRectangleThroughProGpuSinkPreservesNativeDashMetadata()
     {
         var pen = new FakePen(
             new FakeSolidColorBrush(new FakeColor(255, 0, 0, 0)),
@@ -808,35 +774,14 @@ public sealed class WpfReplayToProGpuCommandTests
             resolver);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        Assert.Equal(7, nativeContext.Commands.Count);
-        Assert.Equal(RenderCommandType.DrawRect, nativeContext.Commands[0].Type);
-        Assert.NotNull(nativeContext.Commands[0].Brush);
-        Assert.Null(nativeContext.Commands[0].Pen);
-        Assert.All(nativeContext.Commands.Skip(1), command => Assert.Equal(RenderCommandType.DrawLine, command.Type));
-        Assert.Equal(0, nativeContext.Commands[1].Position.X);
-        Assert.Equal(2, nativeContext.Commands[1].Position2.X);
-        Assert.Equal(4, nativeContext.Commands[2].Position.X);
-        Assert.Equal(6, nativeContext.Commands[2].Position2.X);
-        Assert.Equal(8, nativeContext.Commands[3].Position.X);
-        Assert.Equal(0, nativeContext.Commands[3].Position.Y);
-        Assert.Equal(8, nativeContext.Commands[3].Position2.X);
-        Assert.Equal(2, nativeContext.Commands[3].Position2.Y);
-        Assert.Equal(8, nativeContext.Commands[4].Position.X);
-        Assert.Equal(4, nativeContext.Commands[4].Position.Y);
-        Assert.Equal(6, nativeContext.Commands[4].Position2.X);
-        Assert.Equal(4, nativeContext.Commands[4].Position2.Y);
-        Assert.Equal(4, nativeContext.Commands[5].Position.X);
-        Assert.Equal(4, nativeContext.Commands[5].Position.Y);
-        Assert.Equal(2, nativeContext.Commands[5].Position2.X);
-        Assert.Equal(4, nativeContext.Commands[5].Position2.Y);
-        Assert.Equal(0, nativeContext.Commands[6].Position.X);
-        Assert.Equal(4, nativeContext.Commands[6].Position.Y);
-        Assert.Equal(0, nativeContext.Commands[6].Position2.X);
-        Assert.Equal(2, nativeContext.Commands[6].Position2.Y);
+        var command = Assert.Single(nativeContext.Commands);
+        Assert.Equal(RenderCommandType.DrawRect, command.Type);
+        Assert.NotNull(command.Brush);
+        AssertNativeDashPattern(command.Pen, new[] { 2.0, 2.0 });
     }
 
     [Fact]
-    public void DecodeFilledDashedRoundedRectangleThroughProGpuSinkEmitsFillThenNativeArcDashCommands()
+    public void DecodeFilledDashedRoundedRectangleThroughProGpuSinkPreservesNativeDashMetadata()
     {
         var pen = new FakePen(
             new FakeSolidColorBrush(new FakeColor(255, 0, 0, 0)),
@@ -865,24 +810,14 @@ public sealed class WpfReplayToProGpuCommandTests
             resolver);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        Assert.True(nativeContext.Commands.Count > 1);
-        Assert.Equal(RenderCommandType.DrawRoundedRect, nativeContext.Commands[0].Type);
-        Assert.NotNull(nativeContext.Commands[0].Brush);
-        Assert.Null(nativeContext.Commands[0].Pen);
-        Assert.Contains(nativeContext.Commands.Skip(1), command =>
-            command.Type == RenderCommandType.DrawPath
-            && command.Brush == null
-            && command.Pen != null
-            && command.Path != null
-            && command.Path.Figures.SelectMany(figure => figure.Segments).OfType<ProGpuArcSegment>().Any());
-        Assert.DoesNotContain(nativeContext.Commands.Skip(1), command =>
-            command.Type == RenderCommandType.DrawLine
-            && command.Position.X != command.Position2.X
-            && command.Position.Y != command.Position2.Y);
+        var command = Assert.Single(nativeContext.Commands);
+        Assert.Equal(RenderCommandType.DrawRoundedRect, command.Type);
+        Assert.NotNull(command.Brush);
+        AssertNativeDashPattern(command.Pen, new[] { 100.0, 1.0 });
     }
 
     [Fact]
-    public void DecodeFilledDashedEllipseThroughProGpuSinkEmitsFillThenNativeArcDashCommands()
+    public void DecodeFilledDashedEllipseThroughProGpuSinkPreservesNativeDashMetadata()
     {
         var pen = new FakePen(
             new FakeSolidColorBrush(new FakeColor(255, 0, 0, 0)),
@@ -911,21 +846,14 @@ public sealed class WpfReplayToProGpuCommandTests
             resolver);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        Assert.True(nativeContext.Commands.Count > 1);
-        Assert.Equal(RenderCommandType.DrawEllipse, nativeContext.Commands[0].Type);
-        Assert.NotNull(nativeContext.Commands[0].Brush);
-        Assert.Null(nativeContext.Commands[0].Pen);
-        Assert.Contains(nativeContext.Commands.Skip(1), command =>
-            command.Type == RenderCommandType.DrawPath
-            && command.Brush == null
-            && command.Pen != null
-            && command.Path != null
-            && command.Path.Figures.SelectMany(figure => figure.Segments).OfType<ProGpuArcSegment>().Any());
-        Assert.DoesNotContain(nativeContext.Commands.Skip(1), command => command.Type == RenderCommandType.DrawLine);
+        var command = Assert.Single(nativeContext.Commands);
+        Assert.Equal(RenderCommandType.DrawEllipse, command.Type);
+        Assert.NotNull(command.Brush);
+        AssertNativeDashPattern(command.Pen, new[] { 100.0, 1.0 });
     }
 
     [Fact]
-    public void DecodeFilledDashedGeometryThroughProGpuSinkEmitsFillThenNativeBezierDashCommands()
+    public void DecodeFilledDashedGeometryThroughProGpuSinkPreservesNativePathDashMetadata()
     {
         var geometry = new PathGeometry();
         var figure = new PathFigure
@@ -965,26 +893,17 @@ public sealed class WpfReplayToProGpuCommandTests
             resolver);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        Assert.True(nativeContext.Commands.Count > 1);
-        Assert.Equal(RenderCommandType.DrawPath, nativeContext.Commands[0].Type);
-        Assert.NotNull(nativeContext.Commands[0].Brush);
-        Assert.Null(nativeContext.Commands[0].Pen);
-        Assert.Contains(nativeContext.Commands.Skip(1), command =>
-            command.Type == RenderCommandType.DrawPath
-            && command.Brush == null
-            && command.Pen != null
-            && command.Path != null
-            && command.Path.Figures.SelectMany(figure => figure.Segments).OfType<ProGpuQuadraticBezierSegment>().Any());
-        Assert.Contains(nativeContext.Commands.Skip(1), command =>
-            command.Type == RenderCommandType.DrawPath
-            && command.Brush == null
-            && command.Pen != null
-            && command.Path != null
-            && command.Path.Figures.SelectMany(figure => figure.Segments).OfType<ProGpuCubicBezierSegment>().Any());
+        var command = Assert.Single(nativeContext.Commands);
+        Assert.Equal(RenderCommandType.DrawPath, command.Type);
+        Assert.NotNull(command.Brush);
+        Assert.NotNull(command.Path);
+        Assert.Contains(command.Path!.Figures.SelectMany(figure => figure.Segments), segment => segment is ProGpuQuadraticBezierSegment);
+        Assert.Contains(command.Path.Figures.SelectMany(figure => figure.Segments), segment => segment is ProGpuCubicBezierSegment);
+        AssertNativeDashPattern(command.Pen, new[] { 100.0, 1.0 });
     }
 
     [Fact]
-    public void DecodeFilledDashedArcGeometryThroughProGpuSinkEmitsNativeArcDashCommands()
+    public void DecodeFilledDashedArcGeometryThroughProGpuSinkPreservesNativeArcDashMetadata()
     {
         var geometry = new PathGeometry();
         var figure = new PathFigure
@@ -1029,24 +948,19 @@ public sealed class WpfReplayToProGpuCommandTests
             resolver);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        Assert.Equal(2, nativeContext.Commands.Count);
-        Assert.Equal(RenderCommandType.DrawPath, nativeContext.Commands[0].Type);
-        Assert.NotNull(nativeContext.Commands[0].Brush);
-        Assert.Null(nativeContext.Commands[0].Pen);
-
-        var dashCommand = nativeContext.Commands[1];
-        Assert.Equal(RenderCommandType.DrawPath, dashCommand.Type);
-        Assert.Null(dashCommand.Brush);
-        Assert.NotNull(dashCommand.Pen);
-        var dashFigure = Assert.Single(dashCommand.Path!.Figures);
-        var nativeArc = Assert.IsType<ProGPU.Vector.ArcSegment>(Assert.Single(dashFigure.Segments));
+        var command = Assert.Single(nativeContext.Commands);
+        Assert.Equal(RenderCommandType.DrawPath, command.Type);
+        Assert.NotNull(command.Brush);
+        AssertNativeDashPattern(command.Pen, new[] { 100.0, 1.0 });
+        var nativeFigure = Assert.Single(command.Path!.Figures);
+        var nativeArc = Assert.IsType<ProGPU.Vector.ArcSegment>(Assert.Single(nativeFigure.Segments));
         Assert.Equal(ProGPU.Vector.SweepDirection.Clockwise, nativeArc.SweepDirection);
         Assert.Equal(15, nativeArc.Size.X);
         Assert.Equal(15, nativeArc.Size.Y);
     }
 
     [Fact]
-    public void DecodeFilledDashedCombinedGeometryThroughProGpuSinkEmitsFillThenOperandDashSegments()
+    public void DecodeFilledDashedCombinedGeometryThroughProGpuSinkPreservesNativeCombinedPathDashMetadata()
     {
         var geometry = new FakeCombinedGeometry(
             "Union",
@@ -1077,16 +991,12 @@ public sealed class WpfReplayToProGpuCommandTests
             sink,
             resolver);
 
-        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 1), result);
-        Assert.True(nativeContext.Commands.Count > 1);
-        var fillCommand = nativeContext.Commands[0];
-        Assert.Equal(RenderCommandType.DrawPath, fillCommand.Type);
-        Assert.True(fillCommand.Path!.IsCombined);
-        Assert.NotNull(fillCommand.Brush);
-        Assert.Null(fillCommand.Pen);
-        Assert.All(nativeContext.Commands.Skip(1), command => Assert.Equal(RenderCommandType.DrawLine, command.Type));
-        Assert.Contains(nativeContext.Commands.Skip(1), command => command.Position.X == 0 && command.Position2.X == 20);
-        Assert.Contains(nativeContext.Commands.Skip(1), command => command.Position.X == 30 && command.Position2.X == 50);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        var command = Assert.Single(nativeContext.Commands);
+        Assert.Equal(RenderCommandType.DrawPath, command.Type);
+        Assert.True(command.Path!.IsCombined);
+        Assert.NotNull(command.Brush);
+        AssertNativeDashPattern(command.Pen, new[] { 100.0, 1.0 });
     }
 
     [Fact]
@@ -1138,16 +1048,12 @@ public sealed class WpfReplayToProGpuCommandTests
             resolver);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        Assert.Equal(1, resolverCalls);
-        Assert.True(nativeContext.Commands.Count > 1);
-        var fillCommand = nativeContext.Commands[0];
-        Assert.Equal(RenderCommandType.DrawPath, fillCommand.Type);
-        Assert.True(fillCommand.Path!.IsCombined);
-        Assert.NotNull(fillCommand.Brush);
-        Assert.Null(fillCommand.Pen);
-        Assert.All(nativeContext.Commands.Skip(1), command => Assert.Equal(RenderCommandType.DrawLine, command.Type));
-        Assert.Contains(nativeContext.Commands.Skip(1), command => command.Position.X == 0 && command.Position2.X == 60);
-        Assert.DoesNotContain(nativeContext.Commands.Skip(1), command => command.Position.X == 30 && command.Position2.X == 50);
+        Assert.Equal(0, resolverCalls);
+        var command = Assert.Single(nativeContext.Commands);
+        Assert.Equal(RenderCommandType.DrawPath, command.Type);
+        Assert.True(command.Path!.IsCombined);
+        Assert.NotNull(command.Brush);
+        AssertNativeDashPattern(command.Pen, new[] { 100.0, 1.0 });
         Assert.Equal(0, sink.UnsupportedStateCount);
     }
 
@@ -1982,7 +1888,7 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
-    public void DecodeTransformedGlyphRunThroughProGpuSinkStoresCombinedTransform()
+    public void DecodeTransformedGlyphRunThroughProGpuSinkSkipsUnresolvedFontCommand()
     {
         var transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 11, 13));
         var glyphRun = new GlyphRun(
@@ -2016,14 +1922,7 @@ public sealed class WpfReplayToProGpuCommandTests
         var result = new WpfMilRenderDataDecoder().Decode(renderData, sink, resolver);
 
         Assert.Equal(new WpfMilDecodeResult(3, 3, 0, 0), result);
-        var command = Assert.Single(nativeContext.Commands);
-        Assert.Equal(RenderCommandType.DrawGlyphRun, command.Type);
-        Assert.Equal(new ushort[] { 7, 8 }, command.GlyphIndices);
-        Assert.Equal(16, command.FontSize);
-        Assert.Equal(2, command.Position.X);
-        Assert.Equal(3, command.Position.Y);
-        Assert.Equal(28, command.Transform.M41);
-        Assert.Equal(32, command.Transform.M42);
+        Assert.Empty(nativeContext.Commands);
     }
 
     [Fact]
@@ -2214,7 +2113,7 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
-    public void DecodeGuidelineY1ThroughProGpuSinkSnapsLineYCoordinate()
+    public void DecodeGuidelineY1ThroughProGpuSinkPreservesNativeLineYCoordinate()
     {
         var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[]
         {
@@ -2240,13 +2139,13 @@ public sealed class WpfReplayToProGpuCommandTests
         var command = Assert.Single(nativeContext.Commands);
         Assert.Equal(RenderCommandType.DrawLine, command.Type);
         Assert.Equal(1, command.Position.X);
-        Assert.Equal(12, command.Position.Y);
+        Assert.Equal(12.25f, command.Position.Y);
         Assert.Equal(30, command.Position2.X);
-        Assert.Equal(12, command.Position2.Y);
+        Assert.Equal(12.25f, command.Position2.Y);
     }
 
     [Fact]
-    public void DecodeGuidelineY2ThroughProGpuSinkSnapsRectangleLeadingEdgeAndPreservesOffset()
+    public void DecodeGuidelineY2ThroughProGpuSinkPreservesNativeRectangleLeadingEdgeAndOffset()
     {
         var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { Brushes.Red });
         var nativeContext = new ProGpuDrawingContext();
@@ -2269,13 +2168,13 @@ public sealed class WpfReplayToProGpuCommandTests
         var command = Assert.Single(nativeContext.Commands);
         Assert.Equal(RenderCommandType.DrawRect, command.Type);
         Assert.Equal(2, command.Rect.X);
-        Assert.Equal(10, command.Rect.Y);
+        Assert.Equal(10.25f, command.Rect.Y);
         Assert.Equal(40, command.Rect.Width);
         Assert.Equal(5.5f, command.Rect.Height);
     }
 
     [Fact]
-    public void DecodeGuidelineSetThroughProGpuSinkSnapsRectangleXAndYCoordinates()
+    public void DecodeGuidelineSetThroughProGpuSinkPreservesNativeRectangleCoordinates()
     {
         var guidelineSet = new FakeGuidelineSet(new[] { 2.25, 42.25 }, new[] { 3.25, 53.25 });
         var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[]
@@ -2301,8 +2200,8 @@ public sealed class WpfReplayToProGpuCommandTests
         Assert.Equal(new WpfMilDecodeResult(3, 3, 0, 0), result);
         var command = Assert.Single(nativeContext.Commands);
         Assert.Equal(RenderCommandType.DrawRect, command.Type);
-        Assert.Equal(2, command.Rect.X);
-        Assert.Equal(3, command.Rect.Y);
+        Assert.Equal(2.25f, command.Rect.X);
+        Assert.Equal(3.25f, command.Rect.Y);
         Assert.Equal(40, command.Rect.Width);
         Assert.Equal(50, command.Rect.Height);
     }
@@ -2370,6 +2269,14 @@ public sealed class WpfReplayToProGpuCommandTests
         });
         geometry.Figures.Add(figure);
         return geometry;
+    }
+
+    private static void AssertNativeDashPattern(ProGPU.Vector.Pen? pen, double[] expectedDashes, double expectedOffset = 0.0)
+    {
+        Assert.NotNull(pen);
+        Assert.True(pen!.HasDashPattern);
+        Assert.Equal(expectedDashes, pen.DashArray);
+        Assert.Equal(expectedOffset, pen.DashOffset);
     }
 
     private static void WriteRect(byte[] target, int offset, double x, double y, double width, double height)

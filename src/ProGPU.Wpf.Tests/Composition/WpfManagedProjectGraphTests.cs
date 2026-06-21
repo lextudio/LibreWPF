@@ -5069,11 +5069,6 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "ProGpuCompositionCommandSink.cs");
-        var proGpuWpfPenPath = FindRepoPath(
-            "src",
-            "ProGPU.Wpf",
-            "Composition",
-            "ProGpuWpfPen.cs");
         var wpfMilRenderDataDecoderPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -5142,7 +5137,6 @@ public sealed class WpfManagedProjectGraphTests
         var smokeAssemblyInfo = File.ReadAllText(smokeAssemblyInfoPath);
         var proGpuWpfProject = File.ReadAllText(proGpuWpfProjectPath);
         var proGpuWpfCommandSink = File.ReadAllText(proGpuWpfCommandSinkPath);
-        var proGpuWpfPen = File.ReadAllText(proGpuWpfPenPath);
         var wpfMilRenderDataDecoder = File.ReadAllText(wpfMilRenderDataDecoderPath);
         var wpfReflectionResourceResolver = File.ReadAllText(wpfReflectionResourceResolverPath);
         var wpfTransportTargets = File.ReadAllText(wpfTransportTargetsPath);
@@ -5877,10 +5871,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("typeof(global::ProGPU.Scene.DrawingContext)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("geometry.Draw(recordingContext", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("CreateGlyphRunBounds", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.DoesNotContain("pen is ProGpuWpfPen", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("internal sealed class ProGpuWpfPen", proGpuWpfPen, StringComparison.Ordinal);
-        Assert.DoesNotContain("class ProGpuWpfPen : Pen", proGpuWpfPen, StringComparison.Ordinal);
-        Assert.Contains("public double Thickness", proGpuWpfPen, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProGpuWpfPen", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("TryReadDashStyle(pen", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("nativeDashArray", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.False(
+            File.Exists(Path.Combine(Path.GetDirectoryName(proGpuWpfCommandSinkPath)!, "ProGpuWpfPen.cs")),
+            "The transition ProGpuWpfPen wrapper should stay removed; WPF pen dash metadata belongs on native ProGPU.Vector.Pen.");
         Assert.Contains("$([MSBuild]::IsOSPlatform('Windows'))", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("<_PowerShellExe Condition=\"'$(_PowerShellExe)' == ''\">pwsh</_PowerShellExe>", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("ValidateManagedWpfTransportPayload", wpfTransportTargets, StringComparison.Ordinal);

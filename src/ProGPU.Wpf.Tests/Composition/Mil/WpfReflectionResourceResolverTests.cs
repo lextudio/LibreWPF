@@ -76,12 +76,10 @@ public sealed class WpfReflectionResourceResolverTests
             resolver);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        var adaptedPen = sink.DrawRectangles[0].Pen;
-        Assert.NotNull(adaptedPen);
-        var penType = adaptedPen.GetType();
-        Assert.Equal("ProGpuWpfPen", penType.Name);
-        Assert.Equal(new[] { 2.0, 3.0 }, (double[])penType.GetProperty("DashArray")!.GetValue(adaptedPen)!);
-        Assert.Equal(1.5, (double)penType.GetProperty("DashOffset")!.GetValue(adaptedPen)!);
+        var adaptedPen = Assert.IsType<MediaPen>(sink.DrawRectangles[0].Pen);
+        Assert.NotNull(adaptedPen.DashStyle);
+        Assert.Equal(new[] { 2.0, 3.0 }, adaptedPen.DashStyle!.Dashes);
+        Assert.Equal(1.5, adaptedPen.DashStyle.Offset);
     }
 
     [Fact]
@@ -107,11 +105,9 @@ public sealed class WpfReflectionResourceResolverTests
             resolver);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        var adaptedPen = sink.DrawRectangles[0].Pen;
-        Assert.NotNull(adaptedPen);
-        var penType = adaptedPen.GetType();
-        Assert.Equal("ProGpuWpfPen", penType.Name);
-        Assert.Equal(new[] { 0.0, 2.0 }, (double[])penType.GetProperty("DashArray")!.GetValue(adaptedPen)!);
+        var adaptedPen = Assert.IsType<MediaPen>(sink.DrawRectangles[0].Pen);
+        Assert.NotNull(adaptedPen.DashStyle);
+        Assert.Equal(new[] { 0.0, 2.0 }, adaptedPen.DashStyle!.Dashes);
     }
 
     [Fact]
@@ -139,13 +135,10 @@ public sealed class WpfReflectionResourceResolverTests
             resolver);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        var adaptedPen = sink.DrawRectangles[0].Pen;
-        Assert.NotNull(adaptedPen);
-        var penType = adaptedPen.GetType();
-        Assert.Equal("ProGpuWpfPen", penType.Name);
-        Assert.Equal("Square", penType.GetProperty("StartLineCap")!.GetValue(adaptedPen)!.ToString());
-        Assert.Equal("Round", penType.GetProperty("EndLineCap")!.GetValue(adaptedPen)!.ToString());
-        Assert.Equal("Round", penType.GetProperty("DashCap")!.GetValue(adaptedPen)!.ToString());
+        var adaptedPen = Assert.IsType<MediaPen>(sink.DrawRectangles[0].Pen);
+        Assert.Equal(PenLineCap.Square, adaptedPen.StartLineCap);
+        Assert.Equal(PenLineCap.Round, adaptedPen.EndLineCap);
+        Assert.Equal(PenLineCap.Round, adaptedPen.DashCap);
     }
 
     [Fact]
@@ -172,12 +165,9 @@ public sealed class WpfReflectionResourceResolverTests
             resolver);
 
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
-        var adaptedPen = sink.DrawRectangles[0].Pen;
-        Assert.NotNull(adaptedPen);
-        var penType = adaptedPen.GetType();
-        Assert.Equal("ProGpuWpfPen", penType.Name);
-        Assert.Equal("Round", penType.GetProperty("LineJoin")!.GetValue(adaptedPen)!.ToString());
-        Assert.Equal(3.5, (double)penType.GetProperty("MiterLimit")!.GetValue(adaptedPen)!);
+        var adaptedPen = Assert.IsType<MediaPen>(sink.DrawRectangles[0].Pen);
+        Assert.Equal(PenLineJoin.Round, adaptedPen.LineJoin);
+        Assert.Equal(3.5, adaptedPen.MiterLimit);
     }
 
     [Fact]

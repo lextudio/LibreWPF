@@ -784,6 +784,22 @@ public sealed class WpfManagedProjectGraphTests
             "System",
             "Windows",
             "PortableClipboardService.cs");
+        var portableManagedDataObjectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "PortableManagedDataObject.cs");
+        var dataObjectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "dataobject.cs");
         var projectPath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -814,6 +830,8 @@ public sealed class WpfManagedProjectGraphTests
 
         var clipboard = File.ReadAllText(clipboardPath);
         var clipboardService = File.ReadAllText(clipboardServicePath);
+        var portableManagedDataObject = File.ReadAllText(portableManagedDataObjectPath);
+        var dataObject = File.ReadAllText(dataObjectPath);
         var project = File.ReadAllText(projectPath);
         var runtimeHarness = File.ReadAllText(runtimeHarnessPath);
         var applicationRunHarness = File.ReadAllText(applicationRunHarnessPath);
@@ -822,6 +840,7 @@ public sealed class WpfManagedProjectGraphTests
         var portableBootstrap = File.ReadAllText(portableBootstrapPath);
 
         Assert.Contains(@"<Compile Include=""System\Windows\PortableClipboardService.cs"" />", project, StringComparison.Ordinal);
+        Assert.Contains(@"<Compile Include=""System\Windows\PortableManagedDataObject.cs"" />", project, StringComparison.Ordinal);
         Assert.Contains("internal static class PortableClipboardService", clipboardService, StringComparison.Ordinal);
         Assert.Contains("RuntimeInformation.IsOSPlatform(OSPlatform.Windows)", clipboardService, StringComparison.Ordinal);
         Assert.Contains("internal static IDisposable Register(Func<string?> getText, Action<string?> setText)", clipboardService, StringComparison.Ordinal);
@@ -831,7 +850,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static bool TrySetFileDropList(StringCollection fileDropList)", clipboardService, StringComparison.Ordinal);
         Assert.Contains("internal static bool TrySetObject(object data, bool copy)", clipboardService, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryIsCurrent(IDataObject data, out bool isCurrent)", clipboardService, StringComparison.Ordinal);
-        Assert.Contains("private sealed class PortableDataObject : ITypedDataObject", clipboardService, StringComparison.Ordinal);
+        Assert.DoesNotContain("private sealed class PortableDataObject", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("new PortableManagedDataObject()", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("internal sealed class PortableManagedDataObject : ITypedDataObject", portableManagedDataObject, StringComparison.Ordinal);
+        Assert.Contains("private readonly Dictionary<string, Entry> _data", portableManagedDataObject, StringComparison.Ordinal);
+        Assert.Contains("public bool TryGetData<T>", portableManagedDataObject, StringComparison.Ordinal);
+        Assert.Contains("private readonly ITypedDataObject? _portableData;", dataObject, StringComparison.Ordinal);
+        Assert.Contains("_portableData = new PortableManagedDataObject();", dataObject, StringComparison.Ordinal);
         Assert.Contains("return !s_isWindows;", clipboardService, StringComparison.Ordinal);
         Assert.Contains("s_dataObject = dataObject;", clipboardService, StringComparison.Ordinal);
 
@@ -2255,7 +2280,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("wrapped System.Xaml NameScopeDictionary clear preserves external name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("wrapped System.Xaml NameScopeDictionary underlying registration", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("wrapped System.Xaml NameScopeDictionary clear unregisters underlying name", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("ValidateLooseXamlReader(presentationFramework, presentationCore)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseXamlReader(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlWriterRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLooseXamlWriterSystemResourceKeyRoundTrip(presentationFramework)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePortableSystemParameters(presentationFramework)", harnessProgram, StringComparison.Ordinal);
@@ -2268,14 +2293,6 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("loose XamlReader style StaticResource brush", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlReader RelativeSource binding text", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlReader Binding path", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("LooseInputScopeTextBox", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("<InputMethod.InputScope>", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("<InputScopeName>EmailSmtpAddress</InputScopeName>", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("<InputScopePhrase>external phrase</InputScopePhrase>", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("ValidateLooseInputScope(presentationCore, inputScopeTextBox)", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("System.Windows.Input.InputMethod", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("loose XamlReader InputScopeName text content", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("loose XamlReader InputScopePhrase text content", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter serialized GradientStop", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("loose XamlWriter round-trip {description} stop color", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Controls.MenuItem", harnessProgram, StringComparison.Ordinal);

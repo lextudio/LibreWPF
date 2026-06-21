@@ -6001,6 +6001,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Path.Combine(appRoot, \"ExternalResources.xaml\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ResourceDictionary Source=\"ExternalResources.xaml\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalStaticBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ComponentResourceKey TypeInTargetAssembly={x:Type local:MainWindow}, ResourceId=ExternalComponentAccentBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalComponentResourceText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalDynamicBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalFreezableBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalFreezableGradientBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6293,6 +6295,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DataType=\"{x:Type local:ExternalItem}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ObservableCollection<ExternalItem>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateApplicationResources(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new ComponentResourceKey(typeof(MainWindow), \"ExternalComponentAccentBrush\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ComponentResourceKey application brush", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ComponentResourceKey window lookup", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ComponentResourceKey foreground", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateFreezableResources()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Freezable brush clone mutable opacity", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Freezable brush current-value clone opacity", externalSdkHarnessProgram, StringComparison.Ordinal);

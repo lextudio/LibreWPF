@@ -390,6 +390,9 @@ internal static class Program
                     x:Key="ExternalStaticBrush"
                     Color="#A65A2A" />
                 <SolidColorBrush
+                    x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:MainWindow}, ResourceId=ExternalComponentAccentBrush}"
+                    Color="#4E7A9D" />
+                <SolidColorBrush
                     x:Key="ExternalUnsharedBrush"
                     x:Shared="False"
                     Color="#C45A2B" />
@@ -806,6 +809,10 @@ internal static class Program
                         x:Name="StaticResourceText"
                         Foreground="{StaticResource ExternalStaticBrush}"
                         Text="{StaticResource ExternalStaticText}" />
+                    <TextBlock
+                        x:Name="ExternalComponentResourceText"
+                        Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type local:MainWindow}, ResourceId=ExternalComponentAccentBrush}}"
+                        Text="External component resource" />
                     <TextBlock
                         x:Name="ExternalUnsharedBrushTextA"
                         Foreground="{StaticResource ExternalUnsharedBrush}"
@@ -2586,12 +2593,27 @@ internal static class Program
                         RequireType<Brush>(appResources["ExternalStaticBrush"], "external SDK application static brush resource"),
                         "#FFA65A2A",
                         "external SDK application static brush resource");
+                    var componentResourceKey = new ComponentResourceKey(typeof(MainWindow), "ExternalComponentAccentBrush");
+                    var componentBrush = RequireType<Brush>(
+                        appResources[componentResourceKey],
+                        "external SDK ComponentResourceKey application brush");
+                    AssertBrushColor(componentBrush, "#FF4E7A9D", "external SDK ComponentResourceKey application brush");
+                    AssertEqual(
+                        componentBrush,
+                        window.TryFindResource(componentResourceKey),
+                        "external SDK ComponentResourceKey window lookup");
 
                     var staticResourceText = RequireType<TextBlock>(
                         window.FindName("StaticResourceText"),
                         "external SDK static resource text block");
                     AssertEqual("External SDK resource text", staticResourceText.Text, "external SDK static resource text");
                     AssertBrushColor(staticResourceText.Foreground, "#FFA65A2A", "external SDK static resource foreground");
+
+                    var componentResourceText = RequireType<TextBlock>(
+                        window.FindName("ExternalComponentResourceText"),
+                        "external SDK ComponentResourceKey text block");
+                    AssertEqual("External component resource", componentResourceText.Text, "external SDK ComponentResourceKey text");
+                    AssertBrushColor(componentResourceText.Foreground, "#FF4E7A9D", "external SDK ComponentResourceKey foreground");
 
                     var unsharedBrushTextA = RequireType<TextBlock>(
                         window.FindName("ExternalUnsharedBrushTextA"),

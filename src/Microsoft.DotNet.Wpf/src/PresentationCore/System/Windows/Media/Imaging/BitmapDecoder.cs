@@ -93,10 +93,10 @@ namespace System.Windows.Media.Imaging
 
             if (!OperatingSystem.IsWindows() &&
                 expectedClsId == MILGuidData.GUID_ContainerFormatGif &&
-                GifBitmapDecoder.TryCreatePortableFrameFromUri(bitmapUri, createOptions, cacheOption, out BitmapFrame portableGifFrame))
+                GifBitmapDecoder.TryCreatePortableFramesFromUri(bitmapUri, createOptions, cacheOption, out ReadOnlyCollection<BitmapFrame> portableGifFrames))
             {
                 _uri = bitmapUri;
-                InitializePortableFrames(null, bitmapUri, null, createOptions, cacheOption, portableGifFrame);
+                InitializePortableFrames(null, bitmapUri, null, createOptions, cacheOption, portableGifFrames);
                 return;
             }
 
@@ -196,9 +196,9 @@ namespace System.Windows.Media.Imaging
 
             if (!OperatingSystem.IsWindows() &&
                 expectedClsId == MILGuidData.GUID_ContainerFormatGif &&
-                GifBitmapDecoder.TryCreatePortableFrame(bitmapStream, createOptions, cacheOption, out BitmapFrame portableGifFrame))
+                GifBitmapDecoder.TryCreatePortableFrames(bitmapStream, createOptions, cacheOption, out ReadOnlyCollection<BitmapFrame> portableGifFrames))
             {
-                InitializePortableFrames(null, null, bitmapStream, createOptions, cacheOption, portableGifFrame);
+                InitializePortableFrames(null, null, bitmapStream, createOptions, cacheOption, portableGifFrames);
                 return;
             }
 
@@ -395,9 +395,9 @@ namespace System.Windows.Media.Imaging
             else if (!OperatingSystem.IsWindows() &&
                      finalUri != null &&
                      stream == null &&
-                     GifBitmapDecoder.TryCreatePortableFrameFromUri(finalUri, createOptions, cacheOption, out BitmapFrame portableGifUriFrame))
+                     GifBitmapDecoder.TryCreatePortableFramesFromUri(finalUri, createOptions, cacheOption, out ReadOnlyCollection<BitmapFrame> portableGifUriFrames))
             {
-                return new GifBitmapDecoder(portableGifUriFrame, baseUri, uri, null, createOptions, cacheOption);
+                return new GifBitmapDecoder(portableGifUriFrames, baseUri, uri, null, createOptions, cacheOption);
             }
             else if (!OperatingSystem.IsWindows() &&
                      finalUri != null &&
@@ -433,9 +433,9 @@ namespace System.Windows.Media.Imaging
             }
             else if (!OperatingSystem.IsWindows() &&
                      stream != null &&
-                     GifBitmapDecoder.TryCreatePortableFrame(stream, createOptions, cacheOption, out BitmapFrame portableGifStreamFrame))
+                     GifBitmapDecoder.TryCreatePortableFrames(stream, createOptions, cacheOption, out ReadOnlyCollection<BitmapFrame> portableGifStreamFrames))
             {
-                return new GifBitmapDecoder(portableGifStreamFrame, baseUri, uri, stream, createOptions, cacheOption);
+                return new GifBitmapDecoder(portableGifStreamFrames, baseUri, uri, stream, createOptions, cacheOption);
             }
             else if (!OperatingSystem.IsWindows() &&
                      stream != null &&

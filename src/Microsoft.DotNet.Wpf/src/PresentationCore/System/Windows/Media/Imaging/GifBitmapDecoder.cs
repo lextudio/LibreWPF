@@ -5,11 +5,11 @@
 //
 
 using System.Collections.ObjectModel;
+using System.Collections.Generic;
 using System.IO;
 using System.Windows.Media;
 using MS.Internal;
 using Microsoft.Win32.SafeHandles;
-using StbImageSharp;
 
 namespace System.Windows.Media.Imaging
 {
@@ -65,6 +65,18 @@ namespace System.Windows.Media.Imaging
             ) : base(true)
         {
             InitializePortableFrames(baseUri, uri, stream, createOptions, cacheOption, portableFrame);
+        }
+
+        internal GifBitmapDecoder(
+            ReadOnlyCollection<BitmapFrame> portableFrames,
+            Uri baseUri,
+            Uri uri,
+            Stream stream,
+            BitmapCreateOptions createOptions,
+            BitmapCacheOption cacheOption
+            ) : base(true)
+        {
+            InitializePortableFrames(baseUri, uri, stream, createOptions, cacheOption, portableFrames);
         }
 
         /// <summary>
@@ -139,6 +151,22 @@ namespace System.Windows.Media.Imaging
             out BitmapFrame frame)
         {
             frame = null;
+            if (!TryCreatePortableFrames(stream, createOptions, cacheOption, out ReadOnlyCollection<BitmapFrame> frames))
+            {
+                return false;
+            }
+
+            frame = frames[0];
+            return true;
+        }
+
+        internal static bool TryCreatePortableFrames(
+            Stream stream,
+            BitmapCreateOptions createOptions,
+            BitmapCacheOption cacheOption,
+            out ReadOnlyCollection<BitmapFrame> frames)
+        {
+            frames = null;
 
             if (stream == null || !stream.CanSeek)
             {
@@ -163,27 +191,8 @@ namespace System.Windows.Media.Imaging
                 }
 
                 stream.Position = startPosition;
-                ImageResult image = ImageResult.FromStream(stream, ColorComponents.RedGreenBlueAlpha);
-                int stride = checked(image.Width * 4);
-                byte[] pixels = new byte[checked(stride * image.Height)];
-                ConvertRgbaToBgra(image.Data, pixels);
-
-                BitmapSource source = BitmapSource.Create(
-                    image.Width,
-                    image.Height,
-                    96.0,
-                    96.0,
-                    PixelFormats.Bgra32,
-                    null,
-                    pixels,
-                    stride);
-
-                frame = BitmapFrame.Create(source);
-                if (!frame.IsFrozen && frame.CanFreeze)
-                {
-                    frame.Freeze();
-                }
-
+                byte[] data = ReadRemainingBytes(stream);
+                frames = DecodePortableFrames(data);
                 return true;
             }
             catch
@@ -200,6 +209,22 @@ namespace System.Windows.Media.Imaging
             out BitmapFrame frame)
         {
             frame = null;
+            if (!TryCreatePortableFramesFromUri(uri, createOptions, cacheOption, out ReadOnlyCollection<BitmapFrame> frames))
+            {
+                return false;
+            }
+
+            frame = frames[0];
+            return true;
+        }
+
+        internal static bool TryCreatePortableFramesFromUri(
+            Uri uri,
+            BitmapCreateOptions createOptions,
+            BitmapCacheOption cacheOption,
+            out ReadOnlyCollection<BitmapFrame> frames)
+        {
+            frames = null;
 
             if (!TryGetLocalPath(uri, out string localPath))
             {
@@ -207,18 +232,386 @@ namespace System.Windows.Media.Imaging
             }
 
             using FileStream stream = new FileStream(localPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return TryCreatePortableFrame(stream, createOptions, cacheOption, out frame);
+            return TryCreatePortableFrames(stream, createOptions, cacheOption, out frames);
         }
 
-        private static void ConvertRgbaToBgra(byte[] source, byte[] target)
+        private static ReadOnlyCollection<BitmapFrame> DecodePortableFrames(byte[] data)
         {
-            for (int sourceOffset = 0; sourceOffset < source.Length; sourceOffset += 4)
+            var reader = new GifReader(data);
+            reader.Skip(6);
+
+            int canvasWidth = reader.ReadUInt16();
+            int canvasHeight = reader.ReadUInt16();
+            if (canvasWidth <= 0 || canvasHeight <= 0)
             {
-                target[sourceOffset + 0] = source[sourceOffset + 2];
-                target[sourceOffset + 1] = source[sourceOffset + 1];
-                target[sourceOffset + 2] = source[sourceOffset + 0];
-                target[sourceOffset + 3] = source[sourceOffset + 3];
+                throw new FileFormatException(null, SR.Image_CantDealWithStream);
             }
+
+            byte packed = reader.ReadByte();
+            int backgroundColorIndex = reader.ReadByte();
+            reader.Skip(1);
+
+            byte[] globalColorTable = null;
+            if ((packed & 0x80) != 0)
+            {
+                globalColorTable = reader.ReadColorTable(1 << ((packed & 0x07) + 1));
+            }
+
+            int stride = checked(canvasWidth * 4);
+            byte[] canvas = new byte[checked(stride * canvasHeight)];
+            FillBackground(canvas, globalColorTable, backgroundColorIndex);
+
+            List<BitmapFrame> portableFrames = new List<BitmapFrame>();
+            GraphicControl graphicControl = default;
+            PendingDisposal pendingDisposal = default;
+
+            while (!reader.EndOfData)
+            {
+                byte introducer = reader.ReadByte();
+                if (introducer == 0x3B)
+                {
+                    break;
+                }
+
+                if (introducer == 0x21)
+                {
+                    byte label = reader.ReadByte();
+                    if (label == 0xF9)
+                    {
+                        graphicControl = reader.ReadGraphicControl();
+                    }
+                    else
+                    {
+                        reader.SkipSubBlocks();
+                    }
+
+                    continue;
+                }
+
+                if (introducer != 0x2C)
+                {
+                    throw new FileFormatException(null, SR.Image_CantDealWithStream);
+                }
+
+                ApplyPendingDisposal(canvas, stride, pendingDisposal, globalColorTable, backgroundColorIndex);
+                pendingDisposal = default;
+
+                ImageDescriptor descriptor = reader.ReadImageDescriptor();
+                ValidateFrameBounds(canvasWidth, canvasHeight, descriptor);
+
+                byte[] activeColorTable = descriptor.LocalColorTable ?? globalColorTable;
+                if (activeColorTable == null)
+                {
+                    throw new FileFormatException(null, SR.Image_CantDealWithStream);
+                }
+
+                byte[] savedCanvas = graphicControl.DisposalMethod == 3 ? (byte[])canvas.Clone() : null;
+                byte[] indices = DecodeLzwIndices(
+                    reader.ReadByte(),
+                    reader.ReadSubBlocks(),
+                    checked(descriptor.Width * descriptor.Height));
+                if (descriptor.Interlaced)
+                {
+                    indices = Deinterlace(indices, descriptor.Width, descriptor.Height);
+                }
+
+                DrawIndexedFrame(canvas, stride, descriptor, activeColorTable, graphicControl, indices);
+                portableFrames.Add(CreateFrame(canvas, canvasWidth, canvasHeight, stride));
+
+                pendingDisposal = new PendingDisposal(
+                    graphicControl.DisposalMethod,
+                    descriptor.Left,
+                    descriptor.Top,
+                    descriptor.Width,
+                    descriptor.Height,
+                    savedCanvas);
+                graphicControl = default;
+            }
+
+            if (portableFrames.Count == 0)
+            {
+                throw new FileFormatException(null, SR.Image_CantDealWithStream);
+            }
+
+            return new ReadOnlyCollection<BitmapFrame>(portableFrames);
+        }
+
+        private static void FillBackground(byte[] canvas, byte[] globalColorTable, int backgroundColorIndex)
+        {
+            if (globalColorTable == null)
+            {
+                return;
+            }
+
+            int colorOffset = backgroundColorIndex * 3;
+            if (colorOffset < 0 || colorOffset + 2 >= globalColorTable.Length)
+            {
+                return;
+            }
+
+            for (int offset = 0; offset < canvas.Length; offset += 4)
+            {
+                canvas[offset + 0] = globalColorTable[colorOffset + 2];
+                canvas[offset + 1] = globalColorTable[colorOffset + 1];
+                canvas[offset + 2] = globalColorTable[colorOffset + 0];
+                canvas[offset + 3] = 0xFF;
+            }
+        }
+
+        private static void ApplyPendingDisposal(
+            byte[] canvas,
+            int stride,
+            PendingDisposal pendingDisposal,
+            byte[] globalColorTable,
+            int backgroundColorIndex)
+        {
+            if (pendingDisposal.Method == 3 && pendingDisposal.SavedCanvas != null)
+            {
+                Buffer.BlockCopy(pendingDisposal.SavedCanvas, 0, canvas, 0, canvas.Length);
+                return;
+            }
+
+            if (pendingDisposal.Method != 2)
+            {
+                return;
+            }
+
+            byte b = 0;
+            byte g = 0;
+            byte r = 0;
+            byte a = 0;
+            if (globalColorTable != null)
+            {
+                int colorOffset = backgroundColorIndex * 3;
+                if (colorOffset >= 0 && colorOffset + 2 < globalColorTable.Length)
+                {
+                    b = globalColorTable[colorOffset + 2];
+                    g = globalColorTable[colorOffset + 1];
+                    r = globalColorTable[colorOffset + 0];
+                    a = 0xFF;
+                }
+            }
+
+            for (int y = 0; y < pendingDisposal.Height; y++)
+            {
+                int rowOffset = checked((pendingDisposal.Top + y) * stride + pendingDisposal.Left * 4);
+                for (int x = 0; x < pendingDisposal.Width; x++)
+                {
+                    int offset = rowOffset + x * 4;
+                    canvas[offset + 0] = b;
+                    canvas[offset + 1] = g;
+                    canvas[offset + 2] = r;
+                    canvas[offset + 3] = a;
+                }
+            }
+        }
+
+        private static void ValidateFrameBounds(int canvasWidth, int canvasHeight, ImageDescriptor descriptor)
+        {
+            if (descriptor.Width <= 0 ||
+                descriptor.Height <= 0 ||
+                descriptor.Left < 0 ||
+                descriptor.Top < 0 ||
+                descriptor.Left + descriptor.Width > canvasWidth ||
+                descriptor.Top + descriptor.Height > canvasHeight)
+            {
+                throw new FileFormatException(null, SR.Image_CantDealWithStream);
+            }
+        }
+
+        private static void DrawIndexedFrame(
+            byte[] canvas,
+            int stride,
+            ImageDescriptor descriptor,
+            byte[] colorTable,
+            GraphicControl graphicControl,
+            byte[] indices)
+        {
+            for (int y = 0; y < descriptor.Height; y++)
+            {
+                int rowOffset = checked((descriptor.Top + y) * stride + descriptor.Left * 4);
+                int sourceRowOffset = checked(y * descriptor.Width);
+                for (int x = 0; x < descriptor.Width; x++)
+                {
+                    int colorIndex = indices[sourceRowOffset + x];
+                    if (graphicControl.HasTransparentColor &&
+                        colorIndex == graphicControl.TransparentColorIndex)
+                    {
+                        continue;
+                    }
+
+                    int colorOffset = colorIndex * 3;
+                    if (colorOffset < 0 || colorOffset + 2 >= colorTable.Length)
+                    {
+                        throw new FileFormatException(null, SR.Image_CantDealWithStream);
+                    }
+
+                    int targetOffset = rowOffset + x * 4;
+                    canvas[targetOffset + 0] = colorTable[colorOffset + 2];
+                    canvas[targetOffset + 1] = colorTable[colorOffset + 1];
+                    canvas[targetOffset + 2] = colorTable[colorOffset + 0];
+                    canvas[targetOffset + 3] = 0xFF;
+                }
+            }
+        }
+
+        private static BitmapFrame CreateFrame(byte[] canvas, int width, int height, int stride)
+        {
+            byte[] pixels = (byte[])canvas.Clone();
+            BitmapSource source = BitmapSource.Create(
+                width,
+                height,
+                96.0,
+                96.0,
+                PixelFormats.Bgra32,
+                null,
+                pixels,
+                stride);
+
+            BitmapFrame frame = BitmapFrame.Create(source);
+            if (!frame.IsFrozen && frame.CanFreeze)
+            {
+                frame.Freeze();
+            }
+
+            return frame;
+        }
+
+        private static byte[] DecodeLzwIndices(byte minimumCodeSize, byte[] compressedData, int expectedPixelCount)
+        {
+            if (minimumCodeSize < 1 || minimumCodeSize > 8)
+            {
+                throw new FileFormatException(null, SR.Image_CantDealWithStream);
+            }
+
+            int clearCode = 1 << minimumCodeSize;
+            int endCode = clearCode + 1;
+            int nextCode = endCode + 1;
+            int codeSize = minimumCodeSize + 1;
+            var dictionary = CreateInitialDictionary(clearCode);
+            var reader = new GifBitReader(compressedData);
+            List<byte> output = new List<byte>(expectedPixelCount);
+            byte[] previous = null;
+
+            while (output.Count < expectedPixelCount)
+            {
+                int code = reader.ReadCode(codeSize);
+                if (code < 0)
+                {
+                    break;
+                }
+
+                if (code == clearCode)
+                {
+                    dictionary = CreateInitialDictionary(clearCode);
+                    nextCode = endCode + 1;
+                    codeSize = minimumCodeSize + 1;
+                    previous = null;
+                    continue;
+                }
+
+                if (code == endCode)
+                {
+                    break;
+                }
+
+                byte[] entry;
+                if (code < dictionary.Count && dictionary[code] != null)
+                {
+                    entry = dictionary[code];
+                }
+                else if (code == nextCode && previous != null)
+                {
+                    entry = AppendByte(previous, previous[0]);
+                }
+                else
+                {
+                    throw new FileFormatException(null, SR.Image_CantDealWithStream);
+                }
+
+                AddDecodedBytes(output, entry, expectedPixelCount);
+                if (previous != null && nextCode < 4096)
+                {
+                    dictionary.Add(AppendByte(previous, entry[0]));
+                    nextCode++;
+                    if (nextCode == (1 << codeSize) && codeSize < 12)
+                    {
+                        codeSize++;
+                    }
+                }
+
+                previous = entry;
+            }
+
+            if (output.Count != expectedPixelCount)
+            {
+                throw new FileFormatException(null, SR.Image_CantDealWithStream);
+            }
+
+            return output.ToArray();
+        }
+
+        private static List<byte[]> CreateInitialDictionary(int clearCode)
+        {
+            List<byte[]> dictionary = new List<byte[]>(4096);
+            for (int i = 0; i < clearCode; i++)
+            {
+                dictionary.Add(new[] { (byte)i });
+            }
+
+            dictionary.Add(null);
+            dictionary.Add(null);
+            return dictionary;
+        }
+
+        private static byte[] AppendByte(byte[] data, byte value)
+        {
+            byte[] result = new byte[data.Length + 1];
+            Buffer.BlockCopy(data, 0, result, 0, data.Length);
+            result[data.Length] = value;
+            return result;
+        }
+
+        private static void AddDecodedBytes(List<byte> output, byte[] entry, int expectedPixelCount)
+        {
+            for (int i = 0; i < entry.Length && output.Count < expectedPixelCount; i++)
+            {
+                output.Add(entry[i]);
+            }
+        }
+
+        private static byte[] Deinterlace(byte[] source, int width, int height)
+        {
+            byte[] target = new byte[source.Length];
+            int sourceOffset = 0;
+            CopyInterlacePass(source, target, width, height, 0, 8, ref sourceOffset);
+            CopyInterlacePass(source, target, width, height, 4, 8, ref sourceOffset);
+            CopyInterlacePass(source, target, width, height, 2, 4, ref sourceOffset);
+            CopyInterlacePass(source, target, width, height, 1, 2, ref sourceOffset);
+            return target;
+        }
+
+        private static void CopyInterlacePass(
+            byte[] source,
+            byte[] target,
+            int width,
+            int height,
+            int startRow,
+            int rowStep,
+            ref int sourceOffset)
+        {
+            for (int y = startRow; y < height; y += rowStep)
+            {
+                Buffer.BlockCopy(source, sourceOffset, target, y * width, width);
+                sourceOffset += width;
+            }
+        }
+
+        private static byte[] ReadRemainingBytes(Stream stream)
+        {
+            using MemoryStream memory = new MemoryStream();
+            stream.CopyTo(memory);
+            return memory.ToArray();
         }
 
         private static bool TryGetLocalPath(Uri uri, out string localPath)
@@ -271,6 +664,248 @@ namespace System.Windows.Media.Imaging
             }
 
             return true;
+        }
+
+        private readonly struct GraphicControl
+        {
+            public GraphicControl(int disposalMethod, int delay, bool hasTransparentColor, int transparentColorIndex)
+            {
+                DisposalMethod = disposalMethod;
+                Delay = delay;
+                HasTransparentColor = hasTransparentColor;
+                TransparentColorIndex = transparentColorIndex;
+            }
+
+            public int DisposalMethod { get; }
+
+            public int Delay { get; }
+
+            public bool HasTransparentColor { get; }
+
+            public int TransparentColorIndex { get; }
+        }
+
+        private readonly struct ImageDescriptor
+        {
+            public ImageDescriptor(
+                int left,
+                int top,
+                int width,
+                int height,
+                bool interlaced,
+                byte[] localColorTable)
+            {
+                Left = left;
+                Top = top;
+                Width = width;
+                Height = height;
+                Interlaced = interlaced;
+                LocalColorTable = localColorTable;
+            }
+
+            public int Left { get; }
+
+            public int Top { get; }
+
+            public int Width { get; }
+
+            public int Height { get; }
+
+            public bool Interlaced { get; }
+
+            public byte[] LocalColorTable { get; }
+        }
+
+        private readonly struct PendingDisposal
+        {
+            public PendingDisposal(
+                int method,
+                int left,
+                int top,
+                int width,
+                int height,
+                byte[] savedCanvas)
+            {
+                Method = method;
+                Left = left;
+                Top = top;
+                Width = width;
+                Height = height;
+                SavedCanvas = savedCanvas;
+            }
+
+            public int Method { get; }
+
+            public int Left { get; }
+
+            public int Top { get; }
+
+            public int Width { get; }
+
+            public int Height { get; }
+
+            public byte[] SavedCanvas { get; }
+        }
+
+        private ref struct GifReader
+        {
+            private readonly ReadOnlySpan<byte> _data;
+            private int _offset;
+
+            public GifReader(byte[] data)
+            {
+                _data = data;
+                _offset = 0;
+            }
+
+            public bool EndOfData => _offset >= _data.Length;
+
+            public byte ReadByte()
+            {
+                if (_offset >= _data.Length)
+                {
+                    throw new FileFormatException(null, SR.Image_CantDealWithStream);
+                }
+
+                return _data[_offset++];
+            }
+
+            public int ReadUInt16()
+            {
+                int lo = ReadByte();
+                int hi = ReadByte();
+                return lo | (hi << 8);
+            }
+
+            public void Skip(int count)
+            {
+                if (count < 0 || _offset + count > _data.Length)
+                {
+                    throw new FileFormatException(null, SR.Image_CantDealWithStream);
+                }
+
+                _offset += count;
+            }
+
+            public byte[] ReadColorTable(int colorCount)
+            {
+                int byteCount = checked(colorCount * 3);
+                if (_offset + byteCount > _data.Length)
+                {
+                    throw new FileFormatException(null, SR.Image_CantDealWithStream);
+                }
+
+                byte[] colorTable = _data.Slice(_offset, byteCount).ToArray();
+                _offset += byteCount;
+                return colorTable;
+            }
+
+            public GraphicControl ReadGraphicControl()
+            {
+                byte blockSize = ReadByte();
+                if (blockSize != 4)
+                {
+                    throw new FileFormatException(null, SR.Image_CantDealWithStream);
+                }
+
+                byte packed = ReadByte();
+                int delay = ReadUInt16();
+                int transparentColorIndex = ReadByte();
+                byte terminator = ReadByte();
+                if (terminator != 0)
+                {
+                    throw new FileFormatException(null, SR.Image_CantDealWithStream);
+                }
+
+                return new GraphicControl(
+                    (packed >> 2) & 0x07,
+                    delay,
+                    (packed & 0x01) != 0,
+                    transparentColorIndex);
+            }
+
+            public ImageDescriptor ReadImageDescriptor()
+            {
+                int left = ReadUInt16();
+                int top = ReadUInt16();
+                int width = ReadUInt16();
+                int height = ReadUInt16();
+                byte packed = ReadByte();
+                bool interlaced = (packed & 0x40) != 0;
+                byte[] localColorTable = null;
+                if ((packed & 0x80) != 0)
+                {
+                    localColorTable = ReadColorTable(1 << ((packed & 0x07) + 1));
+                }
+
+                return new ImageDescriptor(left, top, width, height, interlaced, localColorTable);
+            }
+
+            public byte[] ReadSubBlocks()
+            {
+                using MemoryStream memory = new MemoryStream();
+                while (true)
+                {
+                    byte blockSize = ReadByte();
+                    if (blockSize == 0)
+                    {
+                        return memory.ToArray();
+                    }
+
+                    if (_offset + blockSize > _data.Length)
+                    {
+                        throw new FileFormatException(null, SR.Image_CantDealWithStream);
+                    }
+
+                    memory.Write(_data.Slice(_offset, blockSize));
+                    _offset += blockSize;
+                }
+            }
+
+            public void SkipSubBlocks()
+            {
+                while (true)
+                {
+                    byte blockSize = ReadByte();
+                    if (blockSize == 0)
+                    {
+                        return;
+                    }
+
+                    Skip(blockSize);
+                }
+            }
+        }
+
+        private ref struct GifBitReader
+        {
+            private readonly ReadOnlySpan<byte> _data;
+            private int _bitOffset;
+
+            public GifBitReader(byte[] data)
+            {
+                _data = data;
+                _bitOffset = 0;
+            }
+
+            public int ReadCode(int codeSize)
+            {
+                if (codeSize <= 0 || codeSize > 12 || _bitOffset + codeSize > _data.Length * 8)
+                {
+                    return -1;
+                }
+
+                int code = 0;
+                for (int bit = 0; bit < codeSize; bit++)
+                {
+                    int absoluteBit = _bitOffset + bit;
+                    int value = (_data[absoluteBit / 8] >> (absoluteBit % 8)) & 1;
+                    code |= value << bit;
+                }
+
+                _bitOffset += codeSize;
+                return code;
+            }
         }
 
         #region Internal Abstract

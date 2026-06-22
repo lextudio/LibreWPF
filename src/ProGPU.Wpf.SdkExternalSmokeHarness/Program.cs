@@ -3690,27 +3690,34 @@ internal static class Program
                         BitmapCreateOptions.PreservePixelFormat,
                         BitmapCacheOption.OnLoad);
                     AssertEqual(typeof(GifBitmapDecoder), gifDecoder.GetType(), "external SDK BitmapDecoder.Create GIF decoder type");
-                    AssertEqual(1, gifDecoder.Frames.Count, "external SDK BitmapDecoder.Create GIF frame count");
+                    AssertEqual(2, gifDecoder.Frames.Count, "external SDK BitmapDecoder.Create GIF frame count");
                     AssertEqual(2, gifDecoder.Frames[0].PixelWidth, "external SDK BitmapDecoder.Create GIF pixel width");
                     AssertEqual(2, gifDecoder.Frames[0].PixelHeight, "external SDK BitmapDecoder.Create GIF pixel height");
                     AssertEqual(PixelFormats.Bgra32, gifDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create GIF Bgra32 format");
+                    AssertEqual(PixelFormats.Bgra32, gifDecoder.Frames[1].Format, "external SDK BitmapDecoder.Create GIF second frame Bgra32 format");
                     var decodedGifPixels = new byte[pixels.Length];
                     gifDecoder.Frames[0].CopyPixels(decodedGifPixels, 8, 0);
+                    var decodedSecondGifPixels = new byte[pixels.Length];
+                    gifDecoder.Frames[1].CopyPixels(decodedSecondGifPixels, 8, 0);
                     int gifRgbTotal = 0;
                     for (int offset = 0; offset < decodedGifPixels.Length; offset += 4)
                     {
                         gifRgbTotal += decodedGifPixels[offset] + decodedGifPixels[offset + 1] + decodedGifPixels[offset + 2];
                         AssertEqual((byte)0xFF, decodedGifPixels[offset + 3], "external SDK BitmapDecoder.Create GIF alpha byte " + offset / 4);
+                        AssertEqual((byte)0xFF, decodedSecondGifPixels[offset + 3], "external SDK BitmapDecoder.Create GIF second-frame alpha byte " + offset / 4);
                     }
 
                     AssertAtLeast(1, gifRgbTotal, "external SDK BitmapDecoder.Create GIF nonblank RGB total");
+                    AssertEqual((byte)0xFF, decodedGifPixels[2], "external SDK BitmapDecoder.Create GIF first-frame red byte");
+                    AssertEqual((byte)0xFF, decodedSecondGifPixels[1], "external SDK BitmapDecoder.Create GIF second-frame green byte");
 
                     var directGifDecoder = new GifBitmapDecoder(
                         new MemoryStream(gifBytes),
                         BitmapCreateOptions.PreservePixelFormat,
                         BitmapCacheOption.OnLoad);
-                    AssertEqual(1, directGifDecoder.Frames.Count, "external SDK GifBitmapDecoder frame count");
+                    AssertEqual(2, directGifDecoder.Frames.Count, "external SDK GifBitmapDecoder frame count");
                     AssertEqual(2, directGifDecoder.Frames[0].PixelWidth, "external SDK GifBitmapDecoder pixel width");
+                    AssertEqual(2, directGifDecoder.Frames[1].PixelHeight, "external SDK GifBitmapDecoder second-frame pixel height");
                     AssertEqual(PixelFormats.Bgra32, directGifDecoder.Frames[0].Format, "external SDK GifBitmapDecoder Bgra32 format");
 
                     byte[] tiffBytes = CreateTiffBytes(pixels, 2, 2);
@@ -4028,15 +4035,19 @@ internal static class Program
                             BitmapCreateOptions.PreservePixelFormat,
                             BitmapCacheOption.OnLoad);
                         AssertEqual(typeof(GifBitmapDecoder), uriGifDecoder.GetType(), "external SDK BitmapDecoder.Create URI GIF decoder type");
-                        AssertEqual(1, uriGifDecoder.Frames.Count, "external SDK BitmapDecoder.Create URI GIF frame count");
+                        AssertEqual(2, uriGifDecoder.Frames.Count, "external SDK BitmapDecoder.Create URI GIF frame count");
                         AssertEqual(PixelFormats.Bgra32, uriGifDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create URI GIF Bgra32 format");
+                        AssertEqual(PixelFormats.Bgra32, uriGifDecoder.Frames[1].Format, "external SDK BitmapDecoder.Create URI GIF second-frame Bgra32 format");
 
                         var directUriGifDecoder = new GifBitmapDecoder(
                             gifUri,
                             BitmapCreateOptions.PreservePixelFormat,
                             BitmapCacheOption.OnLoad);
-                        AssertEqual(1, directUriGifDecoder.Frames.Count, "external SDK GifBitmapDecoder URI frame count");
+                        AssertEqual(2, directUriGifDecoder.Frames.Count, "external SDK GifBitmapDecoder URI frame count");
                         AssertEqual(2, directUriGifDecoder.Frames[0].PixelWidth, "external SDK GifBitmapDecoder URI pixel width");
+                        var directUriSecondGifPixels = new byte[pixels.Length];
+                        directUriGifDecoder.Frames[1].CopyPixels(directUriSecondGifPixels, 8, 0);
+                        AssertEqual((byte)0xFF, directUriSecondGifPixels[1], "external SDK GifBitmapDecoder URI second-frame green byte");
 
                         var gifBitmapImage = new BitmapImage(gifUri);
                         AssertEqual(2, gifBitmapImage.PixelWidth, "external SDK BitmapImage URI GIF pixel width");
@@ -4234,8 +4245,68 @@ internal static class Program
 
                 private static byte[] CreateGifBytes()
                 {
-                    return Convert.FromBase64String(
-                        "R0lGODlhAgACAPcfAAAAACQAAEgAAGwAAJAAALQAANgAAPwAAAAkACQkAEgkAGwkAJAkALQkANgkAPwkAABIACRIAEhIAGxIAJBIALRIANhIAPxIAABsACRsAEhsAGxsAJBsALRsANhsAPxsAACQACSQAEiQAGyQAJCQALSQANiQAPyQAAC0ACS0AEi0AGy0AJC0ALS0ANi0APy0AADYACTYAEjYAGzYAJDYALTYANjYAPzYAAD8ACT8AEj8AGz8AJD8ALT8ANj8APz8AAAAVSQAVUgAVWwAVZAAVbQAVdgAVfwAVQAkVSQkVUgkVWwkVZAkVbQkVdgkVfwkVQBIVSRIVUhIVWxIVZBIVbRIVdhIVfxIVQBsVSRsVUhsVWxsVZBsVbRsVdhsVfxsVQCQVSSQVUiQVWyQVZCQVbSQVdiQVfyQVQC0VSS0VUi0VWy0VZC0VbS0Vdi0Vfy0VQDYVSTYVUjYVWzYVZDYVbTYVdjYVfzYVQD8VST8VUj8VWz8VZD8VbT8Vdj8Vfz8VQAAqiQAqkgAqmwAqpAAqrQAqtgAqvwAqgAkqiQkqkgkqmwkqpAkqrQkqtgkqvwkqgBIqiRIqkhIqmxIqpBIqrRIqthIqvxIqgBsqiRsqkhsqmxsqpBsqrRsqthsqvxsqgCQqiSQqkiQqmyQqpCQqrSQqtiQqvyQqgC0qiS0qki0qmy0qpC0qrS0qti0qvy0qgDYqiTYqkjYqmzYqpDYqrTYqtjYqvzYqgD8qiT8qkj8qmz8qpD8qrT8qtj8qvz8qgAA/yQA/0gA/2wA/5AA/7QA/9gA//wA/wAk/yQk/0gk/2wk/5Ak/7Qk/9gk//wk/wBI/yRI/0hI/2xI/5BI/7RI/9hI//xI/wBs/yRs/0hs/2xs/5Bs/7Rs/9hs//xs/wCQ/ySQ/0iQ/2yQ/5CQ/7SQ/9iQ//yQ/wC0/yS0/0i0/2y0/5C0/7S0/9i0//y0/wDY/yTY/0jY/2zY/5DY/7TY/9jY//zY/wD8/yT8/0j8/2z8/5D8/7T8/9j8//z8/yH/C05FVFNDQVBFMi4wAwEAAAAh+QQEBAAfACwAAAAAAgACAAAIBwATTOHSKiAAOw==");
+                    List<byte> gif = new List<byte>();
+                    gif.AddRange(new byte[] { (byte)'G', (byte)'I', (byte)'F', (byte)'8', (byte)'9', (byte)'a' });
+                    WriteUInt16LittleEndian(gif, 2);
+                    WriteUInt16LittleEndian(gif, 2);
+                    gif.Add(0xF1);
+                    gif.Add(0);
+                    gif.Add(0);
+                    gif.AddRange(new byte[]
+                    {
+                        0x00, 0x00, 0x00,
+                        0xFF, 0x00, 0x00,
+                        0x00, 0xFF, 0x00,
+                        0x00, 0x00, 0xFF
+                    });
+
+                    gif.AddRange(new byte[] { 0x21, 0xFF, 0x0B });
+                    gif.AddRange(System.Text.Encoding.ASCII.GetBytes("NETSCAPE2.0"));
+                    gif.AddRange(new byte[] { 0x03, 0x01, 0x00, 0x00, 0x00 });
+                    WriteGifFrame(gif, colorIndex: 1, delay: 5);
+                    WriteGifFrame(gif, colorIndex: 2, delay: 7);
+                    gif.Add(0x3B);
+                    return gif.ToArray();
+                }
+
+                private static void WriteGifFrame(List<byte> gif, byte colorIndex, ushort delay)
+                {
+                    gif.AddRange(new byte[] { 0x21, 0xF9, 0x04, 0x04 });
+                    WriteUInt16LittleEndian(gif, delay);
+                    gif.Add(0);
+                    gif.Add(0);
+                    gif.Add(0x2C);
+                    WriteUInt16LittleEndian(gif, 0);
+                    WriteUInt16LittleEndian(gif, 0);
+                    WriteUInt16LittleEndian(gif, 2);
+                    WriteUInt16LittleEndian(gif, 2);
+                    gif.Add(0);
+                    gif.Add(2);
+                    byte[] imageData = PackGifCodes(new[] { 4, colorIndex, 4, colorIndex, 4, colorIndex, 4, colorIndex, 5 }, 3);
+                    gif.Add((byte)imageData.Length);
+                    gif.AddRange(imageData);
+                    gif.Add(0);
+                }
+
+                private static byte[] PackGifCodes(IReadOnlyList<int> codes, int codeSize)
+                {
+                    int bitCount = checked(codes.Count * codeSize);
+                    byte[] bytes = new byte[(bitCount + 7) / 8];
+                    int bitOffset = 0;
+                    foreach (int code in codes)
+                    {
+                        for (int bit = 0; bit < codeSize; bit++)
+                        {
+                            if (((code >> bit) & 1) != 0)
+                            {
+                                bytes[bitOffset / 8] |= (byte)(1 << (bitOffset % 8));
+                            }
+
+                            bitOffset++;
+                        }
+                    }
+
+                    return bytes;
                 }
 
                 private static byte[] CreateTiffBytes(byte[] bgraPixels, int width, int height)
@@ -4451,6 +4522,12 @@ internal static class Program
                     WriteUInt32LittleEndian(target, offset + 4, count);
                     WriteUInt32LittleEndian(target, offset + 8, value);
                     offset += 12;
+                }
+
+                private static void WriteUInt16LittleEndian(List<byte> target, int value)
+                {
+                    target.Add((byte)value);
+                    target.Add((byte)(value >> 8));
                 }
 
                 private static void WriteUInt16LittleEndian(byte[] target, int offset, int value)

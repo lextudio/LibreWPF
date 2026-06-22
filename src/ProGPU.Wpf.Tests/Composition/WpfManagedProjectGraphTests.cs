@@ -4779,6 +4779,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ZLibStream", pngBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("PixelFormats.Bgra32", pngBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("case 6:", pngBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("private static bool IsSupportedBitDepth", pngBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("ReadSample(source, sourceRow, x, 3, componentCount, bitDepth)", pngBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("ScaleSampleToByte", pngBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("IsTransparentRgb", pngBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("PngBitmapDecoder.TryCreatePortableFrameFromUri", bitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("return new PngBitmapDecoder(portablePngUriFrame", bitmapDecoder, StringComparison.Ordinal);
         AssertGuardBefore(bitmapDecoder, "PngBitmapDecoder.TryCreatePortableFrame", "SetupDecoderFromUriOrStream");
@@ -6444,6 +6448,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("new BitmapImage(pngUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapImage URI PNG top-left blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreateRgbaPngBytes(pixels, 2, 2, 8)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CreateRgba16PngBytes(pixels, 2, 2, 8)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CreateIndexedPngBytes(", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create 16-bit RGBA PNG bottom-right red byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create Indexed4 PNG bottom-left alpha byte", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PixelFormats.Indexed8", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Indexed8 BitmapDecoder palette green", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Indexed8 BitmapImage URI bottom-left index", externalSdkHarnessProgram, StringComparison.Ordinal);

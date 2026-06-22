@@ -3505,6 +3505,45 @@ internal static class Program
                     AssertEqual(1, directPngDecoder.Frames.Count, "external SDK PngBitmapDecoder frame count");
                     AssertEqual(PixelFormats.Bgra32, directPngDecoder.Frames[0].Format, "external SDK PngBitmapDecoder Bgra32 format");
 
+                    byte[] rgba16PngBytes = CreateRgba16PngBytes(pixels, 2, 2, 8);
+                    var rgba16PngDecoder = BitmapDecoder.Create(
+                        new MemoryStream(rgba16PngBytes),
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(typeof(PngBitmapDecoder), rgba16PngDecoder.GetType(), "external SDK BitmapDecoder.Create 16-bit RGBA PNG decoder type");
+                    AssertEqual(PixelFormats.Bgra32, rgba16PngDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create 16-bit RGBA PNG Bgra32 format");
+                    var decodedRgba16Pixels = new byte[pixels.Length];
+                    rgba16PngDecoder.Frames[0].CopyPixels(decodedRgba16Pixels, 8, 0);
+                    AssertEqual(pixels[0], decodedRgba16Pixels[0], "external SDK BitmapDecoder.Create 16-bit RGBA PNG top-left blue byte");
+                    AssertEqual(pixels[14], decodedRgba16Pixels[14], "external SDK BitmapDecoder.Create 16-bit RGBA PNG bottom-right red byte");
+
+                    Color[] indexed4Palette =
+                    [
+                        Color.FromRgb(0x00, 0x00, 0x00),
+                        Color.FromRgb(0xCC, 0x22, 0x22),
+                        Color.FromRgb(0x22, 0xAA, 0x44),
+                        Color.FromRgb(0x22, 0x44, 0xCC)
+                    ];
+                    byte[] indexed4PngBytes = CreateIndexedPngBytes(
+                        [0, 1, 2, 3],
+                        indexed4Palette,
+                        [0xFF, 0xFF, 0x80, 0xFF],
+                        2,
+                        2,
+                        4);
+                    var indexed4PngDecoder = BitmapDecoder.Create(
+                        new MemoryStream(indexed4PngBytes),
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(typeof(PngBitmapDecoder), indexed4PngDecoder.GetType(), "external SDK BitmapDecoder.Create Indexed4 PNG decoder type");
+                    AssertEqual(PixelFormats.Bgra32, indexed4PngDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create Indexed4 PNG Bgra32 format");
+                    var decodedIndexed4PngPixels = new byte[pixels.Length];
+                    indexed4PngDecoder.Frames[0].CopyPixels(decodedIndexed4PngPixels, 8, 0);
+                    AssertEqual((byte)0x44, decodedIndexed4PngPixels[8], "external SDK BitmapDecoder.Create Indexed4 PNG bottom-left blue byte");
+                    AssertEqual((byte)0xAA, decodedIndexed4PngPixels[9], "external SDK BitmapDecoder.Create Indexed4 PNG bottom-left green byte");
+                    AssertEqual((byte)0x22, decodedIndexed4PngPixels[10], "external SDK BitmapDecoder.Create Indexed4 PNG bottom-left red byte");
+                    AssertEqual((byte)0x80, decodedIndexed4PngPixels[11], "external SDK BitmapDecoder.Create Indexed4 PNG bottom-left alpha byte");
+
                     string bmpPath = Path.Combine(Path.GetTempPath(), "external-sdk-managed-image-" + Guid.NewGuid().ToString("N") + ".bmp");
                     File.WriteAllBytes(bmpPath, bmpBytes);
                     try
@@ -3701,6 +3740,98 @@ internal static class Program
                     WritePngChunk(png, "IDAT", compressed.ToArray());
                     WritePngChunk(png, "IEND", Array.Empty<byte>());
                     return png.ToArray();
+                }
+
+                private static byte[] CreateRgba16PngBytes(byte[] bgraPixels, int width, int height, int stride)
+                {
+                    byte[] rawRows = new byte[checked((width * 8 + 1) * height)];
+                    int rawOffset = 0;
+                    for (int y = 0; y < height; y++)
+                    {
+                        rawRows[rawOffset++] = 0;
+                        int sourceRow = y * stride;
+                        for (int x = 0; x < width; x++)
+                        {
+                            int sourceOffset = sourceRow + x * 4;
+                            WriteRepeated16BitSample(rawRows, ref rawOffset, bgraPixels[sourceOffset + 2]);
+                            WriteRepeated16BitSample(rawRows, ref rawOffset, bgraPixels[sourceOffset + 1]);
+                            WriteRepeated16BitSample(rawRows, ref rawOffset, bgraPixels[sourceOffset]);
+                            WriteRepeated16BitSample(rawRows, ref rawOffset, bgraPixels[sourceOffset + 3]);
+                        }
+                    }
+
+                    using var compressed = new MemoryStream();
+                    using (var zlib = new ZLibStream(compressed, CompressionLevel.SmallestSize, leaveOpen: true))
+                    {
+                        zlib.Write(rawRows, 0, rawRows.Length);
+                    }
+
+                    using var png = new MemoryStream();
+                    png.Write(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 });
+                    byte[] ihdr = new byte[13];
+                    WriteBigEndianUInt32(ihdr, 0, (uint)width);
+                    WriteBigEndianUInt32(ihdr, 4, (uint)height);
+                    ihdr[8] = 16;
+                    ihdr[9] = 6;
+                    WritePngChunk(png, "IHDR", ihdr);
+                    WritePngChunk(png, "IDAT", compressed.ToArray());
+                    WritePngChunk(png, "IEND", Array.Empty<byte>());
+                    return png.ToArray();
+                }
+
+                private static byte[] CreateIndexedPngBytes(byte[] indices, Color[] palette, byte[] alpha, int width, int height, int bitDepth)
+                {
+                    int rowBytes = checked((width * bitDepth + 7) / 8);
+                    byte[] rawRows = new byte[checked((rowBytes + 1) * height)];
+                    int rawOffset = 0;
+                    int sourceOffset = 0;
+                    for (int y = 0; y < height; y++)
+                    {
+                        rawRows[rawOffset++] = 0;
+                        int rowOffset = rawOffset;
+                        rawOffset += rowBytes;
+                        for (int x = 0; x < width; x++)
+                        {
+                            int bitOffset = x * bitDepth;
+                            int shift = 8 - bitDepth - bitOffset % 8;
+                            rawRows[rowOffset + bitOffset / 8] |= (byte)(indices[sourceOffset++] << shift);
+                        }
+                    }
+
+                    using var compressed = new MemoryStream();
+                    using (var zlib = new ZLibStream(compressed, CompressionLevel.SmallestSize, leaveOpen: true))
+                    {
+                        zlib.Write(rawRows, 0, rawRows.Length);
+                    }
+
+                    using var png = new MemoryStream();
+                    png.Write(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 });
+                    byte[] ihdr = new byte[13];
+                    WriteBigEndianUInt32(ihdr, 0, (uint)width);
+                    WriteBigEndianUInt32(ihdr, 4, (uint)height);
+                    ihdr[8] = (byte)bitDepth;
+                    ihdr[9] = 3;
+                    WritePngChunk(png, "IHDR", ihdr);
+
+                    byte[] paletteBytes = new byte[checked(palette.Length * 3)];
+                    for (int i = 0; i < palette.Length; i++)
+                    {
+                        paletteBytes[i * 3] = palette[i].R;
+                        paletteBytes[i * 3 + 1] = palette[i].G;
+                        paletteBytes[i * 3 + 2] = palette[i].B;
+                    }
+
+                    WritePngChunk(png, "PLTE", paletteBytes);
+                    WritePngChunk(png, "tRNS", alpha);
+                    WritePngChunk(png, "IDAT", compressed.ToArray());
+                    WritePngChunk(png, "IEND", Array.Empty<byte>());
+                    return png.ToArray();
+                }
+
+                private static void WriteRepeated16BitSample(byte[] buffer, ref int offset, byte value)
+                {
+                    buffer[offset++] = value;
+                    buffer[offset++] = value;
                 }
 
                 private static void WritePngChunk(Stream stream, string chunkType, byte[] data)

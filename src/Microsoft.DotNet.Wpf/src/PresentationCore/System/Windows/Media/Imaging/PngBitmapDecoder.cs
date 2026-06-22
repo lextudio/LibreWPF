@@ -269,16 +269,18 @@ namespace System.Windows.Media.Imaging
             byte[] paletteAlpha,
             MemoryStream compressedData)
         {
-            if (bitDepth != 8)
+            if (!IsSupportedBitDepth(colorType, bitDepth))
             {
-                throw new NotSupportedException($"Portable PNG decoding does not support {bitDepth}-bit images.");
+                throw new NotSupportedException($"Portable PNG decoding does not support color type {colorType} with {bitDepth}-bit samples.");
             }
 
             int componentCount = GetComponentCount(colorType);
-            int sourceStride = checked(width * componentCount);
+            int bitsPerPixel = checked(componentCount * bitDepth);
+            int sourceStride = checked((width * bitsPerPixel + 7) / 8);
+            int filterBytesPerPixel = Math.Max(1, checked((bitsPerPixel + 7) / 8));
             int targetStride = checked(width * 4);
             byte[] rawRows = Inflate(compressedData, checked((sourceStride + 1) * height));
-            byte[] unfiltered = Unfilter(rawRows, width, height, sourceStride, componentCount);
+            byte[] unfiltered = Unfilter(rawRows, width, height, sourceStride, filterBytesPerPixel);
             byte[] pixels = new byte[checked(targetStride * height)];
 
             for (int y = 0; y < height; y++)
@@ -287,9 +289,8 @@ namespace System.Windows.Media.Imaging
                 int targetRow = y * targetStride;
                 for (int x = 0; x < width; x++)
                 {
-                    int sourceOffset = sourceRow + x * componentCount;
                     int targetOffset = targetRow + x * 4;
-                    WriteBgraPixel(colorType, unfiltered, sourceOffset, paletteColors, paletteAlpha, pixels, targetOffset);
+                    WriteBgraPixel(colorType, bitDepth, componentCount, unfiltered, sourceRow, x, paletteColors, paletteAlpha, pixels, targetOffset);
                 }
             }
 
@@ -304,6 +305,24 @@ namespace System.Windows.Media.Imaging
                 targetStride);
 
             return BitmapFrame.Create(source);
+        }
+
+        private static bool IsSupportedBitDepth(byte colorType, byte bitDepth)
+        {
+            switch (colorType)
+            {
+                case 0:
+                    return bitDepth == 1 || bitDepth == 2 || bitDepth == 4 || bitDepth == 8 || bitDepth == 16;
+                case 2:
+                    return bitDepth == 8 || bitDepth == 16;
+                case 3:
+                    return bitDepth == 1 || bitDepth == 2 || bitDepth == 4 || bitDepth == 8;
+                case 4:
+                case 6:
+                    return bitDepth == 8 || bitDepth == 16;
+                default:
+                    return false;
+            }
         }
 
         private static int GetComponentCount(byte colorType)
@@ -327,8 +346,11 @@ namespace System.Windows.Media.Imaging
 
         private static void WriteBgraPixel(
             byte colorType,
+            byte bitDepth,
+            int componentCount,
             byte[] source,
-            int sourceOffset,
+            int sourceRow,
+            int x,
             List<Color> paletteColors,
             byte[] paletteAlpha,
             byte[] target,
@@ -342,12 +364,26 @@ namespace System.Windows.Media.Imaging
             switch (colorType)
             {
                 case 0:
-                    r = g = b = source[sourceOffset];
+                    int gray = ReadSample(source, sourceRow, x, 0, componentCount, bitDepth);
+                    r = g = b = ScaleSampleToByte(gray, bitDepth);
+                    if (IsTransparentGrayscale(gray, paletteAlpha))
+                    {
+                        a = 0;
+                    }
+
                     break;
                 case 2:
-                    r = source[sourceOffset];
-                    g = source[sourceOffset + 1];
-                    b = source[sourceOffset + 2];
+                    int red = ReadSample(source, sourceRow, x, 0, componentCount, bitDepth);
+                    int green = ReadSample(source, sourceRow, x, 1, componentCount, bitDepth);
+                    int blue = ReadSample(source, sourceRow, x, 2, componentCount, bitDepth);
+                    r = ScaleSampleToByte(red, bitDepth);
+                    g = ScaleSampleToByte(green, bitDepth);
+                    b = ScaleSampleToByte(blue, bitDepth);
+                    if (IsTransparentRgb(red, green, blue, paletteAlpha))
+                    {
+                        a = 0;
+                    }
+
                     break;
                 case 3:
                     if (paletteColors == null)
@@ -355,7 +391,7 @@ namespace System.Windows.Media.Imaging
                         throw new FileFormatException(null, SR.Image_CantDealWithStream);
                     }
 
-                    int paletteIndex = source[sourceOffset];
+                    int paletteIndex = ReadSample(source, sourceRow, x, 0, componentCount, bitDepth);
                     if (paletteIndex >= paletteColors.Count)
                     {
                         throw new FileFormatException(null, SR.Image_CantDealWithStream);
@@ -372,14 +408,15 @@ namespace System.Windows.Media.Imaging
 
                     break;
                 case 4:
-                    r = g = b = source[sourceOffset];
-                    a = source[sourceOffset + 1];
+                    int grayAlpha = ReadSample(source, sourceRow, x, 0, componentCount, bitDepth);
+                    r = g = b = ScaleSampleToByte(grayAlpha, bitDepth);
+                    a = ScaleSampleToByte(ReadSample(source, sourceRow, x, 1, componentCount, bitDepth), bitDepth);
                     break;
                 case 6:
-                    r = source[sourceOffset];
-                    g = source[sourceOffset + 1];
-                    b = source[sourceOffset + 2];
-                    a = source[sourceOffset + 3];
+                    r = ScaleSampleToByte(ReadSample(source, sourceRow, x, 0, componentCount, bitDepth), bitDepth);
+                    g = ScaleSampleToByte(ReadSample(source, sourceRow, x, 1, componentCount, bitDepth), bitDepth);
+                    b = ScaleSampleToByte(ReadSample(source, sourceRow, x, 2, componentCount, bitDepth), bitDepth);
+                    a = ScaleSampleToByte(ReadSample(source, sourceRow, x, 3, componentCount, bitDepth), bitDepth);
                     break;
                 default:
                     throw new NotSupportedException($"Portable PNG decoding does not support color type {colorType}.");
@@ -389,6 +426,53 @@ namespace System.Windows.Media.Imaging
             target[targetOffset + 1] = g;
             target[targetOffset + 2] = r;
             target[targetOffset + 3] = a;
+        }
+
+        private static int ReadSample(byte[] source, int rowOffset, int x, int componentIndex, int componentCount, byte bitDepth)
+        {
+            if (bitDepth < 8)
+            {
+                int bitOffset = x * bitDepth;
+                int packed = source[rowOffset + bitOffset / 8];
+                int shift = 8 - bitDepth - bitOffset % 8;
+                return (packed >> shift) & ((1 << bitDepth) - 1);
+            }
+
+            int sampleByteCount = bitDepth / 8;
+            int offset = checked(rowOffset + x * componentCount * sampleByteCount + componentIndex * sampleByteCount);
+            if (bitDepth == 8)
+            {
+                return source[offset];
+            }
+
+            return BinaryPrimitives.ReadUInt16BigEndian(source.AsSpan(offset, sizeof(ushort)));
+        }
+
+        private static byte ScaleSampleToByte(int sample, byte bitDepth)
+        {
+            if (bitDepth == 8)
+            {
+                return (byte)sample;
+            }
+
+            int maxSample = (1 << bitDepth) - 1;
+            return (byte)((sample * 255 + maxSample / 2) / maxSample);
+        }
+
+        private static bool IsTransparentGrayscale(int gray, byte[] transparency)
+        {
+            return transparency != null &&
+                transparency.Length >= 2 &&
+                gray == BinaryPrimitives.ReadUInt16BigEndian(transparency.AsSpan(0, 2));
+        }
+
+        private static bool IsTransparentRgb(int red, int green, int blue, byte[] transparency)
+        {
+            return transparency != null &&
+                transparency.Length >= 6 &&
+                red == BinaryPrimitives.ReadUInt16BigEndian(transparency.AsSpan(0, 2)) &&
+                green == BinaryPrimitives.ReadUInt16BigEndian(transparency.AsSpan(2, 2)) &&
+                blue == BinaryPrimitives.ReadUInt16BigEndian(transparency.AsSpan(4, 2));
         }
 
         private static List<Color> ReadPalette(byte[] data)

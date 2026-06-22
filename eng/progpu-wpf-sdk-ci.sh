@@ -11,10 +11,15 @@ export DOTNET_ROLL_FORWARD="${DOTNET_ROLL_FORWARD:-Major}"
 export DOTNET_ROLL_FORWARD_TO_PRERELEASE="${DOTNET_ROLL_FORWARD_TO_PRERELEASE:-1}"
 
 package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
+dev_package_version="${PROGPU_WPF_DEV_PACKAGE_VERSION:-11.0.0-dev}"
 mkdir -p "${package_output}"
 
 pack_project() {
   local project="$1"
+  local package_id="$2"
+  rm -f \
+    "${package_output}/${package_id}.${dev_package_version}.nupkg" \
+    "${package_output}/${package_id}.${dev_package_version}.snupkg"
   "${dotnet}" pack "${repo_root}/${project}" -c Release -o "${package_output}" -v:minimal
 }
 
@@ -44,12 +49,12 @@ clean_sdk_smoke_outputs() {
 }
 
 echo "Packing ProGPU packages for ProGPU.Wpf.Sdk feed..."
-pack_project "external/ProGPU/src/ProGPU.Backend/ProGPU.Backend.csproj"
-pack_project "external/ProGPU/src/ProGPU.Transpiler/ProGPU.Transpiler.csproj"
-pack_project "external/ProGPU/src/ProGPU.Compute/ProGPU.Compute.csproj"
-pack_project "external/ProGPU/src/ProGPU.Vector/ProGPU.Vector.csproj"
-pack_project "external/ProGPU/src/ProGPU.Text/ProGPU.Text.csproj"
-pack_project "external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj"
+pack_project "external/ProGPU/src/ProGPU.Backend/ProGPU.Backend.csproj" "ProGPU.Backend"
+pack_project "external/ProGPU/src/ProGPU.Transpiler/ProGPU.Transpiler.csproj" "ProGPU.Transpiler"
+pack_project "external/ProGPU/src/ProGPU.Compute/ProGPU.Compute.csproj" "ProGPU.Compute"
+pack_project "external/ProGPU/src/ProGPU.Vector/ProGPU.Vector.csproj" "ProGPU.Vector"
+pack_project "external/ProGPU/src/ProGPU.Text/ProGPU.Text.csproj" "ProGPU.Text"
+pack_project "external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj" "ProGPU.Scene"
 
 echo "Building managed WPF transport payload..."
 build_project "src/Microsoft.DotNet.Wpf/src/WindowsBase/WindowsBase.csproj"
@@ -66,9 +71,9 @@ build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Aero2/P
 build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Fluent/PresentationFramework.Fluent.csproj"
 
 echo "Packing WPF transport, ProGPU bridge, and custom SDK..."
-pack_project "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj"
-pack_project "src/ProGPU.Wpf/ProGPU.Wpf.csproj"
-pack_project "packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj"
+pack_project "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj" "Microsoft.DotNet.Wpf.GitHub"
+pack_project "src/ProGPU.Wpf/ProGPU.Wpf.csproj" "ProGPU.Wpf"
+pack_project "packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj" "ProGPU.Wpf.Sdk"
 
 echo "Cleaning package-mode SDK smoke outputs..."
 clean_sdk_smoke_outputs

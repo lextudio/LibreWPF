@@ -6390,6 +6390,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalStartupResourceText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateApplicationRunAndShutdown", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateApplicationExit", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Closing=\"OnExternalWindowClosing\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Closed=\"OnExternalWindowClosed\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateApplicationWindowLifetime(app, window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CancelNextExternalWindowClose", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ShutdownMode.OnMainWindowClose", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("App.ExternalStartupEventCount", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("App.ExternalExitEventCount", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalRunValidated", externalSdkHarnessProgram, StringComparison.Ordinal);

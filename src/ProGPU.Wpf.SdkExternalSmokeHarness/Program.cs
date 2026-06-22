@@ -646,6 +646,8 @@ internal static class Program
                 Title="External SDK App"
                 Width="320"
                 Height="200"
+                Closing="OnExternalWindowClosing"
+                Closed="OnExternalWindowClosed"
                 AllowDrop="True"
                 PreviewDragEnter="OnExternalPreviewDragEnter"
                 DragEnter="OnExternalDragEnter"
@@ -2021,6 +2023,41 @@ internal static class Program
 
                 public string? LastExternalFrameContentType { get; private set; }
 
+                public int ExternalWindowClosingCount { get; private set; }
+
+                public int ExternalWindowClosedCount { get; private set; }
+
+                public bool CancelNextExternalWindowClose { get; set; }
+
+                public bool LastExternalWindowClosingCancelBefore { get; private set; }
+
+                public bool LastExternalWindowClosingCancelAfter { get; private set; }
+
+                public string? LastExternalWindowClosingSenderType { get; private set; }
+
+                public string? LastExternalWindowClosedSenderType { get; private set; }
+
+                private void OnExternalWindowClosing(object sender, CancelEventArgs e)
+                {
+                    ExternalWindowClosingCount++;
+                    LastExternalWindowClosingSenderType = sender.GetType().Name;
+                    LastExternalWindowClosingCancelBefore = e.Cancel;
+
+                    if (CancelNextExternalWindowClose)
+                    {
+                        e.Cancel = true;
+                        CancelNextExternalWindowClose = false;
+                    }
+
+                    LastExternalWindowClosingCancelAfter = e.Cancel;
+                }
+
+                private void OnExternalWindowClosed(object sender, EventArgs e)
+                {
+                    ExternalWindowClosedCount++;
+                    LastExternalWindowClosedSenderType = sender.GetType().Name;
+                }
+
                 private void OnExternalSelectionChanged(object sender, SelectionChangedEventArgs e)
                 {
                     ExternalSelectionChangedCount++;
@@ -3013,9 +3050,51 @@ internal static class Program
                     ValidateAdornerLayer(window);
                     ValidateAccessKeyRoutingAfterRun(window);
                     ValidateKeyboardNavigationAfterRun(window);
+                    ValidateApplicationWindowLifetime(app, window);
 
                     App.MarkExternalRunValidated();
-                    app.Shutdown(0);
+                }
+
+                private static void ValidateApplicationWindowLifetime(App app, MainWindow window)
+                {
+                    int closingCountBefore = window.ExternalWindowClosingCount;
+                    int closedCountBefore = window.ExternalWindowClosedCount;
+
+                    window.CancelNextExternalWindowClose = true;
+                    window.Close();
+                    DrainDispatcher();
+
+                    AssertEqual(closingCountBefore + 1, window.ExternalWindowClosingCount, "external SDK canceled window Closing count");
+                    AssertEqual(closedCountBefore, window.ExternalWindowClosedCount, "external SDK canceled window Closed count");
+                    AssertEqual(false, window.CancelNextExternalWindowClose, "external SDK canceled window close request reset");
+                    AssertEqual(false, window.LastExternalWindowClosingCancelBefore, "external SDK canceled window Closing initial cancel state");
+                    AssertEqual(true, window.LastExternalWindowClosingCancelAfter, "external SDK canceled window Closing final cancel state");
+                    AssertEqual(nameof(MainWindow), window.LastExternalWindowClosingSenderType, "external SDK canceled window Closing sender");
+                    AssertEqual(true, window.IsVisible, "external SDK canceled window visibility");
+
+                    bool containsMainWindowAfterCanceledClose = false;
+                    foreach (Window candidate in app.Windows)
+                    {
+                        if (ReferenceEquals(candidate, window))
+                        {
+                            containsMainWindowAfterCanceledClose = true;
+                            break;
+                        }
+                    }
+
+                    AssertEqual(true, containsMainWindowAfterCanceledClose, "external SDK application windows contains main window after canceled close");
+
+                    app.ShutdownMode = ShutdownMode.OnMainWindowClose;
+                    AssertEqual(ShutdownMode.OnMainWindowClose, app.ShutdownMode, "external SDK application main-window shutdown mode");
+
+                    window.Close();
+
+                    AssertEqual(closingCountBefore + 2, window.ExternalWindowClosingCount, "external SDK final window Closing count");
+                    AssertEqual(closedCountBefore + 1, window.ExternalWindowClosedCount, "external SDK final window Closed count");
+                    AssertEqual(false, window.LastExternalWindowClosingCancelBefore, "external SDK final window Closing initial cancel state");
+                    AssertEqual(false, window.LastExternalWindowClosingCancelAfter, "external SDK final window Closing final cancel state");
+                    AssertEqual(nameof(MainWindow), window.LastExternalWindowClosedSenderType, "external SDK final window Closed sender");
+                    AssertEqual(false, window.IsVisible, "external SDK final window visibility");
                 }
 
                 public static void ValidateApplicationExit(int exitCode)

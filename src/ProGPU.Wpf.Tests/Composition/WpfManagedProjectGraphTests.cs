@@ -5603,6 +5603,15 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.SdkExternalSmokeHarness",
             "Program.cs");
+        var spellerInteropBasePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Documents",
+            "SpellerInteropBase.cs");
         var sdkCiScriptPath = FindRepoPath(
             "eng",
             "progpu-wpf-sdk-ci.sh");
@@ -5653,6 +5662,7 @@ public sealed class WpfManagedProjectGraphTests
         var runtimeHarnessProgram = File.ReadAllText(runtimeHarnessProgramPath);
         var externalSdkHarnessProject = File.ReadAllText(externalSdkHarnessProjectPath);
         var externalSdkHarnessProgram = File.ReadAllText(externalSdkHarnessProgramPath);
+        var spellerInteropBase = File.ReadAllText(spellerInteropBasePath);
         var sdkCiScript = File.ReadAllText(sdkCiScriptPath);
         var sdkCiWorkflow = File.ReadAllText(sdkCiWorkflowPath);
 
@@ -6896,6 +6906,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK FlowDocument table cell count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK RichTextBox selection text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new TextRange(document.ContentStart, document.ContentEnd).Text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalSpellCheckTextBox", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SpellCheck.IsEnabled=\"True\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateSpellCheck(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK SpellCheck no-op next spelling error", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK SpellCheck custom dictionary add count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK SpellCheck disabled instance value", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("if (!System.OperatingSystem.IsWindows())", spellerInteropBase, StringComparison.Ordinal);
+        Assert.Contains("return new NullSpellerInterop();", spellerInteropBase, StringComparison.Ordinal);
+        Assert.Contains("private sealed class NullSpellerInterop : SpellerInteropBase", spellerInteropBase, StringComparison.Ordinal);
+        Assert.Contains("internal override bool CanSpellCheck(CultureInfo culture)", spellerInteropBase, StringComparison.Ordinal);
+        Assert.Contains("return false;", spellerInteropBase, StringComparison.Ordinal);
         Assert.Contains("ExternalItemTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DataType=\"{x:Type local:ExternalItem}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ObservableCollection<ExternalItem>", externalSdkHarnessProgram, StringComparison.Ordinal);

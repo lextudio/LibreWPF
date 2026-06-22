@@ -1572,6 +1572,11 @@ internal static class Program
                         TargetUpdated="OnExternalBindingTargetUpdated"
                         Text="{Binding ExternalBindingTransferText, Mode=TwoWay, UpdateSourceTrigger=Explicit, NotifyOnSourceUpdated=True, NotifyOnTargetUpdated=True}" />
                     <TextBox
+                        x:Name="ExternalSpellCheckTextBox"
+                        SpellCheck.IsEnabled="True"
+                        SpellCheck.SpellingReform="PreAndPostreform"
+                        Text="external misspelled wrdz" />
+                    <TextBox
                         x:Name="ExternalValidationTextBox"
                         AutomationProperties.AutomationId="ExternalValidationTextBoxAutomation"
                         AutomationProperties.HelpText="External SDK validation text"
@@ -2995,6 +3000,7 @@ internal static class Program
                     ValidateLayoutsAndItems(window);
                     ValidateSelectorsAndContent(window);
                     ValidateRichDocuments(window);
+                    ValidateSpellCheck(window);
                     ValidateCommandsAndFocus(window);
 
                     var themedControl = RequireType<ExternalThemedControl>(
@@ -8454,6 +8460,32 @@ internal static class Program
                     AssertContains("External section", richTextBox.Selection.Text, "external SDK RichTextBox selection text");
                     var documentText = new TextRange(document.ContentStart, document.ContentEnd).Text;
                     AssertContains("External cell beta", documentText, "external SDK FlowDocument TextRange table text");
+                }
+
+                private static void ValidateSpellCheck(MainWindow window)
+                {
+                    var textBox = RequireType<TextBox>(
+                        window.FindName("ExternalSpellCheckTextBox"),
+                        "external SDK spell-check text box");
+                    AssertEqual(true, SpellCheck.GetIsEnabled(textBox), "external SDK SpellCheck enabled attached value");
+                    AssertEqual(SpellingReform.PreAndPostreform, textBox.SpellCheck.SpellingReform, "external SDK SpellCheck spelling reform instance value");
+
+                    var dictionaries = SpellCheck.GetCustomDictionaries(textBox);
+                    AssertEqual(0, dictionaries.Count, "external SDK SpellCheck initial custom dictionary count");
+                    dictionaries.Add(new Uri("external-sdk-custom.lex", UriKind.Relative));
+                    AssertEqual(1, dictionaries.Count, "external SDK SpellCheck custom dictionary add count");
+                    dictionaries.Add(new Uri("external-sdk-custom.lex", UriKind.Relative));
+                    AssertEqual(1, dictionaries.Count, "external SDK SpellCheck duplicate custom dictionary count");
+
+                    AssertEqual(null, textBox.GetSpellingError(0), "external SDK SpellCheck no-op spelling error result");
+                    AssertEqual(-1, textBox.GetSpellingErrorStart(0), "external SDK SpellCheck no-op spelling error start");
+                    AssertEqual(0, textBox.GetSpellingErrorLength(0), "external SDK SpellCheck no-op spelling error length");
+                    AssertEqual(-1, textBox.GetNextSpellingErrorCharacterIndex(0, LogicalDirection.Forward), "external SDK SpellCheck no-op next spelling error");
+
+                    dictionaries.Clear();
+                    AssertEqual(0, dictionaries.Count, "external SDK SpellCheck custom dictionary clear count");
+                    SpellCheck.SetIsEnabled(textBox, false);
+                    AssertEqual(false, textBox.SpellCheck.IsEnabled, "external SDK SpellCheck disabled instance value");
                 }
 
                 private static void ValidateCommandsAndFocus(MainWindow window)

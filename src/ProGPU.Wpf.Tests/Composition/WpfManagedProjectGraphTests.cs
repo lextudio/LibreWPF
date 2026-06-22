@@ -6015,6 +6015,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Header=\"_Context checked\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"CommandButton\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CommandParameter=\"routed command payload\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"RequeryCommandButton\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{Binding RequeryCommand}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CommandParameter=\"requery command payload\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"EventSetterButtonStyle\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<EventSetter Event=\"Click\" Handler=\"OnEventSetterButtonClick\" />", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"EventSetterButton\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -6355,6 +6358,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void OnSmokeCommandCanExecute", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnSmokeCommandExecuted", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SmokeCommandExecutionCount++", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public SmokeRequeryCommand RequeryCommand", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokeRequeryCommand : ICommand", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("CommandManager.RequerySuggested += value", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("CommandManager.RequerySuggested -= value", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int EventSetterClickCount", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string? LastEventSetterSenderName", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string? LastEventSetterRoutedEventName", smokeMainWindowCodeBehind, StringComparison.Ordinal);
@@ -7996,6 +8003,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("window mouse binding command executed parameter", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("command button routed command CanExecute", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window routed command execution count", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"RequeryCommandButton\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK requery command disabled state", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK requery command enabled state", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK requery command execute count", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"EventSetterButton\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("event setter button style target type", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.EventSetter", runtimeHarnessProgram, StringComparison.Ordinal);

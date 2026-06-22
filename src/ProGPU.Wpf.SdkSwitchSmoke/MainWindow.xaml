@@ -247,6 +247,13 @@
             Margin="0,6,0,0"
             Text="command not executed" />
         <Button
+            x:Name="RequeryCommandButton"
+            Margin="0,8,0,0"
+            Command="{Binding RequeryCommand}"
+            CommandParameter="requery command payload"
+            Content="Run requery command"
+            Style="{StaticResource ActionButtonStyle}" />
+        <Button
             x:Name="EventSetterButton"
             Margin="0,8,0,0"
             Content="Run event setter"

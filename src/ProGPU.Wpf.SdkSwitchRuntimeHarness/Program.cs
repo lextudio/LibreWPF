@@ -1772,6 +1772,44 @@ internal static class Program
         AssertEqual("mouse binding payload", GetProperty(window, "LastSmokeCommandParameter"), "window mouse binding command executed parameter");
         AssertEqual("mouse binding payload", GetProperty(commandStatus, "Text"), "command status after mouse binding command");
 
+        object requeryCommandButton = Invoke(window, "FindName", "RequeryCommandButton");
+        AssertType(requeryCommandButton, "System.Windows.Controls.Button", "requery command button");
+        AssertEqual("Run requery command", GetProperty(requeryCommandButton, "Content"), "requery command button content");
+        object commandViewModel = GetProperty(window, "DataContext");
+        object requeryCommand = GetProperty(commandViewModel, "RequeryCommand");
+        if (!requeryCommand.GetType().GetInterfaces().Any(type => string.Equals(type.FullName, "System.Windows.Input.ICommand", StringComparison.Ordinal)))
+        {
+            throw new InvalidOperationException($"requery command: expected ICommand implementation, actual '{requeryCommand.GetType().FullName}'.");
+        }
+
+        AssertSame(requeryCommand, GetProperty(requeryCommandButton, "Command"), "requery command button command binding");
+        object requeryCommandParameter = GetProperty(requeryCommandButton, "CommandParameter");
+        AssertEqual("requery command payload", requeryCommandParameter, "requery command button parameter");
+
+        if (flushDispatcherOperations is not null)
+        {
+            Type commandManagerType = GetRequiredType(commandButtonCommand.GetType().Assembly, "System.Windows.Input.CommandManager");
+            SetProperty(requeryCommand, "CanExecuteValue", false);
+            InvokeStaticVoid(commandManagerType, "InvalidateRequerySuggested");
+            flushDispatcherOperations(window);
+            AssertEqual(false, GetProperty(requeryCommandButton, "IsEnabled"), "SDK requery command disabled state");
+
+            int requeryProbeBefore = Convert.ToInt32(GetProperty(requeryCommand, "CanExecuteProbeCount"));
+            SetProperty(requeryCommand, "CanExecuteValue", true);
+            InvokeStaticVoid(commandManagerType, "InvalidateRequerySuggested");
+            flushDispatcherOperations(window);
+            AssertEqual(true, GetProperty(requeryCommandButton, "IsEnabled"), "SDK requery command enabled state");
+            AssertAtLeast(
+                requeryProbeBefore + 1,
+                GetProperty(requeryCommand, "CanExecuteProbeCount"),
+                "SDK requery command can-execute probe count");
+
+            int requeryExecuteBefore = Convert.ToInt32(GetProperty(requeryCommand, "ExecuteCount"));
+            InvokeVoid(requeryCommand, "Execute", requeryCommandParameter);
+            AssertEqual(requeryExecuteBefore + 1, GetProperty(requeryCommand, "ExecuteCount"), "SDK requery command execute count");
+            AssertEqual(requeryCommandParameter, GetProperty(requeryCommand, "LastParameter"), "SDK requery command last parameter");
+        }
+
         object eventSetterButton = Invoke(window, "FindName", "EventSetterButton");
         AssertType(eventSetterButton, "System.Windows.Controls.Button", "event setter button");
         AssertEqual("Run event setter", GetProperty(eventSetterButton, "Content"), "event setter button content");

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
@@ -358,6 +359,8 @@ public sealed class SmokeViewModel : INotifyPropertyChanged
 
     public string ValidationText { get; set; } = "valid package text";
 
+    public SmokeRequeryCommand RequeryCommand { get; } = new();
+
     public string MutableStatus
     {
         get => _mutableStatus;
@@ -384,6 +387,35 @@ public sealed class SmokeViewModel : INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+}
+
+public sealed class SmokeRequeryCommand : ICommand
+{
+    public int CanExecuteProbeCount { get; private set; }
+
+    public int ExecuteCount { get; private set; }
+
+    public bool CanExecuteValue { get; set; }
+
+    public object? LastParameter { get; private set; }
+
+    public event EventHandler? CanExecuteChanged
+    {
+        add => CommandManager.RequerySuggested += value;
+        remove => CommandManager.RequerySuggested -= value;
+    }
+
+    public bool CanExecute(object? parameter)
+    {
+        CanExecuteProbeCount++;
+        return CanExecuteValue;
+    }
+
+    public void Execute(object? parameter)
+    {
+        ExecuteCount++;
+        LastParameter = parameter;
     }
 }
 

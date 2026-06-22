@@ -5381,6 +5381,12 @@ namespace System.Windows
 
         private void OnWindowStyleChanged(WindowStyle windowStyle)
         {
+            if (IsPortableWindowActive)
+            {
+                PortableWindowActivationService.SetWindowBorder(_portableWindowActivation, ResizeMode, windowStyle);
+                return;
+            }
+
             // Adding check for IsCompositionTargetInvalid
             if (!IsSourceWindowNull && !IsCompositionTargetInvalid)
             {
@@ -6413,6 +6419,12 @@ namespace System.Windows
             // this call ends up throwing an exception if accessing
             // ResizeMode is not allowed
             VerifyApiSupported();
+
+            if (IsPortableWindowActive)
+            {
+                PortableWindowActivationService.SetWindowBorder(_portableWindowActivation, ResizeMode, WindowStyle);
+                return;
+            }
 
             // Adding check for IsCompositionTargetInvalid
             if (!IsSourceWindowNull && !IsCompositionTargetInvalid)

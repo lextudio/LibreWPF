@@ -70,6 +70,32 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void SetWindowBorderMapsLiveResizeModeAndWindowStyleChanges()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        activation.SetWindowBorder(FakeResizeMode.NoResize, FakeWindowStyle.SingleBorderWindow);
+
+        Assert.Equal(ProGpuWpfWindowBorder.Fixed, host.WindowBorder);
+
+        activation.SetWindowBorder(FakeResizeMode.CanResizeWithGrip, FakeWindowStyle.None);
+
+        Assert.Equal(ProGpuWpfWindowBorder.Hidden, host.WindowBorder);
+        Assert.True(scheduler.RequestCount >= 3);
+    }
+
+    [Fact]
     public void TryAttachReturnsFalseWhenSourceShapeIsMissing()
     {
         using var host = new ProGpuWpfWindowHost();

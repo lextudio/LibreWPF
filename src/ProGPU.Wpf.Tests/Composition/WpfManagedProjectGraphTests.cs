@@ -331,11 +331,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Host.SetPosition(windowLeft.Value, windowTop.Value)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("public void SetTopmost(bool topmost)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.SetTopmost(topmost)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("typeof(Action<object, object, object>)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("13 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, setPosition, setTopmost, setWindowBorder, close, run, dispose, dragMove }", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("public void SetWindowBorder(object? resizeMode, object? windowStyle)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("Host.SetWindowBorder(ResolveWindowBorder(resizeMode, windowStyle, Host.WindowBorder))", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("ResolveWindowBorder(window, options.WindowBorder)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.SetWindowBorder(ResolveWindowBorder(Window, Host.WindowBorder))", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryMapResizeModeToWindowBorder", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("WindowStyle", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FlushWpfDispatcherOperations(\"Loaded\", \"Render\")", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("FlushWpfDispatcherOperations(\"ApplicationIdle\")", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FlushWpfDispatcherOperations(\"Render\")", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryFlushDispatcherOperations(Window, markerPriorityName)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FindPortableWindowActivationServiceType(window)", proGpuActivation, StringComparison.Ordinal);
@@ -663,6 +668,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static void SetPosition(object activation, double left, double top)", activationService, StringComparison.Ordinal);
         Assert.Contains("Action<object, bool> setTopmost", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void SetTopmost(object activation, bool topmost)", activationService, StringComparison.Ordinal);
+        Assert.Contains("Action<object, object, object> setWindowBorder", activationService, StringComparison.Ordinal);
+        Assert.Contains("internal static void SetWindowBorder(object activation, ResizeMode resizeMode, WindowStyle windowStyle)", activationService, StringComparison.Ordinal);
         Assert.Contains("Func<object, bool> dragMove", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryDragMove(object activation)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void SetActivationState(Window window, bool isActive)", activationService, StringComparison.Ordinal);
@@ -702,6 +709,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableWindowActivationService.SetPosition(_portableWindowActivation, leftLogicalUnits, topLogicalUnits)", window, StringComparison.Ordinal);
         Assert.Contains("private void UpdatePortablePositionOnTopLeftChange(double leftLogicalUnits, double topLogicalUnits)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.SetTopmost(_portableWindowActivation, topmost)", window, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.SetWindowBorder(_portableWindowActivation, ResizeMode, windowStyle)", window, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.SetWindowBorder(_portableWindowActivation, ResizeMode, WindowStyle)", window, StringComparison.Ordinal);
         Assert.Contains("&& !w.IsPortableWindowActive", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.TryDragMove(_portableWindowActivation)", window, StringComparison.Ordinal);
         Assert.Contains("if (PortableWindowActivationService.IsEnabled)", window, StringComparison.Ordinal);
@@ -7317,6 +7326,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK ProGPU WPF host logical width property", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU WPF host window border property", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU WPF host window border method parameter count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("window.ResizeMode = ResizeMode.CanResizeWithGrip", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("window.WindowStyle = WindowStyle.None", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK application main window updated resize mode", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK application main window updated window style", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK portable presentation source client-size return type", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU WPF composition render logical/physical surface", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU compositor render logical/physical surface", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7335,6 +7348,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SDK ProGPU WPF host logical width property", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU WPF host window border property", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU WPF host window border method parameter count", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new Action<object, object, object>(recorder.SetWindowBorder)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("activated SDK window live resize mode", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("activated SDK window live window style", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK portable activation recorder window border target", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK portable presentation source client-size return type", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU WPF composition render logical/physical surface", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU compositor render logical/physical surface", runtimeHarnessProgram, StringComparison.Ordinal);

@@ -2318,6 +2318,7 @@ internal static class Program
                 new Action<object, double, double>(recorder.SetClientSize),
                 new Action<object, double, double>(recorder.SetPosition),
                 new Action<object, bool>(recorder.SetTopmost),
+                new Action<object, object, object>(recorder.SetWindowBorder),
                 new Action<object>(recorder.Close),
                 new Action<object>(recorder.Run),
                 new Action<object>(recorder.Dispose),
@@ -3408,7 +3409,9 @@ internal static class Program
                 Height = Convert.ToDouble(GetProperty(window, "Height")),
                 Left = Convert.ToDouble(GetProperty(window, "Left")),
                 Top = Convert.ToDouble(GetProperty(window, "Top")),
-                Topmost = Convert.ToBoolean(GetProperty(window, "Topmost"))
+                Topmost = Convert.ToBoolean(GetProperty(window, "Topmost")),
+                ResizeMode = GetProperty(window, "ResizeMode"),
+                WindowStyle = GetProperty(window, "WindowStyle")
             };
             return _activation;
         }
@@ -3472,6 +3475,13 @@ internal static class Program
             typedActivation.Topmost = topmost;
         }
 
+        public void SetWindowBorder(object activation, object resizeMode, object windowStyle)
+        {
+            var typedActivation = AssertSameActivation(activation);
+            typedActivation.ResizeMode = resizeMode;
+            typedActivation.WindowStyle = windowStyle;
+        }
+
         public void Close(object activation)
         {
             var typedActivation = AssertSameActivation(activation);
@@ -3501,6 +3511,12 @@ internal static class Program
             AssertEqual(840.0, typedActivation.Height, "activated SDK window height");
             AssertEqual(false, typedActivation.Topmost, "activated SDK window topmost");
             AssertSame(typedActivation.Window, GetProperty(_application, "MainWindow"), "SDK Application.MainWindow");
+            Type resizeModeType = GetRequiredType(_presentationFramework, "System.Windows.ResizeMode");
+            Type windowStyleType = GetRequiredType(_presentationFramework, "System.Windows.WindowStyle");
+            SetProperty(typedActivation.Window, "ResizeMode", Enum.Parse(resizeModeType, "NoResize"));
+            SetProperty(typedActivation.Window, "WindowStyle", Enum.Parse(windowStyleType, "None"));
+            AssertEqual("NoResize", typedActivation.ResizeMode?.ToString() ?? string.Empty, "activated SDK window live resize mode");
+            AssertEqual("None", typedActivation.WindowStyle?.ToString() ?? string.Empty, "activated SDK window live window style");
             Type applicationType = GetRequiredType(_presentationFramework, "System.Windows.Application");
             AssertSame(_application, GetStaticProperty(applicationType, "Current"), "SDK Application.Current during run");
             AssertEqual("OnLastWindowClose", GetProperty(_application, "ShutdownMode").ToString() ?? string.Empty, "SDK Application.ShutdownMode during run");
@@ -3549,6 +3565,7 @@ internal static class Program
             AssertDelegateTarget("_show", "SDK portable activation recorder show target");
             AssertDelegateTarget("_setPosition", "SDK portable activation recorder position target");
             AssertDelegateTarget("_setTopmost", "SDK portable activation recorder topmost target");
+            AssertDelegateTarget("_setWindowBorder", "SDK portable activation recorder window border target");
             AssertDelegateTarget("_run", "SDK portable activation recorder run target");
         }
 
@@ -3635,6 +3652,10 @@ internal static class Program
         public double Top { get; set; }
 
         public bool Topmost { get; set; }
+
+        public object? ResizeMode { get; set; }
+
+        public object? WindowStyle { get; set; }
 
         public void DisposePresentationSource()
         {

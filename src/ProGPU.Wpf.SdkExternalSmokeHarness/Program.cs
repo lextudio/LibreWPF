@@ -3019,10 +3019,14 @@ internal static class Program
                     window.Left = 56.0;
                     window.Top = 72.0;
                     window.Topmost = false;
+                    window.ResizeMode = ResizeMode.CanResizeWithGrip;
+                    window.WindowStyle = WindowStyle.None;
                     DrainDispatcher();
                     AssertEqual(56.0, window.Left, "external SDK application main window updated left");
                     AssertEqual(72.0, window.Top, "external SDK application main window updated top");
                     AssertEqual(false, window.Topmost, "external SDK application main window updated topmost");
+                    AssertEqual(ResizeMode.CanResizeWithGrip, window.ResizeMode, "external SDK application main window updated resize mode");
+                    AssertEqual(WindowStyle.None, window.WindowStyle, "external SDK application main window updated window style");
                     AssertAtLeast(1, app.Windows.Count, "external SDK application windows count");
 
                     bool containsMainWindow = false;

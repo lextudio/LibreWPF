@@ -73,12 +73,36 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 typeof(Action<object, double, double>),
                 typeof(Action<object, double, double>),
                 typeof(Action<object, bool>),
+                typeof(Action<object, object, object>),
                 typeof(Action<object>),
                 typeof(Action<object>),
                 typeof(Action<object>),
                 typeof(Func<object, bool>)
             },
             modifiers: null);
+        if (registerMethod == null)
+        {
+            registerMethod = serviceType.GetMethod(
+                "Register",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: new[]
+                {
+                    typeof(Func<object, object?>),
+                    typeof(Action<object>),
+                    typeof(Action<object>),
+                    typeof(Action<object, object>),
+                    typeof(Action<object, string>),
+                    typeof(Action<object, double, double>),
+                    typeof(Action<object, double, double>),
+                    typeof(Action<object, bool>),
+                    typeof(Action<object>),
+                    typeof(Action<object>),
+                    typeof(Action<object>),
+                    typeof(Func<object, bool>)
+                },
+                modifiers: null);
+        }
         if (registerMethod == null)
         {
             registerMethod = serviceType.GetMethod(
@@ -167,6 +191,8 @@ public sealed class WpfPortableWindowActivation : IDisposable
             ((WpfPortableWindowActivation)activation).SetPosition(left, top);
         Action<object, bool> setTopmost = (activation, topmost) =>
             ((WpfPortableWindowActivation)activation).SetTopmost(topmost);
+        Action<object, object, object> setWindowBorder = (activation, resizeMode, windowStyle) =>
+            ((WpfPortableWindowActivation)activation).SetWindowBorder(resizeMode, windowStyle);
         Action<object> close = activation =>
             ((WpfPortableWindowActivation)activation).Close();
         Action<object> run = activation =>
@@ -178,6 +204,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
         var parameters = registerMethod.GetParameters().Length switch
         {
+            13 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, setPosition, setTopmost, setWindowBorder, close, run, dispose, dragMove },
             12 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, setPosition, setTopmost, close, run, dispose, dragMove },
             11 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, setPosition, close, run, dispose, dragMove },
             10 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, close, run, dispose, dragMove },
@@ -313,7 +340,6 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return true;
     }
 
-
     public void Show()
     {
         ThrowIfDisposed();
@@ -384,6 +410,13 @@ public sealed class WpfPortableWindowActivation : IDisposable
         Host.SetTopmost(topmost);
     }
 
+    public void SetWindowBorder(object? resizeMode, object? windowStyle)
+    {
+        ThrowIfDisposed();
+
+        Host.SetWindowBorder(ResolveWindowBorder(resizeMode, windowStyle, Host.WindowBorder));
+    }
+
     public void Close()
     {
         if (_isDisposed || _isClosingFromNative)
@@ -406,6 +439,12 @@ public sealed class WpfPortableWindowActivation : IDisposable
     {
         ThrowIfDisposed();
         SynchronizeInitialWindowState(updatePortablePresentationSource: true);
+        FlushWpfDispatcherOperations("ApplicationIdle");
+        if (_isDisposed)
+        {
+            return;
+        }
+
         Host.Run();
     }
 
@@ -1516,14 +1555,23 @@ public sealed class WpfPortableWindowActivation : IDisposable
         object window,
         ProGpuWpfWindowBorder fallback)
     {
-        if (TryReadProperty(window, "WindowStyle", out object? windowStyle) &&
-            string.Equals(windowStyle?.ToString(), "None", StringComparison.Ordinal))
+        TryReadProperty(window, "ResizeMode", out object? resizeMode);
+        TryReadProperty(window, "WindowStyle", out object? windowStyle);
+
+        return ResolveWindowBorder(resizeMode, windowStyle, fallback);
+    }
+
+    private static ProGpuWpfWindowBorder ResolveWindowBorder(
+        object? resizeMode,
+        object? windowStyle,
+        ProGpuWpfWindowBorder fallback)
+    {
+        if (string.Equals(windowStyle?.ToString(), "None", StringComparison.Ordinal))
         {
             return ProGpuWpfWindowBorder.Hidden;
         }
 
-        return TryReadProperty(window, "ResizeMode", out object? resizeMode) &&
-            TryMapResizeModeToWindowBorder(resizeMode, out ProGpuWpfWindowBorder mappedBorder)
+        return TryMapResizeModeToWindowBorder(resizeMode, out ProGpuWpfWindowBorder mappedBorder)
             ? mappedBorder
             : fallback;
     }

@@ -3488,6 +3488,34 @@ internal static class Program
                     AssertEqual(pixels[5], copiedPixels[5], "external SDK BitmapSource copied second green byte");
                     AssertEqual(pixels[14], copiedPixels[14], "external SDK BitmapSource copied final red byte");
 
+                    AssertEqual(2, BitmapPalettes.BlackAndWhite.Colors.Count, "external SDK BitmapPalettes.BlackAndWhite color count");
+                    AssertEqual(Color.FromRgb(0x00, 0x00, 0x00), BitmapPalettes.BlackAndWhite.Colors[0], "external SDK BitmapPalettes.BlackAndWhite first color");
+                    AssertEqual(Color.FromRgb(0xFF, 0xFF, 0xFF), BitmapPalettes.BlackAndWhite.Colors[1], "external SDK BitmapPalettes.BlackAndWhite final color");
+                    AssertEqual(4, BitmapPalettes.Gray4.Colors.Count, "external SDK BitmapPalettes.Gray4 color count");
+                    AssertEqual(Color.FromRgb(0x55, 0x55, 0x55), BitmapPalettes.Gray4.Colors[1], "external SDK BitmapPalettes.Gray4 second color");
+                    AssertEqual(216, BitmapPalettes.WebPalette.Colors.Count, "external SDK BitmapPalettes.WebPalette color count");
+                    AssertEqual(Color.FromRgb(0x00, 0x00, 0x00), BitmapPalettes.WebPalette.Colors[0], "external SDK BitmapPalettes.WebPalette first color");
+                    AssertEqual(Color.FromRgb(0xFF, 0xFF, 0xFF), BitmapPalettes.WebPalette.Colors[215], "external SDK BitmapPalettes.WebPalette final color");
+
+                    var generatedPalette = new BitmapPalette(bitmapSource, 4);
+                    AssertEqual(4, generatedPalette.Colors.Count, "external SDK BitmapPalette from BGRA source color count");
+                    AssertEqual(Color.FromArgb(0xFF, 0x30, 0x20, 0x10), generatedPalette.Colors[0], "external SDK BitmapPalette from BGRA source first color");
+                    AssertEqual(Color.FromArgb(0xFF, 0xC0, 0xB0, 0xA0), generatedPalette.Colors[3], "external SDK BitmapPalette from BGRA source final color");
+
+                    var indexedPaletteSource = BitmapSource.Create(
+                        2,
+                        2,
+                        96.0,
+                        96.0,
+                        PixelFormats.Indexed8,
+                        BitmapPalettes.Gray256,
+                        new byte[] { 0, 1, 2, 3 },
+                        2);
+                    AssertEqual(256, indexedPaletteSource.Palette.Colors.Count, "external SDK Indexed8 source palette color count");
+                    var copiedIndexedPalette = new BitmapPalette(indexedPaletteSource, 3);
+                    AssertEqual(3, copiedIndexedPalette.Colors.Count, "external SDK BitmapPalette from Indexed8 source color count");
+                    AssertEqual(BitmapPalettes.Gray256.Colors[2], copiedIndexedPalette.Colors[2], "external SDK BitmapPalette from Indexed8 source third color");
+
                     var bitmapFrame = BitmapFrame.Create(bitmapSource);
                     AssertEqual(2, bitmapFrame.PixelWidth, "external SDK BitmapFrame pixel width");
                     AssertEqual(2, bitmapFrame.PixelHeight, "external SDK BitmapFrame pixel height");

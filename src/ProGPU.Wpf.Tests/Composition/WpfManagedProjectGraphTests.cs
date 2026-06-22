@@ -4809,8 +4809,23 @@ public sealed class WpfManagedProjectGraphTests
             "Media",
             "Imaging",
             "BitmapDecoder.cs"));
+        var bitmapPalette = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Imaging",
+            "BitmapPalette.cs"));
 
         AssertGuardBefore(compositionExports, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.MilCoreApi.EnterCompositionEngineLock()");
+        Assert.Contains("CreateManagedPredefinedColors", bitmapPalette, StringComparison.Ordinal);
+        Assert.Contains("InitializeManagedFromBitmapSource", bitmapPalette, StringComparison.Ordinal);
+        Assert.Contains("ExtractManagedColors", bitmapPalette, StringComparison.Ordinal);
+        Assert.Contains("AddRgbCube", bitmapPalette, StringComparison.Ordinal);
+        AssertGuardBefore(bitmapPalette, "if (!OperatingSystem.IsWindows())", "_palette = CreateInternalPalette();");
         Assert.Contains("internal static bool TryCreatePortableFrame(", pngBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryCreatePortableFrameFromUri(", pngBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("ZLibStream", pngBitmapDecoder, StringComparison.Ordinal);
@@ -6497,6 +6512,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("using System.Windows.Media.Imaging;", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateManagedImagingObjects()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("BitmapSource.Create(", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("BitmapPalettes.BlackAndWhite", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapPalettes.WebPalette color count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new BitmapPalette(bitmapSource, 4)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapPalette from BGRA source first color", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new BitmapPalette(indexedPaletteSource, 3)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapPalette from Indexed8 source third color", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("BitmapFrame.Create(bitmapSource)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new BmpBitmapEncoder()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("bmpEncoder.Save(bmpStream)", externalSdkHarnessProgram, StringComparison.Ordinal);

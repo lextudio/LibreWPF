@@ -6657,11 +6657,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CreateGifBytes()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new GifBitmapDecoder(", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapDecoder.Create GIF decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create GIF first-frame delay metadata", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create GIF second-frame delay metadata", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("firstGifMetadata.ContainsQuery(\"/grctlext/Delay\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("firstGifMetadata.GetQuery(\"/imgdesc/Width\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapDecoder.Create GIF second-frame green byte", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK GifBitmapDecoder frame count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK GifBitmapDecoder second-frame delay metadata", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK GifBitmapDecoder URI second-frame green byte", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapDecoder.Create GIF nonblank RGB total", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapDecoder.Create URI GIF decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create URI GIF second-frame delay metadata", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK GifBitmapDecoder URI first-frame delay metadata", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new BitmapImage(gifUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapImage URI GIF first alpha byte", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreateTiffBytes(pixels, 2, 2)", externalSdkHarnessProgram, StringComparison.Ordinal);

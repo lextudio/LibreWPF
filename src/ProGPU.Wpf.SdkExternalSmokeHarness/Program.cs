@@ -3982,6 +3982,20 @@ internal static class Program
                     AssertEqual(2, gifDecoder.Frames[0].PixelHeight, "external SDK BitmapDecoder.Create GIF pixel height");
                     AssertEqual(PixelFormats.Bgra32, gifDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create GIF Bgra32 format");
                     AssertEqual(PixelFormats.Bgra32, gifDecoder.Frames[1].Format, "external SDK BitmapDecoder.Create GIF second frame Bgra32 format");
+                    var firstGifMetadata = RequireType<BitmapMetadata>(
+                        gifDecoder.Frames[0].Metadata,
+                        "external SDK BitmapDecoder.Create GIF first-frame metadata");
+                    var secondGifMetadata = RequireType<BitmapMetadata>(
+                        gifDecoder.Frames[1].Metadata,
+                        "external SDK BitmapDecoder.Create GIF second-frame metadata");
+                    AssertEqual("gif", firstGifMetadata.Format, "external SDK BitmapDecoder.Create GIF metadata format");
+                    AssertEqual(true, firstGifMetadata.IsReadOnly, "external SDK BitmapDecoder.Create GIF metadata read-only state");
+                    AssertEqual(true, firstGifMetadata.ContainsQuery("/grctlext/Delay"), "external SDK BitmapDecoder.Create GIF delay query presence");
+                    AssertEqual((ushort)5, firstGifMetadata.GetQuery("/grctlext/Delay"), "external SDK BitmapDecoder.Create GIF first-frame delay metadata");
+                    AssertEqual((ushort)7, secondGifMetadata.GetQuery("/grctlext/Delay"), "external SDK BitmapDecoder.Create GIF second-frame delay metadata");
+                    AssertEqual((byte)1, firstGifMetadata.GetQuery("/grctlext/Disposal"), "external SDK BitmapDecoder.Create GIF disposal metadata");
+                    AssertEqual((ushort)2, firstGifMetadata.GetQuery("/imgdesc/Width"), "external SDK BitmapDecoder.Create GIF image descriptor width metadata");
+                    AssertEqual(false, firstGifMetadata.GetQuery("/imgdesc/InterlaceFlag"), "external SDK BitmapDecoder.Create GIF interlace metadata");
                     var decodedGifPixels = new byte[pixels.Length];
                     gifDecoder.Frames[0].CopyPixels(decodedGifPixels, 8, 0);
                     var decodedSecondGifPixels = new byte[pixels.Length];
@@ -4006,6 +4020,10 @@ internal static class Program
                     AssertEqual(2, directGifDecoder.Frames[0].PixelWidth, "external SDK GifBitmapDecoder pixel width");
                     AssertEqual(2, directGifDecoder.Frames[1].PixelHeight, "external SDK GifBitmapDecoder second-frame pixel height");
                     AssertEqual(PixelFormats.Bgra32, directGifDecoder.Frames[0].Format, "external SDK GifBitmapDecoder Bgra32 format");
+                    var directGifMetadata = RequireType<BitmapMetadata>(
+                        directGifDecoder.Frames[1].Metadata,
+                        "external SDK GifBitmapDecoder second-frame metadata");
+                    AssertEqual((ushort)7, directGifMetadata.GetQuery("/grctlext/Delay"), "external SDK GifBitmapDecoder second-frame delay metadata");
 
                     byte[] tiffBytes = CreateTiffBytes(pixels, 2, 2);
                     AssertEqual((byte)'I', tiffBytes[0], "external SDK generated TIFF byte order byte 0");
@@ -4352,6 +4370,10 @@ internal static class Program
                         AssertEqual(2, uriGifDecoder.Frames.Count, "external SDK BitmapDecoder.Create URI GIF frame count");
                         AssertEqual(PixelFormats.Bgra32, uriGifDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create URI GIF Bgra32 format");
                         AssertEqual(PixelFormats.Bgra32, uriGifDecoder.Frames[1].Format, "external SDK BitmapDecoder.Create URI GIF second-frame Bgra32 format");
+                        var uriGifMetadata = RequireType<BitmapMetadata>(
+                            uriGifDecoder.Frames[1].Metadata,
+                            "external SDK BitmapDecoder.Create URI GIF second-frame metadata");
+                        AssertEqual((ushort)7, uriGifMetadata.GetQuery("/grctlext/Delay"), "external SDK BitmapDecoder.Create URI GIF second-frame delay metadata");
 
                         var directUriGifDecoder = new GifBitmapDecoder(
                             gifUri,
@@ -4359,6 +4381,10 @@ internal static class Program
                             BitmapCacheOption.OnLoad);
                         AssertEqual(2, directUriGifDecoder.Frames.Count, "external SDK GifBitmapDecoder URI frame count");
                         AssertEqual(2, directUriGifDecoder.Frames[0].PixelWidth, "external SDK GifBitmapDecoder URI pixel width");
+                        var directUriGifMetadata = RequireType<BitmapMetadata>(
+                            directUriGifDecoder.Frames[0].Metadata,
+                            "external SDK GifBitmapDecoder URI first-frame metadata");
+                        AssertEqual((ushort)5, directUriGifMetadata.GetQuery("/grctlext/Delay"), "external SDK GifBitmapDecoder URI first-frame delay metadata");
                         var directUriSecondGifPixels = new byte[pixels.Length];
                         directUriGifDecoder.Frames[1].CopyPixels(directUriSecondGifPixels, 8, 0);
                         AssertEqual((byte)0xFF, directUriSecondGifPixels[1], "external SDK GifBitmapDecoder URI second-frame green byte");

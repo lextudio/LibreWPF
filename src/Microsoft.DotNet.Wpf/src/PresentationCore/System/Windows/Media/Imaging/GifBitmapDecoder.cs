@@ -318,7 +318,7 @@ namespace System.Windows.Media.Imaging
                 }
 
                 DrawIndexedFrame(canvas, stride, descriptor, activeColorTable, graphicControl, indices);
-                portableFrames.Add(CreateFrame(canvas, canvasWidth, canvasHeight, stride));
+                portableFrames.Add(CreateFrame(canvas, canvasWidth, canvasHeight, stride, graphicControl, descriptor));
 
                 pendingDisposal = new PendingDisposal(
                     graphicControl.DisposalMethod,
@@ -457,7 +457,13 @@ namespace System.Windows.Media.Imaging
             }
         }
 
-        private static BitmapFrame CreateFrame(byte[] canvas, int width, int height, int stride)
+        private static BitmapFrame CreateFrame(
+            byte[] canvas,
+            int width,
+            int height,
+            int stride,
+            GraphicControl graphicControl,
+            ImageDescriptor descriptor)
         {
             byte[] pixels = (byte[])canvas.Clone();
             BitmapSource source = BitmapSource.Create(
@@ -470,13 +476,32 @@ namespace System.Windows.Media.Imaging
                 pixels,
                 stride);
 
-            BitmapFrame frame = BitmapFrame.Create(source);
+            BitmapMetadata metadata = CreateFrameMetadata(graphicControl, descriptor);
+            BitmapFrame frame = BitmapFrame.Create(source, null, metadata, null);
             if (!frame.IsFrozen && frame.CanFreeze)
             {
                 frame.Freeze();
             }
 
             return frame;
+        }
+
+        private static BitmapMetadata CreateFrameMetadata(GraphicControl graphicControl, ImageDescriptor descriptor)
+        {
+            var queries = new Dictionary<string, object>(StringComparer.Ordinal)
+            {
+                ["/grctlext/Disposal"] = (byte)graphicControl.DisposalMethod,
+                ["/grctlext/Delay"] = (ushort)graphicControl.Delay,
+                ["/grctlext/TransparencyFlag"] = graphicControl.HasTransparentColor,
+                ["/grctlext/TransparentColorIndex"] = (byte)graphicControl.TransparentColorIndex,
+                ["/imgdesc/Left"] = (ushort)descriptor.Left,
+                ["/imgdesc/Top"] = (ushort)descriptor.Top,
+                ["/imgdesc/Width"] = (ushort)descriptor.Width,
+                ["/imgdesc/Height"] = (ushort)descriptor.Height,
+                ["/imgdesc/InterlaceFlag"] = descriptor.Interlaced,
+            };
+
+            return new BitmapMetadata("gif", MILGuidData.GUID_ContainerFormatGif, queries);
         }
 
         private static byte[] DecodeLzwIndices(byte minimumCodeSize, byte[] compressedData, int expectedPixelCount)

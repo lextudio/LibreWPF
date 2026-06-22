@@ -3136,6 +3136,51 @@ internal static class Program
                     AssertEqual(ownedWindow, window.OwnedWindows[0], "external SDK main window owned window entry");
                     AssertEqual(true, ApplicationContainsWindow(app, ownedWindow), "external SDK application windows contains owned window");
 
+                    var modalDialog = new Window
+                    {
+                        Title = "External SDK modal dialog",
+                        Width = 90,
+                        Height = 46,
+                        Owner = window,
+                        Content = new TextBlock { Text = "External modal" }
+                    };
+                    int modalLoadedCount = 0;
+                    int modalClosingCount = 0;
+                    int modalClosedCount = 0;
+                    bool modalOwnerDuringLoaded = false;
+                    bool modalInApplicationWindowsDuringLoaded = false;
+                    int ownerOwnedWindowsCountDuringModal = 0;
+                    modalDialog.Loaded += (_, _) =>
+                    {
+                        modalLoadedCount++;
+                        modalOwnerDuringLoaded = ReferenceEquals(window, modalDialog.Owner);
+                        modalInApplicationWindowsDuringLoaded = ApplicationContainsWindow(app, modalDialog);
+                        ownerOwnedWindowsCountDuringModal = window.OwnedWindows.Count;
+                        modalDialog.Dispatcher.BeginInvoke(
+                            DispatcherPriority.ApplicationIdle,
+                            new Action(() => modalDialog.DialogResult = true));
+                    };
+                    modalDialog.Closing += (_, e) =>
+                    {
+                        modalClosingCount++;
+                        AssertEqual(false, e.Cancel, "external SDK modal dialog Closing cancel state");
+                    };
+                    modalDialog.Closed += (_, _) => modalClosedCount++;
+
+                    bool? modalResult = modalDialog.ShowDialog();
+
+                    AssertEqual(true, modalResult, "external SDK modal dialog result");
+                    AssertEqual(1, modalLoadedCount, "external SDK modal dialog Loaded count");
+                    AssertEqual(1, modalClosingCount, "external SDK modal dialog Closing count");
+                    AssertEqual(1, modalClosedCount, "external SDK modal dialog Closed count");
+                    AssertEqual(true, modalOwnerDuringLoaded, "external SDK modal dialog owner during Loaded");
+                    AssertEqual(true, modalInApplicationWindowsDuringLoaded, "external SDK modal dialog Application.Windows during Loaded");
+                    AssertEqual(2, ownerOwnedWindowsCountDuringModal, "external SDK owner OwnedWindows count during modal dialog");
+                    AssertEqual(false, modalDialog.IsVisible, "external SDK modal dialog visibility after close");
+                    AssertEqual(false, ApplicationContainsWindow(app, modalDialog), "external SDK application windows excludes closed modal dialog");
+                    AssertEqual(1, window.OwnedWindows.Count, "external SDK main window owned window count after modal dialog");
+                    AssertEqual(ownedWindow, window.OwnedWindows[0], "external SDK main window owned window entry after modal dialog");
+
                     app.ShutdownMode = ShutdownMode.OnMainWindowClose;
                     AssertEqual(ShutdownMode.OnMainWindowClose, app.ShutdownMode, "external SDK application main-window shutdown mode");
 

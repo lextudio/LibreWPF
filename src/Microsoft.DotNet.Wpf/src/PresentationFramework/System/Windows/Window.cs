@@ -298,6 +298,11 @@ namespace System.Windows
                 throw new InvalidOperationException(SR.ShowDialogOnModal);
             }
 
+            if (PortableWindowActivationService.IsEnabled)
+            {
+                return ShowPortableDialog();
+            }
+
             _dialogOwnerHandle = _ownerHandle;
 
             // verify owner handle is window
@@ -481,6 +486,29 @@ namespace System.Windows
 #endif //FIGURE_OUT
                 _showingAsDialog = false;
             }
+            return _dialogResult;
+        }
+
+        private Nullable<bool> ShowPortableDialog()
+        {
+            EnsureDialogCommand();
+
+            try
+            {
+                _showingAsDialog = true;
+                Show();
+            }
+            catch
+            {
+                ClearShowKeyboardCueState();
+                _showingAsDialog = false;
+                throw;
+            }
+            finally
+            {
+                _showingAsDialog = false;
+            }
+
             return _dialogResult;
         }
 
@@ -2243,6 +2271,11 @@ namespace System.Windows
 
                 if (ShouldCloseWindow(e.Cancel))
                 {
+                    if (_showingAsDialog)
+                    {
+                        DoDialogHide();
+                    }
+
                     CloseWindowBeforeShow();
                 }
                 else
@@ -4485,6 +4518,11 @@ namespace System.Windows
 
             // clears _showingAsDialog
             _showingAsDialog = false;
+
+            if (IsPortableWindowActive)
+            {
+                return;
+            }
 
             // enable previous window stuff goes here...
             wasActive = _swh.IsActiveWindow;

@@ -664,6 +664,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableWindowActivationService.SetClientSize(_portableWindowActivation, Width, height)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.SetClientSize(_portableWindowActivation, width, Height)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.TryDragMove(_portableWindowActivation)", window, StringComparison.Ordinal);
+        Assert.Contains("if (PortableWindowActivationService.IsEnabled)", window, StringComparison.Ordinal);
+        Assert.Contains("return ShowPortableDialog();", window, StringComparison.Ordinal);
+        Assert.Contains("private Nullable<bool> ShowPortableDialog()", window, StringComparison.Ordinal);
+        Assert.Contains("if (_showingAsDialog)", window, StringComparison.Ordinal);
+        Assert.Contains("DoDialogHide();", window, StringComparison.Ordinal);
+        Assert.Contains("if (IsPortableWindowActive)", window, StringComparison.Ordinal);
         AssertGuardBefore(window, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SendMessage( Handle, WindowMessage.WM_SYSCOMMAND");
         Assert.Contains("ClosePortableWindowActivation();", window, StringComparison.Ordinal);
         Assert.Contains("private bool IsPortableWindowActive", window, StringComparison.Ordinal);
@@ -6402,6 +6408,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Owner = window", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window.OwnedWindows.Count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK owned window Closing attempted cancel state", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("External SDK modal dialog", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("modalDialog.ShowDialog()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("modalDialog.DialogResult = true", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK modal dialog result", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ShutdownMode.OnMainWindowClose", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("App.ExternalStartupEventCount", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("App.ExternalExitEventCount", externalSdkHarnessProgram, StringComparison.Ordinal);

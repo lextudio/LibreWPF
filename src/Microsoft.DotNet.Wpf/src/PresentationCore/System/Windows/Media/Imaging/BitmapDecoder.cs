@@ -102,10 +102,10 @@ namespace System.Windows.Media.Imaging
 
             if (!OperatingSystem.IsWindows() &&
                 expectedClsId == MILGuidData.GUID_ContainerFormatTiff &&
-                TiffBitmapDecoder.TryCreatePortableFrameFromUri(bitmapUri, createOptions, cacheOption, out BitmapFrame portableTiffFrame))
+                TiffBitmapDecoder.TryCreatePortableFramesFromUri(bitmapUri, createOptions, cacheOption, out ReadOnlyCollection<BitmapFrame> portableTiffFrames))
             {
                 _uri = bitmapUri;
-                InitializePortableFrames(null, bitmapUri, null, createOptions, cacheOption, portableTiffFrame);
+                InitializePortableFrames(null, bitmapUri, null, createOptions, cacheOption, portableTiffFrames);
                 return;
             }
 
@@ -204,9 +204,9 @@ namespace System.Windows.Media.Imaging
 
             if (!OperatingSystem.IsWindows() &&
                 expectedClsId == MILGuidData.GUID_ContainerFormatTiff &&
-                TiffBitmapDecoder.TryCreatePortableFrame(bitmapStream, createOptions, cacheOption, out BitmapFrame portableTiffFrame))
+                TiffBitmapDecoder.TryCreatePortableFrames(bitmapStream, createOptions, cacheOption, out ReadOnlyCollection<BitmapFrame> portableTiffFrames))
             {
-                InitializePortableFrames(null, null, bitmapStream, createOptions, cacheOption, portableTiffFrame);
+                InitializePortableFrames(null, null, bitmapStream, createOptions, cacheOption, portableTiffFrames);
                 return;
             }
 
@@ -402,9 +402,9 @@ namespace System.Windows.Media.Imaging
             else if (!OperatingSystem.IsWindows() &&
                      finalUri != null &&
                      stream == null &&
-                     TiffBitmapDecoder.TryCreatePortableFrameFromUri(finalUri, createOptions, cacheOption, out BitmapFrame portableTiffUriFrame))
+                     TiffBitmapDecoder.TryCreatePortableFramesFromUri(finalUri, createOptions, cacheOption, out ReadOnlyCollection<BitmapFrame> portableTiffUriFrames))
             {
-                return new TiffBitmapDecoder(portableTiffUriFrame, baseUri, uri, null, createOptions, cacheOption);
+                return new TiffBitmapDecoder(portableTiffUriFrames, baseUri, uri, null, createOptions, cacheOption);
             }
             else if (!OperatingSystem.IsWindows() &&
                      finalUri != null &&
@@ -439,9 +439,9 @@ namespace System.Windows.Media.Imaging
             }
             else if (!OperatingSystem.IsWindows() &&
                      stream != null &&
-                     TiffBitmapDecoder.TryCreatePortableFrame(stream, createOptions, cacheOption, out BitmapFrame portableTiffStreamFrame))
+                     TiffBitmapDecoder.TryCreatePortableFrames(stream, createOptions, cacheOption, out ReadOnlyCollection<BitmapFrame> portableTiffStreamFrames))
             {
-                return new TiffBitmapDecoder(portableTiffStreamFrame, baseUri, uri, stream, createOptions, cacheOption);
+                return new TiffBitmapDecoder(portableTiffStreamFrames, baseUri, uri, stream, createOptions, cacheOption);
             }
             else if (!OperatingSystem.IsWindows() &&
                      stream != null &&
@@ -725,6 +725,24 @@ namespace System.Windows.Media.Imaging
             BitmapFrame frame)
         {
             Debug.Assert(frame != null);
+            InitializePortableFrames(
+                baseUri,
+                uri,
+                stream,
+                createOptions,
+                cacheOption,
+                new ReadOnlyCollection<BitmapFrame>(new List<BitmapFrame>(1) { frame }));
+        }
+
+        internal void InitializePortableFrames(
+            Uri baseUri,
+            Uri uri,
+            Stream stream,
+            BitmapCreateOptions createOptions,
+            BitmapCacheOption cacheOption,
+            ReadOnlyCollection<BitmapFrame> frames)
+        {
+            Debug.Assert(frames != null && frames.Count > 0);
 
             _isBuiltInDecoder = true;
             _baseUri = baseUri;
@@ -733,12 +751,19 @@ namespace System.Windows.Media.Imaging
             _createOptions = createOptions;
             _cacheOption = cacheOption;
 
-            if (!frame.IsFrozen && frame.CanFreeze)
+            _frames = new List<BitmapFrame>(frames.Count);
+            for (int i = 0; i < frames.Count; i++)
             {
-                frame.Freeze();
+                BitmapFrame frame = frames[i];
+                Debug.Assert(frame != null);
+                if (!frame.IsFrozen && frame.CanFreeze)
+                {
+                    frame.Freeze();
+                }
+
+                _frames.Add(frame);
             }
 
-            _frames = new List<BitmapFrame>(1) { frame };
             _readOnlyFrames = new ReadOnlyCollection<BitmapFrame>(_frames);
         }
 

@@ -3739,6 +3739,34 @@ internal static class Program
                     AssertEqual(2, directTiffDecoder.Frames[0].PixelWidth, "external SDK TiffBitmapDecoder pixel width");
                     AssertEqual(PixelFormats.Bgra32, directTiffDecoder.Frames[0].Format, "external SDK TiffBitmapDecoder Bgra32 format");
 
+                    byte[] secondTiffPixels =
+                    [
+                        0xA0, 0xB0, 0xC0, 0xFF,
+                        0x70, 0x80, 0x90, 0xFF,
+                        0x40, 0x50, 0x60, 0xFF,
+                        0x10, 0x20, 0x30, 0xFF
+                    ];
+                    byte[] multiFrameTiffBytes = CreateMultiFrameTiffBytes(pixels, secondTiffPixels, 2, 2);
+                    var multiFrameTiffDecoder = BitmapDecoder.Create(
+                        new MemoryStream(multiFrameTiffBytes),
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(typeof(TiffBitmapDecoder), multiFrameTiffDecoder.GetType(), "external SDK BitmapDecoder.Create multi-frame TIFF decoder type");
+                    AssertEqual(2, multiFrameTiffDecoder.Frames.Count, "external SDK BitmapDecoder.Create multi-frame TIFF frame count");
+                    AssertEqual(2, multiFrameTiffDecoder.Frames[1].PixelWidth, "external SDK BitmapDecoder.Create multi-frame TIFF second pixel width");
+                    AssertEqual(PixelFormats.Bgra32, multiFrameTiffDecoder.Frames[1].Format, "external SDK BitmapDecoder.Create multi-frame TIFF second Bgra32 format");
+                    var decodedSecondTiffPixels = new byte[secondTiffPixels.Length];
+                    multiFrameTiffDecoder.Frames[1].CopyPixels(decodedSecondTiffPixels, 8, 0);
+                    AssertEqual(secondTiffPixels[0], decodedSecondTiffPixels[0], "external SDK BitmapDecoder.Create multi-frame TIFF second top-left blue byte");
+                    AssertEqual(secondTiffPixels[14], decodedSecondTiffPixels[14], "external SDK BitmapDecoder.Create multi-frame TIFF second bottom-right red byte");
+
+                    var directMultiFrameTiffDecoder = new TiffBitmapDecoder(
+                        new MemoryStream(multiFrameTiffBytes),
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(2, directMultiFrameTiffDecoder.Frames.Count, "external SDK multi-frame TiffBitmapDecoder frame count");
+                    AssertEqual(2, directMultiFrameTiffDecoder.Frames[1].PixelHeight, "external SDK multi-frame TiffBitmapDecoder second pixel height");
+
                     byte[] paletteTiffBytes = CreatePaletteTiffBytes([0, 1, 2, 3], 2, 2, 4);
                     var paletteTiffDecoder = BitmapDecoder.Create(
                         new MemoryStream(paletteTiffBytes),
@@ -4058,6 +4086,26 @@ internal static class Program
                         File.Delete(tiffPath);
                     }
 
+                    string multiFrameTiffPath = Path.Combine(Path.GetTempPath(), "external-sdk-managed-image-" + Guid.NewGuid().ToString("N") + "-multiframe.tif");
+                    File.WriteAllBytes(multiFrameTiffPath, multiFrameTiffBytes);
+                    try
+                    {
+                        var multiFrameTiffUri = new Uri(multiFrameTiffPath);
+                        var uriMultiFrameTiffDecoder = BitmapDecoder.Create(
+                            multiFrameTiffUri,
+                            BitmapCreateOptions.PreservePixelFormat,
+                            BitmapCacheOption.OnLoad);
+                        AssertEqual(typeof(TiffBitmapDecoder), uriMultiFrameTiffDecoder.GetType(), "external SDK BitmapDecoder.Create URI multi-frame TIFF decoder type");
+                        AssertEqual(2, uriMultiFrameTiffDecoder.Frames.Count, "external SDK BitmapDecoder.Create URI multi-frame TIFF frame count");
+                        var uriSecondTiffPixels = new byte[secondTiffPixels.Length];
+                        uriMultiFrameTiffDecoder.Frames[1].CopyPixels(uriSecondTiffPixels, 8, 0);
+                        AssertEqual(secondTiffPixels[0], uriSecondTiffPixels[0], "external SDK BitmapDecoder.Create URI multi-frame TIFF second top-left blue byte");
+                    }
+                    finally
+                    {
+                        File.Delete(multiFrameTiffPath);
+                    }
+
                     string paletteTiffPath = Path.Combine(Path.GetTempPath(), "external-sdk-managed-image-" + Guid.NewGuid().ToString("N") + "-palette.tif");
                     File.WriteAllBytes(paletteTiffPath, paletteTiffBytes);
                     try
@@ -4233,6 +4281,91 @@ internal static class Program
                     }
 
                     return tiff;
+                }
+
+                private static byte[] CreateMultiFrameTiffBytes(byte[] firstBgraPixels, byte[] secondBgraPixels, int width, int height)
+                {
+                    const int entryCount = 10;
+                    int ifdOffset = 8;
+                    int ifdByteCount = 2 + (entryCount * 12) + 4;
+                    int secondIfdOffset = ifdOffset + ifdByteCount;
+                    int firstBitsPerSampleOffset = secondIfdOffset + ifdByteCount;
+                    int secondBitsPerSampleOffset = firstBitsPerSampleOffset + 6;
+                    int firstPixelOffset = secondBitsPerSampleOffset + 6;
+                    int pixelByteCount = checked(width * height * 3);
+                    int secondPixelOffset = firstPixelOffset + pixelByteCount;
+                    byte[] tiff = new byte[checked(secondPixelOffset + pixelByteCount)];
+
+                    tiff[0] = (byte)'I';
+                    tiff[1] = (byte)'I';
+                    WriteUInt16LittleEndian(tiff, 2, 42);
+                    WriteUInt32LittleEndian(tiff, 4, (uint)ifdOffset);
+
+                    WriteTiffRgbDirectory(
+                        tiff,
+                        ifdOffset,
+                        width,
+                        height,
+                        firstBitsPerSampleOffset,
+                        firstPixelOffset,
+                        pixelByteCount,
+                        (uint)secondIfdOffset);
+                    WriteTiffRgbDirectory(
+                        tiff,
+                        secondIfdOffset,
+                        width,
+                        height,
+                        secondBitsPerSampleOffset,
+                        secondPixelOffset,
+                        pixelByteCount,
+                        0);
+                    WriteTiffRgbPixels(tiff, firstPixelOffset, firstBgraPixels, width, height);
+                    WriteTiffRgbPixels(tiff, secondPixelOffset, secondBgraPixels, width, height);
+
+                    return tiff;
+                }
+
+                private static void WriteTiffRgbDirectory(
+                    byte[] tiff,
+                    int ifdOffset,
+                    int width,
+                    int height,
+                    int bitsPerSampleOffset,
+                    int pixelOffset,
+                    int pixelByteCount,
+                    uint nextIfdOffset)
+                {
+                    const int entryCount = 10;
+                    WriteUInt16LittleEndian(tiff, ifdOffset, entryCount);
+                    int entryOffset = ifdOffset + 2;
+                    WriteTiffShortEntry(tiff, ref entryOffset, 256, (ushort)width);
+                    WriteTiffShortEntry(tiff, ref entryOffset, 257, (ushort)height);
+                    WriteTiffOffsetEntry(tiff, ref entryOffset, 258, 3, 3, (uint)bitsPerSampleOffset);
+                    WriteTiffShortEntry(tiff, ref entryOffset, 259, 1);
+                    WriteTiffShortEntry(tiff, ref entryOffset, 262, 2);
+                    WriteTiffLongEntry(tiff, ref entryOffset, 273, (uint)pixelOffset);
+                    WriteTiffShortEntry(tiff, ref entryOffset, 277, 3);
+                    WriteTiffLongEntry(tiff, ref entryOffset, 278, (uint)height);
+                    WriteTiffLongEntry(tiff, ref entryOffset, 279, (uint)pixelByteCount);
+                    WriteTiffShortEntry(tiff, ref entryOffset, 284, 1);
+                    WriteUInt32LittleEndian(tiff, entryOffset, nextIfdOffset);
+
+                    WriteUInt16LittleEndian(tiff, bitsPerSampleOffset + 0, 8);
+                    WriteUInt16LittleEndian(tiff, bitsPerSampleOffset + 2, 8);
+                    WriteUInt16LittleEndian(tiff, bitsPerSampleOffset + 4, 8);
+                }
+
+                private static void WriteTiffRgbPixels(byte[] tiff, int pixelOffset, byte[] bgraPixels, int width, int height)
+                {
+                    int sourceOffset = 0;
+                    int destinationOffset = pixelOffset;
+                    for (int i = 0; i < width * height; i++)
+                    {
+                        tiff[destinationOffset++] = bgraPixels[sourceOffset + 2];
+                        tiff[destinationOffset++] = bgraPixels[sourceOffset + 1];
+                        tiff[destinationOffset++] = bgraPixels[sourceOffset + 0];
+                        sourceOffset += 4;
+                    }
                 }
 
                 private static byte[] CreatePaletteTiffBytes(byte[] indices, int width, int height, int bitsPerSample)

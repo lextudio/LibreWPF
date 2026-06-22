@@ -6,6 +6,7 @@
 
 using System.IO;
 using System.Buffers.Binary;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows.Media;
 using Microsoft.Win32.SafeHandles;
@@ -65,6 +66,18 @@ namespace System.Windows.Media.Imaging
             ) : base(true)
         {
             InitializePortableFrames(baseUri, uri, stream, createOptions, cacheOption, portableFrame);
+        }
+
+        internal TiffBitmapDecoder(
+            ReadOnlyCollection<BitmapFrame> portableFrames,
+            Uri baseUri,
+            Uri uri,
+            Stream stream,
+            BitmapCreateOptions createOptions,
+            BitmapCacheOption cacheOption
+            ) : base(true)
+        {
+            InitializePortableFrames(baseUri, uri, stream, createOptions, cacheOption, portableFrames);
         }
 
         /// <summary>
@@ -139,6 +152,22 @@ namespace System.Windows.Media.Imaging
             out BitmapFrame frame)
         {
             frame = null;
+            if (!TryCreatePortableFrames(stream, createOptions, cacheOption, out ReadOnlyCollection<BitmapFrame> frames))
+            {
+                return false;
+            }
+
+            frame = frames[0];
+            return true;
+        }
+
+        internal static bool TryCreatePortableFrames(
+            Stream stream,
+            BitmapCreateOptions createOptions,
+            BitmapCacheOption cacheOption,
+            out ReadOnlyCollection<BitmapFrame> frames)
+        {
+            frames = null;
 
             if (stream == null || !stream.CanSeek)
             {
@@ -184,8 +213,27 @@ namespace System.Windows.Media.Imaging
                     throw new FileFormatException(null, SR.Image_CantDealWithStream);
                 }
 
-                TiffDirectory directory = ReadDirectory(stream, startPosition, ifdOffset, littleEndian);
-                frame = CreateFrame(stream, startPosition, directory, littleEndian);
+                List<BitmapFrame> portableFrames = new List<BitmapFrame>();
+                HashSet<uint> seenIfdOffsets = new HashSet<uint>();
+                uint currentIfdOffset = ifdOffset;
+                while (currentIfdOffset != 0)
+                {
+                    if (currentIfdOffset < 8 || !seenIfdOffsets.Add(currentIfdOffset) || portableFrames.Count >= MaxPortableFrameCount)
+                    {
+                        throw new FileFormatException(null, SR.Image_CantDealWithStream);
+                    }
+
+                    TiffDirectory directory = ReadDirectory(stream, startPosition, currentIfdOffset, littleEndian);
+                    portableFrames.Add(CreateFrame(stream, startPosition, directory, littleEndian));
+                    currentIfdOffset = directory.NextIfdOffset;
+                }
+
+                if (portableFrames.Count == 0)
+                {
+                    throw new FileFormatException(null, SR.Image_CantDealWithStream);
+                }
+
+                frames = new ReadOnlyCollection<BitmapFrame>(portableFrames);
                 return true;
             }
             catch
@@ -202,6 +250,22 @@ namespace System.Windows.Media.Imaging
             out BitmapFrame frame)
         {
             frame = null;
+            if (!TryCreatePortableFramesFromUri(uri, createOptions, cacheOption, out ReadOnlyCollection<BitmapFrame> frames))
+            {
+                return false;
+            }
+
+            frame = frames[0];
+            return true;
+        }
+
+        internal static bool TryCreatePortableFramesFromUri(
+            Uri uri,
+            BitmapCreateOptions createOptions,
+            BitmapCacheOption cacheOption,
+            out ReadOnlyCollection<BitmapFrame> frames)
+        {
+            frames = null;
 
             if (!TryGetLocalPath(uri, out string localPath))
             {
@@ -209,7 +273,7 @@ namespace System.Windows.Media.Imaging
             }
 
             using FileStream stream = new FileStream(localPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return TryCreatePortableFrame(stream, createOptions, cacheOption, out frame);
+            return TryCreatePortableFrames(stream, createOptions, cacheOption, out frames);
         }
 
         /// <summary>
@@ -295,6 +359,9 @@ namespace System.Windows.Media.Imaging
                 stream.Position = nextEntryPosition;
             }
 
+            Span<byte> nextIfdBytes = stackalloc byte[4];
+            ReadExactly(stream, nextIfdBytes);
+            directory.NextIfdOffset = ReadUInt32(nextIfdBytes, littleEndian);
             return directory;
         }
 
@@ -704,6 +771,8 @@ namespace System.Windows.Media.Imaging
             public uint PlanarConfiguration { get; set; } = 1;
 
             public uint[] ColorMap { get; set; }
+
+            public uint NextIfdOffset { get; set; }
         }
 
         private const ushort ImageWidthTag = 256;
@@ -721,6 +790,8 @@ namespace System.Windows.Media.Imaging
         private const ushort TiffTypeByte = 1;
         private const ushort TiffTypeShort = 3;
         private const ushort TiffTypeLong = 4;
+
+        private const int MaxPortableFrameCount = 1024;
 
         #endregion
     }

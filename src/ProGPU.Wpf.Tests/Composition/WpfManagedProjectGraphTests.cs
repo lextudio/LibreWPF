@@ -4872,6 +4872,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("return new GifBitmapDecoder(portableGifUriFrame", bitmapDecoder, StringComparison.Ordinal);
         AssertGuardBefore(bitmapDecoder, "GifBitmapDecoder.TryCreatePortableFrame", "SetupDecoderFromUriOrStream");
         Assert.Contains("internal static bool TryCreatePortableFrame(", tiffBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TryCreatePortableFrames(", tiffBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("TryCreatePortableFramesFromUri", tiffBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("NextIfdOffset", tiffBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("MaxPortableFrameCount", tiffBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryCreatePortableFrameFromUri(", tiffBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("Portable TIFF decoding currently supports uncompressed chunky first-frame images.", tiffBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("CopyTiffRowToBgra", tiffBitmapDecoder, StringComparison.Ordinal);
@@ -4879,8 +4883,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PhotometricInterpretationTag", tiffBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("ColorMapTag", tiffBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("Portable TIFF palette decoding currently supports 1, 2, 4, and 8-bit indices.", tiffBitmapDecoder, StringComparison.Ordinal);
-        Assert.Contains("TiffBitmapDecoder.TryCreatePortableFrameFromUri", bitmapDecoder, StringComparison.Ordinal);
-        Assert.Contains("return new TiffBitmapDecoder(portableTiffUriFrame", bitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("TiffBitmapDecoder.TryCreatePortableFramesFromUri", bitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("ReadOnlyCollection<BitmapFrame> portableTiffFrames", bitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("return new TiffBitmapDecoder(portableTiffUriFrames", bitmapDecoder, StringComparison.Ordinal);
         AssertGuardBefore(bitmapDecoder, "TiffBitmapDecoder.TryCreatePortableFrame", "SetupDecoderFromUriOrStream");
         Assert.Contains("internal static bool TryCreatePortableFrame(", iconBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryCreatePortableFrameFromUri(", iconBitmapDecoder, StringComparison.Ordinal);
@@ -6601,6 +6606,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK BitmapDecoder.Create URI TIFF decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new BitmapImage(tiffUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapImage URI TIFF top-left blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CreateMultiFrameTiffBytes(pixels, secondTiffPixels, 2, 2)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create multi-frame TIFF frame count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK multi-frame TiffBitmapDecoder frame count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create URI multi-frame TIFF frame count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreatePaletteTiffBytes([0, 1, 2, 3], 2, 2, 4)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapDecoder.Create palette TIFF decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapDecoder.Create URI palette TIFF decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);

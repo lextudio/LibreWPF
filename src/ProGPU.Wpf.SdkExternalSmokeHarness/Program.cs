@@ -3638,6 +3638,7 @@ internal static class Program
                         "external SDK user-control named TextBlock");
                     AssertEqual("External SDK library panel", captionText.Text, "external SDK user-control ElementName binding");
                     ValidateApplicationResources(window);
+                    ValidateRuntimeResourceReference(window);
                     ValidateRuntimeNameScope(window);
                     ValidateApplicationLoadComponent();
                     ValidatePackResources();
@@ -4298,6 +4299,29 @@ internal static class Program
                     AssertEqual(3, selectorItems.Items.Count, "external SDK item template selector collection count after mutation");
                     AssertEqual(defaultTemplate, selector.SelectTemplate(window.ExternalItems[2], selectorItems), "external SDK item template selector default selected template");
                     AssertTemplateText(defaultTemplate, window.ExternalItems[2], "Default template Data", "external SDK default selected template text");
+                }
+
+                private static void ValidateRuntimeResourceReference(MainWindow window)
+                {
+                    var appResources = Application.Current?.Resources
+                        ?? throw new InvalidOperationException("External SDK validation requires Application resources.");
+                    var focusPanel = RequireType<Panel>(
+                        window.FindName("ExternalFocusPanel"),
+                        "external SDK runtime resource reference host panel");
+                    var runtimeText = new TextBlock
+                    {
+                        Text = "External runtime resource reference"
+                    };
+
+                    focusPanel.Children.Add(runtimeText);
+                    runtimeText.SetResourceReference(TextBlock.ForegroundProperty, "ExternalDynamicBrush");
+                    DrainDispatcher();
+                    AssertBrushColor(runtimeText.Foreground, "#FF457623", "external SDK runtime SetResourceReference initial foreground");
+
+                    appResources["ExternalDynamicBrush"] = new SolidColorBrush(Color.FromRgb(0x7B, 0x4A, 0x9C));
+                    DrainDispatcher();
+                    AssertBrushColor(runtimeText.Foreground, "#FF7B4A9C", "external SDK runtime SetResourceReference updated foreground");
+                    focusPanel.Children.Remove(runtimeText);
                 }
 
                 private static void ValidateRuntimeNameScope(MainWindow window)

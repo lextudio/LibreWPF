@@ -6712,6 +6712,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ResourceReferenceKeyNotFoundException", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK FindResource missing resource key", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalDynamicBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateRuntimeResourceReference(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SetResourceReference(TextBlock.ForegroundProperty, \"ExternalDynamicBrush\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK runtime SetResourceReference updated foreground", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalRuntimeMergedResourceText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalRuntimeMergedText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalRuntimeMergedBrush", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -42,6 +42,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private bool _isRendering;
     private bool _isProcessingRenderSchedulerWakeup;
     private bool _isProcessingDispatcherWorkWakeup;
+    private bool _forceFullWpfReplay;
     private bool _isHostVisible;
     private ProGpuWpfWindowState _windowState;
     private string _windowTitle;
@@ -187,6 +188,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public long RetainedWpfReplaySkipCount { get; private set; }
 
     public long RetainedWpfBranchReplayCount { get; private set; }
+
+    internal bool ForceFullWpfReplayForNextFrame => _forceFullWpfReplay;
 
     internal long RenderSchedulerWakeupCount { get; private set; }
 
@@ -582,10 +585,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _target.Context.ReconfigureIfNeeded(pixelWidth, pixelHeight);
 
             object? wpfRootVisual = _wpfRootVisual;
+            var forceFullWpfReplay = _forceFullWpfReplay;
             var shouldReplayWpfRootVisual = wpfRootVisual != null &&
-                _target.ShouldReplayVisualSubtree(wpfRootVisual);
+                (forceFullWpfReplay || _target.ShouldReplayVisualSubtree(wpfRootVisual));
             var canReplayDirtyWpfBranches = wpfRootVisual != null &&
                 shouldReplayWpfRootVisual &&
+                !forceFullWpfReplay &&
                 _target.CanReplayDirtyRetainedVisualBranches(wpfRootVisual);
             var clearRetainedWpfVisualRoot = wpfRootVisual == null ||
                 (shouldReplayWpfRootVisual && !canReplayDirtyWpfBranches);
@@ -641,11 +646,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                     {
                         RetainedWpfReplaySkipCount++;
                     }
+
+                    _forceFullWpfReplay = false;
                 }
                 else
                 {
                     _target.WpfInvalidationTracker.Detach();
                     LastVisualReplayResult = default;
+                    _forceFullWpfReplay = false;
                 }
 
                 if (WpfDraw != null)
@@ -1662,6 +1670,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         _portablePresentationSourceDpiScaleX = dpiScaleX;
         _portablePresentationSourceDpiScaleY = dpiScaleY;
+        InvalidateWpfRootVisualForPresentationSourceGeometryChange();
         return true;
     }
 
@@ -1687,7 +1696,27 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         _portablePresentationSourceClientWidth = clientWidth;
         _portablePresentationSourceClientHeight = clientHeight;
+        InvalidateWpfRootVisualForPresentationSourceGeometryChange();
         return true;
+    }
+
+    private void InvalidateWpfRootVisualForPresentationSourceGeometryChange()
+    {
+        _forceFullWpfReplay = true;
+
+        if (_target == null)
+        {
+            return;
+        }
+
+        _target.SceneRootVisual.Invalidate();
+        _target.RetainedWpfVisualRoot.Invalidate();
+        _target.RootVisual.Invalidate();
+
+        if (_wpfRootVisual != null)
+        {
+            _target.WpfInvalidationTracker.MarkDirty(_wpfRootVisual);
+        }
     }
 
     private void AttachPortablePresentationSourceBridge(

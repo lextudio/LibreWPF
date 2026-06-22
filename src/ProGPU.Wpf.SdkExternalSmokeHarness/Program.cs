@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using System.Security;
 using System.Security.Cryptography;
@@ -8999,11 +9001,27 @@ internal static class Program
             string candidate = Path.Combine(outputRoot, assemblyNameText + ".dll");
             return File.Exists(candidate) ? loadContext.LoadFromAssemblyPath(candidate) : null;
         };
+        loadContext.ResolvingUnmanagedDll += (_, unmanagedDllName) =>
+        {
+            foreach (string candidate in GetUnmanagedDllCandidates(unmanagedDllName))
+            {
+                string path = Path.Combine(outputRoot, candidate);
+                if (File.Exists(path) && NativeLibrary.TryLoad(path, out IntPtr handle))
+                {
+                    return handle;
+                }
+            }
+
+            return IntPtr.Zero;
+        };
 
         try
         {
             Assembly proGpuWpf = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "ProGPU.Wpf.dll"));
+            Assembly proGpuBackend = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "ProGPU.Backend.dll"));
             Assembly proGpuScene = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "ProGPU.Scene.dll"));
+            Assembly proGpuVector = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "ProGPU.Vector.dll"));
+            Assembly silkNetWebGpu = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "Silk.NET.WebGPU.dll"));
             Assembly presentationCore = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "PresentationCore.dll"));
             Assembly presentationFramework = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "PresentationFramework.dll"));
 
@@ -9167,6 +9185,14 @@ internal static class Program
                 "RenderPassEncoderSetViewport",
                 "external SDK ProGPU compositor physical render target viewport");
             AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(proGpuWpf, proGpuScene, "external SDK");
+            AssertPackagedHighDpiRetainedWpfPixelsFillPhysicalTarget(
+                outputRoot,
+                proGpuWpf,
+                proGpuBackend,
+                proGpuScene,
+                proGpuVector,
+                silkNetWebGpu,
+                "external SDK");
         }
         finally
         {
@@ -9212,6 +9238,162 @@ internal static class Program
         AssertEqual(new Vector2(420f, 840f), GetProperty(flatRoot, "Size"), $"{descriptionPrefix} ProGPU flat WPF layer logical size");
         AssertEqual(new Vector3(2f, 2f, 1f), GetProperty(retainedRoot, "Scale"), $"{descriptionPrefix} ProGPU retained WPF layer scale");
         AssertEqual(Vector2.Zero, GetProperty(retainedRoot, "RenderTransformOrigin"), $"{descriptionPrefix} ProGPU retained WPF layer transform origin");
+    }
+
+    private static void AssertPackagedHighDpiRetainedWpfPixelsFillPhysicalTarget(
+        string nativeAssetRoot,
+        Assembly proGpuWpf,
+        Assembly proGpuBackend,
+        Assembly proGpuScene,
+        Assembly proGpuVector,
+        Assembly silkNetWebGpu,
+        string descriptionPrefix)
+    {
+        Type compositionTargetType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfCompositionTarget");
+        Type gpuTextureType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTexture");
+        Type gpuTextureAlphaModeType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTextureAlphaMode");
+        Type drawingVisualType = GetRequiredType(proGpuScene, "ProGPU.Scene.DrawingVisual");
+        Type rectType = GetRequiredType(proGpuScene, "ProGPU.Scene.Rect");
+        Type solidColorBrushType = GetRequiredType(proGpuVector, "ProGPU.Vector.SolidColorBrush");
+        Type textureFormatType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureFormat");
+        Type textureUsageType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureUsage");
+
+        PreloadNativeAsset(nativeAssetRoot, "wgpu", $"{descriptionPrefix} WebGPU native runtime");
+        using IDisposable currentDirectory = PushCurrentDirectory(nativeAssetRoot);
+        object rgba8Unorm = Enum.Parse(textureFormatType, "Rgba8Unorm");
+        object renderTargetUsage = CombineEnumFlags(
+            textureUsageType,
+            Enum.Parse(textureUsageType, "RenderAttachment"),
+            Enum.Parse(textureUsageType, "CopySrc"));
+        object straightAlphaMode = Enum.Parse(gpuTextureAlphaModeType, "Straight");
+        object target = InvokeStatic(compositionTargetType, "CreateHeadless", rgba8Unorm);
+        object texture = Create(
+            gpuTextureType,
+            GetProperty(target, "Context"),
+            840u,
+            1680u,
+            rgba8Unorm,
+            renderTargetUsage,
+            $"{descriptionPrefix} packaged HiDPI framebuffer target",
+            1u,
+            straightAlphaMode);
+
+        try
+        {
+            object frame = Invoke(
+                target,
+                "BeginDrawingFrame",
+                840u,
+                1680u,
+                true,
+                420u,
+                840u,
+                2.0,
+                2.0);
+            object redBrush = Create(solidColorBrushType, 0xF02020FFu);
+            object rectangle = Create(rectType, 0f, 0f, 420f, 840f);
+            object drawingVisual = Create(drawingVisualType);
+            object drawingContext = GetProperty(drawingVisual, "Context");
+            InvokeVoid(drawingContext, "DrawRectangle", redBrush, null, rectangle);
+            InvokeVoid(GetProperty(target, "RetainedWpfVisualRoot"), "AddChild", drawingVisual);
+
+            MethodInfo render = FindMethodByParameterNames(
+                compositionTargetType,
+                "Render",
+                ["logicalWidth", "logicalHeight", "pixelWidth", "pixelHeight", "dpiScale", "targetView"]);
+            InvokeMethod(
+                render,
+                target,
+                420u,
+                840u,
+                840u,
+                1680u,
+                2f,
+                GetProperty(texture, "ViewPtr"));
+
+            byte[] pixels = (byte[])Invoke(texture, "ReadPixels");
+            AssertRgbaPixelIsRed(
+                pixels,
+                width: 840,
+                x: 780,
+                y: 1560,
+                $"{descriptionPrefix} packaged retained WPF HiDPI lower-right pixel");
+        }
+        finally
+        {
+            (texture as IDisposable)?.Dispose();
+            (target as IDisposable)?.Dispose();
+        }
+    }
+
+    private static void PreloadNativeAsset(string root, string assetName, string description)
+    {
+        foreach (string candidate in GetNativeAssetCandidates(assetName))
+        {
+            string path = Path.Combine(root, candidate);
+            if (File.Exists(path) && NativeLibrary.TryLoad(path, out _))
+            {
+                return;
+            }
+        }
+
+        throw new FileNotFoundException($"Could not load {description} from '{root}'.");
+    }
+
+    private static IDisposable PushCurrentDirectory(string path)
+    {
+        return new CurrentDirectoryScope(path);
+    }
+
+    private sealed class CurrentDirectoryScope : IDisposable
+    {
+        private readonly string _originalDirectory;
+
+        public CurrentDirectoryScope(string path)
+        {
+            _originalDirectory = Environment.CurrentDirectory;
+            Environment.CurrentDirectory = path;
+        }
+
+        public void Dispose()
+        {
+            Environment.CurrentDirectory = _originalDirectory;
+        }
+    }
+
+    private static object CombineEnumFlags(Type enumType, params object[] values)
+    {
+        ulong combined = 0;
+        foreach (object value in values)
+        {
+            combined |= Convert.ToUInt64(value, CultureInfo.InvariantCulture);
+        }
+
+        return Enum.ToObject(enumType, combined);
+    }
+
+    private static void AssertRgbaPixelIsRed(
+        byte[] pixels,
+        int width,
+        int x,
+        int y,
+        string description)
+    {
+        int index = ((y * width) + x) * 4;
+        if (index < 0 || index + 3 >= pixels.Length)
+        {
+            throw new InvalidOperationException($"Expected {description} pixel index to be inside the readback buffer.");
+        }
+
+        byte r = pixels[index];
+        byte g = pixels[index + 1];
+        byte b = pixels[index + 2];
+        byte a = pixels[index + 3];
+        if (r < 220 || g > 60 || b > 60 || a != 255)
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to be red, but found RGBA({r}, {g}, {b}, {a}).");
+        }
     }
 
     private static string RunProcess(string fileName, string workingDirectory, params string[] arguments)
@@ -9274,6 +9456,41 @@ internal static class Program
             "glfw" => ["libglfw.so.3"],
             _ => throw new ArgumentOutOfRangeException(nameof(assetName), assetName, null)
         };
+    }
+
+    private static IEnumerable<string> GetUnmanagedDllCandidates(string unmanagedDllName)
+    {
+        yield return Path.GetFileName(unmanagedDllName);
+
+        if (unmanagedDllName.Contains("glfw", StringComparison.OrdinalIgnoreCase))
+        {
+            foreach (string candidate in GetNativeAssetCandidates("glfw"))
+            {
+                yield return candidate;
+            }
+        }
+
+        if (unmanagedDllName.Contains("wgpu", StringComparison.OrdinalIgnoreCase))
+        {
+            foreach (string candidate in GetNativeAssetCandidates("wgpu"))
+            {
+                yield return candidate;
+            }
+        }
+
+        string nameWithoutExtension = Path.GetFileNameWithoutExtension(unmanagedDllName);
+        if (OperatingSystem.IsWindows())
+        {
+            yield return nameWithoutExtension + ".dll";
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            yield return "lib" + nameWithoutExtension + ".dylib";
+        }
+        else
+        {
+            yield return "lib" + nameWithoutExtension + ".so";
+        }
     }
 
     private static string FindRepoRoot()
@@ -9444,6 +9661,91 @@ internal static class Program
             ?? throw new MissingMemberException(instance.GetType().FullName, propertyName);
         return property.GetValue(instance)
             ?? throw new InvalidOperationException($"Property '{propertyName}' returned null.");
+    }
+
+    private static object Invoke(object instance, string methodName, params object?[] args)
+    {
+        MethodInfo method = GetCompatibleMethod(instance.GetType(), methodName, args)
+            ?? throw new MissingMethodException(instance.GetType().FullName, methodName);
+
+        return InvokeMethod(method, instance, args)
+            ?? throw new InvalidOperationException($"Method '{methodName}' returned null.");
+    }
+
+    private static void InvokeVoid(object instance, string methodName, params object?[] args)
+    {
+        MethodInfo method = GetCompatibleMethod(instance.GetType(), methodName, args)
+            ?? throw new MissingMethodException(instance.GetType().FullName, methodName);
+
+        InvokeMethod(method, instance, args);
+    }
+
+    private static object InvokeStatic(Type type, string methodName, params object?[] args)
+    {
+        MethodInfo method = GetCompatibleStaticMethod(type, methodName, args)
+            ?? throw new MissingMethodException(type.FullName, methodName);
+
+        return InvokeMethod(method, null, args)
+            ?? throw new InvalidOperationException($"Method '{methodName}' returned null.");
+    }
+
+    private static object? InvokeMethod(MethodInfo method, object? instance, params object?[] args)
+    {
+        try
+        {
+            return method.Invoke(instance, args);
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException is not null)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
+            throw;
+        }
+    }
+
+    private static MethodInfo? GetCompatibleMethod(Type type, string methodName, object?[] args)
+    {
+        return type.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .Where(method => string.Equals(method.Name, methodName, StringComparison.Ordinal))
+            .Where(method => ParametersMatch(method.GetParameters(), args))
+            .FirstOrDefault();
+    }
+
+    private static MethodInfo? GetCompatibleStaticMethod(Type type, string methodName, object?[] args)
+    {
+        return type.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            .Where(method => string.Equals(method.Name, methodName, StringComparison.Ordinal))
+            .Where(method => ParametersMatch(method.GetParameters(), args))
+            .FirstOrDefault();
+    }
+
+    private static bool ParametersMatch(ParameterInfo[] parameters, object?[] args)
+    {
+        if (parameters.Length != args.Length)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < parameters.Length; i++)
+        {
+            object? arg = args[i];
+            if (arg is null)
+            {
+                if (parameters[i].ParameterType.IsValueType &&
+                    Nullable.GetUnderlyingType(parameters[i].ParameterType) is null)
+                {
+                    return false;
+                }
+
+                continue;
+            }
+
+            if (!parameters[i].ParameterType.IsAssignableFrom(arg.GetType()))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static void AssertEqual(object expected, object actual, string description)

@@ -479,7 +479,12 @@ internal static class Program
         using var loadContext = CreateLoadContext(inputs);
         Assembly proGpuWpf = loadContext.LoadFromAssemblyName(new AssemblyName("ProGPU.Wpf"));
         Assembly proGpuScene = loadContext.LoadFromAssemblyName(new AssemblyName("ProGPU.Scene"));
+        Assembly proGpuBackend = loadContext.LoadFromAssemblyName(new AssemblyName("ProGPU.Backend"));
+        Assembly proGpuVector = loadContext.LoadFromAssemblyName(new AssemblyName("ProGPU.Vector"));
+        Assembly silkNetWebGpu = loadContext.LoadFromAssemblyName(new AssemblyName("Silk.NET.WebGPU"));
         Assembly presentationCore = loadContext.LoadFromAssemblyName(new AssemblyName("PresentationCore"));
+        RegisterSdkNativeResolver(silkNetWebGpu, inputs.AppOutputRoot);
+        RegisterSdkNativeResolver(proGpuBackend, inputs.AppOutputRoot);
 
         Type windowHostType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfWindowHost");
         AssertPropertyType(windowHostType, "Width", typeof(int), "SDK ProGPU WPF host logical width property");
@@ -642,6 +647,14 @@ internal static class Program
             "RenderPassEncoderSetViewport",
             "SDK ProGPU compositor physical render target viewport");
         AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(proGpuWpf, proGpuScene, "SDK");
+        AssertPackagedHighDpiRetainedWpfPixelsFillPhysicalTarget(
+            inputs.AppOutputRoot,
+            proGpuWpf,
+            proGpuBackend,
+            proGpuScene,
+            proGpuVector,
+            silkNetWebGpu,
+            "SDK");
     }
 
     private static void AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(
@@ -682,6 +695,162 @@ internal static class Program
         AssertEqual(new Vector2(420f, 840f), GetProperty(flatRoot, "Size"), $"{descriptionPrefix} ProGPU flat WPF layer logical size");
         AssertEqual(new Vector3(2f, 2f, 1f), GetProperty(retainedRoot, "Scale"), $"{descriptionPrefix} ProGPU retained WPF layer scale");
         AssertEqual(Vector2.Zero, GetProperty(retainedRoot, "RenderTransformOrigin"), $"{descriptionPrefix} ProGPU retained WPF layer transform origin");
+    }
+
+    private static void AssertPackagedHighDpiRetainedWpfPixelsFillPhysicalTarget(
+        string nativeAssetRoot,
+        Assembly proGpuWpf,
+        Assembly proGpuBackend,
+        Assembly proGpuScene,
+        Assembly proGpuVector,
+        Assembly silkNetWebGpu,
+        string descriptionPrefix)
+    {
+        Type compositionTargetType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfCompositionTarget");
+        Type gpuTextureType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTexture");
+        Type gpuTextureAlphaModeType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTextureAlphaMode");
+        Type drawingVisualType = GetRequiredType(proGpuScene, "ProGPU.Scene.DrawingVisual");
+        Type rectType = GetRequiredType(proGpuScene, "ProGPU.Scene.Rect");
+        Type solidColorBrushType = GetRequiredType(proGpuVector, "ProGPU.Vector.SolidColorBrush");
+        Type textureFormatType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureFormat");
+        Type textureUsageType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureUsage");
+
+        PreloadNativeAsset(nativeAssetRoot, "wgpu", $"{descriptionPrefix} WebGPU native runtime");
+        using IDisposable currentDirectory = PushCurrentDirectory(nativeAssetRoot);
+        object rgba8Unorm = Enum.Parse(textureFormatType, "Rgba8Unorm");
+        object renderTargetUsage = CombineEnumFlags(
+            textureUsageType,
+            Enum.Parse(textureUsageType, "RenderAttachment"),
+            Enum.Parse(textureUsageType, "CopySrc"));
+        object straightAlphaMode = Enum.Parse(gpuTextureAlphaModeType, "Straight");
+        object target = InvokeStatic(compositionTargetType, "CreateHeadless", rgba8Unorm);
+        object texture = Create(
+            gpuTextureType,
+            GetProperty(target, "Context"),
+            840u,
+            1680u,
+            rgba8Unorm,
+            renderTargetUsage,
+            $"{descriptionPrefix} packaged HiDPI framebuffer target",
+            1u,
+            straightAlphaMode);
+
+        try
+        {
+            object frame = Invoke(
+                target,
+                "BeginDrawingFrame",
+                840u,
+                1680u,
+                true,
+                420u,
+                840u,
+                2.0,
+                2.0);
+            object redBrush = Create(solidColorBrushType, 0xF02020FFu);
+            object rectangle = Create(rectType, 0f, 0f, 420f, 840f);
+            object drawingVisual = Create(drawingVisualType);
+            object drawingContext = GetProperty(drawingVisual, "Context");
+            InvokeVoid(drawingContext, "DrawRectangle", redBrush, null, rectangle);
+            InvokeVoid(GetProperty(target, "RetainedWpfVisualRoot"), "AddChild", drawingVisual);
+
+            MethodInfo render = FindMethodByParameterNames(
+                compositionTargetType,
+                "Render",
+                ["logicalWidth", "logicalHeight", "pixelWidth", "pixelHeight", "dpiScale", "targetView"]);
+            InvokeMethod(
+                render,
+                target,
+                420u,
+                840u,
+                840u,
+                1680u,
+                2f,
+                GetProperty(texture, "ViewPtr"));
+
+            byte[] pixels = (byte[])Invoke(texture, "ReadPixels");
+            AssertRgbaPixelIsRed(
+                pixels,
+                width: 840,
+                x: 780,
+                y: 1560,
+                $"{descriptionPrefix} packaged retained WPF HiDPI lower-right pixel");
+        }
+        finally
+        {
+            (texture as IDisposable)?.Dispose();
+            (target as IDisposable)?.Dispose();
+        }
+    }
+
+    private static void PreloadNativeAsset(string root, string assetName, string description)
+    {
+        foreach (string candidate in GetNativeAssetCandidates(assetName))
+        {
+            string path = Path.Combine(root, candidate);
+            if (File.Exists(path) && NativeLibrary.TryLoad(path, out _))
+            {
+                return;
+            }
+        }
+
+        throw new FileNotFoundException($"Could not load {description} from '{root}'.");
+    }
+
+    private static IDisposable PushCurrentDirectory(string path)
+    {
+        return new CurrentDirectoryScope(path);
+    }
+
+    private sealed class CurrentDirectoryScope : IDisposable
+    {
+        private readonly string _originalDirectory;
+
+        public CurrentDirectoryScope(string path)
+        {
+            _originalDirectory = Environment.CurrentDirectory;
+            Environment.CurrentDirectory = path;
+        }
+
+        public void Dispose()
+        {
+            Environment.CurrentDirectory = _originalDirectory;
+        }
+    }
+
+    private static object CombineEnumFlags(Type enumType, params object[] values)
+    {
+        ulong combined = 0;
+        foreach (object value in values)
+        {
+            combined |= Convert.ToUInt64(value, CultureInfo.InvariantCulture);
+        }
+
+        return Enum.ToObject(enumType, combined);
+    }
+
+    private static void AssertRgbaPixelIsRed(
+        byte[] pixels,
+        int width,
+        int x,
+        int y,
+        string description)
+    {
+        int index = ((y * width) + x) * 4;
+        if (index < 0 || index + 3 >= pixels.Length)
+        {
+            throw new InvalidOperationException($"Expected {description} pixel index to be inside the readback buffer.");
+        }
+
+        byte r = pixels[index];
+        byte g = pixels[index + 1];
+        byte b = pixels[index + 2];
+        byte a = pixels[index + 3];
+        if (r < 220 || g > 60 || b > 60 || a != 255)
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to be red, but found RGBA({r}, {g}, {b}, {a}).");
+        }
     }
 
     private static void PreloadSdkWindowingPlatform(AssemblyLoadContext loadContext, string appOutputRoot)

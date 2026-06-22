@@ -1029,6 +1029,35 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Equal(1, source.ClientSizeChangeCount);
         Assert.Equal(1, source.DeviceScaleChangeCount);
         Assert.Equal(2, scheduler.RequestCount);
+        Assert.True(host.ForceFullWpfReplayForNextFrame);
+    }
+
+    [Fact]
+    public void UpdatingPortablePresentationSourceClientSizeForcesFullWpfReplay()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var source = new FakePortablePresentationSource();
+        Assert.True(host.TryBindPortablePresentationSource(source));
+
+        Assert.False(host.ForceFullWpfReplayForNextFrame);
+
+        Assert.True(host.UpdatePortablePresentationSourceClientSize(420, 840));
+
+        Assert.True(host.ForceFullWpfReplayForNextFrame);
+    }
+
+    [Fact]
+    public void UpdatingPortablePresentationSourceDpiScaleForcesFullWpfReplay()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var source = new FakePortablePresentationSource();
+        Assert.True(host.TryBindPortablePresentationSource(source));
+
+        Assert.False(host.ForceFullWpfReplayForNextFrame);
+
+        Assert.True(host.UpdatePortablePresentationSourceDpiScale(2.0, 2.0));
+
+        Assert.True(host.ForceFullWpfReplayForNextFrame);
     }
 
     [Fact]

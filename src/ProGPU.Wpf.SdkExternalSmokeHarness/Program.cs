@@ -2138,7 +2138,12 @@ internal static class Program
             using System.IO;
             using System.IO.Compression;
             using System.Linq;
+            using System.Net;
+            using System.Net.Cache;
+            using System.Net.Sockets;
             using System.Reflection;
+            using System.Text;
+            using System.Threading;
             using System.Windows;
             using System.Windows.Automation;
             using System.Windows.Automation.Peers;
@@ -5416,6 +5421,43 @@ internal static class Program
                     AssertEqual(1, directPngDecoder.Frames.Count, "external SDK PngBitmapDecoder frame count");
                     AssertEqual(PixelFormats.Bgra32, directPngDecoder.Frames[0].Format, "external SDK PngBitmapDecoder Bgra32 format");
 
+                    using (var httpPngServer = new LoopbackImageServer(pngBytes))
+                    {
+                        Uri httpPngUri = httpPngServer.Uri;
+                        var httpPngDecoder = BitmapDecoder.Create(
+                            httpPngUri,
+                            BitmapCreateOptions.PreservePixelFormat,
+                            BitmapCacheOption.OnLoad,
+                            new HttpRequestCachePolicy(HttpRequestCacheLevel.Reload));
+                        AssertEqual(typeof(PngBitmapDecoder), httpPngDecoder.GetType(), "external SDK BitmapDecoder.Create HTTP PNG decoder type");
+                        AssertEqual(1, httpPngDecoder.Frames.Count, "external SDK BitmapDecoder.Create HTTP PNG frame count");
+                        AssertEqual(PixelFormats.Bgra32, httpPngDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create HTTP PNG Bgra32 format");
+                        var decodedHttpPngPixels = new byte[pixels.Length];
+                        httpPngDecoder.Frames[0].CopyPixels(decodedHttpPngPixels, 8, 0);
+                        AssertEqual(pixels[0], decodedHttpPngPixels[0], "external SDK BitmapDecoder.Create HTTP PNG top-left blue byte");
+                        AssertEqual(pixels[14], decodedHttpPngPixels[14], "external SDK BitmapDecoder.Create HTTP PNG bottom-right red byte");
+
+                        var directHttpPngDecoder = new PngBitmapDecoder(
+                            httpPngUri,
+                            BitmapCreateOptions.PreservePixelFormat,
+                            BitmapCacheOption.OnLoad);
+                        AssertEqual(1, directHttpPngDecoder.Frames.Count, "external SDK PngBitmapDecoder HTTP URI frame count");
+                        AssertEqual(2, directHttpPngDecoder.Frames[0].PixelWidth, "external SDK PngBitmapDecoder HTTP URI pixel width");
+
+                        var httpPngBitmapImage = new BitmapImage(
+                            httpPngUri,
+                            new HttpRequestCachePolicy(HttpRequestCacheLevel.NoCacheNoStore));
+                        AssertEqual(2, httpPngBitmapImage.PixelWidth, "external SDK BitmapImage HTTP PNG pixel width");
+                        AssertEqual(2, httpPngBitmapImage.PixelHeight, "external SDK BitmapImage HTTP PNG pixel height");
+                        AssertEqual(PixelFormats.Bgra32, httpPngBitmapImage.Format, "external SDK BitmapImage HTTP PNG Bgra32 format");
+                        var httpPngBitmapImagePixels = new byte[pixels.Length];
+                        httpPngBitmapImage.CopyPixels(httpPngBitmapImagePixels, 8, 0);
+                        AssertEqual(pixels[0], httpPngBitmapImagePixels[0], "external SDK BitmapImage HTTP PNG top-left blue byte");
+                        AssertEqual(pixels[14], httpPngBitmapImagePixels[14], "external SDK BitmapImage HTTP PNG bottom-right red byte");
+
+                        httpPngServer.ThrowIfFailed();
+                    }
+
                     byte[] interlacedPngBytes = CreateAdam7RgbaPngBytes(pixels, 2, 2, 8);
                     var interlacedPngDecoder = BitmapDecoder.Create(
                         new MemoryStream(interlacedPngBytes),
@@ -6137,6 +6179,112 @@ internal static class Program
                     AssertEqual(TileMode.Tile, imageBrush.TileMode, "external SDK ImageBrush tile mode");
                     AssertEqual(BrushMappingMode.Absolute, imageBrush.ViewportUnits, "external SDK ImageBrush viewport units");
                     AssertEqual(new Rect(0, 0, 2, 2), imageBrush.Viewport, "external SDK ImageBrush viewport");
+                }
+
+                private sealed class LoopbackImageServer : IDisposable
+                {
+                    private readonly TcpListener _listener;
+                    private readonly byte[] _responseBytes;
+                    private readonly Thread _thread;
+                    private Exception _exception;
+
+                    public LoopbackImageServer(byte[] contentBytes)
+                    {
+                        _responseBytes = CreateResponseBytes(contentBytes);
+                        _listener = new TcpListener(IPAddress.Loopback, 0);
+                        _listener.Start();
+
+                        int port = ((IPEndPoint)_listener.LocalEndpoint).Port;
+                        Uri = new Uri("http://127.0.0.1:" + port.ToString(CultureInfo.InvariantCulture) + "/external-image.png");
+
+                        _thread = new Thread(ServeRequests)
+                        {
+                            IsBackground = true,
+                            Name = "External SDK loopback image server"
+                        };
+                        _thread.Start();
+                    }
+
+                    public Uri Uri { get; }
+
+                    public void ThrowIfFailed()
+                    {
+                        if (_exception != null)
+                        {
+                            throw new InvalidOperationException("external SDK loopback HTTP image server failed", _exception);
+                        }
+                    }
+
+                    public void Dispose()
+                    {
+                        _listener.Stop();
+                        if (!_thread.Join(TimeSpan.FromSeconds(5)))
+                        {
+                            throw new InvalidOperationException("external SDK loopback HTTP image server did not stop");
+                        }
+
+                        ThrowIfFailed();
+                    }
+
+                    private void ServeRequests()
+                    {
+                        try
+                        {
+                            while (true)
+                            {
+                                using TcpClient client = _listener.AcceptTcpClient();
+                                client.ReceiveTimeout = 5000;
+                                client.SendTimeout = 5000;
+
+                                using NetworkStream stream = client.GetStream();
+                                ReadRequestHeaders(stream);
+                                stream.Write(_responseBytes, 0, _responseBytes.Length);
+                            }
+                        }
+                        catch (SocketException ex) when (ex.SocketErrorCode == SocketError.Interrupted)
+                        {
+                        }
+                        catch (ObjectDisposedException)
+                        {
+                        }
+                        catch (Exception ex)
+                        {
+                            _exception = ex;
+                        }
+                    }
+
+                    private static byte[] CreateResponseBytes(byte[] contentBytes)
+                    {
+                        byte[] headerBytes = Encoding.ASCII.GetBytes(
+                            "HTTP/1.1 200 OK\r\n" +
+                            "Content-Type: image/png\r\n" +
+                            "Content-Length: " + contentBytes.Length.ToString(CultureInfo.InvariantCulture) + "\r\n" +
+                            "Connection: close\r\n" +
+                            "\r\n");
+                        byte[] responseBytes = new byte[checked(headerBytes.Length + contentBytes.Length)];
+                        Buffer.BlockCopy(headerBytes, 0, responseBytes, 0, headerBytes.Length);
+                        Buffer.BlockCopy(contentBytes, 0, responseBytes, headerBytes.Length, contentBytes.Length);
+                        return responseBytes;
+                    }
+
+                    private static void ReadRequestHeaders(Stream stream)
+                    {
+                        int matched = 0;
+                        byte[] terminator = [(byte)'\r', (byte)'\n', (byte)'\r', (byte)'\n'];
+
+                        while (matched < terminator.Length)
+                        {
+                            int value = stream.ReadByte();
+                            if (value < 0)
+                            {
+                                break;
+                            }
+
+                            matched = value == terminator[matched]
+                                ? matched + 1
+                                : (value == terminator[0] ? 1 : 0);
+                        }
+                    }
                 }
 
                 private static byte[] CreateJpegBytes()

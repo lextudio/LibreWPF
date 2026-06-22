@@ -224,9 +224,19 @@ namespace System.Windows.Media.Imaging
             BitmapCacheOption cacheOption,
             out ReadOnlyCollection<BitmapFrame> frames)
         {
+            return TryCreatePortableFramesFromUri(uri, createOptions, cacheOption, null, out frames);
+        }
+
+        internal static bool TryCreatePortableFramesFromUri(
+            Uri uri,
+            BitmapCreateOptions createOptions,
+            BitmapCacheOption cacheOption,
+            System.Net.Cache.RequestCachePolicy uriCachePolicy,
+            out ReadOnlyCollection<BitmapFrame> frames)
+        {
             frames = null;
 
-            if (!BitmapDecoder.TryOpenPortableUriStream(uri, out Stream stream))
+            if (!BitmapDecoder.TryOpenPortableUriStream(uri, uriCachePolicy, out Stream stream))
             {
                 return false;
             }

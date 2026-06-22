@@ -18,6 +18,11 @@ pack_project() {
   "${dotnet}" pack "${repo_root}/${project}" -c Release -o "${package_output}" -v:minimal
 }
 
+build_project() {
+  local project="$1"
+  "${dotnet}" build "${repo_root}/${project}" -c Release -v:minimal
+}
+
 run_dotnet() {
   "${dotnet}" "$@"
 }
@@ -29,6 +34,20 @@ pack_project "external/ProGPU/src/ProGPU.Compute/ProGPU.Compute.csproj"
 pack_project "external/ProGPU/src/ProGPU.Vector/ProGPU.Vector.csproj"
 pack_project "external/ProGPU/src/ProGPU.Text/ProGPU.Text.csproj"
 pack_project "external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj"
+
+echo "Building managed WPF transport payload..."
+build_project "src/Microsoft.DotNet.Wpf/src/WindowsBase/WindowsBase.csproj"
+build_project "src/Microsoft.DotNet.Wpf/src/System.Xaml/System.Xaml.csproj"
+build_project "src/Microsoft.DotNet.Wpf/src/UIAutomation/UIAutomationTypes/UIAutomationTypes.csproj"
+build_project "src/Microsoft.DotNet.Wpf/src/UIAutomation/UIAutomationProvider/UIAutomationProvider.csproj"
+build_project "src/Microsoft.DotNet.Wpf/src/System.Windows.Input.Manipulations/System.Windows.Input.Manipulations.csproj"
+build_project "src/Microsoft.DotNet.Wpf/src/System.Windows.Primitives/System.Windows.Primitives.csproj"
+build_project "src/Microsoft.DotNet.Wpf/src/PresentationCore/PresentationCore.csproj"
+build_project "src/Microsoft.DotNet.Wpf/src/ReachFramework/ReachFramework.csproj"
+build_project "src/Microsoft.DotNet.Wpf/src/PresentationUI/PresentationUI.csproj"
+build_project "src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj"
+build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Aero2/PresentationFramework.Aero2.csproj"
+build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Fluent/PresentationFramework.Fluent.csproj"
 
 echo "Packing WPF transport, ProGPU bridge, and custom SDK..."
 pack_project "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj"

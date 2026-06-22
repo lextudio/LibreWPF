@@ -5691,6 +5691,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("./eng/progpu-wpf-sdk-ci.sh", sdkCiWorkflow, StringComparison.Ordinal);
         Assert.Contains("external/ProGPU/src/ProGPU.Backend/ProGPU.Backend.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("Building managed WPF transport payload", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("src/Microsoft.DotNet.Wpf/src/WindowsBase/WindowsBase.csproj", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Fluent/PresentationFramework.Fluent.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/ProGPU.Wpf/ProGPU.Wpf.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj", sdkCiScript, StringComparison.Ordinal);

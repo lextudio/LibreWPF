@@ -7379,6 +7379,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"ExternalOneWayToSourceBindingTextBox\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Mode=OneWayToSource", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK OneWayToSource binding source value", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ObservableCollection<ExternalItem> ExternalIndexedItems", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalIndexedBindingText\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalIndexedItems[1].Name", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK indexed binding updated target text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ExternalBindingTransferTextBox\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SourceUpdated=\"OnExternalBindingSourceUpdated\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("TargetUpdated=\"OnExternalBindingTargetUpdated\"", externalSdkHarnessProgram, StringComparison.Ordinal);

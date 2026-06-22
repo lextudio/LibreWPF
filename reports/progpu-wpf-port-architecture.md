@@ -146,6 +146,8 @@ Delayed binding source updates stay in WPF's binding engine. The generated exter
 
 Binding mode policy stays in WPF's binding engine. The generated external SDK app now validates `Mode=OneTime` retaining the initial target value after a source notification, and `Mode=OneWayToSource` pushing target text back to the source from SDK-built BAML. ProGPU/Silk.NET should render the resolved target values and observe invalidation, not duplicate binding-mode state machines.
 
+Indexed `PropertyPath` resolution stays in WPF's binding engine. The generated external SDK app now binds through `ExternalIndexedItems[1].Name`, validates the parsed path metadata, mutates the indexed item's notifying property, and observes the target update from SDK-built BAML. ProGPU/Silk.NET should render the updated text, not parse or watch indexed binding paths itself.
+
 The custom SDK deliverable applies the same rule to loose XAML in package mode. A normal SDK-switched app should be able to keep WPF loose `XamlReader.Parse(...)` and `XamlWriter.Save(...)` behavior from the transport assemblies with no app source changes; ProGPU/Silk.NET should only provide native platform services and render the resulting object graph.
 
 Explicit compiled-component loading stays in WPF for the same reason. The generated external SDK app now loads a default-item `UserControl` by component URI through `Application.LoadComponent(...)`, then validates app-resource lookup, namescope lookup, and referenced-library control creation from the loaded BAML. ProGPU should render the resulting view and support invalidation; it should not own BAML URI resolution or generated component instantiation.

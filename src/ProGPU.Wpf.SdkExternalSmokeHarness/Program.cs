@@ -1846,6 +1846,9 @@ internal static class Program
                     <TextBox
                         x:Name="ExternalOneWayToSourceBindingTextBox"
                         Text="{Binding ExternalOneWayToSourceBindingText, Mode=OneWayToSource, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock
+                        x:Name="ExternalIndexedBindingText"
+                        Text="{Binding ExternalIndexedItems[1].Name}" />
                     <TextBox
                         x:Name="ExternalSpellCheckTextBox"
                         SpellCheck.IsEnabled="True"
@@ -2157,6 +2160,12 @@ internal static class Program
                     new ExternalItem("Live Alpha", "Framework", true),
                     new ExternalItem("Live Beta", "Rendering", false),
                     new ExternalItem("Live Gamma", "Data", false)
+                ];
+
+                public ObservableCollection<ExternalItem> ExternalIndexedItems { get; } =
+                [
+                    new ExternalItem("Indexed Alpha", "Binding", true),
+                    new ExternalItem("Indexed Beta", "Binding", true)
                 ];
 
                 public ObservableCollection<ExternalNode> ExternalNodes { get; } =
@@ -7548,6 +7557,17 @@ internal static class Program
                     oneWayToSourceBindingTextBox.Text = "external one-way source refresh";
                     DrainDispatcher();
                     AssertEqual("external one-way source refresh", window.ExternalOneWayToSourceBindingText, "external SDK OneWayToSource binding source value");
+
+                    var indexedBindingText = RequireType<TextBlock>(
+                        window.FindName("ExternalIndexedBindingText"),
+                        "external SDK indexed binding text block");
+                    AssertEqual("Indexed Beta", indexedBindingText.Text, "external SDK indexed binding initial target text");
+                    var indexedBindingExpression = indexedBindingText.GetBindingExpression(TextBlock.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK indexed BindingExpression.");
+                    AssertEqual("ExternalIndexedItems[1].Name", indexedBindingExpression.ParentBinding.Path.Path, "external SDK indexed binding path");
+                    window.ExternalIndexedItems[1].Name = "Indexed Beta Updated";
+                    DrainDispatcher();
+                    AssertEqual("Indexed Beta Updated", indexedBindingText.Text, "external SDK indexed binding updated target text");
 
                     var transferTextBox = RequireType<TextBox>(
                         window.FindName("ExternalBindingTransferTextBox"),

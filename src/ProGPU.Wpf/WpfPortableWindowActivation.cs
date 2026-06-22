@@ -34,6 +34,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         Host.WindowEventReceived += OnHostWindowEventReceived;
         Host.DragDropReceived += OnHostDragDropReceived;
         Host.RenderWakeupRequested += OnHostRenderWakeupRequested;
+        SynchronizeInitialWindowState(updatePortablePresentationSource: false);
     }
 
     public ProGpuWpfWindowHost Host { get; }
@@ -263,6 +264,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
     public void Show()
     {
         ThrowIfDisposed();
+        SynchronizeInitialWindowState(updatePortablePresentationSource: true);
         Host.Show();
         FlushWpfDispatcherOperations("Loaded", "Render");
     }
@@ -296,10 +298,10 @@ public sealed class WpfPortableWindowActivation : IDisposable
         ThrowIfDisposed();
 
         var clientWidth = TryMapPositiveDimension(width, out double mappedWidth)
-            ? ToPixelDimension(mappedWidth)
+            ? ToLogicalClientDimension(mappedWidth)
             : Host.Width;
         var clientHeight = TryMapPositiveDimension(height, out double mappedHeight)
-            ? ToPixelDimension(mappedHeight)
+            ? ToLogicalClientDimension(mappedHeight)
             : Host.Height;
 
         Host.SetClientSize(clientWidth, clientHeight);
@@ -326,6 +328,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
     public void Run()
     {
         ThrowIfDisposed();
+        SynchronizeInitialWindowState(updatePortablePresentationSource: true);
         Host.Run();
     }
 
@@ -432,13 +435,13 @@ public sealed class WpfPortableWindowActivation : IDisposable
         if (TryReadPositiveDimension(window, "Width", out var width) ||
             TryReadPositiveDimension(window, "ActualWidth", out width))
         {
-            options.Width = ToPixelDimension(width);
+            options.Width = ToLogicalClientDimension(width);
         }
 
         if (TryReadPositiveDimension(window, "Height", out var height) ||
             TryReadPositiveDimension(window, "ActualHeight", out height))
         {
-            options.Height = ToPixelDimension(height);
+            options.Height = ToLogicalClientDimension(height);
         }
 
         if (TryReadProperty(window, "WindowState", out object? windowState) &&
@@ -448,6 +451,52 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
 
         return options;
+    }
+
+    private void SynchronizeInitialWindowState(bool updatePortablePresentationSource)
+    {
+        if (TryReadStringProperty(Window, "Title", out var title) &&
+            !string.IsNullOrWhiteSpace(title))
+        {
+            Host.SetTitle(title);
+        }
+
+        if (TryReadProperty(Window, "WindowState", out object? windowState) &&
+            TryMapWindowState(windowState, out ProGpuWpfWindowState mappedWindowState))
+        {
+            Host.SetWindowState(mappedWindowState);
+        }
+
+        var hasWidth =
+            TryReadPositiveDimension(Window, "Width", out var width) ||
+            TryReadPositiveDimension(Window, "ActualWidth", out width);
+        var hasHeight =
+            TryReadPositiveDimension(Window, "Height", out var height) ||
+            TryReadPositiveDimension(Window, "ActualHeight", out height);
+
+        if (hasWidth || hasHeight)
+        {
+            SetHostClientSize(
+                hasWidth ? ToLogicalClientDimension(width) : Host.Width,
+                hasHeight ? ToLogicalClientDimension(height) : Host.Height,
+                updatePortablePresentationSource);
+        }
+        else
+        {
+            SetHostClientSize(Host.Width, Host.Height, updatePortablePresentationSource);
+        }
+    }
+
+    private void SetHostClientSize(int width, int height, bool updatePortablePresentationSource)
+    {
+        if (updatePortablePresentationSource)
+        {
+            Host.SetClientSize(width, height);
+        }
+        else
+        {
+            Host.SetInitialClientSize(width, height);
+        }
     }
 
     private static object ResolveRootVisual(object window)
@@ -1351,7 +1400,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return true;
     }
 
-    private static int ToPixelDimension(double value)
+    private static int ToLogicalClientDimension(double value)
     {
         return Math.Max(1, (int)Math.Ceiling(value));
     }

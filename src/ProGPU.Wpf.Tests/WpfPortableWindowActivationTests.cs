@@ -183,6 +183,45 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void TryAttachSynchronizesInitialWindowShapeBeforeFirstRender()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
+        {
+            Title = "Fallback",
+            Width = 1280,
+            Height = 800
+        })
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var window = new FakeWindow
+        {
+            Title = "Portable WPF",
+            Width = 420,
+            Height = 840,
+            WindowState = FakeWindowState.Normal
+        };
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+        Assert.Equal("Portable WPF", host.Title);
+        Assert.Equal(420, host.Width);
+        Assert.Equal(840, host.Height);
+        Assert.Equal(0, source.ClientSizeChangeCount);
+
+        activation.SetClientSize(window.Width, window.Height);
+
+        Assert.Equal(420, source.ClientWidth);
+        Assert.Equal(840, source.ClientHeight);
+        Assert.Equal(1, source.ClientSizeChangeCount);
+        Assert.True(scheduler.RequestCount >= 1);
+    }
+
+    [Fact]
     public void HideAndSetWindowStateUpdateHostWithoutNativeWindow()
     {
         var scheduler = new TestRenderScheduler();
@@ -702,6 +741,20 @@ public sealed class WpfPortableWindowActivationTests
                 _rootVisual = value;
                 RenderRequested?.Invoke(this, EventArgs.Empty);
             }
+        }
+
+        public double ClientWidth { get; private set; }
+
+        public double ClientHeight { get; private set; }
+
+        public int ClientSizeChangeCount { get; private set; }
+
+        internal void SetClientSize(double width, double height)
+        {
+            ClientWidth = width;
+            ClientHeight = height;
+            ClientSizeChangeCount++;
+            RenderRequested?.Invoke(this, EventArgs.Empty);
         }
 
         public void Dispose()

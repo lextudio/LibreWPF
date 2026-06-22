@@ -243,7 +243,17 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public void SetClientSize(int width, int height)
     {
         ThrowIfDisposed();
+        SetClientSizeCore(width, height, updatePortablePresentationSource: true);
+    }
 
+    internal void SetInitialClientSize(int width, int height)
+    {
+        ThrowIfDisposed();
+        SetClientSizeCore(width, height, updatePortablePresentationSource: false);
+    }
+
+    private void SetClientSizeCore(int width, int height, bool updatePortablePresentationSource)
+    {
         _clientWidth = Math.Max(1, width);
         _clientHeight = Math.Max(1, height);
         if (_window != null)
@@ -251,7 +261,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _window.Size = new Vector2D<int>(_clientWidth, _clientHeight);
         }
 
-        UpdatePortablePresentationSourceClientSize((uint)_clientWidth, (uint)_clientHeight);
+        if (updatePortablePresentationSource)
+        {
+            UpdatePortablePresentationSourceClientSize((uint)_clientWidth, (uint)_clientHeight);
+        }
+
         WpfRenderScheduler.RequestRender();
     }
 

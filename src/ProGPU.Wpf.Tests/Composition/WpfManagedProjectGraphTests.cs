@@ -262,6 +262,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.Tests",
             "ProGpuWpfWindowHostTests.cs");
+        var proGpuActivationTestsPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "WpfPortableWindowActivationTests.cs");
 
         var mediaContext = File.ReadAllText(mediaContextPath);
         var renderService = File.ReadAllText(renderServicePath);
@@ -277,6 +281,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuCompositorReviewTests = File.ReadAllText(proGpuCompositorReviewTestsPath);
         var proGpuDrawingFrameTests = File.ReadAllText(proGpuDrawingFrameTestsPath);
         var proGpuWindowHostTests = File.ReadAllText(proGpuWindowHostTestsPath);
+        var proGpuActivationTests = File.ReadAllText(proGpuActivationTestsPath);
 
         Assert.Contains(@"<Compile Include=""System\Windows\Media\PortableMediaContextRenderService.cs"" />", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains("internal static class PortableMediaContextRenderService", renderService, StringComparison.Ordinal);
@@ -301,6 +306,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("typeof(Action<TimeSpan>)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("IWpfDelayedRenderScheduler delayedScheduler", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.RenderWakeupRequested += OnHostRenderWakeupRequested", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("SynchronizeInitialWindowState(updatePortablePresentationSource: false);", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("SynchronizeInitialWindowState(updatePortablePresentationSource: true);", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("private void SynchronizeInitialWindowState(bool updatePortablePresentationSource)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("ToLogicalClientDimension", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("Host.SetInitialClientSize(width, height)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("Host.SetClientSize(", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FlushWpfDispatcherOperations(\"Loaded\", \"Render\")", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FlushWpfDispatcherOperations(\"Render\")", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryFlushDispatcherOperations(Window, markerPriorityName)", proGpuActivation, StringComparison.Ordinal);
@@ -312,6 +323,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PlatformServices.WindowDecorations.TryBeginDragMove(_window)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("public int Width => _clientWidth;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("public int Height => _clientHeight;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("internal void SetInitialClientSize(int width, int height)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("SetClientSizeCore(width, height, updatePortablePresentationSource: false)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal RenderSurfaceGeometry LastResolvedRenderSurfaceGeometry", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ResolveCurrentRenderSurfaceGeometry()", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ResolveRenderSurfaceGeometry(", proGpuHost, StringComparison.Ordinal);
@@ -365,6 +378,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("HighDpiSourceDrawingLayerRendersAcrossPhysicalFramebuffer", proGpuDrawingFrameTests, StringComparison.Ordinal);
         Assert.Contains("NativeResizeUsesPortablePresentationSourceLogicalCacheWhenHostCacheWasPhysical", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("SetClientSizeSynchronizesBoundPortablePresentationSourceImmediately", proGpuWindowHostTests, StringComparison.Ordinal);
+        Assert.Contains("SetInitialClientSizeCachesLogicalSizeWithoutPortableSourceRelayout", proGpuWindowHostTests, StringComparison.Ordinal);
+        Assert.Contains("TryAttachSynchronizesInitialWindowShapeBeforeFirstRender", proGpuActivationTests, StringComparison.Ordinal);
         Assert.Contains("float dpiScale", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("Compositor.RenderScene(\n            SceneRootVisual,\n            logicalWidth,\n            logicalHeight,\n            pixelWidth,\n            pixelHeight,\n            dpiScale,\n            targetView)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("IWpfWindowDecorationService WindowDecorations", proGpuPlatformServices, StringComparison.Ordinal);
@@ -883,6 +898,15 @@ public sealed class WpfManagedProjectGraphTests
             "System",
             "Windows",
             "dataobject.cs");
+        var portableClipboardServiceTestsPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "tests",
+            "UnitTests",
+            "PresentationCore.Tests",
+            "System",
+            "Windows",
+            "PortableClipboardServiceTests.cs");
         var projectPath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -915,6 +939,7 @@ public sealed class WpfManagedProjectGraphTests
         var clipboardService = File.ReadAllText(clipboardServicePath);
         var portableManagedDataObject = File.ReadAllText(portableManagedDataObjectPath);
         var dataObject = File.ReadAllText(dataObjectPath);
+        var portableClipboardServiceTests = File.ReadAllText(portableClipboardServiceTestsPath);
         var project = File.ReadAllText(projectPath);
         var runtimeHarness = File.ReadAllText(runtimeHarnessPath);
         var applicationRunHarness = File.ReadAllText(applicationRunHarnessPath);
@@ -947,6 +972,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("portableManagedData.SetDataAsJson(format, data);", dataObject, StringComparison.Ordinal);
         Assert.Contains("return !s_isWindows;", clipboardService, StringComparison.Ordinal);
         Assert.Contains("s_dataObject = dataObject;", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("private static bool s_hasManagedClipboardState;", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("s_hasManagedClipboardState = true;", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("Volatile.Read(ref s_setText)?.Invoke(hasUnicodeText ? text : null);", clipboardService, StringComparison.Ordinal);
+        Assert.Contains("ClearKeepsManagedStateAuthoritativeOverStaleNativeText", portableClipboardServiceTests, StringComparison.Ordinal);
+        Assert.Contains("SetFileDropListClearsNativeTextMirror", portableClipboardServiceTests, StringComparison.Ordinal);
 
         Assert.Contains("if (PortableClipboardService.TryClear())", clipboard, StringComparison.Ordinal);
         Assert.Contains("if (PortableClipboardService.TryFlush())", clipboard, StringComparison.Ordinal);

@@ -16,6 +16,7 @@ internal static class PortableClipboardService
     private static readonly bool s_isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
     private static readonly object s_sync = new object();
     private static IDataObject? s_dataObject;
+    private static bool s_hasManagedClipboardState;
     private static Func<string?>? s_getText;
     private static Action<string?>? s_setText;
 
@@ -47,6 +48,7 @@ internal static class PortableClipboardService
         lock (s_sync)
         {
             s_dataObject = null;
+            s_hasManagedClipboardState = true;
         }
 
         Volatile.Read(ref s_setText)?.Invoke(null);
@@ -83,6 +85,11 @@ internal static class PortableClipboardService
                 dataObject = s_dataObject;
                 return true;
             }
+
+            if (s_hasManagedClipboardState)
+            {
+                return true;
+            }
         }
 
         Func<string?>? getText = Volatile.Read(ref s_getText);
@@ -101,7 +108,11 @@ internal static class PortableClipboardService
         textDataObject.SetData(DataFormats.UnicodeText, text, autoConvert: false);
         lock (s_sync)
         {
-            s_dataObject ??= textDataObject;
+            if (!s_hasManagedClipboardState && s_dataObject == null)
+            {
+                s_dataObject = textDataObject;
+            }
+
             dataObject = s_dataObject;
         }
 
@@ -177,15 +188,14 @@ internal static class PortableClipboardService
             return false;
         }
 
+        bool hasUnicodeText = TryGetUnicodeText(dataObject, out string? text);
         lock (s_sync)
         {
             s_dataObject = dataObject;
+            s_hasManagedClipboardState = true;
         }
 
-        if (TryGetUnicodeText(dataObject, out string? text))
-        {
-            Volatile.Read(ref s_setText)?.Invoke(text);
-        }
+        Volatile.Read(ref s_setText)?.Invoke(hasUnicodeText ? text : null);
 
         return true;
     }
@@ -225,14 +235,26 @@ internal static class PortableClipboardService
             _getText = null;
             _setText = null;
 
+            bool removedRegistration = false;
             if (ReferenceEquals(Volatile.Read(ref s_getText), getText))
             {
                 Volatile.Write(ref s_getText, null);
+                removedRegistration = true;
             }
 
             if (ReferenceEquals(Volatile.Read(ref s_setText), setText))
             {
                 Volatile.Write(ref s_setText, null);
+                removedRegistration = true;
+            }
+
+            if (removedRegistration)
+            {
+                lock (s_sync)
+                {
+                    s_dataObject = null;
+                    s_hasManagedClipboardState = false;
+                }
             }
         }
     }

@@ -6717,6 +6717,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("UnregisterName(\"ExternalRuntimeRegisteredButton\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK runtime namescope duplicate preserves original", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK runtime namescope replacement object", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Path.Combine(appRoot, \"ExternalLoadComponentView.xaml\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("public partial class ExternalLoadComponentView : UserControl", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateApplicationLoadComponent()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Application.LoadComponent(new Uri(\"/ExternalSdkApp;component/ExternalLoadComponentView.xaml\", UriKind.Relative))", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalLoadComponentText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Application.LoadComponent static resource text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalLoadComponentPanel", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalImplicitStylePanel", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Style TargetType=\"{x:Type TextBlock}\">", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Value=\"external implicit style active\"", externalSdkHarnessProgram, StringComparison.Ordinal);

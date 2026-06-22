@@ -2040,6 +2040,42 @@ internal static class Program
             """);
 
         WriteFile(
+            Path.Combine(appRoot, "ExternalLoadComponentView.xaml"),
+            """
+            <UserControl
+                x:Class="ExternalSdkApp.ExternalLoadComponentView"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:library="clr-namespace:ExternalSdkLibrary;assembly=ExternalSdkLibrary">
+                <StackPanel>
+                    <TextBlock
+                        x:Name="ExternalLoadComponentText"
+                        Foreground="{StaticResource ExternalStaticBrush}"
+                        Text="{StaticResource ExternalStaticText}" />
+                    <library:ExternalPanel
+                        x:Name="ExternalLoadComponentPanel"
+                        Caption="External loaded component panel" />
+                </StackPanel>
+            </UserControl>
+            """);
+
+        WriteFile(
+            Path.Combine(appRoot, "ExternalLoadComponentView.xaml.cs"),
+            """
+            using System.Windows.Controls;
+
+            namespace ExternalSdkApp;
+
+            public partial class ExternalLoadComponentView : UserControl
+            {
+                public ExternalLoadComponentView()
+                {
+                    InitializeComponent();
+                }
+            }
+            """);
+
+        WriteFile(
             Path.Combine(appRoot, "MainWindow.xaml.cs"),
             """
             using System;
@@ -3603,6 +3639,7 @@ internal static class Program
                     AssertEqual("External SDK library panel", captionText.Text, "external SDK user-control ElementName binding");
                     ValidateApplicationResources(window);
                     ValidateRuntimeNameScope(window);
+                    ValidateApplicationLoadComponent();
                     ValidatePackResources();
                     ValidateSystemParameters(window);
                     ValidateWindowChrome(window);
@@ -4285,6 +4322,26 @@ internal static class Program
                     window.RegisterName("ExternalRuntimeRegisteredButton", replacementButton);
                     AssertEqual(replacementButton, window.FindName("ExternalRuntimeRegisteredButton"), "external SDK runtime namescope replacement object");
                     window.UnregisterName("ExternalRuntimeRegisteredButton");
+                }
+
+                private static void ValidateApplicationLoadComponent()
+                {
+                    var loadedView = RequireType<ExternalLoadComponentView>(
+                        Application.LoadComponent(new Uri("/ExternalSdkApp;component/ExternalLoadComponentView.xaml", UriKind.Relative)),
+                        "external SDK Application.LoadComponent user control");
+                    var loadedText = RequireType<TextBlock>(
+                        loadedView.FindName("ExternalLoadComponentText"),
+                        "external SDK Application.LoadComponent text block");
+                    AssertEqual("External SDK resource text", loadedText.Text, "external SDK Application.LoadComponent static resource text");
+                    AssertBrushColor(loadedText.Foreground, "#FFA65A2A", "external SDK Application.LoadComponent static resource foreground");
+
+                    var loadedPanel = RequireType<ExternalPanel>(
+                        loadedView.FindName("ExternalLoadComponentPanel"),
+                        "external SDK Application.LoadComponent library user-control");
+                    var loadedPanelCaption = RequireType<TextBlock>(
+                        loadedPanel.FindName("CaptionText"),
+                        "external SDK Application.LoadComponent library user-control caption");
+                    AssertEqual("External loaded component panel", loadedPanelCaption.Text, "external SDK Application.LoadComponent library binding");
                 }
 
                 private static void ValidatePackResources()
@@ -10374,6 +10431,7 @@ internal static class Program
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalResources.xaml"), "external SDK app merged resource dictionary source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalPage.xaml"), "external SDK app compiled page source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalSecondPage.xaml"), "external SDK app second compiled page source");
+        RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalLoadComponentView.xaml"), "external SDK app LoadComponent user-control source");
 
         AssertDoesNotContain(appProject, "ProGpuWpfReferenceMode", "external app local artifact mode");
         AssertDoesNotContain(appProject, "ProGpuWpfManagedReferenceRoot", "external app managed artifact root");

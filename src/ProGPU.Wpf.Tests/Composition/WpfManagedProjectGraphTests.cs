@@ -6388,6 +6388,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DefaultTemplate=\"{StaticResource ExternalDefaultItemTemplate}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalFilteredItems", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Filter=\"OnExternalItemsFilter\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalLiveFilteredItems", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("IsLiveFilteringRequested=\"True\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<CollectionViewSource.LiveFilteringProperties>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<sys:String>IsActive</sys:String>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalLiveSortedItems", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("IsLiveSortingRequested=\"True\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<CollectionViewSource.LiveSortingProperties>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalLiveFilteredItemsList", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalLiveSortedItemsList", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalCurrencyItems", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("IsSynchronizedWithCurrentItem=\"True\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalCompositeItemsList", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6422,7 +6431,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DataGridTextColumn", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DataGridCheckBoxColumn", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Binding=\"{Binding IsActive}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("IsActive { get; set; }", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("public bool IsActive", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OnPropertyChanged(nameof(IsActive))", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateLayoutsAndItems(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Grid.GetColumnSpan(gridValue)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DockPanel.GetDock(dockTop)", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6948,6 +6958,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("OnPropertyChanged(nameof(IsExternalDataTriggerActionActive))", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("OnPropertyChanged(nameof(IsExternalMultiDataTriggerActionReady))", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("OnPropertyChanged(nameof(IsExternalMultiDataTriggerActionArmed))", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("public sealed class ExternalItem : INotifyPropertyChanged", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OnPropertyChanged(nameof(IsActive))", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OnPropertyChanged(nameof(Name))", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK data trigger active text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK multi data trigger one-condition text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK multi data trigger active tag", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6956,6 +6969,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK item template name binding", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window.ExternalItems.Add(new ExternalItem(\"Gamma\", \"Data\"))", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK bound items count after collection change", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK live filtered CollectionViewSource live update item count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("window.ExternalLiveItems[1].IsActive = true", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK live sorted CollectionViewSource live resort first item", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("window.ExternalLiveItems[2].Name = \"Live Aaron\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new MainWindow()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window.FindName(\"ExternalThemedControl\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("themedControl.Template.FindName(\"ThemeRoot\", themedControl)", externalSdkHarnessProgram, StringComparison.Ordinal);

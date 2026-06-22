@@ -695,6 +695,28 @@ internal static class Program
                         Source="{Binding ExternalItems}"
                         Filter="OnExternalItemsFilter" />
                     <CollectionViewSource
+                        x:Key="ExternalLiveFilteredItems"
+                        Source="{Binding ExternalLiveItems}"
+                        Filter="OnExternalItemsFilter"
+                        IsLiveFilteringRequested="True">
+                        <CollectionViewSource.LiveFilteringProperties>
+                            <sys:String>IsActive</sys:String>
+                        </CollectionViewSource.LiveFilteringProperties>
+                    </CollectionViewSource>
+                    <CollectionViewSource
+                        x:Key="ExternalLiveSortedItems"
+                        Source="{Binding ExternalLiveItems}"
+                        IsLiveSortingRequested="True">
+                        <CollectionViewSource.SortDescriptions>
+                            <componentModel:SortDescription
+                                PropertyName="Name"
+                                Direction="Ascending" />
+                        </CollectionViewSource.SortDescriptions>
+                        <CollectionViewSource.LiveSortingProperties>
+                            <sys:String>Name</sys:String>
+                        </CollectionViewSource.LiveSortingProperties>
+                    </CollectionViewSource>
+                    <CollectionViewSource
                         x:Key="ExternalCurrencyItems"
                         Source="{Binding ExternalItems}" />
                     <Style
@@ -1221,6 +1243,14 @@ internal static class Program
                         DisplayMemberPath="Name"
                         ItemsSource="{Binding Source={StaticResource ExternalFilteredItems}}" />
                     <ListBox
+                        x:Name="ExternalLiveFilteredItemsList"
+                        DisplayMemberPath="Name"
+                        ItemsSource="{Binding Source={StaticResource ExternalLiveFilteredItems}}" />
+                    <ListBox
+                        x:Name="ExternalLiveSortedItemsList"
+                        DisplayMemberPath="Name"
+                        ItemsSource="{Binding Source={StaticResource ExternalLiveSortedItems}}" />
+                    <ListBox
                         x:Name="ExternalCurrencyItemsList"
                         DisplayMemberPath="Name"
                         IsSynchronizedWithCurrentItem="True"
@@ -1631,6 +1661,13 @@ internal static class Program
                 [
                     new ExternalItem("Alpha", "Framework", true),
                     new ExternalItem("Beta", "Rendering", false)
+                ];
+
+                public ObservableCollection<ExternalItem> ExternalLiveItems { get; } =
+                [
+                    new ExternalItem("Live Alpha", "Framework", true),
+                    new ExternalItem("Live Beta", "Rendering", false),
+                    new ExternalItem("Live Gamma", "Data", false)
                 ];
 
                 public ObservableCollection<ExternalNode> ExternalNodes { get; } =
@@ -2111,20 +2148,64 @@ internal static class Program
                 private bool _isExternalMultiDataTriggerActionArmed;
             }
 
-            public sealed class ExternalItem
+            public sealed class ExternalItem : INotifyPropertyChanged
             {
+                private string _name;
+                private string _kind;
+                private bool _isActive;
+
                 public ExternalItem(string name, string kind, bool isActive = false)
                 {
-                    Name = name;
-                    Kind = kind;
-                    IsActive = isActive;
+                    _name = name;
+                    _kind = kind;
+                    _isActive = isActive;
                 }
 
-                public string Name { get; }
+                public string Name
+                {
+                    get => _name;
+                    set
+                    {
+                        if (_name != value)
+                        {
+                            _name = value;
+                            OnPropertyChanged(nameof(Name));
+                        }
+                    }
+                }
 
-                public string Kind { get; }
+                public string Kind
+                {
+                    get => _kind;
+                    set
+                    {
+                        if (_kind != value)
+                        {
+                            _kind = value;
+                            OnPropertyChanged(nameof(Kind));
+                        }
+                    }
+                }
 
-                public bool IsActive { get; set; }
+                public bool IsActive
+                {
+                    get => _isActive;
+                    set
+                    {
+                        if (_isActive != value)
+                        {
+                            _isActive = value;
+                            OnPropertyChanged(nameof(IsActive));
+                        }
+                    }
+                }
+
+                public event PropertyChangedEventHandler? PropertyChanged;
+
+                private void OnPropertyChanged(string propertyName)
+                {
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+                }
             }
 
             public sealed class ExternalItemTemplateSelector : DataTemplateSelector
@@ -6951,6 +7032,47 @@ internal static class Program
                     AssertEqual(2, refreshedFilteredViewItems.Length, "external SDK filtered CollectionViewSource refreshed item count");
                     AssertEqual(window.ExternalItems[2], refreshedFilteredViewItems[1], "external SDK filtered CollectionViewSource refreshed active item");
                     AssertEqual(2, filteredList.Items.Count, "external SDK filtered ListBox refreshed item count");
+
+                    var liveFilteredItems = RequireType<CollectionViewSource>(
+                        window.FindResource("ExternalLiveFilteredItems"),
+                        "external SDK live filtered CollectionViewSource");
+                    var liveFilteredList = RequireType<ListBox>(
+                        window.FindName("ExternalLiveFilteredItemsList"),
+                        "external SDK live filtered items list");
+                    AssertEqual(true, liveFilteredItems.IsLiveFilteringRequested == true, "external SDK live filtered CollectionViewSource live filtering requested");
+                    AssertEqual(1, liveFilteredItems.LiveFilteringProperties.Count, "external SDK live filtered CollectionViewSource live property count");
+                    AssertEqual("IsActive", liveFilteredItems.LiveFilteringProperties[0], "external SDK live filtered CollectionViewSource live property");
+                    AssertEqual(liveFilteredItems.View, liveFilteredList.ItemsSource, "external SDK live filtered ListBox ItemsSource view");
+                    var liveFilteredViewItems = liveFilteredItems.View.Cast<object>().ToArray();
+                    AssertEqual(1, liveFilteredViewItems.Length, "external SDK live filtered CollectionViewSource initial item count");
+                    AssertEqual(window.ExternalLiveItems[0], liveFilteredViewItems[0], "external SDK live filtered CollectionViewSource initial active item");
+                    window.ExternalLiveItems[1].IsActive = true;
+                    DrainDispatcher();
+                    liveFilteredViewItems = liveFilteredItems.View.Cast<object>().ToArray();
+                    AssertEqual(2, liveFilteredViewItems.Length, "external SDK live filtered CollectionViewSource live update item count");
+                    AssertEqual(window.ExternalLiveItems[1], liveFilteredViewItems[1], "external SDK live filtered CollectionViewSource live update item");
+                    AssertEqual(2, liveFilteredList.Items.Count, "external SDK live filtered ListBox live update count");
+
+                    var liveSortedItems = RequireType<CollectionViewSource>(
+                        window.FindResource("ExternalLiveSortedItems"),
+                        "external SDK live sorted CollectionViewSource");
+                    var liveSortedList = RequireType<ListBox>(
+                        window.FindName("ExternalLiveSortedItemsList"),
+                        "external SDK live sorted items list");
+                    AssertEqual(true, liveSortedItems.IsLiveSortingRequested == true, "external SDK live sorted CollectionViewSource live sorting requested");
+                    AssertEqual(1, liveSortedItems.SortDescriptions.Count, "external SDK live sorted CollectionViewSource sort count");
+                    AssertEqual("Name", liveSortedItems.SortDescriptions[0].PropertyName, "external SDK live sorted CollectionViewSource sort property");
+                    AssertEqual(1, liveSortedItems.LiveSortingProperties.Count, "external SDK live sorted CollectionViewSource live property count");
+                    AssertEqual("Name", liveSortedItems.LiveSortingProperties[0], "external SDK live sorted CollectionViewSource live property");
+                    AssertEqual(liveSortedItems.View, liveSortedList.ItemsSource, "external SDK live sorted ListBox ItemsSource view");
+                    var liveSortedViewItems = liveSortedItems.View.Cast<object>().ToArray();
+                    AssertEqual(window.ExternalLiveItems[0], liveSortedViewItems[0], "external SDK live sorted CollectionViewSource initial first item");
+                    AssertEqual(window.ExternalLiveItems[2], liveSortedViewItems[2], "external SDK live sorted CollectionViewSource initial third item");
+                    window.ExternalLiveItems[2].Name = "Live Aaron";
+                    DrainDispatcher();
+                    liveSortedViewItems = liveSortedItems.View.Cast<object>().ToArray();
+                    AssertEqual(window.ExternalLiveItems[2], liveSortedViewItems[0], "external SDK live sorted CollectionViewSource live resort first item");
+                    AssertEqual(window.ExternalLiveItems[2], liveSortedList.Items[0], "external SDK live sorted ListBox live resort first item");
 
                     var currencyItems = RequireType<CollectionViewSource>(
                         window.FindResource("ExternalCurrencyItems"),

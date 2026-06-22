@@ -226,13 +226,15 @@ namespace System.Windows.Media.Imaging
         {
             frames = null;
 
-            if (!TryGetLocalPath(uri, out string localPath))
+            if (!BitmapDecoder.TryOpenPortableUriStream(uri, out Stream stream))
             {
                 return false;
             }
 
-            using FileStream stream = new FileStream(localPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return TryCreatePortableFrames(stream, createOptions, cacheOption, out frames);
+            using (stream)
+            {
+                return TryCreatePortableFrames(stream, createOptions, cacheOption, out frames);
+            }
         }
 
         private static ReadOnlyCollection<BitmapFrame> DecodePortableFrames(byte[] data)
@@ -612,30 +614,6 @@ namespace System.Windows.Media.Imaging
             using MemoryStream memory = new MemoryStream();
             stream.CopyTo(memory);
             return memory.ToArray();
-        }
-
-        private static bool TryGetLocalPath(Uri uri, out string localPath)
-        {
-            localPath = null;
-
-            if (uri == null)
-            {
-                return false;
-            }
-
-            if (uri.IsAbsoluteUri)
-            {
-                if (!uri.IsFile)
-                {
-                    return false;
-                }
-
-                localPath = uri.LocalPath;
-                return true;
-            }
-
-            localPath = uri.OriginalString;
-            return !string.IsNullOrEmpty(localPath);
         }
 
         private static bool IsGifSignature(ReadOnlySpan<byte> signature)

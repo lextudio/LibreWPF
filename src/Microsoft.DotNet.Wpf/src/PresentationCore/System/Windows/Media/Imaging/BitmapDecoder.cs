@@ -361,12 +361,6 @@ namespace System.Windows.Media.Imaging
             {
                 decoderHandle = cachedDecoder.InternalDecoder;
             }
-            else if ((finalUri != null) && (finalUri.IsAbsoluteUri) && (stream == null) &&
-                     ((finalUri.Scheme == Uri.UriSchemeHttp) ||
-                      (finalUri.Scheme == Uri.UriSchemeHttps)))
-            {
-                return new LateBoundBitmapDecoder(baseUri, uri, stream, createOptions, cacheOption, uriCachePolicy);
-            }
             else if ((stream != null) && (!stream.CanSeek))
             {
                 return new LateBoundBitmapDecoder(baseUri, uri, stream, createOptions, cacheOption, uriCachePolicy);
@@ -412,6 +406,12 @@ namespace System.Windows.Media.Imaging
                      IconBitmapDecoder.TryCreatePortableFrameFromUri(finalUri, createOptions, cacheOption, out BitmapFrame portableIconUriFrame))
             {
                 return new IconBitmapDecoder(portableIconUriFrame, baseUri, uri, null, createOptions, cacheOption);
+            }
+            else if ((finalUri != null) && (finalUri.IsAbsoluteUri) && (stream == null) &&
+                     ((finalUri.Scheme == Uri.UriSchemeHttp) ||
+                      (finalUri.Scheme == Uri.UriSchemeHttps)))
+            {
+                return new LateBoundBitmapDecoder(baseUri, uri, stream, createOptions, cacheOption, uriCachePolicy);
             }
             else if (!OperatingSystem.IsWindows() &&
                      stream != null &&
@@ -1409,6 +1409,70 @@ namespace System.Windows.Media.Imaging
             clsId = GetCLSIDFromDecoder(decoderHandle, out decoderMimeTypes);
 
             return decoderHandle;
+        }
+
+        internal static bool TryOpenPortableUriStream(Uri uri, out Stream stream)
+        {
+            stream = null;
+
+            if (uri == null)
+            {
+                return false;
+            }
+
+            Stream uriStream = null;
+            try
+            {
+                if (uri.IsAbsoluteUri)
+                {
+                    if (uri.IsFile)
+                    {
+                        uriStream = new FileStream(uri.LocalPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                    }
+                    else if (string.Equals(uri.Scheme, PackUriHelper.UriSchemePack, StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
+                             string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+                    {
+                        uriStream = WpfWebRequestHelper.CreateRequestAndGetResponseStream(uri);
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    uriStream = new FileStream(uri.OriginalString, FileMode.Open, FileAccess.Read, FileShare.Read);
+                }
+
+                if (uriStream == null || uriStream == Stream.Null)
+                {
+                    uriStream?.Dispose();
+                    return false;
+                }
+
+                if (uriStream.CanSeek)
+                {
+                    uriStream.Position = 0;
+                    stream = uriStream;
+                    return true;
+                }
+
+                using (uriStream)
+                {
+                    MemoryStream memory = new MemoryStream();
+                    uriStream.CopyTo(memory);
+                    memory.Position = 0;
+                    stream = memory;
+                    return true;
+                }
+            }
+            catch
+            {
+                uriStream?.Dispose();
+                stream = null;
+                return false;
+            }
         }
 
         private static Stream ProcessHttpsFiles(Uri uri, Stream stream)

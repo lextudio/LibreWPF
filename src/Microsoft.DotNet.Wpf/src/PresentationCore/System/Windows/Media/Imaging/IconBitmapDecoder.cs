@@ -237,13 +237,15 @@ namespace System.Windows.Media.Imaging
         {
             frame = null;
 
-            if (!TryGetLocalPath(uri, out string localPath))
+            if (!BitmapDecoder.TryOpenPortableUriStream(uri, out Stream stream))
             {
                 return false;
             }
 
-            using FileStream stream = new FileStream(localPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return TryCreatePortableFrame(stream, createOptions, cacheOption, out frame);
+            using (stream)
+            {
+                return TryCreatePortableFrame(stream, createOptions, cacheOption, out frame);
+            }
         }
 
         private static bool TryCreateDibFrame(byte[] imageBytes, out BitmapFrame frame)
@@ -499,30 +501,6 @@ namespace System.Windows.Media.Imaging
 
             stream.Position = imagePosition;
             return true;
-        }
-
-        private static bool TryGetLocalPath(Uri uri, out string localPath)
-        {
-            localPath = null;
-
-            if (uri == null)
-            {
-                return false;
-            }
-
-            if (uri.IsAbsoluteUri)
-            {
-                if (!uri.IsFile)
-                {
-                    return false;
-                }
-
-                localPath = uri.LocalPath;
-                return true;
-            }
-
-            localPath = uri.OriginalString;
-            return !string.IsNullOrEmpty(localPath);
         }
 
         private static bool IsPngSignature(ReadOnlySpan<byte> signature)

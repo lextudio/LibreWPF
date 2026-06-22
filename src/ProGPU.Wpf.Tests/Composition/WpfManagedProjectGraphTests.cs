@@ -4769,6 +4769,16 @@ public sealed class WpfManagedProjectGraphTests
             "Automation",
             "Peers",
             "WindowAutomationPeer.cs"));
+        var bmpBitmapDecoder = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Imaging",
+            "BmpBitmapDecoder.cs"));
         var pngBitmapDecoder = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4846,8 +4856,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExtractManagedColors", bitmapPalette, StringComparison.Ordinal);
         Assert.Contains("AddRgbCube", bitmapPalette, StringComparison.Ordinal);
         AssertGuardBefore(bitmapPalette, "if (!OperatingSystem.IsWindows())", "_palette = CreateInternalPalette();");
+        Assert.Contains("internal static bool TryOpenPortableUriStream(", bitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("PackUriHelper.UriSchemePack", bitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("WpfWebRequestHelper.CreateRequestAndGetResponseStream(uri)", bitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("Uri.UriSchemeHttp", bitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("BitmapDecoder.TryOpenPortableUriStream(uri, out Stream stream)", bmpBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryCreatePortableFrame(", pngBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryCreatePortableFrameFromUri(", pngBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("BitmapDecoder.TryOpenPortableUriStream(uri, out Stream stream)", pngBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("ZLibStream", pngBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("PixelFormats.Bgra32", pngBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("case 6:", pngBitmapDecoder, StringComparison.Ordinal);
@@ -4863,6 +4879,7 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(bitmapDecoder, "PngBitmapDecoder.TryCreatePortableFrame", "SetupDecoderFromUriOrStream");
         Assert.Contains("internal static bool TryCreatePortableFrame(", jpegBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryCreatePortableFrameFromUri(", jpegBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("BitmapDecoder.TryOpenPortableUriStream(uri, out Stream stream)", jpegBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("ImageResult.FromStream(stream, ColorComponents.RedGreenBlueAlpha)", jpegBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("PixelFormats.Bgra32", jpegBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("private static bool IsJpegSignature", jpegBitmapDecoder, StringComparison.Ordinal);
@@ -4872,6 +4889,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static bool TryCreatePortableFrame(", gifBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryCreatePortableFrames(", gifBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryCreatePortableFrameFromUri(", gifBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("BitmapDecoder.TryOpenPortableUriStream(uri, out Stream stream)", gifBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("TryCreatePortableFramesFromUri", gifBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("DecodeLzwIndices", gifBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("ReadGraphicControl", gifBitmapDecoder, StringComparison.Ordinal);
@@ -4885,6 +4903,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static bool TryCreatePortableFrame(", tiffBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryCreatePortableFrames(", tiffBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("TryCreatePortableFramesFromUri", tiffBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("BitmapDecoder.TryOpenPortableUriStream(uri, out Stream stream)", tiffBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("NextIfdOffset", tiffBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("MaxPortableFrameCount", tiffBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryCreatePortableFrameFromUri(", tiffBitmapDecoder, StringComparison.Ordinal);
@@ -4900,6 +4919,7 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(bitmapDecoder, "TiffBitmapDecoder.TryCreatePortableFrame", "SetupDecoderFromUriOrStream");
         Assert.Contains("internal static bool TryCreatePortableFrame(", iconBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryCreatePortableFrameFromUri(", iconBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("BitmapDecoder.TryOpenPortableUriStream(uri, out Stream stream)", iconBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("PngBitmapDecoder.TryCreatePortableFrame(imageStream", iconBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("TryCreateDibFrame(imageBytes", iconBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("ReadPackedIndex", iconBitmapDecoder, StringComparison.Ordinal);
@@ -6208,7 +6228,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<UseWPF>true</UseWPF>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Resource Include=\"Assets/ExternalResource.txt\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<Resource Include=\"Assets/ExternalImage.png\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Path.Combine(appRoot, \"Assets\", \"ExternalResource.txt\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Path.Combine(appRoot, \"Assets\", \"ExternalImage.png\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ThemeInfo(ResourceDictionaryLocation.None, ResourceDictionaryLocation.SourceAssembly)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalThemedControl : Control", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultStyleKeyProperty.OverrideMetadata", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6578,6 +6600,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK BitmapDecoder.Create URI PNG decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new BitmapImage(pngUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapImage URI PNG top-left blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("pack://application:,,,/Assets/ExternalImage.png", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create pack PNG decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK PngBitmapDecoder pack URI frame count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapImage pack PNG top-left red byte", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreateAdam7RgbaPngBytes(pixels, 2, 2, 8)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapDecoder.Create interlaced PNG decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapDecoder.Create interlaced PNG bottom-right red byte", externalSdkHarnessProgram, StringComparison.Ordinal);

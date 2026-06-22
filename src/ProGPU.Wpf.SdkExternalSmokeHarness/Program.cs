@@ -414,6 +414,7 @@ internal static class Program
               <ItemGroup>
                 <ProjectReference Include="../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj" />
                 <Resource Include="Assets/ExternalResource.txt" />
+                <Resource Include="Assets/ExternalImage.png" />
               </ItemGroup>
             </Project>
             """);
@@ -421,6 +422,9 @@ internal static class Program
         WriteFile(
             Path.Combine(appRoot, "Assets", "ExternalResource.txt"),
             "External SDK pack resource text");
+        File.WriteAllBytes(
+            Path.Combine(appRoot, "Assets", "ExternalImage.png"),
+            Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAE0lEQVR4nGP4z8DwHwwZGP6DAQBJyAn3FGMynQAAAABJRU5ErkJggg=="));
 
         WriteFile(
             Path.Combine(appRoot, "App.xaml"),
@@ -3904,6 +3908,33 @@ internal static class Program
                     {
                         File.Delete(pngPath);
                     }
+
+                    var packPngUri = new Uri("pack://application:,,,/Assets/ExternalImage.png", UriKind.Absolute);
+                    var packPngDecoder = BitmapDecoder.Create(
+                        packPngUri,
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(typeof(PngBitmapDecoder), packPngDecoder.GetType(), "external SDK BitmapDecoder.Create pack PNG decoder type");
+                    AssertEqual(1, packPngDecoder.Frames.Count, "external SDK BitmapDecoder.Create pack PNG frame count");
+                    AssertEqual(2, packPngDecoder.Frames[0].PixelWidth, "external SDK BitmapDecoder.Create pack PNG pixel width");
+                    AssertEqual(2, packPngDecoder.Frames[0].PixelHeight, "external SDK BitmapDecoder.Create pack PNG pixel height");
+                    AssertEqual(PixelFormats.Bgra32, packPngDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create pack PNG Bgra32 format");
+
+                    var directPackPngDecoder = new PngBitmapDecoder(
+                        packPngUri,
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(1, directPackPngDecoder.Frames.Count, "external SDK PngBitmapDecoder pack URI frame count");
+                    AssertEqual(2, directPackPngDecoder.Frames[0].PixelWidth, "external SDK PngBitmapDecoder pack URI pixel width");
+
+                    var packPngBitmapImage = new BitmapImage(packPngUri);
+                    AssertEqual(2, packPngBitmapImage.PixelWidth, "external SDK BitmapImage pack PNG pixel width");
+                    AssertEqual(2, packPngBitmapImage.PixelHeight, "external SDK BitmapImage pack PNG pixel height");
+                    AssertEqual(PixelFormats.Bgra32, packPngBitmapImage.Format, "external SDK BitmapImage pack PNG Bgra32 format");
+                    var packPngBitmapImagePixels = new byte[pixels.Length];
+                    packPngBitmapImage.CopyPixels(packPngBitmapImagePixels, 8, 0);
+                    AssertEqual((byte)0xFF, packPngBitmapImagePixels[2], "external SDK BitmapImage pack PNG top-left red byte");
+                    AssertEqual((byte)0xFF, packPngBitmapImagePixels[15], "external SDK BitmapImage pack PNG final alpha byte");
 
                     string interlacedPngPath = Path.Combine(Path.GetTempPath(), "external-sdk-managed-image-" + Guid.NewGuid().ToString("N") + "-interlaced.png");
                     File.WriteAllBytes(interlacedPngPath, interlacedPngBytes);
@@ -7517,11 +7548,13 @@ internal static class Program
         AssertContains(appProject, "<UseWPF>true</UseWPF>", "external app WPF property");
         AssertContains(appProject, $"<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", "external app project reference");
         AssertContains(appProject, "<Resource Include=\"Assets/ExternalResource.txt\" />", "external app WPF resource item");
+        AssertContains(appProject, "<Resource Include=\"Assets/ExternalImage.png\" />", "external app WPF image resource item");
         AssertContains(libraryProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external library SDK");
         AssertContains(libraryProject, "<UseWPF>true</UseWPF>", "external library WPF property");
         RequireFile(Path.Combine(workRoot, LibraryAssemblyName, "Properties", "AssemblyInfo.cs"), "external SDK library ThemeInfo source");
         RequireFile(Path.Combine(workRoot, LibraryAssemblyName, "Themes", "Generic.xaml"), "external SDK library Generic.xaml source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "Assets", "ExternalResource.txt"), "external SDK app WPF resource source");
+        RequireFile(Path.Combine(workRoot, AppAssemblyName, "Assets", "ExternalImage.png"), "external SDK app WPF image resource source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalResources.xaml"), "external SDK app merged resource dictionary source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalPage.xaml"), "external SDK app compiled page source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalSecondPage.xaml"), "external SDK app second compiled page source");

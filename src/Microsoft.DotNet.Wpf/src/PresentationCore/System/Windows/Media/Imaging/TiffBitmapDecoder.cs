@@ -267,13 +267,15 @@ namespace System.Windows.Media.Imaging
         {
             frames = null;
 
-            if (!TryGetLocalPath(uri, out string localPath))
+            if (!BitmapDecoder.TryOpenPortableUriStream(uri, out Stream stream))
             {
                 return false;
             }
 
-            using FileStream stream = new FileStream(localPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return TryCreatePortableFrames(stream, createOptions, cacheOption, out frames);
+            using (stream)
+            {
+                return TryCreatePortableFrames(stream, createOptions, cacheOption, out frames);
+            }
         }
 
         /// <summary>
@@ -664,30 +666,6 @@ namespace System.Windows.Media.Imaging
         private static void SeekFromStart(Stream stream, long startPosition, uint offset)
         {
             stream.Position = checked(startPosition + offset);
-        }
-
-        private static bool TryGetLocalPath(Uri uri, out string localPath)
-        {
-            localPath = null;
-
-            if (uri == null)
-            {
-                return false;
-            }
-
-            if (uri.IsAbsoluteUri)
-            {
-                if (!uri.IsFile)
-                {
-                    return false;
-                }
-
-                localPath = uri.LocalPath;
-                return true;
-            }
-
-            localPath = uri.OriginalString;
-            return !string.IsNullOrEmpty(localPath);
         }
 
         private static ushort ReadUInt16(ReadOnlySpan<byte> source, bool littleEndian)

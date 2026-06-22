@@ -345,37 +345,15 @@ namespace System.Windows.Media.Imaging
         {
             frame = null;
 
-            if (!TryGetLocalPath(uri, out string localPath))
+            if (!BitmapDecoder.TryOpenPortableUriStream(uri, out Stream stream))
             {
                 return false;
             }
 
-            using FileStream stream = new FileStream(localPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return TryCreatePortableFrame(stream, createOptions, cacheOption, out frame);
-        }
-
-        private static bool TryGetLocalPath(Uri uri, out string localPath)
-        {
-            localPath = null;
-
-            if (uri == null)
+            using (stream)
             {
-                return false;
+                return TryCreatePortableFrame(stream, createOptions, cacheOption, out frame);
             }
-
-            if (uri.IsAbsoluteUri)
-            {
-                if (!uri.IsFile)
-                {
-                    return false;
-                }
-
-                localPath = uri.LocalPath;
-                return true;
-            }
-
-            localPath = uri.OriginalString;
-            return !string.IsNullOrEmpty(localPath);
         }
 
         private static double PixelsPerMeterToDpi(int pixelsPerMeter)

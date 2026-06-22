@@ -6931,6 +6931,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalProgressBar", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalRepeatButton", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalScrollBar", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalDragThumb", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("OnExternalMenuItemClick", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("OnExternalContextMenuItemChecked", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("OnExternalRadioButtonChecked", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6938,8 +6939,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("OnExternalSliderValueChanged", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("OnExternalRepeatButtonClick", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("OnExternalScrollBarScroll", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OnExternalThumbDragStarted", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OnExternalThumbDragDelta", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OnExternalThumbDragCompleted", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OnExternalBubbledThumbDragDelta", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMenusAndChoiceControls(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateToolbarStatusRangePasswordDateControls(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateThumbDragManager(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK menu command executed count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK context command executed count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK tooltip placement", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6956,6 +6962,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK RepeatButton routed event", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ScrollBar LineDown command", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ScrollBar ScrollToBottom command", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Thumb DragStarted handler count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Thumb DragDelta horizontal change", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Thumb bubbled DragDelta original source", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Thumb DragCompleted canceled state", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalAdornerDecorator", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalAdornedButton", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("public sealed class ExternalAdorner : Adorner", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -722,6 +722,7 @@ internal static class Program
                 xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
                 xmlns:local="clr-namespace:ExternalSdkApp"
                 xmlns:library="clr-namespace:ExternalSdkLibrary;assembly=ExternalSdkLibrary"
+                xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework"
                 xmlns:sys="clr-namespace:System;assembly=System.Runtime"
                 Title="External SDK App"
                 Width="320"
@@ -1015,7 +1016,8 @@ internal static class Program
                     FocusManager.IsFocusScope="True"
                     KeyboardNavigation.ControlTabNavigation="Cycle"
                     KeyboardNavigation.DirectionalNavigation="Contained"
-                    KeyboardNavigation.TabNavigation="Cycle">
+                    KeyboardNavigation.TabNavigation="Cycle"
+                    primitives:Thumb.DragDelta="OnExternalBubbledThumbDragDelta">
                     <TextBlock
                         x:Name="TitleText"
                         Text="External SDK app" />
@@ -1303,6 +1305,14 @@ internal static class Program
                             x:Name="ExternalKeyboardNavigationSecondButton"
                             Content="External navigation second" />
                     </StackPanel>
+                    <primitives:Thumb
+                        x:Name="ExternalDragThumb"
+                        Width="24"
+                        Height="18"
+                        Tag="external drag thumb"
+                        DragStarted="OnExternalThumbDragStarted"
+                        DragDelta="OnExternalThumbDragDelta"
+                        DragCompleted="OnExternalThumbDragCompleted" />
                     <AdornerDecorator x:Name="ExternalAdornerDecorator">
                         <Button
                             x:Name="ExternalAdornedButton"
@@ -2078,6 +2088,50 @@ internal static class Program
 
                 public double LastExternalScrollBarNewValue { get; private set; }
 
+                public int ExternalThumbDragStartedCount { get; private set; }
+
+                public int ExternalThumbDragDeltaCount { get; private set; }
+
+                public int ExternalThumbDragCompletedCount { get; private set; }
+
+                public int ExternalBubbledThumbDragDeltaCount { get; private set; }
+
+                public string? LastExternalThumbDragStartedSenderName { get; private set; }
+
+                public string? LastExternalThumbDragDeltaSenderName { get; private set; }
+
+                public string? LastExternalThumbDragCompletedSenderName { get; private set; }
+
+                public string? LastExternalBubbledThumbDragDeltaSenderName { get; private set; }
+
+                public string? LastExternalBubbledThumbDragDeltaOriginalSourceName { get; private set; }
+
+                public string? LastExternalThumbDragStartedRoutedEventName { get; private set; }
+
+                public string? LastExternalThumbDragDeltaRoutedEventName { get; private set; }
+
+                public string? LastExternalThumbDragCompletedRoutedEventName { get; private set; }
+
+                public string? LastExternalBubbledThumbDragDeltaRoutedEventName { get; private set; }
+
+                public double LastExternalThumbDragStartedHorizontalOffset { get; private set; }
+
+                public double LastExternalThumbDragStartedVerticalOffset { get; private set; }
+
+                public double LastExternalThumbDragDeltaHorizontalChange { get; private set; }
+
+                public double LastExternalThumbDragDeltaVerticalChange { get; private set; }
+
+                public double LastExternalThumbDragCompletedHorizontalChange { get; private set; }
+
+                public double LastExternalThumbDragCompletedVerticalChange { get; private set; }
+
+                public bool LastExternalThumbDragCompletedCanceled { get; private set; }
+
+                public double LastExternalBubbledThumbDragDeltaHorizontalChange { get; private set; }
+
+                public double LastExternalBubbledThumbDragDeltaVerticalChange { get; private set; }
+
                 public string? LastExternalCheckBoxRoutedEventName { get; private set; }
 
                 public string? LastExternalRadioButtonCheckedName { get; private set; }
@@ -2415,6 +2469,44 @@ internal static class Program
                     LastExternalScrollBarSenderName = (sender as FrameworkElement)?.Name;
                     LastExternalScrollBarEventType = e.ScrollEventType.ToString();
                     LastExternalScrollBarNewValue = e.NewValue;
+                }
+
+                private void OnExternalThumbDragStarted(object sender, DragStartedEventArgs e)
+                {
+                    ExternalThumbDragStartedCount++;
+                    LastExternalThumbDragStartedSenderName = (sender as FrameworkElement)?.Name;
+                    LastExternalThumbDragStartedRoutedEventName = e.RoutedEvent?.Name;
+                    LastExternalThumbDragStartedHorizontalOffset = e.HorizontalOffset;
+                    LastExternalThumbDragStartedVerticalOffset = e.VerticalOffset;
+                }
+
+                private void OnExternalThumbDragDelta(object sender, DragDeltaEventArgs e)
+                {
+                    ExternalThumbDragDeltaCount++;
+                    LastExternalThumbDragDeltaSenderName = (sender as FrameworkElement)?.Name;
+                    LastExternalThumbDragDeltaRoutedEventName = e.RoutedEvent?.Name;
+                    LastExternalThumbDragDeltaHorizontalChange = e.HorizontalChange;
+                    LastExternalThumbDragDeltaVerticalChange = e.VerticalChange;
+                }
+
+                private void OnExternalThumbDragCompleted(object sender, DragCompletedEventArgs e)
+                {
+                    ExternalThumbDragCompletedCount++;
+                    LastExternalThumbDragCompletedSenderName = (sender as FrameworkElement)?.Name;
+                    LastExternalThumbDragCompletedRoutedEventName = e.RoutedEvent?.Name;
+                    LastExternalThumbDragCompletedHorizontalChange = e.HorizontalChange;
+                    LastExternalThumbDragCompletedVerticalChange = e.VerticalChange;
+                    LastExternalThumbDragCompletedCanceled = e.Canceled;
+                }
+
+                private void OnExternalBubbledThumbDragDelta(object sender, DragDeltaEventArgs e)
+                {
+                    ExternalBubbledThumbDragDeltaCount++;
+                    LastExternalBubbledThumbDragDeltaSenderName = (sender as FrameworkElement)?.Name;
+                    LastExternalBubbledThumbDragDeltaOriginalSourceName = e.OriginalSource is FrameworkElement source ? source.Name : null;
+                    LastExternalBubbledThumbDragDeltaRoutedEventName = e.RoutedEvent?.Name;
+                    LastExternalBubbledThumbDragDeltaHorizontalChange = e.HorizontalChange;
+                    LastExternalBubbledThumbDragDeltaVerticalChange = e.VerticalChange;
                 }
 
                 private void OnExternalFrameNavigating(object sender, NavigatingCancelEventArgs e)
@@ -3150,6 +3242,7 @@ internal static class Program
                     ValidateRichDocuments(window);
                     ValidateSpellCheck(window);
                     ValidateCommandsAndFocus(window);
+                    ValidateThumbDragManager(window);
 
                     var themedControl = RequireType<ExternalThemedControl>(
                         window.FindName("ExternalThemedControl"),
@@ -8975,6 +9068,68 @@ internal static class Program
                         classCommandTarget.ClassCommandExecutedCount,
                         "external SDK class input binding ignores key up");
                     Keyboard.ClearFocus();
+                }
+
+                private static void ValidateThumbDragManager(MainWindow window)
+                {
+                    var focusPanel = RequireType<StackPanel>(
+                        window.FindName("ExternalFocusPanel"),
+                        "external SDK Thumb drag parent panel");
+                    var thumb = RequireType<Thumb>(
+                        window.FindName("ExternalDragThumb"),
+                        "external SDK Thumb drag manager");
+                    AssertEqual(24.0, thumb.Width, "external SDK Thumb width");
+                    AssertEqual(18.0, thumb.Height, "external SDK Thumb height");
+                    AssertEqual("external drag thumb", thumb.Tag, "external SDK Thumb tag");
+                    AssertEqual(false, thumb.Focusable, "external SDK Thumb focusable metadata");
+                    AssertEqual(false, thumb.IsDragging, "external SDK Thumb initial dragging state");
+                    AssertEqual(0, window.ExternalThumbDragStartedCount, "external SDK Thumb initial DragStarted count");
+                    AssertEqual(0, window.ExternalThumbDragDeltaCount, "external SDK Thumb initial DragDelta count");
+                    AssertEqual(0, window.ExternalThumbDragCompletedCount, "external SDK Thumb initial DragCompleted count");
+                    AssertEqual(0, window.ExternalBubbledThumbDragDeltaCount, "external SDK Thumb initial bubbled DragDelta count");
+
+                    var started = new DragStartedEventArgs(2.5, 3.5)
+                    {
+                        RoutedEvent = Thumb.DragStartedEvent
+                    };
+                    var delta = new DragDeltaEventArgs(4.0, 6.0)
+                    {
+                        RoutedEvent = Thumb.DragDeltaEvent
+                    };
+                    var completed = new DragCompletedEventArgs(8.0, 10.0, true)
+                    {
+                        RoutedEvent = Thumb.DragCompletedEvent
+                    };
+
+                    thumb.RaiseEvent(started);
+                    thumb.RaiseEvent(delta);
+                    thumb.RaiseEvent(completed);
+
+                    AssertEqual(1, window.ExternalThumbDragStartedCount, "external SDK Thumb DragStarted handler count");
+                    AssertEqual("ExternalDragThumb", window.LastExternalThumbDragStartedSenderName, "external SDK Thumb DragStarted sender");
+                    AssertEqual("DragStarted", window.LastExternalThumbDragStartedRoutedEventName, "external SDK Thumb DragStarted routed event");
+                    AssertEqual(2.5, window.LastExternalThumbDragStartedHorizontalOffset, "external SDK Thumb DragStarted horizontal offset");
+                    AssertEqual(3.5, window.LastExternalThumbDragStartedVerticalOffset, "external SDK Thumb DragStarted vertical offset");
+
+                    AssertEqual(1, window.ExternalThumbDragDeltaCount, "external SDK Thumb DragDelta handler count");
+                    AssertEqual("ExternalDragThumb", window.LastExternalThumbDragDeltaSenderName, "external SDK Thumb DragDelta sender");
+                    AssertEqual("DragDelta", window.LastExternalThumbDragDeltaRoutedEventName, "external SDK Thumb DragDelta routed event");
+                    AssertEqual(4.0, window.LastExternalThumbDragDeltaHorizontalChange, "external SDK Thumb DragDelta horizontal change");
+                    AssertEqual(6.0, window.LastExternalThumbDragDeltaVerticalChange, "external SDK Thumb DragDelta vertical change");
+                    AssertEqual(1, window.ExternalBubbledThumbDragDeltaCount, "external SDK Thumb bubbled DragDelta handler count");
+                    AssertEqual("ExternalFocusPanel", window.LastExternalBubbledThumbDragDeltaSenderName, "external SDK Thumb bubbled DragDelta sender");
+                    AssertEqual("ExternalDragThumb", window.LastExternalBubbledThumbDragDeltaOriginalSourceName, "external SDK Thumb bubbled DragDelta original source");
+                    AssertEqual("DragDelta", window.LastExternalBubbledThumbDragDeltaRoutedEventName, "external SDK Thumb bubbled DragDelta routed event");
+                    AssertEqual(4.0, window.LastExternalBubbledThumbDragDeltaHorizontalChange, "external SDK Thumb bubbled DragDelta horizontal change");
+                    AssertEqual(6.0, window.LastExternalBubbledThumbDragDeltaVerticalChange, "external SDK Thumb bubbled DragDelta vertical change");
+
+                    AssertEqual(1, window.ExternalThumbDragCompletedCount, "external SDK Thumb DragCompleted handler count");
+                    AssertEqual("ExternalDragThumb", window.LastExternalThumbDragCompletedSenderName, "external SDK Thumb DragCompleted sender");
+                    AssertEqual("DragCompleted", window.LastExternalThumbDragCompletedRoutedEventName, "external SDK Thumb DragCompleted routed event");
+                    AssertEqual(8.0, window.LastExternalThumbDragCompletedHorizontalChange, "external SDK Thumb DragCompleted horizontal change");
+                    AssertEqual(10.0, window.LastExternalThumbDragCompletedVerticalChange, "external SDK Thumb DragCompleted vertical change");
+                    AssertEqual(true, window.LastExternalThumbDragCompletedCanceled, "external SDK Thumb DragCompleted canceled state");
+                    AssertEqual(true, ReferenceEquals(focusPanel, thumb.Parent), "external SDK Thumb logical parent");
                 }
 
                 private static object CreatePortableInputEvent(

@@ -136,6 +136,8 @@ The compiled-XAML smoke harness now explicitly treats `ResourceDictionary` insta
 
 Runtime namescope mutation follows that same boundary. The generated no-source-change external SDK app now registers a runtime object against the BAML-created window namescope, verifies duplicate registration preserves the original mapping, unregisters it, and re-registers a replacement object. ProGPU/Silk.NET should consume the resolved object graph and invalidations, not replace WPF's `RegisterName`, `UnregisterName`, or `FindName` ownership.
 
+Missing-resource lookup also stays in WPF. The generated external SDK app now validates `TryFindResource(...)` returning `null` for a missing key and `FindResource(...)` throwing `ResourceReferenceKeyNotFoundException` with the requested key from a SDK-switched app. ProGPU should not add a parallel resource resolver for this path; it should consume the resolved resource values or WPF resource invalidations.
+
 The custom SDK deliverable applies the same rule to loose XAML in package mode. A normal SDK-switched app should be able to keep WPF loose `XamlReader.Parse(...)` and `XamlWriter.Save(...)` behavior from the transport assemblies with no app source changes; ProGPU/Silk.NET should only provide native platform services and render the resulting object graph.
 
 Explicit compiled-component loading stays in WPF for the same reason. The generated external SDK app now loads a default-item `UserControl` by component URI through `Application.LoadComponent(...)`, then validates app-resource lookup, namescope lookup, and referenced-library control creation from the loaded BAML. ProGPU should render the resulting view and support invalidation; it should not own BAML URI resolution or generated component instantiation.

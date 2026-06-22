@@ -4068,6 +4068,16 @@ internal static class Program
                         "external SDK static resource text block");
                     AssertEqual("External SDK resource text", staticResourceText.Text, "external SDK static resource text");
                     AssertBrushColor(staticResourceText.Foreground, "#FFA65A2A", "external SDK static resource foreground");
+                    AssertEqual(null, staticResourceText.TryFindResource("ExternalDefinitelyMissingResource"), "external SDK TryFindResource missing resource");
+                    try
+                    {
+                        staticResourceText.FindResource("ExternalDefinitelyMissingResource");
+                        throw new InvalidOperationException("Expected external SDK missing FindResource lookup to throw.");
+                    }
+                    catch (ResourceReferenceKeyNotFoundException ex)
+                    {
+                        AssertEqual("ExternalDefinitelyMissingResource", ex.Key, "external SDK FindResource missing resource key");
+                    }
 
                     var componentResourceText = RequireType<TextBlock>(
                         window.FindName("ExternalComponentResourceText"),

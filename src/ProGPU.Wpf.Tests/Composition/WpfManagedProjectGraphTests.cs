@@ -7456,11 +7456,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK validation source update", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalExceptionValidationTextBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ExceptionValidationRule />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalExceptionFilterTextBox", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("UpdateSourceExceptionFilter=\"OnExternalUpdateSourceExceptionFilter\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("public string ExceptionValidationText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("public string ExceptionFilterText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("External exception validation rejected value.", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("External exception filter rejected value.", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ExceptionValidationRule count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK exception validation rejected source value", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK exception validation recovered source value", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK UpdateSourceExceptionFilter callback count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK UpdateSourceExceptionFilter validation error content", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("LastExternalUpdateSourceExceptionFilterPath", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("bindingGroup.ValidateWithoutUpdate()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("bindingGroup.CommitEdit()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BindingGroup rejected commit", externalSdkHarnessProgram, StringComparison.Ordinal);

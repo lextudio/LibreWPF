@@ -1880,6 +1880,22 @@ internal static class Program
                             </Binding>
                         </TextBox.Text>
                     </TextBox>
+                    <TextBox
+                        x:Name="ExternalExceptionFilterTextBox"
+                        Validation.Error="OnExternalValidationError">
+                        <TextBox.Text>
+                            <Binding
+                                Path="ExceptionFilterText"
+                                Mode="TwoWay"
+                                NotifyOnValidationError="True"
+                                UpdateSourceTrigger="Explicit"
+                                UpdateSourceExceptionFilter="OnExternalUpdateSourceExceptionFilter">
+                                <Binding.ValidationRules>
+                                    <ExceptionValidationRule />
+                                </Binding.ValidationRules>
+                            </Binding>
+                        </TextBox.Text>
+                    </TextBox>
                     <StackPanel
                         x:Name="ExternalBindingGroupPanel"
                         Margin="0,4,0,0">
@@ -2113,6 +2129,26 @@ internal static class Program
                     }
                 }
 
+                private string _exceptionFilterText = "filter valid initial";
+
+                public string ExceptionFilterText
+                {
+                    get => _exceptionFilterText;
+                    set
+                    {
+                        if (string.Equals(value, "external filter trigger", StringComparison.Ordinal))
+                        {
+                            throw new InvalidOperationException("External exception filter rejected value.");
+                        }
+
+                        if (_exceptionFilterText != value)
+                        {
+                            _exceptionFilterText = value;
+                            OnPropertyChanged(nameof(ExceptionFilterText));
+                        }
+                    }
+                }
+
                 public string ExternalBindingTransferText { get; set; } = "external transfer initial";
 
                 public string? ExternalNullBindingText { get; } = null;
@@ -2285,6 +2321,12 @@ internal static class Program
                 public string? LastExternalValidationErrorRoutedEventName { get; private set; }
 
                 public string? LastExternalValidationErrorSenderName { get; private set; }
+
+                public int ExternalUpdateSourceExceptionFilterCount { get; private set; }
+
+                public string? LastExternalUpdateSourceExceptionFilterMessage { get; private set; }
+
+                public string? LastExternalUpdateSourceExceptionFilterPath { get; private set; }
 
                 public int ExternalSliderValueChangedCount { get; private set; }
 
@@ -2672,6 +2714,16 @@ internal static class Program
                     LastExternalValidationErrorContent = e.Error.ErrorContent?.ToString();
                     LastExternalValidationErrorRoutedEventName = e.RoutedEvent?.Name;
                     LastExternalValidationErrorSenderName = (sender as FrameworkElement)?.Name;
+                }
+
+                private object OnExternalUpdateSourceExceptionFilter(object bindExpression, Exception exception)
+                {
+                    ExternalUpdateSourceExceptionFilterCount++;
+                    LastExternalUpdateSourceExceptionFilterMessage = exception.Message;
+                    LastExternalUpdateSourceExceptionFilterPath = bindExpression is BindingExpression bindingExpression
+                        ? bindingExpression.ParentBinding.Path.Path
+                        : null;
+                    return "External filtered exception: " + exception.Message;
                 }
 
                 private void OnExternalSliderValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -7350,6 +7402,46 @@ internal static class Program
                     AssertEqual("Removed", window.LastExternalValidationErrorAction, "external SDK exception validation error removed action");
                     AssertContains(window.LastExternalValidationErrorContent ?? string.Empty, "External exception validation rejected value.", "external SDK exception validation removed error content");
                     AssertEqual("ExternalExceptionValidationTextBox", window.LastExternalValidationErrorSenderName, "external SDK exception validation error removed sender");
+
+                    var exceptionFilterTextBox = RequireType<TextBox>(
+                        window.FindName("ExternalExceptionFilterTextBox"),
+                        "external SDK exception filter text box");
+                    var exceptionFilterBindingExpression = exceptionFilterTextBox.GetBindingExpression(TextBox.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK exception filter BindingExpression.");
+                    AssertEqual("ExceptionFilterText", exceptionFilterBindingExpression.ParentBinding.Path.Path, "external SDK UpdateSourceExceptionFilter binding path");
+                    AssertEqual(true, exceptionFilterBindingExpression.ParentBinding.NotifyOnValidationError, "external SDK UpdateSourceExceptionFilter binding NotifyOnValidationError");
+                    AssertEqual(1, exceptionFilterBindingExpression.ParentBinding.ValidationRules.OfType<ExceptionValidationRule>().Count(), "external SDK UpdateSourceExceptionFilter ExceptionValidationRule count");
+                    AssertEqual("filter valid initial", exceptionFilterTextBox.Text, "external SDK UpdateSourceExceptionFilter initial target");
+                    AssertEqual("filter valid initial", window.ExceptionFilterText, "external SDK UpdateSourceExceptionFilter initial source");
+                    int exceptionFilterValidationAddedBefore = window.ExternalValidationErrorAddedCount;
+                    int exceptionFilterValidationRemovedBefore = window.ExternalValidationErrorRemovedCount;
+                    int exceptionFilterBefore = window.ExternalUpdateSourceExceptionFilterCount;
+                    exceptionFilterTextBox.Text = "external filter trigger";
+                    exceptionFilterBindingExpression.UpdateSource();
+                    AssertEqual(true, Validation.GetHasError(exceptionFilterTextBox), "external SDK UpdateSourceExceptionFilter failure state");
+                    AssertEqual(1, Validation.GetErrors(exceptionFilterTextBox).Count, "external SDK UpdateSourceExceptionFilter failure error count");
+                    AssertEqual("filter valid initial", window.ExceptionFilterText, "external SDK UpdateSourceExceptionFilter rejected source value");
+                    AssertAtLeast(exceptionFilterBefore + 1, window.ExternalUpdateSourceExceptionFilterCount, "external SDK UpdateSourceExceptionFilter callback count");
+                    AssertEqual("External exception filter rejected value.", window.LastExternalUpdateSourceExceptionFilterMessage, "external SDK UpdateSourceExceptionFilter exception message");
+                    AssertEqual("ExceptionFilterText", window.LastExternalUpdateSourceExceptionFilterPath, "external SDK UpdateSourceExceptionFilter callback path");
+                    AssertContains(
+                        Validation.GetErrors(exceptionFilterTextBox)[0].ErrorContent?.ToString() ?? string.Empty,
+                        "External filtered exception: External exception filter rejected value.",
+                        "external SDK UpdateSourceExceptionFilter validation error content");
+                    AssertAtLeast(exceptionFilterValidationAddedBefore + 1, window.ExternalValidationErrorAddedCount, "external SDK UpdateSourceExceptionFilter validation error added count");
+                    AssertEqual(exceptionFilterValidationRemovedBefore, window.ExternalValidationErrorRemovedCount, "external SDK UpdateSourceExceptionFilter validation removed count before recovery");
+                    AssertEqual("Added", window.LastExternalValidationErrorAction, "external SDK UpdateSourceExceptionFilter error added action");
+                    AssertContains(window.LastExternalValidationErrorContent ?? string.Empty, "External filtered exception: External exception filter rejected value.", "external SDK UpdateSourceExceptionFilter error content");
+                    AssertEqual("ExternalExceptionFilterTextBox", window.LastExternalValidationErrorSenderName, "external SDK UpdateSourceExceptionFilter error added sender");
+                    exceptionFilterTextBox.Text = "filter recovered";
+                    exceptionFilterBindingExpression.UpdateSource();
+                    AssertEqual(false, Validation.GetHasError(exceptionFilterTextBox), "external SDK UpdateSourceExceptionFilter recovery state");
+                    AssertEqual(0, Validation.GetErrors(exceptionFilterTextBox).Count, "external SDK UpdateSourceExceptionFilter recovery error count");
+                    AssertEqual("filter recovered", window.ExceptionFilterText, "external SDK UpdateSourceExceptionFilter recovered source value");
+                    AssertAtLeast(exceptionFilterValidationRemovedBefore + 1, window.ExternalValidationErrorRemovedCount, "external SDK UpdateSourceExceptionFilter validation error removed count");
+                    AssertEqual("Removed", window.LastExternalValidationErrorAction, "external SDK UpdateSourceExceptionFilter error removed action");
+                    AssertContains(window.LastExternalValidationErrorContent ?? string.Empty, "External filtered exception: External exception filter rejected value.", "external SDK UpdateSourceExceptionFilter removed error content");
+                    AssertEqual("ExternalExceptionFilterTextBox", window.LastExternalValidationErrorSenderName, "external SDK UpdateSourceExceptionFilter error removed sender");
 
                     int textChangedBeforeEditing = window.ExternalValidationTextChangedCount;
                     validationTextBox.Text = "external editing text";

@@ -7075,6 +7075,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SelectionChanged=\"OnExternalSelectionChanged\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("IsTextSearchEnabled=\"True\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("TextSearch.TextPath=\"Name\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalMultiSelectItemsList", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SelectionMode=\"Multiple\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SelectionChanged=\"OnExternalMultiSelectionChanged\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateMultiSelectionAfterRun(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK multi-select removed item", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("LastExternalMultiSelectionAddedCount", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalTabControl", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalGroupBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalExpander", externalSdkHarnessProgram, StringComparison.Ordinal);

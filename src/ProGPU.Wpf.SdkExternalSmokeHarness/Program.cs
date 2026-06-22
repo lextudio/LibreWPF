@@ -1590,6 +1590,12 @@ internal static class Program
                         ItemsSource="{Binding ExternalItems}"
                         SelectedIndex="1" />
                     <ListBox
+                        x:Name="ExternalMultiSelectItemsList"
+                        DisplayMemberPath="Name"
+                        ItemsSource="{Binding ExternalItems}"
+                        SelectionChanged="OnExternalMultiSelectionChanged"
+                        SelectionMode="Multiple" />
+                    <ListBox
                         x:Name="ExternalPreviousDataItemsList"
                         ItemsSource="{Binding ExternalItems}">
                         <ListBox.ItemTemplate>
@@ -2386,6 +2392,18 @@ internal static class Program
 
                 public string? LastExternalSelectionSourceName { get; private set; }
 
+                public int ExternalMultiSelectionChangedCount { get; private set; }
+
+                public string? LastExternalMultiSelectionSourceName { get; private set; }
+
+                public int LastExternalMultiSelectionAddedCount { get; private set; }
+
+                public int LastExternalMultiSelectionRemovedCount { get; private set; }
+
+                public string? LastExternalMultiSelectionAddedName { get; private set; }
+
+                public string? LastExternalMultiSelectionRemovedName { get; private set; }
+
                 public int ExternalExpanderExpandedCount { get; private set; }
 
                 public int ExternalExpanderCollapsedCount { get; private set; }
@@ -2711,6 +2729,23 @@ internal static class Program
                 {
                     ExternalSelectionChangedCount++;
                     LastExternalSelectionSourceName = (sender as FrameworkElement)?.Name;
+                }
+
+                private void OnExternalMultiSelectionChanged(object sender, SelectionChangedEventArgs e)
+                {
+                    ExternalMultiSelectionChangedCount++;
+                    LastExternalMultiSelectionSourceName = (sender as FrameworkElement)?.Name;
+                    LastExternalMultiSelectionAddedCount = e.AddedItems.Count;
+                    LastExternalMultiSelectionRemovedCount = e.RemovedItems.Count;
+                    LastExternalMultiSelectionAddedName = e.AddedItems.Count > 0 ? GetExternalItemName(e.AddedItems[0]) : null;
+                    LastExternalMultiSelectionRemovedName = e.RemovedItems.Count > 0 ? GetExternalItemName(e.RemovedItems[0]) : null;
+                }
+
+                private static string GetExternalItemName(object item)
+                {
+                    return item is ExternalItem externalItem
+                        ? externalItem.Name
+                        : item.ToString() ?? string.Empty;
                 }
 
                 private void OnExternalExpanderExpanded(object sender, RoutedEventArgs e)
@@ -3925,6 +3960,7 @@ internal static class Program
                     ValidateItemContainerStyleSelectorAfterRun(window);
                     ValidatePreviousDataBindingsAfterRun(window);
                     ValidateAlternationAfterRun(window);
+                    ValidateMultiSelectionAfterRun(window);
                     ValidateAdornerLayer(window);
                     ValidateAccessKeyRoutingAfterRun(window);
                     ValidateClassInputBindingAfterRun(window);
@@ -9686,6 +9722,72 @@ internal static class Program
                         itemPanelList.ItemContainerGenerator.ContainerFromItem(item),
                         itemContainerDescription);
                     AssertEqual(expectedAlternationIndex, ItemsControl.GetAlternationIndex(itemContainer), alternationIndexDescription);
+                }
+
+                private static void ValidateMultiSelectionAfterRun(MainWindow window)
+                {
+                    var multiSelectList = RequireType<ListBox>(
+                        window.FindName("ExternalMultiSelectItemsList"),
+                        "external SDK Application.Run multi-select list");
+                    AssertEqual(SelectionMode.Multiple, multiSelectList.SelectionMode, "external SDK multi-select SelectionMode");
+                    AssertEqual(3, multiSelectList.Items.Count, "external SDK multi-select item count after mutation");
+                    AssertEqual(0, multiSelectList.SelectedItems.Count, "external SDK multi-select initial selected count");
+
+                    int selectionBefore = window.ExternalMultiSelectionChangedCount;
+                    var firstContainer = GetGeneratedListBoxItem(
+                        multiSelectList,
+                        window.ExternalItems[0],
+                        "external SDK multi-select first item container");
+                    firstContainer.IsSelected = true;
+                    DrainDispatcher();
+
+                    AssertEqual(1, multiSelectList.SelectedItems.Count, "external SDK multi-select first selected count");
+                    AssertEqual(window.ExternalItems[0], multiSelectList.SelectedItems[0], "external SDK multi-select first selected item");
+                    AssertAtLeast(selectionBefore + 1, window.ExternalMultiSelectionChangedCount, "external SDK multi-select first selection changed count");
+                    AssertEqual("ExternalMultiSelectItemsList", window.LastExternalMultiSelectionSourceName, "external SDK multi-select first source name");
+                    AssertEqual(1, window.LastExternalMultiSelectionAddedCount, "external SDK multi-select first added count");
+                    AssertEqual(0, window.LastExternalMultiSelectionRemovedCount, "external SDK multi-select first removed count");
+                    AssertEqual("Alpha", window.LastExternalMultiSelectionAddedName ?? string.Empty, "external SDK multi-select first added item");
+
+                    selectionBefore = window.ExternalMultiSelectionChangedCount;
+                    var thirdContainer = GetGeneratedListBoxItem(
+                        multiSelectList,
+                        window.ExternalItems[2],
+                        "external SDK multi-select third item container");
+                    thirdContainer.IsSelected = true;
+                    DrainDispatcher();
+
+                    AssertEqual(2, multiSelectList.SelectedItems.Count, "external SDK multi-select second selected count");
+                    AssertEqual(window.ExternalItems[0], multiSelectList.SelectedItems[0], "external SDK multi-select retained first item");
+                    AssertEqual(window.ExternalItems[2], multiSelectList.SelectedItems[1], "external SDK multi-select second selected item");
+                    AssertAtLeast(selectionBefore + 1, window.ExternalMultiSelectionChangedCount, "external SDK multi-select second selection changed count");
+                    AssertEqual(1, window.LastExternalMultiSelectionAddedCount, "external SDK multi-select second added count");
+                    AssertEqual(0, window.LastExternalMultiSelectionRemovedCount, "external SDK multi-select second removed count");
+                    AssertEqual("Gamma", window.LastExternalMultiSelectionAddedName ?? string.Empty, "external SDK multi-select second added item");
+
+                    selectionBefore = window.ExternalMultiSelectionChangedCount;
+                    firstContainer.IsSelected = false;
+                    DrainDispatcher();
+
+                    AssertEqual(1, multiSelectList.SelectedItems.Count, "external SDK multi-select removed selected count");
+                    AssertEqual(window.ExternalItems[2], multiSelectList.SelectedItems[0], "external SDK multi-select remaining selected item");
+                    AssertAtLeast(selectionBefore + 1, window.ExternalMultiSelectionChangedCount, "external SDK multi-select removal selection changed count");
+                    AssertEqual(0, window.LastExternalMultiSelectionAddedCount, "external SDK multi-select removal added count");
+                    AssertEqual(1, window.LastExternalMultiSelectionRemovedCount, "external SDK multi-select removal removed count");
+                    AssertEqual("Alpha", window.LastExternalMultiSelectionRemovedName ?? string.Empty, "external SDK multi-select removed item");
+                }
+
+                private static ListBoxItem GetGeneratedListBoxItem(
+                    ListBox listBox,
+                    object item,
+                    string itemContainerDescription)
+                {
+                    listBox.ScrollIntoView(item);
+                    listBox.UpdateLayout();
+
+                    return RequireType<ListBoxItem>(
+                        listBox.ItemContainerGenerator.ContainerFromItem(item),
+                        itemContainerDescription);
                 }
 
                 private static void ValidatePreviousDataBindingsAfterRun(MainWindow window)

@@ -148,7 +148,9 @@ namespace MS.Win32
 
         public static int GetDoubleClickTime()
         {
-            return SafeNativeMethodsPrivate.GetDoubleClickTime();
+            return System.OperatingSystem.IsWindows()
+                ? SafeNativeMethodsPrivate.GetDoubleClickTime()
+                : 500;
         }
 
         public static bool IsWindowEnabled(HandleRef hWnd)

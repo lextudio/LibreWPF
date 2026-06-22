@@ -358,6 +358,8 @@ Visual replay still needs richer adapters for remaining tile-brush cases includi
 
 The combined-geometry dash item above is narrowed by the `ba59fdf`/WPF bridge update: boolean-result outlines are now used when a ProGPU context can run path ops. ProGPU `PathAtlas` also keeps combined path atlas allocation in geometry coordinates and applies atlas padding once, so WPF `CombinedGeometry` and Skia path-op masks do not inherit child-atlas padding as a second logical offset. Remaining work is to move dashed/stroked path emission fully behind backend-owned commands so the WPF bridge no longer emits transition dash spans, and to replace the context-free fallback with an equivalent deterministic path-op service if needed.
 
+Selector popup behavior stays a managed WPF responsibility. `ComboBox.IsDropDownOpen` should keep using WPF's selector, mouse-capture, popup, item-container, and auto-scroll timing code; the non-Windows port should only replace the native services those managers query. `SafeNativeMethods.GetDoubleClickTime()` therefore has a portable default fallback at the shared interop boundary, while Windows keeps the real `user32` value. ProGPU/Silk.NET should provide native input, focus, capture, presentation-source, and popup-host services, not a separate ComboBox dropdown or selection manager.
+
 ## Win32 Abstraction Strategy
 
 Win32 usage should be split into three groups:

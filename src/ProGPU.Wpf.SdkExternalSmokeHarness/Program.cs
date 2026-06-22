@@ -4001,6 +4001,19 @@ internal static class Program
                     DrainDispatcher();
                     AssertEqual(false, rootMenuItem.IsSubmenuOpen, "external SDK Application.Run menu item closed through portable popup");
 
+                    var comboBox = RequireType<ComboBox>(
+                        window.FindName("ExternalComboBox"),
+                        "external SDK Application.Run combo box");
+                    comboBox.ApplyTemplate();
+                    comboBox.UpdateLayout();
+                    AssertEqual(false, comboBox.IsDropDownOpen, "external SDK Application.Run combo box initial dropdown state");
+                    comboBox.IsDropDownOpen = true;
+                    DrainDispatcher();
+                    AssertEqual(true, comboBox.IsDropDownOpen, "external SDK Application.Run combo box opened through portable popup");
+                    comboBox.IsDropDownOpen = false;
+                    DrainDispatcher();
+                    AssertEqual(false, comboBox.IsDropDownOpen, "external SDK Application.Run combo box closed through portable popup");
+
                     var popupOwner = RequireType<Button>(
                         window.FindName("ExternalPopupOwnerButton"),
                         "external SDK Application.Run popup owner button");

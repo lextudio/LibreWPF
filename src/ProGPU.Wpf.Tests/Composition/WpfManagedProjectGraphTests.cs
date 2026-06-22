@@ -5358,6 +5358,7 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(safeNativeMethodsOther, "if (!OperatingSystem.IsWindows())", "SafeNativeMethodsPrivate.GetCaretBlinkTime()");
         AssertGuardBefore(safeNativeMethodsClr, "if (!OperatingSystem.IsWindows())", "SafeNativeMethodsPrivate.GetTickCount()");
         Assert.Contains("return Environment.TickCount;", safeNativeMethodsClr, StringComparison.Ordinal);
+        Assert.Contains("return System.OperatingSystem.IsWindows()\n                ? SafeNativeMethodsPrivate.GetDoubleClickTime()\n                : 500;", safeNativeMethodsClr, StringComparison.Ordinal);
         AssertGuardBefore(textServicesLoader, "if (!OperatingSystem.IsWindows())", "Invariant.Assert(Thread.CurrentThread.GetApartmentState() == ApartmentState.STA");
         Assert.Contains("return null;", textServicesLoader, StringComparison.Ordinal);
         Assert.DoesNotContain("System.Private.Windows.BinaryFormat", dataStreams, StringComparison.Ordinal);
@@ -7103,6 +7104,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateMenusAndChoiceControls(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePopupOpeningAfterRun(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Application.Run menu item opened through portable popup", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Application.Run combo box opened through portable popup", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Application.Run tooltip opened through portable popup", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Application.Run context menu opened through portable popup", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateToolbarStatusRangePasswordDateControls(window)", externalSdkHarnessProgram, StringComparison.Ordinal);

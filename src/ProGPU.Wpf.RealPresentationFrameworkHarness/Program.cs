@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.Loader;
 using System.Collections;
+using System.Globalization;
 using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using ProGpuContainerVisual = global::ProGPU.Scene.ContainerVisual;
@@ -81,6 +82,7 @@ public static class Program
             AssertCollectionCount(GetProperty(resources, "Keys"), expected: 2, "resource dictionary keys");
             AssertCollectionCount(GetProperty(flowDocument, "Blocks"), expected: 1, "flow document blocks");
 
+            VerifyPortableSpellerFallback(presentationFramework);
             RegisterPortableActivation(presentationFramework, window, out activationServiceType, out activation);
 
             using var target = ProGpuWpfCompositionTarget.CreateHeadless();
@@ -195,6 +197,80 @@ public static class Program
         AssertEqual("ProGPU WPF smoke updated", portableActivation.Host.Title, "updated host title");
         AssertEqual(480, portableActivation.Host.Width, "updated host width");
         AssertEqual(240, portableActivation.Host.Height, "updated host height");
+    }
+
+    private static void VerifyPortableSpellerFallback(Assembly presentationFramework)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        Type spellerInteropType = GetRequiredType(
+            presentationFramework,
+            "System.Windows.Documents.SpellerInteropBase");
+        MethodInfo createInstance = spellerInteropType.GetMethod(
+            "CreateInstance",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMethodException(spellerInteropType.FullName, "CreateInstance");
+        object speller = createInstance.Invoke(null, null)
+            ?? throw new InvalidOperationException("Expected non-Windows SpellerInteropBase.CreateInstance() to return a portable fallback.");
+
+        try
+        {
+            AssertEqual("NullSpellerInterop", speller.GetType().Name, "portable speller fallback type");
+
+            MethodInfo canSpellCheck = speller.GetType().GetMethod(
+                "CanSpellCheck",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                ?? throw new MissingMethodException(speller.GetType().FullName, "CanSpellCheck");
+            AssertEqual(false, canSpellCheck.Invoke(speller, new object[] { CultureInfo.GetCultureInfo("en-US") }), "portable speller spell-check availability");
+
+            Type sentenceCallbackType = GetRequiredNestedType(spellerInteropType, "EnumSentencesCallback");
+            Type segmentCallbackType = GetRequiredNestedType(spellerInteropType, "EnumTextSegmentsCallback");
+            Delegate sentenceCallback = Delegate.CreateDelegate(
+                sentenceCallbackType,
+                typeof(Program).GetMethod(nameof(RecordPortableSpellerSentence), BindingFlags.Static | BindingFlags.NonPublic)
+                    ?? throw new MissingMethodException(nameof(Program), nameof(RecordPortableSpellerSentence)));
+            Delegate segmentCallback = Delegate.CreateDelegate(
+                segmentCallbackType,
+                typeof(Program).GetMethod(nameof(RecordPortableSpellerSegment), BindingFlags.Static | BindingFlags.NonPublic)
+                    ?? throw new MissingMethodException(nameof(Program), nameof(RecordPortableSpellerSegment)));
+
+            MethodInfo enumTextSegments = speller.GetType().GetMethod(
+                "EnumTextSegments",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                ?? throw new MissingMethodException(speller.GetType().FullName, "EnumTextSegments");
+            var probe = new PortableSpellerProbe();
+            object? segmentCount = enumTextSegments.Invoke(
+                speller,
+                new object[] { "alpha beta, gamma!".ToCharArray(), 18, sentenceCallback, segmentCallback, probe });
+
+            AssertEqual(3, segmentCount, "portable speller segment count");
+            AssertEqual(3, probe.Segments.Count, "portable speller callback segment count");
+            AssertEqual("alpha:0:5:True", probe.Segments[0], "portable speller first segment");
+            AssertEqual("beta:6:4:True", probe.Segments[1], "portable speller second segment");
+            AssertEqual("gamma:12:5:True", probe.Segments[2], "portable speller third segment");
+            AssertEqual(18, probe.SentenceEndOffset, "portable speller sentence end offset");
+        }
+        finally
+        {
+            Invoke(speller, "Dispose");
+        }
+    }
+
+    private static bool RecordPortableSpellerSentence(object sentence, object data)
+    {
+        ((PortableSpellerProbe)data).SentenceEndOffset = (int)GetProperty(sentence, "EndOffset");
+        return true;
+    }
+
+    private static bool RecordPortableSpellerSegment(object segment, object data)
+    {
+        object textRange = GetProperty(segment, "TextRange");
+        ((PortableSpellerProbe)data).Segments.Add(
+            $"{GetProperty(segment, "Text")}:{GetProperty(textRange, "Start")}:{GetProperty(textRange, "Length")}:{GetProperty(segment, "IsClean")}");
+        return true;
     }
 
     private static void DrawRealDrawingVisual(Assembly presentationCore, Assembly windowsBase)
@@ -498,7 +574,7 @@ public static class Program
         if (commands.Count != expectedCommandTypes.Length)
         {
             throw new InvalidOperationException(
-                $"Expected {expectedCommandTypes.Length} retained drawing commands after real DrawingVisual dispatch, got {commands.Count} commands.");
+                $"Expected {expectedCommandTypes.Length} retained drawing commands after real DrawingVisual dispatch, got {commands.Count} commands: {string.Join(", ", commands.Select(command => command.Type))}.");
         }
 
         for (var i = 0; i < expectedCommandTypes.Length; i++)
@@ -1164,6 +1240,12 @@ public static class Program
             ?? throw new TypeLoadException($"Could not load '{typeName}' from '{assembly.FullName}'.");
     }
 
+    private static Type GetRequiredNestedType(Type type, string nestedTypeName)
+    {
+        return type.GetNestedType(nestedTypeName, BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new TypeLoadException($"Could not load nested type '{type.FullName}+{nestedTypeName}'.");
+    }
+
     private static object GetProperty(object instance, string propertyName)
     {
         return instance.GetType().GetProperty(
@@ -1312,6 +1394,13 @@ public static class Program
         }
 
         throw new DirectoryNotFoundException("Could not locate the WPF repository root.");
+    }
+
+    private sealed class PortableSpellerProbe
+    {
+        public List<string> Segments { get; } = new();
+
+        public int SentenceEndOffset { get; set; } = -1;
     }
 
     private sealed class WpfAssemblyLoadContext : AssemblyLoadContext

@@ -5969,8 +5969,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Exit=\"OnAppExit\"", smokeAppXaml, StringComparison.Ordinal);
         Assert.Contains("public int StartupEventCount", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int StartupArgsLength", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public bool SdkOutputGuardChecked", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int ExitEventCount", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int LastExitCode", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateSdkRenderSurfaceOutput();", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SdkOutputGuardChecked = true", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ResolveDisplayScaleWithPlatformFallback", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ResolveRenderSurfaceGeometry", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RenderScene", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Media;", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnAppStartup(object sender, StartupEventArgs e)", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("StartupEventCount++", smokeAppCodeBehind, StringComparison.Ordinal);
@@ -7996,6 +8002,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SDK loose XamlWriter serialized GradientStop", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateSdkLooseGradientStop(GetCollectionItem(roundTrippedStops, 1)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateApplicationRunLifetime(app)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("application SDK output guard checked", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateApplicationInitialLifetimeState(app)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateApplicationShutdownLifetimeState(app)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK Application.Current before run", runtimeHarnessProgram, StringComparison.Ordinal);

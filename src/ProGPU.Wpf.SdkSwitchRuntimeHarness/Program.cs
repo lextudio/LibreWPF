@@ -1163,6 +1163,7 @@ internal static class Program
 
     private static void ValidateApplicationRunLifetime(object app)
     {
+        AssertEqual(true, GetProperty(app, "SdkOutputGuardChecked"), "application SDK output guard checked");
         AssertEqual(1, GetProperty(app, "StartupEventCount"), "application Startup event count");
         AssertEqual(0, GetProperty(app, "StartupArgsLength"), "application Startup args length");
         AssertEqual(1, GetProperty(app, "ExitEventCount"), "application Exit event count");

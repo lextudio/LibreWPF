@@ -360,6 +360,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var cachedLogicalClientHeight = GetCachedLogicalClientHeight();", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("private int GetCachedLogicalClientWidth()", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("private int GetCachedLogicalClientHeight()", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("internal static int ResolveCachedLogicalClientDimension(", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("DimensionsDifferByDpiScale(larger, smaller)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("private static bool DimensionsDifferByDpiScale", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_portablePresentationSourceClientWidth > 0", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_requestedLogicalClientWidth > 0", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_requestedLogicalClientHeight > 0", proGpuHost, StringComparison.Ordinal);
@@ -402,6 +405,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("HighDpiSourceDrawingLayerRendersAcrossPhysicalFramebuffer", proGpuDrawingFrameTests, StringComparison.Ordinal);
         Assert.Contains("NativeResizeUsesPortablePresentationSourceLogicalCacheWhenHostCacheWasPhysical", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("NativeResizeRestoresRequestedDipsWhenStartupNativeCacheWasPolluted", proGpuWindowHostTests, StringComparison.Ordinal);
+        Assert.Contains("ResolveCachedLogicalClientDimensionKeepsRequestedDipsWhenSourceCacheIsPhysical", proGpuWindowHostTests, StringComparison.Ordinal);
+        Assert.Contains("NativeResizeRestoresRequestedDipsWhenPortableSourceCacheWasPhysical", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("SetClientSizeSynchronizesBoundPortablePresentationSourceImmediately", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("SetInitialClientSizeCachesLogicalSizeWithoutPortableSourceRelayout", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("TryAttachSynchronizesInitialWindowShapeBeforeFirstRender", proGpuActivationTests, StringComparison.Ordinal);

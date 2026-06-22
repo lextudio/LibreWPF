@@ -481,6 +481,28 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void ResolveCachedLogicalClientDimensionKeepsRequestedDipsWhenSourceCacheIsPhysical()
+    {
+        var dimension = ProGpuWpfWindowHost.ResolveCachedLogicalClientDimension(
+            portablePresentationSourceDimension: 840,
+            requestedLogicalDimension: 420,
+            currentClientDimension: 420);
+
+        Assert.Equal(420, dimension);
+    }
+
+    [Fact]
+    public void ResolveCachedLogicalClientDimensionKeepsPortableSourceDipsWhenRequestedCacheIsPhysical()
+    {
+        var dimension = ProGpuWpfWindowHost.ResolveCachedLogicalClientDimension(
+            portablePresentationSourceDimension: 420,
+            requestedLogicalDimension: 840,
+            currentClientDimension: 840);
+
+        Assert.Equal(420, dimension);
+    }
+
+    [Fact]
     public void NativeResizeCorrectsStalePhysicalClientSizeBeforeTargetLoad()
     {
         using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
@@ -537,6 +559,27 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.False(host.UpdateClientSizeFromNativeResize(
             new Vector2D<int>(840, 1680),
             new Vector2D<int>(1680, 3360),
+            monitorDpiScale: 2.0));
+
+        Assert.Equal(420, host.Width);
+        Assert.Equal(840, host.Height);
+    }
+
+    [Fact]
+    public void NativeResizeRestoresRequestedDipsWhenPortableSourceCacheWasPhysical()
+    {
+        using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
+        {
+            Width = 420,
+            Height = 840
+        });
+        var source = new FakePortablePresentationSource();
+        Assert.True(host.TryBindPortablePresentationSource(source));
+        Assert.True(host.UpdatePortablePresentationSourceClientSize(840, 1680));
+
+        Assert.False(host.UpdateClientSizeFromNativeResize(
+            new Vector2D<int>(840, 1680),
+            new Vector2D<int>(840, 1680),
             monitorDpiScale: 2.0));
 
         Assert.Equal(420, host.Width);

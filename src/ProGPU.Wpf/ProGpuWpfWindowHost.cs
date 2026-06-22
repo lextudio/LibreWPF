@@ -789,20 +789,40 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private int GetCachedLogicalClientWidth()
     {
-        return _portablePresentationSourceClientWidth > 0
-            ? _portablePresentationSourceClientWidth
-            : _requestedLogicalClientWidth > 0
-                ? _requestedLogicalClientWidth
-                : _clientWidth;
+        return ResolveCachedLogicalClientDimension(
+            _portablePresentationSourceClientWidth,
+            _requestedLogicalClientWidth,
+            _clientWidth);
     }
 
     private int GetCachedLogicalClientHeight()
     {
-        return _portablePresentationSourceClientHeight > 0
-            ? _portablePresentationSourceClientHeight
-            : _requestedLogicalClientHeight > 0
-                ? _requestedLogicalClientHeight
-                : _clientHeight;
+        return ResolveCachedLogicalClientDimension(
+            _portablePresentationSourceClientHeight,
+            _requestedLogicalClientHeight,
+            _clientHeight);
+    }
+
+    internal static int ResolveCachedLogicalClientDimension(
+        int portablePresentationSourceDimension,
+        int requestedLogicalDimension,
+        int currentClientDimension)
+    {
+        if (portablePresentationSourceDimension > 0 && requestedLogicalDimension > 0)
+        {
+            var smaller = Math.Min(portablePresentationSourceDimension, requestedLogicalDimension);
+            var larger = Math.Max(portablePresentationSourceDimension, requestedLogicalDimension);
+            if (DimensionsDifferByDpiScale(larger, smaller))
+            {
+                return smaller;
+            }
+        }
+
+        return portablePresentationSourceDimension > 0
+            ? portablePresentationSourceDimension
+            : requestedLogicalDimension > 0
+                ? requestedLogicalDimension
+                : currentClientDimension;
     }
 
     internal static Vector2D<int> ResolveLogicalClientSize(
@@ -884,6 +904,17 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         return Math.Abs(nativeDimension - cachedDimension * dpiScale) <= Math.Max(2.0, dpiScale);
+    }
+
+    private static bool DimensionsDifferByDpiScale(int largerDimension, int smallerDimension)
+    {
+        if (largerDimension <= 0 || smallerDimension <= 0 || largerDimension <= smallerDimension)
+        {
+            return false;
+        }
+
+        var scale = largerDimension / (double)smallerDimension;
+        return double.IsFinite(scale) && scale >= 1.25 && scale <= 8.0;
     }
 
     private static bool TryInferNativeDpiScaleFromCachedDips(

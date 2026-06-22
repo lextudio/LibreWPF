@@ -101,6 +101,15 @@ namespace System.Windows.Media.Imaging
             }
 
             if (!OperatingSystem.IsWindows() &&
+                expectedClsId == MILGuidData.GUID_ContainerFormatTiff &&
+                TiffBitmapDecoder.TryCreatePortableFrameFromUri(bitmapUri, createOptions, cacheOption, out BitmapFrame portableTiffFrame))
+            {
+                _uri = bitmapUri;
+                InitializePortableFrames(null, bitmapUri, null, createOptions, cacheOption, portableTiffFrame);
+                return;
+            }
+
+            if (!OperatingSystem.IsWindows() &&
                 expectedClsId == MILGuidData.GUID_ContainerFormatIco &&
                 IconBitmapDecoder.TryCreatePortableFrameFromUri(bitmapUri, createOptions, cacheOption, out BitmapFrame portableIconFrame))
             {
@@ -190,6 +199,14 @@ namespace System.Windows.Media.Imaging
                 GifBitmapDecoder.TryCreatePortableFrame(bitmapStream, createOptions, cacheOption, out BitmapFrame portableGifFrame))
             {
                 InitializePortableFrames(null, null, bitmapStream, createOptions, cacheOption, portableGifFrame);
+                return;
+            }
+
+            if (!OperatingSystem.IsWindows() &&
+                expectedClsId == MILGuidData.GUID_ContainerFormatTiff &&
+                TiffBitmapDecoder.TryCreatePortableFrame(bitmapStream, createOptions, cacheOption, out BitmapFrame portableTiffFrame))
+            {
+                InitializePortableFrames(null, null, bitmapStream, createOptions, cacheOption, portableTiffFrame);
                 return;
             }
 
@@ -385,6 +402,13 @@ namespace System.Windows.Media.Imaging
             else if (!OperatingSystem.IsWindows() &&
                      finalUri != null &&
                      stream == null &&
+                     TiffBitmapDecoder.TryCreatePortableFrameFromUri(finalUri, createOptions, cacheOption, out BitmapFrame portableTiffUriFrame))
+            {
+                return new TiffBitmapDecoder(portableTiffUriFrame, baseUri, uri, null, createOptions, cacheOption);
+            }
+            else if (!OperatingSystem.IsWindows() &&
+                     finalUri != null &&
+                     stream == null &&
                      IconBitmapDecoder.TryCreatePortableFrameFromUri(finalUri, createOptions, cacheOption, out BitmapFrame portableIconUriFrame))
             {
                 return new IconBitmapDecoder(portableIconUriFrame, baseUri, uri, null, createOptions, cacheOption);
@@ -412,6 +436,12 @@ namespace System.Windows.Media.Imaging
                      GifBitmapDecoder.TryCreatePortableFrame(stream, createOptions, cacheOption, out BitmapFrame portableGifStreamFrame))
             {
                 return new GifBitmapDecoder(portableGifStreamFrame, baseUri, uri, stream, createOptions, cacheOption);
+            }
+            else if (!OperatingSystem.IsWindows() &&
+                     stream != null &&
+                     TiffBitmapDecoder.TryCreatePortableFrame(stream, createOptions, cacheOption, out BitmapFrame portableTiffStreamFrame))
+            {
+                return new TiffBitmapDecoder(portableTiffStreamFrame, baseUri, uri, stream, createOptions, cacheOption);
             }
             else if (!OperatingSystem.IsWindows() &&
                      stream != null &&

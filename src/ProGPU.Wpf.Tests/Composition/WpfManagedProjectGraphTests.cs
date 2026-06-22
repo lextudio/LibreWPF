@@ -4789,6 +4789,16 @@ public sealed class WpfManagedProjectGraphTests
             "Media",
             "Imaging",
             "GifBitmapDecoder.cs"));
+        var tiffBitmapDecoder = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Imaging",
+            "TiffBitmapDecoder.cs"));
         var iconBitmapDecoder = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4854,6 +4864,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GifBitmapDecoder.TryCreatePortableFrameFromUri", bitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("return new GifBitmapDecoder(portableGifUriFrame", bitmapDecoder, StringComparison.Ordinal);
         AssertGuardBefore(bitmapDecoder, "GifBitmapDecoder.TryCreatePortableFrame", "SetupDecoderFromUriOrStream");
+        Assert.Contains("internal static bool TryCreatePortableFrame(", tiffBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TryCreatePortableFrameFromUri(", tiffBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("Portable TIFF decoding currently supports uncompressed chunky first-frame images.", tiffBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("CopyTiffRowToBgra", tiffBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("PhotometricInterpretationTag", tiffBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("TiffBitmapDecoder.TryCreatePortableFrameFromUri", bitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("return new TiffBitmapDecoder(portableTiffUriFrame", bitmapDecoder, StringComparison.Ordinal);
+        AssertGuardBefore(bitmapDecoder, "TiffBitmapDecoder.TryCreatePortableFrame", "SetupDecoderFromUriOrStream");
         Assert.Contains("internal static bool TryCreatePortableFrame(", iconBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryCreatePortableFrameFromUri(", iconBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("PngBitmapDecoder.TryCreatePortableFrame(imageStream", iconBitmapDecoder, StringComparison.Ordinal);
@@ -6560,6 +6578,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK BitmapDecoder.Create URI GIF decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new BitmapImage(gifUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapImage URI GIF first alpha byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CreateTiffBytes(pixels, 2, 2)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new TiffBitmapDecoder(", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create TIFF decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create TIFF bottom-right red byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create URI TIFF decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new BitmapImage(tiffUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapImage URI TIFF top-left blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreateRgbaPngBytes(pixels, 2, 2, 8)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreateRgba16PngBytes(pixels, 2, 2, 8)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreateIndexedPngBytes(", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -303,8 +303,10 @@ namespace Microsoft.Windows.Shell
 
         private void _FixupTemplateIssues()
         {
-            Assert.IsNotNull(_chromeInfo);
-            Assert.IsNotNull(_window);
+            if (_chromeInfo == null || _window == null)
+            {
+                return;
+            }
 
             if (_window.Template == null)
             {

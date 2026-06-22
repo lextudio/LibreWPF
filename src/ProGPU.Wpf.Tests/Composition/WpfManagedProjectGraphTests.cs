@@ -5352,6 +5352,7 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(windowChromeWorker, "if (!OperatingSystem.IsWindows() || IntPtr.Zero == _hwnd || _hwndSource == null || _hwndSource.IsDisposed)", "NativeMethods.DwmIsCompositionEnabled()");
         AssertGuardBefore(windowChromeWorker, "if (!OperatingSystem.IsWindows() || _hwnd == IntPtr.Zero || _hwndSource == null)", "_hwndSource.RemoveHook(_WndProc)");
         Assert.Contains("private void _ApplyPortableCustomChrome()", windowChromeWorker, StringComparison.Ordinal);
+        Assert.Contains("if (_chromeInfo == null || _window == null)", windowChromeWorker, StringComparison.Ordinal);
         AssertGuardBefore(systemCommands, "if (!OperatingSystem.IsWindows())", "new WindowInteropHelper(window).Handle");
         AssertGuardBefore(systemCommands, "if (!OperatingSystem.IsWindows())", "NativeMethods.GetSystemMenu(hwnd, false)");
         Assert.Contains("window.WindowState = WindowState.Maximized", systemCommands, StringComparison.Ordinal);
@@ -6644,6 +6645,19 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateSystemCommands(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SystemCommands.MaximizeWindow(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK SystemCommands show system menu no-op state", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("xmlns:shell=\"clr-namespace:System.Windows.Shell;assembly=PresentationFramework\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("xmlns:wpf=\"clr-namespace:System.Windows;assembly=PresentationFramework\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<shell:WindowChrome.WindowChrome>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("shell:WindowChrome.IsHitTestVisibleInChrome=\"True\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("shell:WindowChrome.ResizeGripDirection=\"BottomRight\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{x:Static wpf:SystemCommands.MaximizeWindowCommand}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{x:Static wpf:SystemCommands.MinimizeWindowCommand}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{x:Static wpf:SystemCommands.RestoreWindowCommand}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{x:Static wpf:SystemCommands.ShowSystemMenuCommand}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OnExternalSystemCommandExecuted", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateSystemCommandButton(", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK XAML WindowChrome attached value", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK XAML SystemCommands maximize", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Startup=\"OnExternalAppStartup\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Exit=\"OnExternalAppExit\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalStartupResourceText", externalSdkHarnessProgram, StringComparison.Ordinal);

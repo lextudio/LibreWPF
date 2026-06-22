@@ -773,7 +773,9 @@ internal static class Program
                 xmlns:local="clr-namespace:ExternalSdkApp"
                 xmlns:library="clr-namespace:ExternalSdkLibrary;assembly=ExternalSdkLibrary"
                 xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework"
+                xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
                 xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+                xmlns:wpf="clr-namespace:System.Windows;assembly=PresentationFramework"
                 Title="External SDK App"
                 Width="320"
                 Height="200"
@@ -792,6 +794,14 @@ internal static class Program
                 DragLeave="OnExternalDragLeave"
                 PreviewDrop="OnExternalPreviewDrop"
                 Drop="OnExternalDrop">
+                <shell:WindowChrome.WindowChrome>
+                    <shell:WindowChrome
+                        CaptionHeight="28"
+                        ResizeBorderThickness="8"
+                        GlassFrameThickness="0"
+                        NonClientFrameEdges="Top"
+                        UseAeroCaptionButtons="False" />
+                </shell:WindowChrome.WindowChrome>
                 <Window.Resources>
                     <DataTemplate x:Key="ExternalGroupHeaderTemplate">
                         <TextBlock
@@ -1064,6 +1074,22 @@ internal static class Program
                         Command="{x:Static local:MainWindow.ExternalCommand}"
                         CanExecute="OnExternalCommandCanExecute"
                         Executed="OnExternalCommandExecuted" />
+                    <CommandBinding
+                        Command="{x:Static wpf:SystemCommands.MaximizeWindowCommand}"
+                        CanExecute="OnExternalSystemCommandCanExecute"
+                        Executed="OnExternalSystemCommandExecuted" />
+                    <CommandBinding
+                        Command="{x:Static wpf:SystemCommands.MinimizeWindowCommand}"
+                        CanExecute="OnExternalSystemCommandCanExecute"
+                        Executed="OnExternalSystemCommandExecuted" />
+                    <CommandBinding
+                        Command="{x:Static wpf:SystemCommands.RestoreWindowCommand}"
+                        CanExecute="OnExternalSystemCommandCanExecute"
+                        Executed="OnExternalSystemCommandExecuted" />
+                    <CommandBinding
+                        Command="{x:Static wpf:SystemCommands.ShowSystemMenuCommand}"
+                        CanExecute="OnExternalSystemCommandCanExecute"
+                        Executed="OnExternalSystemCommandExecuted" />
                 </Window.CommandBindings>
                 <Window.InputBindings>
                     <KeyBinding
@@ -1152,6 +1178,36 @@ internal static class Program
                     <Button
                         x:Name="ExternalStyledButton"
                         Style="{StaticResource ExternalTriggeredButtonStyle}" />
+                    <StackPanel
+                        x:Name="ExternalChromeCommandPanel"
+                        Orientation="Horizontal"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                        shell:WindowChrome.ResizeGripDirection="BottomRight">
+                        <Button
+                            x:Name="ExternalSystemMaximizeButton"
+                            Command="{x:Static wpf:SystemCommands.MaximizeWindowCommand}"
+                            CommandParameter="ExternalSystemMaximizeParameter"
+                            CommandTarget="{Binding RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                            Content="Maximize" />
+                        <Button
+                            x:Name="ExternalSystemMinimizeButton"
+                            Command="{x:Static wpf:SystemCommands.MinimizeWindowCommand}"
+                            CommandParameter="ExternalSystemMinimizeParameter"
+                            CommandTarget="{Binding RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                            Content="Minimize" />
+                        <Button
+                            x:Name="ExternalSystemRestoreButton"
+                            Command="{x:Static wpf:SystemCommands.RestoreWindowCommand}"
+                            CommandParameter="ExternalSystemRestoreParameter"
+                            CommandTarget="{Binding RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                            Content="Restore" />
+                        <Button
+                            x:Name="ExternalSystemMenuButton"
+                            Command="{x:Static wpf:SystemCommands.ShowSystemMenuCommand}"
+                            CommandParameter="ExternalSystemMenuParameter"
+                            CommandTarget="{Binding RelativeSource={RelativeSource AncestorType={x:Type Window}}}"
+                            Content="Menu" />
+                    </StackPanel>
                     <local:ExternalClassCommandTextBox
                         x:Name="ExternalClassCommandTarget"
                         Text="External class command target" />
@@ -2254,6 +2310,14 @@ internal static class Program
 
                 public int ExternalCommandButtonClickCount { get; private set; }
 
+                public int ExternalSystemCommandCanExecuteCount { get; private set; }
+
+                public int ExternalSystemCommandExecutedCount { get; private set; }
+
+                public string? LastExternalSystemCommandName { get; private set; }
+
+                public object? LastExternalSystemCommandParameter { get; private set; }
+
                 public int ExternalStyleEventButtonClickCount { get; private set; }
 
                 public string? LastExternalStyleEventSenderName { get; private set; }
@@ -2649,6 +2713,43 @@ internal static class Program
                     ExternalCommandExecutedCount++;
                     LastExternalCommandParameter = e.Parameter;
                     LastExternalCommandName = (e.Command as RoutedCommand)?.Name;
+                    e.Handled = true;
+                }
+
+                private void OnExternalSystemCommandCanExecute(object sender, CanExecuteRoutedEventArgs e)
+                {
+                    ExternalSystemCommandCanExecuteCount++;
+                    e.CanExecute = true;
+                    e.Handled = true;
+                }
+
+                private void OnExternalSystemCommandExecuted(object sender, ExecutedRoutedEventArgs e)
+                {
+                    ExternalSystemCommandExecutedCount++;
+                    LastExternalSystemCommandParameter = e.Parameter;
+                    LastExternalSystemCommandName = (e.Command as RoutedCommand)?.Name;
+
+                    if (ReferenceEquals(e.Command, SystemCommands.MaximizeWindowCommand))
+                    {
+                        SystemCommands.MaximizeWindow(this);
+                    }
+                    else if (ReferenceEquals(e.Command, SystemCommands.MinimizeWindowCommand))
+                    {
+                        SystemCommands.MinimizeWindow(this);
+                    }
+                    else if (ReferenceEquals(e.Command, SystemCommands.RestoreWindowCommand))
+                    {
+                        SystemCommands.RestoreWindow(this);
+                    }
+                    else if (ReferenceEquals(e.Command, SystemCommands.ShowSystemMenuCommand))
+                    {
+                        SystemCommands.ShowSystemMenu(this, new Point(12.0, 24.0));
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Unexpected external SDK system command '{e.Command}'.");
+                    }
+
                     e.Handled = true;
                 }
 
@@ -4209,6 +4310,21 @@ internal static class Program
 
                 private static void ValidateWindowChrome(MainWindow window)
                 {
+                    var xamlChrome = RequireType<WindowChrome>(
+                        WindowChrome.GetWindowChrome(window),
+                        "external SDK XAML WindowChrome attached value");
+                    AssertEqual(28.0, xamlChrome.CaptionHeight, "external SDK XAML WindowChrome caption height");
+                    AssertEqual(new Thickness(8.0), xamlChrome.ResizeBorderThickness, "external SDK XAML WindowChrome resize border thickness");
+                    AssertEqual(new Thickness(0.0), xamlChrome.GlassFrameThickness, "external SDK XAML WindowChrome glass frame thickness");
+                    AssertEqual(NonClientFrameEdges.Top, xamlChrome.NonClientFrameEdges, "external SDK XAML WindowChrome non-client frame edges");
+                    AssertEqual(false, xamlChrome.UseAeroCaptionButtons, "external SDK XAML WindowChrome aero caption buttons");
+
+                    var chromeCommandPanel = RequireType<StackPanel>(
+                        window.FindName("ExternalChromeCommandPanel"),
+                        "external SDK chrome command panel");
+                    AssertEqual(true, WindowChrome.GetIsHitTestVisibleInChrome(chromeCommandPanel), "external SDK XAML WindowChrome hit-test attached value");
+                    AssertEqual(ResizeGripDirection.BottomRight, WindowChrome.GetResizeGripDirection(chromeCommandPanel), "external SDK XAML WindowChrome resize grip attached value");
+
                     var chrome = new WindowChrome
                     {
                         CaptionHeight = 32.0,
@@ -9153,7 +9269,7 @@ internal static class Program
 
                 private static void ValidateCommandsAndFocus(MainWindow window)
                 {
-                    AssertEqual(1, window.CommandBindings.Count, "external SDK command binding count");
+                    AssertEqual(5, window.CommandBindings.Count, "external SDK command binding count");
                     var commandBinding = RequireType<CommandBinding>(
                         window.CommandBindings[0],
                         "external SDK command binding");
@@ -9192,6 +9308,18 @@ internal static class Program
                     var requeryCommandButton = RequireType<Button>(
                         window.FindName("ExternalRequeryCommandButton"),
                         "external SDK requery command button");
+                    var systemMaximizeButton = RequireType<Button>(
+                        window.FindName("ExternalSystemMaximizeButton"),
+                        "external SDK system maximize command button");
+                    var systemMinimizeButton = RequireType<Button>(
+                        window.FindName("ExternalSystemMinimizeButton"),
+                        "external SDK system minimize command button");
+                    var systemRestoreButton = RequireType<Button>(
+                        window.FindName("ExternalSystemRestoreButton"),
+                        "external SDK system restore command button");
+                    var systemMenuButton = RequireType<Button>(
+                        window.FindName("ExternalSystemMenuButton"),
+                        "external SDK system menu command button");
                     var validationTextBox = RequireType<TextBox>(
                         window.FindName("ExternalValidationTextBox"),
                         "external SDK access-key target text box");
@@ -9280,6 +9408,35 @@ internal static class Program
                     AssertEqual("ExternalClassCommandParameter", classCommandTarget.LastClassCommandParameter, "external SDK class command parameter");
                     AssertEqual(nameof(ExternalClassCommandTextBox.ExternalClassCommand), classCommandTarget.LastClassCommandName, "external SDK class command name");
 
+                    ValidateSystemCommandButton(
+                        window,
+                        systemMaximizeButton,
+                        SystemCommands.MaximizeWindowCommand,
+                        "ExternalSystemMaximizeParameter",
+                        WindowState.Maximized,
+                        "external SDK XAML SystemCommands maximize");
+                    ValidateSystemCommandButton(
+                        window,
+                        systemMinimizeButton,
+                        SystemCommands.MinimizeWindowCommand,
+                        "ExternalSystemMinimizeParameter",
+                        WindowState.Minimized,
+                        "external SDK XAML SystemCommands minimize");
+                    ValidateSystemCommandButton(
+                        window,
+                        systemRestoreButton,
+                        SystemCommands.RestoreWindowCommand,
+                        "ExternalSystemRestoreParameter",
+                        WindowState.Normal,
+                        "external SDK XAML SystemCommands restore");
+                    ValidateSystemCommandButton(
+                        window,
+                        systemMenuButton,
+                        SystemCommands.ShowSystemMenuCommand,
+                        "ExternalSystemMenuParameter",
+                        WindowState.Normal,
+                        "external SDK XAML SystemCommands menu");
+
                     AssertEqual(window.ExternalRequeryCommand, requeryCommandButton.Command, "external SDK requery command binding");
                     AssertEqual("ExternalRequeryParameter", requeryCommandButton.CommandParameter, "external SDK requery command parameter");
                     window.ExternalRequeryCommand.CanExecuteValue = false;
@@ -9304,6 +9461,31 @@ internal static class Program
                         .Execute(requeryCommandButton.CommandParameter);
                     AssertEqual(requeryExecuteBefore + 1, window.ExternalRequeryCommand.ExecuteCount, "external SDK requery command execute count");
                     AssertEqual("ExternalRequeryParameter", window.ExternalRequeryCommand.LastParameter, "external SDK requery command last parameter");
+                }
+
+                private static void ValidateSystemCommandButton(
+                    MainWindow window,
+                    Button button,
+                    RoutedCommand expectedCommand,
+                    string expectedParameter,
+                    WindowState expectedState,
+                    string description)
+                {
+                    DrainDispatcher();
+                    AssertEqual(expectedCommand, button.Command, $"{description} command binding");
+                    AssertEqual(expectedParameter, button.CommandParameter, $"{description} command parameter");
+                    AssertEqual(window, button.CommandTarget, $"{description} command target");
+
+                    int canExecuteBefore = window.ExternalSystemCommandCanExecuteCount;
+                    int executedBefore = window.ExternalSystemCommandExecutedCount;
+                    AssertEqual(true, expectedCommand.CanExecute(button.CommandParameter, window), $"{description} can execute");
+                    expectedCommand.Execute(button.CommandParameter, window);
+
+                    AssertAtLeast(canExecuteBefore + 1, window.ExternalSystemCommandCanExecuteCount, $"{description} can-execute count");
+                    AssertEqual(executedBefore + 1, window.ExternalSystemCommandExecutedCount, $"{description} executed count");
+                    AssertEqual(expectedCommand.Name, window.LastExternalSystemCommandName, $"{description} command name");
+                    AssertEqual(expectedParameter, window.LastExternalSystemCommandParameter, $"{description} executed parameter");
+                    AssertEqual(expectedState, window.WindowState, $"{description} window state");
                 }
 
                 private static void ValidateAccessKeyRoutingAfterRun(MainWindow window)

@@ -7333,6 +7333,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Converter={StaticResource ExternalUpperConverter}", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<MultiBinding Converter=\"{StaticResource ExternalSummaryConverter}\">", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<PriorityBinding>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalFallbackBindingText\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FallbackValue=External fallback text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalTargetNullBindingText\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("TargetNullValue=External null text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ExternalBindingTransferTextBox\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SourceUpdated=\"OnExternalBindingSourceUpdated\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("TargetUpdated=\"OnExternalBindingTargetUpdated\"", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7364,6 +7368,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Validation.Error=\"OnExternalValidationError\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("NotifyOnValidationError=\"True\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalBindingTransferText { get; set; } = \"external transfer initial\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalNullBindingText { get; } = null", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalBindingSourceUpdatedCount", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalBindingTargetUpdatedCount", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("OnExternalBindingSourceUpdated", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7434,6 +7439,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK InputMethod set conversion mode", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK binding transfer NotifyOnSourceUpdated", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK binding transfer NotifyOnTargetUpdated", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK binding fallback value metadata", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK binding target null value metadata", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Binding SourceUpdated property", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Binding TargetUpdated routed event name", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK validation source update", externalSdkHarnessProgram, StringComparison.Ordinal);

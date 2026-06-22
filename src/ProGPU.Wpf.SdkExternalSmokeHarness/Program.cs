@@ -1803,6 +1803,12 @@ internal static class Program
                             </PriorityBinding>
                         </TextBlock.Text>
                     </TextBlock>
+                    <TextBlock
+                        x:Name="ExternalFallbackBindingText"
+                        Text="{Binding MissingExternalBindingText, FallbackValue=External fallback text}" />
+                    <TextBlock
+                        x:Name="ExternalTargetNullBindingText"
+                        Text="{Binding ExternalNullBindingText, TargetNullValue=External null text}" />
                     <TextBox
                         x:Name="ExternalBindingTransferTextBox"
                         SourceUpdated="OnExternalBindingSourceUpdated"
@@ -2098,6 +2104,8 @@ internal static class Program
                 }
 
                 public string ExternalBindingTransferText { get; set; } = "external transfer initial";
+
+                public string? ExternalNullBindingText { get; } = null;
 
                 public string BindingGroupFirstName { get; set; } = "group: Ada";
 
@@ -7174,6 +7182,24 @@ internal static class Program
                     }
 
                     AssertEqual(2, priorityBindingExpression.ParentPriorityBinding.Bindings.Count, "external SDK priority binding child binding count");
+
+                    var fallbackBindingText = RequireType<TextBlock>(
+                        window.FindName("ExternalFallbackBindingText"),
+                        "external SDK fallback binding text block");
+                    AssertEqual("External fallback text", fallbackBindingText.Text, "external SDK binding fallback value text");
+                    var fallbackBindingExpression = fallbackBindingText.GetBindingExpression(TextBlock.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK fallback BindingExpression.");
+                    AssertEqual("MissingExternalBindingText", fallbackBindingExpression.ParentBinding.Path.Path, "external SDK binding fallback path");
+                    AssertEqual("External fallback text", fallbackBindingExpression.ParentBinding.FallbackValue, "external SDK binding fallback value metadata");
+
+                    var targetNullBindingText = RequireType<TextBlock>(
+                        window.FindName("ExternalTargetNullBindingText"),
+                        "external SDK target-null binding text block");
+                    AssertEqual("External null text", targetNullBindingText.Text, "external SDK binding target null value text");
+                    var targetNullBindingExpression = targetNullBindingText.GetBindingExpression(TextBlock.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK target-null BindingExpression.");
+                    AssertEqual("ExternalNullBindingText", targetNullBindingExpression.ParentBinding.Path.Path, "external SDK binding target null path");
+                    AssertEqual("External null text", targetNullBindingExpression.ParentBinding.TargetNullValue, "external SDK binding target null value metadata");
 
                     var transferTextBox = RequireType<TextBox>(
                         window.FindName("ExternalBindingTransferTextBox"),

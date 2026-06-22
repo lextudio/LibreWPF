@@ -356,6 +356,47 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void ResolveMonitorDpiScaleWithPlatformFallbackUsesNativeScaleWhenMonitorScaleIsUnavailable()
+    {
+        double dpiScale = ProGpuWpfWindowHost.ResolveMonitorDpiScaleWithPlatformFallback(
+            monitorDpiScale: 1.0,
+            platformDpiScaleProvider: () => 2.0);
+
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 420,
+            clientHeight: 840,
+            framebufferSize: new Vector2D<int>(420, 840),
+            monitorDpiScale: dpiScale);
+
+        Assert.Equal(2.0, dpiScale);
+        Assert.Equal(420u, geometry.LogicalWidth);
+        Assert.Equal(840u, geometry.LogicalHeight);
+        Assert.Equal(840u, geometry.PixelWidth);
+        Assert.Equal(1680u, geometry.PixelHeight);
+        Assert.Equal(2.0, geometry.DpiScale);
+    }
+
+    [Fact]
+    public void ResolveMonitorDpiScaleWithPlatformFallbackKeepsUsableMonitorScale()
+    {
+        double dpiScale = ProGpuWpfWindowHost.ResolveMonitorDpiScaleWithPlatformFallback(
+            monitorDpiScale: 1.5,
+            platformDpiScaleProvider: () => 2.0);
+
+        Assert.Equal(1.5, dpiScale);
+    }
+
+    [Fact]
+    public void ResolveMonitorDpiScaleWithPlatformFallbackIgnoresInvalidNativeScale()
+    {
+        double dpiScale = ProGpuWpfWindowHost.ResolveMonitorDpiScaleWithPlatformFallback(
+            monitorDpiScale: 1.0,
+            platformDpiScaleProvider: () => 0.0);
+
+        Assert.Equal(1.0, dpiScale);
+    }
+
+    [Fact]
     public void ResolveRenderSurfaceGeometryKeepsReportedPhysicalFramebuffer()
     {
         var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(

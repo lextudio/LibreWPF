@@ -282,6 +282,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var fallbackScale = NormalizeMonitorDpiScale(monitorDpiScale);", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var scaledPixelWidth = (uint)Math.Max(1, (int)Math.Ceiling(logicalWidth * fallbackScale));", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("PlatformServices.Monitors.GetMonitors()", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("ResolveMonitorDpiScaleWithPlatformFallback(", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("ResolveNativePlatformDpiScale", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("TryResolveMacOsBackingScaleFactor", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("window is not INativeWindowSource nativeWindowSource", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("sel_registerName(\"screen\")", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("backingScaleFactor", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var dpiScaleX = pixelWidth / (double)logicalWidth", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var dpiScaleY = pixelHeight / (double)logicalHeight", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("NativeDimensionLooksPhysicalForCachedDips(nativeDimension, cached, dpiScale)", proGpuHost, StringComparison.Ordinal);

@@ -57,7 +57,7 @@ The first package skeleton now lives under `packaging/ProGPU.Wpf.Sdk`. It produc
 
 The SDK/package path must not depend on ProGPU shim-only WPF API additions when real WPF assemblies are loaded. Retained WPF replay and object render-data replay now use native `ProGPU.Scene.DrawingContext` command sinks directly; the flat shim `DrawingContext` is left only for explicit transition `Draw` callbacks. This preserves the managed WPF assembly identity supplied by the transport package and keeps ProGPU-specific rendering state behind the SDK/bridge boundary.
 
-The native host boundary also owns early DPI synchronization. The ProGPU/Silk.NET host resolves logical WPF client dimensions and physical framebuffer dimensions during native load and resize, caches that `RenderSurfaceGeometry`, and pushes the resulting DPI scale into WPF's `PortablePresentationSource` before rendering. WPF manager, layout, and XAML/runtime code continue to observe DIP-sized windows while ProGPU owns the Retina/HiDPI physical swapchain.
+The native host boundary also owns early DPI synchronization. The ProGPU/Silk.NET host resolves logical WPF client dimensions and physical framebuffer dimensions during native load and resize, caches that `RenderSurfaceGeometry`, and pushes the resulting DPI scale into WPF's `PortablePresentationSource` before rendering. WPF manager, layout, and XAML/runtime code continue to observe DIP-sized windows while ProGPU owns the Retina/HiDPI physical swapchain. When the monitor-service path still reports `1.0` on macOS, the host now reads the native Cocoa window screen's `backingScaleFactor` before the first frame so SDK-switched apps do not render into only the upper-left physical quadrant.
 
 ## Current Full-App Status
 

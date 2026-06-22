@@ -46,6 +46,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private string _windowTitle;
     private int _clientWidth;
     private int _clientHeight;
+    private int _requestedLogicalClientWidth = -1;
+    private int _requestedLogicalClientHeight = -1;
 
     internal readonly record struct RenderSurfaceGeometry(
         uint LogicalWidth,
@@ -64,6 +66,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _windowTitle = _options.Title;
         _clientWidth = Math.Max(1, _options.Width);
         _clientHeight = Math.Max(1, _options.Height);
+        _requestedLogicalClientWidth = _clientWidth;
+        _requestedLogicalClientHeight = _clientHeight;
         _wpfRenderScheduler = CreateDefaultRenderScheduler(_platformServices, out _ownsRenderScheduler);
         AttachDispatcherService(_platformServices.Dispatcher);
         AttachRenderScheduler(_wpfRenderScheduler);
@@ -256,6 +260,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     {
         _clientWidth = Math.Max(1, width);
         _clientHeight = Math.Max(1, height);
+        _requestedLogicalClientWidth = _clientWidth;
+        _requestedLogicalClientHeight = _clientHeight;
         if (_window != null)
         {
             _window.Size = new Vector2D<int>(_clientWidth, _clientHeight);
@@ -776,6 +782,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         _clientWidth = clientWidth;
         _clientHeight = clientHeight;
+        _requestedLogicalClientWidth = clientWidth;
+        _requestedLogicalClientHeight = clientHeight;
         return true;
     }
 
@@ -783,14 +791,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     {
         return _portablePresentationSourceClientWidth > 0
             ? _portablePresentationSourceClientWidth
-            : _clientWidth;
+            : _requestedLogicalClientWidth > 0
+                ? _requestedLogicalClientWidth
+                : _clientWidth;
     }
 
     private int GetCachedLogicalClientHeight()
     {
         return _portablePresentationSourceClientHeight > 0
             ? _portablePresentationSourceClientHeight
-            : _clientHeight;
+            : _requestedLogicalClientHeight > 0
+                ? _requestedLogicalClientHeight
+                : _clientHeight;
     }
 
     internal static Vector2D<int> ResolveLogicalClientSize(

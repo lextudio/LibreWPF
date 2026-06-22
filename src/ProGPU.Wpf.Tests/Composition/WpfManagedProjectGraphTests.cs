@@ -6929,11 +6929,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalDatePicker", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalSlider", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalProgressBar", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalRepeatButton", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalScrollBar", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("OnExternalMenuItemClick", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("OnExternalContextMenuItemChecked", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("OnExternalRadioButtonChecked", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("OnExternalPasswordChanged", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("OnExternalSliderValueChanged", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OnExternalRepeatButtonClick", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OnExternalScrollBarScroll", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMenusAndChoiceControls(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateToolbarStatusRangePasswordDateControls(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK menu command executed count", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6949,6 +6953,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK DatePicker selected date format", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProgressBar ElementName binding", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProgressBar value after Slider update", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK RepeatButton routed event", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ScrollBar LineDown command", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ScrollBar ScrollToBottom command", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalAdornerDecorator", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalAdornedButton", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("public sealed class ExternalAdorner : Adorner", externalSdkHarnessProgram, StringComparison.Ordinal);

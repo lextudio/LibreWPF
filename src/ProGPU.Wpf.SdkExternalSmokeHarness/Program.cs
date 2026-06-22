@@ -1270,6 +1270,22 @@ internal static class Program
                         Minimum="0"
                         Maximum="100"
                         Value="{Binding Value, ElementName=ExternalSlider}" />
+                    <RepeatButton
+                        x:Name="ExternalRepeatButton"
+                        Content="External repeat"
+                        Delay="250"
+                        Interval="75"
+                        Click="OnExternalRepeatButtonClick" />
+                    <ScrollBar
+                        x:Name="ExternalScrollBar"
+                        Orientation="Vertical"
+                        Minimum="0"
+                        Maximum="10"
+                        Value="4"
+                        SmallChange="1"
+                        LargeChange="3"
+                        ViewportSize="2"
+                        Scroll="OnExternalScrollBarScroll" />
                     <Label
                         x:Name="ExternalAccessLabel"
                         Target="{Binding ElementName=ExternalValidationTextBox}"
@@ -2048,6 +2064,20 @@ internal static class Program
 
                 public double LastExternalSliderValue { get; private set; }
 
+                public int ExternalRepeatButtonClickCount { get; private set; }
+
+                public string? LastExternalRepeatButtonClickSenderName { get; private set; }
+
+                public string? LastExternalRepeatButtonClickRoutedEventName { get; private set; }
+
+                public int ExternalScrollBarScrollCount { get; private set; }
+
+                public string? LastExternalScrollBarSenderName { get; private set; }
+
+                public string? LastExternalScrollBarEventType { get; private set; }
+
+                public double LastExternalScrollBarNewValue { get; private set; }
+
                 public string? LastExternalCheckBoxRoutedEventName { get; private set; }
 
                 public string? LastExternalRadioButtonCheckedName { get; private set; }
@@ -2370,6 +2400,21 @@ internal static class Program
                 {
                     ExternalSliderValueChangedCount++;
                     LastExternalSliderValue = e.NewValue;
+                }
+
+                private void OnExternalRepeatButtonClick(object sender, RoutedEventArgs e)
+                {
+                    ExternalRepeatButtonClickCount++;
+                    LastExternalRepeatButtonClickSenderName = (sender as FrameworkElement)?.Name;
+                    LastExternalRepeatButtonClickRoutedEventName = e.RoutedEvent?.Name;
+                }
+
+                private void OnExternalScrollBarScroll(object sender, ScrollEventArgs e)
+                {
+                    ExternalScrollBarScrollCount++;
+                    LastExternalScrollBarSenderName = (sender as FrameworkElement)?.Name;
+                    LastExternalScrollBarEventType = e.ScrollEventType.ToString();
+                    LastExternalScrollBarNewValue = e.NewValue;
                 }
 
                 private void OnExternalFrameNavigating(object sender, NavigatingCancelEventArgs e)
@@ -7997,6 +8042,55 @@ internal static class Program
                     AssertClose(40.0, window.LastExternalSliderValue, "external SDK Slider event value");
                     AssertAtLeast(sliderValueChangedBefore + 1, window.ExternalSliderValueChangedCount, "external SDK Slider changed count");
                     AssertClose(40.0, progressBar.Value, "external SDK ProgressBar value after Slider update");
+
+                    var repeatButton = RequireType<RepeatButton>(
+                        window.FindName("ExternalRepeatButton"),
+                        "external SDK repeat button");
+                    AssertEqual("External repeat", repeatButton.Content, "external SDK RepeatButton content");
+                    AssertEqual(250, repeatButton.Delay, "external SDK RepeatButton delay");
+                    AssertEqual(75, repeatButton.Interval, "external SDK RepeatButton interval");
+                    int repeatClickBefore = window.ExternalRepeatButtonClickCount;
+                    repeatButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, repeatButton));
+                    DrainDispatcher();
+                    AssertEqual(repeatClickBefore + 1, window.ExternalRepeatButtonClickCount, "external SDK RepeatButton Click count");
+                    AssertEqual("ExternalRepeatButton", window.LastExternalRepeatButtonClickSenderName, "external SDK RepeatButton Click sender");
+                    AssertEqual("Click", window.LastExternalRepeatButtonClickRoutedEventName, "external SDK RepeatButton routed event");
+
+                    var scrollBar = RequireType<ScrollBar>(
+                        window.FindName("ExternalScrollBar"),
+                        "external SDK scroll bar");
+                    AssertEqual(Orientation.Vertical, scrollBar.Orientation, "external SDK ScrollBar orientation");
+                    AssertEqual(0.0, scrollBar.Minimum, "external SDK ScrollBar minimum");
+                    AssertEqual(10.0, scrollBar.Maximum, "external SDK ScrollBar maximum");
+                    AssertEqual(4.0, scrollBar.Value, "external SDK ScrollBar initial value");
+                    AssertEqual(1.0, scrollBar.SmallChange, "external SDK ScrollBar small change");
+                    AssertEqual(3.0, scrollBar.LargeChange, "external SDK ScrollBar large change");
+                    AssertEqual(2.0, scrollBar.ViewportSize, "external SDK ScrollBar viewport size");
+                    ExecuteScrollBarCommand(scrollBar, ScrollBar.LineDownCommand, 5.0, ScrollEventType.SmallIncrement, window, "external SDK ScrollBar LineDown command");
+                    ExecuteScrollBarCommand(scrollBar, ScrollBar.LineUpCommand, 4.0, ScrollEventType.SmallDecrement, window, "external SDK ScrollBar LineUp command");
+                    ExecuteScrollBarCommand(scrollBar, ScrollBar.PageDownCommand, 7.0, ScrollEventType.LargeIncrement, window, "external SDK ScrollBar PageDown command");
+                    ExecuteScrollBarCommand(scrollBar, ScrollBar.PageUpCommand, 4.0, ScrollEventType.LargeDecrement, window, "external SDK ScrollBar PageUp command");
+                    ExecuteScrollBarCommand(scrollBar, ScrollBar.ScrollToBottomCommand, 10.0, ScrollEventType.Last, window, "external SDK ScrollBar ScrollToBottom command");
+                    ExecuteScrollBarCommand(scrollBar, ScrollBar.ScrollToTopCommand, 0.0, ScrollEventType.First, window, "external SDK ScrollBar ScrollToTop command");
+                }
+
+                private static void ExecuteScrollBarCommand(
+                    ScrollBar scrollBar,
+                    RoutedCommand command,
+                    double expectedValue,
+                    ScrollEventType expectedScrollEventType,
+                    MainWindow window,
+                    string description)
+                {
+                    int scrollCountBefore = window.ExternalScrollBarScrollCount;
+                    AssertEqual(true, command.CanExecute(null, scrollBar), $"{description} CanExecute");
+                    command.Execute(null, scrollBar);
+                    DrainDispatcher();
+                    AssertEqual(expectedValue, scrollBar.Value, $"{description} value");
+                    AssertAtLeast(scrollCountBefore + 1, window.ExternalScrollBarScrollCount, $"{description} Scroll event count");
+                    AssertEqual("ExternalScrollBar", window.LastExternalScrollBarSenderName, $"{description} Scroll sender");
+                    AssertEqual(expectedScrollEventType.ToString(), window.LastExternalScrollBarEventType, $"{description} Scroll event type");
+                    AssertEqual(expectedValue, window.LastExternalScrollBarNewValue, $"{description} Scroll new value");
                 }
 
                 private static void ValidateAdornerDecorator(MainWindow window)

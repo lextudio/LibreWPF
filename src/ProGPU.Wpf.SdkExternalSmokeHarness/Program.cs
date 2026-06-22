@@ -3981,9 +3981,41 @@ internal static class Program
                     ValidateAccessKeyRoutingAfterRun(window);
                     ValidateClassInputBindingAfterRun(window);
                     ValidateKeyboardNavigationAfterRun(window);
+                    ValidatePopupOpeningAfterRun(window);
                     ValidateApplicationWindowLifetime(app, window);
 
                     App.MarkExternalRunValidated();
+                }
+
+                private static void ValidatePopupOpeningAfterRun(MainWindow window)
+                {
+                    var popupOwner = RequireType<Button>(
+                        window.FindName("ExternalPopupOwnerButton"),
+                        "external SDK Application.Run popup owner button");
+
+                    var toolTip = RequireType<ToolTip>(
+                        popupOwner.ToolTip,
+                        "external SDK Application.Run tooltip");
+                    toolTip.PlacementTarget = popupOwner;
+                    AssertEqual(false, toolTip.IsOpen, "external SDK Application.Run tooltip initial open state");
+                    toolTip.IsOpen = true;
+                    DrainDispatcher();
+                    AssertEqual(true, toolTip.IsOpen, "external SDK Application.Run tooltip opened through portable popup");
+                    toolTip.IsOpen = false;
+                    DrainDispatcher();
+                    AssertEqual(false, toolTip.IsOpen, "external SDK Application.Run tooltip closed through portable popup");
+
+                    var contextMenu = RequireType<ContextMenu>(
+                        popupOwner.ContextMenu,
+                        "external SDK Application.Run context menu");
+                    contextMenu.PlacementTarget = popupOwner;
+                    AssertEqual(false, contextMenu.IsOpen, "external SDK Application.Run context menu initial open state");
+                    contextMenu.IsOpen = true;
+                    DrainDispatcher();
+                    AssertEqual(true, contextMenu.IsOpen, "external SDK Application.Run context menu opened through portable popup");
+                    contextMenu.IsOpen = false;
+                    DrainDispatcher();
+                    AssertEqual(false, contextMenu.IsOpen, "external SDK Application.Run context menu closed through portable popup");
                 }
 
                 private static void ValidateApplicationWindowLifetime(App app, MainWindow window)

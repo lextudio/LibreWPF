@@ -7099,6 +7099,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("OnExternalThumbDragCompleted", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("OnExternalBubbledThumbDragDelta", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMenusAndChoiceControls(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePopupOpeningAfterRun(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Application.Run tooltip opened through portable popup", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Application.Run context menu opened through portable popup", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateToolbarStatusRangePasswordDateControls(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateThumbDragManager(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK menu command executed count", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -1162,6 +1162,10 @@ internal static class Program
                         x:Name="ExternalArrayItemsControl"
                         ItemsSource="{StaticResource ExternalArrayItems}" />
                     <TextBlock
+                        x:Name="ExternalNullIntrinsicText"
+                        Tag="{x:Null}"
+                        Text="External null resource" />
+                    <TextBlock
                         x:Name="ExternalStartupResourceText"
                         Foreground="{DynamicResource ExternalStartupBrush}"
                         Text="{DynamicResource ExternalStartupText}" />
@@ -4100,6 +4104,10 @@ internal static class Program
                         "external SDK x:Array items control");
                     AssertEqual(arrayItems, arrayItemsControl.ItemsSource, "external SDK x:Array ItemsSource");
                     AssertEqual(2, arrayItemsControl.Items.Count, "external SDK x:Array items count");
+                    var nullResourceText = RequireType<TextBlock>(
+                        window.FindName("ExternalNullIntrinsicText"),
+                        "external SDK x:Null intrinsic text block");
+                    AssertEqual(null, nullResourceText.Tag, "external SDK x:Null intrinsic tag");
 
                     var componentResourceText = RequireType<TextBlock>(
                         window.FindName("ExternalComponentResourceText"),

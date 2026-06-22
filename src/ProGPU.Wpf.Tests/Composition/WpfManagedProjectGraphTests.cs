@@ -6706,6 +6706,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Path.Combine(appRoot, \"ExternalResources.xaml\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ResourceDictionary Source=\"ExternalResources.xaml\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalStaticBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Tag=\"{x:Null}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalNullIntrinsicText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK x:Null intrinsic tag", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<x:Array", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"ExternalArrayItems\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Type=\"{x:Type sys:String}\"", externalSdkHarnessProgram, StringComparison.Ordinal);

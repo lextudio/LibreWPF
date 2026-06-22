@@ -25,7 +25,8 @@ public sealed class ProGpuWpfWindowHostTests
             Height = 480,
             Left = 12,
             Top = 24,
-            Topmost = true
+            Topmost = true,
+            WindowBorder = ProGpuWpfWindowBorder.Hidden
         })
         {
             WpfRenderScheduler = scheduler
@@ -35,6 +36,7 @@ public sealed class ProGpuWpfWindowHostTests
         host.SetClientSize(321, 123);
         host.SetPosition(32, 48);
         host.SetTopmost(false);
+        host.SetWindowBorder(ProGpuWpfWindowBorder.Fixed);
 
         Assert.Equal("Updated", host.Title);
         Assert.Equal(321, host.Width);
@@ -42,7 +44,8 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Equal(32, host.Left);
         Assert.Equal(48, host.Top);
         Assert.False(host.Topmost);
-        Assert.Equal(4, scheduler.RequestCount);
+        Assert.Equal(ProGpuWpfWindowBorder.Fixed, host.WindowBorder);
+        Assert.Equal(5, scheduler.RequestCount);
     }
 
     [Fact]

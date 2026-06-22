@@ -503,6 +503,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             VSync = fallback.VSync,
             IsVisible = fallback.IsVisible,
             Topmost = fallback.Topmost,
+            WindowBorder = fallback.WindowBorder,
             WindowState = fallback.WindowState
         };
 
@@ -545,6 +546,8 @@ public sealed class WpfPortableWindowActivation : IDisposable
             options.Topmost = topmost;
         }
 
+        options.WindowBorder = ResolveWindowBorder(window, options.WindowBorder);
+
         return options;
     }
 
@@ -566,6 +569,8 @@ public sealed class WpfPortableWindowActivation : IDisposable
         {
             Host.SetTopmost(topmost);
         }
+
+        Host.SetWindowBorder(ResolveWindowBorder(Window, Host.WindowBorder));
 
         var hasWidth =
             TryReadPositiveDimension(Window, "Width", out var width) ||
@@ -1501,6 +1506,47 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 return true;
             case "Normal":
                 mappedWindowState = ProGpuWpfWindowState.Normal;
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static ProGpuWpfWindowBorder ResolveWindowBorder(
+        object window,
+        ProGpuWpfWindowBorder fallback)
+    {
+        if (TryReadProperty(window, "WindowStyle", out object? windowStyle) &&
+            string.Equals(windowStyle?.ToString(), "None", StringComparison.Ordinal))
+        {
+            return ProGpuWpfWindowBorder.Hidden;
+        }
+
+        return TryReadProperty(window, "ResizeMode", out object? resizeMode) &&
+            TryMapResizeModeToWindowBorder(resizeMode, out ProGpuWpfWindowBorder mappedBorder)
+            ? mappedBorder
+            : fallback;
+    }
+
+    private static bool TryMapResizeModeToWindowBorder(
+        object? resizeMode,
+        out ProGpuWpfWindowBorder windowBorder)
+    {
+        windowBorder = ProGpuWpfWindowBorder.Resizable;
+        if (resizeMode == null)
+        {
+            return false;
+        }
+
+        switch (resizeMode.ToString())
+        {
+            case "NoResize":
+            case "CanMinimize":
+                windowBorder = ProGpuWpfWindowBorder.Fixed;
+                return true;
+            case "CanResize":
+            case "CanResizeWithGrip":
+                windowBorder = ProGpuWpfWindowBorder.Resizable;
                 return true;
             default:
                 return false;

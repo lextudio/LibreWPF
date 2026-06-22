@@ -242,6 +242,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf",
             "ProGpuWpfWindowHost.cs");
+        var proGpuOptionsPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "ProGpuWpfWindowOptions.cs");
         var proGpuDrawingFramePath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -284,6 +288,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuScheduler = File.ReadAllText(proGpuSchedulerPath);
         var proGpuPlatformServices = File.ReadAllText(proGpuPlatformServicesPath);
         var proGpuHost = File.ReadAllText(proGpuHostPath);
+        var proGpuOptions = File.ReadAllText(proGpuOptionsPath);
         var proGpuDrawingFrame = File.ReadAllText(proGpuDrawingFramePath);
         var proGpuCompositionTarget = File.ReadAllText(proGpuCompositionTargetPath);
         var proGpuCompositor = File.ReadAllText(proGpuCompositorPath);
@@ -326,6 +331,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Host.SetPosition(windowLeft.Value, windowTop.Value)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("public void SetTopmost(bool topmost)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.SetTopmost(topmost)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("ResolveWindowBorder(window, options.WindowBorder)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("Host.SetWindowBorder(ResolveWindowBorder(Window, Host.WindowBorder))", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("TryMapResizeModeToWindowBorder", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("WindowStyle", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FlushWpfDispatcherOperations(\"Loaded\", \"Render\")", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FlushWpfDispatcherOperations(\"Render\")", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryFlushDispatcherOperations(Window, markerPriorityName)", proGpuActivation, StringComparison.Ordinal);
@@ -350,10 +359,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public int? Left => _window?.Position.X ?? _windowLeft;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("public int? Top => _window?.Position.Y ?? _windowTop;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("public bool Topmost => _window?.TopMost ?? _windowTopmost;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("public ProGpuWpfWindowBorder WindowBorder => _windowBorder;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("public void SetPosition(int left, int top)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_window.Position = new Vector2D<int>(left, top)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("public void SetTopmost(bool topmost)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_window.TopMost = topmost", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("public void SetWindowBorder(ProGpuWpfWindowBorder windowBorder)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_window.WindowBorder = ToSilkWindowBorder(windowBorder)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("windowOptions.WindowBorder = ToSilkWindowBorder(_windowBorder)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("private static SilkWindowBorder ToSilkWindowBorder(ProGpuWpfWindowBorder windowBorder)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("public enum ProGpuWpfWindowBorder", proGpuOptions, StringComparison.Ordinal);
         Assert.Contains("internal void SetInitialClientSize(int width, int height)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("SetClientSizeCore(width, height, updatePortablePresentationSource: false)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("private int _requestedLogicalClientWidth = -1;", proGpuHost, StringComparison.Ordinal);
@@ -7300,6 +7315,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetNativeAssetCandidates(\"glfw\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateProGpuHiDpiRenderSurface(outputRoot)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU WPF host logical width property", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ProGPU WPF host window border property", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ProGPU WPF host window border method parameter count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK portable presentation source client-size return type", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU WPF composition render logical/physical surface", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU compositor render logical/physical surface", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7316,6 +7333,8 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("ValidateProGpuHiDpiRenderSurface(inputs)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU WPF host logical width property", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK ProGPU WPF host window border property", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK ProGPU WPF host window border method parameter count", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK portable presentation source client-size return type", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU WPF composition render logical/physical surface", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU compositor render logical/physical surface", runtimeHarnessProgram, StringComparison.Ordinal);

@@ -9,6 +9,7 @@ using System.Windows.Media.ProGPU.Composition;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using System.Windows.Media.ProGPU.Platform;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
+using SilkWindowBorder = Silk.NET.Windowing.WindowBorder;
 using SilkWindowState = Silk.NET.Windowing.WindowState;
 
 namespace System.Windows.Media.ProGPU;
@@ -51,6 +52,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private int? _windowLeft;
     private int? _windowTop;
     private bool _windowTopmost;
+    private ProGpuWpfWindowBorder _windowBorder;
 
     internal readonly record struct RenderSurfaceGeometry(
         uint LogicalWidth,
@@ -74,6 +76,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _windowLeft = _options.Left;
         _windowTop = _options.Top;
         _windowTopmost = _options.Topmost;
+        _windowBorder = _options.WindowBorder;
         _wpfRenderScheduler = CreateDefaultRenderScheduler(_platformServices, out _ownsRenderScheduler);
         AttachDispatcherService(_platformServices.Dispatcher);
         AttachRenderScheduler(_wpfRenderScheduler);
@@ -110,6 +113,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public int? Top => _window?.Position.Y ?? _windowTop;
 
     public bool Topmost => _window?.TopMost ?? _windowTopmost;
+
+    public ProGpuWpfWindowBorder WindowBorder => _windowBorder;
 
     public object? PortablePresentationSource => _portablePresentationSourceBridge?.Source;
 
@@ -289,6 +294,19 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         WpfRenderScheduler.RequestRender();
     }
 
+    public void SetWindowBorder(ProGpuWpfWindowBorder windowBorder)
+    {
+        ThrowIfDisposed();
+
+        _windowBorder = windowBorder;
+        if (_window != null)
+        {
+            _window.WindowBorder = ToSilkWindowBorder(windowBorder);
+        }
+
+        WpfRenderScheduler.RequestRender();
+    }
+
     internal void SetInitialClientSize(int width, int height)
     {
         ThrowIfDisposed();
@@ -442,6 +460,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         windowOptions.IsVisible = _isHostVisible;
         windowOptions.WindowState = ToSilkWindowState(_windowState);
         windowOptions.TopMost = _windowTopmost;
+        windowOptions.WindowBorder = ToSilkWindowBorder(_windowBorder);
         if (_windowLeft.HasValue && _windowTop.HasValue)
         {
             windowOptions.Position = new Vector2D<int>(_windowLeft.Value, _windowTop.Value);
@@ -1742,6 +1761,16 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             ProGpuWpfWindowState.Minimized => SilkWindowState.Minimized,
             ProGpuWpfWindowState.Maximized => SilkWindowState.Maximized,
             _ => SilkWindowState.Normal
+        };
+    }
+
+    private static SilkWindowBorder ToSilkWindowBorder(ProGpuWpfWindowBorder windowBorder)
+    {
+        return windowBorder switch
+        {
+            ProGpuWpfWindowBorder.Fixed => SilkWindowBorder.Fixed,
+            ProGpuWpfWindowBorder.Hidden => SilkWindowBorder.Hidden,
+            _ => SilkWindowBorder.Resizable
         };
     }
 }

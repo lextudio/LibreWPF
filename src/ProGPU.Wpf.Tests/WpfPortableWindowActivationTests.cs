@@ -170,6 +170,7 @@ public sealed class WpfPortableWindowActivationTests
             Left = 1,
             Top = 2,
             Topmost = false,
+            WindowBorder = ProGpuWpfWindowBorder.Hidden,
             VSync = true
         };
         var window = new FakeWindow
@@ -181,7 +182,8 @@ public sealed class WpfPortableWindowActivationTests
             Left = 10.4,
             Top = 20.6,
             Topmost = true,
-            WindowState = FakeWindowState.Minimized
+            WindowState = FakeWindowState.Minimized,
+            ResizeMode = FakeResizeMode.CanResizeWithGrip
         };
 
         var options = WpfPortableWindowActivation.CreateHostOptions(window, fallback);
@@ -194,6 +196,21 @@ public sealed class WpfPortableWindowActivationTests
         Assert.True(options.Topmost);
         Assert.True(options.VSync);
         Assert.Equal(ProGpuWpfWindowState.Minimized, options.WindowState);
+        Assert.Equal(ProGpuWpfWindowBorder.Resizable, options.WindowBorder);
+    }
+
+    [Fact]
+    public void CreateHostOptionsMapsWindowStyleNoneToHiddenBorder()
+    {
+        var window = new FakeWindow
+        {
+            ResizeMode = FakeResizeMode.CanResize,
+            WindowStyle = FakeWindowStyle.None
+        };
+
+        var options = WpfPortableWindowActivation.CreateHostOptions(window);
+
+        Assert.Equal(ProGpuWpfWindowBorder.Hidden, options.WindowBorder);
     }
 
     [Fact]
@@ -217,7 +234,8 @@ public sealed class WpfPortableWindowActivationTests
             Left = 32,
             Top = 48,
             Topmost = true,
-            WindowState = FakeWindowState.Normal
+            WindowState = FakeWindowState.Normal,
+            ResizeMode = FakeResizeMode.NoResize
         };
         var source = new FakePortablePresentationSource();
 
@@ -231,6 +249,7 @@ public sealed class WpfPortableWindowActivationTests
         Assert.Equal(32, host.Left);
         Assert.Equal(48, host.Top);
         Assert.True(host.Topmost);
+        Assert.Equal(ProGpuWpfWindowBorder.Fixed, host.WindowBorder);
         Assert.Equal(0, source.ClientSizeChangeCount);
 
         activation.SetClientSize(window.Width, window.Height);
@@ -601,6 +620,10 @@ public sealed class WpfPortableWindowActivationTests
 
         public FakeWindowState WindowState { get; set; } = FakeWindowState.Normal;
 
+        public FakeResizeMode ResizeMode { get; set; } = FakeResizeMode.CanResize;
+
+        public FakeWindowStyle WindowStyle { get; set; } = FakeWindowStyle.SingleBorderWindow;
+
         public bool CancelClose { get; set; }
 
         public bool IsClosed { get; private set; }
@@ -825,6 +848,22 @@ public sealed class WpfPortableWindowActivationTests
         Normal,
         Minimized,
         Maximized
+    }
+
+    private enum FakeResizeMode
+    {
+        NoResize,
+        CanMinimize,
+        CanResize,
+        CanResizeWithGrip
+    }
+
+    private enum FakeWindowStyle
+    {
+        None,
+        SingleBorderWindow,
+        ThreeDBorderWindow,
+        ToolWindow
     }
 
     private sealed class FakePortablePresentationSource : IDisposable

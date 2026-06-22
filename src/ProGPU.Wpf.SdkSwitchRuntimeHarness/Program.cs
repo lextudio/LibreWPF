@@ -354,6 +354,8 @@ internal static class Program
         AssertPropertyType(windowHostType, "Left", typeof(int?), "SDK ProGPU WPF host left property");
         AssertPropertyType(windowHostType, "Top", typeof(int?), "SDK ProGPU WPF host top property");
         AssertPropertyType(windowHostType, "Topmost", typeof(bool), "SDK ProGPU WPF host topmost property");
+        Type windowBorderType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfWindowBorder");
+        AssertPropertyType(windowHostType, "WindowBorder", windowBorderType, "SDK ProGPU WPF host window border property");
 
         MethodInfo setClientSize = windowHostType.GetMethod(
             "SetClientSize",
@@ -381,6 +383,15 @@ internal static class Program
             modifiers: null)
             ?? throw new MissingMethodException(windowHostType.FullName, "SetTopmost");
         AssertEqual(1, setTopmost.GetParameters().Length, "SDK ProGPU WPF host topmost method parameter count");
+
+        MethodInfo setWindowBorder = windowHostType.GetMethod(
+            "SetWindowBorder",
+            BindingFlags.Instance | BindingFlags.Public,
+            binder: null,
+            [windowBorderType],
+            modifiers: null)
+            ?? throw new MissingMethodException(windowHostType.FullName, "SetWindowBorder");
+        AssertEqual(1, setWindowBorder.GetParameters().Length, "SDK ProGPU WPF host window border method parameter count");
 
         Type portablePresentationSourceType = GetRequiredType(presentationCore, "System.Windows.PortablePresentationSource");
         MethodInfo setPortableClientSize = portablePresentationSourceType.GetMethod(

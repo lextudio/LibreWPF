@@ -20,6 +20,8 @@ public sealed class ProGpuWpfWindowOptions
 
     public bool Topmost { get; set; }
 
+    public ProGpuWpfWindowBorder WindowBorder { get; set; } = ProGpuWpfWindowBorder.Resizable;
+
     public ProGpuWpfWindowState WindowState { get; set; } = ProGpuWpfWindowState.Normal;
 }
 
@@ -28,4 +30,11 @@ public enum ProGpuWpfWindowState
     Normal,
     Minimized,
     Maximized
+}
+
+public enum ProGpuWpfWindowBorder
+{
+    Resizable,
+    Fixed,
+    Hidden
 }

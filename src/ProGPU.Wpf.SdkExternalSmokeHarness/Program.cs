@@ -1004,6 +1004,10 @@ internal static class Program
                     <KeyBinding
                         Command="{x:Static local:MainWindow.ExternalCommand}"
                         Gesture="Ctrl+E" />
+                    <MouseBinding
+                        Command="{x:Static local:MainWindow.ExternalCommand}"
+                        CommandParameter="ExternalMouseCommandParameter"
+                        Gesture="LeftDoubleClick" />
                 </Window.InputBindings>
                 <StackPanel
                     x:Name="ExternalFocusPanel"
@@ -8496,13 +8500,23 @@ internal static class Program
                         "external SDK command binding");
                     AssertEqual(MainWindow.ExternalCommand, commandBinding.Command, "external SDK command binding command");
 
-                    AssertEqual(1, window.InputBindings.Count, "external SDK input binding count");
+                    AssertEqual(2, window.InputBindings.Count, "external SDK input binding count");
                     var keyBinding = RequireType<KeyBinding>(
                         window.InputBindings[0],
                         "external SDK key binding");
                     AssertEqual(MainWindow.ExternalCommand, keyBinding.Command, "external SDK key binding command");
                     AssertEqual(Key.E, keyBinding.Key, "external SDK key binding key");
                     AssertEqual(ModifierKeys.Control, keyBinding.Modifiers, "external SDK key binding modifiers");
+                    var mouseBinding = RequireType<MouseBinding>(
+                        window.InputBindings[1],
+                        "external SDK mouse binding");
+                    AssertEqual(MainWindow.ExternalCommand, mouseBinding.Command, "external SDK mouse binding command");
+                    AssertEqual("ExternalMouseCommandParameter", mouseBinding.CommandParameter, "external SDK mouse binding command parameter");
+                    var mouseGesture = RequireType<MouseGesture>(
+                        mouseBinding.Gesture,
+                        "external SDK mouse gesture");
+                    AssertEqual(MouseAction.LeftDoubleClick, mouseGesture.MouseAction, "external SDK mouse gesture action");
+                    AssertEqual(ModifierKeys.None, mouseGesture.Modifiers, "external SDK mouse gesture modifiers");
 
                     var focusPanel = RequireType<StackPanel>(
                         window.FindName("ExternalFocusPanel"),
@@ -8567,6 +8581,14 @@ internal static class Program
                     AssertEqual(executedBefore + 1, window.ExternalCommandExecutedCount, "external SDK direct command executed count");
                     AssertEqual("DirectCommandParameter", window.LastExternalCommandParameter, "external SDK direct command parameter");
                     AssertEqual(nameof(MainWindow.ExternalCommand), window.LastExternalCommandName, "external SDK command name");
+
+                    int mouseExecutedBefore = window.ExternalCommandExecutedCount;
+                    RequireType<RoutedCommand>(
+                        mouseBinding.Command,
+                        "external SDK mouse binding routed command")
+                        .Execute(mouseBinding.CommandParameter, commandButton);
+                    AssertEqual(mouseExecutedBefore + 1, window.ExternalCommandExecutedCount, "external SDK mouse binding command executed count");
+                    AssertEqual("ExternalMouseCommandParameter", window.LastExternalCommandParameter, "external SDK mouse binding executed parameter");
 
                     int clickBefore = window.ExternalCommandButtonClickCount;
                     int buttonExecutedBefore = window.ExternalCommandExecutedCount;

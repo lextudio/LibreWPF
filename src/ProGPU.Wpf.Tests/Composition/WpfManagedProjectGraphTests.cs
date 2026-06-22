@@ -7373,6 +7373,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CanExecute=\"OnExternalCommandCanExecute\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Executed=\"OnExternalCommandExecuted\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Gesture=\"Ctrl+E\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<MouseBinding", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Gesture=\"LeftDoubleClick\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalMouseCommandParameter", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FocusManager.FocusedElement=\"{Binding ElementName=ExternalCommandButton}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("KeyboardNavigation.TabNavigation=\"Cycle\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalAccessLabel", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7407,6 +7410,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateCommandsAndFocus(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window.CommandBindings.Count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window.InputBindings.Count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RequireType<MouseBinding>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("MouseAction.LeftDoubleClick", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK mouse binding command executed count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("KeyboardNavigation.GetDirectionalNavigation(focusPanel)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK label access-key target", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK standalone access text", externalSdkHarnessProgram, StringComparison.Ordinal);

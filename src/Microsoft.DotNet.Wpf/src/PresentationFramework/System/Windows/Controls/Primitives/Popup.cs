@@ -2656,6 +2656,22 @@ namespace System.Windows.Controls.Primitives
         // Else this is the BoundingRect of either the placement target's window or the parent of the popup's window.
         private Rect GetScreenBounds(Rect boundingBox, Point p)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                Rect sourceBounds = _secHelper.GetParentWindowRect();
+                if (!sourceBounds.IsEmpty)
+                {
+                    return sourceBounds;
+                }
+
+                if (!boundingBox.IsEmpty)
+                {
+                    return boundingBox;
+                }
+
+                return new Rect(0, 0, SystemParameters.PrimaryScreenWidth, SystemParameters.PrimaryScreenHeight);
+            }
+
             if (_secHelper.IsChildPopup)
             {
                 // The "monitor" is the main window for child windows.
@@ -2983,11 +2999,17 @@ namespace System.Windows.Controls.Primitives
             internal Point ClientToScreen(Visual rootVisual, Point clientPoint)
             {
                 // Get the HwndSource of the target element.
-                HwndSource targetWindow = PopupSecurityHelper.GetPresentationSource(rootVisual) as HwndSource;
+                PresentationSource targetWindow = PopupSecurityHelper.GetPresentationSource(rootVisual);
 
-                if (targetWindow != null)
+                if (targetWindow is HwndSource hwndSource)
                 {
-                    return PointUtil.ToPoint(ClientToScreen(targetWindow, clientPoint));
+                    return PointUtil.ToPoint(ClientToScreen(hwndSource, clientPoint));
+                }
+
+                CompositionTarget compositionTarget = targetWindow?.CompositionTarget;
+                if (compositionTarget != null && !compositionTarget.IsDisposed)
+                {
+                    return compositionTarget.TransformToDevice.Transform(clientPoint);
                 }
 
                 return clientPoint;
@@ -3024,10 +3046,10 @@ namespace System.Windows.Controls.Primitives
                 if (Mouse.DirectlyOver != null)
                 {
                     // get target window info
-                    HwndSource hwndSource = null;
+                    PresentationSource presentationSource = null;
                     if (targetVisual != null)
                     {
-                        hwndSource = PopupSecurityHelper.GetPresentationSource(targetVisual) as HwndSource;
+                        presentationSource = PopupSecurityHelper.GetPresentationSource(targetVisual);
                     }
 
                     IInputElement relativeTarget = targetVisual as IInputElement;
@@ -3036,10 +3058,10 @@ namespace System.Windows.Controls.Primitives
                     {
                         Point pt = Mouse.GetPosition(relativeTarget);
 
-                        if ((hwndSource != null) && !hwndSource.IsDisposed)
+                        if ((presentationSource != null) && !presentationSource.IsDisposed)
                         {
-                            Visual rootVisual = hwndSource.RootVisual;
-                            CompositionTarget ct = hwndSource.CompositionTarget;
+                            Visual rootVisual = presentationSource.RootVisual;
+                            CompositionTarget ct = presentationSource.CompositionTarget;
 
                             if ((rootVisual != null) && (ct != null))
                             {
@@ -3050,7 +3072,12 @@ namespace System.Windows.Controls.Primitives
                                 pt = transform.Transform(pt);
 
                                 // Convert from device client units to screen units
-                                return ClientToScreen(hwndSource, pt);
+                                if (presentationSource is HwndSource hwndSource)
+                                {
+                                    return ClientToScreen(hwndSource, pt);
+                                }
+
+                                return new NativeMethods.POINT((int)pt.X, (int)pt.Y);
                             }
                         }
                     }
@@ -3125,6 +3152,11 @@ namespace System.Windows.Controls.Primitives
 
             internal Rect GetWindowRect()
             {
+                if (!OperatingSystem.IsWindows())
+                {
+                    return GetPresentationSourceRootRect();
+                }
+
                 NativeMethods.RECT rect = new NativeMethods.RECT(0, 0, 0, 0);
 
                 IntPtr hwnd = Handle;
@@ -3138,7 +3170,7 @@ namespace System.Windows.Controls.Primitives
 
             internal Matrix GetTransformToDevice()
             {
-                CompositionTarget ct = _window.CompositionTarget;
+                CompositionTarget ct = _window?.CompositionTarget;
                 if (ct != null && !ct.IsDisposed)
                 {
                     return ct.TransformToDevice;
@@ -3149,15 +3181,15 @@ namespace System.Windows.Controls.Primitives
 
             internal static Matrix GetTransformToDevice(Visual targetVisual)
             {
-                HwndSource hwndSource = null;
+                PresentationSource presentationSource = null;
                 if (targetVisual != null)
                 {
-                    hwndSource = PopupSecurityHelper.GetPresentationSource(targetVisual) as HwndSource;
+                    presentationSource = PopupSecurityHelper.GetPresentationSource(targetVisual);
                 }
 
-                if (hwndSource != null)
+                if (presentationSource != null)
                 {
-                    CompositionTarget ct = hwndSource.CompositionTarget;
+                    CompositionTarget ct = presentationSource.CompositionTarget;
                     if (ct != null && !ct.IsDisposed)
                     {
                         return ct.TransformToDevice;
@@ -3169,7 +3201,7 @@ namespace System.Windows.Controls.Primitives
 
             internal Matrix GetTransformFromDevice()
             {
-                CompositionTarget ct = _window.CompositionTarget;
+                CompositionTarget ct = _window?.CompositionTarget;
                 if (ct != null && !ct.IsDisposed)
                 {
                     return ct.TransformFromDevice;
@@ -3181,6 +3213,11 @@ namespace System.Windows.Controls.Primitives
             internal void SetWindowRootVisual(Visual v)
             {
                 _window.RootVisual = v;
+                if (!OperatingSystem.IsWindows() && _window is PortablePresentationSource portableSource)
+                {
+                    Size clientSize = GetPortableRootClientSize(v);
+                    portableSource.SetClientSize(clientSize.Width, clientSize.Height);
+                }
             }
 
             internal static bool IsVisualPresentationSourceNull(Visual visual)
@@ -3190,6 +3227,11 @@ namespace System.Windows.Controls.Primitives
 
             internal void ShowWindow()
             {
+                if (!OperatingSystem.IsWindows())
+                {
+                    return;
+                }
+
                 if (IsChildPopup)
                 {
                     IntPtr lastWebOCHwnd = GetLastWebOCHwnd();
@@ -3219,6 +3261,11 @@ namespace System.Windows.Controls.Primitives
 
             internal void HideWindow()
             {
+                if (!OperatingSystem.IsWindows())
+                {
+                    return;
+                }
+
                 UnsafeNativeMethods.ShowWindow(new HandleRef(null, Handle), NativeMethods.SW_HIDE);
             }
 
@@ -3258,6 +3305,10 @@ namespace System.Windows.Controls.Primitives
 
             internal void SetHitTestable(bool hitTestable)
             {
+                if (!OperatingSystem.IsWindows())
+                {
+                    return;
+                }
 
                 // get the window handle
                 IntPtr handle = Handle;
@@ -3321,6 +3372,12 @@ namespace System.Windows.Controls.Primitives
             {
                 Debug.Assert(!IsChildPopup || (IsChildPopup && !transparent), "Child popups cannot be transparent");
                 transparent = transparent && !IsChildPopup;
+
+                if (!OperatingSystem.IsWindows())
+                {
+                    _window = new PortablePresentationSource();
+                    return;
+                }
 
                 Visual mainTreeVisual = placementTarget;
                 if (IsChildPopup)
@@ -3425,20 +3482,20 @@ namespace System.Windows.Controls.Primitives
             // Helper's Critical Methods - NOT safe to expose
             /////////////////////////////////////////////////////////////////////////////////////
 
-            private static IntPtr GetHandle(HwndSource hwnd)
+            private static IntPtr GetHandle(PresentationSource source)
             {
                 // add hook to the popup's window
-                return (hwnd!=null ? hwnd.Handle : IntPtr.Zero);
+                return (source is HwndSource hwnd ? hwnd.Handle : IntPtr.Zero);
             }
 
-            private static IntPtr GetParentHandle(HwndSource hwnd)
+            private static IntPtr GetParentHandle(PresentationSource source)
             {
                 if (!OperatingSystem.IsWindows())
                 {
                     return IntPtr.Zero;
                 }
 
-                if (hwnd != null)
+                if (source is HwndSource hwnd)
                 {
                     IntPtr child = GetHandle(hwnd);
                     if (child != IntPtr.Zero)
@@ -3465,6 +3522,16 @@ namespace System.Windows.Controls.Primitives
             ///
             /// </summary>
             internal void ForceMsaaToUiaBridge(PopupRoot popupRoot)
+            {
+                if (!OperatingSystem.IsWindows())
+                {
+                    return;
+                }
+
+                ForceMsaaToUiaBridgeWindows(popupRoot);
+            }
+
+            private void ForceMsaaToUiaBridgeWindows(PopupRoot popupRoot)
             {
                 if (Handle != IntPtr.Zero && (UnsafeNativeMethods.IsWinEventHookInstalled(NativeMethods.EVENT_OBJECT_FOCUS) || UnsafeNativeMethods.IsWinEventHookInstalled(NativeMethods.EVENT_OBJECT_STATECHANGE)))
                 {
@@ -3494,10 +3561,15 @@ namespace System.Windows.Controls.Primitives
             internal void DestroyWindow(HwndSourceHook hook, AutoResizedEventHandler onAutoResizedEventHandler, HwndDpiChangedEventHandler onDpiChagnedEventHandler)
             {
                 // Do this first to prevent infinite loops in dispose
-                HwndSource hwnd = _window;
+                PresentationSource source = _window;
                 _window = null;
 
-                if (!hwnd.IsDisposed)
+                if (source == null || source.IsDisposed)
+                {
+                    return;
+                }
+
+                if (source is HwndSource hwnd)
                 {
                     hwnd.AutoResized -=  onAutoResizedEventHandler ;
                     hwnd.DpiChanged -= onDpiChagnedEventHandler;
@@ -3505,6 +3577,30 @@ namespace System.Windows.Controls.Primitives
                     hwnd.RootVisual = null;
                     hwnd.Dispose();
                 }
+                else
+                {
+                    source.RootVisual = null;
+                    (source as IDisposable)?.Dispose();
+                }
+            }
+
+            private static Size GetPortableRootClientSize(Visual rootVisual)
+            {
+                if (rootVisual is UIElement rootElement)
+                {
+                    rootElement.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                    Size desiredSize = rootElement.DesiredSize;
+                    return new Size(
+                        ToPortableClientSize(desiredSize.Width),
+                        ToPortableClientSize(desiredSize.Height));
+                }
+
+                return new Size(1.0, 1.0);
+            }
+
+            private static double ToPortableClientSize(double value)
+            {
+                return double.IsFinite(value) && value > 0.0 ? value : 1.0;
             }
 
             private bool _isChildPopup;
@@ -3514,7 +3610,7 @@ namespace System.Windows.Controls.Primitives
             /// </summary>
             private bool _isChildPopupInitialized;
 
-            private HwndSource _window;
+            private PresentationSource _window;
 
             private const string WebOCWindowClassName = "Shell Embedding";
         }
@@ -3593,7 +3689,7 @@ namespace System.Windows.Controls.Primitives
             {
                 NativeMethods.POINT placementOrigin = default;
 
-                if (IsPerMonitorDpiScalingActive)
+                if (IsPerMonitorDpiScalingActive && OperatingSystem.IsWindows())
                 {
                     NativeMethods.POINT? screenOrigin = GetPlacementTargetOriginInScreenCoordinates(popup);
                     if (screenOrigin.HasValue)

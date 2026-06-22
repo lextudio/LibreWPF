@@ -1921,6 +1921,17 @@ internal static class Program
         AssertType(actionToolTip, "System.Windows.Controls.ToolTip", "action button tooltip");
         AssertEqual("Action tooltip content", GetProperty(actionToolTip, "Content"), "action tooltip content");
         AssertEqual("Right", GetProperty(actionToolTip, "Placement").ToString() ?? string.Empty, "action tooltip placement");
+        if (flushDispatcherOperations != null)
+        {
+            SetProperty(actionToolTip, "PlacementTarget", actionButton);
+            AssertEqual(false, GetProperty(actionToolTip, "IsOpen"), "action tooltip initial open state");
+            SetProperty(actionToolTip, "IsOpen", true);
+            flushDispatcherOperations(window);
+            AssertEqual(true, GetProperty(actionToolTip, "IsOpen"), "action tooltip opened through portable popup");
+            SetProperty(actionToolTip, "IsOpen", false);
+            flushDispatcherOperations(window);
+            AssertEqual(false, GetProperty(actionToolTip, "IsOpen"), "action tooltip closed through portable popup");
+        }
 
         object actionContextMenu = GetProperty(actionButton, "ContextMenu");
         AssertType(actionContextMenu, "System.Windows.Controls.ContextMenu", "action button context menu");

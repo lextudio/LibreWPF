@@ -647,6 +647,12 @@ internal static class Program
                 Width="320"
                 Height="200"
                 AllowDrop="True"
+                PreviewDragEnter="OnExternalPreviewDragEnter"
+                DragEnter="OnExternalDragEnter"
+                PreviewDragOver="OnExternalPreviewDragOver"
+                DragOver="OnExternalDragOver"
+                PreviewDragLeave="OnExternalPreviewDragLeave"
+                DragLeave="OnExternalDragLeave"
                 PreviewDrop="OnExternalPreviewDrop"
                 Drop="OnExternalDrop">
                 <Window.Resources>
@@ -1935,6 +1941,18 @@ internal static class Program
 
                 public string? LastExternalTunnelRoutedEventName { get; private set; }
 
+                public int ExternalPreviewDragEnterCount { get; private set; }
+
+                public int ExternalDragEnterCount { get; private set; }
+
+                public int ExternalPreviewDragOverCount { get; private set; }
+
+                public int ExternalDragOverCount { get; private set; }
+
+                public int ExternalPreviewDragLeaveCount { get; private set; }
+
+                public int ExternalDragLeaveCount { get; private set; }
+
                 public int ExternalPreviewDropCount { get; private set; }
 
                 public int ExternalDropCount { get; private set; }
@@ -1952,6 +1970,26 @@ internal static class Program
                 public string? LastExternalDropRoutedEventName { get; private set; }
 
                 public string? LastExternalPreviewDropRoutedEventName { get; private set; }
+
+                public string? LastExternalPreviewDragEnterRoutedEventName { get; private set; }
+
+                public string? LastExternalDragEnterRoutedEventName { get; private set; }
+
+                public string? LastExternalPreviewDragOverRoutedEventName { get; private set; }
+
+                public string? LastExternalDragOverRoutedEventName { get; private set; }
+
+                public string? LastExternalPreviewDragLeaveRoutedEventName { get; private set; }
+
+                public string? LastExternalDragLeaveRoutedEventName { get; private set; }
+
+                public string? LastExternalDragEnterAllowedEffects { get; private set; }
+
+                public string? LastExternalDragOverAllowedEffects { get; private set; }
+
+                public string? LastExternalDragEnterEffects { get; private set; }
+
+                public string? LastExternalDragOverEffects { get; private set; }
 
                 public double LastExternalDropX { get; private set; }
 
@@ -2217,6 +2255,50 @@ internal static class Program
                     LastExternalTunnelSenderName = (sender as FrameworkElement)?.Name;
                     LastExternalTunnelOriginalSourceName = (e.OriginalSource as FrameworkElement)?.Name;
                     LastExternalTunnelRoutedEventName = e.RoutedEvent?.Name;
+                }
+
+                private void OnExternalPreviewDragEnter(object sender, DragEventArgs e)
+                {
+                    ExternalPreviewDragEnterCount++;
+                    LastExternalPreviewDragEnterRoutedEventName = e.RoutedEvent?.Name;
+                    LastExternalDragEnterAllowedEffects = e.AllowedEffects.ToString();
+                }
+
+                private void OnExternalDragEnter(object sender, DragEventArgs e)
+                {
+                    ExternalDragEnterCount++;
+                    LastExternalDragEnterRoutedEventName = e.RoutedEvent?.Name;
+                    LastExternalDragEnterAllowedEffects = e.AllowedEffects.ToString();
+                    e.Effects = DragDropEffects.Move;
+                    LastExternalDragEnterEffects = e.Effects.ToString();
+                }
+
+                private void OnExternalPreviewDragOver(object sender, DragEventArgs e)
+                {
+                    ExternalPreviewDragOverCount++;
+                    LastExternalPreviewDragOverRoutedEventName = e.RoutedEvent?.Name;
+                    LastExternalDragOverAllowedEffects = e.AllowedEffects.ToString();
+                }
+
+                private void OnExternalDragOver(object sender, DragEventArgs e)
+                {
+                    ExternalDragOverCount++;
+                    LastExternalDragOverRoutedEventName = e.RoutedEvent?.Name;
+                    LastExternalDragOverAllowedEffects = e.AllowedEffects.ToString();
+                    e.Effects = DragDropEffects.Move;
+                    LastExternalDragOverEffects = e.Effects.ToString();
+                }
+
+                private void OnExternalPreviewDragLeave(object sender, DragEventArgs e)
+                {
+                    ExternalPreviewDragLeaveCount++;
+                    LastExternalPreviewDragLeaveRoutedEventName = e.RoutedEvent?.Name;
+                }
+
+                private void OnExternalDragLeave(object sender, DragEventArgs e)
+                {
+                    ExternalDragLeaveCount++;
+                    LastExternalDragLeaveRoutedEventName = e.RoutedEvent?.Name;
                 }
 
                 private void OnExternalPreviewDrop(object sender, DragEventArgs e)
@@ -6406,12 +6488,47 @@ internal static class Program
                         "ProcessDragDrop",
                         BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
                         ?? throw new InvalidOperationException("Expected portable window activation service to expose ProcessDragDrop.");
+                    MethodInfo processDragDropEvent = serviceType.GetMethod(
+                        "ProcessDragDropEvent",
+                        BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
+                        ?? throw new InvalidOperationException("Expected portable window activation service to expose ProcessDragDropEvent.");
 
                     var allowedEffects = DragDropEffects.Copy | DragDropEffects.Move;
-                    object? result = processDragDrop.Invoke(
+                    int enterResult = InvokePortableDragDrop(
+                        processDragDropEvent,
+                        window,
+                        dragDropEventKind: 1,
+                        file: "/tmp/external-sdk-enter.txt",
+                        text: "external SDK enter text",
+                        x: 10.0,
+                        y: 20.0,
+                        allowedEffects,
+                        DragDropEffects.Copy);
+                    int overResult = InvokePortableDragDrop(
+                        processDragDropEvent,
+                        window,
+                        dragDropEventKind: 2,
+                        file: "/tmp/external-sdk-over.txt",
+                        text: "external SDK over text",
+                        x: 12.0,
+                        y: 24.0,
+                        allowedEffects,
+                        DragDropEffects.Copy);
+                    int leaveResult = InvokePortableDragDrop(
+                        processDragDropEvent,
+                        window,
+                        dragDropEventKind: 3,
+                        file: "/tmp/external-sdk-leave.txt",
+                        text: "external SDK leave text",
+                        x: 13.0,
+                        y: 26.0,
+                        allowedEffects,
+                        DragDropEffects.Copy);
+                    object? result = processDragDropEvent.Invoke(
                         null,
                         [
                             window,
+                            0,
                             new[] { "/tmp/external-sdk-drop.txt" },
                             "external SDK drop text",
                             14.0,
@@ -6419,19 +6536,76 @@ internal static class Program
                             (int)allowedEffects,
                             (int)DragDropEffects.Copy
                         ]);
+                    object? wrapperResult = processDragDrop.Invoke(
+                        null,
+                        [
+                            window,
+                            new[] { "/tmp/external-sdk-wrapper-drop.txt" },
+                            "external SDK wrapper drop text",
+                            16.0,
+                            32.0,
+                            (int)allowedEffects,
+                            (int)DragDropEffects.Copy
+                        ]);
 
+                    AssertEqual((int)DragDropEffects.Move, enterResult, "external SDK portable drag-enter accepted effect");
+                    AssertEqual((int)DragDropEffects.Move, overResult, "external SDK portable drag-over accepted effect");
+                    AssertEqual((int)DragDropEffects.Copy, leaveResult, "external SDK portable drag-leave fallback effect");
                     AssertEqual((int)DragDropEffects.Move, (int)result!, "external SDK portable drag/drop accepted effect");
-                    AssertEqual(1, window.ExternalPreviewDropCount, "external SDK portable drag/drop preview count");
-                    AssertEqual(1, window.ExternalDropCount, "external SDK portable drag/drop drop count");
+                    AssertEqual((int)DragDropEffects.Move, (int)wrapperResult!, "external SDK portable drag/drop wrapper accepted effect");
+                    AssertEqual(1, window.ExternalPreviewDragEnterCount, "external SDK portable drag-enter preview count");
+                    AssertEqual(1, window.ExternalDragEnterCount, "external SDK portable drag-enter count");
+                    AssertEqual(1, window.ExternalPreviewDragOverCount, "external SDK portable drag-over preview count");
+                    AssertEqual(1, window.ExternalDragOverCount, "external SDK portable drag-over count");
+                    AssertEqual(1, window.ExternalPreviewDragLeaveCount, "external SDK portable drag-leave preview count");
+                    AssertEqual(1, window.ExternalDragLeaveCount, "external SDK portable drag-leave count");
+                    AssertEqual(2, window.ExternalPreviewDropCount, "external SDK portable drag/drop preview count");
+                    AssertEqual(2, window.ExternalDropCount, "external SDK portable drag/drop drop count");
+                    AssertEqual("PreviewDragEnter", window.LastExternalPreviewDragEnterRoutedEventName, "external SDK portable drag-enter preview event");
+                    AssertEqual("DragEnter", window.LastExternalDragEnterRoutedEventName, "external SDK portable drag-enter event");
+                    AssertEqual("PreviewDragOver", window.LastExternalPreviewDragOverRoutedEventName, "external SDK portable drag-over preview event");
+                    AssertEqual("DragOver", window.LastExternalDragOverRoutedEventName, "external SDK portable drag-over event");
+                    AssertEqual("PreviewDragLeave", window.LastExternalPreviewDragLeaveRoutedEventName, "external SDK portable drag-leave preview event");
+                    AssertEqual("DragLeave", window.LastExternalDragLeaveRoutedEventName, "external SDK portable drag-leave event");
                     AssertEqual("PreviewDrop", window.LastExternalPreviewDropRoutedEventName, "external SDK portable drag/drop preview event");
                     AssertEqual("Drop", window.LastExternalDropRoutedEventName, "external SDK portable drag/drop event");
-                    AssertEqual("external SDK drop text", window.LastExternalDropText, "external SDK portable drag/drop text");
+                    AssertEqual("external SDK wrapper drop text", window.LastExternalDropText, "external SDK portable drag/drop text");
                     AssertEqual(1, window.LastExternalDropFileCount, "external SDK portable drag/drop file count");
-                    AssertEqual("/tmp/external-sdk-drop.txt", window.LastExternalDropFirstFile, "external SDK portable drag/drop first file");
+                    AssertEqual("/tmp/external-sdk-wrapper-drop.txt", window.LastExternalDropFirstFile, "external SDK portable drag/drop first file");
+                    AssertEqual(allowedEffects.ToString(), window.LastExternalDragEnterAllowedEffects, "external SDK portable drag-enter allowed effects");
+                    AssertEqual(allowedEffects.ToString(), window.LastExternalDragOverAllowedEffects, "external SDK portable drag-over allowed effects");
                     AssertEqual(allowedEffects.ToString(), window.LastExternalDropAllowedEffects, "external SDK portable drag/drop allowed effects");
+                    AssertEqual(DragDropEffects.Move.ToString(), window.LastExternalDragEnterEffects, "external SDK portable drag-enter handler effect");
+                    AssertEqual(DragDropEffects.Move.ToString(), window.LastExternalDragOverEffects, "external SDK portable drag-over handler effect");
                     AssertEqual(DragDropEffects.Move.ToString(), window.LastExternalDropEffects, "external SDK portable drag/drop handler effect");
-                    AssertEqual(14.0, window.LastExternalDropX, "external SDK portable drag/drop x");
-                    AssertEqual(28.0, window.LastExternalDropY, "external SDK portable drag/drop y");
+                    AssertEqual(16.0, window.LastExternalDropX, "external SDK portable drag/drop x");
+                    AssertEqual(32.0, window.LastExternalDropY, "external SDK portable drag/drop y");
+
+                    static int InvokePortableDragDrop(
+                        MethodInfo method,
+                        MainWindow window,
+                        int dragDropEventKind,
+                        string file,
+                        string text,
+                        double x,
+                        double y,
+                        DragDropEffects allowedEffects,
+                        DragDropEffects acceptedEffect)
+                    {
+                        object? result = method.Invoke(
+                            null,
+                            [
+                                window,
+                                dragDropEventKind,
+                                new[] { file },
+                                text,
+                                x,
+                                y,
+                                (int)allowedEffects,
+                                (int)acceptedEffect
+                            ]);
+                        return (int)result!;
+                    }
                 }
 
                 private static void ValidateDependencyProperties(MainWindow window)

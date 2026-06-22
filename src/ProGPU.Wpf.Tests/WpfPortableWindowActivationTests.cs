@@ -462,6 +462,38 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void HostDragEnterUsesPortableWindowActivationServiceWithoutFallback()
+    {
+        System.Windows.PortableWindowActivationService.Reset();
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakePortableServiceDropWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        var args = new WpfDragDropEventArgs(
+            WpfDragDropEventKind.DragEnter,
+            new WpfDragDropData(new[] { "/tmp/enter.txt" }, "enter text"),
+            WpfDragDropEffects.Copy | WpfDragDropEffects.Move,
+            WpfDragDropEffects.Copy,
+            x: 7,
+            y: 9);
+        RaiseHostDragDropEvent(host, args);
+
+        Assert.Equal(0, window.DropCount);
+        Assert.Equal(1, System.Windows.PortableWindowActivationService.DropCount);
+        Assert.Equal((int)WpfDragDropEventKind.DragEnter, System.Windows.PortableWindowActivationService.LastKind);
+        Assert.Equal(new[] { "/tmp/enter.txt" }, System.Windows.PortableWindowActivationService.LastFiles);
+        Assert.Equal("enter text", System.Windows.PortableWindowActivationService.LastText);
+        Assert.Equal(7, System.Windows.PortableWindowActivationService.LastX);
+        Assert.Equal(9, System.Windows.PortableWindowActivationService.LastY);
+        Assert.Equal(WpfDragDropEffects.Move, args.AcceptedEffect);
+    }
+
+    [Fact]
     public void HostDragDropForwardsFilesToPortableFileDropFallback()
     {
         using var host = new ProGpuWpfWindowHost();

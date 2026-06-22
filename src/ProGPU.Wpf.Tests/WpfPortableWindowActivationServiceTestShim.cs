@@ -10,6 +10,8 @@ internal static class PortableWindowActivationService
 {
     public static int DropCount { get; private set; }
 
+    public static int LastKind { get; private set; }
+
     public static string[] LastFiles { get; private set; } = Array.Empty<string>();
 
     public static string? LastText { get; private set; }
@@ -25,6 +27,7 @@ internal static class PortableWindowActivationService
     public static void Reset()
     {
         DropCount = 0;
+        LastKind = 0;
         LastFiles = Array.Empty<string>();
         LastText = null;
         LastX = 0;
@@ -42,7 +45,29 @@ internal static class PortableWindowActivationService
         int allowedEffects,
         int acceptedEffect)
     {
+        return ProcessDragDropEvent(
+            window,
+            dragDropEventKind: 0,
+            files,
+            text,
+            x,
+            y,
+            allowedEffects,
+            acceptedEffect);
+    }
+
+    internal static int ProcessDragDropEvent(
+        IPortableWindowActivationServiceTestTarget window,
+        int dragDropEventKind,
+        string[] files,
+        string text,
+        double x,
+        double y,
+        int allowedEffects,
+        int acceptedEffect)
+    {
         DropCount++;
+        LastKind = dragDropEventKind;
         LastFiles = files;
         LastText = text;
         LastX = x;

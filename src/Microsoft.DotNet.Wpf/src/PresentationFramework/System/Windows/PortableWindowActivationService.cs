@@ -177,6 +177,27 @@ namespace System.Windows
             int allowedEffects,
             int acceptedEffect)
         {
+            return ProcessDragDropEvent(
+                window,
+                dragDropEventKind: 0,
+                files,
+                text,
+                x,
+                y,
+                allowedEffects,
+                acceptedEffect);
+        }
+
+        internal static int ProcessDragDropEvent(
+            Window window,
+            int dragDropEventKind,
+            string[] files,
+            string text,
+            double x,
+            double y,
+            int allowedEffects,
+            int acceptedEffect)
+        {
             if (OperatingSystem.IsWindows() || window == null)
             {
                 return (int)DragDropEffects.None;
@@ -190,8 +211,9 @@ namespace System.Windows
 
             DragDropEffects mappedAllowedEffects = ToDragDropEffects(allowedEffects, DragDropEffects.Copy);
             DragDropEffects mappedAcceptedEffect = ToDragDropEffects(acceptedEffect, DragDropEffects.None);
-            DragDropEffects result = DragDrop.ProcessPortableDrop(
+            DragDropEffects result = DragDrop.ProcessPortableDragDrop(
                 window,
+                ToDragDropRoutedEvent(dragDropEventKind),
                 dataObject,
                 DragDropKeyStates.None,
                 mappedAllowedEffects,
@@ -355,6 +377,17 @@ namespace System.Windows
         {
             var effects = (DragDropEffects)value;
             return DragDrop.IsValidDragDropEffects(effects) ? effects : fallback;
+        }
+
+        private static RoutedEvent ToDragDropRoutedEvent(int dragDropEventKind)
+        {
+            return dragDropEventKind switch
+            {
+                1 => DragDrop.DragEnterEvent,
+                2 => DragDrop.DragOverEvent,
+                3 => DragDrop.DragLeaveEvent,
+                _ => DragDrop.DropEvent
+            };
         }
 
         private static void UpdateModifierKeyStates(PortableKeyboardDevice keyboardDevice, PortableInputModifiers modifiers)

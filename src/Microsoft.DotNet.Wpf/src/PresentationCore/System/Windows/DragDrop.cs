@@ -543,8 +543,28 @@ namespace System.Windows
             DragDropEffects acceptedEffect,
             Point targetPoint)
         {
+            return ProcessPortableDragDrop(
+                target,
+                DropEvent,
+                dataObject,
+                dragDropKeyStates,
+                allowedEffects,
+                acceptedEffect,
+                targetPoint);
+        }
+
+        internal static DragDropEffects ProcessPortableDragDrop(
+            DependencyObject target,
+            RoutedEvent dragEvent,
+            IDataObject dataObject,
+            DragDropKeyStates dragDropKeyStates,
+            DragDropEffects allowedEffects,
+            DragDropEffects acceptedEffect,
+            Point targetPoint)
+        {
             if (OperatingSystem.IsWindows() ||
                 target == null ||
+                dragEvent == null ||
                 dataObject == null ||
                 !OleDropTarget.IsPortableDropTarget(target) ||
                 !OleDropTarget.IsDataAvailable(dataObject))
@@ -554,7 +574,7 @@ namespace System.Windows
 
             int effects = (int)allowedEffects;
             OleDropTarget.RaiseDragEvent(
-                DragDrop.DropEvent,
+                dragEvent,
                 dataObject,
                 (int)dragDropKeyStates,
                 ref effects,

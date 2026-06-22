@@ -203,7 +203,10 @@ public enum WpfDragDropEffects
 
 public enum WpfDragDropEventKind
 {
-    Drop
+    Drop = 0,
+    DragEnter = 1,
+    DragOver = 2,
+    DragLeave = 3
 }
 
 public sealed class WpfDragDropData

@@ -635,7 +635,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private void OnHostDragDropReceived(object? sender, WpfDragDropEventArgs e)
     {
-        if (_isDisposed || e.Kind != WpfDragDropEventKind.Drop)
+        if (_isDisposed)
         {
             return;
         }
@@ -648,6 +648,11 @@ public sealed class WpfPortableWindowActivation : IDisposable
         if (TryProcessPortableDragDrop(window, e))
         {
             return true;
+        }
+
+        if (e.Kind != WpfDragDropEventKind.Drop)
+        {
+            return false;
         }
 
         var windowType = window.GetType();
@@ -683,6 +688,50 @@ public sealed class WpfPortableWindowActivation : IDisposable
     {
         Type? serviceType = FindPortableWindowActivationServiceType(window);
         if (serviceType == null)
+        {
+            return false;
+        }
+
+        foreach (var method in serviceType.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+        {
+            if (!string.Equals(method.Name, "ProcessDragDropEvent", StringComparison.Ordinal) ||
+                method.ReturnType != typeof(int))
+            {
+                continue;
+            }
+
+            var parameters = method.GetParameters();
+            if (parameters.Length != 8 ||
+                !parameters[0].ParameterType.IsAssignableFrom(window.GetType()) ||
+                parameters[1].ParameterType != typeof(int) ||
+                parameters[2].ParameterType != typeof(string[]) ||
+                parameters[3].ParameterType != typeof(string) ||
+                parameters[4].ParameterType != typeof(double) ||
+                parameters[5].ParameterType != typeof(double) ||
+                parameters[6].ParameterType != typeof(int) ||
+                parameters[7].ParameterType != typeof(int))
+            {
+                continue;
+            }
+
+            var acceptedEffect = (int)method.Invoke(
+                obj: null,
+                parameters: new object?[]
+                {
+                    window,
+                    (int)e.Kind,
+                    e.Data.Files.ToArray(),
+                    e.Data.Text,
+                    e.X,
+                    e.Y,
+                    (int)e.AllowedEffects,
+                    (int)e.AcceptedEffect
+                })!;
+            e.AcceptedEffect = (WpfDragDropEffects)acceptedEffect;
+            return true;
+        }
+
+        if (e.Kind != WpfDragDropEventKind.Drop)
         {
             return false;
         }

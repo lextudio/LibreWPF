@@ -1422,6 +1422,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("System.Windows.Media.ImageBrush", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Media.Imaging.BitmapSource", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("WpfBitmapSourceImageAdapter", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("VerifyPortableSpellerFallback(presentationFramework)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertEqual(\"NullSpellerInterop\"", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RecordPortableSpellerSegment", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("portable speller segment count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"DrawLine\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"DrawRoundedRectangle\"", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"DrawEllipse\"", harnessProgram, StringComparison.Ordinal);
@@ -5567,6 +5571,41 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "ProGpuCompositionCommandSink.cs");
+        var wpfCompositionDrawingContextPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "WpfCompositionDrawingContext.cs");
+        var wpfObjectRenderDataDrawingContextPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "WpfObjectRenderDataDrawingContext.cs");
+        var wpfReflectionDrawingReplayPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfReflectionDrawingReplay.cs");
+        var proGpuWpfDrawingFramePath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "ProGpuWpfDrawingFrame.cs");
+        var proGpuWpfWindowHostPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "ProGpuWpfWindowHost.cs");
+        var wpfCompositionDrawingContextTestsPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "WpfCompositionDrawingContextTests.cs");
+        var wpfReflectionResourceResolverTestsPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "Mil",
+            "WpfReflectionResourceResolverTests.cs");
         var wpfMilRenderDataDecoderPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -5654,6 +5693,13 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuWpfAssemblyInfo = File.ReadAllText(proGpuWpfAssemblyInfoPath);
         var proGpuWpfTestsProject = File.ReadAllText(proGpuWpfTestsProjectPath);
         var proGpuWpfCommandSink = File.ReadAllText(proGpuWpfCommandSinkPath);
+        var wpfCompositionDrawingContext = File.ReadAllText(wpfCompositionDrawingContextPath);
+        var wpfObjectRenderDataDrawingContext = File.ReadAllText(wpfObjectRenderDataDrawingContextPath);
+        var wpfReflectionDrawingReplay = File.ReadAllText(wpfReflectionDrawingReplayPath);
+        var proGpuWpfDrawingFrame = File.ReadAllText(proGpuWpfDrawingFramePath);
+        var proGpuWpfWindowHost = File.ReadAllText(proGpuWpfWindowHostPath);
+        var wpfCompositionDrawingContextTests = File.ReadAllText(wpfCompositionDrawingContextTestsPath);
+        var wpfReflectionResourceResolverTests = File.ReadAllText(wpfReflectionResourceResolverTestsPath);
         var wpfMilRenderDataDecoder = File.ReadAllText(wpfMilRenderDataDecoderPath);
         var wpfReflectionResourceResolver = File.ReadAllText(wpfReflectionResourceResolverPath);
         var wpfTransportTargets = File.ReadAllText(wpfTransportTargetsPath);
@@ -6456,6 +6502,28 @@ public sealed class WpfManagedProjectGraphTests
         Assert.False(
             File.Exists(Path.Combine(Path.GetDirectoryName(proGpuWpfCommandSinkPath)!, "ProGpuWpfPen.cs")),
             "The transition ProGpuWpfPen wrapper should stay removed; WPF pen dash metadata belongs on native ProGPU.Vector.Pen.");
+        Assert.Contains("internal static bool IsTileBrush(object? brush)", wpfReflectionDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("TypeNameEndsWith(brush, \"ImageBrush\")", wpfReflectionDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("TypeNameEndsWith(brush, \"DrawingBrush\")", wpfReflectionDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("TypeNameEndsWith(brush, \"VisualBrush\")", wpfReflectionDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("TryReplayTileBrushFill(brushValue!", wpfReflectionDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("matrixTransformType = typeof(MediaTransform).Assembly.GetType(\"System.Windows.Media.MatrixTransform\")", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("private readonly Func<object?, MediaImageSource?>? _imageSourceAdapter", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("TryReplayTileBrushRectangle(brush, pen, rectangle)", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("TryReplayTileBrushGeometry(brush, pen, geometry)", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("WpfReflectionDrawingReplay.TryReplayTileBrushFill(", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("if (mediaBrush != null)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("_sink is IWpfNativeTransformCommandSink nativeTransformSink", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out var nativeTransform)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("OpenCompositionDrawingContext(IWpfImageSourceAdapter? imageSourceAdapter)", proGpuWpfDrawingFrame, StringComparison.Ordinal);
+        Assert.Contains("OpenCompositionDrawingContext(activeWpfImageSourceAdapter)", proGpuWpfWindowHost, StringComparison.Ordinal);
+        Assert.Contains("ObjectRenderDataDrawingContextReplaysMediaDrawingBrushBeforeGenericMediaBrushPath", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("GeneratedDrawingContextReplaysMediaImageBrushRectangleThroughImageSourceAdapter", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("GeneratedDrawingContextFallsBackToGenericMediaBrushWhenTileReplayUnsupported", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("ObjectRenderDataDrawingContextFallsBackToGenericMediaBrushWhenTileReplayUnsupported", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("ObjectRenderDataDrawingContextPushesReflectedTransformsThroughNativeSink", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("DecodePushTransformFallsBackToLocalMatrixTransformWhenForeignAssemblyShadowsType", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
+        Assert.Contains("\"System.Windows.Media.MatrixTransform\"", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("$([MSBuild]::IsOSPlatform('Windows'))", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("<_PowerShellExe Condition=\"'$(_PowerShellExe)' == ''\">pwsh</_PowerShellExe>", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("ValidateManagedWpfTransportPayload", wpfTransportTargets, StringComparison.Ordinal);

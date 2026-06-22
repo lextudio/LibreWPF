@@ -2,6 +2,8 @@ using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
+using System.Reflection;
+using System.Reflection.Emit;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.ProGPU.Composition;
@@ -272,6 +274,28 @@ public sealed class WpfReflectionResourceResolverTests
         Assert.Equal(4, adaptedTransform.Matrix.M22);
         Assert.Equal(10, adaptedTransform.Matrix.OffsetX);
         Assert.Equal(20, adaptedTransform.Matrix.OffsetY);
+        Assert.Equal(1, sink.PopCount);
+    }
+
+    [Fact]
+    public void DecodePushTransformFallsBackToLocalMatrixTransformWhenForeignAssemblyShadowsType()
+    {
+        var transform = CreateForeignTransformWithShadowMatrixTransform(new FakeMatrix(1, 0, 0, 1, 6, 7));
+        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { transform });
+        var sink = new TestSink();
+
+        var pushPayload = new byte[8];
+        WriteUInt32(pushPayload, 0, 1);
+        var renderData = CreateRecord(WpfMilCommandId.PushTransform, pushPayload)
+            .Concat(CreateRecord(WpfMilCommandId.Pop, Array.Empty<byte>()))
+            .ToArray();
+
+        var result = new WpfMilRenderDataDecoder().Decode(renderData, sink, resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(2, 2, 0, 0), result);
+        var adaptedTransform = Assert.IsType<MatrixTransform>(Assert.Single(sink.Transforms));
+        Assert.Equal(6, adaptedTransform.Matrix.OffsetX);
+        Assert.Equal(7, adaptedTransform.Matrix.OffsetY);
         Assert.Equal(1, sink.PopCount);
     }
 
@@ -2641,6 +2665,49 @@ public sealed class WpfReflectionResourceResolverTests
         WriteUInt32(payload, 32, 1);
         var record = CreateRecord(WpfMilCommandId.DrawRectangle, payload);
         return new FakeRenderData(record, record.Length, new FakeDependentResources(brush));
+    }
+
+    private static object CreateForeignTransformWithShadowMatrixTransform(FakeMatrix matrix)
+    {
+        var assembly = AssemblyBuilder.DefineDynamicAssembly(
+            new AssemblyName($"ForeignWpfTransformAssembly{Guid.NewGuid():N}"),
+            AssemblyBuilderAccess.Run);
+        var module = assembly.DefineDynamicModule("Main");
+        module.DefineType(
+                "System.Windows.Media.MatrixTransform",
+                TypeAttributes.Public | TypeAttributes.Class)
+            .CreateType();
+
+        var typeBuilder = module.DefineType(
+            "ForeignTransformResource",
+            TypeAttributes.Public | TypeAttributes.Class);
+        var valueField = typeBuilder.DefineField("_value", typeof(object), FieldAttributes.Private | FieldAttributes.InitOnly);
+        var constructor = typeBuilder.DefineConstructor(
+            MethodAttributes.Public,
+            CallingConventions.Standard,
+            new[] { typeof(object) });
+        var constructorIl = constructor.GetILGenerator();
+        constructorIl.Emit(OpCodes.Ldarg_0);
+        constructorIl.Emit(OpCodes.Call, typeof(object).GetConstructor(Type.EmptyTypes)!);
+        constructorIl.Emit(OpCodes.Ldarg_0);
+        constructorIl.Emit(OpCodes.Ldarg_1);
+        constructorIl.Emit(OpCodes.Stfld, valueField);
+        constructorIl.Emit(OpCodes.Ret);
+
+        var valueProperty = typeBuilder.DefineProperty("Value", PropertyAttributes.None, typeof(object), Type.EmptyTypes);
+        var valueGetter = typeBuilder.DefineMethod(
+            "get_Value",
+            MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
+            typeof(object),
+            Type.EmptyTypes);
+        var getterIl = valueGetter.GetILGenerator();
+        getterIl.Emit(OpCodes.Ldarg_0);
+        getterIl.Emit(OpCodes.Ldfld, valueField);
+        getterIl.Emit(OpCodes.Ret);
+        valueProperty.SetGetMethod(valueGetter);
+
+        return Activator.CreateInstance(typeBuilder.CreateType(), matrix)
+            ?? throw new InvalidOperationException("Could not create foreign transform resource.");
     }
 
     private static void WriteRect(byte[] target, int offset, double x, double y, double width, double height)

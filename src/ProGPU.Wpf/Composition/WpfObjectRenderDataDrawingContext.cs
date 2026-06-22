@@ -78,15 +78,8 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
             return;
         }
 
-        if (mediaBrush != null)
-        {
-            RegisterRetainedDependencies(brush, pen);
-            _sink.DrawRectangle(mediaBrush, mediaPen, mediaRectangle);
-            CountApplied();
-            return;
-        }
-
         if (brush != null
+            && WpfReflectionDrawingReplay.IsTileBrush(brush)
             && WpfReflectionDrawingReplay.TryReplayTileBrushFill(
                 brush,
                 WpfReflectionResourceResolver.CreateRectanglePath(mediaRectangle),
@@ -104,11 +97,27 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
             return;
         }
 
+        if (mediaBrush != null)
+        {
+            RegisterRetainedDependencies(brush, pen);
+            _sink.DrawRectangle(mediaBrush, mediaPen, mediaRectangle);
+            CountApplied();
+            return;
+        }
+
         if (mediaPen != null)
         {
-            RegisterRetainedDependencies(pen);
+            RegisterRetainedDependencies(brush, pen);
             _sink.DrawRectangle(null, mediaPen, mediaRectangle);
-            CountApplied();
+            if (brush != null && WpfReflectionDrawingReplay.IsTileBrush(brush))
+            {
+                CountPartiallyApplied();
+            }
+            else
+            {
+                CountApplied();
+            }
+
             return;
         }
 
@@ -209,15 +218,8 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
             return;
         }
 
-        if (mediaBrush != null)
-        {
-            RegisterRetainedDependencies(brush, pen, geometry);
-            _sink.DrawGeometry(mediaBrush, mediaPen, mediaGeometry);
-            CountApplied();
-            return;
-        }
-
         if (brush != null
+            && WpfReflectionDrawingReplay.IsTileBrush(brush)
             && WpfReflectionDrawingReplay.TryReplayTileBrushFill(
                 brush,
                 mediaGeometry,
@@ -235,11 +237,27 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
             return;
         }
 
+        if (mediaBrush != null)
+        {
+            RegisterRetainedDependencies(brush, pen, geometry);
+            _sink.DrawGeometry(mediaBrush, mediaPen, mediaGeometry);
+            CountApplied();
+            return;
+        }
+
         if (mediaPen != null)
         {
-            RegisterRetainedDependencies(pen, geometry);
+            RegisterRetainedDependencies(brush, pen, geometry);
             _sink.DrawGeometry(null, mediaPen, mediaGeometry);
-            CountApplied();
+            if (brush != null && WpfReflectionDrawingReplay.IsTileBrush(brush))
+            {
+                CountPartiallyApplied();
+            }
+            else
+            {
+                CountApplied();
+            }
+
             return;
         }
 
@@ -385,6 +403,12 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
         if (transform == null)
         {
             _sink.PushNoOpScope();
+        }
+        else if (_sink is IWpfNativeTransformCommandSink nativeTransformSink
+            && WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out var nativeTransform))
+        {
+            RegisterRetainedDependencies(transform);
+            nativeTransformSink.PushNativeTransform(nativeTransform);
         }
         else if (WpfReflectionResourceResolver.AdaptTransform(transform) is { } mediaTransform)
         {

@@ -143,12 +143,8 @@ internal static class WpfReflectionDrawingReplay
                 appliedAny = true;
             }
         }
-        else if (brush != null)
-        {
-            sink.DrawGeometry(brush, pen, geometry);
-            appliedAny = true;
-        }
-        else if (TryReplayTileBrushFill(brushValue!, geometry, sink, imageSourceAdapter, out var tileBrushStatus))
+        else if (IsTileBrush(brushValue)
+            && TryReplayTileBrushFill(brushValue!, geometry, sink, imageSourceAdapter, out var tileBrushStatus))
         {
             appliedAny = true;
             unsupportedAny |= tileBrushStatus == WpfDrawingReplayStatus.PartiallyApplied;
@@ -156,6 +152,11 @@ internal static class WpfReflectionDrawingReplay
             {
                 sink.DrawGeometry(null, pen, geometry);
             }
+        }
+        else if (brush != null)
+        {
+            sink.DrawGeometry(brush, pen, geometry);
+            appliedAny = true;
         }
         else
         {
@@ -205,8 +206,12 @@ internal static class WpfReflectionDrawingReplay
         IWpfCompositionCommandSink sink,
         Func<object?, MediaImageSource?>? imageSourceAdapter)
     {
-        if (!TypeNameEndsWith(brush, "ImageBrush")
-            || !TryGetOptionalBrushTransform(brush, "Transform", out var brushTransform)
+        if (!TypeNameEndsWith(brush, "ImageBrush"))
+        {
+            return false;
+        }
+
+        if (!TryGetOptionalBrushTransform(brush, "Transform", out var brushTransform)
             || !TryGetSupportedTileMode(brush, out var tileMode)
             || !TryGetSupportedStretch(brush, out var stretch)
             || !TryGetTileBrushAlignment(brush, out var alignmentX, out var alignmentY)
@@ -725,6 +730,16 @@ internal static class WpfReflectionDrawingReplay
             return true;
         }
 
+        if (WpfReflectionResourceResolver.TryAdaptTransformMatrix(transformValue, out var matrix))
+        {
+            if (WpfReflectionResourceResolver.IsIdentityMatrix(matrix))
+            {
+                return true;
+            }
+
+            return TryCreateMatrixTransform(matrix, out transform);
+        }
+
         transform = WpfReflectionResourceResolver.AdaptTransform(transformValue);
         if (transform == null)
         {
@@ -748,6 +763,16 @@ internal static class WpfReflectionDrawingReplay
         if (!TryGetPropertyValue(brush, "RelativeTransform", out var transformValue) || transformValue == null)
         {
             return true;
+        }
+
+        if (WpfReflectionResourceResolver.TryAdaptTransformMatrix(transformValue, out var relativeMatrix))
+        {
+            if (WpfReflectionResourceResolver.IsIdentityMatrix(relativeMatrix))
+            {
+                return true;
+            }
+
+            return TryCreateRelativeBoundsTransform(relativeMatrix, fillBounds, out transform);
         }
 
         var relativeTransform = WpfReflectionResourceResolver.AdaptTransform(transformValue);
@@ -1890,6 +1915,14 @@ internal static class WpfReflectionDrawingReplay
         }
 
         return null;
+    }
+
+    internal static bool IsTileBrush(object? brush)
+    {
+        return brush != null
+            && (TypeNameEndsWith(brush, "ImageBrush")
+                || TypeNameEndsWith(brush, "DrawingBrush")
+                || TypeNameEndsWith(brush, "VisualBrush"));
     }
 
     private static bool TypeNameEndsWith(object resource, string typeName)

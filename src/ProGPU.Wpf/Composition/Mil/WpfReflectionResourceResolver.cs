@@ -2162,8 +2162,12 @@ public sealed class WpfReflectionResourceResolver :
         out MediaTransform? transform)
     {
         transform = null;
-        var matrixTransformType = resource.GetType().Assembly.GetType("System.Windows.Media.MatrixTransform")
-            ?? typeof(MediaTransform).Assembly.GetType("System.Windows.Media.MatrixTransform");
+        var matrixTransformType = resource.GetType().Assembly.GetType("System.Windows.Media.MatrixTransform");
+        if (matrixTransformType == null || !typeof(MediaTransform).IsAssignableFrom(matrixTransformType))
+        {
+            matrixTransformType = typeof(MediaTransform).Assembly.GetType("System.Windows.Media.MatrixTransform");
+        }
+
         if (matrixTransformType == null || !typeof(MediaTransform).IsAssignableFrom(matrixTransformType))
         {
             return false;

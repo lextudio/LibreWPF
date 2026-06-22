@@ -658,7 +658,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
                 if (WpfDraw != null)
                 {
-                    using var sourceDrawingContext = drawingFrame.OpenCompositionDrawingContext();
+                    using var sourceDrawingContext = drawingFrame.OpenCompositionDrawingContext(activeWpfImageSourceAdapter);
                     InvokeSourceDraw(sourceDrawingContext, args);
                 }
                 else

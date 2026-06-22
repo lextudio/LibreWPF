@@ -194,16 +194,30 @@ public sealed class ProGpuWpfDrawingFrame
         return OpenCompositionDrawingContext(null);
     }
 
+    public WpfCompositionDrawingContext OpenCompositionDrawingContext(IWpfImageSourceAdapter? imageSourceAdapter)
+    {
+        return OpenCompositionDrawingContext(null, imageSourceAdapter);
+    }
+
     public WpfCompositionDrawingContext OpenCompositionDrawingContext(object? ownerVisual)
+    {
+        return OpenCompositionDrawingContext(ownerVisual, null);
+    }
+
+    public WpfCompositionDrawingContext OpenCompositionDrawingContext(
+        object? ownerVisual,
+        IWpfImageSourceAdapter? imageSourceAdapter)
     {
         CompositionDrawingContextCount++;
         return new WpfCompositionDrawingContext(
-            OpenCompositionCommandSink(ownerVisual));
+            OpenCompositionCommandSink(ownerVisual),
+            imageSourceAdapter);
     }
 
-    public Func<object?, WpfCompositionDrawingContext> CreateCompositionDrawingContextFactory()
+    public Func<object?, WpfCompositionDrawingContext> CreateCompositionDrawingContextFactory(
+        IWpfImageSourceAdapter? imageSourceAdapter = null)
     {
-        return OpenCompositionDrawingContext;
+        return ownerVisual => OpenCompositionDrawingContext(ownerVisual, imageSourceAdapter);
     }
 
     public WpfObjectRenderDataDrawingContext OpenObjectRenderDataSinkContext(

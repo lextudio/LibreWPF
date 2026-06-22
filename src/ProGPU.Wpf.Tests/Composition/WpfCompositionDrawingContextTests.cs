@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.ProGPU.Composition;
@@ -151,6 +152,80 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void ObjectRenderDataDrawingContextReplaysMediaDrawingBrushBeforeGenericMediaBrushPath()
+    {
+        var sink = new RecordingSink();
+        var drawingBrush = new FakeMediaDrawingBrush(
+            new FakeGeometryDrawing(
+                Brushes.Red,
+                null,
+                new FakeRectangleGeometry(new FakeRect(0, 0, 10, 10))));
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+
+        context.DrawRectangle(drawingBrush, null, new Rect(1, 2, 30, 40));
+
+        Assert.Equal(new[] { "PushClip", "PushTransform", "DrawGeometry", "Pop", "Pop" }, sink.Operations);
+        var replayed = Assert.Single(sink.Geometries);
+        Assert.Same(Brushes.Red, replayed.Brush);
+        Assert.Contains(drawingBrush, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void GeneratedDrawingContextReplaysMediaImageBrushRectangleThroughImageSourceAdapter()
+    {
+        var sink = new RecordingSink();
+        var imageSource = new FakeBitmapSource();
+        var imageBrush = new FakeMediaImageBrush(imageSource);
+        var adapter = new FakeImageSourceAdapter();
+        using var context = new WpfCompositionDrawingContext(sink, adapter);
+
+        context.DrawRectangle(imageBrush, null, new Rect(1, 2, 30, 40));
+
+        Assert.Equal(new[] { "PushClip", "DrawImage", "Pop" }, sink.Operations);
+        Assert.Same(imageSource, adapter.LastImageSource);
+        var replayed = Assert.Single(sink.Images);
+        Assert.Same(adapter.AdaptedImageSource, replayed.ImageSource);
+        Assert.Equal(new Rect(1, 2, 30, 40), replayed.Rectangle);
+        Assert.Contains(imageBrush, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void GeneratedDrawingContextFallsBackToGenericMediaBrushWhenTileReplayUnsupported()
+    {
+        var sink = new RecordingSink();
+        var imageBrush = new FakeMediaImageBrush(imageSource: null);
+        using var context = new WpfCompositionDrawingContext(sink);
+
+        context.DrawRectangle(imageBrush, null, new Rect(1, 2, 30, 40));
+
+        Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
+        var replayed = Assert.Single(sink.Rectangles);
+        Assert.Same(imageBrush, replayed.Brush);
+        Assert.Empty(sink.Images);
+        Assert.Contains(imageBrush, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
+    public void ObjectRenderDataDrawingContextFallsBackToGenericMediaBrushWhenTileReplayUnsupported()
+    {
+        var sink = new RecordingSink();
+        var imageBrush = new FakeMediaImageBrush(imageSource: null);
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+
+        context.DrawRectangle(imageBrush, null, new Rect(1, 2, 30, 40));
+
+        Assert.Equal(new[] { "DrawRectangle" }, sink.Operations);
+        var replayed = Assert.Single(sink.Rectangles);
+        Assert.Same(imageBrush, replayed.Brush);
+        Assert.Empty(sink.Images);
+        Assert.Contains(imageBrush, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void ObjectRenderDataDrawingContextCountsPartialDrawingBrushReplayAsUnsupported()
     {
         var sink = new RecordingSink();
@@ -243,6 +318,23 @@ public sealed class WpfCompositionDrawingContextTests
         Assert.Contains(guidelines, sink.VisualDependencies);
         Assert.Contains(drawing, sink.VisualDependencies);
         Assert.Contains(Brushes.Blue, sink.VisualDependencies);
+    }
+
+    [Fact]
+    public void ObjectRenderDataDrawingContextPushesReflectedTransformsThroughNativeSink()
+    {
+        var sink = new RecordingSink();
+        var transform = new FakeTranslateTransform(6, 7);
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+
+        context.PushTransform(transform);
+
+        Assert.Equal(new[] { "PushNativeTransform" }, sink.Operations);
+        var nativeTransform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(6, nativeTransform.M41);
+        Assert.Equal(7, nativeTransform.M42);
+        Assert.Contains(transform, sink.VisualDependencies);
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
     }
 
     [Fact]
@@ -702,6 +794,21 @@ public sealed class WpfCompositionDrawingContextTests
         public object? ImageSource { get; }
     }
 
+    private sealed class FakeMediaImageBrush : MediaBrush
+    {
+        public FakeMediaImageBrush(object? imageSource)
+        {
+            ImageSource = imageSource;
+        }
+
+        public object? ImageSource { get; }
+
+        public override global::ProGPU.Vector.Brush ToNative()
+        {
+            return Brushes.Red.ToNative();
+        }
+    }
+
     private sealed class FakeDrawingBrush
     {
         public FakeDrawingBrush(object? drawing)
@@ -710,6 +817,34 @@ public sealed class WpfCompositionDrawingContextTests
         }
 
         public object? Drawing { get; }
+    }
+
+    private sealed class FakeMediaDrawingBrush : MediaBrush
+    {
+        public FakeMediaDrawingBrush(object? drawing)
+        {
+            Drawing = drawing;
+        }
+
+        public object? Drawing { get; }
+
+        public override global::ProGPU.Vector.Brush ToNative()
+        {
+            return Brushes.Blue.ToNative();
+        }
+    }
+
+    private sealed class FakeTranslateTransform
+    {
+        public FakeTranslateTransform(double x, double y)
+        {
+            X = x;
+            Y = y;
+        }
+
+        public double X { get; }
+
+        public double Y { get; }
     }
 
     private sealed class FakeBlurBitmapEffect
@@ -809,7 +944,8 @@ public sealed class WpfCompositionDrawingContextTests
     private sealed class RecordingSink :
         IWpfCompositionCommandSink,
         IWpfVisualEffectCommandSink,
-        IWpfRetainedVisualBranchSink
+        IWpfRetainedVisualBranchSink,
+        IWpfNativeTransformCommandSink
     {
         public List<string> Operations { get; } = new();
 
@@ -828,6 +964,8 @@ public sealed class WpfCompositionDrawingContextTests
         public List<(MediaBrush? Brush, MediaGlyphRun GlyphRun)> GlyphRuns { get; } = new();
 
         public List<MediaTransform> Transforms { get; } = new();
+
+        public List<Matrix4x4> NativeTransforms { get; } = new();
 
         public List<double> Opacities { get; } = new();
 
@@ -910,6 +1048,12 @@ public sealed class WpfCompositionDrawingContextTests
         {
             Operations.Add("PushTransform");
             Transforms.Add(transform);
+        }
+
+        public void PushNativeTransform(Matrix4x4 transform)
+        {
+            Operations.Add("PushNativeTransform");
+            NativeTransforms.Add(transform);
         }
 
         public void PushNoOpScope()

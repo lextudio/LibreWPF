@@ -15,15 +15,19 @@ namespace System.Windows.Media.ProGPU.Composition;
 public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawingContext, IDisposable
 {
     private readonly IWpfCompositionCommandSink _sink;
+    private readonly Func<object?, MediaImageSource?>? _imageSourceAdapter;
     private int _stackDepth;
     private int _operationCount;
     private int _appliedCount;
     private int _unsupportedCount;
     private bool _isClosed;
 
-    public WpfCompositionDrawingContext(IWpfCompositionCommandSink sink)
+    public WpfCompositionDrawingContext(
+        IWpfCompositionCommandSink sink,
+        IWpfImageSourceAdapter? imageSourceAdapter = null)
     {
         _sink = sink ?? throw new ArgumentNullException(nameof(sink));
+        _imageSourceAdapter = imageSourceAdapter == null ? null : imageSourceAdapter.AdaptImageSource;
     }
 
     public MediaDrawingContext? DrawingContext => _sink.DrawingContext;
@@ -71,6 +75,11 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
     {
         ThrowIfClosed();
         if (brush == null && pen == null)
+        {
+            return;
+        }
+
+        if (brush != null && TryReplayTileBrushRectangle(brush, pen, rectangle))
         {
             return;
         }
@@ -168,6 +177,11 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
     {
         ThrowIfClosed();
         if ((brush == null && pen == null) || geometry == null)
+        {
+            return;
+        }
+
+        if (brush != null && TryReplayTileBrushGeometry(brush, pen, geometry))
         {
             return;
         }
@@ -492,6 +506,60 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
                 CountUnsupported();
                 break;
         }
+    }
+
+    private bool TryReplayTileBrushRectangle(MediaBrush brush, MediaPen? pen, Rect rectangle)
+    {
+        if (!WpfReflectionDrawingReplay.IsTileBrush(brush))
+        {
+            return false;
+        }
+
+        if (WpfReflectionDrawingReplay.TryReplayTileBrushFill(
+                brush,
+                WpfReflectionResourceResolver.CreateRectanglePath(rectangle),
+                _sink,
+                _imageSourceAdapter,
+                out var brushReplayStatus))
+        {
+            RegisterRetainedDependencies(brush, pen);
+            if (pen != null)
+            {
+                _sink.DrawRectangle(null, pen, rectangle);
+            }
+
+            CountDrawingReplayStatus(brushReplayStatus);
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool TryReplayTileBrushGeometry(MediaBrush brush, MediaPen? pen, MediaGeometry geometry)
+    {
+        if (!WpfReflectionDrawingReplay.IsTileBrush(brush))
+        {
+            return false;
+        }
+
+        if (WpfReflectionDrawingReplay.TryReplayTileBrushFill(
+                brush,
+                geometry,
+                _sink,
+                _imageSourceAdapter,
+                out var brushReplayStatus))
+        {
+            RegisterRetainedDependencies(brush, pen, geometry);
+            if (pen != null)
+            {
+                _sink.DrawGeometry(null, pen, geometry);
+            }
+
+            CountDrawingReplayStatus(brushReplayStatus);
+            return true;
+        }
+
+        return false;
     }
 
     private void CountUnsupportedStateIfAny(params object?[] unsupportedState)

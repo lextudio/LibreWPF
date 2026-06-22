@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+dotnet="${repo_root}/.dotnet/dotnet"
+if [[ ! -x "${dotnet}" ]]; then
+  dotnet="dotnet"
+fi
+
+export DOTNET_ROLL_FORWARD="${DOTNET_ROLL_FORWARD:-Major}"
+export DOTNET_ROLL_FORWARD_TO_PRERELEASE="${DOTNET_ROLL_FORWARD_TO_PRERELEASE:-1}"
+
+package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
+mkdir -p "${package_output}"
+
+pack_project() {
+  local project="$1"
+  "${dotnet}" pack "${repo_root}/${project}" -c Release -o "${package_output}" -v:minimal
+}
+
+run_dotnet() {
+  "${dotnet}" "$@"
+}
+
+echo "Packing ProGPU packages for ProGPU.Wpf.Sdk feed..."
+pack_project "external/ProGPU/src/ProGPU.Backend/ProGPU.Backend.csproj"
+pack_project "external/ProGPU/src/ProGPU.Transpiler/ProGPU.Transpiler.csproj"
+pack_project "external/ProGPU/src/ProGPU.Compute/ProGPU.Compute.csproj"
+pack_project "external/ProGPU/src/ProGPU.Vector/ProGPU.Vector.csproj"
+pack_project "external/ProGPU/src/ProGPU.Text/ProGPU.Text.csproj"
+pack_project "external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj"
+
+echo "Packing WPF transport, ProGPU bridge, and custom SDK..."
+pack_project "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj"
+pack_project "src/ProGPU.Wpf/ProGPU.Wpf.csproj"
+pack_project "packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj"
+
+echo "Building package-mode SDK switch smoke..."
+run_dotnet build "${repo_root}/src/ProGPU.Wpf.SdkSwitchSmoke/ProGPU.Wpf.SdkSwitchSmoke.csproj" -v:minimal
+
+echo "Running SDK switch runtime smoke..."
+run_dotnet run --project "${repo_root}/src/ProGPU.Wpf.SdkSwitchRuntimeHarness/ProGPU.Wpf.SdkSwitchRuntimeHarness.csproj" -v:minimal
+
+echo "Running external no-source-change SDK smoke..."
+run_dotnet run --project "${repo_root}/src/ProGPU.Wpf.SdkExternalSmokeHarness/ProGPU.Wpf.SdkExternalSmokeHarness.csproj" -v:minimal
+
+echo "Building focused WPF graph tests..."
+run_dotnet build "${repo_root}/src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj" -v:minimal
+
+echo "Running focused SDK graph guard..."
+run_dotnet vstest \
+  "${repo_root}/src/ProGPU.Wpf.Tests/bin/Debug/net10.0/ProGPU.Wpf.Tests.dll" \
+  --Tests:ProGPU.Wpf.Tests.Composition.WpfManagedProjectGraphTests.ProGpuWpfSdkProvidesSwitchOnlyPackagingSurface

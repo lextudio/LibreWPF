@@ -5592,6 +5592,13 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.SdkExternalSmokeHarness",
             "Program.cs");
+        var sdkCiScriptPath = FindRepoPath(
+            "eng",
+            "progpu-wpf-sdk-ci.sh");
+        var sdkCiWorkflowPath = FindRepoPath(
+            ".github",
+            "workflows",
+            "progpu-wpf-sdk.yml");
 
         var sdkProject = XDocument.Load(sdkProjectPath);
         var sdkProps = File.ReadAllText(sdkPropsPath);
@@ -5635,6 +5642,8 @@ public sealed class WpfManagedProjectGraphTests
         var runtimeHarnessProgram = File.ReadAllText(runtimeHarnessProgramPath);
         var externalSdkHarnessProject = File.ReadAllText(externalSdkHarnessProjectPath);
         var externalSdkHarnessProgram = File.ReadAllText(externalSdkHarnessProgramPath);
+        var sdkCiScript = File.ReadAllText(sdkCiScriptPath);
+        var sdkCiWorkflow = File.ReadAllText(sdkCiWorkflowPath);
 
         Assert.Contains("ProGPU/Silk.NET SDK for portable WPF applications", sdkProject.ToString(), StringComparison.Ordinal);
         Assert.Contains("MSBuildProjectName.Replace('.ArchNeutral','')", sdkProject.ToString(), StringComparison.Ordinal);
@@ -5675,6 +5684,20 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<ProGpuWpfStbImageSharpVersion Condition=\"'$(ProGpuWpfStbImageSharpVersion)' == ''\">2.30.15</ProGpuWpfStbImageSharpVersion>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<Import Sdk=\"Microsoft.NET.Sdk.WindowsDesktop\" Project=\"Sdk.props\" />", sdkProps, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Wpf.Sdk.props", sdkProps, StringComparison.Ordinal);
+
+        Assert.Contains("name: ProGPU WPF SDK", sdkCiWorkflow, StringComparison.Ordinal);
+        Assert.Contains("submodules: recursive", sdkCiWorkflow, StringComparison.Ordinal);
+        Assert.Contains("global-json-file: global.json", sdkCiWorkflow, StringComparison.Ordinal);
+        Assert.Contains("./eng/progpu-wpf-sdk-ci.sh", sdkCiWorkflow, StringComparison.Ordinal);
+        Assert.Contains("external/ProGPU/src/ProGPU.Backend/ProGPU.Backend.csproj", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("src/ProGPU.Wpf/ProGPU.Wpf.csproj", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("src/ProGPU.Wpf.SdkSwitchSmoke/ProGPU.Wpf.SdkSwitchSmoke.csproj", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("src/ProGPU.Wpf.SdkSwitchRuntimeHarness/ProGPU.Wpf.SdkSwitchRuntimeHarness.csproj", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("src/ProGPU.Wpf.SdkExternalSmokeHarness/ProGPU.Wpf.SdkExternalSmokeHarness.csproj", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfSdkProvidesSwitchOnlyPackagingSurface", sdkCiScript, StringComparison.Ordinal);
 
         Assert.Contains("<_ProGpuWpfProjectUseWPF>$(UseWPF)</_ProGpuWpfProjectUseWPF>", sdkTargets, StringComparison.Ordinal);
         Assert.Contains("<UseWPF Condition=\"'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'\">false</UseWPF>", sdkTargets, StringComparison.Ordinal);

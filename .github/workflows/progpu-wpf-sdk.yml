@@ -1,0 +1,33 @@
+name: ProGPU WPF SDK
+
+on:
+  pull_request:
+    branches:
+      - progpu-rendering-port
+      - main
+  push:
+    branches:
+      - progpu-rendering-port
+
+permissions:
+  contents: read
+
+jobs:
+  sdk-smoke:
+    name: SDK package and no-source-change smoke
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Run ProGPU WPF SDK gate
+        run: ./eng/progpu-wpf-sdk-ci.sh

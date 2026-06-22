@@ -6553,6 +6553,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ComponentResourceKey TypeInTargetAssembly={x:Type local:MainWindow}, ResourceId=ExternalComponentAccentBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalComponentResourceText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalDynamicBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalRuntimeMergedResourceText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalRuntimeMergedText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalRuntimeMergedBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalFreezableBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalFreezableGradientBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("LinearGradientBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7279,6 +7282,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK x:Shared=false dictionary lookup", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("appResources[\"ExternalDynamicBrush\"] = new SolidColorBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK updated dynamic resource foreground", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("appResources.MergedDictionaries.Add(runtimeMergedDictionary)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK runtime merged dynamic resource text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK updated runtime merged dynamic resource foreground", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateSystemParameters(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateWindowChrome(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("WindowChrome.SetWindowChrome(window, chrome)", externalSdkHarnessProgram, StringComparison.Ordinal);

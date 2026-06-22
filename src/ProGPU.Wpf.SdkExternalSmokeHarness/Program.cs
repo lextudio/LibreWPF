@@ -1040,6 +1040,10 @@ internal static class Program
                         Foreground="{DynamicResource ExternalDynamicBrush}"
                         Text="External SDK dynamic resource" />
                     <TextBlock
+                        x:Name="ExternalRuntimeMergedResourceText"
+                        Foreground="{DynamicResource ExternalRuntimeMergedBrush}"
+                        Text="{DynamicResource ExternalRuntimeMergedText}" />
+                    <TextBlock
                         x:Name="ExternalStartupResourceText"
                         Foreground="{DynamicResource ExternalStartupBrush}"
                         Text="{DynamicResource ExternalStartupText}" />
@@ -3450,6 +3454,36 @@ internal static class Program
                     appResources["ExternalDynamicBrush"] = new SolidColorBrush(Color.FromRgb(0x45, 0x76, 0x23));
                     DrainDispatcher();
                     AssertBrushColor(dynamicResourceText.Foreground, "#FF457623", "external SDK updated dynamic resource foreground");
+
+                    var runtimeMergedResourceText = RequireType<TextBlock>(
+                        window.FindName("ExternalRuntimeMergedResourceText"),
+                        "external SDK runtime merged dynamic resource text block");
+                    var runtimeMergedDictionary = new ResourceDictionary
+                    {
+                        ["ExternalRuntimeMergedText"] = "External runtime merged resource",
+                        ["ExternalRuntimeMergedBrush"] = new SolidColorBrush(Color.FromRgb(0x6A, 0x48, 0x8B))
+                    };
+                    appResources.MergedDictionaries.Add(runtimeMergedDictionary);
+                    DrainDispatcher();
+                    AssertEqual(
+                        "External runtime merged resource",
+                        runtimeMergedResourceText.Text,
+                        "external SDK runtime merged dynamic resource text");
+                    AssertBrushColor(
+                        runtimeMergedResourceText.Foreground,
+                        "#FF6A488B",
+                        "external SDK runtime merged dynamic resource foreground");
+                    runtimeMergedDictionary["ExternalRuntimeMergedText"] = "External runtime merged resource updated";
+                    runtimeMergedDictionary["ExternalRuntimeMergedBrush"] = new SolidColorBrush(Color.FromRgb(0x24, 0x74, 0x63));
+                    DrainDispatcher();
+                    AssertEqual(
+                        "External runtime merged resource updated",
+                        runtimeMergedResourceText.Text,
+                        "external SDK updated runtime merged dynamic resource text");
+                    AssertBrushColor(
+                        runtimeMergedResourceText.Foreground,
+                        "#FF247463",
+                        "external SDK updated runtime merged dynamic resource foreground");
 
                     var template = RequireType<DataTemplate>(
                         window.FindResource("ExternalItemTemplate"),

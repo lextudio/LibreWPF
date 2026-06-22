@@ -1838,6 +1838,9 @@ internal static class Program
                         TargetUpdated="OnExternalBindingTargetUpdated"
                         Text="{Binding ExternalBindingTransferText, Mode=TwoWay, UpdateSourceTrigger=Explicit, NotifyOnSourceUpdated=True, NotifyOnTargetUpdated=True}" />
                     <TextBox
+                        x:Name="ExternalDelayedBindingTextBox"
+                        Text="{Binding ExternalDelayedBindingText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, Delay=25}" />
+                    <TextBox
                         x:Name="ExternalSpellCheckTextBox"
                         SpellCheck.IsEnabled="True"
                         SpellCheck.SpellingReform="PreAndPostreform"
@@ -2251,6 +2254,8 @@ internal static class Program
                 }
 
                 public string ExternalBindingTransferText { get; set; } = "external transfer initial";
+
+                public string ExternalDelayedBindingText { get; set; } = "external delayed initial";
 
                 public string? ExternalNullBindingText { get; } = null;
 
@@ -7481,6 +7486,21 @@ internal static class Program
                         ?? throw new InvalidOperationException("Expected external SDK target-null BindingExpression.");
                     AssertEqual("ExternalNullBindingText", targetNullBindingExpression.ParentBinding.Path.Path, "external SDK binding target null path");
                     AssertEqual("External null text", targetNullBindingExpression.ParentBinding.TargetNullValue, "external SDK binding target null value metadata");
+
+                    var delayedBindingTextBox = RequireType<TextBox>(
+                        window.FindName("ExternalDelayedBindingTextBox"),
+                        "external SDK delayed binding text box");
+                    AssertEqual("external delayed initial", delayedBindingTextBox.Text, "external SDK delayed binding initial target text");
+                    var delayedBindingExpression = delayedBindingTextBox.GetBindingExpression(TextBox.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK delayed BindingExpression.");
+                    AssertEqual("ExternalDelayedBindingText", delayedBindingExpression.ParentBinding.Path.Path, "external SDK delayed binding path");
+                    AssertEqual(UpdateSourceTrigger.PropertyChanged, delayedBindingExpression.ParentBinding.UpdateSourceTrigger, "external SDK delayed binding update trigger");
+                    AssertEqual(25, delayedBindingExpression.ParentBinding.Delay, "external SDK delayed binding delay metadata");
+                    delayedBindingTextBox.Text = "external delayed source refresh";
+                    AssertEqual("external delayed initial", window.ExternalDelayedBindingText, "external SDK delayed binding immediate source value");
+                    System.Threading.Thread.Sleep(75);
+                    DrainDispatcher();
+                    AssertEqual("external delayed source refresh", window.ExternalDelayedBindingText, "external SDK delayed binding source value");
 
                     var transferTextBox = RequireType<TextBox>(
                         window.FindName("ExternalBindingTransferTextBox"),

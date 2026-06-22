@@ -7368,6 +7368,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("FallbackValue=External fallback text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ExternalTargetNullBindingText\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("TargetNullValue=External null text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalDelayedBindingTextBox\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Delay=25", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK delayed binding delay metadata", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK delayed binding immediate source value", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK delayed binding source value", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ExternalBindingTransferTextBox\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SourceUpdated=\"OnExternalBindingSourceUpdated\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("TargetUpdated=\"OnExternalBindingTargetUpdated\"", externalSdkHarnessProgram, StringComparison.Ordinal);

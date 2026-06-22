@@ -3557,6 +3557,32 @@ internal static class Program
                     AssertEqual(1, directPngDecoder.Frames.Count, "external SDK PngBitmapDecoder frame count");
                     AssertEqual(PixelFormats.Bgra32, directPngDecoder.Frames[0].Format, "external SDK PngBitmapDecoder Bgra32 format");
 
+                    byte[] iconBytes = CreatePngIconBytes(pngBytes, 2, 2);
+                    AssertEqual((byte)0x00, iconBytes[0], "external SDK generated ICO reserved byte 0");
+                    AssertEqual((byte)0x01, iconBytes[2], "external SDK generated ICO type byte 0");
+                    AssertEqual((byte)0x02, iconBytes[6], "external SDK generated ICO directory width byte");
+                    var iconDecoder = BitmapDecoder.Create(
+                        new MemoryStream(iconBytes),
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(typeof(IconBitmapDecoder), iconDecoder.GetType(), "external SDK BitmapDecoder.Create ICO decoder type");
+                    AssertEqual(1, iconDecoder.Frames.Count, "external SDK BitmapDecoder.Create ICO frame count");
+                    AssertEqual(2, iconDecoder.Frames[0].PixelWidth, "external SDK BitmapDecoder.Create ICO pixel width");
+                    AssertEqual(2, iconDecoder.Frames[0].PixelHeight, "external SDK BitmapDecoder.Create ICO pixel height");
+                    AssertEqual(PixelFormats.Bgra32, iconDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create ICO Bgra32 format");
+                    var decodedIconPixels = new byte[pixels.Length];
+                    iconDecoder.Frames[0].CopyPixels(decodedIconPixels, 8, 0);
+                    AssertEqual(pixels[0], decodedIconPixels[0], "external SDK BitmapDecoder.Create ICO top-left blue byte");
+                    AssertEqual(pixels[14], decodedIconPixels[14], "external SDK BitmapDecoder.Create ICO bottom-right red byte");
+
+                    var directIconDecoder = new IconBitmapDecoder(
+                        new MemoryStream(iconBytes),
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(1, directIconDecoder.Frames.Count, "external SDK IconBitmapDecoder frame count");
+                    AssertEqual(2, directIconDecoder.Frames[0].PixelWidth, "external SDK IconBitmapDecoder pixel width");
+                    AssertEqual(PixelFormats.Bgra32, directIconDecoder.Frames[0].Format, "external SDK IconBitmapDecoder Bgra32 format");
+
                     byte[] jpegBytes = CreateJpegBytes();
                     AssertEqual((byte)0xFF, jpegBytes[0], "external SDK generated JPEG signature byte 0");
                     AssertEqual((byte)0xD8, jpegBytes[1], "external SDK generated JPEG signature byte 1");
@@ -3696,6 +3722,40 @@ internal static class Program
                         File.Delete(pngPath);
                     }
 
+                    string iconPath = Path.Combine(Path.GetTempPath(), "external-sdk-managed-image-" + Guid.NewGuid().ToString("N") + ".ico");
+                    File.WriteAllBytes(iconPath, iconBytes);
+                    try
+                    {
+                        var iconUri = new Uri(iconPath);
+                        var uriIconDecoder = BitmapDecoder.Create(
+                            iconUri,
+                            BitmapCreateOptions.PreservePixelFormat,
+                            BitmapCacheOption.OnLoad);
+                        AssertEqual(typeof(IconBitmapDecoder), uriIconDecoder.GetType(), "external SDK BitmapDecoder.Create URI ICO decoder type");
+                        AssertEqual(1, uriIconDecoder.Frames.Count, "external SDK BitmapDecoder.Create URI ICO frame count");
+                        AssertEqual(PixelFormats.Bgra32, uriIconDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create URI ICO Bgra32 format");
+
+                        var directUriIconDecoder = new IconBitmapDecoder(
+                            iconUri,
+                            BitmapCreateOptions.PreservePixelFormat,
+                            BitmapCacheOption.OnLoad);
+                        AssertEqual(1, directUriIconDecoder.Frames.Count, "external SDK IconBitmapDecoder URI frame count");
+                        AssertEqual(2, directUriIconDecoder.Frames[0].PixelWidth, "external SDK IconBitmapDecoder URI pixel width");
+
+                        var iconBitmapImage = new BitmapImage(iconUri);
+                        AssertEqual(2, iconBitmapImage.PixelWidth, "external SDK BitmapImage URI ICO pixel width");
+                        AssertEqual(2, iconBitmapImage.PixelHeight, "external SDK BitmapImage URI ICO pixel height");
+                        AssertEqual(PixelFormats.Bgra32, iconBitmapImage.Format, "external SDK BitmapImage URI ICO Bgra32 format");
+                        var iconBitmapImagePixels = new byte[pixels.Length];
+                        iconBitmapImage.CopyPixels(iconBitmapImagePixels, 8, 0);
+                        AssertEqual(pixels[0], iconBitmapImagePixels[0], "external SDK BitmapImage URI ICO top-left blue byte");
+                        AssertEqual(pixels[14], iconBitmapImagePixels[14], "external SDK BitmapImage URI ICO bottom-right red byte");
+                    }
+                    finally
+                    {
+                        File.Delete(iconPath);
+                    }
+
                     string jpegPath = Path.Combine(Path.GetTempPath(), "external-sdk-managed-image-" + Guid.NewGuid().ToString("N") + ".jpg");
                     File.WriteAllBytes(jpegPath, jpegBytes);
                     try
@@ -3827,6 +3887,24 @@ internal static class Program
                 {
                     return Convert.FromBase64String(
                         "/9j//gAQTGF2YzYyLjI4LjEwMAD/2wBDAAgEBAQEBAUFBQUFBQYGBgYGBgYGBgYGBgYHBwcICAgHBwcGBgcHCAgICAkJCQgICAgJCQoKCgwMCwsODg4RERT/xABnAAEBAAAAAAAAAAAAAAAAAAADBwEBAQEAAAAAAAAAAAAAAAAAAgQHEAACAgICAwEAAAAAAAAAAAACAQMFBgQAEXa0NwcRAAICAgIBBQEBAAAAAAAAAAMCAQQFBgAHEbV2snMiNzT/wAARCAACAAIDARIAAhIAAxIA/9oADAMBAAIRAxEAPwChYBVVc+CYpLLo6csklDTnJIevEZmZaMLIiIgbIib7bb7b4/538/xHx6l9CDmQ9nmLS7K3arVI9YANmzwQAC0iCEQ8lYVBjGkwiIixCoixELEeIjh7Y/qe+e6th9Us8a6/gcgsXLmJxtu1ZiLFmzYp1zHsGL+yGMUg2chCPMs7vMszTMzPnllH/FW+gXwjn//Z");
+                }
+
+                private static byte[] CreatePngIconBytes(byte[] pngBytes, byte width, byte height)
+                {
+                    byte[] icon = new byte[checked(22 + pngBytes.Length)];
+                    WriteLittleEndianUInt16(icon, 0, 0);
+                    WriteLittleEndianUInt16(icon, 2, 1);
+                    WriteLittleEndianUInt16(icon, 4, 1);
+                    icon[6] = width;
+                    icon[7] = height;
+                    icon[8] = 0;
+                    icon[9] = 0;
+                    WriteLittleEndianUInt16(icon, 10, 1);
+                    WriteLittleEndianUInt16(icon, 12, 32);
+                    WriteLittleEndianUInt32(icon, 14, (uint)pngBytes.Length);
+                    WriteLittleEndianUInt32(icon, 18, 22);
+                    Buffer.BlockCopy(pngBytes, 0, icon, 22, pngBytes.Length);
+                    return icon;
                 }
 
                 private static byte[] CreateRgbaPngBytes(byte[] bgraPixels, int width, int height, int stride)
@@ -4008,6 +4086,20 @@ internal static class Program
                     buffer[offset + 1] = (byte)(value >> 16);
                     buffer[offset + 2] = (byte)(value >> 8);
                     buffer[offset + 3] = (byte)value;
+                }
+
+                private static void WriteLittleEndianUInt16(Span<byte> buffer, int offset, ushort value)
+                {
+                    buffer[offset] = (byte)value;
+                    buffer[offset + 1] = (byte)(value >> 8);
+                }
+
+                private static void WriteLittleEndianUInt32(Span<byte> buffer, int offset, uint value)
+                {
+                    buffer[offset] = (byte)value;
+                    buffer[offset + 1] = (byte)(value >> 8);
+                    buffer[offset + 2] = (byte)(value >> 16);
+                    buffer[offset + 3] = (byte)(value >> 24);
                 }
 
                 private static void ValidateLooseXamlReaderWriter()

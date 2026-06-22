@@ -4779,6 +4779,16 @@ public sealed class WpfManagedProjectGraphTests
             "Media",
             "Imaging",
             "JpegBitmapDecoder.cs"));
+        var iconBitmapDecoder = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Imaging",
+            "IconBitmapDecoder.cs"));
         var bitmapDecoder = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4811,6 +4821,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("JpegBitmapDecoder.TryCreatePortableFrameFromUri", bitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("return new JpegBitmapDecoder(portableJpegUriFrame", bitmapDecoder, StringComparison.Ordinal);
         AssertGuardBefore(bitmapDecoder, "JpegBitmapDecoder.TryCreatePortableFrame", "SetupDecoderFromUriOrStream");
+        Assert.Contains("internal static bool TryCreatePortableFrame(", iconBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TryCreatePortableFrameFromUri(", iconBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("PngBitmapDecoder.TryCreatePortableFrame(imageStream", iconBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("private static bool IsPngSignature", iconBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("Portable ICO decoding currently supports PNG-backed icon images.", iconBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("IconBitmapDecoder.TryCreatePortableFrameFromUri", bitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("return new IconBitmapDecoder(portableIconUriFrame", bitmapDecoder, StringComparison.Ordinal);
+        AssertGuardBefore(bitmapDecoder, "IconBitmapDecoder.TryCreatePortableFrame", "SetupDecoderFromUriOrStream");
         AssertGuardBefore(uiElement, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetDC(desktopWnd)");
         AssertGuardBefore(pathGeometry, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.MilCoreApi.MilUtility_PathGeometryBounds");
         AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())", "MilCoreApi.MilUtility_PolygonBounds");
@@ -6474,6 +6492,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK BitmapDecoder.Create URI PNG decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new BitmapImage(pngUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapImage URI PNG top-left blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CreatePngIconBytes(pngBytes, 2, 2)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new IconBitmapDecoder(", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create ICO decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create ICO top-left blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create URI ICO decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new BitmapImage(iconUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapImage URI ICO top-left blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreateJpegBytes()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new JpegBitmapDecoder(", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapDecoder.Create JPEG decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -5993,6 +5993,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Exit=\"OnAppExit\"", smokeAppXaml, StringComparison.Ordinal);
         Assert.Contains("public int StartupEventCount", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int StartupArgsLength", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateRuntimeAssetMatchesLocalPackage(proGpuWpf, \"ProGPU.Wpf\", \"ProGPU.Wpf\", \"net10.0\")", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateRuntimeAssetMatchesLocalPackage(proGpuScene, \"ProGPU.Scene\", \"ProGPU.Scene\", \"net10.0\")", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateRuntimeAssetMatchesLocalPackage(proGpuBackend, \"ProGPU.Backend\", \"ProGPU.Backend\", \"net10.0\")", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ComputeStreamSha256", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public bool SdkOutputGuardChecked", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int ExitEventCount", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int LastExitCode", smokeAppCodeBehind, StringComparison.Ordinal);

@@ -1,6 +1,9 @@
 using System;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Media;
 
@@ -8,6 +11,8 @@ namespace ProGPU.Wpf.SdkSwitchSmoke;
 
 public partial class App : Application
 {
+    private const string PackageVersion = "11.0.0-dev";
+
     public int StartupEventCount { get; private set; }
 
     public int StartupArgsLength { get; private set; } = -1;
@@ -104,6 +109,10 @@ public partial class App : Application
         AssertEqual(840u, GetProperty(geometry, "PixelWidth"), "SDK smoke Retina physical width");
         AssertEqual(1680u, GetProperty(geometry, "PixelHeight"), "SDK smoke Retina physical height");
         AssertEqual(2.0, GetProperty(geometry, "DpiScale"), "SDK smoke Retina DPI scale");
+
+        ValidateRuntimeAssetMatchesLocalPackage(proGpuWpf, "ProGPU.Wpf", "ProGPU.Wpf", "net10.0");
+        ValidateRuntimeAssetMatchesLocalPackage(proGpuScene, "ProGPU.Scene", "ProGPU.Scene", "net10.0");
+        ValidateRuntimeAssetMatchesLocalPackage(proGpuBackend, "ProGPU.Backend", "ProGPU.Backend", "net10.0");
     }
 
     private static Assembly LoadRequiredAssembly(string assemblyName)
@@ -146,6 +155,82 @@ public partial class App : Application
         return instance.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance)
             ?.GetValue(instance)
             ?? throw new MissingMemberException(instance.GetType().FullName, propertyName);
+    }
+
+    private static void ValidateRuntimeAssetMatchesLocalPackage(
+        Assembly assembly,
+        string packageId,
+        string assemblySimpleName,
+        string targetFramework)
+    {
+        if (!TryFindLocalPackageFeed(out string packageFeed))
+        {
+            return;
+        }
+
+        string runtimeAssemblyPath = assembly.Location;
+        if (string.IsNullOrWhiteSpace(runtimeAssemblyPath) || !File.Exists(runtimeAssemblyPath))
+        {
+            throw new InvalidOperationException(
+                $"SDK smoke output could not locate loaded assembly '{assemblySimpleName}'. Rebuild the package-mode SDK smoke output.");
+        }
+
+        string packagePath = Path.Combine(packageFeed, $"{packageId}.{PackageVersion}.nupkg");
+        if (!File.Exists(packagePath))
+        {
+            throw new InvalidOperationException(
+                $"SDK smoke output could not find local package '{packagePath}'. Repack the local SDK feed.");
+        }
+
+        using ZipArchive package = ZipFile.OpenRead(packagePath);
+        string entryName = $"lib/{targetFramework}/{assemblySimpleName}.dll";
+        ZipArchiveEntry entry = package.GetEntry(entryName)
+            ?? throw new InvalidOperationException(
+                $"SDK smoke local package '{packageId}' is missing '{entryName}'. Repack the local SDK feed.");
+
+        using Stream entryStream = entry.Open();
+        string packageHash = ComputeStreamSha256(entryStream);
+        string runtimeHash = ComputeFileSha256(runtimeAssemblyPath);
+        if (!string.Equals(packageHash, runtimeHash, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"SDK smoke loaded '{assemblySimpleName}.dll' does not match '{packageId}.{PackageVersion}.nupkg'. Rebuild the package-mode SDK smoke output.");
+        }
+    }
+
+    private static bool TryFindLocalPackageFeed(out string packageFeed)
+    {
+        for (DirectoryInfo? directory = new(AppContext.BaseDirectory);
+             directory != null;
+             directory = directory.Parent)
+        {
+            string candidate = Path.Combine(
+                directory.FullName,
+                "artifacts",
+                "packages",
+                "Release",
+                "NonShipping");
+            if (Directory.Exists(candidate))
+            {
+                packageFeed = candidate;
+                return true;
+            }
+        }
+
+        packageFeed = string.Empty;
+        return false;
+    }
+
+    private static string ComputeFileSha256(string path)
+    {
+        using FileStream stream = File.OpenRead(path);
+        return ComputeStreamSha256(stream);
+    }
+
+    private static string ComputeStreamSha256(Stream stream)
+    {
+        byte[] hash = SHA256.HashData(stream);
+        return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
     private static void AssertEqual(object expected, object? actual, string description)

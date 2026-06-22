@@ -7373,6 +7373,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK delayed binding delay metadata", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK delayed binding immediate source value", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK delayed binding source value", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalOneTimeBindingText\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Mode=OneTime", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK OneTime binding retained target text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalOneWayToSourceBindingTextBox\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Mode=OneWayToSource", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK OneWayToSource binding source value", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ExternalBindingTransferTextBox\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SourceUpdated=\"OnExternalBindingSourceUpdated\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("TargetUpdated=\"OnExternalBindingTargetUpdated\"", externalSdkHarnessProgram, StringComparison.Ordinal);

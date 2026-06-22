@@ -1840,6 +1840,12 @@ internal static class Program
                     <TextBox
                         x:Name="ExternalDelayedBindingTextBox"
                         Text="{Binding ExternalDelayedBindingText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, Delay=25}" />
+                    <TextBlock
+                        x:Name="ExternalOneTimeBindingText"
+                        Text="{Binding ExternalOneTimeBindingValue, Mode=OneTime}" />
+                    <TextBox
+                        x:Name="ExternalOneWayToSourceBindingTextBox"
+                        Text="{Binding ExternalOneWayToSourceBindingText, Mode=OneWayToSource, UpdateSourceTrigger=PropertyChanged}" />
                     <TextBox
                         x:Name="ExternalSpellCheckTextBox"
                         SpellCheck.IsEnabled="True"
@@ -2256,6 +2262,23 @@ internal static class Program
                 public string ExternalBindingTransferText { get; set; } = "external transfer initial";
 
                 public string ExternalDelayedBindingText { get; set; } = "external delayed initial";
+
+                private string _externalOneTimeBindingValue = "external one-time initial";
+
+                public string ExternalOneTimeBindingValue
+                {
+                    get => _externalOneTimeBindingValue;
+                    set
+                    {
+                        if (_externalOneTimeBindingValue != value)
+                        {
+                            _externalOneTimeBindingValue = value;
+                            OnPropertyChanged(nameof(ExternalOneTimeBindingValue));
+                        }
+                    }
+                }
+
+                public string ExternalOneWayToSourceBindingText { get; set; } = "external one-way source initial";
 
                 public string? ExternalNullBindingText { get; } = null;
 
@@ -7501,6 +7524,30 @@ internal static class Program
                     System.Threading.Thread.Sleep(75);
                     DrainDispatcher();
                     AssertEqual("external delayed source refresh", window.ExternalDelayedBindingText, "external SDK delayed binding source value");
+
+                    var oneTimeBindingText = RequireType<TextBlock>(
+                        window.FindName("ExternalOneTimeBindingText"),
+                        "external SDK OneTime binding text block");
+                    AssertEqual("external one-time initial", oneTimeBindingText.Text, "external SDK OneTime binding initial target text");
+                    var oneTimeBindingExpression = oneTimeBindingText.GetBindingExpression(TextBlock.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK OneTime BindingExpression.");
+                    AssertEqual("ExternalOneTimeBindingValue", oneTimeBindingExpression.ParentBinding.Path.Path, "external SDK OneTime binding path");
+                    AssertEqual(BindingMode.OneTime, oneTimeBindingExpression.ParentBinding.Mode, "external SDK OneTime binding mode");
+                    window.ExternalOneTimeBindingValue = "external one-time updated";
+                    DrainDispatcher();
+                    AssertEqual("external one-time initial", oneTimeBindingText.Text, "external SDK OneTime binding retained target text");
+
+                    var oneWayToSourceBindingTextBox = RequireType<TextBox>(
+                        window.FindName("ExternalOneWayToSourceBindingTextBox"),
+                        "external SDK OneWayToSource binding text box");
+                    var oneWayToSourceBindingExpression = oneWayToSourceBindingTextBox.GetBindingExpression(TextBox.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK OneWayToSource BindingExpression.");
+                    AssertEqual("ExternalOneWayToSourceBindingText", oneWayToSourceBindingExpression.ParentBinding.Path.Path, "external SDK OneWayToSource binding path");
+                    AssertEqual(BindingMode.OneWayToSource, oneWayToSourceBindingExpression.ParentBinding.Mode, "external SDK OneWayToSource binding mode");
+                    AssertEqual(UpdateSourceTrigger.PropertyChanged, oneWayToSourceBindingExpression.ParentBinding.UpdateSourceTrigger, "external SDK OneWayToSource binding update trigger");
+                    oneWayToSourceBindingTextBox.Text = "external one-way source refresh";
+                    DrainDispatcher();
+                    AssertEqual("external one-way source refresh", window.ExternalOneWayToSourceBindingText, "external SDK OneWayToSource binding source value");
 
                     var transferTextBox = RequireType<TextBox>(
                         window.FindName("ExternalBindingTransferTextBox"),

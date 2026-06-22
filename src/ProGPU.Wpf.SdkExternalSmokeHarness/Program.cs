@@ -3072,17 +3072,39 @@ internal static class Program
                     AssertEqual(nameof(MainWindow), window.LastExternalWindowClosingSenderType, "external SDK canceled window Closing sender");
                     AssertEqual(true, window.IsVisible, "external SDK canceled window visibility");
 
-                    bool containsMainWindowAfterCanceledClose = false;
-                    foreach (Window candidate in app.Windows)
-                    {
-                        if (ReferenceEquals(candidate, window))
-                        {
-                            containsMainWindowAfterCanceledClose = true;
-                            break;
-                        }
-                    }
+                    AssertEqual(true, ApplicationContainsWindow(app, window), "external SDK application windows contains main window after canceled close");
 
-                    AssertEqual(true, containsMainWindowAfterCanceledClose, "external SDK application windows contains main window after canceled close");
+                    var secondaryWindow = new Window
+                    {
+                        Title = "External SDK secondary window",
+                        Width = 96,
+                        Height = 48,
+                        Content = new TextBlock { Text = "External secondary" }
+                    };
+                    int secondaryClosingCount = 0;
+                    int secondaryClosedCount = 0;
+                    secondaryWindow.Closing += (_, e) =>
+                    {
+                        secondaryClosingCount++;
+                        AssertEqual(false, e.Cancel, "external SDK secondary window Closing cancel state");
+                    };
+                    secondaryWindow.Closed += (_, _) => secondaryClosedCount++;
+
+                    secondaryWindow.Show();
+                    DrainDispatcher();
+
+                    AssertEqual(true, secondaryWindow.IsVisible, "external SDK secondary window visibility after show");
+                    AssertEqual(true, ApplicationContainsWindow(app, secondaryWindow), "external SDK application windows contains secondary window");
+
+                    secondaryWindow.Close();
+                    DrainDispatcher();
+
+                    AssertEqual(1, secondaryClosingCount, "external SDK secondary window Closing count");
+                    AssertEqual(1, secondaryClosedCount, "external SDK secondary window Closed count");
+                    AssertEqual(false, secondaryWindow.IsVisible, "external SDK secondary window visibility after close");
+                    AssertEqual(false, ApplicationContainsWindow(app, secondaryWindow), "external SDK application windows excludes closed secondary window");
+                    AssertEqual(true, ApplicationContainsWindow(app, window), "external SDK application windows keeps main window after secondary close");
+                    AssertEqual(0, App.ExternalExitEventCount, "external SDK application exit count before main close");
 
                     app.ShutdownMode = ShutdownMode.OnMainWindowClose;
                     AssertEqual(ShutdownMode.OnMainWindowClose, app.ShutdownMode, "external SDK application main-window shutdown mode");
@@ -3095,6 +3117,19 @@ internal static class Program
                     AssertEqual(false, window.LastExternalWindowClosingCancelAfter, "external SDK final window Closing final cancel state");
                     AssertEqual(nameof(MainWindow), window.LastExternalWindowClosedSenderType, "external SDK final window Closed sender");
                     AssertEqual(false, window.IsVisible, "external SDK final window visibility");
+                }
+
+                private static bool ApplicationContainsWindow(App app, Window window)
+                {
+                    foreach (Window candidate in app.Windows)
+                    {
+                        if (ReferenceEquals(candidate, window))
+                        {
+                            return true;
+                        }
+                    }
+
+                    return false;
                 }
 
                 public static void ValidateApplicationExit(int exitCode)

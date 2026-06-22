@@ -11057,6 +11057,7 @@ internal static class Program
             Assembly proGpuBackend = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "ProGPU.Backend.dll"));
             Assembly proGpuScene = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "ProGPU.Scene.dll"));
             Assembly proGpuVector = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "ProGPU.Vector.dll"));
+            Assembly silkNetMaths = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "Silk.NET.Maths.dll"));
             Assembly silkNetWebGpu = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "Silk.NET.WebGPU.dll"));
             Assembly presentationCore = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "PresentationCore.dll"));
             Assembly presentationFramework = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "PresentationFramework.dll"));
@@ -11065,6 +11066,11 @@ internal static class Program
             AssertDisplayScaleResolver(displayScaleResolverType, "external SDK");
 
             Type windowHostType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfWindowHost");
+            AssertPackagedRetinaStartupResizeKeepsLogicalSurface(
+                windowHostType,
+                displayScaleResolverType,
+                silkNetMaths,
+                "external SDK");
             AssertPropertyType(windowHostType, "Width", typeof(int), "external SDK ProGPU WPF host logical width property");
             AssertPropertyType(windowHostType, "Height", typeof(int), "external SDK ProGPU WPF host logical height property");
             AssertPropertyType(windowHostType, "Left", typeof(int?), "external SDK ProGPU WPF host left property");
@@ -11288,6 +11294,64 @@ internal static class Program
     {
         return method.Invoke(null, parameters)
             ?? throw new InvalidOperationException($"Expected {method.DeclaringType?.FullName}.{method.Name} to return a value.");
+    }
+
+    private static void AssertPackagedRetinaStartupResizeKeepsLogicalSurface(
+        Type windowHostType,
+        Type displayScaleResolverType,
+        Assembly silkNetMaths,
+        string descriptionPrefix)
+    {
+        Type windowOptionsType = GetRequiredType(windowHostType.Assembly, "System.Windows.Media.ProGPU.ProGpuWpfWindowOptions");
+        Type vector2DIntType = GetRequiredType(silkNetMaths, "Silk.NET.Maths.Vector2D`1").MakeGenericType(typeof(int));
+        object options = Create(windowOptionsType);
+        SetProperty(options, "Width", 420);
+        SetProperty(options, "Height", 840);
+        object host = Create(windowHostType, options);
+
+        try
+        {
+            MethodInfo resolveDisplayScale = displayScaleResolverType.GetMethod(
+                "ResolveDisplayScaleWithPlatformFallback",
+                BindingFlags.Static | BindingFlags.Public,
+                binder: null,
+                [typeof(double), typeof(Func<double?>)],
+                modifiers: null)
+                ?? throw new MissingMethodException(displayScaleResolverType.FullName, "ResolveDisplayScaleWithPlatformFallback");
+            object dpiScale = InvokeRequired(resolveDisplayScale, [1.0, new Func<double?>(() => 2.0)]);
+            AssertEqual(2.0, dpiScale, $"{descriptionPrefix} packaged Retina startup display scale");
+
+            object nativeRetinaSize = Create(vector2DIntType, 840, 1680);
+            MethodInfo updateNativeResize = windowHostType.GetMethod(
+                "UpdateClientSizeFromNativeResize",
+                BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
+                binder: null,
+                [vector2DIntType, vector2DIntType, typeof(double)],
+                modifiers: null)
+                ?? throw new MissingMethodException(windowHostType.FullName, "UpdateClientSizeFromNativeResize");
+            InvokeMethod(updateNativeResize, host, nativeRetinaSize, nativeRetinaSize, dpiScale);
+            AssertEqual(420, GetProperty(host, "Width"), $"{descriptionPrefix} packaged Retina startup logical host width");
+            AssertEqual(840, GetProperty(host, "Height"), $"{descriptionPrefix} packaged Retina startup logical host height");
+
+            MethodInfo resolveGeometry = windowHostType.GetMethod(
+                "ResolveRenderSurfaceGeometry",
+                BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public,
+                binder: null,
+                [typeof(int), typeof(int), vector2DIntType, typeof(double)],
+                modifiers: null)
+                ?? throw new MissingMethodException(windowHostType.FullName, "ResolveRenderSurfaceGeometry");
+            object geometry = InvokeMethod(resolveGeometry, null, 420, 840, nativeRetinaSize, dpiScale)
+                ?? throw new InvalidOperationException($"{descriptionPrefix} packaged Retina render surface geometry was null.");
+            AssertEqual(420u, GetProperty(geometry, "LogicalWidth"), $"{descriptionPrefix} packaged Retina render logical width");
+            AssertEqual(840u, GetProperty(geometry, "LogicalHeight"), $"{descriptionPrefix} packaged Retina render logical height");
+            AssertEqual(840u, GetProperty(geometry, "PixelWidth"), $"{descriptionPrefix} packaged Retina render pixel width");
+            AssertEqual(1680u, GetProperty(geometry, "PixelHeight"), $"{descriptionPrefix} packaged Retina render pixel height");
+            AssertEqual(2.0, GetProperty(geometry, "DpiScale"), $"{descriptionPrefix} packaged Retina render DPI scale");
+        }
+        finally
+        {
+            (host as IDisposable)?.Dispose();
+        }
     }
 
     private static void AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(
@@ -11757,6 +11821,15 @@ internal static class Program
             ?? throw new MissingMemberException(instance.GetType().FullName, propertyName);
         return property.GetValue(instance)
             ?? throw new InvalidOperationException($"Property '{propertyName}' returned null.");
+    }
+
+    private static void SetProperty(object instance, string propertyName, object? value)
+    {
+        PropertyInfo property = instance.GetType().GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(instance.GetType().FullName, propertyName);
+        property.SetValue(instance, value);
     }
 
     private static object Invoke(object instance, string methodName, params object?[] args)

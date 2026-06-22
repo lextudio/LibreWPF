@@ -7840,6 +7840,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RenderPassEncoderSetViewport", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(proGpuWpf, proGpuScene, \"external SDK\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPackagedHighDpiRetainedWpfPixelsFillPhysicalTarget(", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertPackagedRetinaStartupResizeKeepsLogicalSurface(", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("packaged Retina startup logical host width", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("packaged retained WPF HiDPI upper-left pixel", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("packaged retained WPF HiDPI lower-right pixel", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PushCurrentDirectory(nativeAssetRoot)", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7878,6 +7880,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RenderPassEncoderSetViewport", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(proGpuWpf, proGpuScene, \"SDK\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPackagedHighDpiRetainedWpfPixelsFillPhysicalTarget(", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertPackagedRetinaStartupResizeKeepsLogicalSurface(", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("packaged Retina startup logical host width", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("packaged retained WPF HiDPI upper-left pixel", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("packaged retained WPF HiDPI lower-right pixel", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PushCurrentDirectory(nativeAssetRoot)", runtimeHarnessProgram, StringComparison.Ordinal);

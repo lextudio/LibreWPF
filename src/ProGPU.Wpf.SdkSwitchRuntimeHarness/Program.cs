@@ -138,6 +138,7 @@ internal static class Program
             Path.Combine(appOutputRoot, LibraryAssemblyName + ".dll"),
             "SDK switch library assembly");
         ValidateLocalProGpuPackagesMatchAvailableRepositoryBuilds(repoRoot, packageFeed);
+        ValidateLocalWpfPackageMatchesAvailableRepositoryBuilds(wpfRoot, packageFeed);
         RequireOutputRuntimeAssets(appOutputRoot, packageFeed);
 
         return new SmokeInputs(repoRoot, appOutputRoot, smokeAssemblyPath, wpfRoot, proGpuRoot);
@@ -147,28 +148,55 @@ internal static class Program
     {
         foreach (string assemblyName in ProGpuRuntimeAssemblies)
         {
-            ValidateLocalPackageMatchesAvailableRepositoryBuild(
-                repoRoot,
+            string repositoryAssemblyPath = GetRepositoryProGpuAssemblyPath(repoRoot, assemblyName);
+            if (!File.Exists(repositoryAssemblyPath))
+            {
+                continue;
+            }
+
+            ValidateLocalPackageAssemblyMatchesFile(
                 packageFeed,
                 assemblyName,
                 assemblyName,
-                "net10.0");
+                "net10.0",
+                repositoryAssemblyPath,
+                $"repository Release {assemblyName}.dll");
         }
     }
 
-    private static void ValidateLocalPackageMatchesAvailableRepositoryBuild(
-        string repoRoot,
-        string packageFeed,
-        string packageId,
-        string assemblySimpleName,
-        string targetFramework)
+    private static void ValidateLocalWpfPackageMatchesAvailableRepositoryBuilds(string wpfRoot, string packageFeed)
     {
-        string repositoryAssemblyPath = GetRepositoryProGpuAssemblyPath(repoRoot, assemblySimpleName);
-        if (!File.Exists(repositoryAssemblyPath))
+        if (!Directory.Exists(wpfRoot))
         {
             return;
         }
 
+        foreach (string assemblyName in RequiredWpfRuntimeAssemblies)
+        {
+            string repositoryAssemblyPath = Path.Combine(wpfRoot, assemblyName + ".dll");
+            if (!File.Exists(repositoryAssemblyPath))
+            {
+                continue;
+            }
+
+            ValidateLocalPackageAssemblyMatchesFile(
+                packageFeed,
+                "Microsoft.DotNet.Wpf.GitHub",
+                assemblyName,
+                "net11.0",
+                repositoryAssemblyPath,
+                $"repository WPF transport {assemblyName}.dll");
+        }
+    }
+
+    private static void ValidateLocalPackageAssemblyMatchesFile(
+        string packageFeed,
+        string packageId,
+        string assemblySimpleName,
+        string targetFramework,
+        string expectedAssemblyPath,
+        string expectedAssemblyDescription)
+    {
         string packagePath = Path.Combine(packageFeed, $"{packageId}.{PackageVersion}.nupkg");
         string packageEntryName = $"lib/{targetFramework}/{assemblySimpleName}.dll";
 
@@ -182,11 +210,11 @@ internal static class Program
 
         using Stream packageStream = entry.Open();
         string packageHash = ComputeStreamSha256(packageStream);
-        string repositoryHash = ComputeFileSha256(repositoryAssemblyPath);
+        string repositoryHash = ComputeFileSha256(expectedAssemblyPath);
         AssertEqual(
             repositoryHash,
             packageHash,
-            $"local {packageId} package matches repository Release {assemblySimpleName}.dll");
+            $"local {packageId} package matches {expectedAssemblyDescription}");
     }
 
     private static string GetRepositoryProGpuAssemblyPath(string repoRoot, string assemblySimpleName)
@@ -226,6 +254,15 @@ internal static class Program
 
         RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, "ProGPU.Wpf", "ProGPU.Wpf", "net10.0");
         RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, "ProGPU.Scene", "ProGPU.Scene", "net10.0");
+        foreach (string assemblyName in RequiredWpfRuntimeAssemblies)
+        {
+            RequireOutputAssemblyMatchesLocalPackage(
+                appOutputRoot,
+                packageFeed,
+                "Microsoft.DotNet.Wpf.GitHub",
+                assemblyName,
+                "net11.0");
+        }
 
         RequireAnyFile(
             appOutputRoot,

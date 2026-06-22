@@ -102,6 +102,7 @@ internal static class Program
             RequireDirectory(packageFeed, "local package feed");
             ValidateSdkPackageLayout(packageFeed);
             ValidateLocalProGpuPackagesMatchAvailableRepositoryBuilds(repoRoot, packageFeed);
+            ValidateLocalWpfPackageMatchesAvailableRepositoryBuilds(repoRoot, packageFeed);
 
             string workRoot = Path.Combine(Path.GetTempPath(), "ProGPU.Wpf.SdkExternalSmoke");
             string appProjectPath = PrepareExternalSdkApp(workRoot, packageFeed);
@@ -252,28 +253,50 @@ internal static class Program
     {
         foreach (string assemblyName in s_requiredProGpuRuntimeAssemblies)
         {
-            ValidateLocalPackageMatchesAvailableRepositoryBuild(
-                repoRoot,
+            string repositoryAssemblyPath = GetRepositoryProGpuAssemblyPath(repoRoot, assemblyName);
+            if (!File.Exists(repositoryAssemblyPath))
+            {
+                continue;
+            }
+
+            ValidateLocalPackageAssemblyMatchesFile(
                 packageFeed,
                 assemblyName,
                 assemblyName,
-                "net10.0");
+                "net10.0",
+                repositoryAssemblyPath,
+                $"repository Release {assemblyName}.dll");
         }
     }
 
-    private static void ValidateLocalPackageMatchesAvailableRepositoryBuild(
-        string repoRoot,
+    private static void ValidateLocalWpfPackageMatchesAvailableRepositoryBuilds(string repoRoot, string packageFeed)
+    {
+        foreach (string assemblyName in s_requiredWpfRuntimeAssemblies)
+        {
+            string repositoryAssemblyPath = GetRepositoryWpfAssemblyPath(repoRoot, assemblyName);
+            if (!File.Exists(repositoryAssemblyPath))
+            {
+                continue;
+            }
+
+            ValidateLocalPackageAssemblyMatchesFile(
+                packageFeed,
+                "Microsoft.DotNet.Wpf.GitHub",
+                assemblyName,
+                "net11.0",
+                repositoryAssemblyPath,
+                $"repository WPF transport {assemblyName}.dll");
+        }
+    }
+
+    private static void ValidateLocalPackageAssemblyMatchesFile(
         string packageFeed,
         string packageId,
         string assemblySimpleName,
-        string targetFramework)
+        string targetFramework,
+        string expectedAssemblyPath,
+        string expectedAssemblyDescription)
     {
-        string repositoryAssemblyPath = GetRepositoryProGpuAssemblyPath(repoRoot, assemblySimpleName);
-        if (!File.Exists(repositoryAssemblyPath))
-        {
-            return;
-        }
-
         string packagePath = Path.Combine(packageFeed, $"{packageId}.{SdkVersion}.nupkg");
         string packageEntryName = $"lib/{targetFramework}/{assemblySimpleName}.dll";
 
@@ -287,11 +310,11 @@ internal static class Program
 
         using Stream packageStream = entry.Open();
         string packageHash = ComputeStreamSha256(packageStream);
-        string repositoryHash = ComputeFileSha256(repositoryAssemblyPath);
+        string repositoryHash = ComputeFileSha256(expectedAssemblyPath);
         AssertEqual(
             repositoryHash,
             packageHash,
-            $"local {packageId} package matches repository Release {assemblySimpleName}.dll");
+            $"local {packageId} package matches {expectedAssemblyDescription}");
     }
 
     private static string GetRepositoryProGpuAssemblyPath(string repoRoot, string assemblySimpleName)
@@ -317,6 +340,33 @@ internal static class Program
             "bin",
             "Release",
             "net10.0",
+            assemblySimpleName + ".dll");
+    }
+
+    private static string GetRepositoryWpfAssemblyPath(string repoRoot, string assemblySimpleName)
+    {
+        string releasePath = Path.Combine(
+            repoRoot,
+            "artifacts",
+            "packaging",
+            "Release",
+            "Microsoft.DotNet.Wpf.GitHub",
+            "lib",
+            "net11.0",
+            assemblySimpleName + ".dll");
+        if (File.Exists(releasePath))
+        {
+            return releasePath;
+        }
+
+        return Path.Combine(
+            repoRoot,
+            "artifacts",
+            "packaging",
+            "Debug",
+            "Microsoft.DotNet.Wpf.GitHub.Debug",
+            "lib",
+            "net11.0",
             assemblySimpleName + ".dll");
     }
 
@@ -774,6 +824,20 @@ internal static class Program
                         DefaultTemplate="{StaticResource ExternalDefaultItemTemplate}"
                         FrameworkTemplate="{StaticResource ExternalFrameworkItemTemplate}"
                         RenderingTemplate="{StaticResource ExternalRenderingItemTemplate}" />
+                    <Style
+                        x:Key="ExternalFrameworkItemContainerStyle"
+                        TargetType="{x:Type ListBoxItem}">
+                        <Setter Property="Tag" Value="external style selector framework container" />
+                    </Style>
+                    <Style
+                        x:Key="ExternalDefaultItemContainerStyle"
+                        TargetType="{x:Type ListBoxItem}">
+                        <Setter Property="Tag" Value="external style selector default container" />
+                    </Style>
+                    <local:ExternalItemContainerStyleSelector
+                        x:Key="ExternalItemContainerStyleSelector"
+                        DefaultStyle="{StaticResource ExternalDefaultItemContainerStyle}"
+                        FrameworkStyle="{StaticResource ExternalFrameworkItemContainerStyle}" />
                     <CollectionViewSource
                         x:Key="ExternalGroupedItems"
                         Source="{Binding ExternalItems}">
@@ -1409,6 +1473,19 @@ internal static class Program
                         x:Name="ExternalTemplateSelectorItems"
                         ItemTemplateSelector="{StaticResource ExternalItemTemplateSelector}"
                         ItemsSource="{Binding ExternalItems}" />
+                    <ListBox
+                        x:Name="ExternalStyleSelectorItemsList"
+                        ItemContainerStyleSelector="{StaticResource ExternalItemContainerStyleSelector}"
+                        ItemsSource="{Binding ExternalItems}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type local:ExternalItem}">
+                                <TextBlock
+                                    x:Name="ExternalStyleSelectorItemTextBlock"
+                                    Tag="external style selector item template"
+                                    Text="{Binding Name}" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
                     <ListBox
                         x:Name="ExternalItemsList"
                         DisplayMemberPath="Name"
@@ -2782,6 +2859,23 @@ internal static class Program
                 }
             }
 
+            public sealed class ExternalItemContainerStyleSelector : StyleSelector
+            {
+                public Style? FrameworkStyle { get; set; }
+
+                public Style? DefaultStyle { get; set; }
+
+                public override Style? SelectStyle(object item, DependencyObject container)
+                {
+                    if (item is ExternalItem { Kind: "Framework" } && FrameworkStyle is not null)
+                    {
+                        return FrameworkStyle;
+                    }
+
+                    return DefaultStyle ?? base.SelectStyle(item, container);
+                }
+            }
+
             public static class ExternalResourceFactory
             {
                 public static string CreateSummary(string prefix, int value)
@@ -3450,6 +3544,7 @@ internal static class Program
                     ValidateMultiDataTriggerActionsAfterRun(window);
                     ValidateVisualStateTransitions(window);
                     ValidateGridSplitterDragAfterRun(window);
+                    ValidateItemContainerStyleSelectorAfterRun(window);
                     ValidateAdornerLayer(window);
                     ValidateAccessKeyRoutingAfterRun(window);
                     ValidateClassInputBindingAfterRun(window);
@@ -3821,6 +3916,25 @@ internal static class Program
                         "external SDK item template selector items control");
                     AssertEqual(selector, selectorItems.ItemTemplateSelector, "external SDK ItemsControl ItemTemplateSelector");
                     AssertEqual(2, selectorItems.Items.Count, "external SDK item template selector item count");
+
+                    var frameworkContainerStyle = RequireType<Style>(
+                        window.FindResource("ExternalFrameworkItemContainerStyle"),
+                        "external SDK framework item container style");
+                    var defaultContainerStyle = RequireType<Style>(
+                        window.FindResource("ExternalDefaultItemContainerStyle"),
+                        "external SDK default item container style");
+                    var containerStyleSelector = RequireType<ExternalItemContainerStyleSelector>(
+                        window.FindResource("ExternalItemContainerStyleSelector"),
+                        "external SDK item container style selector resource");
+                    AssertEqual(typeof(ListBoxItem), frameworkContainerStyle.TargetType, "external SDK framework item container style target");
+                    AssertEqual(typeof(ListBoxItem), defaultContainerStyle.TargetType, "external SDK default item container style target");
+                    AssertEqual(frameworkContainerStyle, containerStyleSelector.FrameworkStyle, "external SDK item container style selector framework style");
+                    AssertEqual(defaultContainerStyle, containerStyleSelector.DefaultStyle, "external SDK item container style selector default style");
+                    var styleSelectorList = RequireType<ListBox>(
+                        window.FindName("ExternalStyleSelectorItemsList"),
+                        "external SDK item container style selector list");
+                    AssertEqual(containerStyleSelector, styleSelectorList.ItemContainerStyleSelector, "external SDK ListBox ItemContainerStyleSelector");
+                    AssertEqual(2, styleSelectorList.Items.Count, "external SDK item container style selector item count");
 
                     var itemsList = RequireType<ListBox>(
                         window.FindName("ExternalItemsList"),
@@ -8725,6 +8839,61 @@ internal static class Program
                     ValidateGridSplitterDrag(splitterGrid, splitter);
                 }
 
+                private static void ValidateItemContainerStyleSelectorAfterRun(MainWindow window)
+                {
+                    var styleSelectorList = RequireType<ListBox>(
+                        window.FindName("ExternalStyleSelectorItemsList"),
+                        "external SDK Application.Run item container style selector list");
+                    AssertEqual(2, styleSelectorList.Items.Count, "external SDK Application.Run style selector item count");
+
+                    ValidateGeneratedStyleSelectorItem(
+                        styleSelectorList,
+                        window.ExternalItems[0],
+                        "Alpha",
+                        "external style selector framework container",
+                        "external SDK ItemContainerStyleSelector framework generated item container",
+                        "external SDK ItemContainerStyleSelector framework generated container style",
+                        "external SDK ItemContainerStyleSelector framework generated TextBlock",
+                        "external SDK ItemContainerStyleSelector framework generated TextBlock text");
+
+                    ValidateGeneratedStyleSelectorItem(
+                        styleSelectorList,
+                        window.ExternalItems[1],
+                        "Beta",
+                        "external style selector default container",
+                        "external SDK ItemContainerStyleSelector default generated item container",
+                        "external SDK ItemContainerStyleSelector default generated container style",
+                        "external SDK ItemContainerStyleSelector default generated TextBlock",
+                        "external SDK ItemContainerStyleSelector default generated TextBlock text");
+                }
+
+                private static void ValidateGeneratedStyleSelectorItem(
+                    ListBox styleSelectorList,
+                    object item,
+                    string expectedText,
+                    string expectedContainerTag,
+                    string itemContainerDescription,
+                    string itemContainerTagDescription,
+                    string textBlockDescription,
+                    string textDescription)
+                {
+                    styleSelectorList.ScrollIntoView(item);
+                    styleSelectorList.UpdateLayout();
+
+                    var itemContainer = RequireType<ListBoxItem>(
+                        styleSelectorList.ItemContainerGenerator.ContainerFromItem(item),
+                        itemContainerDescription);
+                    AssertEqual(expectedContainerTag, itemContainer.Tag, itemContainerTagDescription);
+                    itemContainer.ApplyTemplate();
+                    itemContainer.UpdateLayout();
+
+                    var textBlock = RequireType<TextBlock>(
+                        FindVisualDescendantByName(itemContainer, "ExternalStyleSelectorItemTextBlock"),
+                        textBlockDescription);
+                    AssertEqual(expectedText, textBlock.Text, textDescription);
+                    AssertEqual("external style selector item template", textBlock.Tag, "external SDK ItemContainerStyleSelector generated TextBlock tag");
+                }
+
                 private static void ValidateSelectorsAndContent(MainWindow window)
                 {
                     var comboBox = RequireType<ComboBox>(
@@ -9405,6 +9574,28 @@ internal static class Program
                         $"Expected {description} to be {typeof(T).FullName}, but found {value?.GetType().FullName ?? "<null>"}.");
                 }
 
+                private static FrameworkElement? FindVisualDescendantByName(DependencyObject root, string name)
+                {
+                    int childCount = VisualTreeHelper.GetChildrenCount(root);
+                    for (int i = 0; i < childCount; i++)
+                    {
+                        DependencyObject child = VisualTreeHelper.GetChild(root, i);
+                        if (child is FrameworkElement element &&
+                            string.Equals(element.Name, name, StringComparison.Ordinal))
+                        {
+                            return element;
+                        }
+
+                        FrameworkElement? nested = FindVisualDescendantByName(child, name);
+                        if (nested is not null)
+                        {
+                            return nested;
+                        }
+                    }
+
+                    return null;
+                }
+
                 private static bool ContainsGroup(System.Collections.IEnumerable groups, string name)
                 {
                     foreach (object group in groups)
@@ -9665,6 +9856,15 @@ internal static class Program
 
         ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, "ProGPU.Wpf", "ProGPU.Wpf", "net10.0");
         ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, "ProGPU.Scene", "ProGPU.Scene", "net10.0");
+        foreach (string assemblyName in s_requiredWpfRuntimeAssemblies)
+        {
+            ValidateOutputAssemblyMatchesLocalPackage(
+                outputRoot,
+                packageFeed,
+                "Microsoft.DotNet.Wpf.GitHub",
+                assemblyName,
+                "net11.0");
+        }
 
         RequireAnyFile(outputRoot, GetNativeAssetCandidates("wgpu"), "external SDK output native WebGPU runtime asset");
         RequireAnyFile(outputRoot, GetNativeAssetCandidates("glfw"), "external SDK output native GLFW runtime asset");

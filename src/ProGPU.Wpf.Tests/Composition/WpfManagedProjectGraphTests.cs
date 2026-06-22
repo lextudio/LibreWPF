@@ -6735,7 +6735,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK app compiled page source", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("NuGet.config", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateSdkPackageLayout(packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePackageAssemblyIdentities(packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Wpf.Sdk.{SdkVersion}.nupkg", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new(\"Microsoft.DotNet.Wpf.GitHub\", \"PresentationCore\", \"net11.0\", \"WPF\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new(\"ProGPU.Scene\", \"ProGPU.Scene\", \"net10.0\", \"ProGPU\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssemblyName.GetAssemblyName(tempPath)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Expected {description} assembly to have a public key token.", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertEqual(expectedAssemblyVersion", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<packageType name=\\\"MSBuildSdk\\\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ReadPackageEntry(package, \"Sdk/Sdk.props\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ReadPackageEntry(package, \"targets/ProGPU.Wpf.Sdk.PortableBootstrap.cs\"", externalSdkHarnessProgram, StringComparison.Ordinal);

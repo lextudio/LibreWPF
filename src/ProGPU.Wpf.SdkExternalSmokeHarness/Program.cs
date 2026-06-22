@@ -65,6 +65,29 @@ internal static class Program
         "System.Windows.Extensions"
     ];
 
+    private static readonly PackageAssemblyExpectation[] s_packageAssemblyExpectations =
+    [
+        new("Microsoft.DotNet.Wpf.GitHub", "WindowsBase", "net11.0", "WPF"),
+        new("Microsoft.DotNet.Wpf.GitHub", "System.Xaml", "net11.0", "MicrosoftBcl"),
+        new("Microsoft.DotNet.Wpf.GitHub", "PresentationCore", "net11.0", "WPF"),
+        new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework", "net11.0", "WPF"),
+        new("Microsoft.DotNet.Wpf.GitHub", "PresentationUI", "net11.0", "WPF"),
+        new("Microsoft.DotNet.Wpf.GitHub", "ReachFramework", "net11.0", "WPF"),
+        new("Microsoft.DotNet.Wpf.GitHub", "UIAutomationTypes", "net11.0", "WPF"),
+        new("Microsoft.DotNet.Wpf.GitHub", "UIAutomationProvider", "net11.0", "WPF"),
+        new("Microsoft.DotNet.Wpf.GitHub", "System.Windows.Input.Manipulations", "net11.0", "MicrosoftBcl"),
+        new("Microsoft.DotNet.Wpf.GitHub", "System.Windows.Primitives", "net11.0", "WPF"),
+        new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Aero2", "net11.0", "WPF"),
+        new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Fluent", "net11.0", "WPF"),
+        new("ProGPU.Wpf", "ProGPU.Wpf", "net10.0", string.Empty),
+        new("ProGPU.Backend", "ProGPU.Backend", "net10.0", "ProGPU"),
+        new("ProGPU.Scene", "ProGPU.Scene", "net10.0", "ProGPU"),
+        new("ProGPU.Vector", "ProGPU.Vector", "net10.0", "ProGPU"),
+        new("ProGPU.Text", "ProGPU.Text", "net10.0", "ProGPU"),
+        new("ProGPU.Compute", "ProGPU.Compute", "net10.0", "ProGPU"),
+        new("ProGPU.Transpiler", "ProGPU.Transpiler", "net10.0", "ProGPU")
+    ];
+
     private static int Main()
     {
         try
@@ -166,6 +189,52 @@ internal static class Program
         AssertNoPackageEntryPrefix(package, "lib/", "SDK package lib folder");
         AssertNoPackageEntryPrefix(package, "ref/", "SDK package ref folder");
         AssertNoPackageEntryPrefix(package, "tools/", "SDK package tools folder");
+
+        ValidatePackageAssemblyIdentities(packageFeed);
+    }
+
+    private static void ValidatePackageAssemblyIdentities(string packageFeed)
+    {
+        var expectedAssemblyVersion = new Version(11, 0, 0, 0);
+        var publicKeyTokensByGroup = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (PackageAssemblyExpectation expectation in s_packageAssemblyExpectations)
+        {
+            string packagePath = Path.Combine(packageFeed, $"{expectation.PackageId}.{SdkVersion}.nupkg");
+            string description = $"{expectation.PackageId}/{expectation.AssemblySimpleName}";
+            RequireFile(packagePath, $"{description} package");
+
+            using ZipArchive package = ZipFile.OpenRead(packagePath);
+            string nuspec = ReadPackageEntry(package, $"{expectation.PackageId}.nuspec", $"{description} nuspec");
+            AssertContains(nuspec, $"<version>{SdkVersion}</version>", $"{description} package version");
+
+            string assemblyEntryName = $"lib/{expectation.TargetFramework}/{expectation.AssemblySimpleName}.dll";
+            ZipArchiveEntry assemblyEntry = RequirePackageEntry(package, assemblyEntryName, $"{description} runtime assembly");
+            AssemblyName identity = ReadPackageAssemblyName(assemblyEntry, $"{description} runtime assembly");
+
+            AssertEqual(expectation.AssemblySimpleName, identity.Name ?? string.Empty, $"{description} assembly name");
+            AssertEqual(expectedAssemblyVersion, identity.Version ?? new Version(0, 0, 0, 0), $"{description} assembly version");
+
+            string publicKeyToken = GetPublicKeyToken(identity);
+            if (expectation.PublicKeyTokenGroup.Length == 0)
+            {
+                continue;
+            }
+
+            if (publicKeyToken.Length == 0)
+            {
+                throw new InvalidOperationException($"Expected {description} assembly to have a public key token.");
+            }
+
+            if (publicKeyTokensByGroup.TryGetValue(expectation.PublicKeyTokenGroup, out string? expectedPublicKeyToken))
+            {
+                AssertEqual(expectedPublicKeyToken, publicKeyToken, $"{description} {expectation.PublicKeyTokenGroup} public key token");
+            }
+            else
+            {
+                publicKeyTokensByGroup.Add(expectation.PublicKeyTokenGroup, publicKeyToken);
+            }
+        }
     }
 
     private static string PrepareExternalSdkApp(string workRoot, string packageFeed)
@@ -6607,6 +6676,43 @@ internal static class Program
         return entry;
     }
 
+    private static AssemblyName ReadPackageAssemblyName(ZipArchiveEntry entry, string description)
+    {
+        string tempPath = Path.Combine(
+            Path.GetTempPath(),
+            "progpu-wpf-sdk-package-" + Guid.NewGuid().ToString("N") + ".dll");
+
+        try
+        {
+            using (Stream source = entry.Open())
+            using (FileStream destination = File.Create(tempPath))
+            {
+                source.CopyTo(destination);
+            }
+
+            return AssemblyName.GetAssemblyName(tempPath);
+        }
+        catch (Exception ex) when (ex is BadImageFormatException or FileLoadException or FileNotFoundException)
+        {
+            throw new InvalidOperationException($"Could not read {description} identity from package entry '{entry.FullName}'.", ex);
+        }
+        finally
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+        }
+    }
+
+    private static string GetPublicKeyToken(AssemblyName identity)
+    {
+        byte[]? publicKeyToken = identity.GetPublicKeyToken();
+        return publicKeyToken is null || publicKeyToken.Length == 0
+            ? string.Empty
+            : string.Concat(publicKeyToken.Select(value => value.ToString("x2")));
+    }
+
     private static void AssertNoPackageEntryPrefix(ZipArchive package, string prefix, string description)
     {
         if (package.Entries.Any(entry => entry.FullName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
@@ -6746,4 +6852,10 @@ internal static class Program
 
         throw new InvalidOperationException($"Expected {description} getter to reference '{fieldName}'.");
     }
+
+    private readonly record struct PackageAssemblyExpectation(
+        string PackageId,
+        string AssemblySimpleName,
+        string TargetFramework,
+        string PublicKeyTokenGroup);
 }

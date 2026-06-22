@@ -1165,6 +1165,16 @@ internal static class Program
                     <AccessText
                         x:Name="ExternalStandaloneAccessText"
                         Text="_External standalone access" />
+                    <StackPanel
+                        x:Name="ExternalKeyboardNavigationPanel"
+                        KeyboardNavigation.TabNavigation="Cycle">
+                        <Button
+                            x:Name="ExternalKeyboardNavigationFirstButton"
+                            Content="External navigation first" />
+                        <Button
+                            x:Name="ExternalKeyboardNavigationSecondButton"
+                            Content="External navigation second" />
+                    </StackPanel>
                     <AdornerDecorator x:Name="ExternalAdornerDecorator">
                         <Button
                             x:Name="ExternalAdornedButton"
@@ -2866,6 +2876,7 @@ internal static class Program
                     ValidateVisualStateTransitions(window);
                     ValidateAdornerLayer(window);
                     ValidateAccessKeyRoutingAfterRun(window);
+                    ValidateKeyboardNavigationAfterRun(window);
 
                     App.MarkExternalRunValidated();
                     app.Shutdown(0);
@@ -7592,11 +7603,23 @@ internal static class Program
                     var standaloneAccessText = RequireType<AccessText>(
                         window.FindName("ExternalStandaloneAccessText"),
                         "external SDK standalone access text");
+                    var keyboardNavigationPanel = RequireType<StackPanel>(
+                        window.FindName("ExternalKeyboardNavigationPanel"),
+                        "external SDK keyboard navigation panel");
+                    var firstKeyboardNavigationButton = RequireType<Button>(
+                        window.FindName("ExternalKeyboardNavigationFirstButton"),
+                        "external SDK first keyboard navigation button");
+                    var secondKeyboardNavigationButton = RequireType<Button>(
+                        window.FindName("ExternalKeyboardNavigationSecondButton"),
+                        "external SDK second keyboard navigation button");
                     AssertEqual(commandButton, FocusManager.GetFocusedElement(focusPanel), "external SDK focus manager focused element");
                     AssertEqual(true, FocusManager.GetIsFocusScope(focusPanel), "external SDK focus manager scope flag");
                     AssertEqual(KeyboardNavigationMode.Cycle, KeyboardNavigation.GetTabNavigation(focusPanel), "external SDK tab navigation mode");
                     AssertEqual(KeyboardNavigationMode.Cycle, KeyboardNavigation.GetControlTabNavigation(focusPanel), "external SDK control-tab navigation mode");
                     AssertEqual(KeyboardNavigationMode.Contained, KeyboardNavigation.GetDirectionalNavigation(focusPanel), "external SDK directional navigation mode");
+                    AssertEqual(KeyboardNavigationMode.Cycle, KeyboardNavigation.GetTabNavigation(keyboardNavigationPanel), "external SDK nested keyboard navigation mode");
+                    AssertEqual("External navigation first", firstKeyboardNavigationButton.Content, "external SDK first keyboard navigation button content");
+                    AssertEqual("External navigation second", secondKeyboardNavigationButton.Content, "external SDK second keyboard navigation button content");
                     AssertEqual(validationTextBox, accessLabel.Target, "external SDK label access-key target");
                     AssertEqual("_External access target", accessLabel.Content, "external SDK label access-key content");
                     AssertEqual("_External standalone access", standaloneAccessText.Text, "external SDK standalone access text");
@@ -7676,6 +7699,30 @@ internal static class Program
                     AssertEqual(false, ReferenceEquals(validationTextBox, Keyboard.FocusedElement), "external SDK access-key manager cleared focus");
                     AssertEqual(false, AccessKeyManager.ProcessKey(presentationSource, "E", false), "external SDK access-key manager process last key");
                     AssertEqual(validationTextBox, Keyboard.FocusedElement, "external SDK access-key manager focused label target");
+                    Keyboard.ClearFocus();
+                }
+
+                private static void ValidateKeyboardNavigationAfterRun(MainWindow window)
+                {
+                    var keyboardNavigationPanel = RequireType<StackPanel>(
+                        window.FindName("ExternalKeyboardNavigationPanel"),
+                        "external SDK keyboard navigation runtime panel");
+                    var firstButton = RequireType<Button>(
+                        window.FindName("ExternalKeyboardNavigationFirstButton"),
+                        "external SDK first keyboard navigation runtime button");
+                    var secondButton = RequireType<Button>(
+                        window.FindName("ExternalKeyboardNavigationSecondButton"),
+                        "external SDK second keyboard navigation runtime button");
+
+                    keyboardNavigationPanel.UpdateLayout();
+                    AssertEqual(firstButton, Keyboard.Focus(firstButton), "external SDK KeyboardNavigation initial focus");
+                    AssertEqual(firstButton, Keyboard.FocusedElement, "external SDK KeyboardNavigation focused first button");
+                    AssertEqual(true, firstButton.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next)), "external SDK KeyboardNavigation next move result");
+                    AssertEqual(secondButton, Keyboard.FocusedElement, "external SDK KeyboardNavigation focused second button");
+                    AssertEqual(true, secondButton.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next)), "external SDK KeyboardNavigation cycle next move result");
+                    AssertEqual(firstButton, Keyboard.FocusedElement, "external SDK KeyboardNavigation cycled first button");
+                    AssertEqual(true, firstButton.MoveFocus(new TraversalRequest(FocusNavigationDirection.Previous)), "external SDK KeyboardNavigation previous move result");
+                    AssertEqual(secondButton, Keyboard.FocusedElement, "external SDK KeyboardNavigation cycled previous button");
                     Keyboard.ClearFocus();
                 }
 

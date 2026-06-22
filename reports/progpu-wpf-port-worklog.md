@@ -1665,6 +1665,8 @@
 
 - Extended the generated external SDK smoke from access-key metadata into WPF access-key routing outside the repository build graph. The SDK-only app now validates `AccessKeyManager.IsKeyRegistered(...)` for the compiled `_External access target` label, processes the key through the window `PresentationSource`, and verifies WPF transfers keyboard focus to the `Label.Target` `TextBox`. This keeps mnemonic routing in WPF's managed access-key/focus managers for apps that only change project SDK.
 
+- Extended the generated external SDK smoke through WPF keyboard-navigation behavior outside the repository build graph. The SDK-only app now compiles a nested `KeyboardNavigation.TabNavigation="Cycle"` panel, focuses the first generated button during the `Application.Run()` validation path, drives `TraversalRequest` next/previous movement with `MoveFocus(...)`, and validates forward and reverse cycle focus transfer. This keeps tab traversal policy in WPF's managed keyboard-navigation manager for apps that only change project SDK.
+
 ## Open Porting Items
 
 - Finish SDK deliverable hardening for the no-source-change migration contract: existing WPF apps should change only the project `Sdk` to use the ProGPU/Silk.NET platform. Promote the new SDK nupkg preflight plus package-mode transport/progpu package validation into CI, publish the managed WPF transport and ProGPU/Silk.NET packages from a clean source build, broaden external-app validation beyond the smoke app, and classify every extra app-code requirement as either a compatibility bug or an explicit Windows-only interop exception.

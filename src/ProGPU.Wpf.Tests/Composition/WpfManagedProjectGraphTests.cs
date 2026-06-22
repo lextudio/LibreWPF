@@ -6900,6 +6900,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("validationPeer.GetLabeledBy()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalStandaloneAccessText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Text=\"_External standalone access\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalKeyboardNavigationPanel\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalKeyboardNavigationFirstButton\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalKeyboardNavigationSecondButton\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("KeyboardNavigation.GetTabNavigation(keyboardNavigationPanel)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateKeyboardNavigationAfterRun(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("MoveFocus(new TraversalRequest(FocusNavigationDirection.Next))", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK KeyboardNavigation cycled previous button", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PresentationSource.FromVisual(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AccessKeyManager.IsKeyRegistered(presentationSource, \"E\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AccessKeyManager.ProcessKey(presentationSource, \"E\", false)", externalSdkHarnessProgram, StringComparison.Ordinal);

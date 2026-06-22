@@ -6887,6 +6887,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ItemContainerStyleSelector=\"{StaticResource ExternalItemContainerStyleSelector}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalStyleSelectorItemsList", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalStyleSelectorItemTextBlock", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalPreviousDataItemsList", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RelativeSource={RelativeSource PreviousData}", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePreviousDataBindingsAfterRun(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateGeneratedPreviousDataItem", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK PreviousData third previous text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalFilteredItems", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Filter=\"OnExternalItemsFilter\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalLiveFilteredItems", externalSdkHarnessProgram, StringComparison.Ordinal);

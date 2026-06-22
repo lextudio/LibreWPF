@@ -1590,6 +1590,22 @@ internal static class Program
                         ItemsSource="{Binding ExternalItems}"
                         SelectedIndex="1" />
                     <ListBox
+                        x:Name="ExternalPreviousDataItemsList"
+                        ItemsSource="{Binding ExternalItems}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type local:ExternalItem}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock
+                                        x:Name="ExternalPreviousDataCurrentText"
+                                        Text="{Binding Name}" />
+                                    <TextBlock
+                                        x:Name="ExternalPreviousDataPreviousText"
+                                        Text="{Binding RelativeSource={RelativeSource PreviousData}, Path=Name, FallbackValue=No previous}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <ListBox
                         x:Name="ExternalItemsPanelList"
                         AlternationCount="4"
                         ItemContainerStyle="{StaticResource ExternalItemContainerStyle}"
@@ -3907,6 +3923,7 @@ internal static class Program
                     ValidateVisualStateTransitions(window);
                     ValidateGridSplitterDragAfterRun(window);
                     ValidateItemContainerStyleSelectorAfterRun(window);
+                    ValidatePreviousDataBindingsAfterRun(window);
                     ValidateAdornerLayer(window);
                     ValidateAccessKeyRoutingAfterRun(window);
                     ValidateClassInputBindingAfterRun(window);
@@ -9624,6 +9641,72 @@ internal static class Program
                         textBlockDescription);
                     AssertEqual(expectedText, textBlock.Text, textDescription);
                     AssertEqual("external style selector item template", textBlock.Tag, "external SDK ItemContainerStyleSelector generated TextBlock tag");
+                }
+
+                private static void ValidatePreviousDataBindingsAfterRun(MainWindow window)
+                {
+                    var previousDataList = RequireType<ListBox>(
+                        window.FindName("ExternalPreviousDataItemsList"),
+                        "external SDK Application.Run PreviousData items list");
+                    AssertEqual(2, previousDataList.Items.Count, "external SDK Application.Run PreviousData initial item count");
+
+                    window.ExternalItems.Add(new ExternalItem("Gamma", "Data"));
+                    DrainDispatcher();
+
+                    AssertEqual(3, previousDataList.Items.Count, "external SDK Application.Run PreviousData item count after mutation");
+                    ValidateGeneratedPreviousDataItem(
+                        previousDataList,
+                        window.ExternalItems[0],
+                        "Alpha",
+                        "No previous",
+                        "external SDK PreviousData first item container",
+                        "external SDK PreviousData first current text",
+                        "external SDK PreviousData first previous text");
+                    ValidateGeneratedPreviousDataItem(
+                        previousDataList,
+                        window.ExternalItems[1],
+                        "Beta",
+                        "Alpha",
+                        "external SDK PreviousData second item container",
+                        "external SDK PreviousData second current text",
+                        "external SDK PreviousData second previous text");
+                    ValidateGeneratedPreviousDataItem(
+                        previousDataList,
+                        window.ExternalItems[2],
+                        "Gamma",
+                        "Beta",
+                        "external SDK PreviousData third item container",
+                        "external SDK PreviousData third current text",
+                        "external SDK PreviousData third previous text");
+                }
+
+                private static void ValidateGeneratedPreviousDataItem(
+                    ListBox previousDataList,
+                    object item,
+                    string expectedCurrentText,
+                    string expectedPreviousText,
+                    string itemContainerDescription,
+                    string currentTextDescription,
+                    string previousTextDescription)
+                {
+                    previousDataList.ScrollIntoView(item);
+                    previousDataList.UpdateLayout();
+
+                    var itemContainer = RequireType<ListBoxItem>(
+                        previousDataList.ItemContainerGenerator.ContainerFromItem(item),
+                        itemContainerDescription);
+                    itemContainer.ApplyTemplate();
+                    itemContainer.UpdateLayout();
+
+                    var currentText = RequireType<TextBlock>(
+                        FindVisualDescendantByName(itemContainer, "ExternalPreviousDataCurrentText"),
+                        currentTextDescription);
+                    var previousText = RequireType<TextBlock>(
+                        FindVisualDescendantByName(itemContainer, "ExternalPreviousDataPreviousText"),
+                        previousTextDescription);
+
+                    AssertEqual(expectedCurrentText, currentText.Text, currentTextDescription);
+                    AssertEqual(expectedPreviousText, previousText.Text, previousTextDescription);
                 }
 
                 private static void ValidateSelectorsAndContent(MainWindow window)

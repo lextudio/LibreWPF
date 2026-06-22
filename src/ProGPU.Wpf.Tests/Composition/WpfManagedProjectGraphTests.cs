@@ -4824,8 +4824,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static bool TryCreatePortableFrame(", iconBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryCreatePortableFrameFromUri(", iconBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("PngBitmapDecoder.TryCreatePortableFrame(imageStream", iconBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("TryCreateDibFrame(imageBytes", iconBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("ReadPackedIndex", iconBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("IsMaskBitSet", iconBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("private static bool IsPngSignature", iconBitmapDecoder, StringComparison.Ordinal);
-        Assert.Contains("Portable ICO decoding currently supports PNG-backed icon images.", iconBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("Portable ICO decoding currently supports PNG-backed and BI_RGB DIB icon images.", iconBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("IconBitmapDecoder.TryCreatePortableFrameFromUri", bitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("return new IconBitmapDecoder(portableIconUriFrame", bitmapDecoder, StringComparison.Ordinal);
         AssertGuardBefore(bitmapDecoder, "IconBitmapDecoder.TryCreatePortableFrame", "SetupDecoderFromUriOrStream");
@@ -6499,6 +6502,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK BitmapDecoder.Create URI ICO decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new BitmapImage(iconUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapImage URI ICO top-left blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CreateDibIconBytes(pixels, 2, 2, 8)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create DIB ICO decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create DIB ICO masked alpha byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create URI DIB ICO decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapImage URI DIB ICO masked alpha byte", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreateJpegBytes()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new JpegBitmapDecoder(", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapDecoder.Create JPEG decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);

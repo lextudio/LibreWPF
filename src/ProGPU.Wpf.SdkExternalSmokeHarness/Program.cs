@@ -3583,6 +3583,29 @@ internal static class Program
                     AssertEqual(2, directIconDecoder.Frames[0].PixelWidth, "external SDK IconBitmapDecoder pixel width");
                     AssertEqual(PixelFormats.Bgra32, directIconDecoder.Frames[0].Format, "external SDK IconBitmapDecoder Bgra32 format");
 
+                    byte[] dibIconBytes = CreateDibIconBytes(pixels, 2, 2, 8);
+                    var dibIconDecoder = BitmapDecoder.Create(
+                        new MemoryStream(dibIconBytes),
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(typeof(IconBitmapDecoder), dibIconDecoder.GetType(), "external SDK BitmapDecoder.Create DIB ICO decoder type");
+                    AssertEqual(1, dibIconDecoder.Frames.Count, "external SDK BitmapDecoder.Create DIB ICO frame count");
+                    AssertEqual(2, dibIconDecoder.Frames[0].PixelWidth, "external SDK BitmapDecoder.Create DIB ICO pixel width");
+                    AssertEqual(2, dibIconDecoder.Frames[0].PixelHeight, "external SDK BitmapDecoder.Create DIB ICO pixel height");
+                    AssertEqual(PixelFormats.Bgra32, dibIconDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create DIB ICO Bgra32 format");
+                    var decodedDibIconPixels = new byte[pixels.Length];
+                    dibIconDecoder.Frames[0].CopyPixels(decodedDibIconPixels, 8, 0);
+                    AssertEqual(pixels[0], decodedDibIconPixels[0], "external SDK BitmapDecoder.Create DIB ICO top-left blue byte");
+                    AssertEqual(pixels[14], decodedDibIconPixels[14], "external SDK BitmapDecoder.Create DIB ICO bottom-right red byte");
+                    AssertEqual((byte)0x00, decodedDibIconPixels[15], "external SDK BitmapDecoder.Create DIB ICO masked alpha byte");
+
+                    var directDibIconDecoder = new IconBitmapDecoder(
+                        new MemoryStream(dibIconBytes),
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(1, directDibIconDecoder.Frames.Count, "external SDK DIB IconBitmapDecoder frame count");
+                    AssertEqual(2, directDibIconDecoder.Frames[0].PixelWidth, "external SDK DIB IconBitmapDecoder pixel width");
+
                     byte[] jpegBytes = CreateJpegBytes();
                     AssertEqual((byte)0xFF, jpegBytes[0], "external SDK generated JPEG signature byte 0");
                     AssertEqual((byte)0xD8, jpegBytes[1], "external SDK generated JPEG signature byte 1");
@@ -3756,6 +3779,31 @@ internal static class Program
                         File.Delete(iconPath);
                     }
 
+                    string dibIconPath = Path.Combine(Path.GetTempPath(), "external-sdk-managed-image-" + Guid.NewGuid().ToString("N") + "-dib.ico");
+                    File.WriteAllBytes(dibIconPath, dibIconBytes);
+                    try
+                    {
+                        var dibIconUri = new Uri(dibIconPath);
+                        var uriDibIconDecoder = BitmapDecoder.Create(
+                            dibIconUri,
+                            BitmapCreateOptions.PreservePixelFormat,
+                            BitmapCacheOption.OnLoad);
+                        AssertEqual(typeof(IconBitmapDecoder), uriDibIconDecoder.GetType(), "external SDK BitmapDecoder.Create URI DIB ICO decoder type");
+                        AssertEqual(1, uriDibIconDecoder.Frames.Count, "external SDK BitmapDecoder.Create URI DIB ICO frame count");
+
+                        var dibIconBitmapImage = new BitmapImage(dibIconUri);
+                        AssertEqual(2, dibIconBitmapImage.PixelWidth, "external SDK BitmapImage URI DIB ICO pixel width");
+                        AssertEqual(2, dibIconBitmapImage.PixelHeight, "external SDK BitmapImage URI DIB ICO pixel height");
+                        AssertEqual(PixelFormats.Bgra32, dibIconBitmapImage.Format, "external SDK BitmapImage URI DIB ICO Bgra32 format");
+                        var dibIconBitmapImagePixels = new byte[pixels.Length];
+                        dibIconBitmapImage.CopyPixels(dibIconBitmapImagePixels, 8, 0);
+                        AssertEqual((byte)0x00, dibIconBitmapImagePixels[15], "external SDK BitmapImage URI DIB ICO masked alpha byte");
+                    }
+                    finally
+                    {
+                        File.Delete(dibIconPath);
+                    }
+
                     string jpegPath = Path.Combine(Path.GetTempPath(), "external-sdk-managed-image-" + Guid.NewGuid().ToString("N") + ".jpg");
                     File.WriteAllBytes(jpegPath, jpegBytes);
                     try
@@ -3904,6 +3952,51 @@ internal static class Program
                     WriteLittleEndianUInt32(icon, 14, (uint)pngBytes.Length);
                     WriteLittleEndianUInt32(icon, 18, 22);
                     Buffer.BlockCopy(pngBytes, 0, icon, 22, pngBytes.Length);
+                    return icon;
+                }
+
+                private static byte[] CreateDibIconBytes(byte[] bgraPixels, int width, int height, int stride)
+                {
+                    int xorStride = checked(width * 4);
+                    int maskStride = checked((width + 31) / 32 * 4);
+                    int dibLength = checked(40 + xorStride * height + maskStride * height);
+                    byte[] icon = new byte[checked(22 + dibLength)];
+
+                    WriteLittleEndianUInt16(icon, 0, 0);
+                    WriteLittleEndianUInt16(icon, 2, 1);
+                    WriteLittleEndianUInt16(icon, 4, 1);
+                    icon[6] = (byte)width;
+                    icon[7] = (byte)height;
+                    icon[8] = 0;
+                    icon[9] = 0;
+                    WriteLittleEndianUInt16(icon, 10, 1);
+                    WriteLittleEndianUInt16(icon, 12, 32);
+                    WriteLittleEndianUInt32(icon, 14, (uint)dibLength);
+                    WriteLittleEndianUInt32(icon, 18, 22);
+
+                    int dibOffset = 22;
+                    WriteLittleEndianUInt32(icon, dibOffset, 40);
+                    WriteLittleEndianUInt32(icon, dibOffset + 4, (uint)width);
+                    WriteLittleEndianUInt32(icon, dibOffset + 8, (uint)(height * 2));
+                    WriteLittleEndianUInt16(icon, dibOffset + 12, 1);
+                    WriteLittleEndianUInt16(icon, dibOffset + 14, 32);
+                    WriteLittleEndianUInt32(icon, dibOffset + 16, 0);
+                    WriteLittleEndianUInt32(icon, dibOffset + 20, (uint)(xorStride * height + maskStride * height));
+                    WriteLittleEndianUInt32(icon, dibOffset + 24, 0);
+                    WriteLittleEndianUInt32(icon, dibOffset + 28, 0);
+                    WriteLittleEndianUInt32(icon, dibOffset + 32, 0);
+                    WriteLittleEndianUInt32(icon, dibOffset + 36, 0);
+
+                    int xorOffset = dibOffset + 40;
+                    for (int fileRow = 0; fileRow < height; fileRow++)
+                    {
+                        int sourceRow = (height - 1 - fileRow) * stride;
+                        Buffer.BlockCopy(bgraPixels, sourceRow, icon, xorOffset + fileRow * xorStride, xorStride);
+                    }
+
+                    int maskOffset = xorOffset + xorStride * height;
+                    int maskedX = width - 1;
+                    icon[maskOffset + maskedX / 8] = (byte)(0x80 >> (maskedX % 8));
                     return icon;
                 }
 

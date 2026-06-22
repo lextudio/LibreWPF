@@ -8,6 +8,7 @@ using System.Numerics;
 using System.Reflection;
 using System.Runtime.Loader;
 using System.Security;
+using System.Security.Cryptography;
 
 internal static class Program
 {
@@ -110,7 +111,7 @@ internal static class Program
             ValidateExternalProjectShape(workRoot);
             ValidateExternalLocalizationDirectives(workRoot);
             string outputRoot = Path.Combine(workRoot, AppAssemblyName, "bin", "Debug", "net11.0");
-            ValidateExternalOutput(outputRoot);
+            ValidateExternalOutput(outputRoot, packageFeed);
             RunProcess(
                 dotnetPath,
                 outputRoot,
@@ -8766,7 +8767,7 @@ internal static class Program
         AssertContains(locText, "Unmodifiable", "external SDK localization unmodifiable attribute output");
     }
 
-    private static void ValidateExternalOutput(string outputRoot)
+    private static void ValidateExternalOutput(string outputRoot, string packageFeed)
     {
         RequireFile(Path.Combine(outputRoot, AppAssemblyName + ".dll"), "external SDK app assembly");
         RequireFile(Path.Combine(outputRoot, LibraryAssemblyName + ".dll"), "external SDK library assembly");
@@ -8778,6 +8779,9 @@ internal static class Program
         {
             RequireFile(Path.Combine(outputRoot, assemblyName + ".dll"), $"external SDK output asset '{assemblyName}.dll'");
         }
+
+        ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, "ProGPU.Wpf", "ProGPU.Wpf", "net10.0");
+        ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, "ProGPU.Scene", "ProGPU.Scene", "net10.0");
 
         RequireAnyFile(outputRoot, GetNativeAssetCandidates("wgpu"), "external SDK output native WebGPU runtime asset");
         RequireAnyFile(outputRoot, GetNativeAssetCandidates("glfw"), "external SDK output native GLFW runtime asset");
@@ -8791,6 +8795,35 @@ internal static class Program
         AssertContains(depsJson, LibraryAssemblyName, "external SDK referenced library dependency");
 
         ValidateProGpuHiDpiRenderSurface(outputRoot);
+    }
+
+    private static void ValidateOutputAssemblyMatchesLocalPackage(
+        string outputRoot,
+        string packageFeed,
+        string packageId,
+        string assemblySimpleName,
+        string targetFramework)
+    {
+        string outputPath = Path.Combine(outputRoot, assemblySimpleName + ".dll");
+        string packagePath = Path.Combine(packageFeed, $"{packageId}.{SdkVersion}.nupkg");
+        string packageEntryName = $"lib/{targetFramework}/{assemblySimpleName}.dll";
+
+        RequireFile(outputPath, $"external SDK output asset '{assemblySimpleName}.dll'");
+        RequireFile(packagePath, $"{packageId} local package");
+
+        using ZipArchive package = ZipFile.OpenRead(packagePath);
+        ZipArchiveEntry entry = RequirePackageEntry(
+            package,
+            packageEntryName,
+            $"{packageId}/{assemblySimpleName} runtime assembly");
+
+        using Stream packageStream = entry.Open();
+        string packageHash = ComputeStreamSha256(packageStream);
+        string outputHash = ComputeFileSha256(outputPath);
+        AssertEqual(
+            packageHash,
+            outputHash,
+            $"external SDK output {assemblySimpleName}.dll matches local {packageId} package");
     }
 
     private static void ValidateProGpuHiDpiRenderSurface(string outputRoot)
@@ -9181,6 +9214,18 @@ internal static class Program
                 File.Delete(tempPath);
             }
         }
+    }
+
+    private static string ComputeFileSha256(string path)
+    {
+        using FileStream stream = File.OpenRead(path);
+        return ComputeStreamSha256(stream);
+    }
+
+    private static string ComputeStreamSha256(Stream stream)
+    {
+        using var sha256 = SHA256.Create();
+        return Convert.ToHexString(sha256.ComputeHash(stream));
     }
 
     private static string GetPublicKeyToken(AssemblyName identity)

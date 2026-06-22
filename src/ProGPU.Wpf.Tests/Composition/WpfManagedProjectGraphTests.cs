@@ -343,9 +343,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryMapResizeModeToWindowBorder", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("WindowStyle", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("ApplicationIdleFlushTimeout = TimeSpan.FromMilliseconds(250)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("internal void DeferShowUntilRun()", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("Host.DeferShowUntilRun();", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("private bool ShouldDeferNativeShowUntilRun()", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("return !_isNativeRunStarted && IsCurrentApplicationMainWindow(Window);", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("private static bool IsCurrentApplicationMainWindow(object window)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("_isNativeRunStarted = true;", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FlushWpfDispatcherOperations(\"Loaded\", \"Render\")", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("FlushWpfDispatcherOperations(\"ApplicationIdle\")", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FlushWpfDispatcherOperations(\"Render\", \"ApplicationIdle\")", proGpuActivation, StringComparison.Ordinal);
+        Assert.DoesNotContain("FlushWpfDispatcherOperations(\"ApplicationIdle\")", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryFlushDispatcherOperations(Window, markerPriorityName, timeout)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("parameters[2].ParameterType != typeof(TimeSpan)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FindPortableWindowActivationServiceType(window)", proGpuActivation, StringComparison.Ordinal);
@@ -772,9 +778,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableWindowActivationService.IsEnabled", application, StringComparison.Ordinal);
         Assert.Contains("FlushPortableDispatcherOperations(DispatcherPriority.Send)", application, StringComparison.Ordinal);
         Assert.Contains("FlushPortableDispatcherOperations(DispatcherPriority.ApplicationIdle)", application, StringComparison.Ordinal);
-        Assert.Contains("private bool FlushPortableDispatcherOperations(DispatcherPriority markerPriority, TimeSpan timeout)", application, StringComparison.Ordinal);
-        Assert.Contains("TimeSpan.FromMilliseconds(250)", application, StringComparison.Ordinal);
-        Assert.Contains("markerOperation.Abort()", application, StringComparison.Ordinal);
+        Assert.Contains("private void FlushPortableDispatcherOperations(DispatcherPriority markerPriority)", application, StringComparison.Ordinal);
+        Assert.DoesNotContain("TimeSpan.FromMilliseconds(250)", application, StringComparison.Ordinal);
         Assert.Contains("wnd.Show();", application, StringComparison.Ordinal);
         Assert.Contains("wnd.Visibility = Visibility.Visible;", application, StringComparison.Ordinal);
         Assert.Contains("Dispatcher.PushFrame(frame)", application, StringComparison.Ordinal);
@@ -792,23 +797,15 @@ public sealed class WpfManagedProjectGraphTests
             application.IndexOf("window.Show();", StringComparison.Ordinal)
                 < application.IndexOf("PortableWindowActivationService.TryRun(MainWindow)", StringComparison.Ordinal),
             "Application.Run must synchronously show the startup window before handing ownership to the portable native run loop.");
-        int startupApplicationIdleFlush = application.IndexOf(
-            "TimeSpan.FromMilliseconds(250)",
-            StringComparison.Ordinal);
         int portableTryRun = application.IndexOf(
             "PortableWindowActivationService.TryRun(MainWindow)",
             StringComparison.Ordinal);
-        int lastApplicationIdleFlush = application.LastIndexOf(
+        int applicationIdleFlush = application.IndexOf(
             "FlushPortableDispatcherOperations(DispatcherPriority.ApplicationIdle)",
             StringComparison.Ordinal);
         Assert.True(
-            application.IndexOf("window.Show();", StringComparison.Ordinal)
-                < startupApplicationIdleFlush &&
-            startupApplicationIdleFlush < portableTryRun,
-            "Application.Run must give queued startup idle work a bounded chance to run before handing ownership to the portable native run loop.");
-        Assert.True(
-            portableTryRun < lastApplicationIdleFlush,
-            "Application.Run must service queued shutdown work after the portable native run loop exits.");
+            portableTryRun < applicationIdleFlush,
+            "Application.Run must leave normal and idle app work for the portable native run loop, then service queued shutdown work after it exits.");
         Assert.True(
             application.IndexOf("PortableWindowActivationService.TryRun(MainWindow)", StringComparison.Ordinal)
                 < application.IndexOf("RunDispatcher(null);", StringComparison.Ordinal),
@@ -5769,6 +5766,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains(@"..\..\Directory.Build.props", smokeDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<EnableNETAnalyzers>false</EnableNETAnalyzers>", smokeDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>", smokeDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<RestorePackagesPath>", smokeDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<RestoreForce>true</RestoreForce>", smokeDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<RestoreForceEvaluate>true</RestoreForceEvaluate>", smokeDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("_ProGpuWpfSdkSwitchClearMutablePackageCache", smokeDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("progpu.wpf/$(ProGpuWpfSdkSwitchPackageVersion)", smokeDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("progpu.scene/$(ProGpuWpfSdkSwitchPackageVersion)", smokeDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("microsoft.dotnet.wpf.github/$(ProGpuWpfSdkSwitchPackageVersion)", smokeDirectoryBuildProps, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuWpfReferenceMode", smokeDirectoryBuildProps, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuWpfManagedReferenceRoot", smokeDirectoryBuildProps, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuReferenceRoot", smokeDirectoryBuildProps, StringComparison.Ordinal);
@@ -5781,6 +5785,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("EnableNETAnalyzers", libraryProject, StringComparison.Ordinal);
         Assert.Contains(@"..\..\Directory.Build.props", libraryDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<EnableNETAnalyzers>false</EnableNETAnalyzers>", libraryDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<RestorePackagesPath>", libraryDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<RestoreForce>true</RestoreForce>", libraryDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<RestoreForceEvaluate>true</RestoreForceEvaluate>", libraryDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("_ProGpuWpfSdkSwitchClearMutablePackageCache", libraryDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("progpu.wpf/$(ProGpuWpfSdkSwitchPackageVersion)", libraryDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("progpu.scene/$(ProGpuWpfSdkSwitchPackageVersion)", libraryDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("microsoft.dotnet.wpf.github/$(ProGpuWpfSdkSwitchPackageVersion)", libraryDirectoryBuildProps, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuWpfReferenceMode", libraryDirectoryBuildProps, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuWpfManagedReferenceRoot", libraryDirectoryBuildProps, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuReferenceRoot", libraryDirectoryBuildProps, StringComparison.Ordinal);
@@ -6412,6 +6423,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGPU.Wpf.SdkSwitchSmoke", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("LibraryAssemblyName = \"ProGPU.Wpf.SdkSwitchLibrary\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK switch library assembly", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RequireOutputRuntimeAssets(appOutputRoot, packageFeed)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, \"ProGPU.Wpf\", \"ProGPU.Wpf\", \"net10.0\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, \"ProGPU.Scene\", \"ProGPU.Scene\", \"net10.0\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK switch output {assemblySimpleName}.dll matches local {packageId} package", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ComputeFileSha256(outputPath)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindAssembly(_appOutputRoot, fileName)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("LoadUnmanagedDll(string unmanagedDllName)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetUnmanagedDllCandidates(unmanagedDllName)", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -7353,6 +7369,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("NuGet.config", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateSdkPackageLayout(packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePackageAssemblyIdentities(packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateExternalOutput(outputRoot, packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, \"ProGPU.Wpf\", \"ProGPU.Wpf\", \"net10.0\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, \"ProGPU.Scene\", \"ProGPU.Scene\", \"net10.0\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK output {assemblySimpleName}.dll matches local {packageId} package", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ComputeStreamSha256(packageStream)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Wpf.Sdk.{SdkVersion}.nupkg", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new(\"Microsoft.DotNet.Wpf.GitHub\", \"PresentationCore\", \"net11.0\", \"WPF\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new(\"ProGPU.Wpf\", \"ProGPU.Wpf\", \"net10.0\", \"ProGPU\")", externalSdkHarnessProgram, StringComparison.Ordinal);

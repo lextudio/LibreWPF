@@ -1,14 +1,17 @@
 using System.Collections;
 using System.Globalization;
+using System.IO.Compression;
 using System.Numerics;
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
+using System.Security.Cryptography;
 
 internal static class Program
 {
+    private const string PackageVersion = "11.0.0-dev";
     private const string SmokeAssemblyName = "ProGPU.Wpf.SdkSwitchSmoke";
     private const string LibraryAssemblyName = "ProGPU.Wpf.SdkSwitchLibrary";
     private const string AppTypeName = "ProGPU.Wpf.SdkSwitchSmoke.App";
@@ -97,6 +100,7 @@ internal static class Program
     private static SmokeInputs ResolveSmokeInputs()
     {
         string repoRoot = FindRepoRoot();
+        string packageFeed = Path.Combine(repoRoot, "artifacts", "packages", "Release", "NonShipping");
         string appOutputRoot = Path.Combine(
             repoRoot,
             "artifacts",
@@ -128,16 +132,17 @@ internal static class Program
             : Path.Combine(repoRoot, "artifacts", "progpu-wpf-sdk-smoke", "wpf");
         string proGpuRoot = Path.Combine(repoRoot, "artifacts", "progpu-wpf-sdk-smoke", "progpu");
 
+        RequireDirectory(packageFeed, "local package feed");
         RequireFile(smokeAssemblyPath, "SDK switch smoke assembly");
         RequireFile(
             Path.Combine(appOutputRoot, LibraryAssemblyName + ".dll"),
             "SDK switch library assembly");
-        RequireOutputRuntimeAssets(appOutputRoot);
+        RequireOutputRuntimeAssets(appOutputRoot, packageFeed);
 
         return new SmokeInputs(repoRoot, appOutputRoot, smokeAssemblyPath, wpfRoot, proGpuRoot);
     }
 
-    private static void RequireOutputRuntimeAssets(string appOutputRoot)
+    private static void RequireOutputRuntimeAssets(string appOutputRoot, string packageFeed)
     {
         foreach (string assemblyName in RequiredWpfRuntimeAssemblies.Concat(ProGpuRuntimeAssemblies).Concat(SilkNetRuntimeAssemblies).Concat(SupportPackageRuntimeAssemblies))
         {
@@ -145,6 +150,9 @@ internal static class Program
                 Path.Combine(appOutputRoot, assemblyName + ".dll"),
                 $"SDK switch output runtime asset '{assemblyName}.dll'");
         }
+
+        RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, "ProGPU.Wpf", "ProGPU.Wpf", "net10.0");
+        RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, "ProGPU.Scene", "ProGPU.Scene", "net10.0");
 
         RequireAnyFile(
             appOutputRoot,
@@ -154,6 +162,58 @@ internal static class Program
             appOutputRoot,
             GetNativeAssetCandidates("glfw"),
             "SDK switch output native GLFW runtime asset");
+    }
+
+    private static void RequireOutputAssemblyMatchesLocalPackage(
+        string appOutputRoot,
+        string packageFeed,
+        string packageId,
+        string assemblySimpleName,
+        string targetFramework)
+    {
+        string outputPath = Path.Combine(appOutputRoot, assemblySimpleName + ".dll");
+        string packagePath = Path.Combine(packageFeed, $"{packageId}.{PackageVersion}.nupkg");
+        string packageEntryName = $"lib/{targetFramework}/{assemblySimpleName}.dll";
+
+        RequireFile(outputPath, $"SDK switch output runtime asset '{assemblySimpleName}.dll'");
+        RequireFile(packagePath, $"{packageId} local package");
+
+        using ZipArchive package = ZipFile.OpenRead(packagePath);
+        ZipArchiveEntry entry = RequirePackageEntry(
+            package,
+            packageEntryName,
+            $"{packageId}/{assemblySimpleName} runtime assembly");
+
+        using Stream packageStream = entry.Open();
+        string packageHash = ComputeStreamSha256(packageStream);
+        string outputHash = ComputeFileSha256(outputPath);
+        AssertEqual(
+            packageHash,
+            outputHash,
+            $"SDK switch output {assemblySimpleName}.dll matches local {packageId} package");
+    }
+
+    private static ZipArchiveEntry RequirePackageEntry(ZipArchive package, string entryName, string description)
+    {
+        ZipArchiveEntry? entry = package.GetEntry(entryName);
+        if (entry is null)
+        {
+            throw new FileNotFoundException($"Missing {description} package entry: {entryName}", entryName);
+        }
+
+        return entry;
+    }
+
+    private static string ComputeFileSha256(string path)
+    {
+        using FileStream stream = File.OpenRead(path);
+        return ComputeStreamSha256(stream);
+    }
+
+    private static string ComputeStreamSha256(Stream stream)
+    {
+        using var sha256 = SHA256.Create();
+        return Convert.ToHexString(sha256.ComputeHash(stream));
     }
 
     private static string[] GetNativeAssetCandidates(string assetName)

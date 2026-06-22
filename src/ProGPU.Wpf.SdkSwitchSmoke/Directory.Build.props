@@ -8,4 +8,29 @@
     <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
     <NoWarn>$(NoWarn);IDE0073</NoWarn>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <ProGpuWpfSdkSwitchPackageVersion>11.0.0-dev</ProGpuWpfSdkSwitchPackageVersion>
+    <RestorePackagesPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../artifacts/nuget/ProGPU.Wpf.SdkSwitchSmoke'))</RestorePackagesPath>
+    <RestoreForce>true</RestoreForce>
+    <RestoreForceEvaluate>true</RestoreForceEvaluate>
+  </PropertyGroup>
+
+  <Target Name="_ProGpuWpfSdkSwitchClearMutablePackageCache" BeforeTargets="Restore">
+    <ItemGroup>
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/microsoft.dotnet.wpf.github/$(ProGpuWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/microsoft.dotnet.wpf.github.debug/$(ProGpuWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.wpf.sdk/$(ProGpuWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.wpf/$(ProGpuWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.backend/$(ProGpuWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.scene/$(ProGpuWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.vector/$(ProGpuWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.text/$(ProGpuWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.compute/$(ProGpuWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/progpu.transpiler/$(ProGpuWpfSdkSwitchPackageVersion)" />
+      <_ProGpuWpfSdkSwitchExistingMutablePackageCache Include="@(_ProGpuWpfSdkSwitchMutablePackageCache)" Condition="Exists('%(_ProGpuWpfSdkSwitchMutablePackageCache.Identity)')" />
+    </ItemGroup>
+
+    <RemoveDir Directories="@(_ProGpuWpfSdkSwitchExistingMutablePackageCache)" />
+  </Target>
 </Project>

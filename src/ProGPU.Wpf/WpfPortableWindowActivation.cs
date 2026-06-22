@@ -18,6 +18,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
     private bool _isClosingFromNative;
     private bool _isClosingFromWpf;
     private bool _isFlushingWpfDispatcher;
+    private bool _isNativeRunStarted;
     private IDisposable? _mediaContextRenderRegistration;
 
     private WpfPortableWindowActivation(
@@ -345,6 +346,12 @@ public sealed class WpfPortableWindowActivation : IDisposable
     {
         ThrowIfDisposed();
         SynchronizeInitialWindowState(updatePortablePresentationSource: true);
+        if (ShouldDeferNativeShowUntilRun())
+        {
+            Host.DeferShowUntilRun();
+            return;
+        }
+
         Host.Show();
         FlushWpfDispatcherOperations("Loaded", "Render");
     }
@@ -439,14 +446,19 @@ public sealed class WpfPortableWindowActivation : IDisposable
     public void Run()
     {
         ThrowIfDisposed();
+        _isNativeRunStarted = true;
         SynchronizeInitialWindowState(updatePortablePresentationSource: true);
-        FlushWpfDispatcherOperations("ApplicationIdle");
         if (_isDisposed)
         {
             return;
         }
 
         Host.Run();
+    }
+
+    private bool ShouldDeferNativeShowUntilRun()
+    {
+        return !_isNativeRunStarted && IsCurrentApplicationMainWindow(Window);
     }
 
     public bool TryDragMove()
@@ -1301,6 +1313,38 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
 
         return null;
+    }
+
+    private static bool IsCurrentApplicationMainWindow(object window)
+    {
+        Type? applicationType = null;
+        for (Type? currentType = window.GetType(); currentType != null; currentType = currentType.BaseType)
+        {
+            applicationType = currentType.Assembly.GetType(
+                "System.Windows.Application",
+                throwOnError: false);
+            if (applicationType != null)
+            {
+                break;
+            }
+        }
+
+        if (applicationType == null)
+        {
+            return false;
+        }
+
+        var currentProperty = applicationType.GetProperty(
+            "Current",
+            BindingFlags.Static | BindingFlags.Public);
+        var mainWindowProperty = applicationType.GetProperty(
+            "MainWindow",
+            BindingFlags.Instance | BindingFlags.Public);
+        object? currentApplication = currentProperty?.GetValue(null);
+        object? mainWindow = currentApplication == null
+            ? null
+            : mainWindowProperty?.GetValue(currentApplication);
+        return ReferenceEquals(mainWindow, window);
     }
 
     private static object ShowPortableMessageBox(object request)

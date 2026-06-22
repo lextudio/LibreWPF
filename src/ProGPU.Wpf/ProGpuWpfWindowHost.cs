@@ -221,6 +221,17 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         ShowCore(requestRenderWhenInitialized: true);
     }
 
+    internal void DeferShowUntilRun()
+    {
+        ThrowIfDisposed();
+
+        _isHostVisible = true;
+        if (_window != null)
+        {
+            _window.IsVisible = true;
+        }
+    }
+
     public void Hide()
     {
         ThrowIfDisposed();

@@ -3086,9 +3086,60 @@ namespace System.Windows.Controls.Primitives
                 // This is a fallback if we couldn't convert Mouse.GetPosition
                 NativeMethods.POINT mousePoint = new NativeMethods.POINT(0, 0);
 
+                if (!OperatingSystem.IsWindows())
+                {
+                    return GetPortableMouseCursorFallbackPos(targetVisual);
+                }
+
                 UnsafeNativeMethods.TryGetCursorPos(ref mousePoint);
 
                 return mousePoint;
+            }
+
+            private static NativeMethods.POINT GetPortableMouseCursorFallbackPos(Visual targetVisual)
+            {
+                Point pt = GetPortableVisualAnchor(targetVisual);
+                PresentationSource presentationSource = targetVisual != null
+                    ? PopupSecurityHelper.GetPresentationSource(targetVisual)
+                    : null;
+
+                if (targetVisual != null && presentationSource != null && !presentationSource.IsDisposed)
+                {
+                    Visual rootVisual = presentationSource.RootVisual;
+                    CompositionTarget ct = presentationSource.CompositionTarget;
+
+                    if (rootVisual != null && ct != null)
+                    {
+                        if (!ReferenceEquals(targetVisual, rootVisual))
+                        {
+                            GeneralTransform transformTo = targetVisual.TransformToAncestor(rootVisual);
+                            transformTo.TryTransform(pt, out pt);
+                        }
+
+                        Matrix transform = PointUtil.GetVisualTransform(rootVisual) * ct.TransformToDevice;
+                        pt = transform.Transform(pt);
+                    }
+                }
+
+                return new NativeMethods.POINT((int)pt.X, (int)pt.Y);
+            }
+
+            private static Point GetPortableVisualAnchor(Visual targetVisual)
+            {
+                if (targetVisual is UIElement targetElement)
+                {
+                    Size renderSize = targetElement.RenderSize;
+                    return new Point(
+                        ToPortableAnchorCoordinate(renderSize.Width),
+                        ToPortableAnchorCoordinate(renderSize.Height));
+                }
+
+                return new Point(0.0, 0.0);
+            }
+
+            private static double ToPortableAnchorCoordinate(double value)
+            {
+                return double.IsFinite(value) && value > 0.0 ? value / 2.0 : 0.0;
             }
 
             internal void SetPopupPos(bool position, int x, int y, bool size, int width, int height)

@@ -5250,6 +5250,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("if (!OperatingSystem.IsWindows() && _window is PortablePresentationSource portableSource)", popup, StringComparison.Ordinal);
         Assert.Contains("portableSource.SetClientSize(clientSize.Width, clientSize.Height);", popup, StringComparison.Ordinal);
         Assert.Contains("private static Size GetPortableRootClientSize(Visual rootVisual)", popup, StringComparison.Ordinal);
+        Assert.Contains("private static NativeMethods.POINT GetPortableMouseCursorFallbackPos(Visual targetVisual)", popup, StringComparison.Ordinal);
+        Assert.Contains("private static Point GetPortableVisualAnchor(Visual targetVisual)", popup, StringComparison.Ordinal);
+        AssertGuardBefore(popup, "if (!OperatingSystem.IsWindows())\n                {\n                    return GetPortableMouseCursorFallbackPos(targetVisual);", "UnsafeNativeMethods.TryGetCursorPos");
         Assert.Contains("ForceMsaaToUiaBridgeWindows(popupRoot);", popup, StringComparison.Ordinal);
         Assert.Contains("private void ForceMsaaToUiaBridgeWindows(PopupRoot popupRoot)", popup, StringComparison.Ordinal);
         AssertGuardBefore(popup, "if (!OperatingSystem.IsWindows())\n                {\n                    return;\n                }\n\n                ForceMsaaToUiaBridgeWindows(popupRoot);", "IAccessible acc");
@@ -6055,6 +6058,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<Button.ContextMenu>", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ActionContextMenu\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ContextCommandMenuItem\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("action context menu opened through portable popup", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("action context menu closed through portable popup", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CommandParameter=\"context menu command payload\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Header=\"_Context command\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ContextCheckableMenuItem\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -8078,6 +8083,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("action tooltip content", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("action tooltip placement", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("action button context menu", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("action context menu opened through portable popup", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("action context menu closed through portable popup", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("action context menu item count", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("context command menu item", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("context menu command execution count", runtimeHarnessProgram, StringComparison.Ordinal);

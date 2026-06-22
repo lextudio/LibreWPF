@@ -1935,6 +1935,18 @@ internal static class Program
 
         object actionContextMenu = GetProperty(actionButton, "ContextMenu");
         AssertType(actionContextMenu, "System.Windows.Controls.ContextMenu", "action button context menu");
+        if (flushDispatcherOperations != null)
+        {
+            SetProperty(actionContextMenu, "PlacementTarget", actionButton);
+            AssertEqual(false, GetProperty(actionContextMenu, "IsOpen"), "action context menu initial open state");
+            SetProperty(actionContextMenu, "IsOpen", true);
+            flushDispatcherOperations(window);
+            AssertEqual(true, GetProperty(actionContextMenu, "IsOpen"), "action context menu opened through portable popup");
+            SetProperty(actionContextMenu, "IsOpen", false);
+            flushDispatcherOperations(window);
+            AssertEqual(false, GetProperty(actionContextMenu, "IsOpen"), "action context menu closed through portable popup");
+        }
+
         object[] actionContextMenuItems = EnumerateObjects(GetProperty(actionContextMenu, "Items")).ToArray();
         AssertAtLeast(3, actionContextMenuItems.Length, "action context menu item count");
         object contextCommandMenuItem = actionContextMenuItems[0];

@@ -559,6 +559,42 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void NativeResizeKeepsRequestedDipsWhenFramebufferReportIsMissing()
+    {
+        using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
+        {
+            Width = 420,
+            Height = 840
+        });
+
+        Assert.False(host.UpdateClientSizeFromNativeResize(
+            new Vector2D<int>(840, 1680),
+            new Vector2D<int>(0, 0),
+            monitorDpiScale: 2.0));
+
+        Assert.Equal(420, host.Width);
+        Assert.Equal(840, host.Height);
+    }
+
+    [Fact]
+    public void NativeResizeKeepsActualLogicalResizeWhenItIsNotDpiScaleMultiple()
+    {
+        using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
+        {
+            Width = 420,
+            Height = 840
+        });
+
+        Assert.True(host.UpdateClientSizeFromNativeResize(
+            new Vector2D<int>(600, 900),
+            new Vector2D<int>(1200, 1800),
+            monitorDpiScale: 2.0));
+
+        Assert.Equal(600, host.Width);
+        Assert.Equal(900, host.Height);
+    }
+
+    [Fact]
     public void NativeResizeKeepsCachedDipsWhenNativeClientSizeIsPhysical()
     {
         using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions

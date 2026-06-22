@@ -808,6 +808,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             cachedLogicalClientWidth,
             cachedLogicalClientHeight,
             monitorDpiScale);
+        logicalSize = ReconcileResolvedLogicalClientSize(
+            logicalSize,
+            cachedLogicalClientWidth,
+            cachedLogicalClientHeight,
+            monitorDpiScale);
         geometry = ResolveRenderSurfaceGeometry(
             logicalSize.X,
             logicalSize.Y,
@@ -859,6 +864,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             GetCachedLogicalClientWidth(),
             GetCachedLogicalClientHeight(),
             monitorDpiScale);
+        logicalSize = ReconcileResolvedLogicalClientSize(
+            logicalSize,
+            GetCachedLogicalClientWidth(),
+            GetCachedLogicalClientHeight(),
+            monitorDpiScale);
         var clientWidth = logicalSize.X;
         var clientHeight = logicalSize.Y;
         if (_clientWidth == clientWidth && _clientHeight == clientHeight)
@@ -887,6 +897,35 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _portablePresentationSourceClientHeight,
             _requestedLogicalClientHeight,
             _clientHeight);
+    }
+
+    private static Vector2D<int> ReconcileResolvedLogicalClientSize(
+        Vector2D<int> resolvedSize,
+        int cachedWidth,
+        int cachedHeight,
+        double monitorDpiScale)
+    {
+        return new Vector2D<int>(
+            ReconcileResolvedLogicalClientDimension(resolvedSize.X, cachedWidth, monitorDpiScale),
+            ReconcileResolvedLogicalClientDimension(resolvedSize.Y, cachedHeight, monitorDpiScale));
+    }
+
+    private static int ReconcileResolvedLogicalClientDimension(
+        int resolvedDimension,
+        int cachedDimension,
+        double monitorDpiScale)
+    {
+        if (resolvedDimension <= 0 || cachedDimension <= 0)
+        {
+            return Math.Max(1, resolvedDimension > 0 ? resolvedDimension : cachedDimension);
+        }
+
+        var larger = Math.Max(resolvedDimension, cachedDimension);
+        var smaller = Math.Min(resolvedDimension, cachedDimension);
+        return larger == resolvedDimension &&
+            DimensionsDifferByDpiScale(larger, smaller, monitorDpiScale)
+                ? smaller
+                : resolvedDimension;
     }
 
     internal static int ResolveCachedLogicalClientDimension(
@@ -992,7 +1031,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return Math.Abs(nativeDimension - cachedDimension * dpiScale) <= Math.Max(2.0, dpiScale);
     }
 
-    private static bool DimensionsDifferByDpiScale(int largerDimension, int smallerDimension)
+    private static bool DimensionsDifferByDpiScale(
+        int largerDimension,
+        int smallerDimension,
+        double monitorDpiScale = 1.0)
     {
         if (largerDimension <= 0 || smallerDimension <= 0 || largerDimension <= smallerDimension)
         {
@@ -1000,7 +1042,28 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         var scale = largerDimension / (double)smallerDimension;
-        return double.IsFinite(scale) && scale >= 1.25 && scale <= 8.0;
+        if (!double.IsFinite(scale) || scale < 1.25 || scale > 8.0)
+        {
+            return false;
+        }
+
+        var normalizedMonitorScale = NormalizeMonitorDpiScale(monitorDpiScale);
+        if (normalizedMonitorScale > 1.0 &&
+            Math.Abs(scale - normalizedMonitorScale) <= Math.Max(0.05, normalizedMonitorScale * 0.03))
+        {
+            return true;
+        }
+
+        ReadOnlySpan<double> commonScales = [1.25, 1.5, 1.75, 2.0, 2.5, 3.0, 4.0];
+        foreach (var commonScale in commonScales)
+        {
+            if (Math.Abs(scale - commonScale) <= Math.Max(0.05, commonScale * 0.03))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool TryInferNativeDpiScaleFromCachedDips(

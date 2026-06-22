@@ -6477,6 +6477,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalStartupResourceText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateApplicationRunAndShutdown", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateApplicationExit", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DispatcherPriority.Render", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Closing=\"OnExternalWindowClosing\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Closed=\"OnExternalWindowClosed\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateApplicationWindowLifetime(app, window)", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7318,6 +7319,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("LoadCompleted=\"OnExternalFrameLoadCompleted\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DrainDispatcher()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DispatcherPriority.ApplicationIdle", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("TimeSpan.FromMilliseconds(250)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("markerOperation.Abort()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("frame.Navigate(new Uri(\"ExternalSecondPage.xaml\", UriKind.Relative))", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("frame.GoBack()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK initial frame navigation mode", externalSdkHarnessProgram, StringComparison.Ordinal);

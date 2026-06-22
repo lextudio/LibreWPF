@@ -2825,7 +2825,7 @@ internal static class Program
                         s_externalRunValidationRequested = true;
                         base.OnStartup(e);
                         Dispatcher.BeginInvoke(
-                            DispatcherPriority.ApplicationIdle,
+                            DispatcherPriority.Render,
                             new Action(ExternalSdkValidation.ValidateApplicationRunAndShutdown));
                         return;
                     }
@@ -3176,7 +3176,7 @@ internal static class Program
                         modalInApplicationWindowsDuringLoaded = ApplicationContainsWindow(app, modalDialog);
                         ownerOwnedWindowsCountDuringModal = window.OwnedWindows.Count;
                         modalDialog.Dispatcher.BeginInvoke(
-                            DispatcherPriority.ApplicationIdle,
+                            DispatcherPriority.Render,
                             new Action(() => modalDialog.DialogResult = true));
                     };
                     modalDialog.Closing += (_, e) =>
@@ -8429,11 +8429,31 @@ internal static class Program
 
                 private static void DrainDispatcher()
                 {
+                    bool markerReached = false;
                     var frame = new DispatcherFrame();
-                    Dispatcher.CurrentDispatcher.BeginInvoke(
+                    var markerOperation = Dispatcher.CurrentDispatcher.BeginInvoke(
                         DispatcherPriority.ApplicationIdle,
-                        new Action(() => frame.Continue = false));
+                        new Action(() =>
+                        {
+                            markerReached = true;
+                            frame.Continue = false;
+                        }));
+                    var timer = new DispatcherTimer(DispatcherPriority.Send)
+                    {
+                        Interval = TimeSpan.FromMilliseconds(250)
+                    };
+                    timer.Tick += (_, _) =>
+                    {
+                        timer.Stop();
+                        frame.Continue = false;
+                    };
+                    timer.Start();
                     Dispatcher.PushFrame(frame);
+                    timer.Stop();
+                    if (!markerReached && markerOperation.Status == DispatcherOperationStatus.Pending)
+                    {
+                        markerOperation.Abort();
+                    }
                 }
 
                 private static T RequireFirstInline<T>(InlineCollection inlines, string description)

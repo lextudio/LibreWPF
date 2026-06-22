@@ -219,6 +219,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.Tests",
             "ProGpuWpfDrawingFrameTests.cs");
+        var proGpuWindowHostTestsPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "ProGpuWpfWindowHostTests.cs");
 
         var mediaContext = File.ReadAllText(mediaContextPath);
         var renderService = File.ReadAllText(renderServicePath);
@@ -233,6 +237,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuCompositor = File.ReadAllText(proGpuCompositorPath);
         var proGpuCompositorReviewTests = File.ReadAllText(proGpuCompositorReviewTestsPath);
         var proGpuDrawingFrameTests = File.ReadAllText(proGpuDrawingFrameTestsPath);
+        var proGpuWindowHostTests = File.ReadAllText(proGpuWindowHostTestsPath);
 
         Assert.Contains(@"<Compile Include=""System\Windows\Media\PortableMediaContextRenderService.cs"" />", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains("internal static class PortableMediaContextRenderService", renderService, StringComparison.Ordinal);
@@ -276,6 +281,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("UpdateClientSizeFromNativeResize(size, framebufferSize, monitorDpiScale);", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var clientSize = _window.Size;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var framebufferSize = _window.FramebufferSize;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("UpdatePortablePresentationSourceClientSize((uint)_clientWidth, (uint)_clientHeight);", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("var cachedLogicalClientWidth = GetCachedLogicalClientWidth();", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("var cachedLogicalClientHeight = GetCachedLogicalClientHeight();", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("private int GetCachedLogicalClientWidth()", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("private int GetCachedLogicalClientHeight()", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_portablePresentationSourceClientWidth > 0", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var logicalSize = ResolveLogicalClientSize(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var logicalWidth = (uint)Math.Max(1, clientWidth);", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var logicalHeight = (uint)Math.Max(1, clientHeight);", proGpuHost, StringComparison.Ordinal);
@@ -313,6 +324,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExplicitPhysicalRenderTargetPinsViewportToPhysicalFramebuffer", proGpuCompositorReviewTests, StringComparison.Ordinal);
         Assert.Contains("HighDpiRetainedWpfLayerRendersAcrossPhysicalFramebuffer", proGpuDrawingFrameTests, StringComparison.Ordinal);
         Assert.Contains("HighDpiSourceDrawingLayerRendersAcrossPhysicalFramebuffer", proGpuDrawingFrameTests, StringComparison.Ordinal);
+        Assert.Contains("NativeResizeUsesPortablePresentationSourceLogicalCacheWhenHostCacheWasPhysical", proGpuWindowHostTests, StringComparison.Ordinal);
+        Assert.Contains("SetClientSizeSynchronizesBoundPortablePresentationSourceImmediately", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("float dpiScale", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("Compositor.RenderScene(\n            SceneRootVisual,\n            logicalWidth,\n            logicalHeight,\n            pixelWidth,\n            pixelHeight,\n            dpiScale,\n            targetView)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("IWpfWindowDecorationService WindowDecorations", proGpuPlatformServices, StringComparison.Ordinal);
@@ -4843,6 +4856,16 @@ public sealed class WpfManagedProjectGraphTests
             "Media",
             "Imaging",
             "BitmapDecoder.cs"));
+        var bitmapMetadata = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Imaging",
+            "BitmapMetadata.cs"));
         var bitmapPalette = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4860,6 +4883,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExtractManagedColors", bitmapPalette, StringComparison.Ordinal);
         Assert.Contains("AddRgbCube", bitmapPalette, StringComparison.Ordinal);
         AssertGuardBefore(bitmapPalette, "if (!OperatingSystem.IsWindows())", "_palette = CreateInternalPalette();");
+        Assert.Contains("IReadOnlyDictionary<string, object> portableQueries", bitmapMetadata, StringComparison.Ordinal);
+        Assert.Contains("_portableQueries = new Dictionary<string, object>(portableQueries, StringComparer.Ordinal);", bitmapMetadata, StringComparison.Ordinal);
+        Assert.Contains("return _portableQueries.TryGetValue(query, out object value) ? value : null;", bitmapMetadata, StringComparison.Ordinal);
+        Assert.Contains("return _portableQueries.Keys.GetEnumerator();", bitmapMetadata, StringComparison.Ordinal);
+        Assert.Contains("return _portableQueries.ContainsKey(query);", bitmapMetadata, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryOpenPortableUriStream(", bitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("PackUriHelper.UriSchemePack", bitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("WpfWebRequestHelper.CreateRequestAndGetResponseStream(uri)", bitmapDecoder, StringComparison.Ordinal);
@@ -4916,6 +4944,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CopyPaletteTiffRowToBgra", tiffBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("PhotometricInterpretationTag", tiffBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("ColorMapTag", tiffBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("OrientationTag", tiffBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("CreateFrameMetadata(directory)", tiffBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("queries[\"/ifd/{ushort=274}\"]", tiffBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("ConvertTiffMetadataValue(directory.Orientation)", tiffBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("return value <= ushort.MaxValue ? (object)(ushort)value : value;", tiffBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("Portable TIFF palette decoding currently supports 1, 2, 4, and 8-bit indices.", tiffBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("TiffBitmapDecoder.TryCreatePortableFramesFromUri", bitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("ReadOnlyCollection<BitmapFrame> portableTiffFrames", bitmapDecoder, StringComparison.Ordinal);
@@ -5321,6 +5354,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf",
             "ProGPU.Wpf.csproj");
+        var proGpuWpfDirectoryBuildPropsPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Directory.Build.props");
         var proGpuWpfAssemblyInfoPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -5402,6 +5439,7 @@ public sealed class WpfManagedProjectGraphTests
         var smokeGenericThemeXaml = File.ReadAllText(smokeGenericThemeXamlPath);
         var smokeAssemblyInfo = File.ReadAllText(smokeAssemblyInfoPath);
         var proGpuWpfProject = File.ReadAllText(proGpuWpfProjectPath);
+        var proGpuWpfDirectoryBuildProps = File.ReadAllText(proGpuWpfDirectoryBuildPropsPath);
         var proGpuWpfAssemblyInfo = File.ReadAllText(proGpuWpfAssemblyInfoPath);
         var proGpuWpfTestsProject = File.ReadAllText(proGpuWpfTestsProjectPath);
         var proGpuWpfCommandSink = File.ReadAllText(proGpuWpfCommandSinkPath);
@@ -6111,6 +6149,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>", proGpuWpfProject, StringComparison.Ordinal);
         Assert.Contains("<SignAssembly>true</SignAssembly>", proGpuWpfProject, StringComparison.Ordinal);
         Assert.Contains(@"<AssemblyOriginatorKeyFile>..\..\external\ProGPU\eng\ProGPU.snk</AssemblyOriginatorKeyFile>", proGpuWpfProject, StringComparison.Ordinal);
+        Assert.Contains("<Version Condition=\"'$(Version)' == ''\">11.0.0-dev</Version>", proGpuWpfDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<PackageVersion Condition=\"'$(PackageVersion)' == ''\">11.0.0-dev</PackageVersion>", proGpuWpfDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<AssemblyVersion Condition=\"'$(AssemblyVersion)' == ''\">11.0.0.0</AssemblyVersion>", proGpuWpfDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<FileVersion Condition=\"'$(FileVersion)' == ''\">11.0.0.0</FileVersion>", proGpuWpfDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("<InformationalVersion Condition=\"'$(InformationalVersion)' == ''\">11.0.0-dev</InformationalVersion>", proGpuWpfDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<SignAssembly>true</SignAssembly>", proGpuWpfTestsProject, StringComparison.Ordinal);
         Assert.Contains(@"<AssemblyOriginatorKeyFile>..\..\external\ProGPU\eng\ProGPU.snk</AssemblyOriginatorKeyFile>", proGpuWpfTestsProject, StringComparison.Ordinal);
         Assert.Contains("InternalsVisibleTo(", proGpuWpfAssemblyInfo, StringComparison.Ordinal);
@@ -6674,10 +6717,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CreateTiffBytes(pixels, 2, 2)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new TiffBitmapDecoder(", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapDecoder.Create TIFF decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create TIFF metadata format", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create TIFF orientation query presence", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create TIFF orientation metadata", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK TiffBitmapDecoder orientation metadata", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapDecoder.Create TIFF bottom-right red byte", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapDecoder.Create URI TIFF decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create URI TIFF orientation metadata", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK TiffBitmapDecoder URI orientation metadata", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new BitmapImage(tiffUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapImage URI TIFF top-left blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("WriteTiffShortEntry(tiff, ref entryOffset, 274, 6)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreateMultiFrameTiffBytes(pixels, secondTiffPixels, 2, 2)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapDecoder.Create multi-frame TIFF frame count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK multi-frame TiffBitmapDecoder frame count", externalSdkHarnessProgram, StringComparison.Ordinal);

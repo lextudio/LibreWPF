@@ -4037,6 +4037,12 @@ internal static class Program
                     AssertEqual(2, tiffDecoder.Frames[0].PixelWidth, "external SDK BitmapDecoder.Create TIFF pixel width");
                     AssertEqual(2, tiffDecoder.Frames[0].PixelHeight, "external SDK BitmapDecoder.Create TIFF pixel height");
                     AssertEqual(PixelFormats.Bgra32, tiffDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create TIFF Bgra32 format");
+                    var tiffMetadata = RequireType<BitmapMetadata>(
+                        tiffDecoder.Frames[0].Metadata,
+                        "external SDK BitmapDecoder.Create TIFF metadata");
+                    AssertEqual("tiff", tiffMetadata.Format, "external SDK BitmapDecoder.Create TIFF metadata format");
+                    AssertEqual(true, tiffMetadata.ContainsQuery("/ifd/{ushort=274}"), "external SDK BitmapDecoder.Create TIFF orientation query presence");
+                    AssertEqual((ushort)6, tiffMetadata.GetQuery("/ifd/{ushort=274}"), "external SDK BitmapDecoder.Create TIFF orientation metadata");
                     var decodedTiffPixels = new byte[pixels.Length];
                     tiffDecoder.Frames[0].CopyPixels(decodedTiffPixels, 8, 0);
                     AssertEqual(pixels[0], decodedTiffPixels[0], "external SDK BitmapDecoder.Create TIFF top-left blue byte");
@@ -4050,6 +4056,10 @@ internal static class Program
                     AssertEqual(1, directTiffDecoder.Frames.Count, "external SDK TiffBitmapDecoder frame count");
                     AssertEqual(2, directTiffDecoder.Frames[0].PixelWidth, "external SDK TiffBitmapDecoder pixel width");
                     AssertEqual(PixelFormats.Bgra32, directTiffDecoder.Frames[0].Format, "external SDK TiffBitmapDecoder Bgra32 format");
+                    var directTiffMetadata = RequireType<BitmapMetadata>(
+                        directTiffDecoder.Frames[0].Metadata,
+                        "external SDK TiffBitmapDecoder metadata");
+                    AssertEqual((ushort)6, directTiffMetadata.GetQuery("/ifd/{ushort=274}"), "external SDK TiffBitmapDecoder orientation metadata");
 
                     byte[] secondTiffPixels =
                     [
@@ -4415,6 +4425,10 @@ internal static class Program
                         AssertEqual(typeof(TiffBitmapDecoder), uriTiffDecoder.GetType(), "external SDK BitmapDecoder.Create URI TIFF decoder type");
                         AssertEqual(1, uriTiffDecoder.Frames.Count, "external SDK BitmapDecoder.Create URI TIFF frame count");
                         AssertEqual(PixelFormats.Bgra32, uriTiffDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create URI TIFF Bgra32 format");
+                        var uriTiffMetadata = RequireType<BitmapMetadata>(
+                            uriTiffDecoder.Frames[0].Metadata,
+                            "external SDK BitmapDecoder.Create URI TIFF metadata");
+                        AssertEqual((ushort)6, uriTiffMetadata.GetQuery("/ifd/{ushort=274}"), "external SDK BitmapDecoder.Create URI TIFF orientation metadata");
 
                         var directUriTiffDecoder = new TiffBitmapDecoder(
                             tiffUri,
@@ -4422,6 +4436,10 @@ internal static class Program
                             BitmapCacheOption.OnLoad);
                         AssertEqual(1, directUriTiffDecoder.Frames.Count, "external SDK TiffBitmapDecoder URI frame count");
                         AssertEqual(2, directUriTiffDecoder.Frames[0].PixelWidth, "external SDK TiffBitmapDecoder URI pixel width");
+                        var directUriTiffMetadata = RequireType<BitmapMetadata>(
+                            directUriTiffDecoder.Frames[0].Metadata,
+                            "external SDK TiffBitmapDecoder URI metadata");
+                        AssertEqual((ushort)6, directUriTiffMetadata.GetQuery("/ifd/{ushort=274}"), "external SDK TiffBitmapDecoder URI orientation metadata");
 
                         var tiffBitmapImage = new BitmapImage(tiffUri);
                         AssertEqual(2, tiffBitmapImage.PixelWidth, "external SDK BitmapImage URI TIFF pixel width");
@@ -4651,7 +4669,7 @@ internal static class Program
 
                 private static byte[] CreateTiffBytes(byte[] bgraPixels, int width, int height)
                 {
-                    const int entryCount = 10;
+                    const int entryCount = 11;
                     int ifdOffset = 8;
                     int bitsPerSampleOffset = ifdOffset + 2 + (entryCount * 12) + 4;
                     int pixelOffset = bitsPerSampleOffset + 6;
@@ -4671,6 +4689,7 @@ internal static class Program
                     WriteTiffShortEntry(tiff, ref entryOffset, 259, 1);
                     WriteTiffShortEntry(tiff, ref entryOffset, 262, 2);
                     WriteTiffLongEntry(tiff, ref entryOffset, 273, (uint)pixelOffset);
+                    WriteTiffShortEntry(tiff, ref entryOffset, 274, 6);
                     WriteTiffShortEntry(tiff, ref entryOffset, 277, 3);
                     WriteTiffLongEntry(tiff, ref entryOffset, 278, (uint)height);
                     WriteTiffLongEntry(tiff, ref entryOffset, 279, (uint)pixelByteCount);

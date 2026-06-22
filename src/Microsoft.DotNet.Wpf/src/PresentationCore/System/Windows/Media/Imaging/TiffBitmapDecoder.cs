@@ -341,6 +341,10 @@ namespace System.Windows.Media.Imaging
                     case StripOffsetsTag:
                         directory.StripOffsets = ReadUnsignedValues(stream, startPosition, entry, littleEndian);
                         break;
+                    case OrientationTag:
+                        directory.Orientation = ReadSingleUnsignedValue(stream, startPosition, entry, littleEndian);
+                        directory.HasOrientation = true;
+                        break;
                     case SamplesPerPixelTag:
                         directory.SamplesPerPixel = ReadSingleUnsignedValue(stream, startPosition, entry, littleEndian);
                         break;
@@ -502,13 +506,30 @@ namespace System.Windows.Media.Imaging
                 pixels,
                 targetStride);
 
-            BitmapFrame frame = BitmapFrame.Create(source);
+            BitmapMetadata metadata = CreateFrameMetadata(directory);
+            BitmapFrame frame = BitmapFrame.Create(source, null, metadata, null);
             if (!frame.IsFrozen && frame.CanFreeze)
             {
                 frame.Freeze();
             }
 
             return frame;
+        }
+
+        private static BitmapMetadata CreateFrameMetadata(TiffDirectory directory)
+        {
+            var queries = new Dictionary<string, object>(StringComparer.Ordinal);
+            if (directory.HasOrientation)
+            {
+                queries["/ifd/{ushort=274}"] = ConvertTiffMetadataValue(directory.Orientation);
+            }
+
+            return new BitmapMetadata("tiff", MILGuidData.GUID_ContainerFormatTiff, queries);
+        }
+
+        private static object ConvertTiffMetadataValue(uint value)
+        {
+            return value <= ushort.MaxValue ? (object)(ushort)value : value;
         }
 
         private static void CopyPaletteTiffRowToBgra(
@@ -740,6 +761,10 @@ namespace System.Windows.Media.Imaging
 
             public uint[] StripOffsets { get; set; }
 
+            public uint Orientation { get; set; } = 1;
+
+            public bool HasOrientation { get; set; }
+
             public uint SamplesPerPixel { get; set; }
 
             public uint RowsPerStrip { get; set; }
@@ -759,6 +784,7 @@ namespace System.Windows.Media.Imaging
         private const ushort CompressionTag = 259;
         private const ushort PhotometricInterpretationTag = 262;
         private const ushort StripOffsetsTag = 273;
+        private const ushort OrientationTag = 274;
         private const ushort SamplesPerPixelTag = 277;
         private const ushort RowsPerStripTag = 278;
         private const ushort StripByteCountsTag = 279;

@@ -2,6 +2,11 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <TargetFrameworkVersion>10.0</TargetFrameworkVersion>
+    <Version Condition="'$(Version)' == ''">11.0.0-dev</Version>
+    <PackageVersion Condition="'$(PackageVersion)' == ''">11.0.0-dev</PackageVersion>
+    <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">11.0.0.0</AssemblyVersion>
+    <FileVersion Condition="'$(FileVersion)' == ''">11.0.0.0</FileVersion>
+    <InformationalVersion Condition="'$(InformationalVersion)' == ''">11.0.0-dev</InformationalVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

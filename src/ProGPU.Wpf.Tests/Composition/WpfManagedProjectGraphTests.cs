@@ -5791,6 +5791,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("src/ProGPU.Wpf.SdkSwitchSmoke/ProGPU.Wpf.SdkSwitchSmoke.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/ProGPU.Wpf.SdkSwitchRuntimeHarness/ProGPU.Wpf.SdkSwitchRuntimeHarness.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/ProGPU.Wpf.SdkExternalSmokeHarness/ProGPU.Wpf.SdkExternalSmokeHarness.csproj", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("artifacts/nuget/ProGPU.Wpf.SdkSwitchSmoke", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfSdkProvidesSwitchOnlyPackagingSurface", sdkCiScript, StringComparison.Ordinal);
 
         Assert.Contains("<_ProGpuWpfProjectUseWPF>$(UseWPF)</_ProGpuWpfProjectUseWPF>", sdkTargets, StringComparison.Ordinal);

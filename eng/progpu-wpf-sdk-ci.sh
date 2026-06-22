@@ -39,6 +39,8 @@ clean_sdk_smoke_outputs() {
       "${repo_root}/artifacts/bin/${project}" \
       "${repo_root}/artifacts/obj/${project}"
   done
+
+  rm -rf "${repo_root}/artifacts/nuget/ProGPU.Wpf.SdkSwitchSmoke"
 }
 
 echo "Packing ProGPU packages for ProGPU.Wpf.Sdk feed..."

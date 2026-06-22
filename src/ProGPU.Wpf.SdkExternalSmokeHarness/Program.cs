@@ -1866,6 +1866,10 @@ internal static class Program
                         </InputMethod.InputScope>
                     </TextBox>
                     <TextBox
+                        x:Name="ExternalDataErrorValidationTextBox"
+                        Validation.Error="OnExternalValidationError"
+                        Text="{Binding DataErrorText, Mode=TwoWay, UpdateSourceTrigger=Explicit, ValidatesOnDataErrors=True, NotifyOnValidationError=True}" />
+                    <TextBox
                         x:Name="ExternalExceptionValidationTextBox"
                         Validation.Error="OnExternalValidationError">
                         <TextBox.Text>
@@ -2064,7 +2068,7 @@ internal static class Program
 
             namespace ExternalSdkApp;
 
-            public partial class MainWindow : Window, INotifyPropertyChanged
+            public partial class MainWindow : Window, INotifyPropertyChanged, IDataErrorInfo
             {
                 public static readonly RoutedUICommand ExternalCommand = new(
                     "External SDK command",
@@ -2108,6 +2112,24 @@ internal static class Program
                 public string SelectedExternalKind { get; set; } = "Rendering";
 
                 public string ValidationText { get; set; } = "valid external text";
+
+                public string DataErrorText { get; set; } = "data: valid initial";
+
+                public string Error => string.Empty;
+
+                public string this[string columnName]
+                {
+                    get
+                    {
+                        if (string.Equals(columnName, nameof(DataErrorText), StringComparison.Ordinal)
+                            && !DataErrorText.StartsWith("data:", StringComparison.Ordinal))
+                        {
+                            return "External IDataErrorInfo requires data: prefix.";
+                        }
+
+                        return string.Empty;
+                    }
+                }
 
                 private string _exceptionValidationText = "exception valid initial";
 
@@ -7370,6 +7392,38 @@ internal static class Program
                     AssertEqual("recovered external text", window.ValidationText, "external SDK validation source update");
                     AssertAtLeast(textChangedBeforeValidation + 2, window.ExternalValidationTextChangedCount, "external SDK TextBox validation TextChanged recovery count");
                     AssertEqual("recovered external text", window.LastExternalValidationText, "external SDK TextBox validation TextChanged recovery text");
+
+                    var dataErrorValidationTextBox = RequireType<TextBox>(
+                        window.FindName("ExternalDataErrorValidationTextBox"),
+                        "external SDK IDataErrorInfo validation text box");
+                    var dataErrorBindingExpression = dataErrorValidationTextBox.GetBindingExpression(TextBox.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK IDataErrorInfo validation BindingExpression.");
+                    AssertEqual("DataErrorText", dataErrorBindingExpression.ParentBinding.Path.Path, "external SDK IDataErrorInfo binding path");
+                    AssertEqual(true, dataErrorBindingExpression.ParentBinding.ValidatesOnDataErrors, "external SDK IDataErrorInfo binding ValidatesOnDataErrors");
+                    AssertEqual(true, dataErrorBindingExpression.ParentBinding.NotifyOnValidationError, "external SDK IDataErrorInfo binding NotifyOnValidationError");
+                    AssertEqual("data: valid initial", dataErrorValidationTextBox.Text, "external SDK IDataErrorInfo validation initial target");
+                    AssertEqual("data: valid initial", window.DataErrorText, "external SDK IDataErrorInfo validation initial source");
+                    int dataErrorValidationAddedBefore = window.ExternalValidationErrorAddedCount;
+                    int dataErrorValidationRemovedBefore = window.ExternalValidationErrorRemovedCount;
+                    dataErrorValidationTextBox.Text = "bad external data";
+                    dataErrorBindingExpression.UpdateSource();
+                    AssertEqual(true, Validation.GetHasError(dataErrorValidationTextBox), "external SDK IDataErrorInfo validation failure state");
+                    AssertEqual(1, Validation.GetErrors(dataErrorValidationTextBox).Count, "external SDK IDataErrorInfo validation failure error count");
+                    AssertEqual("bad external data", window.DataErrorText, "external SDK IDataErrorInfo validation updated invalid source");
+                    AssertAtLeast(dataErrorValidationAddedBefore + 1, window.ExternalValidationErrorAddedCount, "external SDK IDataErrorInfo validation error added count");
+                    AssertEqual(dataErrorValidationRemovedBefore, window.ExternalValidationErrorRemovedCount, "external SDK IDataErrorInfo validation removed count before recovery");
+                    AssertEqual("Added", window.LastExternalValidationErrorAction, "external SDK IDataErrorInfo validation error added action");
+                    AssertEqual("External IDataErrorInfo requires data: prefix.", window.LastExternalValidationErrorContent, "external SDK IDataErrorInfo validation error content");
+                    AssertEqual("ExternalDataErrorValidationTextBox", window.LastExternalValidationErrorSenderName, "external SDK IDataErrorInfo validation error added sender");
+                    dataErrorValidationTextBox.Text = "data: recovered";
+                    dataErrorBindingExpression.UpdateSource();
+                    AssertEqual(false, Validation.GetHasError(dataErrorValidationTextBox), "external SDK IDataErrorInfo validation recovery state");
+                    AssertEqual(0, Validation.GetErrors(dataErrorValidationTextBox).Count, "external SDK IDataErrorInfo validation recovery error count");
+                    AssertEqual("data: recovered", window.DataErrorText, "external SDK IDataErrorInfo validation recovered source");
+                    AssertAtLeast(dataErrorValidationRemovedBefore + 1, window.ExternalValidationErrorRemovedCount, "external SDK IDataErrorInfo validation error removed count");
+                    AssertEqual("Removed", window.LastExternalValidationErrorAction, "external SDK IDataErrorInfo validation error removed action");
+                    AssertEqual("External IDataErrorInfo requires data: prefix.", window.LastExternalValidationErrorContent, "external SDK IDataErrorInfo validation removed error content");
+                    AssertEqual("ExternalDataErrorValidationTextBox", window.LastExternalValidationErrorSenderName, "external SDK IDataErrorInfo validation error removed sender");
 
                     var exceptionValidationTextBox = RequireType<TextBox>(
                         window.FindName("ExternalExceptionValidationTextBox"),

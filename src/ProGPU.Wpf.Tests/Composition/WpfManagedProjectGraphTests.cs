@@ -4769,6 +4769,16 @@ public sealed class WpfManagedProjectGraphTests
             "Media",
             "Imaging",
             "PngBitmapDecoder.cs"));
+        var jpegBitmapDecoder = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Imaging",
+            "JpegBitmapDecoder.cs"));
         var bitmapDecoder = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4793,6 +4803,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PngBitmapDecoder.TryCreatePortableFrameFromUri", bitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("return new PngBitmapDecoder(portablePngUriFrame", bitmapDecoder, StringComparison.Ordinal);
         AssertGuardBefore(bitmapDecoder, "PngBitmapDecoder.TryCreatePortableFrame", "SetupDecoderFromUriOrStream");
+        Assert.Contains("internal static bool TryCreatePortableFrame(", jpegBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TryCreatePortableFrameFromUri(", jpegBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("ImageResult.FromStream(stream, ColorComponents.RedGreenBlueAlpha)", jpegBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("PixelFormats.Bgra32", jpegBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("private static bool IsJpegSignature", jpegBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("JpegBitmapDecoder.TryCreatePortableFrameFromUri", bitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("return new JpegBitmapDecoder(portableJpegUriFrame", bitmapDecoder, StringComparison.Ordinal);
+        AssertGuardBefore(bitmapDecoder, "JpegBitmapDecoder.TryCreatePortableFrame", "SetupDecoderFromUriOrStream");
         AssertGuardBefore(uiElement, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetDC(desktopWnd)");
         AssertGuardBefore(pathGeometry, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.MilCoreApi.MilUtility_PathGeometryBounds");
         AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())", "MilCoreApi.MilUtility_PolygonBounds");
@@ -5308,6 +5326,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<ProGpuWpfSilkNetVersion Condition=\"'$(ProGpuWpfSilkNetVersion)' == ''\">2.23.0</ProGpuWpfSilkNetVersion>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfSystemIOPackagingVersion Condition=\"'$(ProGpuWpfSystemIOPackagingVersion)' == ''\">", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfSystemWindowsExtensionsVersion Condition=\"'$(ProGpuWpfSystemWindowsExtensionsVersion)' == ''\">", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("<ProGpuWpfStbImageSharpVersion Condition=\"'$(ProGpuWpfStbImageSharpVersion)' == ''\">2.30.15</ProGpuWpfStbImageSharpVersion>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<Import Sdk=\"Microsoft.NET.Sdk.WindowsDesktop\" Project=\"Sdk.props\" />", sdkProps, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Wpf.Sdk.props", sdkProps, StringComparison.Ordinal);
 
@@ -5332,6 +5351,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<PackageReference Include=\"System.Formats.Nrbf\" Version=\"$(ProGpuWpfSystemFormatsNrbfVersion)\" />", portableProps, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"System.IO.Packaging\" Version=\"$(ProGpuWpfSystemIOPackagingVersion)\" />", portableProps, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"System.Windows.Extensions\" Version=\"$(ProGpuWpfSystemWindowsExtensionsVersion)\" />", portableProps, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"StbImageSharp\" Version=\"$(ProGpuWpfStbImageSharpVersion)\" />", portableProps, StringComparison.Ordinal);
 
         Assert.Contains("<FrameworkReference Remove=\"Microsoft.WindowsDesktop.App.WPF\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<CopyLocalLockFileAssemblies Condition=\"'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'\">true</CopyLocalLockFileAssemblies>", portableTargets, StringComparison.Ordinal);
@@ -6454,6 +6474,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK BitmapDecoder.Create URI PNG decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new BitmapImage(pngUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapImage URI PNG top-left blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CreateJpegBytes()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new JpegBitmapDecoder(", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create JPEG decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create JPEG nonblank RGB total", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create URI JPEG decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new BitmapImage(jpegUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapImage URI JPEG first alpha byte", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreateRgbaPngBytes(pixels, 2, 2, 8)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreateRgba16PngBytes(pixels, 2, 2, 8)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreateIndexedPngBytes(", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6788,6 +6815,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AssertNoPackageEntryPrefix(package, \"lib/\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertNoPackageEntryPrefix(package, \"ref/\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkCopyNativeRuntimeAssets", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"StbImageSharp\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK StbImageSharp package reference", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK StbImageSharp package dependency", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("External SDK smoke must not rely on generated Directory.Build.props or Directory.Build.targets files.", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("globalPackagesFolder", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Path.Combine(workRoot, \".packages\")", externalSdkHarnessProgram, StringComparison.Ordinal);

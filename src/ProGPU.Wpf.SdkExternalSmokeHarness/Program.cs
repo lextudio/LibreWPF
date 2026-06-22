@@ -62,7 +62,8 @@ internal static class Program
         "System.IO.Packaging",
         "System.Security.Cryptography.ProtectedData",
         "System.Private.Windows.Core",
-        "System.Windows.Extensions"
+        "System.Windows.Extensions",
+        "StbImageSharp"
     ];
 
     private static readonly PackageAssemblyExpectation[] s_packageAssemblyExpectations =
@@ -158,6 +159,7 @@ internal static class Program
         AssertContains(nuspec, "<dependencies>", "SDK nuspec dependency group");
 
         AssertContains(sdkProps, "<ProGpuWpfSdkVersion Condition=\"'$(ProGpuWpfSdkVersion)' == ''\">11.0.0-dev</ProGpuWpfSdkVersion>", "SDK root version default");
+        AssertContains(sdkProps, "<ProGpuWpfStbImageSharpVersion Condition=\"'$(ProGpuWpfStbImageSharpVersion)' == ''\">2.30.15</ProGpuWpfStbImageSharpVersion>", "SDK StbImageSharp version default");
         AssertContains(sdkProps, "<Import Sdk=\"Microsoft.NET.Sdk.WindowsDesktop\" Project=\"Sdk.props\" />", "SDK root WindowsDesktop props import");
         AssertContains(sdkProps, "ProGPU.Wpf.Sdk.props", "SDK root portable props import");
         AssertContains(sdkTargets, "<Import Sdk=\"Microsoft.NET.Sdk.WindowsDesktop\" Project=\"Sdk.targets\" />", "SDK root WindowsDesktop targets import");
@@ -169,6 +171,7 @@ internal static class Program
         AssertContains(portableProps, "<Page Include=\"**/*.xaml\"", "SDK default page XAML item");
         AssertContains(portableProps, "<PackageReference Include=\"Silk.NET.WebGPU.Native.WGPU\" Version=\"$(ProGpuWpfSilkNetVersion)\" />", "SDK native WebGPU package reference");
         AssertContains(portableProps, "<PackageReference Include=\"System.IO.Packaging\" Version=\"$(ProGpuWpfSystemIOPackagingVersion)\" />", "SDK WPF support package reference");
+        AssertContains(portableProps, "<PackageReference Include=\"StbImageSharp\" Version=\"$(ProGpuWpfStbImageSharpVersion)\" />", "SDK StbImageSharp package reference");
 
         AssertContains(portableTargets, "<FrameworkReference Remove=\"Microsoft.WindowsDesktop.App.WPF\" />", "SDK WindowsDesktop framework suppression");
         AssertContains(portableTargets, "<PackageReference Include=\"$(ProGpuWpfManagedPackageId)\" Version=\"$(ProGpuWpfManagedPackageVersion)\" />", "SDK managed WPF transport package reference");
@@ -3554,6 +3557,38 @@ internal static class Program
                     AssertEqual(1, directPngDecoder.Frames.Count, "external SDK PngBitmapDecoder frame count");
                     AssertEqual(PixelFormats.Bgra32, directPngDecoder.Frames[0].Format, "external SDK PngBitmapDecoder Bgra32 format");
 
+                    byte[] jpegBytes = CreateJpegBytes();
+                    AssertEqual((byte)0xFF, jpegBytes[0], "external SDK generated JPEG signature byte 0");
+                    AssertEqual((byte)0xD8, jpegBytes[1], "external SDK generated JPEG signature byte 1");
+                    AssertEqual((byte)0xFF, jpegBytes[2], "external SDK generated JPEG signature byte 2");
+                    var jpegDecoder = BitmapDecoder.Create(
+                        new MemoryStream(jpegBytes),
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(typeof(JpegBitmapDecoder), jpegDecoder.GetType(), "external SDK BitmapDecoder.Create JPEG decoder type");
+                    AssertEqual(1, jpegDecoder.Frames.Count, "external SDK BitmapDecoder.Create JPEG frame count");
+                    AssertEqual(2, jpegDecoder.Frames[0].PixelWidth, "external SDK BitmapDecoder.Create JPEG pixel width");
+                    AssertEqual(2, jpegDecoder.Frames[0].PixelHeight, "external SDK BitmapDecoder.Create JPEG pixel height");
+                    AssertEqual(PixelFormats.Bgra32, jpegDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create JPEG Bgra32 format");
+                    var decodedJpegPixels = new byte[pixels.Length];
+                    jpegDecoder.Frames[0].CopyPixels(decodedJpegPixels, 8, 0);
+                    int jpegRgbTotal = 0;
+                    for (int offset = 0; offset < decodedJpegPixels.Length; offset += 4)
+                    {
+                        jpegRgbTotal += decodedJpegPixels[offset] + decodedJpegPixels[offset + 1] + decodedJpegPixels[offset + 2];
+                        AssertEqual((byte)0xFF, decodedJpegPixels[offset + 3], "external SDK BitmapDecoder.Create JPEG alpha byte " + offset / 4);
+                    }
+
+                    AssertAtLeast(1, jpegRgbTotal, "external SDK BitmapDecoder.Create JPEG nonblank RGB total");
+
+                    var directJpegDecoder = new JpegBitmapDecoder(
+                        new MemoryStream(jpegBytes),
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(1, directJpegDecoder.Frames.Count, "external SDK JpegBitmapDecoder frame count");
+                    AssertEqual(2, directJpegDecoder.Frames[0].PixelWidth, "external SDK JpegBitmapDecoder pixel width");
+                    AssertEqual(PixelFormats.Bgra32, directJpegDecoder.Frames[0].Format, "external SDK JpegBitmapDecoder Bgra32 format");
+
                     byte[] rgba16PngBytes = CreateRgba16PngBytes(pixels, 2, 2, 8);
                     var rgba16PngDecoder = BitmapDecoder.Create(
                         new MemoryStream(rgba16PngBytes),
@@ -3661,6 +3696,40 @@ internal static class Program
                         File.Delete(pngPath);
                     }
 
+                    string jpegPath = Path.Combine(Path.GetTempPath(), "external-sdk-managed-image-" + Guid.NewGuid().ToString("N") + ".jpg");
+                    File.WriteAllBytes(jpegPath, jpegBytes);
+                    try
+                    {
+                        var jpegUri = new Uri(jpegPath);
+                        var uriJpegDecoder = BitmapDecoder.Create(
+                            jpegUri,
+                            BitmapCreateOptions.PreservePixelFormat,
+                            BitmapCacheOption.OnLoad);
+                        AssertEqual(typeof(JpegBitmapDecoder), uriJpegDecoder.GetType(), "external SDK BitmapDecoder.Create URI JPEG decoder type");
+                        AssertEqual(1, uriJpegDecoder.Frames.Count, "external SDK BitmapDecoder.Create URI JPEG frame count");
+                        AssertEqual(PixelFormats.Bgra32, uriJpegDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create URI JPEG Bgra32 format");
+
+                        var directUriJpegDecoder = new JpegBitmapDecoder(
+                            jpegUri,
+                            BitmapCreateOptions.PreservePixelFormat,
+                            BitmapCacheOption.OnLoad);
+                        AssertEqual(1, directUriJpegDecoder.Frames.Count, "external SDK JpegBitmapDecoder URI frame count");
+                        AssertEqual(2, directUriJpegDecoder.Frames[0].PixelWidth, "external SDK JpegBitmapDecoder URI pixel width");
+
+                        var jpegBitmapImage = new BitmapImage(jpegUri);
+                        AssertEqual(2, jpegBitmapImage.PixelWidth, "external SDK BitmapImage URI JPEG pixel width");
+                        AssertEqual(2, jpegBitmapImage.PixelHeight, "external SDK BitmapImage URI JPEG pixel height");
+                        AssertEqual(PixelFormats.Bgra32, jpegBitmapImage.Format, "external SDK BitmapImage URI JPEG Bgra32 format");
+                        var jpegBitmapImagePixels = new byte[pixels.Length];
+                        jpegBitmapImage.CopyPixels(jpegBitmapImagePixels, 8, 0);
+                        AssertEqual((byte)0xFF, jpegBitmapImagePixels[3], "external SDK BitmapImage URI JPEG first alpha byte");
+                        AssertEqual((byte)0xFF, jpegBitmapImagePixels[15], "external SDK BitmapImage URI JPEG final alpha byte");
+                    }
+                    finally
+                    {
+                        File.Delete(jpegPath);
+                    }
+
                     var indexedPalette = new BitmapPalette(
                     [
                         Color.FromRgb(0x00, 0x00, 0x00),
@@ -3752,6 +3821,12 @@ internal static class Program
                     AssertEqual(TileMode.Tile, imageBrush.TileMode, "external SDK ImageBrush tile mode");
                     AssertEqual(BrushMappingMode.Absolute, imageBrush.ViewportUnits, "external SDK ImageBrush viewport units");
                     AssertEqual(new Rect(0, 0, 2, 2), imageBrush.Viewport, "external SDK ImageBrush viewport");
+                }
+
+                private static byte[] CreateJpegBytes()
+                {
+                    return Convert.FromBase64String(
+                        "/9j//gAQTGF2YzYyLjI4LjEwMAD/2wBDAAgEBAQEBAUFBQUFBQYGBgYGBgYGBgYGBgYHBwcICAgHBwcGBgcHCAgICAkJCQgICAgJCQoKCgwMCwsODg4RERT/xABnAAEBAAAAAAAAAAAAAAAAAAADBwEBAQEAAAAAAAAAAAAAAAAAAgQHEAACAgICAwEAAAAAAAAAAAACAQMFBgQAEXa0NwcRAAICAgIBBQEBAAAAAAAAAAMCAQQFBgAHEbV2snMiNzT/wAARCAACAAIDARIAAhIAAxIA/9oADAMBAAIRAxEAPwChYBVVc+CYpLLo6csklDTnJIevEZmZaMLIiIgbIib7bb7b4/538/xHx6l9CDmQ9nmLS7K3arVI9YANmzwQAC0iCEQ8lYVBjGkwiIixCoixELEeIjh7Y/qe+e6th9Us8a6/gcgsXLmJxtu1ZiLFmzYp1zHsGL+yGMUg2chCPMs7vMszTMzPnllH/FW+gXwjn//Z");
                 }
 
                 private static byte[] CreateRgbaPngBytes(byte[] bgraPixels, int width, int height, int stride)
@@ -6634,6 +6709,7 @@ internal static class Program
         AssertContains(depsJson, "ProGPU.Wpf", "external SDK ProGPU WPF package dependency");
         AssertContains(depsJson, "ProGPU.Compute", "external SDK ProGPU compute package dependency");
         AssertContains(depsJson, "ProGPU.Transpiler", "external SDK ProGPU transpiler package dependency");
+        AssertContains(depsJson, "StbImageSharp", "external SDK StbImageSharp package dependency");
         AssertContains(depsJson, LibraryAssemblyName, "external SDK referenced library dependency");
 
         ValidateProGpuHiDpiRenderSurface(outputRoot);

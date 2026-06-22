@@ -30,6 +30,7 @@
     <ProGpuWpfSystemFormatsNrbfVersion Condition="'$(ProGpuWpfSystemFormatsNrbfVersion)' == ''">11.0.0-preview.5.26229.113</ProGpuWpfSystemFormatsNrbfVersion>
     <ProGpuWpfSystemIOPackagingVersion Condition="'$(ProGpuWpfSystemIOPackagingVersion)' == ''">11.0.0-preview.5.26229.113</ProGpuWpfSystemIOPackagingVersion>
     <ProGpuWpfSystemWindowsExtensionsVersion Condition="'$(ProGpuWpfSystemWindowsExtensionsVersion)' == ''">11.0.0-preview.5.26229.113</ProGpuWpfSystemWindowsExtensionsVersion>
+    <ProGpuWpfStbImageSharpVersion Condition="'$(ProGpuWpfStbImageSharpVersion)' == ''">2.30.15</ProGpuWpfStbImageSharpVersion>
   </PropertyGroup>
 
   <Import Sdk="Microsoft.NET.Sdk.WindowsDesktop" Project="Sdk.props" />

@@ -1412,6 +1412,7 @@
     <PackageReference Include="System.Windows.Extensions" Version="$(SystemWindowsExtensionsPackageVersion)" />
     <PackageReference Include="$(SystemIOPackagingPackage)" Version="$(SystemIOPackagingVersion)" />
     <PackageReference Include="System.Formats.Nrbf" Version="$(SystemFormatsNrbfVersion)" />
+    <PackageReference Include="StbImageSharp" Version="$(StbImageSharpPackageVersion)" />
   </ItemGroup>
 
   <ItemGroup>

@@ -215,6 +215,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Tests",
             "CompositorReviewRegressionTests.cs");
+        var proGpuDrawingFrameTestsPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "ProGpuWpfDrawingFrameTests.cs");
 
         var mediaContext = File.ReadAllText(mediaContextPath);
         var renderService = File.ReadAllText(renderServicePath);
@@ -228,6 +232,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuCompositionTarget = File.ReadAllText(proGpuCompositionTargetPath);
         var proGpuCompositor = File.ReadAllText(proGpuCompositorPath);
         var proGpuCompositorReviewTests = File.ReadAllText(proGpuCompositorReviewTestsPath);
+        var proGpuDrawingFrameTests = File.ReadAllText(proGpuDrawingFrameTestsPath);
 
         Assert.Contains(@"<Compile Include=""System\Windows\Media\PortableMediaContextRenderService.cs"" />", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains("internal static class PortableMediaContextRenderService", renderService, StringComparison.Ordinal);
@@ -292,6 +297,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CurrentCanvasPixelWidth => _explicitRenderTargetWidth.HasValue", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("CurrentCanvasPixelHeight => _explicitRenderTargetHeight.HasValue", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("ExplicitPhysicalRenderTargetPinsViewportToPhysicalFramebuffer", proGpuCompositorReviewTests, StringComparison.Ordinal);
+        Assert.Contains("HighDpiRetainedWpfLayerRendersAcrossPhysicalFramebuffer", proGpuDrawingFrameTests, StringComparison.Ordinal);
+        Assert.Contains("HighDpiSourceDrawingLayerRendersAcrossPhysicalFramebuffer", proGpuDrawingFrameTests, StringComparison.Ordinal);
         Assert.Contains("float dpiScale", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("Compositor.RenderScene(\n            SceneRootVisual,\n            logicalWidth,\n            logicalHeight,\n            pixelWidth,\n            pixelHeight,\n            dpiScale,\n            targetView)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("IWpfWindowDecorationService WindowDecorations", proGpuPlatformServices, StringComparison.Ordinal);

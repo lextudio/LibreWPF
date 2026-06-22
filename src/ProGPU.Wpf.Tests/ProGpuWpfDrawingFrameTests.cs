@@ -166,6 +166,52 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public unsafe void HighDpiSourceDrawingLayerRendersAcrossPhysicalFramebuffer()
+    {
+        using var target = ProGpuWpfCompositionTarget.CreateHeadless(WgpuTextureFormat.Rgba8Unorm);
+        using var texture = new ProGpuTexture(
+            target.Context,
+            840,
+            1680,
+            WgpuTextureFormat.Rgba8Unorm,
+            WgpuTextureUsage.RenderAttachment | WgpuTextureUsage.CopySrc,
+            "WPF source HiDPI framebuffer target");
+
+        var frame = target.BeginDrawingFrame(
+            pixelWidth: 840,
+            pixelHeight: 1680,
+            clearRetainedWpfVisualRoot: true,
+            logicalWidth: 420,
+            logicalHeight: 840,
+            dpiScaleX: 2.0,
+            dpiScaleY: 2.0);
+
+        using (var context = frame.OpenCompositionDrawingContext())
+        {
+            context.DrawRectangle(
+                Brushes.Red,
+                pen: null,
+                new Rect(0, 0, 420, 840));
+        }
+
+        target.Render(
+            logicalWidth: 420,
+            logicalHeight: 840,
+            pixelWidth: 840,
+            pixelHeight: 1680,
+            dpiScale: 2f,
+            texture.ViewPtr);
+
+        var pixels = texture.ReadPixels();
+        var lowerRight = ReadPixel(pixels, texture.Width, x: 780, y: 1560);
+
+        Assert.True(lowerRight.R >= 220, $"Expected source WPF content to fill the physical framebuffer width, found {lowerRight}.");
+        Assert.True(lowerRight.G <= 50, $"Expected source WPF content green channel to stay low, found {lowerRight}.");
+        Assert.True(lowerRight.B <= 50, $"Expected source WPF content blue channel to stay low, found {lowerRight}.");
+        Assert.Equal(255, lowerRight.A);
+    }
+
+    [Fact]
     public void ConstructorClearsRetainedVisualBranchMapWhenRetainedLayerIsCleared()
     {
         var branchMap = new WpfRetainedVisualBranchMap();

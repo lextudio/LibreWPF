@@ -3924,6 +3924,7 @@ internal static class Program
                     ValidateGridSplitterDragAfterRun(window);
                     ValidateItemContainerStyleSelectorAfterRun(window);
                     ValidatePreviousDataBindingsAfterRun(window);
+                    ValidateAlternationAfterRun(window);
                     ValidateAdornerLayer(window);
                     ValidateAccessKeyRoutingAfterRun(window);
                     ValidateClassInputBindingAfterRun(window);
@@ -9641,6 +9642,50 @@ internal static class Program
                         textBlockDescription);
                     AssertEqual(expectedText, textBlock.Text, textDescription);
                     AssertEqual("external style selector item template", textBlock.Tag, "external SDK ItemContainerStyleSelector generated TextBlock tag");
+                }
+
+                private static void ValidateAlternationAfterRun(MainWindow window)
+                {
+                    var itemPanelList = RequireType<ListBox>(
+                        window.FindName("ExternalItemsPanelList"),
+                        "external SDK Application.Run alternation items list");
+                    AssertEqual(4, itemPanelList.AlternationCount, "external SDK Application.Run alternation count");
+                    AssertEqual(3, itemPanelList.Items.Count, "external SDK Application.Run alternation item count after mutation");
+
+                    ValidateGeneratedAlternationItem(
+                        itemPanelList,
+                        window.ExternalItems[0],
+                        0,
+                        "external SDK alternation first item container",
+                        "external SDK alternation first index");
+                    ValidateGeneratedAlternationItem(
+                        itemPanelList,
+                        window.ExternalItems[1],
+                        1,
+                        "external SDK alternation second item container",
+                        "external SDK alternation second index");
+                    ValidateGeneratedAlternationItem(
+                        itemPanelList,
+                        window.ExternalItems[2],
+                        2,
+                        "external SDK alternation third item container",
+                        "external SDK alternation third index");
+                }
+
+                private static void ValidateGeneratedAlternationItem(
+                    ListBox itemPanelList,
+                    object item,
+                    int expectedAlternationIndex,
+                    string itemContainerDescription,
+                    string alternationIndexDescription)
+                {
+                    itemPanelList.ScrollIntoView(item);
+                    itemPanelList.UpdateLayout();
+
+                    var itemContainer = RequireType<ListBoxItem>(
+                        itemPanelList.ItemContainerGenerator.ContainerFromItem(item),
+                        itemContainerDescription);
+                    AssertEqual(expectedAlternationIndex, ItemsControl.GetAlternationIndex(itemContainer), alternationIndexDescription);
                 }
 
                 private static void ValidatePreviousDataBindingsAfterRun(MainWindow window)

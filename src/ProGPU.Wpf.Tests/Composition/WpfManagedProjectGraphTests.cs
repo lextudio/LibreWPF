@@ -6958,6 +6958,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("itemsPanelTemplate.LoadContent()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("itemPanelList.ItemContainerStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK item panel list collection count after mutation", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateAlternationAfterRun(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ItemsControl.GetAlternationIndex(itemContainer)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK alternation third index", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK item template selector framework template", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK content template selector selected template", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertTemplateText(frameworkTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -27,6 +27,20 @@ run_dotnet() {
   "${dotnet}" "$@"
 }
 
+clean_sdk_smoke_outputs() {
+  local project
+  for project in \
+    "ProGPU.Wpf.SdkSwitchLibrary" \
+    "ProGPU.Wpf.SdkSwitchSmoke" \
+    "ProGPU.Wpf.SdkSwitchRuntimeHarness" \
+    "ProGPU.Wpf.SdkExternalSmokeHarness"
+  do
+    rm -rf \
+      "${repo_root}/artifacts/bin/${project}" \
+      "${repo_root}/artifacts/obj/${project}"
+  done
+}
+
 echo "Packing ProGPU packages for ProGPU.Wpf.Sdk feed..."
 pack_project "external/ProGPU/src/ProGPU.Backend/ProGPU.Backend.csproj"
 pack_project "external/ProGPU/src/ProGPU.Transpiler/ProGPU.Transpiler.csproj"
@@ -53,6 +67,9 @@ echo "Packing WPF transport, ProGPU bridge, and custom SDK..."
 pack_project "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj"
 pack_project "src/ProGPU.Wpf/ProGPU.Wpf.csproj"
 pack_project "packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj"
+
+echo "Cleaning package-mode SDK smoke outputs..."
+clean_sdk_smoke_outputs
 
 echo "Building package-mode SDK switch smoke..."
 run_dotnet build "${repo_root}/src/ProGPU.Wpf.SdkSwitchSmoke/ProGPU.Wpf.SdkSwitchSmoke.csproj" -v:minimal

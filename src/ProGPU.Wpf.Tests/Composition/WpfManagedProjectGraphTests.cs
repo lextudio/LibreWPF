@@ -6844,6 +6844,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalDockPanel", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalCanvasChild", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalUniformGrid", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalGridSplitterGrid", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalGridSplitter", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalItemsPanelList", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalTemplateSelectorPresenter", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ContentTemplateSelector=\"{StaticResource ExternalItemTemplateSelector}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6866,6 +6868,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Grid.GetColumnSpan(gridValue)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DockPanel.GetDock(dockTop)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Canvas.GetLeft(canvasChild)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK GridSplitter resize behavior", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateGridSplitterDragAfterRun(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK GridSplitter dragged left column width", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK GridSplitter dragged right column width", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("itemsPanelTemplate.LoadContent()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("itemPanelList.ItemContainerStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK item panel list collection count after mutation", externalSdkHarnessProgram, StringComparison.Ordinal);

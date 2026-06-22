@@ -1366,6 +1366,37 @@ internal static class Program
                         <TextBlock Text="Two" />
                         <TextBlock Text="Three" />
                     </UniformGrid>
+                    <Grid
+                        x:Name="ExternalGridSplitterGrid"
+                        Width="180"
+                        Height="32">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition
+                                Width="60"
+                                MinWidth="24" />
+                            <ColumnDefinition Width="5" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock
+                            x:Name="ExternalGridSplitterLeftPane"
+                            Grid.Column="0"
+                            Text="external split left" />
+                        <GridSplitter
+                            x:Name="ExternalGridSplitter"
+                            Grid.Column="1"
+                            Width="5"
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch"
+                            ResizeBehavior="PreviousAndNext"
+                            ResizeDirection="Columns"
+                            ShowsPreview="True"
+                            DragIncrement="3"
+                            KeyboardIncrement="7" />
+                        <TextBlock
+                            x:Name="ExternalGridSplitterRightPane"
+                            Grid.Column="2"
+                            Text="external split right" />
+                    </Grid>
                     <ContentControl
                         x:Name="ExternalTemplatePresenter"
                         Content="{Binding SelectedExternalItem}"
@@ -3418,6 +3449,7 @@ internal static class Program
                     ValidateDataTriggerActionsAfterRun(window);
                     ValidateMultiDataTriggerActionsAfterRun(window);
                     ValidateVisualStateTransitions(window);
+                    ValidateGridSplitterDragAfterRun(window);
                     ValidateAdornerLayer(window);
                     ValidateAccessKeyRoutingAfterRun(window);
                     ValidateClassInputBindingAfterRun(window);
@@ -8272,6 +8304,36 @@ internal static class Program
                     AssertEqual(3, uniformGrid.Columns, "external SDK uniform grid columns");
                     AssertEqual(3, uniformGrid.Children.Count, "external SDK uniform grid child count");
 
+                    var splitterGrid = RequireType<Grid>(
+                        window.FindName("ExternalGridSplitterGrid"),
+                        "external SDK GridSplitter grid");
+                    var splitterLeft = RequireType<TextBlock>(
+                        window.FindName("ExternalGridSplitterLeftPane"),
+                        "external SDK GridSplitter left pane");
+                    var splitter = RequireType<GridSplitter>(
+                        window.FindName("ExternalGridSplitter"),
+                        "external SDK GridSplitter");
+                    var splitterRight = RequireType<TextBlock>(
+                        window.FindName("ExternalGridSplitterRightPane"),
+                        "external SDK GridSplitter right pane");
+                    AssertEqual(180.0, splitterGrid.Width, "external SDK GridSplitter grid width");
+                    AssertEqual(32.0, splitterGrid.Height, "external SDK GridSplitter grid height");
+                    AssertEqual(3, splitterGrid.ColumnDefinitions.Count, "external SDK GridSplitter grid column count");
+                    AssertEqual(3, splitterGrid.Children.Count, "external SDK GridSplitter grid child count");
+                    AssertEqual(0, Grid.GetColumn(splitterLeft), "external SDK GridSplitter left column");
+                    AssertEqual(1, Grid.GetColumn(splitter), "external SDK GridSplitter column");
+                    AssertEqual(2, Grid.GetColumn(splitterRight), "external SDK GridSplitter right column");
+                    AssertEqual("external split left", splitterLeft.Text, "external SDK GridSplitter left text");
+                    AssertEqual("external split right", splitterRight.Text, "external SDK GridSplitter right text");
+                    AssertEqual(5.0, splitter.Width, "external SDK GridSplitter width");
+                    AssertEqual(HorizontalAlignment.Stretch, splitter.HorizontalAlignment, "external SDK GridSplitter horizontal alignment");
+                    AssertEqual(VerticalAlignment.Stretch, splitter.VerticalAlignment, "external SDK GridSplitter vertical alignment");
+                    AssertEqual(GridResizeBehavior.PreviousAndNext, splitter.ResizeBehavior, "external SDK GridSplitter resize behavior");
+                    AssertEqual(GridResizeDirection.Columns, splitter.ResizeDirection, "external SDK GridSplitter resize direction");
+                    AssertEqual(true, splitter.ShowsPreview, "external SDK GridSplitter preview flag");
+                    AssertEqual(3.0, splitter.DragIncrement, "external SDK GridSplitter drag increment");
+                    AssertEqual(7.0, splitter.KeyboardIncrement, "external SDK GridSplitter keyboard increment");
+
                     var itemsPanelTemplate = RequireType<ItemsPanelTemplate>(
                         window.FindResource("ExternalItemsPanelTemplate"),
                         "external SDK items panel template");
@@ -8614,6 +8676,53 @@ internal static class Program
                     AssertEqual(false, rootItem.IsExpanded, "external SDK explicit root collapsed state");
                     AssertAtLeast(collapsedBefore + 1, window.ExternalTreeCollapsedCount, "external SDK tree collapsed event count");
                     AssertEqual("ExternalTreeRootItem", window.LastExternalTreeCollapsedOriginalSourceName, "external SDK tree collapsed original source");
+                }
+
+                private static void ValidateGridSplitterDrag(Grid splitterGrid, GridSplitter splitter)
+                {
+                    splitterGrid.Measure(new Size(180.0, 32.0));
+                    splitterGrid.Arrange(new Rect(0.0, 0.0, 180.0, 32.0));
+                    splitterGrid.UpdateLayout();
+
+                    var leftColumn = splitterGrid.ColumnDefinitions[0];
+                    var rightColumn = splitterGrid.ColumnDefinitions[2];
+                    double leftBefore = leftColumn.ActualWidth;
+                    double rightBefore = rightColumn.ActualWidth;
+                    if (leftBefore <= 0 || rightBefore <= 0)
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected external SDK GridSplitter columns to be measured, got '{leftBefore}' and '{rightBefore}'.");
+                    }
+
+                    splitter.ShowsPreview = false;
+                    splitter.RaiseEvent(new DragStartedEventArgs(0.0, 0.0)
+                    {
+                        RoutedEvent = Thumb.DragStartedEvent
+                    });
+                    splitter.RaiseEvent(new DragDeltaEventArgs(12.0, 0.0)
+                    {
+                        RoutedEvent = Thumb.DragDeltaEvent
+                    });
+                    splitter.RaiseEvent(new DragCompletedEventArgs(12.0, 0.0, false)
+                    {
+                        RoutedEvent = Thumb.DragCompletedEvent
+                    });
+                    splitterGrid.UpdateLayout();
+
+                    AssertClose(leftBefore + 12.0, leftColumn.ActualWidth, "external SDK GridSplitter dragged left column width");
+                    AssertClose(rightBefore - 12.0, rightColumn.ActualWidth, "external SDK GridSplitter dragged right column width");
+                    splitter.ShowsPreview = true;
+                }
+
+                private static void ValidateGridSplitterDragAfterRun(MainWindow window)
+                {
+                    var splitterGrid = RequireType<Grid>(
+                        window.FindName("ExternalGridSplitterGrid"),
+                        "external SDK Application.Run GridSplitter grid");
+                    var splitter = RequireType<GridSplitter>(
+                        window.FindName("ExternalGridSplitter"),
+                        "external SDK Application.Run GridSplitter");
+                    ValidateGridSplitterDrag(splitterGrid, splitter);
                 }
 
                 private static void ValidateSelectorsAndContent(MainWindow window)

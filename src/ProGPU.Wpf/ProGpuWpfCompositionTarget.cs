@@ -266,11 +266,13 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
 
         pixelWidth = Math.Max(1, pixelWidth);
         pixelHeight = Math.Max(1, pixelHeight);
-        SceneRootVisual.Size = new Vector2(pixelWidth, pixelHeight);
-        RetainedWpfVisualRoot.Size = new Vector2(pixelWidth, pixelHeight);
-        RootVisual.Size = new Vector2(pixelWidth, pixelHeight);
+        var logicalWidth = ResolveLogicalRenderDimension(SceneRootVisual.Size.X, RootVisual.Size.X, RetainedWpfVisualRoot.Size.X, pixelWidth);
+        var logicalHeight = ResolveLogicalRenderDimension(SceneRootVisual.Size.Y, RootVisual.Size.Y, RetainedWpfVisualRoot.Size.Y, pixelHeight);
+        var dpiScaleX = pixelWidth / (double)logicalWidth;
+        var dpiScaleY = pixelHeight / (double)logicalHeight;
+        var dpiScale = (float)((dpiScaleX + dpiScaleY) / 2.0);
 
-        Compositor.RenderScene(SceneRootVisual, pixelWidth, pixelHeight, targetView);
+        Render(logicalWidth, logicalHeight, pixelWidth, pixelHeight, dpiScale, targetView);
     }
 
     public void Render(
@@ -304,6 +306,34 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
             pixelHeight,
             dpiScale,
             targetView);
+    }
+
+    private static uint ResolveLogicalRenderDimension(
+        float sceneRootDimension,
+        float flatRootDimension,
+        float retainedRootDimension,
+        uint pixelDimension)
+    {
+        if (TryUseLogicalRenderDimension(sceneRootDimension, pixelDimension, out var logicalDimension) ||
+            TryUseLogicalRenderDimension(flatRootDimension, pixelDimension, out logicalDimension) ||
+            TryUseLogicalRenderDimension(retainedRootDimension, pixelDimension, out logicalDimension))
+        {
+            return logicalDimension;
+        }
+
+        return Math.Max(1u, pixelDimension);
+    }
+
+    private static bool TryUseLogicalRenderDimension(float dimension, uint pixelDimension, out uint logicalDimension)
+    {
+        logicalDimension = 0;
+        if (!float.IsFinite(dimension) || dimension <= 0f)
+        {
+            return false;
+        }
+
+        logicalDimension = Math.Max(1u, (uint)MathF.Round(dimension, MidpointRounding.AwayFromZero));
+        return logicalDimension <= Math.Max(1u, pixelDimension);
     }
 
     public bool DetectWpfSourceChanges()

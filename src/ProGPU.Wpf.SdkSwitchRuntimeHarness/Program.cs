@@ -710,6 +710,14 @@ internal static class Program
             proGpuVector,
             silkNetWebGpu,
             "SDK");
+        AssertPackagedLegacyRenderOverloadFillsPhysicalTarget(
+            inputs.AppOutputRoot,
+            proGpuWpf,
+            proGpuBackend,
+            proGpuScene,
+            proGpuVector,
+            silkNetWebGpu,
+            "SDK");
     }
 
     private static void AssertDisplayScaleResolver(Type displayScaleResolverType, string descriptionPrefix)
@@ -892,7 +900,7 @@ internal static class Program
 
         try
         {
-            object frame = Invoke(
+            _ = Invoke(
                 target,
                 "BeginDrawingFrame",
                 840u,
@@ -936,6 +944,86 @@ internal static class Program
                 x: 780,
                 y: 1560,
                 $"{descriptionPrefix} packaged retained WPF HiDPI lower-right pixel");
+        }
+        finally
+        {
+            (texture as IDisposable)?.Dispose();
+            (target as IDisposable)?.Dispose();
+        }
+    }
+
+    private static void AssertPackagedLegacyRenderOverloadFillsPhysicalTarget(
+        string nativeAssetRoot,
+        Assembly proGpuWpf,
+        Assembly proGpuBackend,
+        Assembly proGpuScene,
+        Assembly proGpuVector,
+        Assembly silkNetWebGpu,
+        string descriptionPrefix)
+    {
+        Type compositionTargetType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfCompositionTarget");
+        Type gpuTextureType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTexture");
+        Type gpuTextureAlphaModeType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTextureAlphaMode");
+        Type rectType = GetRequiredType(proGpuScene, "ProGPU.Scene.Rect");
+        Type solidColorBrushType = GetRequiredType(proGpuVector, "ProGPU.Vector.SolidColorBrush");
+        Type textureFormatType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureFormat");
+        Type textureUsageType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureUsage");
+
+        PreloadNativeAsset(nativeAssetRoot, "wgpu", $"{descriptionPrefix} WebGPU native runtime");
+        using IDisposable currentDirectory = PushCurrentDirectory(nativeAssetRoot);
+        object rgba8Unorm = Enum.Parse(textureFormatType, "Rgba8Unorm");
+        object renderTargetUsage = CombineEnumFlags(
+            textureUsageType,
+            Enum.Parse(textureUsageType, "RenderAttachment"),
+            Enum.Parse(textureUsageType, "CopySrc"));
+        object straightAlphaMode = Enum.Parse(gpuTextureAlphaModeType, "Straight");
+        object target = InvokeStatic(compositionTargetType, "CreateHeadless", rgba8Unorm);
+        object texture = Create(
+            gpuTextureType,
+            GetProperty(target, "Context"),
+            840u,
+            1680u,
+            rgba8Unorm,
+            renderTargetUsage,
+            $"{descriptionPrefix} packaged legacy HiDPI framebuffer target",
+            1u,
+            straightAlphaMode);
+
+        try
+        {
+            object frame = Invoke(
+                target,
+                "BeginDrawingFrame",
+                840u,
+                1680u,
+                true,
+                420u,
+                840u,
+                2.0,
+                2.0);
+            object redBrush = Create(solidColorBrushType, 0xF02020FFu);
+            object rectangle = Create(rectType, 0f, 0f, 420f, 840f);
+            object drawingContext = GetProperty(GetProperty(target, "RootVisual"), "Context");
+            InvokeVoid(drawingContext, "DrawRectangle", redBrush, null, rectangle);
+
+            MethodInfo legacyRender = FindMethodByParameterNames(
+                compositionTargetType,
+                "Render",
+                ["pixelWidth", "pixelHeight", "targetView"]);
+            InvokeMethod(
+                legacyRender,
+                target,
+                840u,
+                1680u,
+                GetProperty(texture, "ViewPtr"));
+
+            byte[] pixels = (byte[])Invoke(texture, "ReadPixels");
+            AssertRgbaPixelIsRed(
+                pixels,
+                width: 840,
+                x: 780,
+                y: 1560,
+                $"{descriptionPrefix} packaged legacy WPF HiDPI lower-right pixel");
         }
         finally
         {
@@ -2829,6 +2917,33 @@ internal static class Program
         AssertEqual("#FF9E4A70", GetProperty(updatedActionButtonBackground, "Color").ToString() ?? string.Empty, "action button dynamic resource updated color");
     }
 
+    private static void ValidateSdkFocusAndAccessKeyAfterRun(Assembly presentationCore, object window)
+    {
+        object inputBox = Invoke(window, "FindName", "InputBox");
+        object focusPanel = Invoke(window, "FindName", "AccessKeyFocusPanel");
+        object accessLabel = Invoke(window, "FindName", "InputAccessLabel");
+        AssertSame(inputBox, GetProperty(accessLabel, "Target"), "SDK access-key label target");
+
+        Type keyboardType = GetRequiredType(presentationCore, "System.Windows.Input.Keyboard");
+        Type focusManagerType = GetRequiredType(presentationCore, "System.Windows.Input.FocusManager");
+        AssertSame(inputBox, InvokeStatic(keyboardType, "Focus", inputBox), "SDK TextBox Keyboard.Focus return value");
+        AssertSame(inputBox, GetStaticProperty(keyboardType, "FocusedElement"), "SDK TextBox keyboard focused element");
+        AssertSame(inputBox, InvokeStatic(focusManagerType, "GetFocusedElement", focusPanel), "SDK FocusManager live logical focus update");
+
+        Type presentationSourceType = GetRequiredType(presentationCore, "System.Windows.PresentationSource");
+        object presentationSource = InvokeStatic(presentationSourceType, "FromVisual", window);
+        Type accessKeyManagerType = GetRequiredType(presentationCore, "System.Windows.Input.AccessKeyManager");
+        AssertEqual(true, InvokeStatic(accessKeyManagerType, "IsKeyRegistered", presentationSource, "I"), "SDK access-key manager registered label key");
+
+        InvokeStaticVoid(keyboardType, "ClearFocus");
+        object? focusedAfterClear = GetStaticPropertyOrNull(keyboardType, "FocusedElement");
+        AssertEqual(false, ReferenceEquals(inputBox, focusedAfterClear), "SDK keyboard focus cleared before access key");
+        InvokeStatic(accessKeyManagerType, "ProcessKey", presentationSource, "I", false);
+        AssertSame(inputBox, GetStaticProperty(keyboardType, "FocusedElement"), "SDK access-key manager focused label target");
+        AssertSame(inputBox, InvokeStatic(focusManagerType, "GetFocusedElement", focusPanel), "SDK access-key manager restored logical focus");
+        InvokeStaticVoid(keyboardType, "ClearFocus");
+    }
+
     private static object CreateSolidColorBrush(Assembly presentationCore, string colorText)
     {
         Type colorConverterType = GetRequiredType(presentationCore, "System.Windows.Media.ColorConverter");
@@ -4119,6 +4234,7 @@ internal static class Program
                 typedActivation.Window,
                 validateFrameContent: true,
                 flushDispatcherOperations: window => FlushDispatcherOperations(window, "ApplicationIdle"));
+            ValidateSdkFocusAndAccessKeyAfterRun(_presentationCore, typedActivation.Window);
             ValidatePortableMessageBox(_presentationFramework, typedActivation.Window);
             ValidatePortableFileDialogs(_presentationFramework, typedActivation.Window);
         }

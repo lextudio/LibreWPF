@@ -458,6 +458,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("logicalWidth,\n                logicalHeight,\n                dpiScaleX,\n                dpiScaleY", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("Present(logicalWidth, logicalHeight, pixelWidth, pixelHeight, dpiScale)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_target.Render(logicalWidth, logicalHeight, pixelWidth, pixelHeight, (float)dpiScale, targetView)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("ResolveLogicalRenderDimension(SceneRootVisual.Size.X, RootVisual.Size.X, RetainedWpfVisualRoot.Size.X, pixelWidth)", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("Render(logicalWidth, logicalHeight, pixelWidth, pixelHeight, dpiScale, targetView)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("uint renderTargetWidth", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("_explicitRenderTargetWidth = Math.Max(1, renderTargetWidth)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("uint renderWidth = _explicitRenderTargetWidth ?? width", proGpuCompositor, StringComparison.Ordinal);
@@ -468,6 +470,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExplicitPhysicalRenderTargetPinsViewportToPhysicalFramebuffer", proGpuCompositorReviewTests, StringComparison.Ordinal);
         Assert.Contains("HighDpiRetainedWpfLayerRendersAcrossPhysicalFramebuffer", proGpuDrawingFrameTests, StringComparison.Ordinal);
         Assert.Contains("HighDpiSourceDrawingLayerRendersAcrossPhysicalFramebuffer", proGpuDrawingFrameTests, StringComparison.Ordinal);
+        Assert.Contains("LegacyRenderOverloadPreservesLogicalHighDpiFrameAcrossPhysicalFramebuffer", proGpuDrawingFrameTests, StringComparison.Ordinal);
         Assert.Contains("NativeResizeUsesPortablePresentationSourceLogicalCacheWhenHostCacheWasPhysical", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("NativeResizeRestoresRequestedDipsWhenStartupNativeCacheWasPolluted", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("ResolveCachedLogicalClientDimensionKeepsRequestedDipsWhenSourceCacheIsPhysical", proGpuWindowHostTests, StringComparison.Ordinal);
@@ -7887,14 +7890,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RenderPassEncoderSetViewport", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(proGpuWpf, proGpuScene, \"SDK\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPackagedHighDpiRetainedWpfPixelsFillPhysicalTarget(", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertPackagedLegacyRenderOverloadFillsPhysicalTarget(", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPackagedRetinaStartupResizeKeepsLogicalSurface(", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("packaged Retina startup logical host width", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("packaged retained WPF HiDPI upper-left pixel", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("packaged retained WPF HiDPI lower-right pixel", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("packaged legacy WPF HiDPI lower-right pixel", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PushCurrentDirectory(nativeAssetRoot)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(proGpuScene, \"ProGPU.Scene.DrawingVisual\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(proGpuVector, \"ProGPU.Vector.SolidColorBrush\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetProperty(target, \"RetainedWpfVisualRoot\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetProperty(GetProperty(target, \"RootVisual\"), \"Context\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU retained WPF layer logical size", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU retained WPF layer scale", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPropertyGetterReferencesField", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -8085,6 +8091,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("input access label target", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"StandaloneAccessText\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("standalone access text", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateSdkFocusAndAccessKeyAfterRun(_presentationCore, typedActivation.Window)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK TextBox Keyboard.Focus return value", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK FocusManager live logical focus update", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK access-key manager registered label key", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK access-key manager focused label target", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"AncestorBindingBorder\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ancestor binding border tag", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"AncestorBindingText\"", runtimeHarnessProgram, StringComparison.Ordinal);

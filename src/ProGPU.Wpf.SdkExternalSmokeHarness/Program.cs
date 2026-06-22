@@ -8532,6 +8532,8 @@ internal static class Program
                         document.Blocks.FirstBlock,
                         "external SDK FlowDocument intro paragraph");
                     var inlines = introParagraph.Inlines;
+                    var plainRun = RequireFirstInlineExact<Run>(inlines, "external SDK FlowDocument plain run");
+                    AssertEqual("External ", plainRun.Text, "external SDK FlowDocument plain run text");
                     var bold = RequireFirstInline<Bold>(inlines, "external SDK FlowDocument bold inline");
                     AssertEqual("rich", RequireFirstInline<Run>(bold.Inlines, "external SDK FlowDocument bold run").Text, "external SDK FlowDocument bold run text");
                     var italic = RequireFirstInline<Italic>(inlines, "external SDK FlowDocument italic inline");
@@ -8592,10 +8594,70 @@ internal static class Program
                     AssertTableCellText(row.Cells[0], "External cell alpha", "first");
                     AssertTableCellText(row.Cells[1], "External cell beta", "second");
 
+                    ValidateRichTextEditingCommands(richTextBox, introParagraph, plainRun, documentList);
+
                     richTextBox.Selection.Select(document.ContentStart, document.ContentEnd);
                     AssertContains("External section", richTextBox.Selection.Text, "external SDK RichTextBox selection text");
                     var documentText = new TextRange(document.ContentStart, document.ContentEnd).Text;
                     AssertContains("External cell beta", documentText, "external SDK FlowDocument TextRange table text");
+                }
+
+                private static void ValidateRichTextEditingCommands(
+                    RichTextBox richTextBox,
+                    Paragraph introParagraph,
+                    Run plainRun,
+                    System.Windows.Documents.List documentList)
+                {
+                    TextSelection selection = richTextBox.Selection;
+                    selection.Select(plainRun.ContentStart, plainRun.ContentEnd);
+                    AssertContains("External", selection.Text, "external SDK RichTextBox command selection text");
+
+                    AssertEqual(true, EditingCommands.ToggleBold.CanExecute(null, richTextBox), "external SDK RichTextBox ToggleBold CanExecute");
+                    EditingCommands.ToggleBold.Execute(null, richTextBox);
+                    AssertEqual(FontWeights.Bold, selection.GetPropertyValue(TextElement.FontWeightProperty), "external SDK RichTextBox ToggleBold applied weight");
+                    EditingCommands.ToggleBold.Execute(null, richTextBox);
+                    AssertEqual(FontWeights.Normal, selection.GetPropertyValue(TextElement.FontWeightProperty), "external SDK RichTextBox ToggleBold restored weight");
+
+                    AssertEqual(true, EditingCommands.ToggleItalic.CanExecute(null, richTextBox), "external SDK RichTextBox ToggleItalic CanExecute");
+                    EditingCommands.ToggleItalic.Execute(null, richTextBox);
+                    AssertEqual(FontStyles.Italic, selection.GetPropertyValue(TextElement.FontStyleProperty), "external SDK RichTextBox ToggleItalic applied style");
+                    EditingCommands.ToggleItalic.Execute(null, richTextBox);
+                    AssertEqual(FontStyles.Normal, selection.GetPropertyValue(TextElement.FontStyleProperty), "external SDK RichTextBox ToggleItalic restored style");
+
+                    AssertEqual(true, EditingCommands.ToggleUnderline.CanExecute(null, richTextBox), "external SDK RichTextBox ToggleUnderline CanExecute");
+                    EditingCommands.ToggleUnderline.Execute(null, richTextBox);
+                    var decorations = RequireType<TextDecorationCollection>(
+                        selection.GetPropertyValue(Inline.TextDecorationsProperty),
+                        "external SDK RichTextBox ToggleUnderline decorations");
+                    AssertEqual(1, decorations.Count, "external SDK RichTextBox ToggleUnderline decoration count");
+                    AssertEqual(TextDecorationLocation.Underline, decorations[0].Location, "external SDK RichTextBox ToggleUnderline decoration location");
+                    EditingCommands.ToggleUnderline.Execute(null, richTextBox);
+                    var restoredDecorations = RequireType<TextDecorationCollection>(
+                        selection.GetPropertyValue(Inline.TextDecorationsProperty),
+                        "external SDK RichTextBox ToggleUnderline restored decorations");
+                    AssertEqual(0, restoredDecorations.Count, "external SDK RichTextBox ToggleUnderline restored decoration count");
+
+                    selection.Select(introParagraph.ContentStart, introParagraph.ContentEnd);
+                    AssertEqual(true, EditingCommands.AlignRight.CanExecute(null, richTextBox), "external SDK RichTextBox AlignRight CanExecute");
+                    EditingCommands.AlignRight.Execute(null, richTextBox);
+                    AssertEqual(TextAlignment.Right, introParagraph.TextAlignment, "external SDK RichTextBox AlignRight paragraph alignment");
+                    AssertEqual(true, EditingCommands.AlignCenter.CanExecute(null, richTextBox), "external SDK RichTextBox AlignCenter CanExecute");
+                    EditingCommands.AlignCenter.Execute(null, richTextBox);
+                    AssertEqual(TextAlignment.Center, introParagraph.TextAlignment, "external SDK RichTextBox AlignCenter paragraph alignment");
+                    AssertEqual(true, EditingCommands.AlignLeft.CanExecute(null, richTextBox), "external SDK RichTextBox AlignLeft CanExecute");
+                    EditingCommands.AlignLeft.Execute(null, richTextBox);
+                    AssertEqual(TextAlignment.Left, introParagraph.TextAlignment, "external SDK RichTextBox AlignLeft paragraph alignment");
+
+                    var firstListParagraph = RequireType<Paragraph>(
+                        documentList.ListItems.FirstListItem?.Blocks.FirstBlock,
+                        "external SDK RichTextBox list command paragraph");
+                    selection.Select(firstListParagraph.ContentStart, firstListParagraph.ContentEnd);
+                    AssertEqual(true, EditingCommands.ToggleBullets.CanExecute(null, richTextBox), "external SDK RichTextBox ToggleBullets CanExecute");
+                    EditingCommands.ToggleBullets.Execute(null, richTextBox);
+                    AssertEqual(TextMarkerStyle.Disc, documentList.MarkerStyle, "external SDK RichTextBox ToggleBullets marker style");
+                    AssertEqual(true, EditingCommands.ToggleNumbering.CanExecute(null, richTextBox), "external SDK RichTextBox ToggleNumbering CanExecute");
+                    EditingCommands.ToggleNumbering.Execute(null, richTextBox);
+                    AssertEqual(TextMarkerStyle.Decimal, documentList.MarkerStyle, "external SDK RichTextBox ToggleNumbering marker style");
                 }
 
                 private static void ValidateSpellCheck(MainWindow window)

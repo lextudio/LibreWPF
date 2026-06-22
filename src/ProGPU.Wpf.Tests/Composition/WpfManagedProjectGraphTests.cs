@@ -6991,6 +6991,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK Hyperlink RequestNavigate routed event", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK FlowDocument list marker style", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK FlowDocument table cell count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateRichTextEditingCommands(richTextBox, introParagraph, plainRun, documentList)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("EditingCommands.ToggleBold.Execute(null, richTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK RichTextBox ToggleBold applied weight", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("EditingCommands.ToggleItalic.Execute(null, richTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK RichTextBox ToggleItalic applied style", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("EditingCommands.ToggleUnderline.Execute(null, richTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK RichTextBox ToggleUnderline decoration location", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("EditingCommands.AlignRight.Execute(null, richTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK RichTextBox AlignCenter paragraph alignment", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("EditingCommands.ToggleBullets.Execute(null, richTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK RichTextBox ToggleNumbering marker style", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK RichTextBox selection text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new TextRange(document.ContentStart, document.ContentEnd).Text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalSpellCheckTextBox", externalSdkHarnessProgram, StringComparison.Ordinal);

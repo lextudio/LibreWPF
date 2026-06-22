@@ -52,6 +52,7 @@
     <Reference Include="PresentationFramework.Fluent" HintPath="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Fluent.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Fluent.dll')" />
     <Reference Include="PresentationFramework.Luna" HintPath="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Luna.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Luna.dll')" />
     <Reference Include="PresentationFramework.Royale" HintPath="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Royale.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Royale.dll')" />
+    <Reference Include="System.Windows.Controls.Ribbon" HintPath="$(_ProGpuWpfManagedReferenceRoot)System.Windows.Controls.Ribbon.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)System.Windows.Controls.Ribbon.dll')" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'LocalArtifacts' And '$(_ProGpuWpfManagedReferenceRoot)' != ''">
@@ -73,6 +74,7 @@
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Fluent.dll" TargetPath="PresentationFramework.Fluent.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Fluent.dll')" />
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Luna.dll" TargetPath="PresentationFramework.Luna.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Luna.dll')" />
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Royale.dll" TargetPath="PresentationFramework.Royale.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Royale.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)System.Windows.Controls.Ribbon.dll" TargetPath="System.Windows.Controls.Ribbon.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)System.Windows.Controls.Ribbon.dll')" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'LocalArtifacts' And '$(_ProGpuReferenceRoot)' != ''">
@@ -139,6 +141,7 @@
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)PresentationFramework.Fluent.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)PresentationFramework.Luna.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)PresentationFramework.Royale.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)System.Windows.Controls.Ribbon.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ProGPU.Wpf.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ProGPU.Backend.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ProGPU.Scene.dll" />

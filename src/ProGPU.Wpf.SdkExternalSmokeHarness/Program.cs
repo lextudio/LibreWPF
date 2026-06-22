@@ -37,7 +37,8 @@ internal static class Program
         "PresentationFramework.Classic",
         "PresentationFramework.Fluent",
         "PresentationFramework.Luna",
-        "PresentationFramework.Royale"
+        "PresentationFramework.Royale",
+        "System.Windows.Controls.Ribbon"
     ];
 
     private static readonly string[] s_requiredProGpuRuntimeAssemblies =
@@ -78,14 +79,14 @@ internal static class Program
     private static readonly PackageAssemblyExpectation[] s_packageAssemblyExpectations =
     [
         new("Microsoft.DotNet.Wpf.GitHub", "WindowsBase", "net11.0", "WPF"),
-        new("Microsoft.DotNet.Wpf.GitHub", "System.Xaml", "net11.0", "MicrosoftBcl"),
+        new("Microsoft.DotNet.Wpf.GitHub", "System.Xaml", "net11.0", "Ecma"),
         new("Microsoft.DotNet.Wpf.GitHub", "PresentationCore", "net11.0", "WPF"),
         new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework", "net11.0", "WPF"),
         new("Microsoft.DotNet.Wpf.GitHub", "PresentationUI", "net11.0", "WPF"),
         new("Microsoft.DotNet.Wpf.GitHub", "ReachFramework", "net11.0", "WPF"),
         new("Microsoft.DotNet.Wpf.GitHub", "UIAutomationTypes", "net11.0", "WPF"),
         new("Microsoft.DotNet.Wpf.GitHub", "UIAutomationProvider", "net11.0", "WPF"),
-        new("Microsoft.DotNet.Wpf.GitHub", "System.Windows.Input.Manipulations", "net11.0", "MicrosoftBcl"),
+        new("Microsoft.DotNet.Wpf.GitHub", "System.Windows.Input.Manipulations", "net11.0", "Ecma"),
         new("Microsoft.DotNet.Wpf.GitHub", "System.Windows.Primitives", "net11.0", "WPF"),
         new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Aero", "net11.0", "WPF"),
         new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Aero2", "net11.0", "WPF"),
@@ -94,6 +95,7 @@ internal static class Program
         new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Fluent", "net11.0", "WPF"),
         new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Luna", "net11.0", "WPF"),
         new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Royale", "net11.0", "WPF"),
+        new("Microsoft.DotNet.Wpf.GitHub", "System.Windows.Controls.Ribbon", "net11.0", "Ecma"),
         new("ProGPU.Wpf", "ProGPU.Wpf", "net10.0", "ProGPU"),
         new("ProGPU.Backend", "ProGPU.Backend", "net10.0", "ProGPU"),
         new("ProGPU.Scene", "ProGPU.Scene", "net10.0", "ProGPU"),
@@ -795,6 +797,7 @@ internal static class Program
                 xmlns:local="clr-namespace:ExternalSdkApp"
                 xmlns:library="clr-namespace:ExternalSdkLibrary;assembly=ExternalSdkLibrary"
                 xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework"
+                xmlns:ribbon="clr-namespace:System.Windows.Controls.Ribbon;assembly=System.Windows.Controls.Ribbon"
                 xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
                 xmlns:sys="clr-namespace:System;assembly=System.Runtime"
                 xmlns:wpf="clr-namespace:System.Windows;assembly=PresentationFramework"
@@ -1426,6 +1429,29 @@ internal static class Program
                         IsChecked="False"
                         Checked="OnExternalToggleButtonChecked"
                         Unchecked="OnExternalToggleButtonUnchecked" />
+                    <ribbon:Ribbon
+                        x:Name="ExternalRibbon"
+                        Title="External Ribbon"
+                        Visibility="Collapsed">
+                        <ribbon:RibbonTab
+                            x:Name="ExternalRibbonTab"
+                            Header="External Tab">
+                            <ribbon:RibbonGroup
+                                x:Name="ExternalRibbonGroup"
+                                Header="External Group">
+                                <ribbon:RibbonButton
+                                    x:Name="ExternalRibbonButton"
+                                    Label="External Ribbon Button"
+                                    Command="{x:Static local:MainWindow.ExternalCommand}"
+                                    CommandParameter="ExternalRibbonCommandParameter"
+                                    CommandTarget="{Binding ElementName=ExternalCommandButton}" />
+                                <ribbon:RibbonCheckBox
+                                    x:Name="ExternalRibbonCheckBox"
+                                    Label="External Ribbon Check"
+                                    IsChecked="True" />
+                            </ribbon:RibbonGroup>
+                        </ribbon:RibbonTab>
+                    </ribbon:Ribbon>
                     <ToolBarTray x:Name="ExternalToolBarTray">
                         <ToolBar x:Name="ExternalToolBar">
                             <Button
@@ -2223,6 +2249,7 @@ internal static class Program
             using System.Windows.Automation.Peers;
             using System.Windows.Automation.Provider;
             using System.Windows.Controls;
+            using System.Windows.Controls.Ribbon;
             using System.Windows.Controls.Primitives;
             using System.Windows.Data;
             using System.Windows.Documents;
@@ -3865,6 +3892,7 @@ internal static class Program
                     ValidateDataTriggerActionsMetadata(window);
                     ValidateMultiDataTriggerActionsMetadata(window);
                     ValidateMenusAndChoiceControls(window);
+                    ValidateRibbonControls(window);
                     ValidateToolbarStatusRangePasswordDateControls(window);
                     ValidateAdornerDecorator(window);
                     ValidateLayoutsAndItems(window);
@@ -9282,6 +9310,59 @@ internal static class Program
                     AssertEqual(false, toggleButton.IsChecked == true, "external SDK toggle unchecked state");
                     AssertAtLeast(toggleUncheckedBefore + 1, window.ExternalToggleButtonUncheckedCount, "external SDK toggle unchecked count");
                     AssertEqual("Unchecked", window.LastExternalToggleButtonRoutedEventName, "external SDK toggle unchecked routed event");
+                }
+
+                private static void ValidateRibbonControls(MainWindow window)
+                {
+                    var commandButton = RequireType<Button>(
+                        window.FindName("ExternalCommandButton"),
+                        "external SDK command button for Ribbon validation");
+                    var ribbon = RequireType<Ribbon>(
+                        window.FindName("ExternalRibbon"),
+                        "external SDK Ribbon");
+                    AssertEqual("External Ribbon", ribbon.Title, "external SDK Ribbon title");
+                    AssertEqual(Visibility.Collapsed, ribbon.Visibility, "external SDK Ribbon visibility");
+                    AssertEqual(1, ribbon.Items.Count, "external SDK Ribbon tab count");
+
+                    var tab = RequireType<RibbonTab>(
+                        ribbon.Items[0],
+                        "external SDK Ribbon tab");
+                    AssertEqual(window.FindName("ExternalRibbonTab"), tab, "external SDK Ribbon tab namescope instance");
+                    AssertEqual("External Tab", tab.Header, "external SDK Ribbon tab header");
+                    AssertEqual(1, tab.Items.Count, "external SDK Ribbon tab group count");
+
+                    var group = RequireType<RibbonGroup>(
+                        tab.Items[0],
+                        "external SDK Ribbon group");
+                    AssertEqual(window.FindName("ExternalRibbonGroup"), group, "external SDK Ribbon group namescope instance");
+                    AssertEqual("External Group", group.Header, "external SDK Ribbon group header");
+                    AssertEqual(2, group.Items.Count, "external SDK Ribbon group item count");
+
+                    var button = RequireType<RibbonButton>(
+                        group.Items[0],
+                        "external SDK Ribbon button");
+                    AssertEqual(window.FindName("ExternalRibbonButton"), button, "external SDK Ribbon button namescope instance");
+                    AssertEqual("External Ribbon Button", button.Label, "external SDK Ribbon button label");
+                    AssertEqual(MainWindow.ExternalCommand, button.Command, "external SDK Ribbon button command");
+                    AssertEqual("ExternalRibbonCommandParameter", button.CommandParameter, "external SDK Ribbon button command parameter");
+
+                    int ribbonExecutedBefore = window.ExternalCommandExecutedCount;
+                    RequireType<RoutedCommand>(
+                        button.Command,
+                        "external SDK Ribbon routed command")
+                        .Execute(button.CommandParameter, button.CommandTarget ?? commandButton);
+                    AssertEqual(ribbonExecutedBefore + 1, window.ExternalCommandExecutedCount, "external SDK Ribbon routed command count");
+                    AssertEqual("ExternalRibbonCommandParameter", window.LastExternalCommandParameter, "external SDK Ribbon command parameter");
+
+                    var checkBox = RequireType<RibbonCheckBox>(
+                        group.Items[1],
+                        "external SDK Ribbon check box");
+                    AssertEqual(window.FindName("ExternalRibbonCheckBox"), checkBox, "external SDK Ribbon check box namescope instance");
+                    AssertEqual("External Ribbon Check", checkBox.Label, "external SDK Ribbon check box label");
+                    AssertEqual(true, checkBox.IsChecked == true, "external SDK Ribbon check box checked state");
+                    checkBox.IsChecked = false;
+                    DrainDispatcher();
+                    AssertEqual(false, checkBox.IsChecked == true, "external SDK Ribbon check box unchecked state");
                 }
 
                 private static void ValidateToolbarStatusRangePasswordDateControls(MainWindow window)

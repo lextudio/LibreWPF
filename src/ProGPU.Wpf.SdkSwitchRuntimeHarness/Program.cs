@@ -40,7 +40,8 @@ internal static class Program
         "PresentationFramework.Classic",
         "PresentationFramework.Fluent",
         "PresentationFramework.Luna",
-        "PresentationFramework.Royale"
+        "PresentationFramework.Royale",
+        "System.Windows.Controls.Ribbon"
     ];
     private static readonly string[] ProGpuRuntimeAssemblies =
     [
@@ -4463,7 +4464,7 @@ internal static class Program
             string? path = assemblyName.Name switch
             {
                 SmokeAssemblyName => _smokeAssemblyPath,
-                "WindowsBase" or "System.Xaml" or "PresentationCore" or "PresentationFramework" or "PresentationUI" or "ReachFramework" or "System.Printing" or "UIAutomationTypes" or "UIAutomationProvider" or "System.Windows.Input.Manipulations" or "System.Windows.Primitives" or "PresentationFramework.Aero" or "PresentationFramework.Aero2" or "PresentationFramework.AeroLite" or "PresentationFramework.Classic" or "PresentationFramework.Fluent" or "PresentationFramework.Luna" or "PresentationFramework.Royale" =>
+                "WindowsBase" or "System.Xaml" or "PresentationCore" or "PresentationFramework" or "PresentationUI" or "ReachFramework" or "System.Printing" or "UIAutomationTypes" or "UIAutomationProvider" or "System.Windows.Input.Manipulations" or "System.Windows.Primitives" or "PresentationFramework.Aero" or "PresentationFramework.Aero2" or "PresentationFramework.AeroLite" or "PresentationFramework.Classic" or "PresentationFramework.Fluent" or "PresentationFramework.Luna" or "PresentationFramework.Royale" or "System.Windows.Controls.Ribbon" =>
                     TryFindAssembly(_appOutputRoot, fileName) ?? TryFindAssembly(_wpfRoot, fileName),
                 "ProGPU.Wpf" or "ProGPU.Backend" or "ProGPU.Scene" or "ProGPU.Vector" or "ProGPU.Text" or "ProGPU.Compute" or "ProGPU.Transpiler" =>
                     TryFindAssembly(_appOutputRoot, fileName) ?? TryFindAssembly(_proGpuRoot, fileName),

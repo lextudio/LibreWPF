@@ -1316,6 +1316,19 @@ public sealed class WpfManagedProjectGraphTests
             "PresentationFramework.Fluent",
             "ref",
             "PresentationFramework.Fluent-ref.csproj");
+        var ribbonProjectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "System.Windows.Controls.Ribbon",
+            "System.Windows.Controls.Ribbon.csproj");
+        var ribbonRefProjectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "System.Windows.Controls.Ribbon",
+            "ref",
+            "System.Windows.Controls.Ribbon-ref.csproj");
         var realPresentationCoreHarnessProjectPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.RealPresentationCoreHarness",
@@ -1326,6 +1339,8 @@ public sealed class WpfManagedProjectGraphTests
         var presentationFrameworkProject = XDocument.Load(presentationFrameworkProjectPath);
         var fluentThemeProject = XDocument.Load(fluentThemeProjectPath);
         var fluentThemeRefProject = XDocument.Load(fluentThemeRefProjectPath);
+        var ribbonProject = XDocument.Load(ribbonProjectPath);
+        var ribbonRefProject = XDocument.Load(ribbonRefProjectPath);
         var realPresentationCoreHarnessProject = XDocument.Load(realPresentationCoreHarnessProjectPath);
 
         Assert.Equal("System.Xaml", Assert.Single(systemXamlProject.Descendants("AssemblyName")).Value);
@@ -1377,6 +1392,24 @@ public sealed class WpfManagedProjectGraphTests
         AssertSourceFileExists("src", "Microsoft.DotNet.Wpf", "src", "Themes", "PresentationFramework.Fluent", "Styles", "Button.xaml");
         AssertSourceFileExists("src", "Microsoft.DotNet.Wpf", "src", "Themes", "PresentationFramework.Fluent", "Styles", "RichTextBox.xaml");
         AssertSourceFileExists("src", "Microsoft.DotNet.Wpf", "src", "Themes", "PresentationFramework.Fluent", "Styles", "Window.xaml");
+
+        Assert.Equal("true", Assert.Single(ribbonProject.Descendants("InternalMarkupCompilation")).Value);
+        Assert.Contains(
+            ribbonProject.Descendants("Page"),
+            item => string.Equals(item.Attribute("Include")?.Value, @"Themes\Generic.xaml", StringComparison.Ordinal));
+        Assert.Contains(
+            ribbonProject.Descendants("Page"),
+            item => string.Equals(item.Attribute("Include")?.Value, @"Themes\Aero2.NormalColor.xaml", StringComparison.Ordinal));
+        AssertProjectReference(ribbonProject, @"System.Xaml\System.Xaml.csproj");
+        AssertProjectReference(ribbonProject, @"PresentationCore\PresentationCore.csproj");
+        AssertProjectReference(ribbonProject, @"PresentationFramework\PresentationFramework.csproj");
+        AssertProjectReference(ribbonProject, @"Themes\PresentationFramework.Classic\PresentationFramework.Classic.csproj");
+        AssertProjectReference(ribbonProject, @"System.Windows.Controls.Ribbon\ref\System.Windows.Controls.Ribbon-ref.csproj");
+        Assert.Equal("System.Windows.Controls.Ribbon", Assert.Single(ribbonRefProject.Descendants("AssemblyName")).Value);
+        Assert.Equal("System.Windows.Controls.Ribbon-ref", Assert.Single(ribbonRefProject.Descendants("PackageId")).Value);
+        AssertSourceFileExists("src", "Microsoft.DotNet.Wpf", "src", "System.Windows.Controls.Ribbon", "Microsoft", "Windows", "Controls", "Ribbon", "Ribbon.cs");
+        AssertSourceFileExists("src", "Microsoft.DotNet.Wpf", "src", "System.Windows.Controls.Ribbon", "Microsoft", "Windows", "Controls", "Ribbon", "RibbonButton.cs");
+        AssertSourceFileExists("src", "Microsoft.DotNet.Wpf", "src", "System.Windows.Controls.Ribbon", "Themes", "Generic.xaml");
 
         AssertProjectReference(realPresentationCoreHarnessProject, @"ProGPU.Wpf\ProGPU.Wpf.csproj");
         var realPresentationCoreReference = AssertProjectReference(
@@ -5482,6 +5515,7 @@ public sealed class WpfManagedProjectGraphTests
     [InlineData("src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj")]
     [InlineData("src/Microsoft.DotNet.Wpf/src/PresentationUI/PresentationUI.csproj")]
     [InlineData("src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Fluent/PresentationFramework.Fluent.csproj")]
+    [InlineData("src/Microsoft.DotNet.Wpf/src/System.Windows.Controls.Ribbon/System.Windows.Controls.Ribbon.csproj")]
     public void ManagedWpfSubsystemProjectsDoNotReferenceProGpuBridge(string relativeProjectPath)
     {
         var projectPath = FindRepoPath(relativeProjectPath.Split('/'));
@@ -5797,6 +5831,7 @@ public sealed class WpfManagedProjectGraphTests
             "PresentationFramework.Luna",
             "PresentationFramework.Royale"
         ];
+        const string ribbonAssembly = "System.Windows.Controls.Ribbon";
 
         Assert.Contains("ProGPU/Silk.NET SDK for portable WPF applications", sdkProject.ToString(), StringComparison.Ordinal);
         Assert.Contains("MSBuildProjectName.Replace('.ArchNeutral','')", sdkProject.ToString(), StringComparison.Ordinal);
@@ -5852,6 +5887,7 @@ public sealed class WpfManagedProjectGraphTests
         {
             Assert.Contains($"src/Microsoft.DotNet.Wpf/src/Themes/{themeAssembly}/{themeAssembly}.csproj", sdkCiScript, StringComparison.Ordinal);
         }
+        Assert.Contains("src/Microsoft.DotNet.Wpf/src/System.Windows.Controls.Ribbon/System.Windows.Controls.Ribbon.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/ProGPU.Wpf/ProGPU.Wpf.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj", sdkCiScript, StringComparison.Ordinal);
@@ -5920,6 +5956,9 @@ public sealed class WpfManagedProjectGraphTests
             Assert.Contains($"<_ProGpuWpfLocalRuntimeAsset Include=\"$(_ProGpuWpfManagedReferenceRoot){themeAssembly}.dll\" TargetPath=\"{themeAssembly}.dll\"", portableTargets, StringComparison.Ordinal);
             Assert.Contains($"<_ProGpuWpfSdkMutablePackageOutput Include=\"$(TargetDir){themeAssembly}.dll\" />", portableTargets, StringComparison.Ordinal);
         }
+        Assert.Contains($"<Reference Include=\"{ribbonAssembly}\" HintPath=\"$(_ProGpuWpfManagedReferenceRoot){ribbonAssembly}.dll\"", portableTargets, StringComparison.Ordinal);
+        Assert.Contains($"<_ProGpuWpfLocalRuntimeAsset Include=\"$(_ProGpuWpfManagedReferenceRoot){ribbonAssembly}.dll\" TargetPath=\"{ribbonAssembly}.dll\"", portableTargets, StringComparison.Ordinal);
+        Assert.Contains($"<_ProGpuWpfSdkMutablePackageOutput Include=\"$(TargetDir){ribbonAssembly}.dll\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("Condition=\"Exists('$(_ProGpuReferenceRoot)ProGPU.Text.dll')\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkCopyLocalRuntimeAssets", portableTargets, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkClearMutablePackageOutputs", portableTargets, StringComparison.Ordinal);
@@ -6671,6 +6710,8 @@ public sealed class WpfManagedProjectGraphTests
             Assert.Contains($@"lib\$(TargetFramework)\{themeAssembly}.dll", wpfTransportTargets, StringComparison.Ordinal);
             Assert.Contains($@"ref\$(TargetFramework)\{themeAssembly}.dll", wpfTransportTargets, StringComparison.Ordinal);
         }
+        Assert.Contains($@"lib\$(TargetFramework)\{ribbonAssembly}.dll", wpfTransportTargets, StringComparison.Ordinal);
+        Assert.Contains($@"ref\$(TargetFramework)\{ribbonAssembly}.dll", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("AddManagedWpfTransportPrivateWinFormsPayload", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("$(PkgMicrosoft_Private_Winforms)", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains(@"lib\$(TargetFramework)\System.Private.Windows.Core.dll", wpfTransportTargets, StringComparison.Ordinal);
@@ -6720,6 +6761,8 @@ public sealed class WpfManagedProjectGraphTests
             Assert.Contains($"\"{themeAssembly}\"", runtimeHarnessProgram, StringComparison.Ordinal);
             Assert.Contains($"\"{themeAssembly}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         }
+        Assert.Contains($"\"{ribbonAssembly}\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains($"\"{ribbonAssembly}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"ProGPU.Compute\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"ProGPU.Transpiler\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"Silk.NET.Windowing.Common\"", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -6772,6 +6815,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK SystemCommands show system menu no-op state", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("xmlns:shell=\"clr-namespace:System.Windows.Shell;assembly=PresentationFramework\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("xmlns:wpf=\"clr-namespace:System.Windows;assembly=PresentationFramework\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("xmlns:ribbon=\"clr-namespace:System.Windows.Controls.Ribbon;assembly=System.Windows.Controls.Ribbon\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<ribbon:Ribbon", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Visibility=\"Collapsed\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalRibbonButton", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateRibbonControls(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Ribbon routed command count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<shell:WindowChrome.WindowChrome>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("shell:WindowChrome.IsHitTestVisibleInChrome=\"True\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("shell:WindowChrome.ResizeGripDirection=\"BottomRight\"", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7938,6 +7987,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ComputeStreamSha256(packageStream)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Wpf.Sdk.{SdkVersion}.nupkg", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new(\"Microsoft.DotNet.Wpf.GitHub\", \"PresentationCore\", \"net11.0\", \"WPF\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new(\"Microsoft.DotNet.Wpf.GitHub\", \"System.Windows.Controls.Ribbon\", \"net11.0\", \"Ecma\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new(\"ProGPU.Wpf\", \"ProGPU.Wpf\", \"net10.0\", \"ProGPU\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new(\"ProGPU.Scene\", \"ProGPU.Scene\", \"net10.0\", \"ProGPU\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssemblyName.GetAssemblyName(tempPath)", externalSdkHarnessProgram, StringComparison.Ordinal);

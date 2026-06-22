@@ -74,6 +74,7 @@ build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Classic
 build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Fluent/PresentationFramework.Fluent.csproj"
 build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Luna/PresentationFramework.Luna.csproj"
 build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Royale/PresentationFramework.Royale.csproj"
+build_project "src/Microsoft.DotNet.Wpf/src/System.Windows.Controls.Ribbon/System.Windows.Controls.Ribbon.csproj"
 
 echo "Packing WPF transport, ProGPU bridge, and custom SDK..."
 pack_project "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj" "Microsoft.DotNet.Wpf.GitHub"

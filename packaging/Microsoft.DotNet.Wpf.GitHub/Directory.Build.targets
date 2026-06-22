@@ -68,6 +68,7 @@
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationFramework.Fluent.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationFramework.Luna.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationFramework.Royale.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\System.Windows.Controls.Ribbon.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\System.Private.Windows.Core.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\WindowsBase.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\System.Xaml.dll" />
@@ -86,6 +87,7 @@
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationFramework.Fluent.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationFramework.Luna.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationFramework.Royale.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\System.Windows.Controls.Ribbon.dll" />
     </ItemGroup>
 
     <Error

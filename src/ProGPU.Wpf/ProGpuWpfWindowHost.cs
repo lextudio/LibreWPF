@@ -1,7 +1,6 @@
 using System;
 using System.Reflection;
-using System.Runtime.InteropServices;
-using Silk.NET.Core.Contexts;
+using ProGPU.Backend;
 using Silk.NET.Maths;
 using Silk.NET.WebGPU;
 using Silk.NET.Windowing;
@@ -16,8 +15,6 @@ namespace System.Windows.Media.ProGPU;
 
 public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 {
-    private const string ObjCLibrary = "/usr/lib/libobjc.A.dylib";
-
     private readonly ProGpuWpfWindowOptions _options;
     private IWindow? _window;
     private ProGpuWpfCompositionTarget? _target;
@@ -1071,9 +1068,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private double ResolveCurrentMonitorDpiScale()
     {
-        return ResolveMonitorDpiScaleWithPlatformFallback(
-            ResolveCurrentMonitorDpiScaleFromPlatformServices(),
-            ResolveNativePlatformDpiScale);
+        return DisplayScaleResolver.ResolveWindowDisplayScale(
+            _window,
+            ResolveCurrentMonitorDpiScaleFromPlatformServices());
     }
 
     private double ResolveCurrentMonitorDpiScaleFromPlatformServices()
@@ -1106,125 +1103,15 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         double monitorDpiScale,
         Func<double?> platformDpiScaleProvider)
     {
-        ArgumentNullException.ThrowIfNull(platformDpiScaleProvider);
-
-        var normalizedMonitorScale = NormalizeMonitorDpiScale(monitorDpiScale);
-        if (normalizedMonitorScale > 1.0)
-        {
-            return normalizedMonitorScale;
-        }
-
-        double? platformDpiScale = platformDpiScaleProvider();
-        if (!platformDpiScale.HasValue)
-        {
-            return normalizedMonitorScale;
-        }
-
-        return NormalizeMonitorDpiScale(platformDpiScale.Value);
-    }
-
-    private double? ResolveNativePlatformDpiScale()
-    {
-        if (OperatingSystem.IsMacOS())
-        {
-            return TryResolveMacOsBackingScaleFactor(_window);
-        }
-
-        return null;
-    }
-
-    private static double? TryResolveMacOsBackingScaleFactor(IWindow? window)
-    {
-        try
-        {
-            nint screen = TryGetMacOsWindowScreen(window);
-            nint backingScaleFactorSelector = sel_registerName("backingScaleFactor");
-            if (screen == 0 || backingScaleFactorSelector == 0)
-            {
-                return null;
-            }
-
-            double backingScaleFactor = objc_msgSend_Double(screen, backingScaleFactorSelector);
-            return double.IsFinite(backingScaleFactor) && backingScaleFactor > 0.0 && backingScaleFactor <= 8.0
-                ? backingScaleFactor
-                : null;
-        }
-        catch (DllNotFoundException)
-        {
-            return null;
-        }
-        catch (EntryPointNotFoundException)
-        {
-            return null;
-        }
-        catch (BadImageFormatException)
-        {
-            return null;
-        }
-    }
-
-    private static nint TryGetMacOsWindowScreen(IWindow? window)
-    {
-        nint cocoaWindow = TryGetCocoaWindowHandle(window);
-        if (cocoaWindow != 0)
-        {
-            nint screenSelector = sel_registerName("screen");
-            if (screenSelector != 0)
-            {
-                nint screen = objc_msgSend_IntPtr(cocoaWindow, screenSelector);
-                if (screen != 0)
-                {
-                    return screen;
-                }
-            }
-        }
-
-        nint screenClass = objc_getClass("NSScreen");
-        if (screenClass == 0)
-        {
-            return 0;
-        }
-
-        nint mainScreenSelector = sel_registerName("mainScreen");
-        return mainScreenSelector != 0
-            ? objc_msgSend_IntPtr(screenClass, mainScreenSelector)
-            : 0;
-    }
-
-    private static nint TryGetCocoaWindowHandle(IWindow? window)
-    {
-        if (window is not INativeWindowSource nativeWindowSource)
-        {
-            return 0;
-        }
-
-        var cocoa = nativeWindowSource.Native?.Cocoa;
-        if (!cocoa.HasValue || cocoa.Value == IntPtr.Zero)
-        {
-            return 0;
-        }
-
-        return cocoa.Value;
+        return DisplayScaleResolver.ResolveDisplayScaleWithPlatformFallback(
+            monitorDpiScale,
+            platformDpiScaleProvider);
     }
 
     private static double NormalizeMonitorDpiScale(double dpiScale)
     {
-        return double.IsFinite(dpiScale) && dpiScale > 0.0 && dpiScale <= 8.0
-            ? dpiScale
-            : 1.0;
+        return DisplayScaleResolver.NormalizeDisplayScale(dpiScale);
     }
-
-    [DllImport(ObjCLibrary, EntryPoint = "objc_getClass")]
-    private static extern nint objc_getClass([MarshalAs(UnmanagedType.LPStr)] string name);
-
-    [DllImport(ObjCLibrary, EntryPoint = "sel_registerName")]
-    private static extern nint sel_registerName([MarshalAs(UnmanagedType.LPStr)] string name);
-
-    [DllImport(ObjCLibrary, EntryPoint = "objc_msgSend")]
-    private static extern nint objc_msgSend_IntPtr(nint receiver, nint selector);
-
-    [DllImport(ObjCLibrary, EntryPoint = "objc_msgSend")]
-    private static extern double objc_msgSend_Double(nint receiver, nint selector);
 
     private void OnClosing()
     {

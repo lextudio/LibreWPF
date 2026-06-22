@@ -10129,6 +10129,9 @@ internal static class Program
             Assembly presentationCore = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "PresentationCore.dll"));
             Assembly presentationFramework = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "PresentationFramework.dll"));
 
+            Type displayScaleResolverType = GetRequiredType(proGpuBackend, "ProGPU.Backend.DisplayScaleResolver");
+            AssertDisplayScaleResolver(displayScaleResolverType, "external SDK");
+
             Type windowHostType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfWindowHost");
             AssertPropertyType(windowHostType, "Width", typeof(int), "external SDK ProGPU WPF host logical width property");
             AssertPropertyType(windowHostType, "Height", typeof(int), "external SDK ProGPU WPF host logical height property");
@@ -10244,6 +10247,15 @@ internal static class Program
                 windowHostType.FullName ?? string.Empty,
                 "DimensionsDifferByDpiScale",
                 "external SDK ProGPU WPF host logical-size cache DPI reconciliation");
+            MethodInfo resolveMonitorDpiScale = FindMethodByParameterNames(
+                windowHostType,
+                "ResolveMonitorDpiScaleWithPlatformFallback",
+                ["monitorDpiScale", "platformDpiScaleProvider"]);
+            AssertMethodCallsMethod(
+                resolveMonitorDpiScale,
+                displayScaleResolverType.FullName ?? string.Empty,
+                "ResolveDisplayScaleWithPlatformFallback",
+                "external SDK ProGPU WPF host delegates display-scale fallback to ProGPU backend");
 
             Type compositorType = GetRequiredType(proGpuScene, "ProGPU.Scene.Compositor");
             Type visualType = GetRequiredType(proGpuScene, "ProGPU.Scene.Visual");
@@ -10302,6 +10314,48 @@ internal static class Program
         {
             loadContext.Unload();
         }
+    }
+
+    private static void AssertDisplayScaleResolver(Type displayScaleResolverType, string descriptionPrefix)
+    {
+        MethodInfo resolveWindowDisplayScale = FindMethodByParameterNames(
+            displayScaleResolverType,
+            "ResolveWindowDisplayScale",
+            ["window", "monitorDpiScale"]);
+        AssertEqual(typeof(double), resolveWindowDisplayScale.ReturnType, $"{descriptionPrefix} ProGPU backend window display-scale return type");
+        AssertEqual(2, resolveWindowDisplayScale.GetParameters().Length, $"{descriptionPrefix} ProGPU backend window display-scale parameter count");
+
+        MethodInfo normalizeDisplayScale = displayScaleResolverType.GetMethod(
+            "NormalizeDisplayScale",
+            BindingFlags.Static | BindingFlags.Public,
+            binder: null,
+            [typeof(double)],
+            modifiers: null)
+            ?? throw new MissingMethodException(displayScaleResolverType.FullName, "NormalizeDisplayScale");
+        AssertEqual(1.0, InvokeRequired(normalizeDisplayScale, [0.0]), $"{descriptionPrefix} ProGPU backend invalid display-scale normalization");
+        AssertEqual(1.5, InvokeRequired(normalizeDisplayScale, [1.5]), $"{descriptionPrefix} ProGPU backend valid display-scale normalization");
+
+        MethodInfo resolveDisplayScaleWithPlatformFallback = displayScaleResolverType.GetMethod(
+            "ResolveDisplayScaleWithPlatformFallback",
+            BindingFlags.Static | BindingFlags.Public,
+            binder: null,
+            [typeof(double), typeof(Func<double?>)],
+            modifiers: null)
+            ?? throw new MissingMethodException(displayScaleResolverType.FullName, "ResolveDisplayScaleWithPlatformFallback");
+        AssertEqual(
+            2.0,
+            InvokeRequired(resolveDisplayScaleWithPlatformFallback, [1.0, new Func<double?>(() => 2.0)]),
+            $"{descriptionPrefix} ProGPU backend native display-scale fallback");
+        AssertEqual(
+            1.5,
+            InvokeRequired(resolveDisplayScaleWithPlatformFallback, [1.5, new Func<double?>(() => 2.0)]),
+            $"{descriptionPrefix} ProGPU backend monitor display-scale precedence");
+    }
+
+    private static object InvokeRequired(MethodInfo method, object?[] parameters)
+    {
+        return method.Invoke(null, parameters)
+            ?? throw new InvalidOperationException($"Expected {method.DeclaringType?.FullName}.{method.Name} to return a value.");
     }
 
     private static void AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(

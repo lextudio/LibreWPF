@@ -3638,6 +3638,38 @@ internal static class Program
                     AssertEqual(2, directJpegDecoder.Frames[0].PixelWidth, "external SDK JpegBitmapDecoder pixel width");
                     AssertEqual(PixelFormats.Bgra32, directJpegDecoder.Frames[0].Format, "external SDK JpegBitmapDecoder Bgra32 format");
 
+                    byte[] gifBytes = CreateGifBytes();
+                    AssertEqual((byte)'G', gifBytes[0], "external SDK generated GIF signature byte 0");
+                    AssertEqual((byte)'I', gifBytes[1], "external SDK generated GIF signature byte 1");
+                    AssertEqual((byte)'F', gifBytes[2], "external SDK generated GIF signature byte 2");
+                    var gifDecoder = BitmapDecoder.Create(
+                        new MemoryStream(gifBytes),
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(typeof(GifBitmapDecoder), gifDecoder.GetType(), "external SDK BitmapDecoder.Create GIF decoder type");
+                    AssertEqual(1, gifDecoder.Frames.Count, "external SDK BitmapDecoder.Create GIF frame count");
+                    AssertEqual(2, gifDecoder.Frames[0].PixelWidth, "external SDK BitmapDecoder.Create GIF pixel width");
+                    AssertEqual(2, gifDecoder.Frames[0].PixelHeight, "external SDK BitmapDecoder.Create GIF pixel height");
+                    AssertEqual(PixelFormats.Bgra32, gifDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create GIF Bgra32 format");
+                    var decodedGifPixels = new byte[pixels.Length];
+                    gifDecoder.Frames[0].CopyPixels(decodedGifPixels, 8, 0);
+                    int gifRgbTotal = 0;
+                    for (int offset = 0; offset < decodedGifPixels.Length; offset += 4)
+                    {
+                        gifRgbTotal += decodedGifPixels[offset] + decodedGifPixels[offset + 1] + decodedGifPixels[offset + 2];
+                        AssertEqual((byte)0xFF, decodedGifPixels[offset + 3], "external SDK BitmapDecoder.Create GIF alpha byte " + offset / 4);
+                    }
+
+                    AssertAtLeast(1, gifRgbTotal, "external SDK BitmapDecoder.Create GIF nonblank RGB total");
+
+                    var directGifDecoder = new GifBitmapDecoder(
+                        new MemoryStream(gifBytes),
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(1, directGifDecoder.Frames.Count, "external SDK GifBitmapDecoder frame count");
+                    AssertEqual(2, directGifDecoder.Frames[0].PixelWidth, "external SDK GifBitmapDecoder pixel width");
+                    AssertEqual(PixelFormats.Bgra32, directGifDecoder.Frames[0].Format, "external SDK GifBitmapDecoder Bgra32 format");
+
                     byte[] rgba16PngBytes = CreateRgba16PngBytes(pixels, 2, 2, 8);
                     var rgba16PngDecoder = BitmapDecoder.Create(
                         new MemoryStream(rgba16PngBytes),
@@ -3838,6 +3870,40 @@ internal static class Program
                         File.Delete(jpegPath);
                     }
 
+                    string gifPath = Path.Combine(Path.GetTempPath(), "external-sdk-managed-image-" + Guid.NewGuid().ToString("N") + ".gif");
+                    File.WriteAllBytes(gifPath, gifBytes);
+                    try
+                    {
+                        var gifUri = new Uri(gifPath);
+                        var uriGifDecoder = BitmapDecoder.Create(
+                            gifUri,
+                            BitmapCreateOptions.PreservePixelFormat,
+                            BitmapCacheOption.OnLoad);
+                        AssertEqual(typeof(GifBitmapDecoder), uriGifDecoder.GetType(), "external SDK BitmapDecoder.Create URI GIF decoder type");
+                        AssertEqual(1, uriGifDecoder.Frames.Count, "external SDK BitmapDecoder.Create URI GIF frame count");
+                        AssertEqual(PixelFormats.Bgra32, uriGifDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create URI GIF Bgra32 format");
+
+                        var directUriGifDecoder = new GifBitmapDecoder(
+                            gifUri,
+                            BitmapCreateOptions.PreservePixelFormat,
+                            BitmapCacheOption.OnLoad);
+                        AssertEqual(1, directUriGifDecoder.Frames.Count, "external SDK GifBitmapDecoder URI frame count");
+                        AssertEqual(2, directUriGifDecoder.Frames[0].PixelWidth, "external SDK GifBitmapDecoder URI pixel width");
+
+                        var gifBitmapImage = new BitmapImage(gifUri);
+                        AssertEqual(2, gifBitmapImage.PixelWidth, "external SDK BitmapImage URI GIF pixel width");
+                        AssertEqual(2, gifBitmapImage.PixelHeight, "external SDK BitmapImage URI GIF pixel height");
+                        AssertEqual(PixelFormats.Bgra32, gifBitmapImage.Format, "external SDK BitmapImage URI GIF Bgra32 format");
+                        var gifBitmapImagePixels = new byte[pixels.Length];
+                        gifBitmapImage.CopyPixels(gifBitmapImagePixels, 8, 0);
+                        AssertEqual((byte)0xFF, gifBitmapImagePixels[3], "external SDK BitmapImage URI GIF first alpha byte");
+                        AssertEqual((byte)0xFF, gifBitmapImagePixels[15], "external SDK BitmapImage URI GIF final alpha byte");
+                    }
+                    finally
+                    {
+                        File.Delete(gifPath);
+                    }
+
                     var indexedPalette = new BitmapPalette(
                     [
                         Color.FromRgb(0x00, 0x00, 0x00),
@@ -3935,6 +4001,12 @@ internal static class Program
                 {
                     return Convert.FromBase64String(
                         "/9j//gAQTGF2YzYyLjI4LjEwMAD/2wBDAAgEBAQEBAUFBQUFBQYGBgYGBgYGBgYGBgYHBwcICAgHBwcGBgcHCAgICAkJCQgICAgJCQoKCgwMCwsODg4RERT/xABnAAEBAAAAAAAAAAAAAAAAAAADBwEBAQEAAAAAAAAAAAAAAAAAAgQHEAACAgICAwEAAAAAAAAAAAACAQMFBgQAEXa0NwcRAAICAgIBBQEBAAAAAAAAAAMCAQQFBgAHEbV2snMiNzT/wAARCAACAAIDARIAAhIAAxIA/9oADAMBAAIRAxEAPwChYBVVc+CYpLLo6csklDTnJIevEZmZaMLIiIgbIib7bb7b4/538/xHx6l9CDmQ9nmLS7K3arVI9YANmzwQAC0iCEQ8lYVBjGkwiIixCoixELEeIjh7Y/qe+e6th9Us8a6/gcgsXLmJxtu1ZiLFmzYp1zHsGL+yGMUg2chCPMs7vMszTMzPnllH/FW+gXwjn//Z");
+                }
+
+                private static byte[] CreateGifBytes()
+                {
+                    return Convert.FromBase64String(
+                        "R0lGODlhAgACAPcfAAAAACQAAEgAAGwAAJAAALQAANgAAPwAAAAkACQkAEgkAGwkAJAkALQkANgkAPwkAABIACRIAEhIAGxIAJBIALRIANhIAPxIAABsACRsAEhsAGxsAJBsALRsANhsAPxsAACQACSQAEiQAGyQAJCQALSQANiQAPyQAAC0ACS0AEi0AGy0AJC0ALS0ANi0APy0AADYACTYAEjYAGzYAJDYALTYANjYAPzYAAD8ACT8AEj8AGz8AJD8ALT8ANj8APz8AAAAVSQAVUgAVWwAVZAAVbQAVdgAVfwAVQAkVSQkVUgkVWwkVZAkVbQkVdgkVfwkVQBIVSRIVUhIVWxIVZBIVbRIVdhIVfxIVQBsVSRsVUhsVWxsVZBsVbRsVdhsVfxsVQCQVSSQVUiQVWyQVZCQVbSQVdiQVfyQVQC0VSS0VUi0VWy0VZC0VbS0Vdi0Vfy0VQDYVSTYVUjYVWzYVZDYVbTYVdjYVfzYVQD8VST8VUj8VWz8VZD8VbT8Vdj8Vfz8VQAAqiQAqkgAqmwAqpAAqrQAqtgAqvwAqgAkqiQkqkgkqmwkqpAkqrQkqtgkqvwkqgBIqiRIqkhIqmxIqpBIqrRIqthIqvxIqgBsqiRsqkhsqmxsqpBsqrRsqthsqvxsqgCQqiSQqkiQqmyQqpCQqrSQqtiQqvyQqgC0qiS0qki0qmy0qpC0qrS0qti0qvy0qgDYqiTYqkjYqmzYqpDYqrTYqtjYqvzYqgD8qiT8qkj8qmz8qpD8qrT8qtj8qvz8qgAA/yQA/0gA/2wA/5AA/7QA/9gA//wA/wAk/yQk/0gk/2wk/5Ak/7Qk/9gk//wk/wBI/yRI/0hI/2xI/5BI/7RI/9hI//xI/wBs/yRs/0hs/2xs/5Bs/7Rs/9hs//xs/wCQ/ySQ/0iQ/2yQ/5CQ/7SQ/9iQ//yQ/wC0/yS0/0i0/2y0/5C0/7S0/9i0//y0/wDY/yTY/0jY/2zY/5DY/7TY/9jY//zY/wD8/yT8/0j8/2z8/5D8/7T8/9j8//z8/yH/C05FVFNDQVBFMi4wAwEAAAAh+QQEBAAfACwAAAAAAgACAAAIBwATTOHSKiAAOw==");
                 }
 
                 private static byte[] CreatePngIconBytes(byte[] pngBytes, byte width, byte height)

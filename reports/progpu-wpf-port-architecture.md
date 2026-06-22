@@ -140,6 +140,8 @@ Missing-resource lookup also stays in WPF. The generated external SDK app now va
 
 Runtime dynamic-resource expressions stay in WPF as well. The generated external SDK app now creates a normal `TextBlock`, calls `SetResourceReference(...)` for `Foreground`, mutates the backing application resource, and verifies the resolved brush updates. ProGPU/Silk.NET should render the updated resource value and observe WPF invalidation, not own dynamic-resource expression storage or lookup.
 
+XAML compiler markup-extension construction stays in WPF. The generated external SDK app now compiles an `x:Array` string resource in a merged dictionary, resolves it through application resources, and binds it to an `ItemsControl` from a project that only changes `Project Sdk`. ProGPU should render the realized item visuals, not own XAML language intrinsic object construction or resource delivery.
+
 The custom SDK deliverable applies the same rule to loose XAML in package mode. A normal SDK-switched app should be able to keep WPF loose `XamlReader.Parse(...)` and `XamlWriter.Save(...)` behavior from the transport assemblies with no app source changes; ProGPU/Silk.NET should only provide native platform services and render the resulting object graph.
 
 Explicit compiled-component loading stays in WPF for the same reason. The generated external SDK app now loads a default-item `UserControl` by component URI through `Application.LoadComponent(...)`, then validates app-resource lookup, namescope lookup, and referenced-library control creation from the loaded BAML. ProGPU should render the resulting view and support invalidation; it should not own BAML URI resolution or generated component instantiation.

@@ -6706,6 +6706,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Path.Combine(appRoot, \"ExternalResources.xaml\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ResourceDictionary Source=\"ExternalResources.xaml\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalStaticBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<x:Array", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"ExternalArrayItems\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Type=\"{x:Type sys:String}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalArrayItemsControl", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK x:Array ItemsSource", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ComponentResourceKey TypeInTargetAssembly={x:Type local:MainWindow}, ResourceId=ExternalComponentAccentBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalComponentResourceText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("TryFindResource(\"ExternalDefinitelyMissingResource\")", externalSdkHarnessProgram, StringComparison.Ordinal);

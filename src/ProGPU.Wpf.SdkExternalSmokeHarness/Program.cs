@@ -626,6 +626,12 @@ internal static class Program
                 </LinearGradientBrush>
                 <sys:String
                     x:Key="ExternalStaticText">External SDK resource text</sys:String>
+                <x:Array
+                    x:Key="ExternalArrayItems"
+                    Type="{x:Type sys:String}">
+                    <sys:String>External array alpha</sys:String>
+                    <sys:String>External array beta</sys:String>
+                </x:Array>
                 <ObjectDataProvider
                     x:Key="ExternalObjectDataProvider"
                     IsAsynchronous="False"
@@ -1152,6 +1158,9 @@ internal static class Program
                         x:Name="ExternalRuntimeMergedResourceText"
                         Foreground="{DynamicResource ExternalRuntimeMergedBrush}"
                         Text="{DynamicResource ExternalRuntimeMergedText}" />
+                    <ItemsControl
+                        x:Name="ExternalArrayItemsControl"
+                        ItemsSource="{StaticResource ExternalArrayItems}" />
                     <TextBlock
                         x:Name="ExternalStartupResourceText"
                         Foreground="{DynamicResource ExternalStartupBrush}"
@@ -4050,6 +4059,12 @@ internal static class Program
                         "External SDK resource text",
                         appResources["ExternalStaticText"],
                         "external SDK application static text resource");
+                    var arrayItems = RequireType<string[]>(
+                        appResources["ExternalArrayItems"],
+                        "external SDK x:Array resource");
+                    AssertEqual(2, arrayItems.Length, "external SDK x:Array resource length");
+                    AssertEqual("External array alpha", arrayItems[0], "external SDK x:Array resource first item");
+                    AssertEqual("External array beta", arrayItems[1], "external SDK x:Array resource second item");
                     AssertBrushColor(
                         RequireType<Brush>(appResources["ExternalStaticBrush"], "external SDK application static brush resource"),
                         "#FFA65A2A",
@@ -4079,6 +4094,12 @@ internal static class Program
                     {
                         AssertEqual("ExternalDefinitelyMissingResource", ex.Key, "external SDK FindResource missing resource key");
                     }
+
+                    var arrayItemsControl = RequireType<ItemsControl>(
+                        window.FindName("ExternalArrayItemsControl"),
+                        "external SDK x:Array items control");
+                    AssertEqual(arrayItems, arrayItemsControl.ItemsSource, "external SDK x:Array ItemsSource");
+                    AssertEqual(2, arrayItemsControl.Items.Count, "external SDK x:Array items count");
 
                     var componentResourceText = RequireType<TextBlock>(
                         window.FindName("ExternalComponentResourceText"),

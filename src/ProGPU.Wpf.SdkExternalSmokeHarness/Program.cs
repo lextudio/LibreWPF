@@ -8780,6 +8780,37 @@ internal static class Program
                 [typeof(uint), typeof(uint), typeof(uint), typeof(uint), typeof(float)],
                 "external SDK ProGPU WPF composition render logical/physical surface");
             AssertEqual(true, compositionRender.GetParameters()[5].ParameterType.IsPointer, "external SDK ProGPU WPF composition render target view pointer");
+            MethodInfo hostPresent = FindMethodByParameterNames(
+                windowHostType,
+                "Present",
+                ["logicalWidth", "logicalHeight", "pixelWidth", "pixelHeight", "dpiScale"]);
+            AssertMethodCallsSpecificMethod(
+                hostPresent,
+                compositionRender,
+                "external SDK ProGPU WPF host present logical/physical render overload");
+            MethodInfo synchronizeGeometry = FindMethodByParameterNames(
+                windowHostType,
+                "SynchronizePortablePresentationSourceGeometry",
+                ["geometry"]);
+            AssertMethodCallsMethod(
+                synchronizeGeometry,
+                windowHostType.FullName ?? string.Empty,
+                "UpdatePortablePresentationSourceClientSize",
+                "external SDK ProGPU WPF host portable source logical-size synchronization");
+            AssertMethodCallsMethod(
+                synchronizeGeometry,
+                windowHostType.FullName ?? string.Empty,
+                "UpdatePortablePresentationSourceDpiScale",
+                "external SDK ProGPU WPF host portable source DPI synchronization");
+            MethodInfo resolveCachedLogicalDimension = FindMethodByParameterNames(
+                windowHostType,
+                "ResolveCachedLogicalClientDimension",
+                ["portablePresentationSourceDimension", "requestedLogicalDimension", "currentClientDimension"]);
+            AssertMethodCallsMethod(
+                resolveCachedLogicalDimension,
+                windowHostType.FullName ?? string.Empty,
+                "DimensionsDifferByDpiScale",
+                "external SDK ProGPU WPF host logical-size cache DPI reconciliation");
 
             Type compositorType = GetRequiredType(proGpuScene, "ProGPU.Scene.Compositor");
             Type visualType = GetRequiredType(proGpuScene, "ProGPU.Scene.Visual");
@@ -8792,6 +8823,10 @@ internal static class Program
                 [visualType, typeof(uint), typeof(uint), typeof(uint), typeof(uint), typeof(float)],
                 "external SDK ProGPU compositor render logical/physical surface");
             AssertEqual(true, compositorRenderScene.GetParameters()[6].ParameterType.IsPointer, "external SDK ProGPU compositor render target view pointer");
+            AssertMethodCallsSpecificMethod(
+                compositionRender,
+                compositorRenderScene,
+                "external SDK ProGPU WPF composition target forwards logical/physical render surface");
             AssertPropertyGetterReferencesField(
                 compositorType,
                 "CurrentCanvasPixelWidth",
@@ -9113,7 +9148,7 @@ internal static class Program
     private static MethodInfo FindMethodByParameterNames(Type type, string methodName, string[] parameterNames)
     {
         MethodInfo? method = type
-            .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
             .Where(method => string.Equals(method.Name, methodName, StringComparison.Ordinal))
             .FirstOrDefault(method =>
             {
@@ -9226,6 +9261,46 @@ internal static class Program
 
         throw new InvalidOperationException(
             $"Expected {description} '{method.DeclaringType?.FullName}.{method.Name}' to call '{calledDeclaringTypeFullName}.{calledMethodName}'.");
+    }
+
+    private static void AssertMethodCallsSpecificMethod(
+        MethodInfo method,
+        MethodInfo calledMethod,
+        string description)
+    {
+        byte[] il = method.GetMethodBody()?.GetILAsByteArray()
+            ?? throw new InvalidOperationException($"Expected {description} method IL.");
+        Type[] typeArguments = method.DeclaringType?.GetGenericArguments() ?? Type.EmptyTypes;
+        Type[] methodArguments = method.GetGenericArguments();
+
+        for (int i = 0; i <= il.Length - 5; i++)
+        {
+            if (il[i] != 0x28 && il[i] != 0x6F)
+            {
+                continue;
+            }
+
+            int token = BitConverter.ToInt32(il, i + 1);
+            MethodBase? resolvedMethod;
+            try
+            {
+                resolvedMethod = method.Module.ResolveMethod(token, typeArguments, methodArguments);
+            }
+            catch (ArgumentException)
+            {
+                continue;
+            }
+
+            if (resolvedMethod is MethodInfo resolvedInfo &&
+                resolvedInfo.Module == calledMethod.Module &&
+                resolvedInfo.MetadataToken == calledMethod.MetadataToken)
+            {
+                return;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Expected {description} '{method.DeclaringType?.FullName}.{method.Name}' to call '{calledMethod.DeclaringType?.FullName}.{calledMethod.Name}' with the validated overload.");
     }
 
     private readonly record struct PackageAssemblyExpectation(

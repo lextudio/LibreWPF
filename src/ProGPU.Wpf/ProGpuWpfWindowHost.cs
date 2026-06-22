@@ -535,6 +535,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _isRendering = true;
         try
         {
+            if (_target == null || _window == null || _target.Context.Surface == null)
+            {
+                ProcessDispatcherQueueCore();
+                return;
+            }
+
+            var geometry = ResolveCurrentRenderSurfaceGeometry();
+            SynchronizePortablePresentationSourceGeometry(geometry);
             ProcessDispatcherQueueCore();
 
             if (_target == null || _window == null || _target.Context.Surface == null)
@@ -542,7 +550,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 return;
             }
 
-            var geometry = ResolveCurrentRenderSurfaceGeometry();
+            geometry = ResolveCurrentRenderSurfaceGeometry();
+            SynchronizePortablePresentationSourceGeometry(geometry);
             var pixelWidth = geometry.PixelWidth;
             var pixelHeight = geometry.PixelHeight;
             var logicalWidth = geometry.LogicalWidth;
@@ -550,8 +559,6 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             var dpiScaleX = geometry.DpiScaleX;
             var dpiScaleY = geometry.DpiScaleY;
             var dpiScale = geometry.DpiScale;
-            UpdatePortablePresentationSourceClientSize(geometry.LogicalWidth, geometry.LogicalHeight);
-            UpdatePortablePresentationSourceDpiScale(geometry.DpiScaleX, geometry.DpiScaleY);
             _target.DetectWpfSourceChanges();
             var frameState = CaptureFrameState(_target, pixelWidth, pixelHeight);
 

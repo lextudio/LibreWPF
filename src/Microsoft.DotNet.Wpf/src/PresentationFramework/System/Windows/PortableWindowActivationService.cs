@@ -645,25 +645,55 @@ namespace System.Windows
 
         internal static void FlushDispatcherOperations(object window, DispatcherPriority markerPriority)
         {
+            FlushDispatcherOperations(window, markerPriority, Timeout.InfiniteTimeSpan);
+        }
+
+        internal static bool FlushDispatcherOperations(object window, DispatcherPriority markerPriority, TimeSpan timeout)
+        {
             if (OperatingSystem.IsWindows() ||
                 window is not Window typedWindow ||
                 typedWindow.Dispatcher == null ||
                 typedWindow.Dispatcher.HasShutdownStarted ||
                 typedWindow.Dispatcher.HasShutdownFinished)
             {
-                return;
+                return false;
             }
 
+            bool markerReached = false;
             DispatcherFrame frame = new DispatcherFrame();
-            typedWindow.Dispatcher.BeginInvoke(
+            DispatcherOperation markerOperation = typedWindow.Dispatcher.BeginInvoke(
                 markerPriority,
                 (DispatcherOperationCallback)delegate(object state)
                 {
+                    markerReached = true;
                     ((DispatcherFrame)state).Continue = false;
                     return null;
                 },
                 frame);
+            DispatcherTimer timer = null;
+            if (timeout != Timeout.InfiniteTimeSpan)
+            {
+                timer = new DispatcherTimer(DispatcherPriority.Send, typedWindow.Dispatcher)
+                {
+                    Interval = timeout
+                };
+                timer.Tick += delegate
+                {
+                    timer.Stop();
+                    frame.Continue = false;
+                };
+                timer.Start();
+            }
+
             Dispatcher.PushFrame(frame);
+            timer?.Stop();
+
+            if (!markerReached && markerOperation.Status == DispatcherOperationStatus.Pending)
+            {
+                markerOperation.Abort();
+            }
+
+            return markerReached;
         }
 
         internal static void Dispose(object activation)

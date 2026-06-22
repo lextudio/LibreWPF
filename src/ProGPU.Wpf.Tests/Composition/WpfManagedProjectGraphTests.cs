@@ -312,6 +312,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("EnterInterlockedPresentation();", mediaContext, StringComparison.Ordinal);
 
         Assert.Contains("internal static void FlushDispatcherOperations(object window, DispatcherPriority markerPriority)", activationService, StringComparison.Ordinal);
+        Assert.Contains("internal static bool FlushDispatcherOperations(object window, DispatcherPriority markerPriority, TimeSpan timeout)", activationService, StringComparison.Ordinal);
+        Assert.Contains("FlushDispatcherOperations(window, markerPriority, Timeout.InfiniteTimeSpan)", activationService, StringComparison.Ordinal);
+        Assert.Contains("markerOperation.Abort()", activationService, StringComparison.Ordinal);
         Assert.Contains("Dispatcher.PushFrame(frame)", activationService, StringComparison.Ordinal);
         Assert.Contains("public interface IWpfDelayedRenderScheduler : IWpfRenderScheduler", proGpuScheduler, StringComparison.Ordinal);
         Assert.Contains("void RequestRender(TimeSpan delay)", proGpuScheduler, StringComparison.Ordinal);
@@ -339,10 +342,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Host.SetWindowBorder(ResolveWindowBorder(Window, Host.WindowBorder))", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryMapResizeModeToWindowBorder", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("WindowStyle", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("ApplicationIdleFlushTimeout = TimeSpan.FromMilliseconds(250)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FlushWpfDispatcherOperations(\"Loaded\", \"Render\")", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FlushWpfDispatcherOperations(\"ApplicationIdle\")", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("FlushWpfDispatcherOperations(\"Render\")", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("TryFlushDispatcherOperations(Window, markerPriorityName)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("FlushWpfDispatcherOperations(\"Render\", \"ApplicationIdle\")", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("TryFlushDispatcherOperations(Window, markerPriorityName, timeout)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("parameters[2].ParameterType != typeof(TimeSpan)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FindPortableWindowActivationServiceType(window)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("typeof(Func<object, bool>)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryDragMove()", proGpuActivation, StringComparison.Ordinal);
@@ -421,6 +426,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("UpdatePortablePresentationSourceClientSize(geometry.LogicalWidth, geometry.LogicalHeight)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool UpdatePortablePresentationSourceClientSize(uint logicalWidth, uint logicalHeight)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("LastResolvedRenderSurfaceGeometry = geometry;", proGpuHost, StringComparison.Ordinal);
+        int hostOnRender = proGpuHost.IndexOf("private void OnRender(double deltaSeconds)", StringComparison.Ordinal);
+        int hostPreReplayGeometrySync = proGpuHost.IndexOf("SynchronizePortablePresentationSourceGeometry(geometry);", hostOnRender, StringComparison.Ordinal);
+        int hostPreReplayDispatcherDrain = proGpuHost.IndexOf("ProcessDispatcherQueueCore();", hostPreReplayGeometrySync, StringComparison.Ordinal);
+        int hostDetectWpfSourceChanges = proGpuHost.IndexOf("_target.DetectWpfSourceChanges();", hostOnRender, StringComparison.Ordinal);
+        Assert.True(
+            hostOnRender >= 0 &&
+            hostPreReplayGeometrySync >= 0 &&
+            hostPreReplayGeometrySync < hostPreReplayDispatcherDrain &&
+            hostPreReplayDispatcherDrain < hostDetectWpfSourceChanges,
+            "The Silk.NET render callback must synchronize WPF logical geometry before draining dispatcher/layout work and before polling WPF render data.");
         Assert.Contains("_retainedWpfVisualRoot.Scale = new Vector3((float)DpiScaleX, (float)DpiScaleY, 1f)", proGpuDrawingFrame, StringComparison.Ordinal);
         Assert.Contains("logicalWidth,\n                logicalHeight,\n                dpiScaleX,\n                dpiScaleY", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("Present(logicalWidth, logicalHeight, pixelWidth, pixelHeight, dpiScale)", proGpuHost, StringComparison.Ordinal);
@@ -757,6 +772,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableWindowActivationService.IsEnabled", application, StringComparison.Ordinal);
         Assert.Contains("FlushPortableDispatcherOperations(DispatcherPriority.Send)", application, StringComparison.Ordinal);
         Assert.Contains("FlushPortableDispatcherOperations(DispatcherPriority.ApplicationIdle)", application, StringComparison.Ordinal);
+        Assert.Contains("private bool FlushPortableDispatcherOperations(DispatcherPriority markerPriority, TimeSpan timeout)", application, StringComparison.Ordinal);
+        Assert.Contains("TimeSpan.FromMilliseconds(250)", application, StringComparison.Ordinal);
+        Assert.Contains("markerOperation.Abort()", application, StringComparison.Ordinal);
         Assert.Contains("Dispatcher.PushFrame(frame)", application, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.TryRun(MainWindow)", application, StringComparison.Ordinal);
         Assert.Contains("if (!_appIsShutdown)", application, StringComparison.Ordinal);
@@ -772,9 +790,22 @@ public sealed class WpfManagedProjectGraphTests
             application.IndexOf("window.Show();", StringComparison.Ordinal)
                 < application.IndexOf("PortableWindowActivationService.TryRun(MainWindow)", StringComparison.Ordinal),
             "Application.Run must synchronously show the startup window before handing ownership to the portable native run loop.");
+        int startupApplicationIdleFlush = application.IndexOf(
+            "TimeSpan.FromMilliseconds(250)",
+            StringComparison.Ordinal);
+        int portableTryRun = application.IndexOf(
+            "PortableWindowActivationService.TryRun(MainWindow)",
+            StringComparison.Ordinal);
+        int lastApplicationIdleFlush = application.LastIndexOf(
+            "FlushPortableDispatcherOperations(DispatcherPriority.ApplicationIdle)",
+            StringComparison.Ordinal);
         Assert.True(
-            application.IndexOf("PortableWindowActivationService.TryRun(MainWindow)", StringComparison.Ordinal)
-                < application.IndexOf("FlushPortableDispatcherOperations(DispatcherPriority.ApplicationIdle)", StringComparison.Ordinal),
+            application.IndexOf("window.Show();", StringComparison.Ordinal)
+                < startupApplicationIdleFlush &&
+            startupApplicationIdleFlush < portableTryRun,
+            "Application.Run must give queued startup idle work a bounded chance to run before handing ownership to the portable native run loop.");
+        Assert.True(
+            portableTryRun < lastApplicationIdleFlush,
             "Application.Run must service queued shutdown work after the portable native run loop exits.");
         Assert.True(
             application.IndexOf("PortableWindowActivationService.TryRun(MainWindow)", StringComparison.Ordinal)
@@ -7332,6 +7363,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK application main window updated window style", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK portable presentation source client-size return type", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU WPF composition render logical/physical surface", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ProGPU WPF host present logical/physical render overload", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ProGPU WPF host portable source logical-size synchronization", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ProGPU WPF host logical-size cache DPI reconciliation", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ProGPU WPF composition target forwards logical/physical render surface", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU compositor render logical/physical surface", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU compositor canvas pixel width explicit render target", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU compositor render pass viewport application", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7342,6 +7377,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGPU retained WPF layer scale", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPropertyGetterReferencesField", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertMethodCallsMethod", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertMethodCallsSpecificMethod", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("[\"root\", \"logicalWidth\", \"logicalHeight\", \"renderTargetWidth\", \"renderTargetHeight\", \"dpiScale\", \"targetView\"]", externalSdkHarnessProgram, StringComparison.Ordinal);
 
         Assert.Contains("ValidateProGpuHiDpiRenderSurface(inputs)", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -7354,6 +7390,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SDK portable activation recorder window border target", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK portable presentation source client-size return type", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU WPF composition render logical/physical surface", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK ProGPU WPF host present logical/physical render overload", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK ProGPU WPF host portable source logical-size synchronization", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK ProGPU WPF host logical-size cache DPI reconciliation", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK ProGPU WPF composition target forwards logical/physical render surface", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU compositor render logical/physical surface", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU compositor canvas pixel width explicit render target", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU compositor render pass viewport application", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -7364,6 +7404,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGPU retained WPF layer scale", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPropertyGetterReferencesField", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertMethodCallsMethod", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertMethodCallsSpecificMethod", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("[\"logicalWidth\", \"logicalHeight\", \"pixelWidth\", \"pixelHeight\", \"dpiScale\", \"targetView\"]", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableClipboardServiceTypeName = \"System.Windows.PortableClipboardService\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableFileDialogServiceTypeName = \"Microsoft.Win32.PortableFileDialogService\"", runtimeHarnessProgram, StringComparison.Ordinal);

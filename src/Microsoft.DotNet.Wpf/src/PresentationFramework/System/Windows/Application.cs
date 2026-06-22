@@ -1730,6 +1730,13 @@ namespace System.Windows
 
             EnsureHwndSource();
 
+            if (usePortableRunLoop)
+            {
+                FlushPortableDispatcherOperations(
+                    DispatcherPriority.ApplicationIdle,
+                    TimeSpan.FromMilliseconds(250));
+            }
+
             if (PortableWindowActivationService.TryRun(MainWindow))
             {
                 if (!IsShuttingDown)
@@ -2236,21 +2243,51 @@ namespace System.Windows
 
         private void FlushPortableDispatcherOperations(DispatcherPriority markerPriority)
         {
+            FlushPortableDispatcherOperations(markerPriority, Timeout.InfiniteTimeSpan);
+        }
+
+        private bool FlushPortableDispatcherOperations(DispatcherPriority markerPriority, TimeSpan timeout)
+        {
             if (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
             {
-                return;
+                return false;
             }
 
+            bool markerReached = false;
             DispatcherFrame frame = new DispatcherFrame();
-            Dispatcher.BeginInvoke(
+            DispatcherOperation markerOperation = Dispatcher.BeginInvoke(
                 markerPriority,
                 (DispatcherOperationCallback) delegate(object state)
                 {
+                    markerReached = true;
                     ((DispatcherFrame)state).Continue = false;
                     return null;
                 },
                 frame);
+            DispatcherTimer timer = null;
+            if (timeout != Timeout.InfiniteTimeSpan)
+            {
+                timer = new DispatcherTimer(DispatcherPriority.Send, Dispatcher)
+                {
+                    Interval = timeout
+                };
+                timer.Tick += delegate
+                {
+                    timer.Stop();
+                    frame.Continue = false;
+                };
+                timer.Start();
+            }
+
             Dispatcher.PushFrame(frame);
+            timer?.Stop();
+
+            if (!markerReached && markerOperation.Status == DispatcherOperationStatus.Pending)
+            {
+                markerOperation.Abort();
+            }
+
+            return markerReached;
         }
 
         /// <summary>

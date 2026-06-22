@@ -13,6 +13,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
     private const string PortableMessageBoxServiceTypeName = "System.Windows.PortableMessageBoxService";
     private const string PortableFileDialogServiceTypeName = "Microsoft.Win32.PortableFileDialogService";
     private const string PortableMediaContextRenderServiceTypeName = "System.Windows.Media.PortableMediaContextRenderService";
+    private static readonly TimeSpan ApplicationIdleFlushTimeout = TimeSpan.FromMilliseconds(250);
     private bool _isDisposed;
     private bool _isClosingFromNative;
     private bool _isClosingFromWpf;
@@ -703,7 +704,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return;
         }
 
-        FlushWpfDispatcherOperations("Render");
+        FlushWpfDispatcherOperations("Render", "ApplicationIdle");
     }
 
     private void FlushWpfDispatcherOperations(params string[] markerPriorityNames)
@@ -718,7 +719,10 @@ public sealed class WpfPortableWindowActivation : IDisposable
         {
             foreach (string markerPriorityName in markerPriorityNames)
             {
-                TryFlushDispatcherOperations(Window, markerPriorityName);
+                TimeSpan? timeout = string.Equals(markerPriorityName, "ApplicationIdle", StringComparison.Ordinal)
+                    ? ApplicationIdleFlushTimeout
+                    : null;
+                TryFlushDispatcherOperations(Window, markerPriorityName, timeout);
             }
         }
         finally
@@ -1182,12 +1186,40 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
     }
 
-    private static bool TryFlushDispatcherOperations(object window, string markerPriorityName)
+    private static bool TryFlushDispatcherOperations(object window, string markerPriorityName, TimeSpan? timeout = null)
     {
         Type? serviceType = FindPortableWindowActivationServiceType(window);
         if (serviceType == null)
         {
             return false;
+        }
+
+        if (timeout.HasValue)
+        {
+            foreach (var method in serviceType.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+            {
+                if (!string.Equals(method.Name, "FlushDispatcherOperations", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var parameters = method.GetParameters();
+                if (parameters.Length != 3 ||
+                    !parameters[0].ParameterType.IsAssignableFrom(window.GetType()) ||
+                    !parameters[1].ParameterType.IsEnum ||
+                    parameters[2].ParameterType != typeof(TimeSpan))
+                {
+                    continue;
+                }
+
+                if (!Enum.TryParse(parameters[1].ParameterType, markerPriorityName, ignoreCase: false, out object? markerPriority))
+                {
+                    continue;
+                }
+
+                object? result = method.Invoke(null, new object[] { window, markerPriority, timeout.Value });
+                return result is not bool completed || completed;
+            }
         }
 
         foreach (var method in serviceType.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))

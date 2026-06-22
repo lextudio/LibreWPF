@@ -292,6 +292,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var dpiScaleY = pixelHeight / (double)logicalHeight", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("NativeDimensionLooksPhysicalForCachedDips(nativeDimension, cached, dpiScale)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("private static bool NativeDimensionLooksPhysicalForCachedDips", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("TryInferNativeDpiScaleFromCachedDips(nativeDimension, cached", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("private static bool FramebufferDimensionAllowsNativePhysicalClient", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("SynchronizePortablePresentationSourceGeometry();", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("SynchronizePortablePresentationSourceGeometry(geometry);", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("UpdatePortablePresentationSourceClientSize(geometry.LogicalWidth, geometry.LogicalHeight)", proGpuHost, StringComparison.Ordinal);
@@ -6949,6 +6951,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SystemParameters.ForegroundFlashCount", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SystemParameters.WheelScrollLines", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK SystemParameters.{propertyName} resource", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLauncher()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.PortableLauncherService", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK portable launcher service enabled", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK portable launcher handled request", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK portable launcher request URI", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK portable launcher target frame", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMessageBox(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.PortableMessageBoxService", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK portable MessageBox service enabled", externalSdkHarnessProgram, StringComparison.Ordinal);

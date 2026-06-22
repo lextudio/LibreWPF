@@ -2707,6 +2707,7 @@ internal static class Program
                     ValidateSystemParameters(window);
                     ValidateWindowChrome(window);
                     ValidateSystemCommands(window);
+                    ValidateLauncher();
                     ValidateMessageBox(window);
                     ValidateFileDialogs(window);
                     ValidateClipboard();
@@ -3415,6 +3416,86 @@ internal static class Program
                             MessageBoxResult.OK,
                             ownerResult,
                             "external SDK MessageBox owner fallback result");
+                    }
+                    finally
+                    {
+                        registration?.Dispose();
+                    }
+                }
+
+                private static void ValidateLauncher()
+                {
+                    Type serviceType = typeof(Application).Assembly.GetType(
+                            "System.Windows.PortableLauncherService",
+                            throwOnError: false)
+                        ?? throw new TypeLoadException("System.Windows.PortableLauncherService");
+                    var isEnabledProperty = serviceType.GetProperty(
+                            "IsEnabled",
+                            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                        ?? throw new MissingMemberException(serviceType.FullName, "IsEnabled");
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        AssertEqual(
+                            true,
+                            (bool)(isEnabledProperty.GetValue(null) ?? false),
+                            "external SDK portable launcher service enabled");
+                    }
+
+                    var registerMethod = serviceType.GetMethod(
+                            "Register",
+                            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                            binder: null,
+                            types: new[] { typeof(Func<object, bool>) },
+                            modifiers: null)
+                        ?? throw new MissingMethodException(serviceType.FullName, "Register");
+                    var tryLaunchMethod = serviceType.GetMethod(
+                            "TryLaunch",
+                            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                            binder: null,
+                            types:
+                            [
+                                typeof(Uri),
+                                typeof(string),
+                                typeof(bool),
+                                typeof(bool).MakeByRefType()
+                            ],
+                            modifiers: null)
+                        ?? throw new MissingMethodException(serviceType.FullName, "TryLaunch");
+
+                    int requestCount = 0;
+                    string? requestUri = null;
+                    string? requestTargetFrame = null;
+                    string? requestIsTopLevel = null;
+                    Func<object, bool> handler = request =>
+                    {
+                        requestCount++;
+                        requestUri = ReadPortableRequestString(request, "Uri");
+                        requestTargetFrame = ReadPortableRequestString(request, "TargetFrame");
+                        requestIsTopLevel = ReadPortableRequestString(request, "IsTopLevel");
+                        return true;
+                    };
+
+                    IDisposable? registration = null;
+                    try
+                    {
+                        registration = (IDisposable?)registerMethod.Invoke(null, new object[] { handler });
+                        object?[] launchArguments =
+                        [
+                            new Uri("https://example.test/external-sdk-launch"),
+                            "ExternalTargetFrame",
+                            true,
+                            false
+                        ];
+
+                        AssertEqual(
+                            true,
+                            (bool)(tryLaunchMethod.Invoke(null, launchArguments) ?? false),
+                            "external SDK portable launcher handled request");
+                        AssertEqual(true, (bool)(launchArguments[3] ?? false), "external SDK portable launcher launched state");
+                        AssertEqual(1, requestCount, "external SDK portable launcher request count");
+                        AssertEqual("https://example.test/external-sdk-launch", requestUri, "external SDK portable launcher request URI");
+                        AssertEqual("ExternalTargetFrame", requestTargetFrame, "external SDK portable launcher target frame");
+                        AssertEqual(bool.TrueString, requestIsTopLevel, "external SDK portable launcher top-level flag");
                     }
                     finally
                     {

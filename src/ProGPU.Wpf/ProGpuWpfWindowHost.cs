@@ -789,6 +789,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             nativeMatchesFramebuffer,
             framebufferDimension,
             cached);
+        if (dpiScale <= 1.0 &&
+            TryInferNativeDpiScaleFromCachedDips(nativeDimension, cached, out var inferredNativeDpiScale) &&
+            FramebufferDimensionAllowsNativePhysicalClient(framebufferDimension, nativeDimension, inferredNativeDpiScale))
+        {
+            dpiScale = inferredNativeDpiScale;
+        }
+
         if (dpiScale <= 1.0 || framebufferDimension <= 0)
         {
             return fallback;
@@ -834,6 +841,48 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         return Math.Abs(nativeDimension - cachedDimension * dpiScale) <= Math.Max(2.0, dpiScale);
+    }
+
+    private static bool TryInferNativeDpiScaleFromCachedDips(
+        int nativeDimension,
+        int cachedDimension,
+        out double dpiScale)
+    {
+        dpiScale = 1.0;
+        if (nativeDimension <= 0 || cachedDimension <= 0)
+        {
+            return false;
+        }
+
+        var inferredScale = nativeDimension / (double)cachedDimension;
+        if (!double.IsFinite(inferredScale) || inferredScale < 1.25 || inferredScale > 8.0)
+        {
+            return false;
+        }
+
+        dpiScale = inferredScale;
+        return NativeDimensionLooksPhysicalForCachedDips(nativeDimension, cachedDimension, dpiScale);
+    }
+
+    private static bool FramebufferDimensionAllowsNativePhysicalClient(
+        int framebufferDimension,
+        int nativeDimension,
+        double dpiScale)
+    {
+        if (framebufferDimension <= 0 || nativeDimension <= 0 || dpiScale <= 1.0)
+        {
+            return false;
+        }
+
+        if (Math.Abs(framebufferDimension - nativeDimension) <= Math.Max(2.0, dpiScale))
+        {
+            return true;
+        }
+
+        var framebufferToNativeScale = framebufferDimension / (double)nativeDimension;
+        return double.IsFinite(framebufferToNativeScale) &&
+            framebufferToNativeScale >= 1.0 &&
+            framebufferToNativeScale <= dpiScale + 0.25;
     }
 
     private static double ResolveLogicalClientDpiScale(

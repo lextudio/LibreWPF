@@ -6747,6 +6747,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<Trigger Property=\"IsEnabled\" Value=\"False\">", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Background=\"{TemplateBinding Background}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Content=\"{TemplateBinding Content}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalTemplatedParentText\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Content}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<VisualStateManager.VisualStateGroups>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<VisualStateGroup x:Name=\"ExternalCommonStates\">", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<VisualState x:Name=\"Pressed\">", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6802,6 +6804,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("eventSetterButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, eventSetterButton))", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK EventSetter routed event", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("buttonTemplate.FindName(\"ExternalTemplateRoot\", styledButton)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("buttonTemplate.FindName(\"ExternalTemplatedParentText\", styledButton)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("VisualStateManager.GetVisualStateGroups(templateRoot)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Storyboard.GetTargetProperty(doubleAnimation)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK loaded storyboard target property path", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6827,6 +6830,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK Application.Run VisualStateManager Normal transition", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK property trigger background setter", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK TemplateBinding triggered background", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK RelativeSource TemplatedParent content binding", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RelativeSourceMode.TemplatedParent", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalItemsPanelTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalItemContainerStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalGroupedItems", externalSdkHarnessProgram, StringComparison.Ordinal);

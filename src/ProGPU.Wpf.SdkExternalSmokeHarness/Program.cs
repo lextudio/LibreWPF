@@ -675,9 +675,15 @@ internal static class Program
                                 </VisualState>
                             </VisualStateGroup>
                         </VisualStateManager.VisualStateGroups>
-                        <ContentPresenter
-                            x:Name="ExternalTemplateContent"
-                            Content="{TemplateBinding Content}" />
+                        <Grid>
+                            <ContentPresenter
+                                x:Name="ExternalTemplateContent"
+                                Content="{TemplateBinding Content}" />
+                            <TextBlock
+                                x:Name="ExternalTemplatedParentText"
+                                Visibility="Collapsed"
+                                Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Content}" />
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="Tag" Value="template-trigger-active">
@@ -8159,6 +8165,9 @@ internal static class Program
                     var templateContent = RequireType<ContentPresenter>(
                         buttonTemplate.FindName("ExternalTemplateContent", styledButton),
                         "external SDK styled button template content presenter");
+                    var templatedParentText = RequireType<TextBlock>(
+                        buttonTemplate.FindName("ExternalTemplatedParentText", styledButton),
+                        "external SDK styled button templated-parent text");
                     var stateGroups = VisualStateManager.GetVisualStateGroups(templateRoot);
                     AssertEqual(1, stateGroups.Count, "external SDK VisualStateManager group count");
                     var commonStates = RequireType<VisualStateGroup>(
@@ -8187,6 +8196,13 @@ internal static class Program
                     AssertEqual(TimeSpan.Zero, pressedAnimation.Duration.TimeSpan, "external SDK VisualStateManager Pressed animation duration");
                     AssertBrushColor(templateRoot.Background, "#FF254C6A", "external SDK TemplateBinding background");
                     AssertEqual("External styled button", templateContent.Content, "external SDK TemplateBinding content");
+                    AssertEqual("External styled button", templatedParentText.Text, "external SDK RelativeSource TemplatedParent content binding");
+                    var templatedParentBindingExpression = templatedParentText.GetBindingExpression(TextBlock.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK RelativeSource TemplatedParent BindingExpression.");
+                    AssertEqual("Content", templatedParentBindingExpression.ParentBinding.Path.Path, "external SDK RelativeSource TemplatedParent binding path");
+                    var templatedParentRelativeSource = templatedParentBindingExpression.ParentBinding.RelativeSource
+                        ?? throw new InvalidOperationException("Expected external SDK RelativeSource TemplatedParent binding metadata.");
+                    AssertEqual(RelativeSourceMode.TemplatedParent, templatedParentRelativeSource.Mode, "external SDK RelativeSource TemplatedParent mode");
 
                     styledButton.IsEnabled = false;
                     DrainDispatcher();

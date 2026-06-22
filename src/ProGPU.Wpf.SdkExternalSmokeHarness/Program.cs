@@ -1190,6 +1190,10 @@ internal static class Program
                     <TextBlock
                         x:Name="ExternalMarkupExtensionText"
                         Text="{local:ExternalText Prefix=external, Value=markup}" />
+                    <TextBlock
+                        x:Name="ExternalSelfBindingText"
+                        Tag="External self tag"
+                        Text="{Binding RelativeSource={RelativeSource Self}, Path=Tag}" />
                     <Border
                         x:Name="ExternalAncestorBindingBorder"
                         Tag="External ancestor tag">
@@ -7241,10 +7245,21 @@ internal static class Program
                     AssertEqual("Text", window.LastExternalBindingSourceUpdatedPropertyName, "external SDK Binding SourceUpdated property");
                     AssertEqual("SourceUpdated", window.LastExternalBindingSourceUpdatedRoutedEventName, "external SDK Binding SourceUpdated routed event name");
 
+                    var selfBindingText = RequireType<TextBlock>(
+                        window.FindName("ExternalSelfBindingText"),
+                        "external SDK self binding text block");
+                    DrainDispatcher();
+                    AssertEqual("External self tag", selfBindingText.Text, "external SDK RelativeSource self binding value");
+                    var selfBindingExpression = selfBindingText.GetBindingExpression(TextBlock.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK RelativeSource Self BindingExpression.");
+                    AssertEqual("Tag", selfBindingExpression.ParentBinding.Path.Path, "external SDK RelativeSource self binding path");
+                    var selfRelativeSource = selfBindingExpression.ParentBinding.RelativeSource
+                        ?? throw new InvalidOperationException("Expected external SDK RelativeSource Self binding metadata.");
+                    AssertEqual(RelativeSourceMode.Self, selfRelativeSource.Mode, "external SDK RelativeSource self mode");
+
                     var ancestorBindingText = RequireType<TextBlock>(
                         window.FindName("ExternalAncestorBindingText"),
                         "external SDK ancestor binding text block");
-                    DrainDispatcher();
                     AssertEqual("External ancestor tag", ancestorBindingText.Text, "external SDK RelativeSource ancestor binding value");
                     var ancestorBindingExpression = ancestorBindingText.GetBindingExpression(TextBlock.TextProperty)
                         ?? throw new InvalidOperationException("Expected external SDK RelativeSource ancestor BindingExpression.");

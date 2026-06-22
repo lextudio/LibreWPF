@@ -7346,6 +7346,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SourceUpdated=\"OnExternalBindingSourceUpdated\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("TargetUpdated=\"OnExternalBindingTargetUpdated\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalBindingTransferText, Mode=TwoWay, UpdateSourceTrigger=Explicit, NotifyOnSourceUpdated=True, NotifyOnTargetUpdated=True", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalSelfBindingText\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding RelativeSource={RelativeSource Self}, Path=Tag}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ExternalAncestorBindingBorder\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding RelativeSource={RelativeSource AncestorType={x:Type Border}}, Path=Tag}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<local:ExternalNonEmptyValidationRule />", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7425,6 +7427,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateDependencyProperties(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("BindingOperations.GetMultiBindingExpression", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("BindingOperations.GetPriorityBindingExpression", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("selfBindingExpression.ParentBinding.RelativeSource", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RelativeSourceMode.Self", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK RelativeSource self binding value", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ancestorBindingExpression.ParentBinding.RelativeSource", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RelativeSourceMode.FindAncestor", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK RelativeSource ancestor binding value", externalSdkHarnessProgram, StringComparison.Ordinal);

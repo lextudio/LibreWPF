@@ -153,6 +153,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     public ProGpuWpfFrameState LastPresentedFrameState { get; private set; }
 
+    internal RenderSurfaceGeometry LastResolvedRenderSurfaceGeometry { get; private set; }
+
     public long SkippedFrameCount { get; private set; }
 
     public long RetainedWpfReplaySkipCount { get; private set; }
@@ -395,6 +397,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         AttachInputService();
         AttachDragDropService();
         AttachWindowEventService();
+        SynchronizePortablePresentationSourceDpiScale();
         WpfRenderScheduler.RequestRender();
     }
 
@@ -418,6 +421,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         var geometry = ResolveCurrentRenderSurfaceGeometry();
+        SynchronizePortablePresentationSourceDpiScale(geometry);
         _target.Context.ConfigureSwapChain(
             geometry.PixelWidth,
             geometry.PixelHeight);
@@ -667,13 +671,16 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private RenderSurfaceGeometry ResolveCurrentRenderSurfaceGeometry()
     {
+        RenderSurfaceGeometry geometry;
         if (_window == null)
         {
-            return ResolveRenderSurfaceGeometry(
+            geometry = ResolveRenderSurfaceGeometry(
                 _clientWidth,
                 _clientHeight,
                 new Vector2D<int>(_clientWidth, _clientHeight),
                 1.0);
+            LastResolvedRenderSurfaceGeometry = geometry;
+            return geometry;
         }
 
         var clientSize = _window.Size;
@@ -685,11 +692,25 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _clientWidth,
             _clientHeight,
             monitorDpiScale);
-        return ResolveRenderSurfaceGeometry(
+        geometry = ResolveRenderSurfaceGeometry(
             logicalSize.X,
             logicalSize.Y,
             framebufferSize,
             monitorDpiScale);
+        LastResolvedRenderSurfaceGeometry = geometry;
+        return geometry;
+    }
+
+    internal bool SynchronizePortablePresentationSourceDpiScale(RenderSurfaceGeometry geometry)
+    {
+        LastResolvedRenderSurfaceGeometry = geometry;
+        return UpdatePortablePresentationSourceDpiScale(geometry.DpiScaleX, geometry.DpiScaleY);
+    }
+
+    private bool SynchronizePortablePresentationSourceDpiScale()
+    {
+        var geometry = ResolveCurrentRenderSurfaceGeometry();
+        return SynchronizePortablePresentationSourceDpiScale(geometry);
     }
 
     internal bool UpdateClientSizeFromNativeResize(Vector2D<int> size)

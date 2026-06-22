@@ -741,6 +741,35 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void SynchronizePortablePresentationSourceDpiScaleCachesHighDpiSurfaceGeometry()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var source = new FakePortablePresentationSource();
+        var geometry = new ProGpuWpfWindowHost.RenderSurfaceGeometry(
+            LogicalWidth: 420,
+            LogicalHeight: 840,
+            PixelWidth: 840,
+            PixelHeight: 1680,
+            DpiScaleX: 2.0,
+            DpiScaleY: 2.0,
+            DpiScale: 2.0);
+
+        Assert.True(host.TryBindPortablePresentationSource(source));
+
+        Assert.True(host.SynchronizePortablePresentationSourceDpiScale(geometry));
+
+        Assert.Equal(geometry, host.LastResolvedRenderSurfaceGeometry);
+        Assert.Equal(2.0, source.DpiScaleX);
+        Assert.Equal(2.0, source.DpiScaleY);
+        Assert.Equal(1, source.DeviceScaleChangeCount);
+        Assert.Equal(1, scheduler.RequestCount);
+    }
+
+    [Fact]
     public void DisposingHostDetachesPortablePresentationSource()
     {
         var scheduler = new TestRenderScheduler();

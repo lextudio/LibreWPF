@@ -268,6 +268,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PlatformServices.WindowDecorations.TryBeginDragMove(_window)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("public int Width => _clientWidth;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("public int Height => _clientHeight;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("internal RenderSurfaceGeometry LastResolvedRenderSurfaceGeometry", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ResolveCurrentRenderSurfaceGeometry()", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ResolveRenderSurfaceGeometry(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ResolveLogicalClientSize(", proGpuHost, StringComparison.Ordinal);
@@ -285,6 +286,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var dpiScaleY = pixelHeight / (double)logicalHeight", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("NativeDimensionLooksPhysicalForCachedDips(nativeDimension, cached, dpiScale)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("private static bool NativeDimensionLooksPhysicalForCachedDips", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("SynchronizePortablePresentationSourceDpiScale();", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("SynchronizePortablePresentationSourceDpiScale(geometry);", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("LastResolvedRenderSurfaceGeometry = geometry;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_retainedWpfVisualRoot.Scale = new Vector3((float)DpiScaleX, (float)DpiScaleY, 1f)", proGpuDrawingFrame, StringComparison.Ordinal);
         Assert.Contains("logicalWidth,\n                logicalHeight,\n                dpiScaleX,\n                dpiScaleY", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("Present(logicalWidth, logicalHeight, pixelWidth, pixelHeight, dpiScale)", proGpuHost, StringComparison.Ordinal);

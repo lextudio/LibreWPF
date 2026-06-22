@@ -1214,6 +1214,17 @@ internal static class Program
                             x:Name="ExternalAncestorBindingText"
                             Text="{Binding RelativeSource={RelativeSource AncestorType={x:Type Border}}, Path=Tag}" />
                     </Border>
+                    <Border
+                        x:Name="ExternalAncestorLevelOuterBorder"
+                        Tag="External second ancestor tag">
+                        <Border
+                            x:Name="ExternalAncestorLevelInnerBorder"
+                            Tag="External first ancestor tag">
+                            <TextBlock
+                                x:Name="ExternalAncestorLevelBindingText"
+                                Text="{Binding RelativeSource={RelativeSource AncestorType={x:Type Border}, AncestorLevel=2}, Path=Tag}" />
+                        </Border>
+                    </Border>
                     <Button
                         x:Name="ExternalStyledButton"
                         Style="{StaticResource ExternalTriggeredButtonStyle}" />
@@ -7842,6 +7853,19 @@ internal static class Program
                     AssertEqual(RelativeSourceMode.FindAncestor, ancestorRelativeSource.Mode, "external SDK RelativeSource ancestor mode");
                     AssertEqual(typeof(Border), ancestorRelativeSource.AncestorType, "external SDK RelativeSource ancestor type");
                     AssertEqual(1, ancestorRelativeSource.AncestorLevel, "external SDK RelativeSource ancestor level");
+
+                    var ancestorLevelBindingText = RequireType<TextBlock>(
+                        window.FindName("ExternalAncestorLevelBindingText"),
+                        "external SDK ancestor-level binding text block");
+                    AssertEqual("External second ancestor tag", ancestorLevelBindingText.Text, "external SDK RelativeSource ancestor-level binding value");
+                    var ancestorLevelBindingExpression = ancestorLevelBindingText.GetBindingExpression(TextBlock.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK RelativeSource ancestor-level BindingExpression.");
+                    AssertEqual("Tag", ancestorLevelBindingExpression.ParentBinding.Path.Path, "external SDK RelativeSource ancestor-level binding path");
+                    var ancestorLevelRelativeSource = ancestorLevelBindingExpression.ParentBinding.RelativeSource
+                        ?? throw new InvalidOperationException("Expected external SDK RelativeSource ancestor-level binding metadata.");
+                    AssertEqual(RelativeSourceMode.FindAncestor, ancestorLevelRelativeSource.Mode, "external SDK RelativeSource ancestor-level mode");
+                    AssertEqual(typeof(Border), ancestorLevelRelativeSource.AncestorType, "external SDK RelativeSource ancestor-level type");
+                    AssertEqual(2, ancestorLevelRelativeSource.AncestorLevel, "external SDK RelativeSource ancestor-level value");
 
                     var validationTextBox = RequireType<TextBox>(
                         window.FindName("ExternalValidationTextBox"),

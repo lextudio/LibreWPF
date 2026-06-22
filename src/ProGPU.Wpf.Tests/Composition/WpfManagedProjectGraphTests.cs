@@ -7550,6 +7550,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ancestorBindingExpression.ParentBinding.RelativeSource", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RelativeSourceMode.FindAncestor", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK RelativeSource ancestor binding value", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalAncestorLevelBindingText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AncestorLevel=2", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK RelativeSource ancestor-level binding value", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK RelativeSource ancestor-level value", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Validation.GetHasError(validationTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Validation.GetErrors(validationTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK validation error added count", externalSdkHarnessProgram, StringComparison.Ordinal);

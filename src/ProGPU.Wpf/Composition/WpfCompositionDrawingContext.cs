@@ -358,7 +358,7 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         else
         {
             RegisterRetainedDependencies(transform);
-            _sink.PushTransform(transform);
+            WpfPortableCommandSinkBridge.PushTransform(_sink, transform);
         }
 
         _stackDepth++;

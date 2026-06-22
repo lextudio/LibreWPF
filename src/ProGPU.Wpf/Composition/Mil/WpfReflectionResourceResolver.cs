@@ -1004,6 +1004,22 @@ public sealed class WpfReflectionResourceResolver :
         return false;
     }
 
+    internal static bool TryCreateManagedMatrixTransform(
+        Matrix4x4 matrix,
+        out MediaTransform transform)
+    {
+        transform = null!;
+        if (!TryReadMatrix4x4(matrix, out var matrix2D)
+            || !TryCreateMatrixTransform(typeof(MediaTransform), matrix2D, out var mediaTransform)
+            || mediaTransform == null)
+        {
+            return false;
+        }
+
+        transform = mediaTransform;
+        return true;
+    }
+
     internal static bool IsIdentityMatrix(Matrix4x4 matrix)
     {
         return NearlyEqual(matrix.M11, 1)

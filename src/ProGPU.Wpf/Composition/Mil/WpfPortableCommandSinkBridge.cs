@@ -1,6 +1,8 @@
 using System.Runtime.CompilerServices;
 using System.Windows.Media.ProGPU.Composition;
+using System.Numerics;
 using MediaBrush = System.Windows.Media.Brush;
+using MediaTransform = System.Windows.Media.Transform;
 using ProGpuEffectBase = global::ProGPU.Scene.EffectBase;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
@@ -66,6 +68,39 @@ internal static class WpfPortableCommandSinkBridge
         return sink is IWpfDrawingCacheCommandSink cacheSink
             && WpfManagedCommandSinkBridge.PushDrawingCache(cacheSink, bounds);
     }
+
+    public static void PushTransform(
+        IWpfCompositionCommandSink sink,
+        MediaTransform transform)
+    {
+        if (sink is IWpfNativeTransformCommandSink nativeSink
+            && WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out var nativeTransform))
+        {
+            nativeSink.PushNativeTransform(nativeTransform);
+            return;
+        }
+
+        WpfManagedCommandSinkBridge.PushTransform(sink, transform);
+    }
+
+    public static void PushTransform(
+        IWpfCompositionCommandSink sink,
+        Matrix4x4 transform)
+    {
+        if (sink is IWpfNativeTransformCommandSink nativeSink)
+        {
+            nativeSink.PushNativeTransform(transform);
+            return;
+        }
+
+        if (WpfReflectionResourceResolver.TryCreateManagedMatrixTransform(transform, out var mediaTransform))
+        {
+            WpfManagedCommandSinkBridge.PushTransform(sink, mediaTransform);
+            return;
+        }
+
+        sink.PushNoOpScope();
+    }
 }
 
 internal static class WpfManagedCommandSinkBridge
@@ -110,5 +145,13 @@ internal static class WpfManagedCommandSinkBridge
         return sink.PushDrawingCache(bounds.HasValue
             ? new System.Windows.Rect(bounds.Value.X, bounds.Value.Y, bounds.Value.Width, bounds.Value.Height)
             : null);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void PushTransform(
+        IWpfCompositionCommandSink sink,
+        MediaTransform transform)
+    {
+        sink.PushTransform(transform);
     }
 }

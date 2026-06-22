@@ -5587,6 +5587,12 @@ public sealed class WpfManagedProjectGraphTests
             "Composition",
             "Mil",
             "WpfReflectionDrawingReplay.cs");
+        var wpfPortableCommandSinkBridgePath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfPortableCommandSinkBridge.cs");
         var proGpuWpfDrawingFramePath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -5696,6 +5702,7 @@ public sealed class WpfManagedProjectGraphTests
         var wpfCompositionDrawingContext = File.ReadAllText(wpfCompositionDrawingContextPath);
         var wpfObjectRenderDataDrawingContext = File.ReadAllText(wpfObjectRenderDataDrawingContextPath);
         var wpfReflectionDrawingReplay = File.ReadAllText(wpfReflectionDrawingReplayPath);
+        var wpfPortableCommandSinkBridge = File.ReadAllText(wpfPortableCommandSinkBridgePath);
         var proGpuWpfDrawingFrame = File.ReadAllText(proGpuWpfDrawingFramePath);
         var proGpuWpfWindowHost = File.ReadAllText(proGpuWpfWindowHostPath);
         var wpfCompositionDrawingContextTests = File.ReadAllText(wpfCompositionDrawingContextTestsPath);
@@ -6507,6 +6514,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TypeNameEndsWith(brush, \"DrawingBrush\")", wpfReflectionDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("TypeNameEndsWith(brush, \"VisualBrush\")", wpfReflectionDrawingReplay, StringComparison.Ordinal);
         Assert.Contains("TryReplayTileBrushFill(brushValue!", wpfReflectionDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableCommandSinkBridge.PushTransform(sink, relativeTransform)", wpfReflectionDrawingReplay, StringComparison.Ordinal);
+        Assert.Contains("WpfPortableCommandSinkBridge.PushTransform(_sink, transform)", wpfCompositionDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("nativeSink.PushNativeTransform(nativeTransform)", wpfPortableCommandSinkBridge, StringComparison.Ordinal);
+        Assert.Contains("nativeSink.PushNativeTransform(transform)", wpfPortableCommandSinkBridge, StringComparison.Ordinal);
+        Assert.Contains("TryCreateManagedMatrixTransform(transform, out var mediaTransform)", wpfPortableCommandSinkBridge, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TryCreateManagedMatrixTransform(", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("matrixTransformType = typeof(MediaTransform).Assembly.GetType(\"System.Windows.Media.MatrixTransform\")", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("private readonly Func<object?, MediaImageSource?>? _imageSourceAdapter", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryReplayTileBrushRectangle(brush, pen, rectangle)", wpfCompositionDrawingContext, StringComparison.Ordinal);
@@ -6518,6 +6531,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("OpenCompositionDrawingContext(IWpfImageSourceAdapter? imageSourceAdapter)", proGpuWpfDrawingFrame, StringComparison.Ordinal);
         Assert.Contains("OpenCompositionDrawingContext(activeWpfImageSourceAdapter)", proGpuWpfWindowHost, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextReplaysMediaDrawingBrushBeforeGenericMediaBrushPath", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("\"PushNativeTransform\"", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("GeneratedDrawingContextReplaysMediaImageBrushRectangleThroughImageSourceAdapter", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("GeneratedDrawingContextFallsBackToGenericMediaBrushWhenTileReplayUnsupported", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextFallsBackToGenericMediaBrushWhenTileReplayUnsupported", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
@@ -7572,6 +7586,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RenderPassEncoderSetViewport", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(proGpuWpf, proGpuScene, \"external SDK\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPackagedHighDpiRetainedWpfPixelsFillPhysicalTarget(", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("packaged retained WPF HiDPI upper-left pixel", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("packaged retained WPF HiDPI lower-right pixel", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PushCurrentDirectory(nativeAssetRoot)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(proGpuScene, \"ProGPU.Scene.DrawingVisual\")", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7605,6 +7620,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RenderPassEncoderSetViewport", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(proGpuWpf, proGpuScene, \"SDK\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPackagedHighDpiRetainedWpfPixelsFillPhysicalTarget(", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("packaged retained WPF HiDPI upper-left pixel", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("packaged retained WPF HiDPI lower-right pixel", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PushCurrentDirectory(nativeAssetRoot)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(proGpuScene, \"ProGPU.Scene.DrawingVisual\")", runtimeHarnessProgram, StringComparison.Ordinal);

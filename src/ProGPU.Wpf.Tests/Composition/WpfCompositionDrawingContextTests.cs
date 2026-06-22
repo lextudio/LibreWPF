@@ -143,7 +143,8 @@ public sealed class WpfCompositionDrawingContextTests
 
         context.DrawRectangle(drawingBrush, null, new FakeRect(1, 2, 30, 40));
 
-        Assert.Equal(new[] { "PushClip", "PushTransform", "DrawGeometry", "Pop", "Pop" }, sink.Operations);
+        Assert.Equal(new[] { "PushClip", "PushNativeTransform", "DrawGeometry", "Pop", "Pop" }, sink.Operations);
+        Assert.Single(sink.NativeTransforms);
         var replayed = Assert.Single(sink.Geometries);
         Assert.Same(Brushes.Red, replayed.Brush);
         Assert.IsType<PathGeometry>(replayed.Geometry);
@@ -164,7 +165,8 @@ public sealed class WpfCompositionDrawingContextTests
 
         context.DrawRectangle(drawingBrush, null, new Rect(1, 2, 30, 40));
 
-        Assert.Equal(new[] { "PushClip", "PushTransform", "DrawGeometry", "Pop", "Pop" }, sink.Operations);
+        Assert.Equal(new[] { "PushClip", "PushNativeTransform", "DrawGeometry", "Pop", "Pop" }, sink.Operations);
+        Assert.Single(sink.NativeTransforms);
         var replayed = Assert.Single(sink.Geometries);
         Assert.Same(Brushes.Red, replayed.Brush);
         Assert.Contains(drawingBrush, sink.VisualDependencies);
@@ -240,7 +242,8 @@ public sealed class WpfCompositionDrawingContextTests
 
         context.DrawRectangle(drawingBrush, null, new FakeRect(1, 2, 30, 40));
 
-        Assert.Equal(new[] { "PushClip", "PushTransform", "DrawGeometry", "Pop", "Pop" }, sink.Operations);
+        Assert.Equal(new[] { "PushClip", "PushNativeTransform", "DrawGeometry", "Pop", "Pop" }, sink.Operations);
+        Assert.Single(sink.NativeTransforms);
         Assert.Single(sink.Geometries);
         Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 1), context.Result);
     }
@@ -497,13 +500,16 @@ public sealed class WpfCompositionDrawingContextTests
         Assert.Equal(new[]
         {
             "PushOpacity",
-            "PushTransform",
+            "PushNativeTransform",
             "PushGuidelineY1",
             "Pop",
             "Pop",
             "Pop",
             "Close"
         }, sink.Operations);
+        var nativeTransform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(4, nativeTransform.M41);
+        Assert.Equal(5, nativeTransform.M42);
         Assert.Equal(new WpfCompositionDrawingContextResult(6, 6, 0), context.Result);
     }
 

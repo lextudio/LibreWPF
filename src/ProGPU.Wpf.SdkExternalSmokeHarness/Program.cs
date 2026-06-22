@@ -9347,6 +9347,12 @@ internal static class Program
             AssertRgbaPixelIsRed(
                 pixels,
                 width: 840,
+                x: 20,
+                y: 20,
+                $"{descriptionPrefix} packaged retained WPF HiDPI upper-left pixel");
+            AssertRgbaPixelIsRed(
+                pixels,
+                width: 840,
                 x: 780,
                 y: 1560,
                 $"{descriptionPrefix} packaged retained WPF HiDPI lower-right pixel");

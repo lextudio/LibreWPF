@@ -239,13 +239,13 @@ internal static class WpfReflectionDrawingReplay
 
         if (relativeTransform != null)
         {
-            sink.PushTransform(relativeTransform);
+            WpfPortableCommandSinkBridge.PushTransform(sink, relativeTransform);
             popCount++;
         }
 
         if (brushTransform != null)
         {
-            sink.PushTransform(brushTransform);
+            WpfPortableCommandSinkBridge.PushTransform(sink, brushTransform);
             popCount++;
         }
 
@@ -265,7 +265,7 @@ internal static class WpfReflectionDrawingReplay
 
             if (TryCreateTileFlipTransform(stretchedTile, tileMode, out var tileTransform))
             {
-                sink.PushTransform(tileTransform);
+                WpfPortableCommandSinkBridge.PushTransform(sink, tileTransform);
                 tilePopCount++;
             }
 
@@ -329,13 +329,13 @@ internal static class WpfReflectionDrawingReplay
 
         if (relativeTransform != null)
         {
-            sink.PushTransform(relativeTransform);
+            WpfPortableCommandSinkBridge.PushTransform(sink, relativeTransform);
             popCount++;
         }
 
         if (brushTransform != null)
         {
-            sink.PushTransform(brushTransform);
+            WpfPortableCommandSinkBridge.PushTransform(sink, brushTransform);
             popCount++;
         }
 
@@ -356,7 +356,7 @@ internal static class WpfReflectionDrawingReplay
                 tilePopCount++;
             }
 
-            sink.PushTransform(transform);
+            WpfPortableCommandSinkBridge.PushTransform(sink, transform);
             tilePopCount++;
 
             if (hasSourceClip)
@@ -427,13 +427,13 @@ internal static class WpfReflectionDrawingReplay
 
         if (relativeTransform != null)
         {
-            sink.PushTransform(relativeTransform);
+            WpfPortableCommandSinkBridge.PushTransform(sink, relativeTransform);
             popCount++;
         }
 
         if (brushTransform != null)
         {
-            sink.PushTransform(brushTransform);
+            WpfPortableCommandSinkBridge.PushTransform(sink, brushTransform);
             popCount++;
         }
 
@@ -454,7 +454,7 @@ internal static class WpfReflectionDrawingReplay
                 tilePopCount++;
             }
 
-            sink.PushTransform(transform);
+            WpfPortableCommandSinkBridge.PushTransform(sink, transform);
             tilePopCount++;
 
             if (hasSourceClip)
@@ -536,7 +536,7 @@ internal static class WpfReflectionDrawingReplay
 
         if (transform != null)
         {
-            sink.PushTransform(transform);
+            WpfPortableCommandSinkBridge.PushTransform(sink, transform);
             popCount++;
         }
 

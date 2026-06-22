@@ -2712,6 +2712,7 @@ internal static class Program
                     ValidateFileDialogs(window);
                     ValidateClipboard();
                     ValidateFreezableResources();
+                    ValidateManagedFrameworkCollections();
                     ValidateManagedImagingObjects();
                     ValidateLooseXamlReaderWriter();
                     ValidateMarkupExtensions(window);
@@ -3742,6 +3743,106 @@ internal static class Program
                     AssertEqual(3, gradientCurrentValueClone.GradientStops.Count, "external SDK Freezable gradient current-value clone stop count");
                     AssertEqual(false, gradientCurrentValueClone.GradientStops.IsFrozen, "external SDK Freezable gradient current-value clone stop collection");
                     AssertEqual("#FF4B5E9D", gradientCurrentValueClone.GradientStops[2].Color.ToString(), "external SDK Freezable gradient current-value clone third stop color");
+                }
+
+                private static void ValidateManagedFrameworkCollections()
+                {
+                    Assembly presentationFramework = typeof(Window).Assembly;
+
+                    Type listOfObjectType = presentationFramework.GetType("MS.Internal.ListOfObject", throwOnError: true)!;
+                    var backingList = new System.Collections.ArrayList
+                    {
+                        "alpha",
+                        "bravo"
+                    };
+                    var list = RequireType<IList<object>>(
+                        Activator.CreateInstance(
+                            listOfObjectType,
+                            BindingFlags.Instance | BindingFlags.NonPublic,
+                            binder: null,
+                            args: new object[] { backingList },
+                            culture: null),
+                        "external SDK ListOfObject wrapper");
+                    AssertEqual(2, list.Count, "external SDK ListOfObject initial count");
+                    AssertEqual("alpha", list[0], "external SDK ListOfObject index getter");
+                    AssertEqual(1, list.IndexOf("bravo"), "external SDK ListOfObject index lookup");
+                    AssertEqual(false, list.IsReadOnly, "external SDK ListOfObject mutable state");
+                    list.Insert(1, "charlie");
+                    AssertEqual("charlie", backingList[1], "external SDK ListOfObject insert forwards to IList");
+                    list[2] = "delta";
+                    AssertEqual("delta", backingList[2], "external SDK ListOfObject index setter forwards to IList");
+                    list.Add("echo");
+                    AssertEqual(4, backingList.Count, "external SDK ListOfObject add forwards to IList");
+                    AssertEqual(true, list.Remove("charlie"), "external SDK ListOfObject remove existing state");
+                    AssertEqual(false, list.Contains("charlie"), "external SDK ListOfObject remove existing value");
+                    list.RemoveAt(0);
+                    AssertEqual("delta", backingList[0], "external SDK ListOfObject remove-at forwards to IList");
+                    object[] copiedListItems = new object[4];
+                    list.CopyTo(copiedListItems, 1);
+                    AssertEqual("delta", copiedListItems[1], "external SDK ListOfObject copy first value");
+                    AssertEqual("echo", copiedListItems[2], "external SDK ListOfObject copy second value");
+                    list.Clear();
+                    AssertEqual(0, backingList.Count, "external SDK ListOfObject clear forwards to IList");
+
+                    Type weakDictionaryType = presentationFramework
+                        .GetType("MS.Internal.WeakDictionary`2", throwOnError: true)!
+                        .MakeGenericType(typeof(object), typeof(string));
+                    var weakDictionary = RequireType<IDictionary<object, string>>(
+                        Activator.CreateInstance(weakDictionaryType),
+                        "external SDK WeakDictionary instance");
+                    object firstKey = new();
+                    object secondKey = new();
+                    weakDictionary.Add(firstKey, "first");
+                    weakDictionary.Add(secondKey, "second");
+                    AssertEqual(2, weakDictionary.Count, "external SDK WeakDictionary count");
+                    AssertEqual(true, weakDictionary.ContainsKey(firstKey), "external SDK WeakDictionary contains key");
+                    AssertEqual(true, weakDictionary.TryGetValue(secondKey, out string? secondValue), "external SDK WeakDictionary try-get state");
+                    AssertEqual("second", secondValue ?? string.Empty, "external SDK WeakDictionary try-get value");
+                    AssertEqual("updated", weakDictionary[firstKey] = "updated", "external SDK WeakDictionary index setter return");
+                    AssertEqual("updated", weakDictionary[firstKey], "external SDK WeakDictionary index getter");
+
+                    object[] copiedKeys = new object[3];
+                    weakDictionary.Keys.CopyTo(copiedKeys, 1);
+                    AssertEqual(null, copiedKeys[0], "external SDK WeakDictionary key copy offset sentinel");
+                    AssertEqual(true, copiedKeys.Contains(firstKey), "external SDK WeakDictionary key copy first key");
+                    AssertEqual(true, copiedKeys.Contains(secondKey), "external SDK WeakDictionary key copy second key");
+                    AssertEqual(true, weakDictionary.Keys.Contains(firstKey), "external SDK WeakDictionary key collection contains");
+                    AssertEqual(true, weakDictionary.Keys.IsReadOnly, "external SDK WeakDictionary key collection read-only");
+
+                    string[] copiedValues = new string[3];
+                    weakDictionary.Values.CopyTo(copiedValues, 1);
+                    AssertEqual(null, copiedValues[0], "external SDK WeakDictionary value copy offset sentinel");
+                    AssertEqual(true, copiedValues.Contains("updated"), "external SDK WeakDictionary value copy updated value");
+                    AssertEqual(true, copiedValues.Contains("second"), "external SDK WeakDictionary value copy second value");
+                    AssertEqual(true, weakDictionary.Values.Contains("updated"), "external SDK WeakDictionary value collection contains");
+                    AssertEqual(false, weakDictionary.Values.Contains("missing"), "external SDK WeakDictionary value collection missing state");
+                    AssertEqual(true, weakDictionary.Values.IsReadOnly, "external SDK WeakDictionary value collection read-only");
+
+                    bool keyAddThrew = false;
+                    try
+                    {
+                        weakDictionary.Keys.Add(new object());
+                    }
+                    catch (NotSupportedException)
+                    {
+                        keyAddThrew = true;
+                    }
+
+                    AssertEqual(true, keyAddThrew, "external SDK WeakDictionary key collection add rejected");
+
+                    bool valueClearThrew = false;
+                    try
+                    {
+                        weakDictionary.Values.Clear();
+                    }
+                    catch (NotSupportedException)
+                    {
+                        valueClearThrew = true;
+                    }
+
+                    AssertEqual(true, valueClearThrew, "external SDK WeakDictionary value collection clear rejected");
+                    AssertEqual(true, weakDictionary.Remove(secondKey), "external SDK WeakDictionary remove existing key");
+                    AssertEqual(false, weakDictionary.ContainsKey(secondKey), "external SDK WeakDictionary removed key state");
                 }
 
                 private static void ValidateManagedImagingObjects()

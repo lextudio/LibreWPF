@@ -98,6 +98,45 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void PresentationFrameworkInternalCollectionsImplementGenericContracts()
+    {
+        var listOfObjectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "MS",
+            "Internal",
+            "ListOfObject.cs");
+        var weakDictionaryPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "MS",
+            "Internal",
+            "WeakDictionary.cs");
+        var listOfObject = File.ReadAllText(listOfObjectPath);
+        var weakDictionary = File.ReadAllText(weakDictionaryPath);
+
+        Assert.DoesNotContain("throw new NotImplementedException", listOfObject, StringComparison.Ordinal);
+        Assert.DoesNotContain("throw new NotImplementedException", weakDictionary, StringComparison.Ordinal);
+        Assert.Contains("_list.Insert(index, item);", listOfObject, StringComparison.Ordinal);
+        Assert.Contains("_list.RemoveAt(index);", listOfObject, StringComparison.Ordinal);
+        Assert.Contains("_list[index] = value;", listOfObject, StringComparison.Ordinal);
+        Assert.Contains("_list.Add(item);", listOfObject, StringComparison.Ordinal);
+        Assert.Contains("get { return _list.IsReadOnly; }", listOfObject, StringComparison.Ordinal);
+        Assert.Contains("_list.Remove(item);", listOfObject, StringComparison.Ordinal);
+        Assert.Contains("throw new NotSupportedException();", weakDictionary, StringComparison.Ordinal);
+        Assert.Contains("public void CopyTo(KeyType[] array, int arrayIndex)", weakDictionary, StringComparison.Ordinal);
+        Assert.Contains("public bool Contains(ValueType item)", weakDictionary, StringComparison.Ordinal);
+        Assert.Contains("EqualityComparer<ValueType>.Default", weakDictionary, StringComparison.Ordinal);
+        Assert.Contains("public void CopyTo(ValueType[] array, int arrayIndex)", weakDictionary, StringComparison.Ordinal);
+        Assert.Contains("array[arrayIndex++] = key;", weakDictionary, StringComparison.Ordinal);
+        Assert.Contains("array[arrayIndex++] = value;", weakDictionary, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void XamlWriterSkipsEmptyRuntimeNames()
     {
         var sourcePath = FindRepoPath(
@@ -6637,6 +6676,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK Freezable gradient stop collection frozen state", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Freezable gradient clone mutable stop offset", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Freezable gradient current-value clone stop collection", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateManagedFrameworkCollections()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("MS.Internal.ListOfObject", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ListOfObject insert forwards to IList", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ListOfObject clear forwards to IList", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("MS.Internal.WeakDictionary`2", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK WeakDictionary key collection contains", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK WeakDictionary value collection contains", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK WeakDictionary key collection add rejected", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK WeakDictionary value collection clear rejected", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Media.Imaging;", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateManagedImagingObjects()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("BitmapSource.Create(", externalSdkHarnessProgram, StringComparison.Ordinal);

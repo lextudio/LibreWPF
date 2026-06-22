@@ -645,6 +645,11 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private static bool TryForwardDropToWindow(object window, WpfDragDropEventArgs e)
     {
+        if (TryProcessPortableDragDrop(window, e))
+        {
+            return true;
+        }
+
         var windowType = window.GetType();
         var dropMethod = FindInstanceMethod(windowType, "OnPortableDrop", typeof(WpfDragDropEventArgs));
         if (dropMethod != null)
@@ -668,6 +673,54 @@ public sealed class WpfPortableWindowActivation : IDisposable
         if (filesMethod != null)
         {
             filesMethod.Invoke(window, new object[] { e.Data.Files.ToArray() });
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryProcessPortableDragDrop(object window, WpfDragDropEventArgs e)
+    {
+        Type? serviceType = FindPortableWindowActivationServiceType(window);
+        if (serviceType == null)
+        {
+            return false;
+        }
+
+        foreach (var method in serviceType.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+        {
+            if (!string.Equals(method.Name, "ProcessDragDrop", StringComparison.Ordinal) ||
+                method.ReturnType != typeof(int))
+            {
+                continue;
+            }
+
+            var parameters = method.GetParameters();
+            if (parameters.Length != 7 ||
+                !parameters[0].ParameterType.IsAssignableFrom(window.GetType()) ||
+                parameters[1].ParameterType != typeof(string[]) ||
+                parameters[2].ParameterType != typeof(string) ||
+                parameters[3].ParameterType != typeof(double) ||
+                parameters[4].ParameterType != typeof(double) ||
+                parameters[5].ParameterType != typeof(int) ||
+                parameters[6].ParameterType != typeof(int))
+            {
+                continue;
+            }
+
+            var acceptedEffect = (int)method.Invoke(
+                obj: null,
+                parameters: new object?[]
+                {
+                    window,
+                    e.Data.Files.ToArray(),
+                    e.Data.Text,
+                    e.X,
+                    e.Y,
+                    (int)e.AllowedEffects,
+                    (int)e.AcceptedEffect
+                })!;
+            e.AcceptedEffect = (WpfDragDropEffects)acceptedEffect;
             return true;
         }
 

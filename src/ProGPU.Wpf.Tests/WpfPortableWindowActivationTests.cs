@@ -429,6 +429,39 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void HostDragDropUsesPortableWindowActivationServiceBeforeFallback()
+    {
+        System.Windows.PortableWindowActivationService.Reset();
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakePortableServiceDropWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        var args = new WpfDragDropEventArgs(
+            WpfDragDropEventKind.Drop,
+            new WpfDragDropData(new[] { "/tmp/a.txt" }, "portable text"),
+            WpfDragDropEffects.Copy | WpfDragDropEffects.Move,
+            WpfDragDropEffects.Copy,
+            x: 12,
+            y: 24);
+        RaiseHostDragDropEvent(host, args);
+
+        Assert.Equal(0, window.DropCount);
+        Assert.Equal(1, System.Windows.PortableWindowActivationService.DropCount);
+        Assert.Equal(new[] { "/tmp/a.txt" }, System.Windows.PortableWindowActivationService.LastFiles);
+        Assert.Equal("portable text", System.Windows.PortableWindowActivationService.LastText);
+        Assert.Equal(12, System.Windows.PortableWindowActivationService.LastX);
+        Assert.Equal(24, System.Windows.PortableWindowActivationService.LastY);
+        Assert.Equal((int)(WpfDragDropEffects.Copy | WpfDragDropEffects.Move), System.Windows.PortableWindowActivationService.LastAllowedEffects);
+        Assert.Equal((int)WpfDragDropEffects.Copy, System.Windows.PortableWindowActivationService.LastAcceptedEffect);
+        Assert.Equal(WpfDragDropEffects.Move, args.AcceptedEffect);
+    }
+
+    [Fact]
     public void HostDragDropForwardsFilesToPortableFileDropFallback()
     {
         using var host = new ProGpuWpfWindowHost();
@@ -701,6 +734,17 @@ public sealed class WpfPortableWindowActivationTests
         {
             DropCount++;
             LastDropArgs = e;
+            e.AcceptedEffect = WpfDragDropEffects.Move;
+        }
+    }
+
+    private sealed class FakePortableServiceDropWindow : System.Windows.IPortableWindowActivationServiceTestTarget
+    {
+        public int DropCount { get; private set; }
+
+        private void OnPortableDrop(WpfDragDropEventArgs e)
+        {
+            DropCount++;
             e.AcceptedEffect = WpfDragDropEffects.Move;
         }
     }

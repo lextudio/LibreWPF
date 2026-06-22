@@ -645,7 +645,10 @@ internal static class Program
                 xmlns:sys="clr-namespace:System;assembly=System.Runtime"
                 Title="External SDK App"
                 Width="320"
-                Height="200">
+                Height="200"
+                AllowDrop="True"
+                PreviewDrop="OnExternalPreviewDrop"
+                Drop="OnExternalDrop">
                 <Window.Resources>
                     <DataTemplate x:Key="ExternalGroupHeaderTemplate">
                         <TextBlock
@@ -1932,6 +1935,28 @@ internal static class Program
 
                 public string? LastExternalTunnelRoutedEventName { get; private set; }
 
+                public int ExternalPreviewDropCount { get; private set; }
+
+                public int ExternalDropCount { get; private set; }
+
+                public string? LastExternalDropText { get; private set; }
+
+                public int LastExternalDropFileCount { get; private set; }
+
+                public string? LastExternalDropFirstFile { get; private set; }
+
+                public string? LastExternalDropAllowedEffects { get; private set; }
+
+                public string? LastExternalDropEffects { get; private set; }
+
+                public string? LastExternalDropRoutedEventName { get; private set; }
+
+                public string? LastExternalPreviewDropRoutedEventName { get; private set; }
+
+                public double LastExternalDropX { get; private set; }
+
+                public double LastExternalDropY { get; private set; }
+
                 public int ExternalLoadedStoryboardTextLoadedCount { get; private set; }
 
                 public string? LastExternalLoadedStoryboardTextRoutedEventName { get; private set; }
@@ -2192,6 +2217,32 @@ internal static class Program
                     LastExternalTunnelSenderName = (sender as FrameworkElement)?.Name;
                     LastExternalTunnelOriginalSourceName = (e.OriginalSource as FrameworkElement)?.Name;
                     LastExternalTunnelRoutedEventName = e.RoutedEvent?.Name;
+                }
+
+                private void OnExternalPreviewDrop(object sender, DragEventArgs e)
+                {
+                    ExternalPreviewDropCount++;
+                    LastExternalPreviewDropRoutedEventName = e.RoutedEvent?.Name;
+                    LastExternalDropAllowedEffects = e.AllowedEffects.ToString();
+                }
+
+                private void OnExternalDrop(object sender, DragEventArgs e)
+                {
+                    ExternalDropCount++;
+                    LastExternalDropText = e.Data.GetDataPresent(DataFormats.UnicodeText)
+                        ? e.Data.GetData(DataFormats.UnicodeText) as string
+                        : e.Data.GetData(DataFormats.Text) as string;
+                    var files = e.Data.GetData(DataFormats.FileDrop) as string[];
+                    LastExternalDropFileCount = files?.Length ?? 0;
+                    LastExternalDropFirstFile = files?.FirstOrDefault();
+                    LastExternalDropAllowedEffects = e.AllowedEffects.ToString();
+                    LastExternalDropRoutedEventName = e.RoutedEvent?.Name;
+                    Point position = e.GetPosition(this);
+                    LastExternalDropX = position.X;
+                    LastExternalDropY = position.Y;
+                    e.Effects = DragDropEffects.Move;
+                    LastExternalDropEffects = e.Effects.ToString();
+                    e.Handled = true;
                 }
 
                 private void OnExternalLoadedStoryboardTextLoaded(object sender, RoutedEventArgs e)
@@ -2720,6 +2771,7 @@ internal static class Program
                     ValidateBindings(window);
                     ValidateInputManagers(window);
                     ValidateBindingGroup(window);
+                    ValidatePortableDragDrop(window);
                     ValidateRoutedEvents(window);
                     ValidateDependencyProperties(window);
                     ValidateStylesAndTemplates(window);
@@ -6345,6 +6397,41 @@ internal static class Program
                     AssertEqual("ExternalTunnel", window.LastExternalTunnelRoutedEventName, "external SDK custom tunnel routed event name from args");
                     AssertEqual("ExternalRoutedEventPanel", tunnelPanelSenderName, "external SDK custom tunnel AddHandler panel sender");
                     AssertEqual("ExternalRoutedEventControl", tunnelPanelOriginalSourceName, "external SDK custom tunnel AddHandler original source");
+                }
+
+                private static void ValidatePortableDragDrop(MainWindow window)
+                {
+                    Type serviceType = typeof(Window).Assembly.GetType("System.Windows.PortableWindowActivationService", throwOnError: true)!;
+                    MethodInfo processDragDrop = serviceType.GetMethod(
+                        "ProcessDragDrop",
+                        BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
+                        ?? throw new InvalidOperationException("Expected portable window activation service to expose ProcessDragDrop.");
+
+                    var allowedEffects = DragDropEffects.Copy | DragDropEffects.Move;
+                    object? result = processDragDrop.Invoke(
+                        null,
+                        [
+                            window,
+                            new[] { "/tmp/external-sdk-drop.txt" },
+                            "external SDK drop text",
+                            14.0,
+                            28.0,
+                            (int)allowedEffects,
+                            (int)DragDropEffects.Copy
+                        ]);
+
+                    AssertEqual((int)DragDropEffects.Move, (int)result!, "external SDK portable drag/drop accepted effect");
+                    AssertEqual(1, window.ExternalPreviewDropCount, "external SDK portable drag/drop preview count");
+                    AssertEqual(1, window.ExternalDropCount, "external SDK portable drag/drop drop count");
+                    AssertEqual("PreviewDrop", window.LastExternalPreviewDropRoutedEventName, "external SDK portable drag/drop preview event");
+                    AssertEqual("Drop", window.LastExternalDropRoutedEventName, "external SDK portable drag/drop event");
+                    AssertEqual("external SDK drop text", window.LastExternalDropText, "external SDK portable drag/drop text");
+                    AssertEqual(1, window.LastExternalDropFileCount, "external SDK portable drag/drop file count");
+                    AssertEqual("/tmp/external-sdk-drop.txt", window.LastExternalDropFirstFile, "external SDK portable drag/drop first file");
+                    AssertEqual(allowedEffects.ToString(), window.LastExternalDropAllowedEffects, "external SDK portable drag/drop allowed effects");
+                    AssertEqual(DragDropEffects.Move.ToString(), window.LastExternalDropEffects, "external SDK portable drag/drop handler effect");
+                    AssertEqual(14.0, window.LastExternalDropX, "external SDK portable drag/drop x");
+                    AssertEqual(28.0, window.LastExternalDropY, "external SDK portable drag/drop y");
                 }
 
                 private static void ValidateDependencyProperties(MainWindow window)

@@ -202,6 +202,14 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Media",
             "PortableMediaContextRenderService.cs");
+        var dragDropPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "DragDrop.cs");
         var presentationCoreProjectPath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -269,6 +277,7 @@ public sealed class WpfManagedProjectGraphTests
 
         var mediaContext = File.ReadAllText(mediaContextPath);
         var renderService = File.ReadAllText(renderServicePath);
+        var dragDrop = File.ReadAllText(dragDropPath);
         var presentationCoreProject = File.ReadAllText(presentationCoreProjectPath);
         var activationService = File.ReadAllText(activationServicePath);
         var proGpuActivation = File.ReadAllText(proGpuActivationPath);
@@ -319,12 +328,21 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("typeof(Func<object, bool>)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryDragMove()", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.TryBeginDragMove()", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("internal static DragDropEffects ProcessPortableDrop", dragDrop, StringComparison.Ordinal);
+        Assert.Contains("RaiseDragEvent(\n                DragDrop.DropEvent", dragDrop, StringComparison.Ordinal);
+        Assert.Contains("internal static int ProcessDragDrop(", activationService, StringComparison.Ordinal);
+        Assert.Contains("DragDrop.ProcessPortableDrop(", activationService, StringComparison.Ordinal);
+        Assert.Contains("TryProcessPortableDragDrop(window, e)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("\"ProcessDragDrop\"", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("public bool TryBeginDragMove()", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("PlatformServices.WindowDecorations.TryBeginDragMove(_window)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("public int Width => _clientWidth;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("public int Height => _clientHeight;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal void SetInitialClientSize(int width, int height)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("SetClientSizeCore(width, height, updatePortablePresentationSource: false)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("private int _requestedLogicalClientWidth = -1;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_requestedLogicalClientWidth = _clientWidth;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_requestedLogicalClientHeight = _clientHeight;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal RenderSurfaceGeometry LastResolvedRenderSurfaceGeometry", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ResolveCurrentRenderSurfaceGeometry()", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ResolveRenderSurfaceGeometry(", proGpuHost, StringComparison.Ordinal);
@@ -339,6 +357,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private int GetCachedLogicalClientWidth()", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("private int GetCachedLogicalClientHeight()", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_portablePresentationSourceClientWidth > 0", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_requestedLogicalClientWidth > 0", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_requestedLogicalClientHeight > 0", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var logicalSize = ResolveLogicalClientSize(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var logicalWidth = (uint)Math.Max(1, clientWidth);", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var logicalHeight = (uint)Math.Max(1, clientHeight);", proGpuHost, StringComparison.Ordinal);
@@ -377,9 +397,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("HighDpiRetainedWpfLayerRendersAcrossPhysicalFramebuffer", proGpuDrawingFrameTests, StringComparison.Ordinal);
         Assert.Contains("HighDpiSourceDrawingLayerRendersAcrossPhysicalFramebuffer", proGpuDrawingFrameTests, StringComparison.Ordinal);
         Assert.Contains("NativeResizeUsesPortablePresentationSourceLogicalCacheWhenHostCacheWasPhysical", proGpuWindowHostTests, StringComparison.Ordinal);
+        Assert.Contains("NativeResizeRestoresRequestedDipsWhenStartupNativeCacheWasPolluted", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("SetClientSizeSynchronizesBoundPortablePresentationSourceImmediately", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("SetInitialClientSizeCachesLogicalSizeWithoutPortableSourceRelayout", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("TryAttachSynchronizesInitialWindowShapeBeforeFirstRender", proGpuActivationTests, StringComparison.Ordinal);
+        Assert.Contains("HostDragDropUsesPortableWindowActivationServiceBeforeFallback", proGpuActivationTests, StringComparison.Ordinal);
         Assert.Contains("float dpiScale", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("Compositor.RenderScene(\n            SceneRootVisual,\n            logicalWidth,\n            logicalHeight,\n            pixelWidth,\n            pixelHeight,\n            dpiScale,\n            targetView)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("IWpfWindowDecorationService WindowDecorations", proGpuPlatformServices, StringComparison.Ordinal);
@@ -6969,6 +6991,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("OnExternalValidationError", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateBindings(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateInputManagers(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AllowDrop=\"True\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PreviewDrop=\"OnExternalPreviewDrop\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Drop=\"OnExternalDrop\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidatePortableDragDrop(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.PortableWindowActivationService", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"ProcessDragDrop\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalPreviewDropCount", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalDropCount", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK portable drag/drop accepted effect", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK portable drag/drop first file", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateBindingGroup(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateRoutedEvents(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateDependencyProperties(window)", externalSdkHarnessProgram, StringComparison.Ordinal);

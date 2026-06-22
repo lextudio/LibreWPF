@@ -535,6 +535,43 @@ namespace System.Windows
             return true;
         }
 
+        internal static DragDropEffects ProcessPortableDrop(
+            DependencyObject target,
+            IDataObject dataObject,
+            DragDropKeyStates dragDropKeyStates,
+            DragDropEffects allowedEffects,
+            DragDropEffects acceptedEffect,
+            Point targetPoint)
+        {
+            if (OperatingSystem.IsWindows() ||
+                target == null ||
+                dataObject == null ||
+                !OleDropTarget.IsPortableDropTarget(target) ||
+                !OleDropTarget.IsDataAvailable(dataObject))
+            {
+                return DragDropEffects.None;
+            }
+
+            int effects = (int)allowedEffects;
+            OleDropTarget.RaiseDragEvent(
+                DragDrop.DropEvent,
+                dataObject,
+                (int)dragDropKeyStates,
+                ref effects,
+                target,
+                targetPoint);
+
+            DragDropEffects result = (DragDropEffects)effects;
+            if (result == allowedEffects &&
+                acceptedEffect != DragDropEffects.None &&
+                (acceptedEffect & allowedEffects) == acceptedEffect)
+            {
+                result = acceptedEffect;
+            }
+
+            return result;
+        }
+
         #endregion Internal Methods
 
         //------------------------------------------------------
@@ -1119,14 +1156,26 @@ namespace System.Windows
         /// </summary>
         private void RaiseDragEvent(RoutedEvent dragEvent, int dragDropKeyStates, ref int effects, DependencyObject target, Point targetPoint)
         {
+            Invariant.Assert(_dataObject != null);
+            RaiseDragEvent(dragEvent, _dataObject, dragDropKeyStates, ref effects, target, targetPoint);
+        }
+
+        internal static void RaiseDragEvent(
+            RoutedEvent dragEvent,
+            IDataObject dataObject,
+            int dragDropKeyStates,
+            ref int effects,
+            DependencyObject target,
+            Point targetPoint)
+        {
             DragEventArgs dragEventArgs;
 
-            Invariant.Assert(_dataObject != null);
+            Invariant.Assert(dataObject != null);
             Invariant.Assert(target != null);
 
             // Create DragEvent argument to raise DragEnter events to the target.
             dragEventArgs = new DragEventArgs(
-                _dataObject,
+                dataObject,
                 (DragDropKeyStates)dragDropKeyStates,
                 (DragDropEffects)effects,
                 target,
@@ -1213,7 +1262,7 @@ namespace System.Windows
         /// <summary>
         /// Default drag enter during drag-and-drop operation.
         /// </summary>
-        private void OnDefaultDragEnter(DragEventArgs e)
+        private static void OnDefaultDragEnter(DragEventArgs e)
         {
             bool ctrlKeyDown;
 
@@ -1241,7 +1290,7 @@ namespace System.Windows
         /// <summary>
         /// Default drag over during drag-and-drop operation.
         /// </summary>
-        private void OnDefaultDragOver(DragEventArgs e)
+        private static void OnDefaultDragOver(DragEventArgs e)
         {
             bool ctrlKeyDown;
 
@@ -1396,7 +1445,7 @@ namespace System.Windows
         /// <summary>
         /// Check the available data.
         /// </summary>
-        private bool IsDataAvailable(IDataObject dataObject)
+        internal static bool IsDataAvailable(IDataObject dataObject)
         {
             bool dataAvailable;
 
@@ -1421,6 +1470,17 @@ namespace System.Windows
             return dataAvailable;
         }
 
+        internal static bool IsPortableDropTarget(DependencyObject target)
+        {
+            return target switch
+            {
+                UIElement uiElement => uiElement.AllowDrop,
+                ContentElement contentElement => contentElement.AllowDrop,
+                UIElement3D uiElement3D => uiElement3D.AllowDrop,
+                _ => false
+            };
+        }
+
         #endregion Private Methods
 
         //------------------------------------------------------
@@ -1442,4 +1502,3 @@ namespace System.Windows
 
     #endregion OleDropTarget
 }
-

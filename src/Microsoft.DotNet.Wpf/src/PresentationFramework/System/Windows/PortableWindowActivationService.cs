@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Collections.Specialized;
 using System.Threading;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -167,6 +168,38 @@ namespace System.Windows
             input.Handled = ProcessInput(source, input);
         }
 
+        internal static int ProcessDragDrop(
+            Window window,
+            string[] files,
+            string text,
+            double x,
+            double y,
+            int allowedEffects,
+            int acceptedEffect)
+        {
+            if (OperatingSystem.IsWindows() || window == null)
+            {
+                return (int)DragDropEffects.None;
+            }
+
+            DataObject dataObject = CreatePortableDragDropDataObject(files, text);
+            if (dataObject == null)
+            {
+                return (int)DragDropEffects.None;
+            }
+
+            DragDropEffects mappedAllowedEffects = ToDragDropEffects(allowedEffects, DragDropEffects.Copy);
+            DragDropEffects mappedAcceptedEffect = ToDragDropEffects(acceptedEffect, DragDropEffects.None);
+            DragDropEffects result = DragDrop.ProcessPortableDrop(
+                window,
+                dataObject,
+                DragDropKeyStates.None,
+                mappedAllowedEffects,
+                mappedAcceptedEffect,
+                new Point(ToInputCoordinate(x), ToInputCoordinate(y)));
+            return (int)result;
+        }
+
         private static bool ProcessInput(PresentationSource source, PortableInputEventArgs input)
         {
             InputManager inputManager = InputManager.UnsecureCurrent;
@@ -294,6 +327,34 @@ namespace System.Windows
             };
 
             return inputManager.ProcessInput(input);
+        }
+
+        private static DataObject CreatePortableDragDropDataObject(string[] files, string text)
+        {
+            var dataObject = new DataObject();
+            bool hasData = false;
+
+            if (files != null && files.Length > 0)
+            {
+                var fileDropList = new StringCollection();
+                fileDropList.AddRange(files);
+                dataObject.SetFileDropList(fileDropList);
+                hasData = true;
+            }
+
+            if (text != null)
+            {
+                dataObject.SetText(text);
+                hasData = true;
+            }
+
+            return hasData ? dataObject : null;
+        }
+
+        private static DragDropEffects ToDragDropEffects(int value, DragDropEffects fallback)
+        {
+            var effects = (DragDropEffects)value;
+            return DragDrop.IsValidDragDropEffects(effects) ? effects : fallback;
         }
 
         private static void UpdateModifierKeyStates(PortableKeyboardDevice keyboardDevice, PortableInputModifiers modifiers)

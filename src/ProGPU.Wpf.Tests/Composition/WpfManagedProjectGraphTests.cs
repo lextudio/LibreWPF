@@ -7064,6 +7064,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK loose XamlWriter round-trip FlowDocument paragraph name", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK loose XamlWriter round-trip FlowDocument table cell count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK loose XamlWriter round-trip FlowDocument TextRange second list item", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateThemeTemplateXamlWriterRoundTrip(window, themedControl)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("XamlWriter.Save(themeTemplate)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter serialized themed ControlTemplate root", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter round-trip themed ControlTemplate target", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK loose XamlWriter round-trip themed ControlTemplate component resource brush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateDataProviders(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ObjectDataProvider data", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ObjectDataProvider bound text", externalSdkHarnessProgram, StringComparison.Ordinal);

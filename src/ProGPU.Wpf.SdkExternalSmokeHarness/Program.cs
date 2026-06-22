@@ -2943,6 +2943,7 @@ internal static class Program
                     AssertEqual(2.0, themeRoot.BorderThickness.Top, "external SDK themed control border top");
                     AssertEqual(2.0, themeRoot.BorderThickness.Right, "external SDK themed control border right");
                     AssertEqual(2.0, themeRoot.BorderThickness.Bottom, "external SDK themed control border bottom");
+                    ValidateThemeTemplateXamlWriterRoundTrip(window, themedControl);
 
                     var frame = RequireType<Frame>(
                         window.FindName("ExternalFrame"),
@@ -6353,6 +6354,57 @@ internal static class Program
                     AssertContains("external writer table beta", flowDocumentText, "external SDK loose XamlWriter round-trip FlowDocument TextRange second table cell");
                     AssertContains("external writer first item", flowDocumentText, "external SDK loose XamlWriter round-trip FlowDocument TextRange first list item");
                     AssertContains("external writer second item", flowDocumentText, "external SDK loose XamlWriter round-trip FlowDocument TextRange second list item");
+                }
+
+                private static void ValidateThemeTemplateXamlWriterRoundTrip(Window owner, ExternalThemedControl themedControl)
+                {
+                    var themeTemplate = themedControl.Template
+                        ?? throw new InvalidOperationException("Expected external SDK themed control template before XamlWriter round-trip.");
+                    string themeTemplateSerialized = XamlWriter.Save(themeTemplate);
+                    AssertContains("ControlTemplate", themeTemplateSerialized, "external SDK loose XamlWriter serialized themed ControlTemplate");
+                    AssertContains("ExternalThemedControl", themeTemplateSerialized, "external SDK loose XamlWriter serialized themed ControlTemplate target type");
+                    AssertContains("ThemeRoot", themeTemplateSerialized, "external SDK loose XamlWriter serialized themed ControlTemplate root");
+                    AssertContains("ThemeText", themeTemplateSerialized, "external SDK loose XamlWriter serialized themed ControlTemplate text");
+
+                    var roundTrippedTemplate = RequireType<ControlTemplate>(
+                        XamlReader.Parse(themeTemplateSerialized),
+                        "external SDK loose XamlWriter round-trip themed ControlTemplate");
+                    AssertEqual(typeof(ExternalThemedControl), roundTrippedTemplate.TargetType, "external SDK loose XamlWriter round-trip themed ControlTemplate target");
+
+                    var roundTrippedControl = new ExternalThemedControl
+                    {
+                        Template = roundTrippedTemplate,
+                        Text = "External writer themed control",
+                        Background = new SolidColorBrush(Color.FromRgb(0x6B, 0x8F, 0x3A)),
+                        Foreground = new SolidColorBrush(Color.FromRgb(0x35, 0x6D, 0x9E)),
+                        Padding = new Thickness(5)
+                    };
+                    var host = RequireType<Panel>(
+                        owner.FindName("ExternalFocusPanel"),
+                        "external SDK themed ControlTemplate round-trip host panel");
+                    host.Children.Add(roundTrippedControl);
+                    try
+                    {
+                        roundTrippedControl.ApplyTemplate();
+                        DrainDispatcher();
+
+                        var roundTrippedThemeRoot = RequireType<Border>(
+                            roundTrippedTemplate.FindName("ThemeRoot", roundTrippedControl),
+                            "external SDK loose XamlWriter round-trip themed ControlTemplate root");
+                        var roundTrippedThemeText = RequireType<TextBlock>(
+                            roundTrippedTemplate.FindName("ThemeText", roundTrippedControl),
+                            "external SDK loose XamlWriter round-trip themed ControlTemplate text");
+
+                        AssertEqual("External writer themed control", roundTrippedThemeText.Text, "external SDK loose XamlWriter round-trip themed ControlTemplate text binding");
+                        AssertBrushColor(roundTrippedThemeRoot.Background, "#FF6B8F3A", "external SDK loose XamlWriter round-trip themed ControlTemplate background");
+                        AssertBrushColor(roundTrippedThemeRoot.BorderBrush, "#FF7A4EB2", "external SDK loose XamlWriter round-trip themed ControlTemplate component resource brush");
+                        AssertBrushColor(roundTrippedThemeText.Foreground, "#FF356D9E", "external SDK loose XamlWriter round-trip themed ControlTemplate foreground");
+                        AssertEqual(2.0, roundTrippedThemeRoot.BorderThickness.Left, "external SDK loose XamlWriter round-trip themed ControlTemplate border left");
+                    }
+                    finally
+                    {
+                        host.Children.Remove(roundTrippedControl);
+                    }
                 }
 
                 private static void ValidateDataProviders(MainWindow window)

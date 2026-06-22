@@ -1468,6 +1468,11 @@ internal static class Program
                         CommandParameter="ExternalCommandParameter"
                         Click="OnExternalCommandButtonClick"
                         Content="Run command" />
+                    <Button
+                        x:Name="ExternalRequeryCommandButton"
+                        Command="{Binding ExternalRequeryCommand}"
+                        CommandParameter="ExternalRequeryParameter"
+                        Content="Run requery command" />
                     <library:ExternalPanel
                         x:Name="ExternalPanel"
                         Caption="External SDK library panel" />
@@ -1592,6 +1597,8 @@ internal static class Program
                     "External SDK command",
                     nameof(ExternalCommand),
                     typeof(MainWindow));
+
+                public ExternalRequeryCommand ExternalRequeryCommand { get; } = new();
 
                 public MainWindow()
                 {
@@ -2135,6 +2142,48 @@ internal static class Program
                     new ExternalItem("Composite Alpha", "Framework"),
                     new ExternalItem("Composite Beta", "Rendering")
                 ];
+            }
+
+            public sealed class ExternalRequeryCommand : ICommand
+            {
+                public int CanExecuteProbeCount { get; private set; }
+
+                public int ExecuteCount { get; private set; }
+
+                public bool CanExecuteValue { get; set; }
+
+                public object? LastParameter { get; private set; }
+
+                public event EventHandler? CanExecuteChanged
+                {
+                    add
+                    {
+                        if (value != null)
+                        {
+                            CommandManager.RequerySuggested += value;
+                        }
+                    }
+
+                    remove
+                    {
+                        if (value != null)
+                        {
+                            CommandManager.RequerySuggested -= value;
+                        }
+                    }
+                }
+
+                public bool CanExecute(object? parameter)
+                {
+                    CanExecuteProbeCount++;
+                    return CanExecuteValue;
+                }
+
+                public void Execute(object? parameter)
+                {
+                    ExecuteCount++;
+                    LastParameter = parameter;
+                }
             }
 
             public sealed class ExternalRoutedEventControl : Button
@@ -6277,6 +6326,9 @@ internal static class Program
                     var commandButton = RequireType<Button>(
                         window.FindName("ExternalCommandButton"),
                         "external SDK command button");
+                    var requeryCommandButton = RequireType<Button>(
+                        window.FindName("ExternalRequeryCommandButton"),
+                        "external SDK requery command button");
                     var validationTextBox = RequireType<TextBox>(
                         window.FindName("ExternalValidationTextBox"),
                         "external SDK access-key target text box");
@@ -6330,6 +6382,31 @@ internal static class Program
                         .Execute(commandButton.CommandParameter, commandButton);
                     AssertEqual(buttonExecutedBefore + 1, window.ExternalCommandExecutedCount, "external SDK button command executed count");
                     AssertEqual("ExternalCommandParameter", window.LastExternalCommandParameter, "external SDK button command parameter");
+
+                    AssertEqual(window.ExternalRequeryCommand, requeryCommandButton.Command, "external SDK requery command binding");
+                    AssertEqual("ExternalRequeryParameter", requeryCommandButton.CommandParameter, "external SDK requery command parameter");
+                    window.ExternalRequeryCommand.CanExecuteValue = false;
+                    CommandManager.InvalidateRequerySuggested();
+                    DrainDispatcher();
+                    AssertEqual(false, requeryCommandButton.IsEnabled, "external SDK requery command disabled state");
+
+                    int requeryProbeBefore = window.ExternalRequeryCommand.CanExecuteProbeCount;
+                    window.ExternalRequeryCommand.CanExecuteValue = true;
+                    CommandManager.InvalidateRequerySuggested();
+                    DrainDispatcher();
+                    AssertEqual(true, requeryCommandButton.IsEnabled, "external SDK requery command enabled state");
+                    AssertAtLeast(
+                        requeryProbeBefore + 1,
+                        window.ExternalRequeryCommand.CanExecuteProbeCount,
+                        "external SDK requery command can-execute probe count");
+
+                    int requeryExecuteBefore = window.ExternalRequeryCommand.ExecuteCount;
+                    RequireType<ICommand>(
+                        requeryCommandButton.Command,
+                        "external SDK requery command interface")
+                        .Execute(requeryCommandButton.CommandParameter);
+                    AssertEqual(requeryExecuteBefore + 1, window.ExternalRequeryCommand.ExecuteCount, "external SDK requery command execute count");
+                    AssertEqual("ExternalRequeryParameter", window.ExternalRequeryCommand.LastParameter, "external SDK requery command last parameter");
                 }
 
                 private static void DrainDispatcher()

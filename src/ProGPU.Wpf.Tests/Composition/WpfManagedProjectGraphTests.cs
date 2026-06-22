@@ -6665,6 +6665,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalStandaloneAccessText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Text=\"_External standalone access\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Click=\"OnExternalCommandButtonClick\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalRequeryCommandButton", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{Binding ExternalRequeryCommand}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CommandManager.RequerySuggested += value", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CommandManager.InvalidateRequerySuggested()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK requery command enabled state", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK requery command execute count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateCommandsAndFocus(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window.CommandBindings.Count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window.InputBindings.Count", externalSdkHarnessProgram, StringComparison.Ordinal);

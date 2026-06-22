@@ -137,9 +137,82 @@ internal static class Program
         RequireFile(
             Path.Combine(appOutputRoot, LibraryAssemblyName + ".dll"),
             "SDK switch library assembly");
+        ValidateLocalProGpuPackagesMatchAvailableRepositoryBuilds(repoRoot, packageFeed);
         RequireOutputRuntimeAssets(appOutputRoot, packageFeed);
 
         return new SmokeInputs(repoRoot, appOutputRoot, smokeAssemblyPath, wpfRoot, proGpuRoot);
+    }
+
+    private static void ValidateLocalProGpuPackagesMatchAvailableRepositoryBuilds(string repoRoot, string packageFeed)
+    {
+        foreach (string assemblyName in ProGpuRuntimeAssemblies)
+        {
+            ValidateLocalPackageMatchesAvailableRepositoryBuild(
+                repoRoot,
+                packageFeed,
+                assemblyName,
+                assemblyName,
+                "net10.0");
+        }
+    }
+
+    private static void ValidateLocalPackageMatchesAvailableRepositoryBuild(
+        string repoRoot,
+        string packageFeed,
+        string packageId,
+        string assemblySimpleName,
+        string targetFramework)
+    {
+        string repositoryAssemblyPath = GetRepositoryProGpuAssemblyPath(repoRoot, assemblySimpleName);
+        if (!File.Exists(repositoryAssemblyPath))
+        {
+            return;
+        }
+
+        string packagePath = Path.Combine(packageFeed, $"{packageId}.{PackageVersion}.nupkg");
+        string packageEntryName = $"lib/{targetFramework}/{assemblySimpleName}.dll";
+
+        RequireFile(packagePath, $"{packageId} local package");
+
+        using ZipArchive package = ZipFile.OpenRead(packagePath);
+        ZipArchiveEntry entry = RequirePackageEntry(
+            package,
+            packageEntryName,
+            $"{packageId}/{assemblySimpleName} runtime assembly");
+
+        using Stream packageStream = entry.Open();
+        string packageHash = ComputeStreamSha256(packageStream);
+        string repositoryHash = ComputeFileSha256(repositoryAssemblyPath);
+        AssertEqual(
+            repositoryHash,
+            packageHash,
+            $"local {packageId} package matches repository Release {assemblySimpleName}.dll");
+    }
+
+    private static string GetRepositoryProGpuAssemblyPath(string repoRoot, string assemblySimpleName)
+    {
+        if (string.Equals(assemblySimpleName, "ProGPU.Wpf", StringComparison.Ordinal))
+        {
+            return Path.Combine(
+                repoRoot,
+                "src",
+                "ProGPU.Wpf",
+                "bin",
+                "Release",
+                "net10.0",
+                assemblySimpleName + ".dll");
+        }
+
+        return Path.Combine(
+            repoRoot,
+            "external",
+            "ProGPU",
+            "src",
+            assemblySimpleName,
+            "bin",
+            "Release",
+            "net10.0",
+            assemblySimpleName + ".dll");
     }
 
     private static void RequireOutputRuntimeAssets(string appOutputRoot, string packageFeed)

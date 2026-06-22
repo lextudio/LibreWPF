@@ -99,6 +99,7 @@ internal static class Program
             string packageFeed = Path.Combine(repoRoot, "artifacts", "packages", "Release", "NonShipping");
             RequireDirectory(packageFeed, "local package feed");
             ValidateSdkPackageLayout(packageFeed);
+            ValidateLocalProGpuPackagesMatchAvailableRepositoryBuilds(repoRoot, packageFeed);
 
             string workRoot = Path.Combine(Path.GetTempPath(), "ProGPU.Wpf.SdkExternalSmoke");
             string appProjectPath = PrepareExternalSdkApp(workRoot, packageFeed);
@@ -243,6 +244,78 @@ internal static class Program
                 publicKeyTokensByGroup.Add(expectation.PublicKeyTokenGroup, publicKeyToken);
             }
         }
+    }
+
+    private static void ValidateLocalProGpuPackagesMatchAvailableRepositoryBuilds(string repoRoot, string packageFeed)
+    {
+        foreach (string assemblyName in s_requiredProGpuRuntimeAssemblies)
+        {
+            ValidateLocalPackageMatchesAvailableRepositoryBuild(
+                repoRoot,
+                packageFeed,
+                assemblyName,
+                assemblyName,
+                "net10.0");
+        }
+    }
+
+    private static void ValidateLocalPackageMatchesAvailableRepositoryBuild(
+        string repoRoot,
+        string packageFeed,
+        string packageId,
+        string assemblySimpleName,
+        string targetFramework)
+    {
+        string repositoryAssemblyPath = GetRepositoryProGpuAssemblyPath(repoRoot, assemblySimpleName);
+        if (!File.Exists(repositoryAssemblyPath))
+        {
+            return;
+        }
+
+        string packagePath = Path.Combine(packageFeed, $"{packageId}.{SdkVersion}.nupkg");
+        string packageEntryName = $"lib/{targetFramework}/{assemblySimpleName}.dll";
+
+        RequireFile(packagePath, $"{packageId} local package");
+
+        using ZipArchive package = ZipFile.OpenRead(packagePath);
+        ZipArchiveEntry entry = RequirePackageEntry(
+            package,
+            packageEntryName,
+            $"{packageId}/{assemblySimpleName} runtime assembly");
+
+        using Stream packageStream = entry.Open();
+        string packageHash = ComputeStreamSha256(packageStream);
+        string repositoryHash = ComputeFileSha256(repositoryAssemblyPath);
+        AssertEqual(
+            repositoryHash,
+            packageHash,
+            $"local {packageId} package matches repository Release {assemblySimpleName}.dll");
+    }
+
+    private static string GetRepositoryProGpuAssemblyPath(string repoRoot, string assemblySimpleName)
+    {
+        if (string.Equals(assemblySimpleName, "ProGPU.Wpf", StringComparison.Ordinal))
+        {
+            return Path.Combine(
+                repoRoot,
+                "src",
+                "ProGPU.Wpf",
+                "bin",
+                "Release",
+                "net10.0",
+                assemblySimpleName + ".dll");
+        }
+
+        return Path.Combine(
+            repoRoot,
+            "external",
+            "ProGPU",
+            "src",
+            assemblySimpleName,
+            "bin",
+            "Release",
+            "net10.0",
+            assemblySimpleName + ".dll");
     }
 
     private static string PrepareExternalSdkApp(string workRoot, string packageFeed)

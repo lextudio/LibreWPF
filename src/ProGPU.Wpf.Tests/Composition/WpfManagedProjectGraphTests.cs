@@ -5667,6 +5667,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<ProGpuWpfReferenceMode Condition=\"'$(ProGpuWpfReferenceMode)' == '' And ('$(ProGpuWpfManagedReferenceRoot)' != '' Or '$(ProGpuReferenceRoot)' != '')\">LocalArtifacts</ProGpuWpfReferenceMode>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfManagedPackageId Condition=\"'$(ProGpuWpfManagedPackageId)' == ''\">Microsoft.DotNet.Wpf.GitHub</ProGpuWpfManagedPackageId>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfManagedPackageVersion Condition=\"'$(ProGpuWpfManagedPackageVersion)' == ''\">$(ProGpuWpfPackageVersion)</ProGpuWpfManagedPackageVersion>", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("ProGpuWpfClearMutablePackageOutputs", sdkProps, StringComparison.Ordinal);
+        Assert.Contains("Contains(`-dev`)", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfSilkNetVersion Condition=\"'$(ProGpuWpfSilkNetVersion)' == ''\">2.23.0</ProGpuWpfSilkNetVersion>", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfSystemIOPackagingVersion Condition=\"'$(ProGpuWpfSystemIOPackagingVersion)' == ''\">", sdkProps, StringComparison.Ordinal);
         Assert.Contains("<ProGpuWpfSystemWindowsExtensionsVersion Condition=\"'$(ProGpuWpfSystemWindowsExtensionsVersion)' == ''\">", sdkProps, StringComparison.Ordinal);
@@ -5724,6 +5726,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Condition=\"Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Fluent.dll')\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("Condition=\"Exists('$(_ProGpuReferenceRoot)ProGPU.Text.dll')\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkCopyLocalRuntimeAssets", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("_ProGpuWpfSdkClearMutablePackageOutputs", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("BeforeTargets=\"_ProGpuWpfSdkCopyPackageRuntimeAssets\"", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("$(ProGpuWpfClearMutablePackageOutputs)", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<_ProGpuWpfSdkMutablePackageOutput Include=\"$(TargetDir)ProGPU.Wpf.dll\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<_ProGpuWpfSdkMutablePackageOutput Include=\"$(TargetDir)ProGPU.Scene.dll\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<Delete Files=\"@(_ProGpuWpfSdkExistingMutablePackageOutput)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkCopyPackageRuntimeAssets", portableTargets, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkCopyNativeRuntimeAssets", portableTargets, StringComparison.Ordinal);
         Assert.Contains("DependsOnTargets=\"ResolveLockFileCopyLocalFiles\"", portableTargets, StringComparison.Ordinal);
@@ -6424,6 +6432,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("LibraryAssemblyName = \"ProGPU.Wpf.SdkSwitchLibrary\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK switch library assembly", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RequireOutputRuntimeAssets(appOutputRoot, packageFeed)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLocalProGpuPackagesMatchAvailableRepositoryBuilds(repoRoot, packageFeed)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetRepositoryProGpuAssemblyPath(repoRoot, assemblySimpleName)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("local {packageId} package matches repository Release {assemblySimpleName}.dll", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, \"ProGPU.Wpf\", \"ProGPU.Wpf\", \"net10.0\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, \"ProGPU.Scene\", \"ProGPU.Scene\", \"net10.0\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK switch output {assemblySimpleName}.dll matches local {packageId} package", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -7373,6 +7384,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK app compiled page source", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("NuGet.config", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateSdkPackageLayout(packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateLocalProGpuPackagesMatchAvailableRepositoryBuilds(repoRoot, packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetRepositoryProGpuAssemblyPath(repoRoot, assemblySimpleName)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("local {packageId} package matches repository Release {assemblySimpleName}.dll", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePackageAssemblyIdentities(packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateExternalOutput(outputRoot, packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, \"ProGPU.Wpf\", \"ProGPU.Wpf\", \"net10.0\")", externalSdkHarnessProgram, StringComparison.Ordinal);

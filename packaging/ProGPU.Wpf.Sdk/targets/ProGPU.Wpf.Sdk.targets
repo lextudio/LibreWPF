@@ -108,6 +108,37 @@
           SkipUnchangedFiles="true" />
   </Target>
 
+  <Target Name="_ProGpuWpfSdkClearMutablePackageOutputs"
+          BeforeTargets="_ProGpuWpfSdkCopyPackageRuntimeAssets"
+          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'Package' And '$(ProGpuWpfClearMutablePackageOutputs)' == 'true'">
+    <ItemGroup>
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)WindowsBase.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)System.Xaml.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)PresentationCore.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)PresentationFramework.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)PresentationUI.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ReachFramework.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)UIAutomationTypes.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)UIAutomationProvider.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)System.Windows.Input.Manipulations.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)System.Windows.Primitives.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)PresentationFramework.Aero2.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)PresentationFramework.Fluent.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ProGPU.Wpf.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ProGPU.Backend.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ProGPU.Scene.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ProGPU.Vector.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ProGPU.Text.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ProGPU.Compute.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ProGPU.Transpiler.dll" />
+      <_ProGpuWpfSdkExistingMutablePackageOutput
+        Include="@(_ProGpuWpfSdkMutablePackageOutput)"
+        Condition="Exists('%(_ProGpuWpfSdkMutablePackageOutput.Identity)')" />
+    </ItemGroup>
+
+    <Delete Files="@(_ProGpuWpfSdkExistingMutablePackageOutput)" />
+  </Target>
+
   <Target Name="_ProGpuWpfSdkCopyPackageRuntimeAssets"
           DependsOnTargets="ResolveLockFileCopyLocalFiles"
           AfterTargets="CopyFilesToOutputDirectory"

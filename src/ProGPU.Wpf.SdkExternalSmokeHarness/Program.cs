@@ -717,6 +717,17 @@ internal static class Program
                         </CollectionViewSource.LiveSortingProperties>
                     </CollectionViewSource>
                     <CollectionViewSource
+                        x:Key="ExternalLiveGroupedItems"
+                        Source="{Binding ExternalLiveItems}"
+                        IsLiveGroupingRequested="True">
+                        <CollectionViewSource.GroupDescriptions>
+                            <PropertyGroupDescription PropertyName="Kind" />
+                        </CollectionViewSource.GroupDescriptions>
+                        <CollectionViewSource.LiveGroupingProperties>
+                            <sys:String>Kind</sys:String>
+                        </CollectionViewSource.LiveGroupingProperties>
+                    </CollectionViewSource>
+                    <CollectionViewSource
                         x:Key="ExternalCurrencyItems"
                         Source="{Binding ExternalItems}" />
                     <Style
@@ -1250,6 +1261,14 @@ internal static class Program
                         x:Name="ExternalLiveSortedItemsList"
                         DisplayMemberPath="Name"
                         ItemsSource="{Binding Source={StaticResource ExternalLiveSortedItems}}" />
+                    <ListBox
+                        x:Name="ExternalLiveGroupedItemsList"
+                        DisplayMemberPath="Name"
+                        ItemsSource="{Binding Source={StaticResource ExternalLiveGroupedItems}}">
+                        <ListBox.GroupStyle>
+                            <GroupStyle HeaderTemplate="{StaticResource ExternalGroupHeaderTemplate}" />
+                        </ListBox.GroupStyle>
+                    </ListBox>
                     <ListBox
                         x:Name="ExternalCurrencyItemsList"
                         DisplayMemberPath="Name"
@@ -7074,6 +7093,36 @@ internal static class Program
                     AssertEqual(window.ExternalLiveItems[2], liveSortedViewItems[0], "external SDK live sorted CollectionViewSource live resort first item");
                     AssertEqual(window.ExternalLiveItems[2], liveSortedList.Items[0], "external SDK live sorted ListBox live resort first item");
 
+                    var liveGroupedItems = RequireType<CollectionViewSource>(
+                        window.FindResource("ExternalLiveGroupedItems"),
+                        "external SDK live grouped CollectionViewSource");
+                    var liveGroupedList = RequireType<ListBox>(
+                        window.FindName("ExternalLiveGroupedItemsList"),
+                        "external SDK live grouped items list");
+                    AssertEqual(true, liveGroupedItems.IsLiveGroupingRequested == true, "external SDK live grouped CollectionViewSource live grouping requested");
+                    AssertEqual(1, liveGroupedItems.GroupDescriptions.Count, "external SDK live grouped CollectionViewSource group count");
+                    var liveGroupDescription = RequireType<PropertyGroupDescription>(
+                        liveGroupedItems.GroupDescriptions[0],
+                        "external SDK live grouped CollectionViewSource group description");
+                    AssertEqual("Kind", liveGroupDescription.PropertyName, "external SDK live grouped CollectionViewSource group property");
+                    AssertEqual(1, liveGroupedItems.LiveGroupingProperties.Count, "external SDK live grouped CollectionViewSource live property count");
+                    AssertEqual("Kind", liveGroupedItems.LiveGroupingProperties[0], "external SDK live grouped CollectionViewSource live property");
+                    AssertEqual(liveGroupedItems.View, liveGroupedList.ItemsSource, "external SDK live grouped ListBox ItemsSource view");
+                    AssertEqual(1, liveGroupedList.GroupStyle.Count, "external SDK live grouped ListBox GroupStyle count");
+                    AssertEqual(groupHeaderTemplate, liveGroupedList.GroupStyle[0].HeaderTemplate, "external SDK live grouped ListBox header template");
+                    var liveGroups = liveGroupedItems.View.Groups
+                        ?? throw new InvalidOperationException("Expected external SDK live grouped CollectionViewSource groups.");
+                    AssertEqual(3, liveGroups.Count, "external SDK live grouped CollectionViewSource initial group count");
+                    AssertEqual(1, GetGroupItemCount(liveGroups, "Framework"), "external SDK live grouped CollectionViewSource initial Framework group count");
+                    AssertEqual(1, GetGroupItemCount(liveGroups, "Data"), "external SDK live grouped CollectionViewSource initial Data group count");
+                    window.ExternalLiveItems[2].Kind = "Framework";
+                    DrainDispatcher();
+                    liveGroups = liveGroupedItems.View.Groups
+                        ?? throw new InvalidOperationException("Expected external SDK live grouped CollectionViewSource groups after change.");
+                    AssertEqual(2, liveGroups.Count, "external SDK live grouped CollectionViewSource live regroup count");
+                    AssertEqual(2, GetGroupItemCount(liveGroups, "Framework"), "external SDK live grouped CollectionViewSource live regroup Framework count");
+                    AssertEqual(false, ContainsGroup(liveGroups, "Data"), "external SDK live grouped CollectionViewSource live regroup removed Data group");
+
                     var currencyItems = RequireType<CollectionViewSource>(
                         window.FindResource("ExternalCurrencyItems"),
                         "external SDK currency CollectionViewSource");
@@ -7596,6 +7645,20 @@ internal static class Program
                     }
 
                     return false;
+                }
+
+                private static int GetGroupItemCount(System.Collections.IEnumerable groups, string name)
+                {
+                    foreach (object group in groups)
+                    {
+                        if (group is CollectionViewGroup collectionViewGroup
+                            && string.Equals(collectionViewGroup.Name?.ToString(), name, StringComparison.Ordinal))
+                        {
+                            return collectionViewGroup.ItemCount;
+                        }
+                    }
+
+                    return 0;
                 }
 
                 private static void AssertBrushColor(Brush brush, string expected, string description)

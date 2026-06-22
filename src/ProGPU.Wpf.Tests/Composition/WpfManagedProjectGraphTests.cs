@@ -6397,6 +6397,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<CollectionViewSource.LiveSortingProperties>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalLiveFilteredItemsList", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalLiveSortedItemsList", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalLiveGroupedItems", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("IsLiveGroupingRequested=\"True\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<CollectionViewSource.LiveGroupingProperties>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<sys:String>Kind</sys:String>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalLiveGroupedItemsList", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalCurrencyItems", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("IsSynchronizedWithCurrentItem=\"True\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalCompositeItemsList", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6973,6 +6978,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("window.ExternalLiveItems[1].IsActive = true", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK live sorted CollectionViewSource live resort first item", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window.ExternalLiveItems[2].Name = \"Live Aaron\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK live grouped CollectionViewSource live regroup Framework count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("window.ExternalLiveItems[2].Kind = \"Framework\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK live grouped CollectionViewSource live regroup removed Data group", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new MainWindow()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window.FindName(\"ExternalThemedControl\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("themedControl.Template.FindName(\"ThemeRoot\", themedControl)", externalSdkHarnessProgram, StringComparison.Ordinal);

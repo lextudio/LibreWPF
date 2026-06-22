@@ -1616,6 +1616,21 @@ internal static class Program
                             </InputScope>
                         </InputMethod.InputScope>
                     </TextBox>
+                    <TextBox
+                        x:Name="ExternalExceptionValidationTextBox"
+                        Validation.Error="OnExternalValidationError">
+                        <TextBox.Text>
+                            <Binding
+                                Path="ExceptionValidationText"
+                                Mode="TwoWay"
+                                NotifyOnValidationError="True"
+                                UpdateSourceTrigger="Explicit">
+                                <Binding.ValidationRules>
+                                    <ExceptionValidationRule />
+                                </Binding.ValidationRules>
+                            </Binding>
+                        </TextBox.Text>
+                    </TextBox>
                     <StackPanel
                         x:Name="ExternalBindingGroupPanel"
                         Margin="0,4,0,0">
@@ -1828,6 +1843,26 @@ internal static class Program
                 public string SelectedExternalKind { get; set; } = "Rendering";
 
                 public string ValidationText { get; set; } = "valid external text";
+
+                private string _exceptionValidationText = "exception valid initial";
+
+                public string ExceptionValidationText
+                {
+                    get => _exceptionValidationText;
+                    set
+                    {
+                        if (string.Equals(value, "external exception trigger", StringComparison.Ordinal))
+                        {
+                            throw new InvalidOperationException("External exception validation rejected value.");
+                        }
+
+                        if (_exceptionValidationText != value)
+                        {
+                            _exceptionValidationText = value;
+                            OnPropertyChanged(nameof(ExceptionValidationText));
+                        }
+                    }
+                }
 
                 public string ExternalBindingTransferText { get; set; } = "external transfer initial";
 
@@ -6704,6 +6739,38 @@ internal static class Program
                     AssertEqual("recovered external text", window.ValidationText, "external SDK validation source update");
                     AssertAtLeast(textChangedBeforeValidation + 2, window.ExternalValidationTextChangedCount, "external SDK TextBox validation TextChanged recovery count");
                     AssertEqual("recovered external text", window.LastExternalValidationText, "external SDK TextBox validation TextChanged recovery text");
+
+                    var exceptionValidationTextBox = RequireType<TextBox>(
+                        window.FindName("ExternalExceptionValidationTextBox"),
+                        "external SDK exception validation text box");
+                    var exceptionBindingExpression = exceptionValidationTextBox.GetBindingExpression(TextBox.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK exception validation BindingExpression.");
+                    AssertEqual("ExceptionValidationText", exceptionBindingExpression.ParentBinding.Path.Path, "external SDK exception validation binding path");
+                    AssertEqual(true, exceptionBindingExpression.ParentBinding.NotifyOnValidationError, "external SDK exception validation binding NotifyOnValidationError");
+                    AssertEqual(1, exceptionBindingExpression.ParentBinding.ValidationRules.OfType<ExceptionValidationRule>().Count(), "external SDK ExceptionValidationRule count");
+                    AssertEqual("exception valid initial", exceptionValidationTextBox.Text, "external SDK exception validation initial target");
+                    AssertEqual("exception valid initial", window.ExceptionValidationText, "external SDK exception validation initial source");
+                    int exceptionValidationAddedBefore = window.ExternalValidationErrorAddedCount;
+                    int exceptionValidationRemovedBefore = window.ExternalValidationErrorRemovedCount;
+                    exceptionValidationTextBox.Text = "external exception trigger";
+                    exceptionBindingExpression.UpdateSource();
+                    AssertEqual(true, Validation.GetHasError(exceptionValidationTextBox), "external SDK exception validation failure state");
+                    AssertEqual(1, Validation.GetErrors(exceptionValidationTextBox).Count, "external SDK exception validation failure error count");
+                    AssertEqual("exception valid initial", window.ExceptionValidationText, "external SDK exception validation rejected source value");
+                    AssertAtLeast(exceptionValidationAddedBefore + 1, window.ExternalValidationErrorAddedCount, "external SDK exception validation error added count");
+                    AssertEqual(exceptionValidationRemovedBefore, window.ExternalValidationErrorRemovedCount, "external SDK exception validation removed count before recovery");
+                    AssertEqual("Added", window.LastExternalValidationErrorAction, "external SDK exception validation error added action");
+                    AssertContains(window.LastExternalValidationErrorContent ?? string.Empty, "External exception validation rejected value.", "external SDK exception validation error content");
+                    AssertEqual("ExternalExceptionValidationTextBox", window.LastExternalValidationErrorSenderName, "external SDK exception validation error added sender");
+                    exceptionValidationTextBox.Text = "exception recovered";
+                    exceptionBindingExpression.UpdateSource();
+                    AssertEqual(false, Validation.GetHasError(exceptionValidationTextBox), "external SDK exception validation recovery state");
+                    AssertEqual(0, Validation.GetErrors(exceptionValidationTextBox).Count, "external SDK exception validation recovery error count");
+                    AssertEqual("exception recovered", window.ExceptionValidationText, "external SDK exception validation recovered source value");
+                    AssertAtLeast(exceptionValidationRemovedBefore + 1, window.ExternalValidationErrorRemovedCount, "external SDK exception validation error removed count");
+                    AssertEqual("Removed", window.LastExternalValidationErrorAction, "external SDK exception validation error removed action");
+                    AssertContains(window.LastExternalValidationErrorContent ?? string.Empty, "External exception validation rejected value.", "external SDK exception validation removed error content");
+                    AssertEqual("ExternalExceptionValidationTextBox", window.LastExternalValidationErrorSenderName, "external SDK exception validation error removed sender");
 
                     int textChangedBeforeEditing = window.ExternalValidationTextChangedCount;
                     validationTextBox.Text = "external editing text";

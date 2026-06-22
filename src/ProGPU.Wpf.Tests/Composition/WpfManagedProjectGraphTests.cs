@@ -5879,6 +5879,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<RestoreForce>true</RestoreForce>", smokeDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<RestoreForceEvaluate>true</RestoreForceEvaluate>", smokeDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkSwitchClearMutablePackageCache", smokeDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.DoesNotContain("Condition=\"'$(MSBuildProjectName)' == 'ProGPU.Wpf.SdkSwitchSmoke'\"", smokeDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("progpu.wpf/$(ProGpuWpfSdkSwitchPackageVersion)", smokeDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("progpu.scene/$(ProGpuWpfSdkSwitchPackageVersion)", smokeDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("microsoft.dotnet.wpf.github/$(ProGpuWpfSdkSwitchPackageVersion)", smokeDirectoryBuildProps, StringComparison.Ordinal);
@@ -5898,6 +5899,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<RestoreForce>true</RestoreForce>", libraryDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<RestoreForceEvaluate>true</RestoreForceEvaluate>", libraryDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkSwitchClearMutablePackageCache", libraryDirectoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("Condition=\"'$(MSBuildProjectName)' == 'ProGPU.Wpf.SdkSwitchSmoke'\"", libraryDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("progpu.wpf/$(ProGpuWpfSdkSwitchPackageVersion)", libraryDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("progpu.scene/$(ProGpuWpfSdkSwitchPackageVersion)", libraryDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("microsoft.dotnet.wpf.github/$(ProGpuWpfSdkSwitchPackageVersion)", libraryDirectoryBuildProps, StringComparison.Ordinal);
@@ -5979,6 +5981,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Executed=\"OnSmokeCommandExecuted\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<Window.InputBindings>", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CommandParameter=\"input binding payload\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<MouseBinding", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Gesture=\"LeftDoubleClick\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CommandParameter=\"mouse binding payload\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"OnActionButtonClick\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<Button.ToolTip>", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ActionToolTip\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -7345,6 +7350,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK Binding SourceUpdated property", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Binding TargetUpdated routed event name", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK validation source update", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalExceptionValidationTextBox", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<ExceptionValidationRule />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("public string ExceptionValidationText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("External exception validation rejected value.", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ExceptionValidationRule count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK exception validation rejected source value", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK exception validation recovered source value", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("bindingGroup.ValidateWithoutUpdate()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("bindingGroup.CommitEdit()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BindingGroup rejected commit", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7732,8 +7744,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("FindName\", \"ActionButton\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"CommandButton\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Window.CommandBindings", runtimeHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("Window.InputBindings", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetProperty(window, \"InputBindings\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("window input binding count", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window key binding command parameter", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("window mouse binding command parameter", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("window mouse binding gesture action", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("window mouse binding command executed parameter", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("command button routed command CanExecute", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window routed command execution count", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"EventSetterButton\"", runtimeHarnessProgram, StringComparison.Ordinal);

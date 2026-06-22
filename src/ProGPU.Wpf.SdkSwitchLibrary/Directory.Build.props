@@ -16,7 +16,9 @@
     <RestoreForceEvaluate>true</RestoreForceEvaluate>
   </PropertyGroup>
 
-  <Target Name="_ProGpuWpfSdkSwitchClearMutablePackageCache" BeforeTargets="Restore">
+  <Target Name="_ProGpuWpfSdkSwitchClearMutablePackageCache"
+          BeforeTargets="Restore"
+          Condition="'$(MSBuildProjectName)' == 'ProGPU.Wpf.SdkSwitchSmoke'">
     <ItemGroup>
       <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/microsoft.dotnet.wpf.github/$(ProGpuWpfSdkSwitchPackageVersion)" />
       <_ProGpuWpfSdkSwitchMutablePackageCache Include="$(RestorePackagesPath)/microsoft.dotnet.wpf.github.debug/$(ProGpuWpfSdkSwitchPackageVersion)" />

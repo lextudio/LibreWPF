@@ -1562,14 +1562,24 @@ internal static class Program
         AssertEqual("SmokeCommand", GetProperty(commandBindingCommand, "Name"), "window command binding command name");
 
         object inputBindings = GetProperty(window, "InputBindings");
-        object keyBinding = EnumerateObjects(inputBindings).FirstOrDefault()
-            ?? throw new InvalidOperationException("Expected an SDK smoke Window.InputBindings entry.");
+        object[] windowInputBindings = EnumerateObjects(inputBindings).ToArray();
+        AssertEqual(2, windowInputBindings.Length, "window input binding count");
+        object keyBinding = windowInputBindings[0];
         object keyBindingCommand = GetProperty(keyBinding, "Command");
         AssertType(keyBindingCommand, "System.Windows.Input.RoutedUICommand", "window key binding command");
         AssertEqual("SmokeCommand", GetProperty(keyBindingCommand, "Name"), "window key binding command name");
         AssertEqual("input binding payload", GetProperty(keyBinding, "CommandParameter"), "window key binding command parameter");
         AssertEqual("F6", GetProperty(keyBinding, "Key").ToString() ?? string.Empty, "window key binding key");
         AssertEqual("Control", GetProperty(keyBinding, "Modifiers").ToString() ?? string.Empty, "window key binding modifiers");
+        object mouseBinding = windowInputBindings[1];
+        object mouseBindingCommand = GetProperty(mouseBinding, "Command");
+        AssertType(mouseBindingCommand, "System.Windows.Input.RoutedUICommand", "window mouse binding command");
+        AssertEqual("SmokeCommand", GetProperty(mouseBindingCommand, "Name"), "window mouse binding command name");
+        AssertEqual("mouse binding payload", GetProperty(mouseBinding, "CommandParameter"), "window mouse binding command parameter");
+        object mouseGesture = GetProperty(mouseBinding, "Gesture");
+        AssertType(mouseGesture, "System.Windows.Input.MouseGesture", "window mouse binding gesture");
+        AssertEqual("LeftDoubleClick", GetProperty(mouseGesture, "MouseAction").ToString() ?? string.Empty, "window mouse binding gesture action");
+        AssertEqual("None", GetProperty(mouseGesture, "Modifiers").ToString() ?? string.Empty, "window mouse binding gesture modifiers");
 
         object commandButton = Invoke(window, "FindName", "CommandButton");
         AssertType(commandButton, "System.Windows.Controls.Button", "command button");
@@ -1594,7 +1604,8 @@ internal static class Program
             if (!object.Equals("routed command payload", lastCommandParameter)
                 && !object.Equals("menu command payload", lastCommandParameter)
                 && !object.Equals("context menu command payload", lastCommandParameter)
-                && !object.Equals("toolbar command payload", lastCommandParameter))
+                && !object.Equals("toolbar command payload", lastCommandParameter)
+                && !object.Equals("mouse binding payload", lastCommandParameter))
             {
                 throw new InvalidOperationException($"Unexpected smoke command parameter '{lastCommandParameter}'.");
             }
@@ -1602,6 +1613,9 @@ internal static class Program
 
         AssertAtLeast(1, GetProperty(window, "SmokeCommandCanExecuteCount"), "window routed command CanExecute count");
         AssertAtLeast(1, GetProperty(window, "SmokeCommandExecutionCount"), "window routed command execution count");
+        InvokeVoid(mouseBindingCommand, "Execute", GetProperty(mouseBinding, "CommandParameter"), window);
+        AssertEqual("mouse binding payload", GetProperty(window, "LastSmokeCommandParameter"), "window mouse binding command executed parameter");
+        AssertEqual("mouse binding payload", GetProperty(commandStatus, "Text"), "command status after mouse binding command");
 
         object eventSetterButton = Invoke(window, "FindName", "EventSetterButton");
         AssertType(eventSetterButton, "System.Windows.Controls.Button", "event setter button");

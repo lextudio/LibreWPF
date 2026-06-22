@@ -22,6 +22,10 @@
             Modifiers="Control"
             Command="{x:Static local:MainWindow.SmokeCommand}"
             CommandParameter="input binding payload" />
+        <MouseBinding
+            Gesture="LeftDoubleClick"
+            Command="{x:Static local:MainWindow.SmokeCommand}"
+            CommandParameter="mouse binding payload" />
     </Window.InputBindings>
 
     <Window.Resources>

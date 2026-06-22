@@ -7862,10 +7862,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("frame.GoBack()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("frame.GoForward()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("frame.CanGoForward", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalFrameNavigationCanceledCount", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("e.Cancel = true", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("frame.Navigate(new Uri(\"ExternalBlockedPage.xaml\", UriKind.Relative))", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK canceled frame navigated count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK canceled navigation retained page", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK initial frame navigation mode", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK second frame content type", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK back frame navigation mode", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK forward frame navigation mode", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK canceled frame navigation mode", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK app merged resource dictionary source", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK app compiled page source", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("NuGet.config", externalSdkHarnessProgram, StringComparison.Ordinal);

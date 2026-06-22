@@ -2724,6 +2724,8 @@ internal static class Program
 
                 public int ExternalFrameLoadCompletedCount { get; private set; }
 
+                public int ExternalFrameNavigationCanceledCount { get; private set; }
+
                 public string? LastExternalFrameNavigatingUri { get; private set; }
 
                 public string? LastExternalFrameNavigatedUri { get; private set; }
@@ -2733,6 +2735,10 @@ internal static class Program
                 public string? LastExternalFrameNavigationMode { get; private set; }
 
                 public string? LastExternalFrameContentType { get; private set; }
+
+                public string? LastExternalFrameCanceledUri { get; private set; }
+
+                public string? LastExternalFrameCanceledNavigationMode { get; private set; }
 
                 public int ExternalWindowClosingCount { get; private set; }
 
@@ -3027,6 +3033,13 @@ internal static class Program
                     ExternalFrameNavigatingCount++;
                     LastExternalFrameNavigatingUri = e.Uri?.ToString();
                     LastExternalFrameNavigationMode = e.NavigationMode.ToString();
+                    if (LastExternalFrameNavigatingUri?.EndsWith("ExternalBlockedPage.xaml", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        e.Cancel = true;
+                        ExternalFrameNavigationCanceledCount++;
+                        LastExternalFrameCanceledUri = LastExternalFrameNavigatingUri;
+                        LastExternalFrameCanceledNavigationMode = LastExternalFrameNavigationMode;
+                    }
                 }
 
                 private void OnExternalFrameNavigated(object sender, NavigationEventArgs e)
@@ -3931,6 +3944,27 @@ internal static class Program
                     AssertEqual(typeof(ExternalSecondPage).FullName, window.LastExternalFrameContentType, "external SDK forward frame content type");
                     AssertEqual(true, frame.CanGoBack, "external SDK frame can go back after forward");
                     AssertEqual(false, frame.CanGoForward, "external SDK frame cannot go forward after forward");
+
+                    int navigatingCountBeforeCanceled = window.ExternalFrameNavigatingCount;
+                    int navigatedCountBeforeCanceled = window.ExternalFrameNavigatedCount;
+                    int loadCompletedCountBeforeCanceled = window.ExternalFrameLoadCompletedCount;
+                    int canceledCountBeforeCanceled = window.ExternalFrameNavigationCanceledCount;
+                    frame.Navigate(new Uri("ExternalBlockedPage.xaml", UriKind.Relative));
+                    DrainDispatcher();
+
+                    RequireType<ExternalSecondPage>(
+                        frame.Content,
+                        "external SDK canceled navigation retained page");
+                    AssertAtLeast(navigatingCountBeforeCanceled + 1, window.ExternalFrameNavigatingCount, "external SDK canceled frame navigating count");
+                    AssertEqual(navigatedCountBeforeCanceled, window.ExternalFrameNavigatedCount, "external SDK canceled frame navigated count");
+                    AssertEqual(loadCompletedCountBeforeCanceled, window.ExternalFrameLoadCompletedCount, "external SDK canceled frame load completed count");
+                    AssertEqual(canceledCountBeforeCanceled + 1, window.ExternalFrameNavigationCanceledCount, "external SDK canceled frame count");
+                    AssertEndsWith(window.LastExternalFrameNavigatingUri, "ExternalBlockedPage.xaml", "external SDK canceled frame navigating URI");
+                    AssertEndsWith(window.LastExternalFrameCanceledUri, "ExternalBlockedPage.xaml", "external SDK canceled frame canceled URI");
+                    AssertEqual("New", window.LastExternalFrameCanceledNavigationMode, "external SDK canceled frame navigation mode");
+                    AssertEqual(typeof(ExternalSecondPage).FullName, window.LastExternalFrameContentType, "external SDK canceled frame retained content type");
+                    AssertEqual(true, frame.CanGoBack, "external SDK frame can go back after canceled navigation");
+                    AssertEqual(false, frame.CanGoForward, "external SDK frame cannot go forward after canceled navigation");
                 }
 
                 public static void ValidateApplicationRunAndShutdown()

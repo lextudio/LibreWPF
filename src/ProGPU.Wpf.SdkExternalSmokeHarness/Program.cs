@@ -79,7 +79,7 @@ internal static class Program
         new("Microsoft.DotNet.Wpf.GitHub", "System.Windows.Primitives", "net11.0", "WPF"),
         new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Aero2", "net11.0", "WPF"),
         new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Fluent", "net11.0", "WPF"),
-        new("ProGPU.Wpf", "ProGPU.Wpf", "net10.0", string.Empty),
+        new("ProGPU.Wpf", "ProGPU.Wpf", "net10.0", "ProGPU"),
         new("ProGPU.Backend", "ProGPU.Backend", "net10.0", "ProGPU"),
         new("ProGPU.Scene", "ProGPU.Scene", "net10.0", "ProGPU"),
         new("ProGPU.Vector", "ProGPU.Vector", "net10.0", "ProGPU"),

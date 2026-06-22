@@ -5170,6 +5170,15 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf",
             "ProGPU.Wpf.csproj");
+        var proGpuWpfAssemblyInfoPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Properties",
+            "AssemblyInfo.cs");
+        var proGpuWpfTestsProjectPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "ProGPU.Wpf.Tests.csproj");
         var proGpuWpfCommandSinkPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -5242,6 +5251,8 @@ public sealed class WpfManagedProjectGraphTests
         var smokeGenericThemeXaml = File.ReadAllText(smokeGenericThemeXamlPath);
         var smokeAssemblyInfo = File.ReadAllText(smokeAssemblyInfoPath);
         var proGpuWpfProject = File.ReadAllText(proGpuWpfProjectPath);
+        var proGpuWpfAssemblyInfo = File.ReadAllText(proGpuWpfAssemblyInfoPath);
+        var proGpuWpfTestsProject = File.ReadAllText(proGpuWpfTestsProjectPath);
         var proGpuWpfCommandSink = File.ReadAllText(proGpuWpfCommandSinkPath);
         var wpfMilRenderDataDecoder = File.ReadAllText(wpfMilRenderDataDecoderPath);
         var wpfReflectionResourceResolver = File.ReadAllText(wpfReflectionResourceResolverPath);
@@ -5945,6 +5956,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CreateGreeting(string prefix, int value)", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("return $\"{prefix}:{value}\";", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>", proGpuWpfProject, StringComparison.Ordinal);
+        Assert.Contains("<SignAssembly>true</SignAssembly>", proGpuWpfProject, StringComparison.Ordinal);
+        Assert.Contains(@"<AssemblyOriginatorKeyFile>..\..\external\ProGPU\eng\ProGPU.snk</AssemblyOriginatorKeyFile>", proGpuWpfProject, StringComparison.Ordinal);
+        Assert.Contains("<SignAssembly>true</SignAssembly>", proGpuWpfTestsProject, StringComparison.Ordinal);
+        Assert.Contains(@"<AssemblyOriginatorKeyFile>..\..\external\ProGPU\eng\ProGPU.snk</AssemblyOriginatorKeyFile>", proGpuWpfTestsProject, StringComparison.Ordinal);
+        Assert.Contains("InternalsVisibleTo(", proGpuWpfAssemblyInfo, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.Tests, PublicKey=", proGpuWpfAssemblyInfo, StringComparison.Ordinal);
+        Assert.Contains("c891cb91", proGpuWpfAssemblyInfo, StringComparison.Ordinal);
         Assert.Contains("PresentationCore\\PresentationCore.csproj\" PrivateAssets=\"all\"", proGpuWpfProject, StringComparison.Ordinal);
         Assert.Contains("ReadReplayPoint", wpfMilRenderDataDecoder, StringComparison.Ordinal);
         Assert.Contains("ReadReplayRect", wpfMilRenderDataDecoder, StringComparison.Ordinal);
@@ -6738,6 +6756,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePackageAssemblyIdentities(packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Wpf.Sdk.{SdkVersion}.nupkg", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new(\"Microsoft.DotNet.Wpf.GitHub\", \"PresentationCore\", \"net11.0\", \"WPF\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new(\"ProGPU.Wpf\", \"ProGPU.Wpf\", \"net10.0\", \"ProGPU\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new(\"ProGPU.Scene\", \"ProGPU.Scene\", \"net10.0\", \"ProGPU\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssemblyName.GetAssemblyName(tempPath)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Expected {description} assembly to have a public key token.", externalSdkHarnessProgram, StringComparison.Ordinal);

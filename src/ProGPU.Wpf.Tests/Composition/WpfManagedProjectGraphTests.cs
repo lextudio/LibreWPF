@@ -6712,6 +6712,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalRuntimeMergedResourceText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalRuntimeMergedText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalRuntimeMergedBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateRuntimeNameScope(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RegisterName(\"ExternalRuntimeRegisteredButton\", registeredButton)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("UnregisterName(\"ExternalRuntimeRegisteredButton\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK runtime namescope duplicate preserves original", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK runtime namescope replacement object", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalImplicitStylePanel", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Style TargetType=\"{x:Type TextBlock}\">", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Value=\"external implicit style active\"", externalSdkHarnessProgram, StringComparison.Ordinal);

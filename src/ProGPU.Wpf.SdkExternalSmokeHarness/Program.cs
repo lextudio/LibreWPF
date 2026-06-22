@@ -3602,6 +3602,7 @@ internal static class Program
                         "external SDK user-control named TextBlock");
                     AssertEqual("External SDK library panel", captionText.Text, "external SDK user-control ElementName binding");
                     ValidateApplicationResources(window);
+                    ValidateRuntimeNameScope(window);
                     ValidatePackResources();
                     ValidateSystemParameters(window);
                     ValidateWindowChrome(window);
@@ -4250,6 +4251,40 @@ internal static class Program
                     AssertEqual(3, selectorItems.Items.Count, "external SDK item template selector collection count after mutation");
                     AssertEqual(defaultTemplate, selector.SelectTemplate(window.ExternalItems[2], selectorItems), "external SDK item template selector default selected template");
                     AssertTemplateText(defaultTemplate, window.ExternalItems[2], "Default template Data", "external SDK default selected template text");
+                }
+
+                private static void ValidateRuntimeNameScope(MainWindow window)
+                {
+                    var registeredButton = new Button
+                    {
+                        Content = "External runtime registered button"
+                    };
+
+                    window.RegisterName("ExternalRuntimeRegisteredButton", registeredButton);
+                    AssertEqual(registeredButton, window.FindName("ExternalRuntimeRegisteredButton"), "external SDK runtime namescope registered object");
+
+                    try
+                    {
+                        window.RegisterName("ExternalRuntimeRegisteredButton", new Button());
+                        throw new InvalidOperationException("Expected external SDK runtime namescope duplicate registration to throw.");
+                    }
+                    catch (ArgumentException)
+                    {
+                    }
+
+                    AssertEqual(registeredButton, window.FindName("ExternalRuntimeRegisteredButton"), "external SDK runtime namescope duplicate preserves original");
+
+                    window.UnregisterName("ExternalRuntimeRegisteredButton");
+                    AssertEqual(null, window.FindName("ExternalRuntimeRegisteredButton"), "external SDK runtime namescope unregister clears object");
+
+                    var replacementButton = new Button
+                    {
+                        Content = "External runtime replacement button"
+                    };
+
+                    window.RegisterName("ExternalRuntimeRegisteredButton", replacementButton);
+                    AssertEqual(replacementButton, window.FindName("ExternalRuntimeRegisteredButton"), "external SDK runtime namescope replacement object");
+                    window.UnregisterName("ExternalRuntimeRegisteredButton");
                 }
 
                 private static void ValidatePackResources()

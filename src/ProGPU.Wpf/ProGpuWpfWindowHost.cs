@@ -50,6 +50,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private int _requestedLogicalClientHeight = -1;
     private int? _windowLeft;
     private int? _windowTop;
+    private bool _windowTopmost;
 
     internal readonly record struct RenderSurfaceGeometry(
         uint LogicalWidth,
@@ -72,6 +73,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _requestedLogicalClientHeight = _clientHeight;
         _windowLeft = _options.Left;
         _windowTop = _options.Top;
+        _windowTopmost = _options.Topmost;
         _wpfRenderScheduler = CreateDefaultRenderScheduler(_platformServices, out _ownsRenderScheduler);
         AttachDispatcherService(_platformServices.Dispatcher);
         AttachRenderScheduler(_wpfRenderScheduler);
@@ -106,6 +108,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public int? Left => _window?.Position.X ?? _windowLeft;
 
     public int? Top => _window?.Position.Y ?? _windowTop;
+
+    public bool Topmost => _window?.TopMost ?? _windowTopmost;
 
     public object? PortablePresentationSource => _portablePresentationSourceBridge?.Source;
 
@@ -272,6 +276,19 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         WpfRenderScheduler.RequestRender();
     }
 
+    public void SetTopmost(bool topmost)
+    {
+        ThrowIfDisposed();
+
+        _windowTopmost = topmost;
+        if (_window != null)
+        {
+            _window.TopMost = topmost;
+        }
+
+        WpfRenderScheduler.RequestRender();
+    }
+
     internal void SetInitialClientSize(int width, int height)
     {
         ThrowIfDisposed();
@@ -424,6 +441,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         windowOptions.IsEventDriven = _options.IsEventDriven;
         windowOptions.IsVisible = _isHostVisible;
         windowOptions.WindowState = ToSilkWindowState(_windowState);
+        windowOptions.TopMost = _windowTopmost;
         if (_windowLeft.HasValue && _windowTop.HasValue)
         {
             windowOptions.Position = new Vector2D<int>(_windowLeft.Value, _windowTop.Value);

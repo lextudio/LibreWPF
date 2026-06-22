@@ -18,6 +18,7 @@ namespace System.Windows
         private static Action<object, string> _setTitle;
         private static Action<object, double, double> _setClientSize;
         private static Action<object, double, double> _setPosition;
+        private static Action<object, bool> _setTopmost;
         private static Action<object> _close;
         private static Action<object> _run;
         private static Action<object> _dispose;
@@ -39,6 +40,7 @@ namespace System.Windows
             Action<object, string> setTitle = null,
             Action<object, double, double> setClientSize = null,
             Action<object, double, double> setPosition = null,
+            Action<object, bool> setTopmost = null,
             Action<object> close = null,
             Action<object> run = null,
             Action<object> dispose = null,
@@ -53,6 +55,7 @@ namespace System.Windows
             Volatile.Write(ref _setTitle, setTitle);
             Volatile.Write(ref _setClientSize, setClientSize);
             Volatile.Write(ref _setPosition, setPosition);
+            Volatile.Write(ref _setTopmost, setTopmost);
             Volatile.Write(ref _close, close);
             Volatile.Write(ref _run, run);
             Volatile.Write(ref _dispose, dispose);
@@ -68,6 +71,7 @@ namespace System.Windows
             Volatile.Write(ref _setTitle, null);
             Volatile.Write(ref _setClientSize, null);
             Volatile.Write(ref _setPosition, null);
+            Volatile.Write(ref _setTopmost, null);
             Volatile.Write(ref _close, null);
             Volatile.Write(ref _run, null);
             Volatile.Write(ref _dispose, null);
@@ -121,6 +125,11 @@ namespace System.Windows
         internal static void SetPosition(object activation, double left, double top)
         {
             Volatile.Read(ref _setPosition)?.Invoke(activation, left, top);
+        }
+
+        internal static void SetTopmost(object activation, bool topmost)
+        {
+            Volatile.Read(ref _setTopmost)?.Invoke(activation, topmost);
         }
 
         internal static bool TryDragMove(object activation)

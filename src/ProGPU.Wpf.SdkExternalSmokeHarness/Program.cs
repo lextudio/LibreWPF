@@ -648,6 +648,7 @@ internal static class Program
                 Height="200"
                 Left="44"
                 Top="52"
+                Topmost="True"
                 Closing="OnExternalWindowClosing"
                 Closed="OnExternalWindowClosed"
                 AllowDrop="True"
@@ -3012,11 +3013,14 @@ internal static class Program
                     AssertEqual(true, window.IsVisible, "external SDK application main window visibility");
                     AssertEqual(44.0, window.Left, "external SDK application main window left");
                     AssertEqual(52.0, window.Top, "external SDK application main window top");
+                    AssertEqual(true, window.Topmost, "external SDK application main window topmost");
                     window.Left = 56.0;
                     window.Top = 72.0;
+                    window.Topmost = false;
                     DrainDispatcher();
                     AssertEqual(56.0, window.Left, "external SDK application main window updated left");
                     AssertEqual(72.0, window.Top, "external SDK application main window updated top");
+                    AssertEqual(false, window.Topmost, "external SDK application main window updated topmost");
                     AssertAtLeast(1, app.Windows.Count, "external SDK application windows count");
 
                     bool containsMainWindow = false;
@@ -8691,6 +8695,7 @@ internal static class Program
             AssertPropertyType(windowHostType, "Height", typeof(int), "external SDK ProGPU WPF host logical height property");
             AssertPropertyType(windowHostType, "Left", typeof(int?), "external SDK ProGPU WPF host left property");
             AssertPropertyType(windowHostType, "Top", typeof(int?), "external SDK ProGPU WPF host top property");
+            AssertPropertyType(windowHostType, "Topmost", typeof(bool), "external SDK ProGPU WPF host topmost property");
 
             MethodInfo setClientSize = windowHostType.GetMethod(
                 "SetClientSize",
@@ -8709,6 +8714,15 @@ internal static class Program
                 modifiers: null)
                 ?? throw new MissingMethodException(windowHostType.FullName, "SetPosition");
             AssertEqual(2, setPosition.GetParameters().Length, "external SDK ProGPU WPF host position method parameter count");
+
+            MethodInfo setTopmost = windowHostType.GetMethod(
+                "SetTopmost",
+                BindingFlags.Instance | BindingFlags.Public,
+                binder: null,
+                [typeof(bool)],
+                modifiers: null)
+                ?? throw new MissingMethodException(windowHostType.FullName, "SetTopmost");
+            AssertEqual(1, setTopmost.GetParameters().Length, "external SDK ProGPU WPF host topmost method parameter count");
 
             Type portablePresentationSourceType = GetRequiredType(presentationCore, "System.Windows.PortablePresentationSource");
             MethodInfo setPortableClientSize = portablePresentationSourceType.GetMethod(
@@ -8729,6 +8743,15 @@ internal static class Program
                 modifiers: null)
                 ?? throw new MissingMethodException(portableActivationType.FullName, "SetPosition");
             AssertEqual(typeof(void), setPortablePosition.ReturnType, "external SDK portable window activation position return type");
+
+            MethodInfo setPortableTopmost = portableActivationType.GetMethod(
+                "SetTopmost",
+                BindingFlags.Static | BindingFlags.NonPublic,
+                binder: null,
+                [typeof(object), typeof(bool)],
+                modifiers: null)
+                ?? throw new MissingMethodException(portableActivationType.FullName, "SetTopmost");
+            AssertEqual(typeof(void), setPortableTopmost.ReturnType, "external SDK portable window activation topmost return type");
 
             Type compositionTargetType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfCompositionTarget");
             MethodInfo compositionRender = FindMethodByParameterNames(
@@ -8762,6 +8785,24 @@ internal static class Program
                 "CurrentCanvasPixelHeight",
                 "_explicitRenderTargetHeight",
                 "external SDK ProGPU compositor canvas pixel height explicit render target");
+            MethodInfo compositorPhysicalRenderScene = FindMethodByParameterNames(
+                compositorType,
+                "RenderScene",
+                ["root", "width", "height", "targetView"]);
+            MethodInfo applyRenderPassViewport = FindMethodByNameAndParameterCount(
+                compositorType,
+                "ApplyRenderPassViewport",
+                3);
+            AssertMethodCallsMethod(
+                compositorPhysicalRenderScene,
+                compositorType.FullName ?? string.Empty,
+                "ApplyRenderPassViewport",
+                "external SDK ProGPU compositor render pass viewport application");
+            AssertMethodCallsMethod(
+                applyRenderPassViewport,
+                "Silk.NET.WebGPU.WebGPU",
+                "RenderPassEncoderSetViewport",
+                "external SDK ProGPU compositor physical render target viewport");
             AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(proGpuWpf, proGpuScene, "external SDK");
         }
         finally
@@ -9071,6 +9112,16 @@ internal static class Program
             $"{methodName}({string.Join(", ", parameterNames)})");
     }
 
+    private static MethodInfo FindMethodByNameAndParameterCount(Type type, string methodName, int parameterCount)
+    {
+        MethodInfo? method = type
+            .GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            .Where(method => string.Equals(method.Name, methodName, StringComparison.Ordinal))
+            .FirstOrDefault(method => method.GetParameters().Length == parameterCount);
+
+        return method ?? throw new MissingMethodException(type.FullName, $"{methodName}/{parameterCount}");
+    }
+
     private static void AssertParameterTypes(MethodInfo method, Type[] expectedParameterTypes, string description)
     {
         ParameterInfo[] parameters = method.GetParameters();
@@ -9117,6 +9168,47 @@ internal static class Program
         }
 
         throw new InvalidOperationException($"Expected {description} getter to reference '{fieldName}'.");
+    }
+
+    private static void AssertMethodCallsMethod(
+        MethodInfo method,
+        string calledDeclaringTypeFullName,
+        string calledMethodName,
+        string description)
+    {
+        byte[] il = method.GetMethodBody()?.GetILAsByteArray()
+            ?? throw new InvalidOperationException($"Expected {description} method IL.");
+        Type[] typeArguments = method.DeclaringType?.GetGenericArguments() ?? Type.EmptyTypes;
+        Type[] methodArguments = method.GetGenericArguments();
+
+        for (int i = 0; i <= il.Length - 5; i++)
+        {
+            if (il[i] != 0x28 && il[i] != 0x6F)
+            {
+                continue;
+            }
+
+            int token = BitConverter.ToInt32(il, i + 1);
+            MethodBase? calledMethod;
+            try
+            {
+                calledMethod = method.Module.ResolveMethod(token, typeArguments, methodArguments);
+            }
+            catch (ArgumentException)
+            {
+                continue;
+            }
+
+            if (calledMethod != null &&
+                string.Equals(calledMethod.Name, calledMethodName, StringComparison.Ordinal) &&
+                string.Equals(calledMethod.DeclaringType?.FullName, calledDeclaringTypeFullName, StringComparison.Ordinal))
+            {
+                return;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Expected {description} '{method.DeclaringType?.FullName}.{method.Name}' to call '{calledDeclaringTypeFullName}.{calledMethodName}'.");
     }
 
     private readonly record struct PackageAssemblyExpectation(

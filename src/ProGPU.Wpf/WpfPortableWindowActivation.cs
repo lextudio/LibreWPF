@@ -72,12 +72,36 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 typeof(Action<object, string>),
                 typeof(Action<object, double, double>),
                 typeof(Action<object, double, double>),
+                typeof(Action<object, bool>),
                 typeof(Action<object>),
                 typeof(Action<object>),
                 typeof(Action<object>),
                 typeof(Func<object, bool>)
             },
             modifiers: null);
+        if (registerMethod == null)
+        {
+            registerMethod = serviceType.GetMethod(
+                "Register",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: new[]
+                {
+                    typeof(Func<object, object?>),
+                    typeof(Action<object>),
+                    typeof(Action<object>),
+                    typeof(Action<object, object>),
+                    typeof(Action<object, string>),
+                    typeof(Action<object, double, double>),
+                    typeof(Action<object, double, double>),
+                    typeof(Action<object>),
+                    typeof(Action<object>),
+                    typeof(Action<object>),
+                    typeof(Func<object, bool>)
+                },
+                modifiers: null);
+        }
+
         if (registerMethod == null)
         {
             registerMethod = serviceType.GetMethod(
@@ -141,6 +165,8 @@ public sealed class WpfPortableWindowActivation : IDisposable
             ((WpfPortableWindowActivation)activation).SetClientSize(width, height);
         Action<object, double, double> setPosition = (activation, left, top) =>
             ((WpfPortableWindowActivation)activation).SetPosition(left, top);
+        Action<object, bool> setTopmost = (activation, topmost) =>
+            ((WpfPortableWindowActivation)activation).SetTopmost(topmost);
         Action<object> close = activation =>
             ((WpfPortableWindowActivation)activation).Close();
         Action<object> run = activation =>
@@ -152,6 +178,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
         var parameters = registerMethod.GetParameters().Length switch
         {
+            12 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, setPosition, setTopmost, close, run, dispose, dragMove },
             11 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, setPosition, close, run, dispose, dragMove },
             10 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, close, run, dispose, dragMove },
             9 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, close, run, dispose },
@@ -350,6 +377,13 @@ public sealed class WpfPortableWindowActivation : IDisposable
         }
     }
 
+    public void SetTopmost(bool topmost)
+    {
+        ThrowIfDisposed();
+
+        Host.SetTopmost(topmost);
+    }
+
     public void Close()
     {
         if (_isDisposed || _isClosingFromNative)
@@ -468,6 +502,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             Top = fallback.Top,
             VSync = fallback.VSync,
             IsVisible = fallback.IsVisible,
+            Topmost = fallback.Topmost,
             WindowState = fallback.WindowState
         };
 
@@ -505,6 +540,11 @@ public sealed class WpfPortableWindowActivation : IDisposable
             options.WindowState = mappedWindowState;
         }
 
+        if (TryReadBooleanProperty(window, "Topmost", out var topmost))
+        {
+            options.Topmost = topmost;
+        }
+
         return options;
     }
 
@@ -520,6 +560,11 @@ public sealed class WpfPortableWindowActivation : IDisposable
             TryMapWindowState(windowState, out ProGpuWpfWindowState mappedWindowState))
         {
             Host.SetWindowState(mappedWindowState);
+        }
+
+        if (TryReadBooleanProperty(Window, "Topmost", out var topmost))
+        {
+            Host.SetTopmost(topmost);
         }
 
         var hasWidth =

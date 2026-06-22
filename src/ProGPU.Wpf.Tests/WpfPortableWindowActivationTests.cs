@@ -34,13 +34,15 @@ public sealed class WpfPortableWindowActivationTests
         activation.SetClientSize(320.2, double.NaN);
         activation.SetClientSize(double.NaN, 240.1);
         activation.SetPosition(31.4, 47.6);
+        activation.SetTopmost(true);
 
         Assert.Equal("Updated", host.Title);
         Assert.Equal(321, host.Width);
         Assert.Equal(241, host.Height);
         Assert.Equal(31, host.Left);
         Assert.Equal(48, host.Top);
-        Assert.True(scheduler.RequestCount >= 5);
+        Assert.True(host.Topmost);
+        Assert.True(scheduler.RequestCount >= 6);
     }
 
     [Fact]
@@ -167,6 +169,7 @@ public sealed class WpfPortableWindowActivationTests
             Height = 600,
             Left = 1,
             Top = 2,
+            Topmost = false,
             VSync = true
         };
         var window = new FakeWindow
@@ -177,6 +180,7 @@ public sealed class WpfPortableWindowActivationTests
             ActualHeight = 480.1,
             Left = 10.4,
             Top = 20.6,
+            Topmost = true,
             WindowState = FakeWindowState.Minimized
         };
 
@@ -187,6 +191,7 @@ public sealed class WpfPortableWindowActivationTests
         Assert.Equal(481, options.Height);
         Assert.Equal(10, options.Left);
         Assert.Equal(21, options.Top);
+        Assert.True(options.Topmost);
         Assert.True(options.VSync);
         Assert.Equal(ProGpuWpfWindowState.Minimized, options.WindowState);
     }
@@ -211,6 +216,7 @@ public sealed class WpfPortableWindowActivationTests
             Height = 840,
             Left = 32,
             Top = 48,
+            Topmost = true,
             WindowState = FakeWindowState.Normal
         };
         var source = new FakePortablePresentationSource();
@@ -224,6 +230,7 @@ public sealed class WpfPortableWindowActivationTests
         Assert.Equal(840, host.Height);
         Assert.Equal(32, host.Left);
         Assert.Equal(48, host.Top);
+        Assert.True(host.Topmost);
         Assert.Equal(0, source.ClientSizeChangeCount);
 
         activation.SetClientSize(window.Width, window.Height);
@@ -589,6 +596,8 @@ public sealed class WpfPortableWindowActivationTests
         public double Left { get; set; } = double.NaN;
 
         public double Top { get; set; } = double.NaN;
+
+        public bool Topmost { get; set; }
 
         public FakeWindowState WindowState { get; set; } = FakeWindowState.Normal;
 

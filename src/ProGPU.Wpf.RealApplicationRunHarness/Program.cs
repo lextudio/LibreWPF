@@ -5394,6 +5394,8 @@ internal static class Program
                 new Action<object, object>(recorder.SetWindowState),
                 new Action<object, string>(recorder.SetTitle),
                 new Action<object, double, double>(recorder.SetClientSize),
+                new Action<object, double, double>(recorder.SetPosition),
+                new Action<object, bool>(recorder.SetTopmost),
                 new Action<object>(recorder.Close),
                 new Action<object>(recorder.Run),
                 new Action<object>(recorder.Dispose),
@@ -6363,7 +6365,10 @@ internal static class Program
             {
                 Title = GetProperty(window, "Title").ToString() ?? string.Empty,
                 Width = Convert.ToDouble(GetProperty(window, "Width")),
-                Height = Convert.ToDouble(GetProperty(window, "Height"))
+                Height = Convert.ToDouble(GetProperty(window, "Height")),
+                Left = Convert.ToDouble(GetProperty(window, "Left")),
+                Top = Convert.ToDouble(GetProperty(window, "Top")),
+                Topmost = Convert.ToBoolean(GetProperty(window, "Topmost"))
             };
             return _activation;
         }
@@ -6402,6 +6407,20 @@ internal static class Program
             ((RecordingActivation)activation).Height = height;
         }
 
+        public void SetPosition(object activation, double left, double top)
+        {
+            AssertSameActivation(activation);
+            var typedActivation = (RecordingActivation)activation;
+            typedActivation.Left = left;
+            typedActivation.Top = top;
+        }
+
+        public void SetTopmost(object activation, bool topmost)
+        {
+            AssertSameActivation(activation);
+            ((RecordingActivation)activation).Topmost = topmost;
+        }
+
         public void Close(object activation)
         {
             AssertSameActivation(activation);
@@ -6418,6 +6437,7 @@ internal static class Program
             AssertEqual("ProGPU WPF XAML smoke", typedActivation.Title, "activated window title");
             AssertEqual(420.0, typedActivation.Width, "activated window width");
             AssertEqual(260.0, typedActivation.Height, "activated window height");
+            AssertEqual(false, typedActivation.Topmost, "activated window topmost");
             Invoke(typedActivation.Window, "UpdateLayout");
             ValidatePostShowLoadedEvent(typedActivation.Window);
             ValidatePostShowCommandManagerRequery(
@@ -6958,6 +6978,12 @@ internal static class Program
         public double Width { get; set; }
 
         public double Height { get; set; }
+
+        public double Left { get; set; }
+
+        public double Top { get; set; }
+
+        public bool Topmost { get; set; }
 
         public object? WindowState { get; set; }
 

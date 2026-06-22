@@ -324,6 +324,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Host.SetClientSize(", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("public void SetPosition(object? left, object? top)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.SetPosition(windowLeft.Value, windowTop.Value)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("public void SetTopmost(bool topmost)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("Host.SetTopmost(topmost)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FlushWpfDispatcherOperations(\"Loaded\", \"Render\")", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FlushWpfDispatcherOperations(\"Render\")", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryFlushDispatcherOperations(Window, markerPriorityName)", proGpuActivation, StringComparison.Ordinal);
@@ -347,8 +349,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public int Height => _clientHeight;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("public int? Left => _window?.Position.X ?? _windowLeft;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("public int? Top => _window?.Position.Y ?? _windowTop;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("public bool Topmost => _window?.TopMost ?? _windowTopmost;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("public void SetPosition(int left, int top)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_window.Position = new Vector2D<int>(left, top)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("public void SetTopmost(bool topmost)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_window.TopMost = topmost", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal void SetInitialClientSize(int width, int height)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("SetClientSizeCore(width, height, updatePortablePresentationSource: false)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("private int _requestedLogicalClientWidth = -1;", proGpuHost, StringComparison.Ordinal);
@@ -641,6 +646,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static void SetClientSize(object activation, double width, double height)", activationService, StringComparison.Ordinal);
         Assert.Contains("Action<object, double, double> setPosition", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void SetPosition(object activation, double left, double top)", activationService, StringComparison.Ordinal);
+        Assert.Contains("Action<object, bool> setTopmost", activationService, StringComparison.Ordinal);
+        Assert.Contains("internal static void SetTopmost(object activation, bool topmost)", activationService, StringComparison.Ordinal);
         Assert.Contains("Func<object, bool> dragMove", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryDragMove(object activation)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void SetActivationState(Window window, bool isActive)", activationService, StringComparison.Ordinal);
@@ -679,6 +686,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableWindowActivationService.SetClientSize(_portableWindowActivation, width, Height)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.SetPosition(_portableWindowActivation, leftLogicalUnits, topLogicalUnits)", window, StringComparison.Ordinal);
         Assert.Contains("private void UpdatePortablePositionOnTopLeftChange(double leftLogicalUnits, double topLogicalUnits)", window, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.SetTopmost(_portableWindowActivation, topmost)", window, StringComparison.Ordinal);
         Assert.Contains("&& !w.IsPortableWindowActive", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.TryDragMove(_portableWindowActivation)", window, StringComparison.Ordinal);
         Assert.Contains("if (PortableWindowActivationService.IsEnabled)", window, StringComparison.Ordinal);
@@ -7296,10 +7304,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK ProGPU WPF composition render logical/physical surface", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU compositor render logical/physical surface", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU compositor canvas pixel width explicit render target", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ProGPU compositor render pass viewport application", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK ProGPU compositor physical render target viewport", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RenderPassEncoderSetViewport", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(proGpuWpf, proGpuScene, \"external SDK\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU retained WPF layer logical size", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU retained WPF layer scale", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPropertyGetterReferencesField", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertMethodCallsMethod", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("[\"root\", \"logicalWidth\", \"logicalHeight\", \"renderTargetWidth\", \"renderTargetHeight\", \"dpiScale\", \"targetView\"]", externalSdkHarnessProgram, StringComparison.Ordinal);
 
         Assert.Contains("ValidateProGpuHiDpiRenderSurface(inputs)", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -7308,10 +7320,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SDK ProGPU WPF composition render logical/physical surface", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU compositor render logical/physical surface", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU compositor canvas pixel width explicit render target", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK ProGPU compositor render pass viewport application", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK ProGPU compositor physical render target viewport", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RenderPassEncoderSetViewport", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(proGpuWpf, proGpuScene, \"SDK\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU retained WPF layer logical size", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU retained WPF layer scale", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPropertyGetterReferencesField", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertMethodCallsMethod", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("[\"logicalWidth\", \"logicalHeight\", \"pixelWidth\", \"pixelHeight\", \"dpiScale\", \"targetView\"]", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableClipboardServiceTypeName = \"System.Windows.PortableClipboardService\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PortableFileDialogServiceTypeName = \"Microsoft.Win32.PortableFileDialogService\"", runtimeHarnessProgram, StringComparison.Ordinal);

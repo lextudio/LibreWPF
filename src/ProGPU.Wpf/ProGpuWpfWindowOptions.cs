@@ -18,6 +18,8 @@ public sealed class ProGpuWpfWindowOptions
 
     public bool IsVisible { get; set; } = true;
 
+    public bool Topmost { get; set; }
+
     public ProGpuWpfWindowState WindowState { get; set; } = ProGpuWpfWindowState.Normal;
 }
 

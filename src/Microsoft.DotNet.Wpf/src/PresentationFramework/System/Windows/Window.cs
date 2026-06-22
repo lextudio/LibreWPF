@@ -5406,6 +5406,12 @@ namespace System.Windows
             // Topmost is not allowed
             VerifyApiSupported();
 
+            if (IsPortableWindowActive)
+            {
+                PortableWindowActivationService.SetTopmost(_portableWindowActivation, topmost);
+                return;
+            }
+
             // Adding check for IsCompositionTargetInvalid
             if (!IsSourceWindowNull && !IsCompositionTargetInvalid)
             {

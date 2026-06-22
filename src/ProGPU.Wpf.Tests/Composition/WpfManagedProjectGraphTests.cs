@@ -209,6 +209,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Scene",
             "Compositor.cs");
+        var proGpuCompositorReviewTestsPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Tests",
+            "CompositorReviewRegressionTests.cs");
 
         var mediaContext = File.ReadAllText(mediaContextPath);
         var renderService = File.ReadAllText(renderServicePath);
@@ -221,6 +227,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuDrawingFrame = File.ReadAllText(proGpuDrawingFramePath);
         var proGpuCompositionTarget = File.ReadAllText(proGpuCompositionTargetPath);
         var proGpuCompositor = File.ReadAllText(proGpuCompositorPath);
+        var proGpuCompositorReviewTests = File.ReadAllText(proGpuCompositorReviewTestsPath);
 
         Assert.Contains(@"<Compile Include=""System\Windows\Media\PortableMediaContextRenderService.cs"" />", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains("internal static class PortableMediaContextRenderService", renderService, StringComparison.Ordinal);
@@ -280,8 +287,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("uint renderTargetWidth", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("_explicitRenderTargetWidth = Math.Max(1, renderTargetWidth)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("uint renderWidth = _explicitRenderTargetWidth ?? width", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("ApplyRenderPassViewport(pass, renderWidth, renderHeight)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("RenderPassEncoderSetViewport(pass, 0f, 0f, targetWidth, targetHeight, 0f, 1f)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("CurrentCanvasPixelWidth => _explicitRenderTargetWidth.HasValue", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("CurrentCanvasPixelHeight => _explicitRenderTargetHeight.HasValue", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("ExplicitPhysicalRenderTargetPinsViewportToPhysicalFramebuffer", proGpuCompositorReviewTests, StringComparison.Ordinal);
         Assert.Contains("float dpiScale", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("Compositor.RenderScene(\n            SceneRootVisual,\n            logicalWidth,\n            logicalHeight,\n            pixelWidth,\n            pixelHeight,\n            dpiScale,\n            targetView)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("IWpfWindowDecorationService WindowDecorations", proGpuPlatformServices, StringComparison.Ordinal);
@@ -4742,8 +4752,36 @@ public sealed class WpfManagedProjectGraphTests
             "Automation",
             "Peers",
             "WindowAutomationPeer.cs"));
+        var pngBitmapDecoder = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Imaging",
+            "PngBitmapDecoder.cs"));
+        var bitmapDecoder = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Imaging",
+            "BitmapDecoder.cs"));
 
         AssertGuardBefore(compositionExports, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.MilCoreApi.EnterCompositionEngineLock()");
+        Assert.Contains("internal static bool TryCreatePortableFrame(", pngBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TryCreatePortableFrameFromUri(", pngBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("ZLibStream", pngBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("PixelFormats.Bgra32", pngBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("case 6:", pngBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("PngBitmapDecoder.TryCreatePortableFrameFromUri", bitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("return new PngBitmapDecoder(portablePngUriFrame", bitmapDecoder, StringComparison.Ordinal);
+        AssertGuardBefore(bitmapDecoder, "PngBitmapDecoder.TryCreatePortableFrame", "SetupDecoderFromUriOrStream");
         AssertGuardBefore(uiElement, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetDC(desktopWnd)");
         AssertGuardBefore(pathGeometry, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.MilCoreApi.MilUtility_PathGeometryBounds");
         AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())", "MilCoreApi.MilUtility_PolygonBounds");
@@ -6381,6 +6419,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("new BitmapImage(bmpUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapDecoder.Create URI BMP decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapImage URI BMP top-left blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new PngBitmapDecoder(", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create PNG decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create PNG top-left blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create URI PNG decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new BitmapImage(pngUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapImage URI PNG top-left blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CreateRgbaPngBytes(pixels, 2, 2, 8)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PixelFormats.Indexed8", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Indexed8 BitmapDecoder palette green", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Indexed8 BitmapImage URI bottom-left index", externalSdkHarnessProgram, StringComparison.Ordinal);

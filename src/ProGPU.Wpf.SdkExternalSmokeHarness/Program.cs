@@ -1494,6 +1494,7 @@ internal static class Program
             using System.ComponentModel;
             using System.Globalization;
             using System.IO;
+            using System.IO.Compression;
             using System.Linq;
             using System.Reflection;
             using System.Windows;
@@ -3411,6 +3412,30 @@ internal static class Program
                     AssertEqual(1, directBmpDecoder.Frames.Count, "external SDK BmpBitmapDecoder frame count");
                     AssertEqual(PixelFormats.Bgra32, directBmpDecoder.Frames[0].Format, "external SDK BmpBitmapDecoder Bgra32 format");
 
+                    byte[] pngBytes = CreateRgbaPngBytes(pixels, 2, 2, 8);
+                    AssertEqual((byte)0x89, pngBytes[0], "external SDK generated PNG signature byte 0");
+                    AssertEqual((byte)'P', pngBytes[1], "external SDK generated PNG signature byte 1");
+                    var pngDecoder = BitmapDecoder.Create(
+                        new MemoryStream(pngBytes),
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(typeof(PngBitmapDecoder), pngDecoder.GetType(), "external SDK BitmapDecoder.Create PNG decoder type");
+                    AssertEqual(1, pngDecoder.Frames.Count, "external SDK BitmapDecoder.Create PNG frame count");
+                    AssertEqual(2, pngDecoder.Frames[0].PixelWidth, "external SDK BitmapDecoder.Create PNG pixel width");
+                    AssertEqual(2, pngDecoder.Frames[0].PixelHeight, "external SDK BitmapDecoder.Create PNG pixel height");
+                    AssertEqual(PixelFormats.Bgra32, pngDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create PNG Bgra32 format");
+                    var decodedPngPixels = new byte[pixels.Length];
+                    pngDecoder.Frames[0].CopyPixels(decodedPngPixels, 8, 0);
+                    AssertEqual(pixels[0], decodedPngPixels[0], "external SDK BitmapDecoder.Create PNG top-left blue byte");
+                    AssertEqual(pixels[14], decodedPngPixels[14], "external SDK BitmapDecoder.Create PNG bottom-right red byte");
+
+                    var directPngDecoder = new PngBitmapDecoder(
+                        new MemoryStream(pngBytes),
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(1, directPngDecoder.Frames.Count, "external SDK PngBitmapDecoder frame count");
+                    AssertEqual(PixelFormats.Bgra32, directPngDecoder.Frames[0].Format, "external SDK PngBitmapDecoder Bgra32 format");
+
                     string bmpPath = Path.Combine(Path.GetTempPath(), "external-sdk-managed-image-" + Guid.NewGuid().ToString("N") + ".bmp");
                     File.WriteAllBytes(bmpPath, bmpBytes);
                     try
@@ -3443,6 +3468,40 @@ internal static class Program
                     finally
                     {
                         File.Delete(bmpPath);
+                    }
+
+                    string pngPath = Path.Combine(Path.GetTempPath(), "external-sdk-managed-image-" + Guid.NewGuid().ToString("N") + ".png");
+                    File.WriteAllBytes(pngPath, pngBytes);
+                    try
+                    {
+                        var pngUri = new Uri(pngPath);
+                        var uriPngDecoder = BitmapDecoder.Create(
+                            pngUri,
+                            BitmapCreateOptions.PreservePixelFormat,
+                            BitmapCacheOption.OnLoad);
+                        AssertEqual(typeof(PngBitmapDecoder), uriPngDecoder.GetType(), "external SDK BitmapDecoder.Create URI PNG decoder type");
+                        AssertEqual(1, uriPngDecoder.Frames.Count, "external SDK BitmapDecoder.Create URI PNG frame count");
+                        AssertEqual(PixelFormats.Bgra32, uriPngDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create URI PNG Bgra32 format");
+
+                        var directUriPngDecoder = new PngBitmapDecoder(
+                            pngUri,
+                            BitmapCreateOptions.PreservePixelFormat,
+                            BitmapCacheOption.OnLoad);
+                        AssertEqual(1, directUriPngDecoder.Frames.Count, "external SDK PngBitmapDecoder URI frame count");
+                        AssertEqual(2, directUriPngDecoder.Frames[0].PixelWidth, "external SDK PngBitmapDecoder URI pixel width");
+
+                        var pngBitmapImage = new BitmapImage(pngUri);
+                        AssertEqual(2, pngBitmapImage.PixelWidth, "external SDK BitmapImage URI PNG pixel width");
+                        AssertEqual(2, pngBitmapImage.PixelHeight, "external SDK BitmapImage URI PNG pixel height");
+                        AssertEqual(PixelFormats.Bgra32, pngBitmapImage.Format, "external SDK BitmapImage URI PNG Bgra32 format");
+                        var pngBitmapImagePixels = new byte[pixels.Length];
+                        pngBitmapImage.CopyPixels(pngBitmapImagePixels, 8, 0);
+                        AssertEqual(pixels[0], pngBitmapImagePixels[0], "external SDK BitmapImage URI PNG top-left blue byte");
+                        AssertEqual(pixels[14], pngBitmapImagePixels[14], "external SDK BitmapImage URI PNG bottom-right red byte");
+                    }
+                    finally
+                    {
+                        File.Delete(pngPath);
                     }
 
                     var indexedPalette = new BitmapPalette(
@@ -3536,6 +3595,95 @@ internal static class Program
                     AssertEqual(TileMode.Tile, imageBrush.TileMode, "external SDK ImageBrush tile mode");
                     AssertEqual(BrushMappingMode.Absolute, imageBrush.ViewportUnits, "external SDK ImageBrush viewport units");
                     AssertEqual(new Rect(0, 0, 2, 2), imageBrush.Viewport, "external SDK ImageBrush viewport");
+                }
+
+                private static byte[] CreateRgbaPngBytes(byte[] bgraPixels, int width, int height, int stride)
+                {
+                    byte[] rawRows = new byte[checked((width * 4 + 1) * height)];
+                    int rawOffset = 0;
+                    for (int y = 0; y < height; y++)
+                    {
+                        rawRows[rawOffset++] = 0;
+                        int sourceRow = y * stride;
+                        for (int x = 0; x < width; x++)
+                        {
+                            int sourceOffset = sourceRow + x * 4;
+                            rawRows[rawOffset++] = bgraPixels[sourceOffset + 2];
+                            rawRows[rawOffset++] = bgraPixels[sourceOffset + 1];
+                            rawRows[rawOffset++] = bgraPixels[sourceOffset];
+                            rawRows[rawOffset++] = bgraPixels[sourceOffset + 3];
+                        }
+                    }
+
+                    using var compressed = new MemoryStream();
+                    using (var zlib = new ZLibStream(compressed, CompressionLevel.SmallestSize, leaveOpen: true))
+                    {
+                        zlib.Write(rawRows, 0, rawRows.Length);
+                    }
+
+                    using var png = new MemoryStream();
+                    png.Write(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 });
+                    byte[] ihdr = new byte[13];
+                    WriteBigEndianUInt32(ihdr, 0, (uint)width);
+                    WriteBigEndianUInt32(ihdr, 4, (uint)height);
+                    ihdr[8] = 8;
+                    ihdr[9] = 6;
+                    WritePngChunk(png, "IHDR", ihdr);
+                    WritePngChunk(png, "IDAT", compressed.ToArray());
+                    WritePngChunk(png, "IEND", Array.Empty<byte>());
+                    return png.ToArray();
+                }
+
+                private static void WritePngChunk(Stream stream, string chunkType, byte[] data)
+                {
+                    WriteBigEndianUInt32(stream, (uint)data.Length);
+                    byte[] typeBytes = System.Text.Encoding.ASCII.GetBytes(chunkType);
+                    stream.Write(typeBytes, 0, typeBytes.Length);
+                    stream.Write(data, 0, data.Length);
+                    uint crc = Crc32(typeBytes, data);
+                    WriteBigEndianUInt32(stream, crc);
+                }
+
+                private static uint Crc32(byte[] typeBytes, byte[] data)
+                {
+                    uint crc = 0xFFFFFFFF;
+                    foreach (byte value in typeBytes)
+                    {
+                        crc = UpdateCrc32(crc, value);
+                    }
+
+                    foreach (byte value in data)
+                    {
+                        crc = UpdateCrc32(crc, value);
+                    }
+
+                    return ~crc;
+                }
+
+                private static uint UpdateCrc32(uint crc, byte value)
+                {
+                    crc ^= value;
+                    for (int i = 0; i < 8; i++)
+                    {
+                        crc = (crc & 1) == 0 ? crc >> 1 : (crc >> 1) ^ 0xEDB88320u;
+                    }
+
+                    return crc;
+                }
+
+                private static void WriteBigEndianUInt32(Stream stream, uint value)
+                {
+                    Span<byte> buffer = stackalloc byte[4];
+                    WriteBigEndianUInt32(buffer, 0, value);
+                    stream.Write(buffer);
+                }
+
+                private static void WriteBigEndianUInt32(Span<byte> buffer, int offset, uint value)
+                {
+                    buffer[offset] = (byte)(value >> 24);
+                    buffer[offset + 1] = (byte)(value >> 16);
+                    buffer[offset + 2] = (byte)(value >> 8);
+                    buffer[offset + 3] = (byte)value;
                 }
 
                 private static void ValidateLooseXamlReaderWriter()

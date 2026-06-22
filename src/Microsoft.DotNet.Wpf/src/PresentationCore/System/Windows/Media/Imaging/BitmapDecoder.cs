@@ -73,6 +73,15 @@ namespace System.Windows.Media.Imaging
                 return;
             }
 
+            if (!OperatingSystem.IsWindows() &&
+                expectedClsId == MILGuidData.GUID_ContainerFormatPng &&
+                PngBitmapDecoder.TryCreatePortableFrameFromUri(bitmapUri, createOptions, cacheOption, out BitmapFrame portablePngFrame))
+            {
+                _uri = bitmapUri;
+                InitializePortableFrames(null, bitmapUri, null, createOptions, cacheOption, portablePngFrame);
+                return;
+            }
+
             BitmapDecoder decoder = CheckCache(bitmapUri, out clsId);
             if (decoder != null)
             {
@@ -130,6 +139,14 @@ namespace System.Windows.Media.Imaging
                 BmpBitmapDecoder.TryCreatePortableFrame(bitmapStream, createOptions, cacheOption, out BitmapFrame portableFrame))
             {
                 InitializePortableFrames(null, null, bitmapStream, createOptions, cacheOption, portableFrame);
+                return;
+            }
+
+            if (!OperatingSystem.IsWindows() &&
+                expectedClsId == MILGuidData.GUID_ContainerFormatPng &&
+                PngBitmapDecoder.TryCreatePortableFrame(bitmapStream, createOptions, cacheOption, out BitmapFrame portablePngFrame))
+            {
+                InitializePortableFrames(null, null, bitmapStream, createOptions, cacheOption, portablePngFrame);
                 return;
             }
 
@@ -294,10 +311,23 @@ namespace System.Windows.Media.Imaging
                 return new BmpBitmapDecoder(portableUriFrame, baseUri, uri, null, createOptions, cacheOption);
             }
             else if (!OperatingSystem.IsWindows() &&
+                     finalUri != null &&
+                     stream == null &&
+                     PngBitmapDecoder.TryCreatePortableFrameFromUri(finalUri, createOptions, cacheOption, out BitmapFrame portablePngUriFrame))
+            {
+                return new PngBitmapDecoder(portablePngUriFrame, baseUri, uri, null, createOptions, cacheOption);
+            }
+            else if (!OperatingSystem.IsWindows() &&
                      stream != null &&
                      BmpBitmapDecoder.TryCreatePortableFrame(stream, createOptions, cacheOption, out BitmapFrame portableStreamFrame))
             {
                 return new BmpBitmapDecoder(portableStreamFrame, baseUri, uri, stream, createOptions, cacheOption);
+            }
+            else if (!OperatingSystem.IsWindows() &&
+                     stream != null &&
+                     PngBitmapDecoder.TryCreatePortableFrame(stream, createOptions, cacheOption, out BitmapFrame portablePngStreamFrame))
+            {
+                return new PngBitmapDecoder(portablePngStreamFrame, baseUri, uri, stream, createOptions, cacheOption);
             }
             else
             {

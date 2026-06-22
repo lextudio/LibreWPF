@@ -6712,6 +6712,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalRuntimeMergedResourceText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalRuntimeMergedText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalRuntimeMergedBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalImplicitStylePanel", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<Style TargetType=\"{x:Type TextBlock}\">", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Value=\"external implicit style active\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Value=\"{DynamicResource ExternalStaticBrush}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalImplicitStyledText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalFreezableBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalFreezableGradientBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("LinearGradientBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7079,6 +7084,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("return false;", spellerInteropBase, StringComparison.Ordinal);
         Assert.Contains("ExternalItemTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DataType=\"{x:Type local:ExternalItem}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK implicit text style target type", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK implicit styled text foreground", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new DataTemplateKey(typeof(ExternalItem))", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK implicit item data template", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK implicit item template binding path", externalSdkHarnessProgram, StringComparison.Ordinal);

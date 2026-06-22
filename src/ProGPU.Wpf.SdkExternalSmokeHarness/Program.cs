@@ -1150,6 +1150,17 @@ internal static class Program
                         x:Name="ExternalStartupResourceText"
                         Foreground="{DynamicResource ExternalStartupBrush}"
                         Text="{DynamicResource ExternalStartupText}" />
+                    <StackPanel x:Name="ExternalImplicitStylePanel">
+                        <StackPanel.Resources>
+                            <Style TargetType="{x:Type TextBlock}">
+                                <Setter Property="Tag" Value="external implicit style active" />
+                                <Setter Property="Foreground" Value="{DynamicResource ExternalStaticBrush}" />
+                            </Style>
+                        </StackPanel.Resources>
+                        <TextBlock
+                            x:Name="ExternalImplicitStyledText"
+                            Text="External implicit style text" />
+                    </StackPanel>
                     <Image
                         x:Name="ExternalXamlResourceImage"
                         Width="2"
@@ -4009,6 +4020,22 @@ internal static class Program
                         "external SDK content template presenter");
                     AssertEqual(window.SelectedExternalItem, templatePresenter.Content, "external SDK content presenter content binding");
                     AssertEqual(template, templatePresenter.ContentTemplate, "external SDK content presenter template");
+
+                    var implicitStylePanel = RequireType<StackPanel>(
+                        window.FindName("ExternalImplicitStylePanel"),
+                        "external SDK implicit style panel");
+                    var implicitStyledText = RequireType<TextBlock>(
+                        window.FindName("ExternalImplicitStyledText"),
+                        "external SDK implicit styled text");
+                    AssertAtLeast(1, implicitStylePanel.Children.Count, "external SDK implicit style panel child count");
+                    AssertEqual("External implicit style text", implicitStyledText.Text, "external SDK implicit styled text content");
+                    AssertEqual("external implicit style active", implicitStyledText.Tag, "external SDK implicit styled text tag");
+                    var implicitTextStyle = RequireType<Style>(
+                        implicitStyledText.Style,
+                        "external SDK implicit text style");
+                    AssertEqual(typeof(TextBlock), implicitTextStyle.TargetType, "external SDK implicit text style target type");
+                    AssertAtLeast(2, implicitTextStyle.Setters.Count, "external SDK implicit text style setter count");
+                    AssertBrushColor(implicitStyledText.Foreground, "#FFA65A2A", "external SDK implicit styled text foreground");
 
                     var implicitTemplate = RequireType<DataTemplate>(
                         window.FindResource(new DataTemplateKey(typeof(ExternalItem))),

@@ -45,8 +45,13 @@
     <Reference Include="UIAutomationProvider" HintPath="$(_ProGpuWpfManagedReferenceRoot)UIAutomationProvider.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)UIAutomationProvider.dll')" />
     <Reference Include="System.Windows.Input.Manipulations" HintPath="$(_ProGpuWpfManagedReferenceRoot)System.Windows.Input.Manipulations.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)System.Windows.Input.Manipulations.dll')" />
     <Reference Include="System.Windows.Primitives" HintPath="$(_ProGpuWpfManagedReferenceRoot)System.Windows.Primitives.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)System.Windows.Primitives.dll')" />
+    <Reference Include="PresentationFramework.Aero" HintPath="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Aero.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Aero.dll')" />
     <Reference Include="PresentationFramework.Aero2" HintPath="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Aero2.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Aero2.dll')" />
+    <Reference Include="PresentationFramework.AeroLite" HintPath="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.AeroLite.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.AeroLite.dll')" />
+    <Reference Include="PresentationFramework.Classic" HintPath="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Classic.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Classic.dll')" />
     <Reference Include="PresentationFramework.Fluent" HintPath="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Fluent.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Fluent.dll')" />
+    <Reference Include="PresentationFramework.Luna" HintPath="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Luna.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Luna.dll')" />
+    <Reference Include="PresentationFramework.Royale" HintPath="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Royale.dll" Private="true" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Royale.dll')" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'LocalArtifacts' And '$(_ProGpuWpfManagedReferenceRoot)' != ''">
@@ -61,8 +66,13 @@
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)UIAutomationProvider.dll" TargetPath="UIAutomationProvider.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)UIAutomationProvider.dll')" />
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)System.Windows.Input.Manipulations.dll" TargetPath="System.Windows.Input.Manipulations.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)System.Windows.Input.Manipulations.dll')" />
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)System.Windows.Primitives.dll" TargetPath="System.Windows.Primitives.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)System.Windows.Primitives.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Aero.dll" TargetPath="PresentationFramework.Aero.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Aero.dll')" />
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Aero2.dll" TargetPath="PresentationFramework.Aero2.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Aero2.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.AeroLite.dll" TargetPath="PresentationFramework.AeroLite.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.AeroLite.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Classic.dll" TargetPath="PresentationFramework.Classic.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Classic.dll')" />
     <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Fluent.dll" TargetPath="PresentationFramework.Fluent.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Fluent.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Luna.dll" TargetPath="PresentationFramework.Luna.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Luna.dll')" />
+    <_ProGpuWpfLocalRuntimeAsset Include="$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Royale.dll" TargetPath="PresentationFramework.Royale.dll" Condition="Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Royale.dll')" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfReferenceMode)' == 'LocalArtifacts' And '$(_ProGpuReferenceRoot)' != ''">
@@ -122,8 +132,13 @@
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)UIAutomationProvider.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)System.Windows.Input.Manipulations.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)System.Windows.Primitives.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)PresentationFramework.Aero.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)PresentationFramework.Aero2.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)PresentationFramework.AeroLite.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)PresentationFramework.Classic.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)PresentationFramework.Fluent.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)PresentationFramework.Luna.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)PresentationFramework.Royale.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ProGPU.Wpf.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ProGPU.Backend.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ProGPU.Scene.dll" />

@@ -67,8 +67,13 @@ build_project "src/Microsoft.DotNet.Wpf/src/PresentationCore/PresentationCore.cs
 build_project "src/Microsoft.DotNet.Wpf/src/ReachFramework/ReachFramework.csproj"
 build_project "src/Microsoft.DotNet.Wpf/src/PresentationUI/PresentationUI.csproj"
 build_project "src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj"
+build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Aero/PresentationFramework.Aero.csproj"
 build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Aero2/PresentationFramework.Aero2.csproj"
+build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.AeroLite/PresentationFramework.AeroLite.csproj"
+build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Classic/PresentationFramework.Classic.csproj"
 build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Fluent/PresentationFramework.Fluent.csproj"
+build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Luna/PresentationFramework.Luna.csproj"
+build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Royale/PresentationFramework.Royale.csproj"
 
 echo "Packing WPF transport, ProGPU bridge, and custom SDK..."
 pack_project "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj" "Microsoft.DotNet.Wpf.GitHub"

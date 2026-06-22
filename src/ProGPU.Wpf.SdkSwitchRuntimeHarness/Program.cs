@@ -34,8 +34,13 @@ internal static class Program
         "UIAutomationProvider",
         "System.Windows.Input.Manipulations",
         "System.Windows.Primitives",
+        "PresentationFramework.Aero",
         "PresentationFramework.Aero2",
-        "PresentationFramework.Fluent"
+        "PresentationFramework.AeroLite",
+        "PresentationFramework.Classic",
+        "PresentationFramework.Fluent",
+        "PresentationFramework.Luna",
+        "PresentationFramework.Royale"
     ];
     private static readonly string[] ProGpuRuntimeAssemblies =
     [
@@ -4458,7 +4463,7 @@ internal static class Program
             string? path = assemblyName.Name switch
             {
                 SmokeAssemblyName => _smokeAssemblyPath,
-                "WindowsBase" or "System.Xaml" or "PresentationCore" or "PresentationFramework" or "PresentationUI" or "ReachFramework" or "System.Printing" or "UIAutomationTypes" or "UIAutomationProvider" or "System.Windows.Input.Manipulations" or "System.Windows.Primitives" or "PresentationFramework.Aero2" or "PresentationFramework.Fluent" =>
+                "WindowsBase" or "System.Xaml" or "PresentationCore" or "PresentationFramework" or "PresentationUI" or "ReachFramework" or "System.Printing" or "UIAutomationTypes" or "UIAutomationProvider" or "System.Windows.Input.Manipulations" or "System.Windows.Primitives" or "PresentationFramework.Aero" or "PresentationFramework.Aero2" or "PresentationFramework.AeroLite" or "PresentationFramework.Classic" or "PresentationFramework.Fluent" or "PresentationFramework.Luna" or "PresentationFramework.Royale" =>
                     TryFindAssembly(_appOutputRoot, fileName) ?? TryFindAssembly(_wpfRoot, fileName),
                 "ProGPU.Wpf" or "ProGPU.Backend" or "ProGPU.Scene" or "ProGPU.Vector" or "ProGPU.Text" or "ProGPU.Compute" or "ProGPU.Transpiler" =>
                     TryFindAssembly(_appOutputRoot, fileName) ?? TryFindAssembly(_proGpuRoot, fileName),

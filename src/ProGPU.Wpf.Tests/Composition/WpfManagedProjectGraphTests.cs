@@ -1308,6 +1308,14 @@ public sealed class WpfManagedProjectGraphTests
             "Themes",
             "PresentationFramework.Fluent",
             "PresentationFramework.Fluent.csproj");
+        var fluentThemeRefProjectPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "Themes",
+            "PresentationFramework.Fluent",
+            "ref",
+            "PresentationFramework.Fluent-ref.csproj");
         var realPresentationCoreHarnessProjectPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.RealPresentationCoreHarness",
@@ -1317,6 +1325,7 @@ public sealed class WpfManagedProjectGraphTests
         var presentationBuildTasksProject = XDocument.Load(presentationBuildTasksProjectPath);
         var presentationFrameworkProject = XDocument.Load(presentationFrameworkProjectPath);
         var fluentThemeProject = XDocument.Load(fluentThemeProjectPath);
+        var fluentThemeRefProject = XDocument.Load(fluentThemeRefProjectPath);
         var realPresentationCoreHarnessProject = XDocument.Load(realPresentationCoreHarnessProjectPath);
 
         Assert.Equal("System.Xaml", Assert.Single(systemXamlProject.Descendants("AssemblyName")).Value);
@@ -1361,6 +1370,8 @@ public sealed class WpfManagedProjectGraphTests
         AssertProjectReference(fluentThemeProject, @"PresentationCore\PresentationCore.csproj");
         AssertProjectReference(fluentThemeProject, @"PresentationFramework\PresentationFramework.csproj");
         AssertProjectReference(fluentThemeProject, @"Themes\PresentationFramework.Fluent\ref\PresentationFramework.Fluent-ref.csproj");
+        Assert.Equal("PresentationFramework.Fluent", Assert.Single(fluentThemeRefProject.Descendants("AssemblyName")).Value);
+        Assert.Equal("PresentationFramework.Fluent-ref", Assert.Single(fluentThemeRefProject.Descendants("PackageId")).Value);
         AssertSourceFileExists("src", "Microsoft.DotNet.Wpf", "src", "Themes", "PresentationFramework.Fluent", "Themes", "Fluent.xaml");
         AssertSourceFileExists("src", "Microsoft.DotNet.Wpf", "src", "Themes", "PresentationFramework.Fluent", "Themes", "Fluent.Light.xaml");
         AssertSourceFileExists("src", "Microsoft.DotNet.Wpf", "src", "Themes", "PresentationFramework.Fluent", "Styles", "Button.xaml");
@@ -5776,6 +5787,16 @@ public sealed class WpfManagedProjectGraphTests
         var spellerInteropBase = File.ReadAllText(spellerInteropBasePath);
         var sdkCiScript = File.ReadAllText(sdkCiScriptPath);
         var sdkCiWorkflow = File.ReadAllText(sdkCiWorkflowPath);
+        string[] wpfThemeAssemblies =
+        [
+            "PresentationFramework.Aero",
+            "PresentationFramework.Aero2",
+            "PresentationFramework.AeroLite",
+            "PresentationFramework.Classic",
+            "PresentationFramework.Fluent",
+            "PresentationFramework.Luna",
+            "PresentationFramework.Royale"
+        ];
 
         Assert.Contains("ProGPU/Silk.NET SDK for portable WPF applications", sdkProject.ToString(), StringComparison.Ordinal);
         Assert.Contains("MSBuildProjectName.Replace('.ArchNeutral','')", sdkProject.ToString(), StringComparison.Ordinal);
@@ -5827,6 +5848,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("src/Microsoft.DotNet.Wpf/src/WindowsBase/WindowsBase.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Fluent/PresentationFramework.Fluent.csproj", sdkCiScript, StringComparison.Ordinal);
+        foreach (string themeAssembly in wpfThemeAssemblies)
+        {
+            Assert.Contains($"src/Microsoft.DotNet.Wpf/src/Themes/{themeAssembly}/{themeAssembly}.csproj", sdkCiScript, StringComparison.Ordinal);
+        }
         Assert.Contains("packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/ProGPU.Wpf/ProGPU.Wpf.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj", sdkCiScript, StringComparison.Ordinal);
@@ -5889,6 +5914,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Condition=\"Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationUI.dll')\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("Condition=\"Exists('$(_ProGpuWpfManagedReferenceRoot)UIAutomationTypes.dll')\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("Condition=\"Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Fluent.dll')\"", portableTargets, StringComparison.Ordinal);
+        foreach (string themeAssembly in wpfThemeAssemblies)
+        {
+            Assert.Contains($"<Reference Include=\"{themeAssembly}\" HintPath=\"$(_ProGpuWpfManagedReferenceRoot){themeAssembly}.dll\"", portableTargets, StringComparison.Ordinal);
+            Assert.Contains($"<_ProGpuWpfLocalRuntimeAsset Include=\"$(_ProGpuWpfManagedReferenceRoot){themeAssembly}.dll\" TargetPath=\"{themeAssembly}.dll\"", portableTargets, StringComparison.Ordinal);
+            Assert.Contains($"<_ProGpuWpfSdkMutablePackageOutput Include=\"$(TargetDir){themeAssembly}.dll\" />", portableTargets, StringComparison.Ordinal);
+        }
         Assert.Contains("Condition=\"Exists('$(_ProGpuReferenceRoot)ProGPU.Text.dll')\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkCopyLocalRuntimeAssets", portableTargets, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkClearMutablePackageOutputs", portableTargets, StringComparison.Ordinal);
@@ -6635,6 +6666,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains(@"lib\$(TargetFramework)\PresentationFramework.dll", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains(@"ref\$(TargetFramework)\PresentationFramework.dll", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains(@"lib\$(TargetFramework)\PresentationFramework.Fluent.dll", wpfTransportTargets, StringComparison.Ordinal);
+        foreach (string themeAssembly in wpfThemeAssemblies)
+        {
+            Assert.Contains($@"lib\$(TargetFramework)\{themeAssembly}.dll", wpfTransportTargets, StringComparison.Ordinal);
+            Assert.Contains($@"ref\$(TargetFramework)\{themeAssembly}.dll", wpfTransportTargets, StringComparison.Ordinal);
+        }
         Assert.Contains("AddManagedWpfTransportPrivateWinFormsPayload", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains("$(PkgMicrosoft_Private_Winforms)", wpfTransportTargets, StringComparison.Ordinal);
         Assert.Contains(@"lib\$(TargetFramework)\System.Private.Windows.Core.dll", wpfTransportTargets, StringComparison.Ordinal);
@@ -6679,6 +6715,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"System.Windows.Primitives\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"PresentationFramework.Fluent\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"PresentationFramework.Aero2\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        foreach (string themeAssembly in wpfThemeAssemblies)
+        {
+            Assert.Contains($"\"{themeAssembly}\"", runtimeHarnessProgram, StringComparison.Ordinal);
+            Assert.Contains($"\"{themeAssembly}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        }
         Assert.Contains("\"ProGPU.Compute\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"ProGPU.Transpiler\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"Silk.NET.Windowing.Common\"", runtimeHarnessProgram, StringComparison.Ordinal);

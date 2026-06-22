@@ -31,8 +31,13 @@ internal static class Program
         "UIAutomationProvider",
         "System.Windows.Input.Manipulations",
         "System.Windows.Primitives",
+        "PresentationFramework.Aero",
         "PresentationFramework.Aero2",
-        "PresentationFramework.Fluent"
+        "PresentationFramework.AeroLite",
+        "PresentationFramework.Classic",
+        "PresentationFramework.Fluent",
+        "PresentationFramework.Luna",
+        "PresentationFramework.Royale"
     ];
 
     private static readonly string[] s_requiredProGpuRuntimeAssemblies =
@@ -82,8 +87,13 @@ internal static class Program
         new("Microsoft.DotNet.Wpf.GitHub", "UIAutomationProvider", "net11.0", "WPF"),
         new("Microsoft.DotNet.Wpf.GitHub", "System.Windows.Input.Manipulations", "net11.0", "MicrosoftBcl"),
         new("Microsoft.DotNet.Wpf.GitHub", "System.Windows.Primitives", "net11.0", "WPF"),
+        new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Aero", "net11.0", "WPF"),
         new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Aero2", "net11.0", "WPF"),
+        new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.AeroLite", "net11.0", "WPF"),
+        new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Classic", "net11.0", "WPF"),
         new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Fluent", "net11.0", "WPF"),
+        new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Luna", "net11.0", "WPF"),
+        new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Royale", "net11.0", "WPF"),
         new("ProGPU.Wpf", "ProGPU.Wpf", "net10.0", "ProGPU"),
         new("ProGPU.Backend", "ProGPU.Backend", "net10.0", "ProGPU"),
         new("ProGPU.Scene", "ProGPU.Scene", "net10.0", "ProGPU"),

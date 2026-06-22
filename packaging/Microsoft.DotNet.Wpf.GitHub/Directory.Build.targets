@@ -61,8 +61,13 @@
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\UIAutomationProvider.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\System.Windows.Input.Manipulations.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\System.Windows.Primitives.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationFramework.Aero.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationFramework.Aero2.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationFramework.AeroLite.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationFramework.Classic.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationFramework.Fluent.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationFramework.Luna.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationFramework.Royale.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\System.Private.Windows.Core.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\WindowsBase.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\System.Xaml.dll" />
@@ -74,7 +79,13 @@
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\UIAutomationProvider.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\System.Windows.Input.Manipulations.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\System.Windows.Primitives.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationFramework.Aero.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationFramework.Aero2.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationFramework.AeroLite.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationFramework.Classic.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationFramework.Fluent.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationFramework.Luna.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationFramework.Royale.dll" />
     </ItemGroup>
 
     <Error

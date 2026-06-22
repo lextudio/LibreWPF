@@ -1870,6 +1870,10 @@ internal static class Program
                         Validation.Error="OnExternalValidationError"
                         Text="{Binding DataErrorText, Mode=TwoWay, UpdateSourceTrigger=Explicit, ValidatesOnDataErrors=True, NotifyOnValidationError=True}" />
                     <TextBox
+                        x:Name="ExternalNotifyDataErrorValidationTextBox"
+                        Validation.Error="OnExternalValidationError"
+                        Text="{Binding NotifyDataErrorText, Mode=TwoWay, UpdateSourceTrigger=Explicit, ValidatesOnNotifyDataErrors=True, NotifyOnValidationError=True}" />
+                    <TextBox
                         x:Name="ExternalExceptionValidationTextBox"
                         Validation.Error="OnExternalValidationError">
                         <TextBox.Text>
@@ -2039,6 +2043,7 @@ internal static class Program
             Path.Combine(appRoot, "MainWindow.xaml.cs"),
             """
             using System;
+            using System.Collections;
             using System.Collections.ObjectModel;
             using System.Collections.Specialized;
             using System.Collections.Generic;
@@ -2068,7 +2073,7 @@ internal static class Program
 
             namespace ExternalSdkApp;
 
-            public partial class MainWindow : Window, INotifyPropertyChanged, IDataErrorInfo
+            public partial class MainWindow : Window, INotifyPropertyChanged, IDataErrorInfo, INotifyDataErrorInfo
             {
                 public static readonly RoutedUICommand ExternalCommand = new(
                     "External SDK command",
@@ -2129,6 +2134,31 @@ internal static class Program
 
                         return string.Empty;
                     }
+                }
+
+                private string _notifyDataErrorText = "notify: valid initial";
+
+                public string NotifyDataErrorText
+                {
+                    get => _notifyDataErrorText;
+                    set
+                    {
+                        if (_notifyDataErrorText != value)
+                        {
+                            _notifyDataErrorText = value;
+                            OnPropertyChanged(nameof(NotifyDataErrorText));
+                            ErrorsChanged?.Invoke(this, new DataErrorsChangedEventArgs(nameof(NotifyDataErrorText)));
+                        }
+                    }
+                }
+
+                public bool HasErrors => GetNotifyDataErrors(nameof(NotifyDataErrorText)).Any();
+
+                public event EventHandler<DataErrorsChangedEventArgs>? ErrorsChanged;
+
+                public IEnumerable GetErrors(string? propertyName)
+                {
+                    return GetNotifyDataErrors(propertyName).ToArray();
                 }
 
                 private string _exceptionValidationText = "exception valid initial";
@@ -2992,6 +3022,18 @@ internal static class Program
                 private void OnPropertyChanged(string propertyName)
                 {
                     PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+                }
+
+                private IEnumerable<string> GetNotifyDataErrors(string? propertyName)
+                {
+                    if (propertyName is null
+                        || string.Equals(propertyName, nameof(NotifyDataErrorText), StringComparison.Ordinal))
+                    {
+                        if (!NotifyDataErrorText.StartsWith("notify:", StringComparison.Ordinal))
+                        {
+                            yield return "External INotifyDataErrorInfo requires notify: prefix.";
+                        }
+                    }
                 }
 
                 private bool _isExternalDataTriggerActive;
@@ -7424,6 +7466,43 @@ internal static class Program
                     AssertEqual("Removed", window.LastExternalValidationErrorAction, "external SDK IDataErrorInfo validation error removed action");
                     AssertEqual("External IDataErrorInfo requires data: prefix.", window.LastExternalValidationErrorContent, "external SDK IDataErrorInfo validation removed error content");
                     AssertEqual("ExternalDataErrorValidationTextBox", window.LastExternalValidationErrorSenderName, "external SDK IDataErrorInfo validation error removed sender");
+
+                    var notifyDataErrorValidationTextBox = RequireType<TextBox>(
+                        window.FindName("ExternalNotifyDataErrorValidationTextBox"),
+                        "external SDK INotifyDataErrorInfo validation text box");
+                    var notifyDataErrorBindingExpression = notifyDataErrorValidationTextBox.GetBindingExpression(TextBox.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK INotifyDataErrorInfo validation BindingExpression.");
+                    AssertEqual("NotifyDataErrorText", notifyDataErrorBindingExpression.ParentBinding.Path.Path, "external SDK INotifyDataErrorInfo binding path");
+                    AssertEqual(true, notifyDataErrorBindingExpression.ParentBinding.ValidatesOnNotifyDataErrors, "external SDK INotifyDataErrorInfo binding ValidatesOnNotifyDataErrors");
+                    AssertEqual(true, notifyDataErrorBindingExpression.ParentBinding.NotifyOnValidationError, "external SDK INotifyDataErrorInfo binding NotifyOnValidationError");
+                    AssertEqual(false, window.HasErrors, "external SDK INotifyDataErrorInfo initial HasErrors");
+                    AssertEqual("notify: valid initial", notifyDataErrorValidationTextBox.Text, "external SDK INotifyDataErrorInfo validation initial target");
+                    AssertEqual("notify: valid initial", window.NotifyDataErrorText, "external SDK INotifyDataErrorInfo validation initial source");
+                    int notifyDataErrorValidationAddedBefore = window.ExternalValidationErrorAddedCount;
+                    int notifyDataErrorValidationRemovedBefore = window.ExternalValidationErrorRemovedCount;
+                    notifyDataErrorValidationTextBox.Text = "bad notify data";
+                    notifyDataErrorBindingExpression.UpdateSource();
+                    DrainDispatcher();
+                    AssertEqual(true, window.HasErrors, "external SDK INotifyDataErrorInfo failure HasErrors");
+                    AssertEqual(true, Validation.GetHasError(notifyDataErrorValidationTextBox), "external SDK INotifyDataErrorInfo validation failure state");
+                    AssertEqual(1, Validation.GetErrors(notifyDataErrorValidationTextBox).Count, "external SDK INotifyDataErrorInfo validation failure error count");
+                    AssertEqual("bad notify data", window.NotifyDataErrorText, "external SDK INotifyDataErrorInfo validation updated invalid source");
+                    AssertAtLeast(notifyDataErrorValidationAddedBefore + 1, window.ExternalValidationErrorAddedCount, "external SDK INotifyDataErrorInfo validation error added count");
+                    AssertEqual(notifyDataErrorValidationRemovedBefore, window.ExternalValidationErrorRemovedCount, "external SDK INotifyDataErrorInfo validation removed count before recovery");
+                    AssertEqual("Added", window.LastExternalValidationErrorAction, "external SDK INotifyDataErrorInfo validation error added action");
+                    AssertEqual("External INotifyDataErrorInfo requires notify: prefix.", window.LastExternalValidationErrorContent, "external SDK INotifyDataErrorInfo validation error content");
+                    AssertEqual("ExternalNotifyDataErrorValidationTextBox", window.LastExternalValidationErrorSenderName, "external SDK INotifyDataErrorInfo validation error added sender");
+                    notifyDataErrorValidationTextBox.Text = "notify: recovered";
+                    notifyDataErrorBindingExpression.UpdateSource();
+                    DrainDispatcher();
+                    AssertEqual(false, window.HasErrors, "external SDK INotifyDataErrorInfo recovery HasErrors");
+                    AssertEqual(false, Validation.GetHasError(notifyDataErrorValidationTextBox), "external SDK INotifyDataErrorInfo validation recovery state");
+                    AssertEqual(0, Validation.GetErrors(notifyDataErrorValidationTextBox).Count, "external SDK INotifyDataErrorInfo validation recovery error count");
+                    AssertEqual("notify: recovered", window.NotifyDataErrorText, "external SDK INotifyDataErrorInfo validation recovered source");
+                    AssertAtLeast(notifyDataErrorValidationRemovedBefore + 1, window.ExternalValidationErrorRemovedCount, "external SDK INotifyDataErrorInfo validation error removed count");
+                    AssertEqual("Removed", window.LastExternalValidationErrorAction, "external SDK INotifyDataErrorInfo validation error removed action");
+                    AssertEqual("External INotifyDataErrorInfo requires notify: prefix.", window.LastExternalValidationErrorContent, "external SDK INotifyDataErrorInfo validation removed error content");
+                    AssertEqual("ExternalNotifyDataErrorValidationTextBox", window.LastExternalValidationErrorSenderName, "external SDK INotifyDataErrorInfo validation error removed sender");
 
                     var exceptionValidationTextBox = RequireType<TextBox>(
                         window.FindName("ExternalExceptionValidationTextBox"),

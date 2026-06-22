@@ -7389,11 +7389,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<InputScopeName>EmailSmtpAddress</InputScopeName>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<InputScopePhrase>external package phrase</InputScopePhrase>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidationText { get; set; } = \"valid external text\"", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("MainWindow : Window, INotifyPropertyChanged, IDataErrorInfo", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("MainWindow : Window, INotifyPropertyChanged, IDataErrorInfo, INotifyDataErrorInfo", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ExternalDataErrorValidationTextBox\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DataErrorText, Mode=TwoWay, UpdateSourceTrigger=Explicit, ValidatesOnDataErrors=True, NotifyOnValidationError=True", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("public string DataErrorText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("External IDataErrorInfo requires data: prefix.", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalNotifyDataErrorValidationTextBox\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("NotifyDataErrorText, Mode=TwoWay, UpdateSourceTrigger=Explicit, ValidatesOnNotifyDataErrors=True, NotifyOnValidationError=True", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("public string NotifyDataErrorText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("public event EventHandler<DataErrorsChangedEventArgs>? ErrorsChanged", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("External INotifyDataErrorInfo requires notify: prefix.", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("BindingGroupFirstName { get; set; } = \"group: Ada\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("BindingGroupLastName { get; set; } = \"group: Lovelace\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalValidationTextChangedCount", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7447,6 +7452,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK IDataErrorInfo binding ValidatesOnDataErrors", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK IDataErrorInfo validation error content", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK IDataErrorInfo validation recovered source", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK INotifyDataErrorInfo binding ValidatesOnNotifyDataErrors", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK INotifyDataErrorInfo validation error content", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK INotifyDataErrorInfo validation recovered source", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("InputMethod.GetInputScope(validationTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK compiled InputScopeName value", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK compiled InputScopePhrase text", externalSdkHarnessProgram, StringComparison.Ordinal);

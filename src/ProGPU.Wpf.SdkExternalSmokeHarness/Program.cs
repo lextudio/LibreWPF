@@ -1458,6 +1458,11 @@ internal static class Program
                         </TextBlock.Text>
                     </TextBlock>
                     <TextBox
+                        x:Name="ExternalBindingTransferTextBox"
+                        SourceUpdated="OnExternalBindingSourceUpdated"
+                        TargetUpdated="OnExternalBindingTargetUpdated"
+                        Text="{Binding ExternalBindingTransferText, Mode=TwoWay, UpdateSourceTrigger=Explicit, NotifyOnSourceUpdated=True, NotifyOnTargetUpdated=True}" />
+                    <TextBox
                         x:Name="ExternalValidationTextBox"
                         AutomationProperties.AutomationId="ExternalValidationTextBoxAutomation"
                         AutomationProperties.HelpText="External SDK validation text"
@@ -1706,6 +1711,8 @@ internal static class Program
 
                 public string ValidationText { get; set; } = "valid external text";
 
+                public string ExternalBindingTransferText { get; set; } = "external transfer initial";
+
                 public string BindingGroupFirstName { get; set; } = "group: Ada";
 
                 public string BindingGroupLastName { get; set; } = "group: Lovelace";
@@ -1842,6 +1849,26 @@ internal static class Program
                 public int ExternalValidationTextChangedCount { get; private set; }
 
                 public string? LastExternalValidationText { get; private set; }
+
+                public int ExternalBindingSourceUpdatedCount { get; private set; }
+
+                public int ExternalBindingTargetUpdatedCount { get; private set; }
+
+                public string? LastExternalBindingSourceUpdatedSenderName { get; private set; }
+
+                public string? LastExternalBindingTargetUpdatedSenderName { get; private set; }
+
+                public string? LastExternalBindingSourceUpdatedTargetName { get; private set; }
+
+                public string? LastExternalBindingTargetUpdatedTargetName { get; private set; }
+
+                public string? LastExternalBindingSourceUpdatedPropertyName { get; private set; }
+
+                public string? LastExternalBindingTargetUpdatedPropertyName { get; private set; }
+
+                public string? LastExternalBindingSourceUpdatedRoutedEventName { get; private set; }
+
+                public string? LastExternalBindingTargetUpdatedRoutedEventName { get; private set; }
 
                 public int ExternalValidationErrorAddedCount { get; private set; }
 
@@ -2051,6 +2078,24 @@ internal static class Program
                 {
                     ExternalValidationTextChangedCount++;
                     LastExternalValidationText = (sender as TextBox)?.Text;
+                }
+
+                private void OnExternalBindingSourceUpdated(object sender, DataTransferEventArgs e)
+                {
+                    ExternalBindingSourceUpdatedCount++;
+                    LastExternalBindingSourceUpdatedSenderName = (sender as FrameworkElement)?.Name;
+                    LastExternalBindingSourceUpdatedTargetName = (e.TargetObject as FrameworkElement)?.Name;
+                    LastExternalBindingSourceUpdatedPropertyName = e.Property?.Name;
+                    LastExternalBindingSourceUpdatedRoutedEventName = e.RoutedEvent?.Name;
+                }
+
+                private void OnExternalBindingTargetUpdated(object sender, DataTransferEventArgs e)
+                {
+                    ExternalBindingTargetUpdatedCount++;
+                    LastExternalBindingTargetUpdatedSenderName = (sender as FrameworkElement)?.Name;
+                    LastExternalBindingTargetUpdatedTargetName = (e.TargetObject as FrameworkElement)?.Name;
+                    LastExternalBindingTargetUpdatedPropertyName = e.Property?.Name;
+                    LastExternalBindingTargetUpdatedRoutedEventName = e.RoutedEvent?.Name;
                 }
 
                 private void OnExternalValidationError(object sender, ValidationErrorEventArgs e)
@@ -5780,6 +5825,40 @@ internal static class Program
                     }
 
                     AssertEqual(2, priorityBindingExpression.ParentPriorityBinding.Bindings.Count, "external SDK priority binding child binding count");
+
+                    var transferTextBox = RequireType<TextBox>(
+                        window.FindName("ExternalBindingTransferTextBox"),
+                        "external SDK binding transfer text box");
+                    var transferBindingExpression = transferTextBox.GetBindingExpression(TextBox.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK binding transfer BindingExpression.");
+                    AssertEqual("ExternalBindingTransferText", transferBindingExpression.ParentBinding.Path.Path, "external SDK binding transfer path");
+                    AssertEqual(BindingMode.TwoWay, transferBindingExpression.ParentBinding.Mode, "external SDK binding transfer mode");
+                    AssertEqual(UpdateSourceTrigger.Explicit, transferBindingExpression.ParentBinding.UpdateSourceTrigger, "external SDK binding transfer update source trigger");
+                    AssertEqual(true, transferBindingExpression.ParentBinding.NotifyOnSourceUpdated, "external SDK binding transfer NotifyOnSourceUpdated");
+                    AssertEqual(true, transferBindingExpression.ParentBinding.NotifyOnTargetUpdated, "external SDK binding transfer NotifyOnTargetUpdated");
+                    AssertEqual("external transfer initial", transferTextBox.Text, "external SDK binding transfer initial target value");
+
+                    int targetUpdatedBefore = window.ExternalBindingTargetUpdatedCount;
+                    window.ExternalBindingTransferText = "external transfer target refresh";
+                    transferBindingExpression.UpdateTarget();
+                    DrainDispatcher();
+                    AssertEqual("external transfer target refresh", transferTextBox.Text, "external SDK Binding TargetUpdated target value");
+                    AssertAtLeast(targetUpdatedBefore + 1, window.ExternalBindingTargetUpdatedCount, "external SDK Binding TargetUpdated routed event");
+                    AssertEqual("ExternalBindingTransferTextBox", window.LastExternalBindingTargetUpdatedSenderName, "external SDK Binding TargetUpdated sender");
+                    AssertEqual("ExternalBindingTransferTextBox", window.LastExternalBindingTargetUpdatedTargetName, "external SDK Binding TargetUpdated target object");
+                    AssertEqual("Text", window.LastExternalBindingTargetUpdatedPropertyName, "external SDK Binding TargetUpdated property");
+                    AssertEqual("TargetUpdated", window.LastExternalBindingTargetUpdatedRoutedEventName, "external SDK Binding TargetUpdated routed event name");
+
+                    int sourceUpdatedBefore = window.ExternalBindingSourceUpdatedCount;
+                    transferTextBox.Text = "external transfer source refresh";
+                    transferBindingExpression.UpdateSource();
+                    DrainDispatcher();
+                    AssertEqual("external transfer source refresh", window.ExternalBindingTransferText, "external SDK Binding SourceUpdated source value");
+                    AssertAtLeast(sourceUpdatedBefore + 1, window.ExternalBindingSourceUpdatedCount, "external SDK Binding SourceUpdated routed event");
+                    AssertEqual("ExternalBindingTransferTextBox", window.LastExternalBindingSourceUpdatedSenderName, "external SDK Binding SourceUpdated sender");
+                    AssertEqual("ExternalBindingTransferTextBox", window.LastExternalBindingSourceUpdatedTargetName, "external SDK Binding SourceUpdated target object");
+                    AssertEqual("Text", window.LastExternalBindingSourceUpdatedPropertyName, "external SDK Binding SourceUpdated property");
+                    AssertEqual("SourceUpdated", window.LastExternalBindingSourceUpdatedRoutedEventName, "external SDK Binding SourceUpdated routed event name");
 
                     var ancestorBindingText = RequireType<TextBlock>(
                         window.FindName("ExternalAncestorBindingText"),

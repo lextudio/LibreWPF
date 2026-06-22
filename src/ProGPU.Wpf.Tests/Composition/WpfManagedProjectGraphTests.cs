@@ -6779,6 +6779,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Converter={StaticResource ExternalUpperConverter}", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<MultiBinding Converter=\"{StaticResource ExternalSummaryConverter}\">", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<PriorityBinding>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalBindingTransferTextBox\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SourceUpdated=\"OnExternalBindingSourceUpdated\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("TargetUpdated=\"OnExternalBindingTargetUpdated\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalBindingTransferText, Mode=TwoWay, UpdateSourceTrigger=Explicit, NotifyOnSourceUpdated=True, NotifyOnTargetUpdated=True", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ExternalAncestorBindingBorder\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding RelativeSource={RelativeSource AncestorType={x:Type Border}}, Path=Tag}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<local:ExternalNonEmptyValidationRule />", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6805,6 +6809,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TextChanged=\"OnExternalValidationTextChanged\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Validation.Error=\"OnExternalValidationError\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("NotifyOnValidationError=\"True\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalBindingTransferText { get; set; } = \"external transfer initial\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalBindingSourceUpdatedCount", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalBindingTargetUpdatedCount", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OnExternalBindingSourceUpdated", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OnExternalBindingTargetUpdated", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("InputLanguageManager.InputLanguage=\"en-US\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("InputMethod.PreferredImeState=\"On\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("InputMethod.PreferredImeConversionMode=\"Native, FullShape\"", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6845,6 +6854,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK InputLanguageManager set current language", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("InputMethod.GetPreferredImeState(validationTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK InputMethod set conversion mode", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK binding transfer NotifyOnSourceUpdated", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK binding transfer NotifyOnTargetUpdated", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Binding SourceUpdated property", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Binding TargetUpdated routed event name", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK validation source update", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("bindingGroup.ValidateWithoutUpdate()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("bindingGroup.CommitEdit()", externalSdkHarnessProgram, StringComparison.Ordinal);

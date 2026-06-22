@@ -1086,6 +1086,15 @@ internal static class Program
                     <Button
                         x:Name="ExternalStyledButton"
                         Style="{StaticResource ExternalTriggeredButtonStyle}" />
+                    <local:ExternalClassCommandTextBox
+                        x:Name="ExternalClassCommandTarget"
+                        Text="External class command target" />
+                    <Button
+                        x:Name="ExternalClassCommandButton"
+                        Command="{x:Static local:ExternalClassCommandTextBox.ExternalClassCommand}"
+                        CommandParameter="ExternalClassCommandParameter"
+                        CommandTarget="{Binding ElementName=ExternalClassCommandTarget}"
+                        Content="External class command" />
                     <Button
                         x:Name="ExternalEventSetterButton"
                         Style="{StaticResource ExternalEventSetterButtonStyle}" />
@@ -2664,6 +2673,61 @@ internal static class Program
                 }
             }
 
+            public sealed class ExternalClassCommandTextBox : TextBox
+            {
+                public static readonly RoutedUICommand ExternalClassCommand = new(
+                    "External class command",
+                    nameof(ExternalClassCommand),
+                    typeof(ExternalClassCommandTextBox));
+
+                static ExternalClassCommandTextBox()
+                {
+                    CommandManager.RegisterClassCommandBinding(
+                        typeof(ExternalClassCommandTextBox),
+                        new CommandBinding(
+                            ExternalClassCommand,
+                            OnExternalClassCommandExecuted,
+                            OnExternalClassCommandCanExecute));
+                    CommandManager.RegisterClassInputBinding(
+                        typeof(ExternalClassCommandTextBox),
+                        new KeyBinding(
+                            ExternalClassCommand,
+                            new KeyGesture(Key.F8, ModifierKeys.Control))
+                        {
+                            CommandParameter = "ExternalClassInputParameter"
+                        });
+                }
+
+                public int ClassCommandCanExecuteCount { get; private set; }
+
+                public int ClassCommandExecutedCount { get; private set; }
+
+                public object? LastClassCommandParameter { get; private set; }
+
+                public string? LastClassCommandName { get; private set; }
+
+                private static void OnExternalClassCommandCanExecute(object sender, CanExecuteRoutedEventArgs e)
+                {
+                    if (sender is ExternalClassCommandTextBox textBox)
+                    {
+                        textBox.ClassCommandCanExecuteCount++;
+                        e.CanExecute = true;
+                        e.Handled = true;
+                    }
+                }
+
+                private static void OnExternalClassCommandExecuted(object sender, ExecutedRoutedEventArgs e)
+                {
+                    if (sender is ExternalClassCommandTextBox textBox)
+                    {
+                        textBox.ClassCommandExecutedCount++;
+                        textBox.LastClassCommandParameter = e.Parameter;
+                        textBox.LastClassCommandName = (e.Command as RoutedCommand)?.Name;
+                        e.Handled = true;
+                    }
+                }
+            }
+
             public sealed class ExternalRoutedEventControl : Button
             {
                 public static readonly RoutedEvent ExternalBubbleEvent = EventManager.RegisterRoutedEvent(
@@ -3218,6 +3282,7 @@ internal static class Program
                     ValidateVisualStateTransitions(window);
                     ValidateAdornerLayer(window);
                     ValidateAccessKeyRoutingAfterRun(window);
+                    ValidateClassInputBindingAfterRun(window);
                     ValidateKeyboardNavigationAfterRun(window);
                     ValidateApplicationWindowLifetime(app, window);
 
@@ -8591,6 +8656,12 @@ internal static class Program
                     var commandButton = RequireType<Button>(
                         window.FindName("ExternalCommandButton"),
                         "external SDK command button");
+                    var classCommandTarget = RequireType<ExternalClassCommandTextBox>(
+                        window.FindName("ExternalClassCommandTarget"),
+                        "external SDK class command target");
+                    var classCommandButton = RequireType<Button>(
+                        window.FindName("ExternalClassCommandButton"),
+                        "external SDK class command button");
                     var requeryCommandButton = RequireType<Button>(
                         window.FindName("ExternalRequeryCommandButton"),
                         "external SDK requery command button");
@@ -8640,6 +8711,9 @@ internal static class Program
                     AssertEqual(accessLabel, labelPeer.Owner, "external SDK label automation peer owner");
                     AssertEqual(MainWindow.ExternalCommand, commandButton.Command, "external SDK command button command");
                     AssertEqual("ExternalCommandParameter", commandButton.CommandParameter, "external SDK command button parameter");
+                    AssertEqual(ExternalClassCommandTextBox.ExternalClassCommand, classCommandButton.Command, "external SDK class command button command");
+                    AssertEqual("ExternalClassCommandParameter", classCommandButton.CommandParameter, "external SDK class command button parameter");
+                    AssertEqual(classCommandTarget, classCommandButton.CommandTarget, "external SDK class command button target");
 
                     int canExecuteBefore = window.ExternalCommandCanExecuteCount;
                     int executedBefore = window.ExternalCommandExecutedCount;
@@ -8667,6 +8741,17 @@ internal static class Program
                         .Execute(commandButton.CommandParameter, commandButton);
                     AssertEqual(buttonExecutedBefore + 1, window.ExternalCommandExecutedCount, "external SDK button command executed count");
                     AssertEqual("ExternalCommandParameter", window.LastExternalCommandParameter, "external SDK button command parameter");
+
+                    int classCanExecuteBefore = classCommandTarget.ClassCommandCanExecuteCount;
+                    int classExecutedBefore = classCommandTarget.ClassCommandExecutedCount;
+                    RequireType<RoutedCommand>(
+                        classCommandButton.Command,
+                        "external SDK class command routed command")
+                        .Execute(classCommandButton.CommandParameter, classCommandTarget);
+                    AssertAtLeast(classCanExecuteBefore + 1, classCommandTarget.ClassCommandCanExecuteCount, "external SDK class command can-execute count");
+                    AssertEqual(classExecutedBefore + 1, classCommandTarget.ClassCommandExecutedCount, "external SDK class command executed count");
+                    AssertEqual("ExternalClassCommandParameter", classCommandTarget.LastClassCommandParameter, "external SDK class command parameter");
+                    AssertEqual(nameof(ExternalClassCommandTextBox.ExternalClassCommand), classCommandTarget.LastClassCommandName, "external SDK class command name");
 
                     AssertEqual(window.ExternalRequeryCommand, requeryCommandButton.Command, "external SDK requery command binding");
                     AssertEqual("ExternalRequeryParameter", requeryCommandButton.CommandParameter, "external SDK requery command parameter");
@@ -8708,6 +8793,102 @@ internal static class Program
                     AssertEqual(false, AccessKeyManager.ProcessKey(presentationSource, "E", false), "external SDK access-key manager process last key");
                     AssertEqual(validationTextBox, Keyboard.FocusedElement, "external SDK access-key manager focused label target");
                     Keyboard.ClearFocus();
+                }
+
+                private static void ValidateClassInputBindingAfterRun(MainWindow window)
+                {
+                    var classCommandTarget = RequireType<ExternalClassCommandTextBox>(
+                        window.FindName("ExternalClassCommandTarget"),
+                        "external SDK class input binding runtime target");
+
+                    Keyboard.Focus(classCommandTarget);
+                    AssertEqual(classCommandTarget, Keyboard.FocusedElement, "external SDK class input binding focused target");
+                    int classExecutedBefore = classCommandTarget.ClassCommandExecutedCount;
+                    object keyDown = CreatePortableInputEvent("KeyDown", key: "F8", modifiersName: "Control");
+                    HandlePortableInput(window, keyDown);
+
+                    AssertEqual(true, GetPropertyValue<bool>(keyDown, "Handled"), "external SDK class input binding key event handled");
+                    AssertEqual(classExecutedBefore + 1, classCommandTarget.ClassCommandExecutedCount, "external SDK class input binding command execution count");
+                    AssertEqual("ExternalClassInputParameter", classCommandTarget.LastClassCommandParameter, "external SDK class input binding command parameter");
+                    AssertEqual(nameof(ExternalClassCommandTextBox.ExternalClassCommand), classCommandTarget.LastClassCommandName, "external SDK class input binding command name");
+
+                    object keyUp = CreatePortableInputEvent("KeyUp", key: "F8", modifiersName: "None");
+                    HandlePortableInput(window, keyUp);
+                    AssertEqual(
+                        classExecutedBefore + 1,
+                        classCommandTarget.ClassCommandExecutedCount,
+                        "external SDK class input binding ignores key up");
+                    Keyboard.ClearFocus();
+                }
+
+                private static object CreatePortableInputEvent(
+                    string kindName,
+                    string? key = null,
+                    int scanCode = 0,
+                    string modifiersName = "None",
+                    char? character = null,
+                    double x = 0,
+                    double y = 0,
+                    double deltaX = 0,
+                    double deltaY = 0,
+                    string buttonName = "None")
+                {
+                    Assembly presentationFramework = typeof(Window).Assembly;
+                    Type argsType = RequireType<Type>(
+                        presentationFramework.GetType("System.Windows.PortableInputEventArgs", throwOnError: true),
+                        "portable input event args type");
+                    Type kindType = RequireType<Type>(
+                        presentationFramework.GetType("System.Windows.PortableInputEventKind", throwOnError: true),
+                        "portable input event kind type");
+                    Type buttonType = RequireType<Type>(
+                        presentationFramework.GetType("System.Windows.PortableMouseButton", throwOnError: true),
+                        "portable mouse button type");
+                    Type modifiersType = RequireType<Type>(
+                        presentationFramework.GetType("System.Windows.PortableInputModifiers", throwOnError: true),
+                        "portable input modifiers type");
+
+                    return Activator.CreateInstance(
+                        argsType,
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                        binder: null,
+                        args: new object?[]
+                        {
+                            Enum.Parse(kindType, kindName),
+                            key,
+                            scanCode,
+                            character,
+                            x,
+                            y,
+                            deltaX,
+                            deltaY,
+                            Enum.Parse(buttonType, buttonName),
+                            Enum.Parse(modifiersType, modifiersName)
+                        },
+                        culture: null)
+                        ?? throw new InvalidOperationException($"Failed to create '{argsType.FullName}'.");
+                }
+
+                private static void HandlePortableInput(Window window, object input)
+                {
+                    MethodInfo handlePortableInput = typeof(Window).GetMethod(
+                        "HandlePortableInput",
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                        ?? throw new MissingMethodException(typeof(Window).FullName, "HandlePortableInput");
+
+                    handlePortableInput.Invoke(window, [input]);
+                }
+
+                private static T GetPropertyValue<T>(object instance, string propertyName)
+                {
+                    PropertyInfo property = instance.GetType().GetProperty(
+                        propertyName,
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                        ?? throw new MissingMemberException(instance.GetType().FullName, propertyName);
+                    object? value = property.GetValue(instance);
+                    return value is T typed
+                        ? typed
+                        : throw new InvalidOperationException(
+                            $"Expected '{instance.GetType().FullName}.{propertyName}' to be {typeof(T).FullName}, but found {value?.GetType().FullName ?? "<null>"}.");
                 }
 
                 private static void ValidateKeyboardNavigationAfterRun(MainWindow window)

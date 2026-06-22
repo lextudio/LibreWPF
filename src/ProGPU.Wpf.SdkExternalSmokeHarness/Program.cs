@@ -3106,6 +3106,36 @@ internal static class Program
                     AssertEqual(true, ApplicationContainsWindow(app, window), "external SDK application windows keeps main window after secondary close");
                     AssertEqual(0, App.ExternalExitEventCount, "external SDK application exit count before main close");
 
+                    var ownedWindow = new Window
+                    {
+                        Title = "External SDK owned window",
+                        Width = 88,
+                        Height = 44,
+                        Owner = window,
+                        Content = new TextBlock { Text = "External owned" }
+                    };
+                    int ownedClosingCount = 0;
+                    int ownedClosedCount = 0;
+                    bool ownedClosingCancelBefore = true;
+                    bool ownedClosingCancelAfter = false;
+                    ownedWindow.Closing += (_, e) =>
+                    {
+                        ownedClosingCount++;
+                        ownedClosingCancelBefore = e.Cancel;
+                        e.Cancel = true;
+                        ownedClosingCancelAfter = e.Cancel;
+                    };
+                    ownedWindow.Closed += (_, _) => ownedClosedCount++;
+
+                    ownedWindow.Show();
+                    DrainDispatcher();
+
+                    AssertEqual(true, ownedWindow.IsVisible, "external SDK owned window visibility after show");
+                    AssertEqual(window, ownedWindow.Owner, "external SDK owned window owner");
+                    AssertEqual(1, window.OwnedWindows.Count, "external SDK main window owned window count");
+                    AssertEqual(ownedWindow, window.OwnedWindows[0], "external SDK main window owned window entry");
+                    AssertEqual(true, ApplicationContainsWindow(app, ownedWindow), "external SDK application windows contains owned window");
+
                     app.ShutdownMode = ShutdownMode.OnMainWindowClose;
                     AssertEqual(ShutdownMode.OnMainWindowClose, app.ShutdownMode, "external SDK application main-window shutdown mode");
 
@@ -3117,6 +3147,11 @@ internal static class Program
                     AssertEqual(false, window.LastExternalWindowClosingCancelAfter, "external SDK final window Closing final cancel state");
                     AssertEqual(nameof(MainWindow), window.LastExternalWindowClosedSenderType, "external SDK final window Closed sender");
                     AssertEqual(false, window.IsVisible, "external SDK final window visibility");
+                    AssertEqual(1, ownedClosingCount, "external SDK owned window Closing count after owner close");
+                    AssertEqual(1, ownedClosedCount, "external SDK owned window Closed count after owner close");
+                    AssertEqual(false, ownedClosingCancelBefore, "external SDK owned window Closing initial cancel state");
+                    AssertEqual(true, ownedClosingCancelAfter, "external SDK owned window Closing attempted cancel state");
+                    AssertEqual(false, ownedWindow.IsVisible, "external SDK owned window visibility after owner close");
                 }
 
                 private static bool ApplicationContainsWindow(App app, Window window)

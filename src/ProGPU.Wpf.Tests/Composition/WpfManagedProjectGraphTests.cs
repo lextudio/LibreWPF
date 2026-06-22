@@ -667,6 +667,7 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(window, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.SendMessage( Handle, WindowMessage.WM_SYSCOMMAND");
         Assert.Contains("ClosePortableWindowActivation();", window, StringComparison.Ordinal);
         Assert.Contains("private bool IsPortableWindowActive", window, StringComparison.Ordinal);
+        Assert.Contains("if (value != null && value.IsSourceWindowNull && !value.IsPortableWindowActive)", window, StringComparison.Ordinal);
         Assert.Contains("private bool IsLayoutSourceUnavailable", window, StringComparison.Ordinal);
         Assert.Contains("return !IsPortableWindowActive && (IsSourceWindowNull || IsCompositionTargetInvalid)", window, StringComparison.Ordinal);
         Assert.Contains("private Size GetWindowFrameSizeInMeasureUnits()", window, StringComparison.Ordinal);
@@ -6397,6 +6398,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("External SDK secondary window", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ApplicationContainsWindow(app, secondaryWindow)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK application exit count before main close", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("External SDK owned window", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Owner = window", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("window.OwnedWindows.Count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK owned window Closing attempted cancel state", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ShutdownMode.OnMainWindowClose", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("App.ExternalStartupEventCount", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("App.ExternalExitEventCount", externalSdkHarnessProgram, StringComparison.Ordinal);

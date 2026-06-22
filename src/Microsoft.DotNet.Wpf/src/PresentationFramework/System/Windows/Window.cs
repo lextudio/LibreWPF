@@ -1247,7 +1247,7 @@ namespace System.Windows
                     throw new InvalidOperationException(SR.CantSetOwnerAfterDialogIsShown);
                 }
 
-                if (value != null && value.IsSourceWindowNull)
+                if (value != null && value.IsSourceWindowNull && !value.IsPortableWindowActive)
                 {
                     // Try to be specific in the error message.
                     if (value._disposed)

@@ -6829,6 +6829,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalFrameworkItemTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalRenderingItemTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalDefaultItemTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalImplicitItemTemplateText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding Name, StringFormat=External implicit {0}}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalItemTemplateSelector", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultTemplate=\"{StaticResource ExternalDefaultItemTemplate}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalFrameworkItemContainerStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6876,6 +6878,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalItemsPanelList", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalTemplateSelectorPresenter", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ContentTemplateSelector=\"{StaticResource ExternalItemTemplateSelector}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalImplicitTemplatePresenter", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalTemplateSelectorItems", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ItemTemplateSelector=\"{StaticResource ExternalItemTemplateSelector}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalListView", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7076,6 +7079,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("return false;", spellerInteropBase, StringComparison.Ordinal);
         Assert.Contains("ExternalItemTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DataType=\"{x:Type local:ExternalItem}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new DataTemplateKey(typeof(ExternalItem))", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK implicit item data template", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK implicit item template binding path", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK implicit item template resolved text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ObservableCollection<ExternalItem>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateApplicationResources(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePackResources()", externalSdkHarnessProgram, StringComparison.Ordinal);

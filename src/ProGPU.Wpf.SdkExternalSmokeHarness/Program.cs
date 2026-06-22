@@ -829,6 +829,11 @@ internal static class Program
                             x:Name="ExternalDefaultTemplateText"
                             Text="{Binding Kind, StringFormat=Default template {0}}" />
                     </DataTemplate>
+                    <DataTemplate DataType="{x:Type local:ExternalItem}">
+                        <TextBlock
+                            x:Name="ExternalImplicitItemTemplateText"
+                            Text="{Binding Name, StringFormat=External implicit {0}}" />
+                    </DataTemplate>
                     <local:ExternalItemTemplateSelector
                         x:Key="ExternalItemTemplateSelector"
                         DefaultTemplate="{StaticResource ExternalDefaultItemTemplate}"
@@ -1525,6 +1530,9 @@ internal static class Program
                         x:Name="ExternalTemplateSelectorPresenter"
                         Content="{Binding SelectedExternalItem}"
                         ContentTemplateSelector="{StaticResource ExternalItemTemplateSelector}" />
+                    <ContentPresenter
+                        x:Name="ExternalImplicitTemplatePresenter"
+                        Content="{Binding SelectedExternalItem}" />
                     <ItemsControl
                         x:Name="ExternalTemplateSelectorItems"
                         ItemTemplateSelector="{StaticResource ExternalItemTemplateSelector}"
@@ -4001,6 +4009,23 @@ internal static class Program
                         "external SDK content template presenter");
                     AssertEqual(window.SelectedExternalItem, templatePresenter.Content, "external SDK content presenter content binding");
                     AssertEqual(template, templatePresenter.ContentTemplate, "external SDK content presenter template");
+
+                    var implicitTemplate = RequireType<DataTemplate>(
+                        window.FindResource(new DataTemplateKey(typeof(ExternalItem))),
+                        "external SDK implicit item data template");
+                    var implicitTemplateRoot = RequireType<TextBlock>(
+                        implicitTemplate.LoadContent(),
+                        "external SDK implicit item template root");
+                    var implicitTemplateBinding = BindingOperations.GetBindingExpression(implicitTemplateRoot, TextBlock.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK implicit item template Text binding.");
+                    AssertEqual("Name", implicitTemplateBinding.ParentBinding.Path.Path, "external SDK implicit item template binding path");
+                    var implicitTemplatePresenter = RequireType<ContentPresenter>(
+                        window.FindName("ExternalImplicitTemplatePresenter"),
+                        "external SDK implicit template presenter");
+                    AssertEqual(window.SelectedExternalItem, implicitTemplatePresenter.Content, "external SDK implicit template presenter content");
+                    implicitTemplateRoot.DataContext = window.SelectedExternalItem;
+                    DrainDispatcher();
+                    AssertEqual("External implicit Alpha", implicitTemplateRoot.Text, "external SDK implicit item template resolved text");
 
                     var frameworkTemplate = RequireType<DataTemplate>(
                         window.FindResource("ExternalFrameworkItemTemplate"),

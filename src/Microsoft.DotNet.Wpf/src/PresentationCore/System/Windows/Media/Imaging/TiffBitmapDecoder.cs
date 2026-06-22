@@ -287,6 +287,9 @@ namespace System.Windows.Media.Imaging
                     case PlanarConfigurationTag:
                         directory.PlanarConfiguration = ReadSingleUnsignedValue(stream, startPosition, entry, littleEndian);
                         break;
+                    case ColorMapTag:
+                        directory.ColorMap = ReadUnsignedValues(stream, startPosition, entry, littleEndian);
+                        break;
                 }
 
                 stream.Position = nextEntryPosition;
@@ -332,19 +335,42 @@ namespace System.Windows.Media.Imaging
                 throw new NotSupportedException("Portable TIFF decoding requires BitsPerSample for each sample.");
             }
 
-            for (int i = 0; i < samplesPerPixel; i++)
-            {
-                if (bitsPerSample[i] != 8)
-                {
-                    throw new NotSupportedException("Portable TIFF decoding currently supports 8-bit samples.");
-                }
-            }
-
+            bool paletteColor = directory.PhotometricInterpretation == 3;
             bool grayscale = directory.PhotometricInterpretation == 0 || directory.PhotometricInterpretation == 1;
             bool rgb = directory.PhotometricInterpretation == 2;
-            if ((!grayscale || samplesPerPixel != 1) && (!rgb || (samplesPerPixel != 3 && samplesPerPixel != 4)))
+            if (paletteColor)
             {
-                throw new NotSupportedException("Portable TIFF decoding currently supports 8-bit grayscale, RGB, and RGBA images.");
+                if (samplesPerPixel != 1)
+                {
+                    throw new NotSupportedException("Portable TIFF palette decoding currently supports one sample per pixel.");
+                }
+
+                uint paletteBitDepth = bitsPerSample[0];
+                if (paletteBitDepth != 1 && paletteBitDepth != 2 && paletteBitDepth != 4 && paletteBitDepth != 8)
+                {
+                    throw new NotSupportedException("Portable TIFF palette decoding currently supports 1, 2, 4, and 8-bit indices.");
+                }
+
+                int colorCount = 1 << checked((int)paletteBitDepth);
+                if (directory.ColorMap == null || directory.ColorMap.Length < checked(colorCount * 3))
+                {
+                    throw new FileFormatException(null, SR.Image_CantDealWithStream);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < samplesPerPixel; i++)
+                {
+                    if (bitsPerSample[i] != 8)
+                    {
+                        throw new NotSupportedException("Portable TIFF decoding currently supports 8-bit samples.");
+                    }
+                }
+
+                if ((!grayscale || samplesPerPixel != 1) && (!rgb || (samplesPerPixel != 3 && samplesPerPixel != 4)))
+                {
+                    throw new NotSupportedException("Portable TIFF decoding currently supports 8-bit grayscale, RGB, RGBA, and palette images.");
+                }
             }
 
             if (directory.StripOffsets == null || directory.StripOffsets.Length == 0 ||
@@ -355,7 +381,9 @@ namespace System.Windows.Media.Imaging
 
             int width = checked((int)directory.Width);
             int height = checked((int)directory.Height);
-            int sourceStride = checked(width * (int)samplesPerPixel);
+            int sourceStride = paletteColor
+                ? checked(((width * (int)bitsPerSample[0]) + 7) / 8)
+                : checked(width * (int)samplesPerPixel);
             int targetStride = checked(width * 4);
             byte[] pixels = new byte[checked(targetStride * height)];
             byte[] row = new byte[sourceStride];
@@ -379,7 +407,14 @@ namespace System.Windows.Media.Imaging
                     }
 
                     ReadExactly(stream, row);
-                    CopyTiffRowToBgra(row, pixels, y * targetStride, width, samplesPerPixel, directory.PhotometricInterpretation);
+                    if (paletteColor)
+                    {
+                        CopyPaletteTiffRowToBgra(row, pixels, y * targetStride, width, (int)bitsPerSample[0], directory.ColorMap);
+                    }
+                    else
+                    {
+                        CopyTiffRowToBgra(row, pixels, y * targetStride, width, samplesPerPixel, directory.PhotometricInterpretation);
+                    }
                 }
             }
 
@@ -405,6 +440,50 @@ namespace System.Windows.Media.Imaging
             }
 
             return frame;
+        }
+
+        private static void CopyPaletteTiffRowToBgra(
+            byte[] source,
+            byte[] target,
+            int targetOffset,
+            int width,
+            int bitDepth,
+            uint[] colorMap)
+        {
+            int colorCount = 1 << bitDepth;
+            for (int x = 0; x < width; x++)
+            {
+                uint paletteIndex = ReadPackedSample(source, x, bitDepth);
+                if (paletteIndex >= colorCount)
+                {
+                    throw new FileFormatException(null, SR.Image_CantDealWithStream);
+                }
+
+                int destinationOffset = targetOffset + (x * 4);
+                int index = checked((int)paletteIndex);
+                target[destinationOffset + 0] = TiffColorMapValueToByte(colorMap[(colorCount * 2) + index]);
+                target[destinationOffset + 1] = TiffColorMapValueToByte(colorMap[colorCount + index]);
+                target[destinationOffset + 2] = TiffColorMapValueToByte(colorMap[index]);
+                target[destinationOffset + 3] = 255;
+            }
+        }
+
+        private static uint ReadPackedSample(byte[] source, int sampleIndex, int bitDepth)
+        {
+            if (bitDepth == 8)
+            {
+                return source[sampleIndex];
+            }
+
+            int bitOffset = sampleIndex * bitDepth;
+            int byteOffset = bitOffset / 8;
+            int shift = 8 - bitDepth - (bitOffset % 8);
+            return (uint)((source[byteOffset] >> shift) & ((1 << bitDepth) - 1));
+        }
+
+        private static byte TiffColorMapValueToByte(uint value)
+        {
+            return (byte)(Math.Min(value, 65535u) / 257u);
         }
 
         private static void CopyTiffRowToBgra(
@@ -623,6 +702,8 @@ namespace System.Windows.Media.Imaging
             public uint[] StripByteCounts { get; set; }
 
             public uint PlanarConfiguration { get; set; } = 1;
+
+            public uint[] ColorMap { get; set; }
         }
 
         private const ushort ImageWidthTag = 256;
@@ -635,6 +716,7 @@ namespace System.Windows.Media.Imaging
         private const ushort RowsPerStripTag = 278;
         private const ushort StripByteCountsTag = 279;
         private const ushort PlanarConfigurationTag = 284;
+        private const ushort ColorMapTag = 320;
 
         private const ushort TiffTypeByte = 1;
         private const ushort TiffTypeShort = 3;

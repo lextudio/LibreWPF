@@ -4875,7 +4875,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static bool TryCreatePortableFrameFromUri(", tiffBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("Portable TIFF decoding currently supports uncompressed chunky first-frame images.", tiffBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("CopyTiffRowToBgra", tiffBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("CopyPaletteTiffRowToBgra", tiffBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("PhotometricInterpretationTag", tiffBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("ColorMapTag", tiffBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("Portable TIFF palette decoding currently supports 1, 2, 4, and 8-bit indices.", tiffBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("TiffBitmapDecoder.TryCreatePortableFrameFromUri", bitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("return new TiffBitmapDecoder(portableTiffUriFrame", bitmapDecoder, StringComparison.Ordinal);
         AssertGuardBefore(bitmapDecoder, "TiffBitmapDecoder.TryCreatePortableFrame", "SetupDecoderFromUriOrStream");
@@ -6598,6 +6601,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK BitmapDecoder.Create URI TIFF decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new BitmapImage(tiffUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapImage URI TIFF top-left blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CreatePaletteTiffBytes([0, 1, 2, 3], 2, 2, 4)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create palette TIFF decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create URI palette TIFF decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapImage URI palette TIFF bottom-right red byte", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreateRgbaPngBytes(pixels, 2, 2, 8)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreateRgba16PngBytes(pixels, 2, 2, 8)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreateIndexedPngBytes(", externalSdkHarnessProgram, StringComparison.Ordinal);

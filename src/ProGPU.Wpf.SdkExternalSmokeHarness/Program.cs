@@ -3739,6 +3739,30 @@ internal static class Program
                     AssertEqual(2, directTiffDecoder.Frames[0].PixelWidth, "external SDK TiffBitmapDecoder pixel width");
                     AssertEqual(PixelFormats.Bgra32, directTiffDecoder.Frames[0].Format, "external SDK TiffBitmapDecoder Bgra32 format");
 
+                    byte[] paletteTiffBytes = CreatePaletteTiffBytes([0, 1, 2, 3], 2, 2, 4);
+                    var paletteTiffDecoder = BitmapDecoder.Create(
+                        new MemoryStream(paletteTiffBytes),
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(typeof(TiffBitmapDecoder), paletteTiffDecoder.GetType(), "external SDK BitmapDecoder.Create palette TIFF decoder type");
+                    AssertEqual(1, paletteTiffDecoder.Frames.Count, "external SDK BitmapDecoder.Create palette TIFF frame count");
+                    AssertEqual(2, paletteTiffDecoder.Frames[0].PixelWidth, "external SDK BitmapDecoder.Create palette TIFF pixel width");
+                    AssertEqual(2, paletteTiffDecoder.Frames[0].PixelHeight, "external SDK BitmapDecoder.Create palette TIFF pixel height");
+                    AssertEqual(PixelFormats.Bgra32, paletteTiffDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create palette TIFF Bgra32 format");
+                    var decodedPaletteTiffPixels = new byte[pixels.Length];
+                    paletteTiffDecoder.Frames[0].CopyPixels(decodedPaletteTiffPixels, 8, 0);
+                    AssertEqual(pixels[0], decodedPaletteTiffPixels[0], "external SDK BitmapDecoder.Create palette TIFF top-left blue byte");
+                    AssertEqual(pixels[5], decodedPaletteTiffPixels[5], "external SDK BitmapDecoder.Create palette TIFF second green byte");
+                    AssertEqual(pixels[14], decodedPaletteTiffPixels[14], "external SDK BitmapDecoder.Create palette TIFF bottom-right red byte");
+
+                    var directPaletteTiffDecoder = new TiffBitmapDecoder(
+                        new MemoryStream(paletteTiffBytes),
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(1, directPaletteTiffDecoder.Frames.Count, "external SDK palette TiffBitmapDecoder frame count");
+                    AssertEqual(2, directPaletteTiffDecoder.Frames[0].PixelWidth, "external SDK palette TiffBitmapDecoder pixel width");
+                    AssertEqual(PixelFormats.Bgra32, directPaletteTiffDecoder.Frames[0].Format, "external SDK palette TiffBitmapDecoder Bgra32 format");
+
                     byte[] rgba16PngBytes = CreateRgba16PngBytes(pixels, 2, 2, 8);
                     var rgba16PngDecoder = BitmapDecoder.Create(
                         new MemoryStream(rgba16PngBytes),
@@ -4034,6 +4058,33 @@ internal static class Program
                         File.Delete(tiffPath);
                     }
 
+                    string paletteTiffPath = Path.Combine(Path.GetTempPath(), "external-sdk-managed-image-" + Guid.NewGuid().ToString("N") + "-palette.tif");
+                    File.WriteAllBytes(paletteTiffPath, paletteTiffBytes);
+                    try
+                    {
+                        var paletteTiffUri = new Uri(paletteTiffPath);
+                        var uriPaletteTiffDecoder = BitmapDecoder.Create(
+                            paletteTiffUri,
+                            BitmapCreateOptions.PreservePixelFormat,
+                            BitmapCacheOption.OnLoad);
+                        AssertEqual(typeof(TiffBitmapDecoder), uriPaletteTiffDecoder.GetType(), "external SDK BitmapDecoder.Create URI palette TIFF decoder type");
+                        AssertEqual(1, uriPaletteTiffDecoder.Frames.Count, "external SDK BitmapDecoder.Create URI palette TIFF frame count");
+                        AssertEqual(PixelFormats.Bgra32, uriPaletteTiffDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create URI palette TIFF Bgra32 format");
+
+                        var paletteTiffBitmapImage = new BitmapImage(paletteTiffUri);
+                        AssertEqual(2, paletteTiffBitmapImage.PixelWidth, "external SDK BitmapImage URI palette TIFF pixel width");
+                        AssertEqual(2, paletteTiffBitmapImage.PixelHeight, "external SDK BitmapImage URI palette TIFF pixel height");
+                        AssertEqual(PixelFormats.Bgra32, paletteTiffBitmapImage.Format, "external SDK BitmapImage URI palette TIFF Bgra32 format");
+                        var paletteTiffBitmapImagePixels = new byte[pixels.Length];
+                        paletteTiffBitmapImage.CopyPixels(paletteTiffBitmapImagePixels, 8, 0);
+                        AssertEqual(pixels[0], paletteTiffBitmapImagePixels[0], "external SDK BitmapImage URI palette TIFF top-left blue byte");
+                        AssertEqual(pixels[14], paletteTiffBitmapImagePixels[14], "external SDK BitmapImage URI palette TIFF bottom-right red byte");
+                    }
+                    finally
+                    {
+                        File.Delete(paletteTiffPath);
+                    }
+
                     var indexedPalette = new BitmapPalette(
                     [
                         Color.FromRgb(0x00, 0x00, 0x00),
@@ -4179,6 +4230,67 @@ internal static class Program
                         tiff[destinationOffset++] = bgraPixels[sourceOffset + 1];
                         tiff[destinationOffset++] = bgraPixels[sourceOffset + 0];
                         sourceOffset += 4;
+                    }
+
+                    return tiff;
+                }
+
+                private static byte[] CreatePaletteTiffBytes(byte[] indices, int width, int height, int bitsPerSample)
+                {
+                    int colorCount = 1 << bitsPerSample;
+                    const int entryCount = 11;
+                    int ifdOffset = 8;
+                    int colorMapOffset = ifdOffset + 2 + (entryCount * 12) + 4;
+                    int colorMapByteCount = colorCount * 3 * 2;
+                    int pixelOffset = colorMapOffset + colorMapByteCount;
+                    int sourceStride = ((width * bitsPerSample) + 7) / 8;
+                    int pixelByteCount = checked(sourceStride * height);
+                    byte[] tiff = new byte[checked(pixelOffset + pixelByteCount)];
+
+                    tiff[0] = (byte)'I';
+                    tiff[1] = (byte)'I';
+                    WriteUInt16LittleEndian(tiff, 2, 42);
+                    WriteUInt32LittleEndian(tiff, 4, (uint)ifdOffset);
+                    WriteUInt16LittleEndian(tiff, ifdOffset, entryCount);
+
+                    int entryOffset = ifdOffset + 2;
+                    WriteTiffShortEntry(tiff, ref entryOffset, 256, (ushort)width);
+                    WriteTiffShortEntry(tiff, ref entryOffset, 257, (ushort)height);
+                    WriteTiffShortEntry(tiff, ref entryOffset, 258, (ushort)bitsPerSample);
+                    WriteTiffShortEntry(tiff, ref entryOffset, 259, 1);
+                    WriteTiffShortEntry(tiff, ref entryOffset, 262, 3);
+                    WriteTiffLongEntry(tiff, ref entryOffset, 273, (uint)pixelOffset);
+                    WriteTiffShortEntry(tiff, ref entryOffset, 277, 1);
+                    WriteTiffLongEntry(tiff, ref entryOffset, 278, (uint)height);
+                    WriteTiffLongEntry(tiff, ref entryOffset, 279, (uint)pixelByteCount);
+                    WriteTiffShortEntry(tiff, ref entryOffset, 284, 1);
+                    WriteTiffOffsetEntry(tiff, ref entryOffset, 320, 3, (uint)(colorCount * 3), (uint)colorMapOffset);
+                    WriteUInt32LittleEndian(tiff, entryOffset, 0);
+
+                    byte[] red = [0x30, 0x60, 0x90, 0xC0];
+                    byte[] green = [0x20, 0x50, 0x80, 0xB0];
+                    byte[] blue = [0x10, 0x40, 0x70, 0xA0];
+                    for (int index = 0; index < colorCount; index++)
+                    {
+                        byte redValue = index < red.Length ? red[index] : (byte)0;
+                        byte greenValue = index < green.Length ? green[index] : (byte)0;
+                        byte blueValue = index < blue.Length ? blue[index] : (byte)0;
+                        WriteUInt16LittleEndian(tiff, colorMapOffset + (index * 2), redValue * 257);
+                        WriteUInt16LittleEndian(tiff, colorMapOffset + ((colorCount + index) * 2), greenValue * 257);
+                        WriteUInt16LittleEndian(tiff, colorMapOffset + (((colorCount * 2) + index) * 2), blueValue * 257);
+                    }
+
+                    for (int y = 0; y < height; y++)
+                    {
+                        int rowOffset = pixelOffset + (y * sourceStride);
+                        for (int x = 0; x < width; x++)
+                        {
+                            int index = y * width + x;
+                            int bitOffset = x * bitsPerSample;
+                            int byteOffset = rowOffset + (bitOffset / 8);
+                            int shift = 8 - bitsPerSample - (bitOffset % 8);
+                            tiff[byteOffset] |= (byte)(indices[index] << shift);
+                        }
                     }
 
                     return tiff;

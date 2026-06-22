@@ -319,8 +319,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SynchronizeInitialWindowState(updatePortablePresentationSource: true);", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("private void SynchronizeInitialWindowState(bool updatePortablePresentationSource)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("ToLogicalClientDimension", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("ToLogicalPositionDimension", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.SetInitialClientSize(width, height)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.SetClientSize(", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("public void SetPosition(object? left, object? top)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("Host.SetPosition(windowLeft.Value, windowTop.Value)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FlushWpfDispatcherOperations(\"Loaded\", \"Render\")", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FlushWpfDispatcherOperations(\"Render\")", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryFlushDispatcherOperations(Window, markerPriorityName)", proGpuActivation, StringComparison.Ordinal);
@@ -342,6 +345,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PlatformServices.WindowDecorations.TryBeginDragMove(_window)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("public int Width => _clientWidth;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("public int Height => _clientHeight;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("public int? Left => _window?.Position.X ?? _windowLeft;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("public int? Top => _window?.Position.Y ?? _windowTop;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("public void SetPosition(int left, int top)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_window.Position = new Vector2D<int>(left, top)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal void SetInitialClientSize(int width, int height)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("SetClientSizeCore(width, height, updatePortablePresentationSource: false)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("private int _requestedLogicalClientWidth = -1;", proGpuHost, StringComparison.Ordinal);
@@ -363,9 +370,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static int ResolveCachedLogicalClientDimension(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("DimensionsDifferByDpiScale(larger, smaller)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("private static bool DimensionsDifferByDpiScale", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("_portablePresentationSourceClientWidth > 0", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("_requestedLogicalClientWidth > 0", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("_requestedLogicalClientHeight > 0", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("portablePresentationSourceDimension > 0", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("requestedLogicalDimension > 0", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_requestedLogicalClientHeight = clientHeight;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var logicalSize = ResolveLogicalClientSize(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var logicalWidth = (uint)Math.Max(1, clientWidth);", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var logicalHeight = (uint)Math.Max(1, clientHeight);", proGpuHost, StringComparison.Ordinal);
@@ -632,6 +639,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static void SetTitle(object activation, string title)", activationService, StringComparison.Ordinal);
         Assert.Contains("Action<object, double, double> setClientSize", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void SetClientSize(object activation, double width, double height)", activationService, StringComparison.Ordinal);
+        Assert.Contains("Action<object, double, double> setPosition", activationService, StringComparison.Ordinal);
+        Assert.Contains("internal static void SetPosition(object activation, double left, double top)", activationService, StringComparison.Ordinal);
         Assert.Contains("Func<object, bool> dragMove", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryDragMove(object activation)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void SetActivationState(Window window, bool isActive)", activationService, StringComparison.Ordinal);
@@ -668,6 +677,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableWindowActivationService.SetTitle(_portableWindowActivation, Title)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.SetClientSize(_portableWindowActivation, Width, height)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.SetClientSize(_portableWindowActivation, width, Height)", window, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.SetPosition(_portableWindowActivation, leftLogicalUnits, topLogicalUnits)", window, StringComparison.Ordinal);
+        Assert.Contains("private void UpdatePortablePositionOnTopLeftChange(double leftLogicalUnits, double topLogicalUnits)", window, StringComparison.Ordinal);
+        Assert.Contains("&& !w.IsPortableWindowActive", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.TryDragMove(_portableWindowActivation)", window, StringComparison.Ordinal);
         Assert.Contains("if (PortableWindowActivationService.IsEnabled)", window, StringComparison.Ordinal);
         Assert.Contains("return ShowPortableDialog();", window, StringComparison.Ordinal);

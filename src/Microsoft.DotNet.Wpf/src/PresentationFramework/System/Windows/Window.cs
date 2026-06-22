@@ -6175,7 +6175,7 @@ namespace System.Windows
             // invalidation callback to PropertyMetadata
             ValidateTopLeft(top);
 
-            if (w.IsSourceWindowNull || w.IsCompositionTargetInvalid)
+            if ((w.IsSourceWindowNull || w.IsCompositionTargetInvalid) && !w.IsPortableWindowActive)
             {
                 return value;
             }
@@ -6211,6 +6211,20 @@ namespace System.Windows
 
         private void OnTopChanged(double newTop)
         {
+            if (IsPortableWindowActive)
+            {
+                if (!double.IsNaN(newTop) && WindowState == WindowState.Normal)
+                {
+                    UpdatePortablePositionOnTopLeftChange(Double.IsNaN(Left) ? _actualLeft : Left, newTop);
+                }
+                else
+                {
+                    _actualTop = newTop;
+                }
+
+                return;
+            }
+
             // Adding check for IsCompositionTargetInvalid
             if (!IsSourceWindowNull && !IsCompositionTargetInvalid)
             {
@@ -6250,7 +6264,7 @@ namespace System.Windows
             // invalidation callback to PropertyMetadata
             ValidateTopLeft(left);
 
-            if (w.IsSourceWindowNull || w.IsCompositionTargetInvalid)
+            if ((w.IsSourceWindowNull || w.IsCompositionTargetInvalid) && !w.IsPortableWindowActive)
             {
                 return value;
             }
@@ -6306,6 +6320,20 @@ namespace System.Windows
         // 3) SetupInitialState
         private void OnLeftChanged(double newLeft)
         {
+            if (IsPortableWindowActive)
+            {
+                if (!double.IsNaN(newLeft) && WindowState == WindowState.Normal)
+                {
+                    UpdatePortablePositionOnTopLeftChange(newLeft, Double.IsNaN(Top) ? _actualTop : Top);
+                }
+                else
+                {
+                    _actualLeft = newLeft;
+                }
+
+                return;
+            }
+
             // Adding check for IsCompositionTargetInvalid
             if (!IsSourceWindowNull && !IsCompositionTargetInvalid)
             {
@@ -6329,6 +6357,20 @@ namespace System.Windows
                 // here the value is stored as measure units as newLeft is in measure/logical units
                 _actualLeft = newLeft;
             }
+        }
+
+        private void UpdatePortablePositionOnTopLeftChange(double leftLogicalUnits, double topLogicalUnits)
+        {
+            if (double.IsNaN(leftLogicalUnits) || double.IsNaN(topLogicalUnits))
+            {
+                return;
+            }
+
+            _actualLeft = leftLogicalUnits;
+            _actualTop = topLogicalUnits;
+
+            PortableWindowActivationService.SetPosition(_portableWindowActivation, leftLogicalUnits, topLogicalUnits);
+            WmMoveChangedHelper();
         }
 
         private void UpdateHwndPositionOnTopLeftChange(double leftLogicalUnits, double topLogicalUnits)

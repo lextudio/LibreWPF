@@ -33,11 +33,14 @@ public sealed class WpfPortableWindowActivationTests
         activation.SetTitle("Updated");
         activation.SetClientSize(320.2, double.NaN);
         activation.SetClientSize(double.NaN, 240.1);
+        activation.SetPosition(31.4, 47.6);
 
         Assert.Equal("Updated", host.Title);
         Assert.Equal(321, host.Width);
         Assert.Equal(241, host.Height);
-        Assert.True(scheduler.RequestCount >= 4);
+        Assert.Equal(31, host.Left);
+        Assert.Equal(48, host.Top);
+        Assert.True(scheduler.RequestCount >= 5);
     }
 
     [Fact]
@@ -162,6 +165,8 @@ public sealed class WpfPortableWindowActivationTests
             Title = "Fallback",
             Width = 800,
             Height = 600,
+            Left = 1,
+            Top = 2,
             VSync = true
         };
         var window = new FakeWindow
@@ -170,6 +175,8 @@ public sealed class WpfPortableWindowActivationTests
             Width = 640.2,
             Height = double.NaN,
             ActualHeight = 480.1,
+            Left = 10.4,
+            Top = 20.6,
             WindowState = FakeWindowState.Minimized
         };
 
@@ -178,6 +185,8 @@ public sealed class WpfPortableWindowActivationTests
         Assert.Equal("Portable WPF", options.Title);
         Assert.Equal(641, options.Width);
         Assert.Equal(481, options.Height);
+        Assert.Equal(10, options.Left);
+        Assert.Equal(21, options.Top);
         Assert.True(options.VSync);
         Assert.Equal(ProGpuWpfWindowState.Minimized, options.WindowState);
     }
@@ -200,6 +209,8 @@ public sealed class WpfPortableWindowActivationTests
             Title = "Portable WPF",
             Width = 420,
             Height = 840,
+            Left = 32,
+            Top = 48,
             WindowState = FakeWindowState.Normal
         };
         var source = new FakePortablePresentationSource();
@@ -211,6 +222,8 @@ public sealed class WpfPortableWindowActivationTests
         Assert.Equal("Portable WPF", host.Title);
         Assert.Equal(420, host.Width);
         Assert.Equal(840, host.Height);
+        Assert.Equal(32, host.Left);
+        Assert.Equal(48, host.Top);
         Assert.Equal(0, source.ClientSizeChangeCount);
 
         activation.SetClientSize(window.Width, window.Height);
@@ -572,6 +585,10 @@ public sealed class WpfPortableWindowActivationTests
         public double ActualWidth { get; set; }
 
         public double ActualHeight { get; set; }
+
+        public double Left { get; set; } = double.NaN;
+
+        public double Top { get; set; } = double.NaN;
 
         public FakeWindowState WindowState { get; set; } = FakeWindowState.Normal;
 

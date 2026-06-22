@@ -71,12 +71,35 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 typeof(Action<object, object>),
                 typeof(Action<object, string>),
                 typeof(Action<object, double, double>),
+                typeof(Action<object, double, double>),
                 typeof(Action<object>),
                 typeof(Action<object>),
                 typeof(Action<object>),
                 typeof(Func<object, bool>)
             },
             modifiers: null);
+        if (registerMethod == null)
+        {
+            registerMethod = serviceType.GetMethod(
+                "Register",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: new[]
+                {
+                    typeof(Func<object, object?>),
+                    typeof(Action<object>),
+                    typeof(Action<object>),
+                    typeof(Action<object, object>),
+                    typeof(Action<object, string>),
+                    typeof(Action<object, double, double>),
+                    typeof(Action<object>),
+                    typeof(Action<object>),
+                    typeof(Action<object>),
+                    typeof(Func<object, bool>)
+                },
+                modifiers: null);
+        }
+
         if (registerMethod == null)
         {
             registerMethod = serviceType.GetMethod(
@@ -116,6 +139,8 @@ public sealed class WpfPortableWindowActivation : IDisposable
             ((WpfPortableWindowActivation)activation).SetTitle(title);
         Action<object, double, double> setClientSize = (activation, width, height) =>
             ((WpfPortableWindowActivation)activation).SetClientSize(width, height);
+        Action<object, double, double> setPosition = (activation, left, top) =>
+            ((WpfPortableWindowActivation)activation).SetPosition(left, top);
         Action<object> close = activation =>
             ((WpfPortableWindowActivation)activation).Close();
         Action<object> run = activation =>
@@ -127,6 +152,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
         var parameters = registerMethod.GetParameters().Length switch
         {
+            11 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, setPosition, close, run, dispose, dragMove },
             10 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, close, run, dispose, dragMove },
             9 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, close, run, dispose },
             _ => new object[] { activate, show, hide, setWindowState, close, run, dispose }
@@ -307,6 +333,23 @@ public sealed class WpfPortableWindowActivation : IDisposable
         Host.SetClientSize(clientWidth, clientHeight);
     }
 
+    public void SetPosition(object? left, object? top)
+    {
+        ThrowIfDisposed();
+
+        var windowLeft = TryMapFiniteDimension(left, out double mappedLeft)
+            ? ToLogicalPositionDimension(mappedLeft)
+            : Host.Left;
+        var windowTop = TryMapFiniteDimension(top, out double mappedTop)
+            ? ToLogicalPositionDimension(mappedTop)
+            : Host.Top;
+
+        if (windowLeft.HasValue && windowTop.HasValue)
+        {
+            Host.SetPosition(windowLeft.Value, windowTop.Value);
+        }
+    }
+
     public void Close()
     {
         if (_isDisposed || _isClosingFromNative)
@@ -421,6 +464,8 @@ public sealed class WpfPortableWindowActivation : IDisposable
             Title = fallback.Title,
             Width = fallback.Width,
             Height = fallback.Height,
+            Left = fallback.Left,
+            Top = fallback.Top,
             VSync = fallback.VSync,
             IsVisible = fallback.IsVisible,
             WindowState = fallback.WindowState
@@ -442,6 +487,16 @@ public sealed class WpfPortableWindowActivation : IDisposable
             TryReadPositiveDimension(window, "ActualHeight", out height))
         {
             options.Height = ToLogicalClientDimension(height);
+        }
+
+        if (TryReadFiniteDimension(window, "Left", out var left))
+        {
+            options.Left = ToLogicalPositionDimension(left);
+        }
+
+        if (TryReadFiniteDimension(window, "Top", out var top))
+        {
+            options.Top = ToLogicalPositionDimension(top);
         }
 
         if (TryReadProperty(window, "WindowState", out object? windowState) &&
@@ -484,6 +539,15 @@ public sealed class WpfPortableWindowActivation : IDisposable
         else
         {
             SetHostClientSize(Host.Width, Host.Height, updatePortablePresentationSource);
+        }
+
+        var hasLeft = TryReadFiniteDimension(Window, "Left", out var left);
+        var hasTop = TryReadFiniteDimension(Window, "Top", out var top);
+        var windowLeft = hasLeft ? ToLogicalPositionDimension(left) : Host.Left;
+        var windowTop = hasTop ? ToLogicalPositionDimension(top) : Host.Top;
+        if (windowLeft.HasValue && windowTop.HasValue)
+        {
+            Host.SetPosition(windowLeft.Value, windowTop.Value);
         }
     }
 
@@ -1463,7 +1527,29 @@ public sealed class WpfPortableWindowActivation : IDisposable
         return TryMapPositiveDimension(rawValue, out value);
     }
 
+    private static bool TryReadFiniteDimension(object instance, string propertyName, out double value)
+    {
+        if (!TryReadProperty(instance, propertyName, out object? rawValue) ||
+            rawValue == null)
+        {
+            value = 0.0;
+            return false;
+        }
+
+        return TryMapFiniteDimension(rawValue, out value);
+    }
+
     private static bool TryMapPositiveDimension(object? value, out double mappedValue)
+    {
+        if (!TryMapFiniteDimension(value, out mappedValue))
+        {
+            return false;
+        }
+
+        return mappedValue > 0.0;
+    }
+
+    private static bool TryMapFiniteDimension(object? value, out double mappedValue)
     {
         mappedValue = 0.0;
         if (value == null)
@@ -1484,7 +1570,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return false;
         }
 
-        return double.IsFinite(mappedValue) && mappedValue > 0.0;
+        return double.IsFinite(mappedValue);
     }
 
     private static bool TryReadProperty(object instance, string propertyName, out object? value)
@@ -1505,5 +1591,20 @@ public sealed class WpfPortableWindowActivation : IDisposable
     private static int ToLogicalClientDimension(double value)
     {
         return Math.Max(1, (int)Math.Ceiling(value));
+    }
+
+    private static int ToLogicalPositionDimension(double value)
+    {
+        if (value >= int.MaxValue)
+        {
+            return int.MaxValue;
+        }
+
+        if (value <= int.MinValue)
+        {
+            return int.MinValue;
+        }
+
+        return (int)Math.Round(value, MidpointRounding.AwayFromZero);
     }
 }

@@ -22,7 +22,9 @@ public sealed class ProGpuWpfWindowHostTests
         {
             Title = "Initial",
             Width = 640,
-            Height = 480
+            Height = 480,
+            Left = 12,
+            Top = 24
         })
         {
             WpfRenderScheduler = scheduler
@@ -30,11 +32,14 @@ public sealed class ProGpuWpfWindowHostTests
 
         host.SetTitle("Updated");
         host.SetClientSize(321, 123);
+        host.SetPosition(32, 48);
 
         Assert.Equal("Updated", host.Title);
         Assert.Equal(321, host.Width);
         Assert.Equal(123, host.Height);
-        Assert.Equal(2, scheduler.RequestCount);
+        Assert.Equal(32, host.Left);
+        Assert.Equal(48, host.Top);
+        Assert.Equal(3, scheduler.RequestCount);
     }
 
     [Fact]

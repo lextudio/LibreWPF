@@ -48,6 +48,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private int _clientHeight;
     private int _requestedLogicalClientWidth = -1;
     private int _requestedLogicalClientHeight = -1;
+    private int? _windowLeft;
+    private int? _windowTop;
 
     internal readonly record struct RenderSurfaceGeometry(
         uint LogicalWidth,
@@ -68,6 +70,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _clientHeight = Math.Max(1, _options.Height);
         _requestedLogicalClientWidth = _clientWidth;
         _requestedLogicalClientHeight = _clientHeight;
+        _windowLeft = _options.Left;
+        _windowTop = _options.Top;
         _wpfRenderScheduler = CreateDefaultRenderScheduler(_platformServices, out _ownsRenderScheduler);
         AttachDispatcherService(_platformServices.Dispatcher);
         AttachRenderScheduler(_wpfRenderScheduler);
@@ -98,6 +102,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public int Width => _clientWidth;
 
     public int Height => _clientHeight;
+
+    public int? Left => _window?.Position.X ?? _windowLeft;
+
+    public int? Top => _window?.Position.Y ?? _windowTop;
 
     public object? PortablePresentationSource => _portablePresentationSourceBridge?.Source;
 
@@ -248,6 +256,20 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     {
         ThrowIfDisposed();
         SetClientSizeCore(width, height, updatePortablePresentationSource: true);
+    }
+
+    public void SetPosition(int left, int top)
+    {
+        ThrowIfDisposed();
+
+        _windowLeft = left;
+        _windowTop = top;
+        if (_window != null)
+        {
+            _window.Position = new Vector2D<int>(left, top);
+        }
+
+        WpfRenderScheduler.RequestRender();
     }
 
     internal void SetInitialClientSize(int width, int height)
@@ -402,6 +424,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         windowOptions.IsEventDriven = _options.IsEventDriven;
         windowOptions.IsVisible = _isHostVisible;
         windowOptions.WindowState = ToSilkWindowState(_windowState);
+        if (_windowLeft.HasValue && _windowTop.HasValue)
+        {
+            windowOptions.Position = new Vector2D<int>(_windowLeft.Value, _windowTop.Value);
+        }
 
         _window = Window.Create(windowOptions);
         _window.Load += OnLoad;

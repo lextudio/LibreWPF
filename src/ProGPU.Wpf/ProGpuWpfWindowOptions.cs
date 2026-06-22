@@ -8,6 +8,10 @@ public sealed class ProGpuWpfWindowOptions
 
     public int Height { get; set; } = 800;
 
+    public int? Left { get; set; }
+
+    public int? Top { get; set; }
+
     public bool VSync { get; set; }
 
     public bool IsEventDriven { get; set; } = true;

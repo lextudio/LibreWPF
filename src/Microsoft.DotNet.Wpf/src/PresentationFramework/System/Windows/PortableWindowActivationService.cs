@@ -17,6 +17,7 @@ namespace System.Windows
         private static Action<object, object> _setWindowState;
         private static Action<object, string> _setTitle;
         private static Action<object, double, double> _setClientSize;
+        private static Action<object, double, double> _setPosition;
         private static Action<object> _close;
         private static Action<object> _run;
         private static Action<object> _dispose;
@@ -37,6 +38,7 @@ namespace System.Windows
             Action<object, object> setWindowState = null,
             Action<object, string> setTitle = null,
             Action<object, double, double> setClientSize = null,
+            Action<object, double, double> setPosition = null,
             Action<object> close = null,
             Action<object> run = null,
             Action<object> dispose = null,
@@ -50,6 +52,7 @@ namespace System.Windows
             Volatile.Write(ref _setWindowState, setWindowState);
             Volatile.Write(ref _setTitle, setTitle);
             Volatile.Write(ref _setClientSize, setClientSize);
+            Volatile.Write(ref _setPosition, setPosition);
             Volatile.Write(ref _close, close);
             Volatile.Write(ref _run, run);
             Volatile.Write(ref _dispose, dispose);
@@ -64,6 +67,7 @@ namespace System.Windows
             Volatile.Write(ref _setWindowState, null);
             Volatile.Write(ref _setTitle, null);
             Volatile.Write(ref _setClientSize, null);
+            Volatile.Write(ref _setPosition, null);
             Volatile.Write(ref _close, null);
             Volatile.Write(ref _run, null);
             Volatile.Write(ref _dispose, null);
@@ -112,6 +116,11 @@ namespace System.Windows
         internal static void SetClientSize(object activation, double width, double height)
         {
             Volatile.Read(ref _setClientSize)?.Invoke(activation, width, height);
+        }
+
+        internal static void SetPosition(object activation, double left, double top)
+        {
+            Volatile.Read(ref _setPosition)?.Invoke(activation, left, top);
         }
 
         internal static bool TryDragMove(object activation)

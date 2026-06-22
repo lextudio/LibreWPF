@@ -646,6 +646,8 @@ internal static class Program
                 Title="External SDK App"
                 Width="320"
                 Height="200"
+                Left="44"
+                Top="52"
                 Closing="OnExternalWindowClosing"
                 Closed="OnExternalWindowClosed"
                 AllowDrop="True"
@@ -3008,6 +3010,13 @@ internal static class Program
                         app.MainWindow,
                         "external SDK application main window");
                     AssertEqual(true, window.IsVisible, "external SDK application main window visibility");
+                    AssertEqual(44.0, window.Left, "external SDK application main window left");
+                    AssertEqual(52.0, window.Top, "external SDK application main window top");
+                    window.Left = 56.0;
+                    window.Top = 72.0;
+                    DrainDispatcher();
+                    AssertEqual(56.0, window.Left, "external SDK application main window updated left");
+                    AssertEqual(72.0, window.Top, "external SDK application main window updated top");
                     AssertAtLeast(1, app.Windows.Count, "external SDK application windows count");
 
                     bool containsMainWindow = false;
@@ -8675,10 +8684,13 @@ internal static class Program
             Assembly proGpuWpf = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "ProGPU.Wpf.dll"));
             Assembly proGpuScene = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "ProGPU.Scene.dll"));
             Assembly presentationCore = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "PresentationCore.dll"));
+            Assembly presentationFramework = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "PresentationFramework.dll"));
 
             Type windowHostType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfWindowHost");
             AssertPropertyType(windowHostType, "Width", typeof(int), "external SDK ProGPU WPF host logical width property");
             AssertPropertyType(windowHostType, "Height", typeof(int), "external SDK ProGPU WPF host logical height property");
+            AssertPropertyType(windowHostType, "Left", typeof(int?), "external SDK ProGPU WPF host left property");
+            AssertPropertyType(windowHostType, "Top", typeof(int?), "external SDK ProGPU WPF host top property");
 
             MethodInfo setClientSize = windowHostType.GetMethod(
                 "SetClientSize",
@@ -8689,6 +8701,15 @@ internal static class Program
                 ?? throw new MissingMethodException(windowHostType.FullName, "SetClientSize");
             AssertEqual(2, setClientSize.GetParameters().Length, "external SDK ProGPU WPF host client-size method parameter count");
 
+            MethodInfo setPosition = windowHostType.GetMethod(
+                "SetPosition",
+                BindingFlags.Instance | BindingFlags.Public,
+                binder: null,
+                [typeof(int), typeof(int)],
+                modifiers: null)
+                ?? throw new MissingMethodException(windowHostType.FullName, "SetPosition");
+            AssertEqual(2, setPosition.GetParameters().Length, "external SDK ProGPU WPF host position method parameter count");
+
             Type portablePresentationSourceType = GetRequiredType(presentationCore, "System.Windows.PortablePresentationSource");
             MethodInfo setPortableClientSize = portablePresentationSourceType.GetMethod(
                 "SetClientSize",
@@ -8698,6 +8719,16 @@ internal static class Program
                 modifiers: null)
                 ?? throw new MissingMethodException(portablePresentationSourceType.FullName, "SetClientSize");
             AssertEqual(typeof(void), setPortableClientSize.ReturnType, "external SDK portable presentation source client-size return type");
+
+            Type portableActivationType = GetRequiredType(presentationFramework, "System.Windows.PortableWindowActivationService");
+            MethodInfo setPortablePosition = portableActivationType.GetMethod(
+                "SetPosition",
+                BindingFlags.Static | BindingFlags.NonPublic,
+                binder: null,
+                [typeof(object), typeof(double), typeof(double)],
+                modifiers: null)
+                ?? throw new MissingMethodException(portableActivationType.FullName, "SetPosition");
+            AssertEqual(typeof(void), setPortablePosition.ReturnType, "external SDK portable window activation position return type");
 
             Type compositionTargetType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfCompositionTarget");
             MethodInfo compositionRender = FindMethodByParameterNames(

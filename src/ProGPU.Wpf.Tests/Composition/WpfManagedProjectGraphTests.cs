@@ -7014,6 +7014,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SelectedValuePath=\"Kind\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SelectedValue=\"{Binding SelectedExternalKind, Mode=TwoWay}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SelectionChanged=\"OnExternalSelectionChanged\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("IsTextSearchEnabled=\"True\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("TextSearch.TextPath=\"Name\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalTabControl", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalGroupBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalExpander", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7025,6 +7027,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalExpanderExpandedCount", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateSelectorsAndContent(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("comboBox.GetBindingExpression(Selector.SelectedValueProperty)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK combo box text search enabled", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK combo box text search path", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK combo box two-way selected value source update", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("tabControl.SelectedIndex = 0", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK tab selection source name", externalSdkHarnessProgram, StringComparison.Ordinal);

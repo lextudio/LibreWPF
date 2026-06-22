@@ -1665,10 +1665,12 @@ internal static class Program
                     <ComboBox
                         x:Name="ExternalComboBox"
                         DisplayMemberPath="Name"
+                        IsTextSearchEnabled="True"
                         ItemsSource="{Binding ExternalItems}"
                         SelectedValuePath="Kind"
                         SelectedValue="{Binding SelectedExternalKind, Mode=TwoWay}"
-                        SelectionChanged="OnExternalSelectionChanged" />
+                        SelectionChanged="OnExternalSelectionChanged"
+                        TextSearch.TextPath="Name" />
                     <TabControl
                         x:Name="ExternalTabControl"
                         SelectedIndex="1"
@@ -9043,6 +9045,8 @@ internal static class Program
                     DrainDispatcher();
                     AssertEqual(3, comboBox.Items.Count, "external SDK combo box item count after mutation");
                     AssertEqual("Kind", comboBox.SelectedValuePath, "external SDK combo box selected value path");
+                    AssertEqual(true, comboBox.IsTextSearchEnabled, "external SDK combo box text search enabled");
+                    AssertEqual("Name", TextSearch.GetTextPath(comboBox), "external SDK combo box text search path");
                     AssertEqual("Rendering", comboBox.SelectedValue, "external SDK combo box selected value");
                     AssertEqual(1, comboBox.SelectedIndex, "external SDK combo box selected index");
                     AssertEqual(window.ExternalItems[1], comboBox.SelectedItem, "external SDK combo box selected item");

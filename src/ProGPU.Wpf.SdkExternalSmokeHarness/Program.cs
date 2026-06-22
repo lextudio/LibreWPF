@@ -14,6 +14,7 @@ internal static class Program
     private const string SdkVersion = "11.0.0-dev";
     private const string AppAssemblyName = "ExternalSdkApp";
     private const string LibraryAssemblyName = "ExternalSdkLibrary";
+    private const string LocalizationAssemblyName = "ExternalLocalizationApp";
 
     private static readonly string[] s_requiredWpfRuntimeAssemblies =
     [
@@ -100,11 +101,14 @@ internal static class Program
 
             string workRoot = Path.Combine(Path.GetTempPath(), "ProGPU.Wpf.SdkExternalSmoke");
             string appProjectPath = PrepareExternalSdkApp(workRoot, packageFeed);
+            string localizationProjectPath = PrepareExternalLocalizationProject(workRoot);
             string dotnetPath = Path.Combine(repoRoot, ".dotnet", "dotnet");
 
             RunProcess(dotnetPath, repoRoot, "build", appProjectPath, "-v:minimal");
+            RunProcess(dotnetPath, repoRoot, "build", localizationProjectPath, "-v:minimal");
 
             ValidateExternalProjectShape(workRoot);
+            ValidateExternalLocalizationDirectives(workRoot);
             string outputRoot = Path.Combine(workRoot, AppAssemblyName, "bin", "Debug", "net11.0");
             ValidateExternalOutput(outputRoot);
             RunProcess(
@@ -1704,7 +1708,6 @@ internal static class Program
                 {
                     DataContext = this;
                     InitializeComponent();
-                    Loaded += OnExternalRunValidationLoaded;
                 }
 
                 public ObservableCollection<ExternalItem> ExternalItems { get; } =
@@ -2375,19 +2378,6 @@ internal static class Program
                     LastExternalLoadedStoryboardTextRoutedEventName = e.RoutedEvent?.Name;
                 }
 
-                private void OnExternalRunValidationLoaded(object sender, RoutedEventArgs e)
-                {
-                    if (!App.ExternalRunValidationRequested || App.ExternalRunValidated)
-                    {
-                        return;
-                    }
-
-                    Loaded -= OnExternalRunValidationLoaded;
-                    Dispatcher.BeginInvoke(
-                        DispatcherPriority.Send,
-                        new Action(ExternalSdkValidation.ValidateApplicationRunAndShutdown));
-                }
-
                 private void OnExternalItemsFilter(object sender, FilterEventArgs e)
                 {
                     ExternalItemsFilterCount++;
@@ -2840,6 +2830,9 @@ internal static class Program
                     {
                         s_externalRunValidationRequested = true;
                         base.OnStartup(e);
+                        Dispatcher.BeginInvoke(
+                            DispatcherPriority.Normal,
+                            new Action(ExternalSdkValidation.ValidateApplicationRunAndShutdown));
                         return;
                     }
 
@@ -8663,10 +8656,49 @@ internal static class Program
         return appProjectPath;
     }
 
+    private static string PrepareExternalLocalizationProject(string workRoot)
+    {
+        string localizationRoot = Path.Combine(workRoot, LocalizationAssemblyName);
+        Directory.CreateDirectory(localizationRoot);
+
+        string localizationProjectPath = Path.Combine(localizationRoot, LocalizationAssemblyName + ".csproj");
+        WriteFile(
+            localizationProjectPath,
+            $"""
+            <Project Sdk="ProGPU.Wpf.Sdk/{SdkVersion}">
+              <PropertyGroup>
+                <TargetFramework>net11.0</TargetFramework>
+                <UseWPF>true</UseWPF>
+                <LocalizationDirectivesToLocFile>All</LocalizationDirectivesToLocFile>
+              </PropertyGroup>
+            </Project>
+            """);
+
+        WriteFile(
+            Path.Combine(localizationRoot, "LocalizedView.xaml"),
+            """
+            <UserControl
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                x:Uid="ExternalLocalizationRoot"
+                Localization.Attributes="$Content (Readable Unmodifiable Text)"
+                Localization.Comments="$Content (External localization root comment)">
+                <TextBlock
+                    x:Uid="ExternalLocalizationText"
+                    Localization.Attributes="$Content (Readable Modifiable Text)"
+                    Localization.Comments="$Content (External localization text comment)"
+                    Text="External localization text" />
+            </UserControl>
+            """);
+
+        return localizationProjectPath;
+    }
+
     private static void ValidateExternalProjectShape(string workRoot)
     {
         string appProject = File.ReadAllText(Path.Combine(workRoot, AppAssemblyName, AppAssemblyName + ".csproj"));
         string libraryProject = File.ReadAllText(Path.Combine(workRoot, LibraryAssemblyName, LibraryAssemblyName + ".csproj"));
+        string localizationProject = File.ReadAllText(Path.Combine(workRoot, LocalizationAssemblyName, LocalizationAssemblyName + ".csproj"));
 
         AssertContains(appProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external app SDK");
         AssertContains(appProject, "<OutputType>WinExe</OutputType>", "external app output type");
@@ -8676,8 +8708,12 @@ internal static class Program
         AssertContains(appProject, "<Resource Include=\"Assets/ExternalImage.png\" />", "external app WPF image resource item");
         AssertContains(libraryProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external library SDK");
         AssertContains(libraryProject, "<UseWPF>true</UseWPF>", "external library WPF property");
+        AssertContains(localizationProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external localization SDK");
+        AssertContains(localizationProject, "<UseWPF>true</UseWPF>", "external localization WPF property");
+        AssertContains(localizationProject, "<LocalizationDirectivesToLocFile>All</LocalizationDirectivesToLocFile>", "external localization directive output");
         RequireFile(Path.Combine(workRoot, LibraryAssemblyName, "Properties", "AssemblyInfo.cs"), "external SDK library ThemeInfo source");
         RequireFile(Path.Combine(workRoot, LibraryAssemblyName, "Themes", "Generic.xaml"), "external SDK library Generic.xaml source");
+        RequireFile(Path.Combine(workRoot, LocalizationAssemblyName, "LocalizedView.xaml"), "external SDK localization XAML source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "Assets", "ExternalResource.txt"), "external SDK app WPF resource source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "Assets", "ExternalImage.png"), "external SDK app WPF image resource source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalResources.xaml"), "external SDK app merged resource dictionary source");
@@ -8690,12 +8726,44 @@ internal static class Program
         AssertDoesNotContain(libraryProject, "ProGpuWpfReferenceMode", "external library local artifact mode");
         AssertDoesNotContain(libraryProject, "ProGpuWpfManagedReferenceRoot", "external library managed artifact root");
         AssertDoesNotContain(libraryProject, "ProGpuReferenceRoot", "external library ProGPU artifact root");
+        AssertDoesNotContain(localizationProject, "ProGpuWpfReferenceMode", "external localization local artifact mode");
+        AssertDoesNotContain(localizationProject, "ProGpuWpfManagedReferenceRoot", "external localization managed artifact root");
+        AssertDoesNotContain(localizationProject, "ProGpuReferenceRoot", "external localization ProGPU artifact root");
 
         if (File.Exists(Path.Combine(workRoot, "Directory.Build.props")) ||
             File.Exists(Path.Combine(workRoot, "Directory.Build.targets")))
         {
             throw new InvalidOperationException("External SDK smoke must not rely on generated Directory.Build.props or Directory.Build.targets files.");
         }
+    }
+
+    private static void ValidateExternalLocalizationDirectives(string workRoot)
+    {
+        string objRoot = Path.Combine(workRoot, LocalizationAssemblyName, "obj");
+        RequireDirectory(objRoot, "external SDK localization obj directory");
+
+        string[] locFiles = Directory
+            .EnumerateFiles(objRoot, "*.loc", SearchOption.AllDirectories)
+            .OrderBy(static path => path, StringComparer.Ordinal)
+            .ToArray();
+        if (locFiles.Length == 0)
+        {
+            throw new InvalidOperationException("Expected external SDK markup compilation to produce localization .loc files.");
+        }
+
+        string localizedViewLoc = locFiles.FirstOrDefault(
+            static path => string.Equals(Path.GetFileName(path), "LocalizedView.loc", StringComparison.OrdinalIgnoreCase))
+            ?? throw new InvalidOperationException(
+                "Expected external SDK markup compilation to produce LocalizedView.loc.");
+        string locText = File.ReadAllText(localizedViewLoc);
+
+        AssertContains(locText, "ExternalLocalizationRoot", "external SDK localization root directive uid");
+        AssertContains(locText, "ExternalLocalizationText", "external SDK localization text directive uid");
+        AssertContains(locText, "External localization root comment", "external SDK localization root comment output");
+        AssertContains(locText, "External localization text comment", "external SDK localization text comment output");
+        AssertContains(locText, "Readable", "external SDK localization readable attribute output");
+        AssertContains(locText, "Modifiable", "external SDK localization modifiable attribute output");
+        AssertContains(locText, "Unmodifiable", "external SDK localization unmodifiable attribute output");
     }
 
     private static void ValidateExternalOutput(string outputRoot)

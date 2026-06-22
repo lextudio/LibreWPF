@@ -5396,6 +5396,7 @@ internal static class Program
                 new Action<object, double, double>(recorder.SetClientSize),
                 new Action<object, double, double>(recorder.SetPosition),
                 new Action<object, bool>(recorder.SetTopmost),
+                new Action<object, object, object>(recorder.SetWindowBorder),
                 new Action<object>(recorder.Close),
                 new Action<object>(recorder.Run),
                 new Action<object>(recorder.Dispose),
@@ -6421,6 +6422,14 @@ internal static class Program
             ((RecordingActivation)activation).Topmost = topmost;
         }
 
+        public void SetWindowBorder(object activation, object resizeMode, object windowStyle)
+        {
+            AssertSameActivation(activation);
+            var typedActivation = (RecordingActivation)activation;
+            typedActivation.ResizeMode = resizeMode;
+            typedActivation.WindowStyle = windowStyle;
+        }
+
         public void Close(object activation)
         {
             AssertSameActivation(activation);
@@ -6583,9 +6592,10 @@ internal static class Program
 
         private void FlushDispatcherOperationsCore(object window, params string[] markerPriorityNames)
         {
-            MethodInfo flushMethod = _activationServiceType.GetMethod(
-                "FlushDispatcherOperations",
-                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            MethodInfo flushMethod = _activationServiceType.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                .SingleOrDefault(static method =>
+                    method.Name == "FlushDispatcherOperations" &&
+                    method.GetParameters().Length == 2)
                 ?? throw new MissingMethodException(_activationServiceType.FullName, "FlushDispatcherOperations");
             Type dispatcherPriorityType = flushMethod.GetParameters()[1].ParameterType;
 
@@ -6986,6 +6996,10 @@ internal static class Program
         public bool Topmost { get; set; }
 
         public object? WindowState { get; set; }
+
+        public object? ResizeMode { get; set; }
+
+        public object? WindowStyle { get; set; }
 
         public void DisposePresentationSource()
         {

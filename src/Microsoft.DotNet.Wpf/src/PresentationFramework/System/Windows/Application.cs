@@ -2368,7 +2368,14 @@ namespace System.Windows
                 // in its constructor.
                 if (!wnd.IsVisibilitySet && !wnd.IsDisposed)
                 {
-                    wnd.Visibility = Visibility.Visible;
+                    if (PortableWindowActivationService.IsEnabled)
+                    {
+                        wnd.Show();
+                    }
+                    else
+                    {
+                        wnd.Visibility = Visibility.Visible;
+                    }
                 }
             }
         }

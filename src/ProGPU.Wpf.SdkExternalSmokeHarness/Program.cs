@@ -1867,6 +1867,31 @@ internal static class Program
                             </Table>
                         </FlowDocument>
                     </RichTextBox>
+                    <FlowDocumentScrollViewer
+                        x:Name="ExternalFlowDocumentScrollViewer"
+                        IsToolBarVisible="False">
+                        <FlowDocument
+                            ColumnWidth="320"
+                            PagePadding="2">
+                            <Paragraph>
+                                <Run Text="External scroll viewer document" />
+                            </Paragraph>
+                            <List MarkerStyle="Disc">
+                                <ListItem>
+                                    <Paragraph><Run Text="External scroll viewer item" /></Paragraph>
+                                </ListItem>
+                            </List>
+                        </FlowDocument>
+                    </FlowDocumentScrollViewer>
+                    <FlowDocumentReader
+                        x:Name="ExternalFlowDocumentReader"
+                        ViewingMode="Scroll">
+                        <FlowDocument PagePadding="3">
+                            <Paragraph>
+                                <Run Text="External reader document" />
+                            </Paragraph>
+                        </FlowDocument>
+                    </FlowDocumentReader>
                     <TextBlock
                         x:Name="ExternalConverterText"
                         Text="{Binding SelectedExternalItem.Name, Converter={StaticResource ExternalUpperConverter}, ConverterParameter=converted}" />
@@ -10378,6 +10403,38 @@ internal static class Program
                     AssertContains("External section", richTextBox.Selection.Text, "external SDK RichTextBox selection text");
                     var documentText = new TextRange(document.ContentStart, document.ContentEnd).Text;
                     AssertContains("External cell beta", documentText, "external SDK FlowDocument TextRange table text");
+
+                    var scrollViewer = RequireType<FlowDocumentScrollViewer>(
+                        window.FindName("ExternalFlowDocumentScrollViewer"),
+                        "external SDK FlowDocumentScrollViewer");
+                    AssertEqual(false, scrollViewer.IsToolBarVisible, "external SDK FlowDocumentScrollViewer toolbar flag");
+                    var scrollViewerDocument = scrollViewer.Document
+                        ?? throw new InvalidOperationException("Expected external SDK FlowDocumentScrollViewer document.");
+                    AssertEqual(2.0, scrollViewerDocument.PagePadding.Left, "external SDK FlowDocumentScrollViewer page padding");
+                    AssertEqual(320.0, scrollViewerDocument.ColumnWidth, "external SDK FlowDocumentScrollViewer column width");
+                    AssertEqual(2, scrollViewerDocument.Blocks.Count, "external SDK FlowDocumentScrollViewer block count");
+                    var scrollViewerParagraph = RequireType<Paragraph>(
+                        scrollViewerDocument.Blocks.FirstBlock,
+                        "external SDK FlowDocumentScrollViewer paragraph");
+                    AssertParagraphText(scrollViewerParagraph, "External scroll viewer document", "scroll viewer");
+                    var scrollViewerList = RequireType<System.Windows.Documents.List>(
+                        scrollViewerParagraph.NextBlock,
+                        "external SDK FlowDocumentScrollViewer list");
+                    AssertEqual(TextMarkerStyle.Disc, scrollViewerList.MarkerStyle, "external SDK FlowDocumentScrollViewer list marker style");
+                    AssertListItemText(scrollViewerList.ListItems.FirstListItem, "External scroll viewer item", "scroll viewer");
+
+                    var reader = RequireType<FlowDocumentReader>(
+                        window.FindName("ExternalFlowDocumentReader"),
+                        "external SDK FlowDocumentReader");
+                    AssertEqual(FlowDocumentReaderViewingMode.Scroll, reader.ViewingMode, "external SDK FlowDocumentReader viewing mode");
+                    var readerDocument = reader.Document
+                        ?? throw new InvalidOperationException("Expected external SDK FlowDocumentReader document.");
+                    AssertEqual(3.0, readerDocument.PagePadding.Left, "external SDK FlowDocumentReader page padding");
+                    AssertEqual(1, readerDocument.Blocks.Count, "external SDK FlowDocumentReader block count");
+                    AssertParagraphText(
+                        RequireType<Paragraph>(readerDocument.Blocks.FirstBlock, "external SDK FlowDocumentReader paragraph"),
+                        "External reader document",
+                        "reader");
                 }
 
                 private static void ValidateRichTextEditingCommands(

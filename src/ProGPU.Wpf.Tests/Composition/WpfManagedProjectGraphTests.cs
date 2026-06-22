@@ -7190,6 +7190,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK Hyperlink RequestNavigate routed event", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK FlowDocument list marker style", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK FlowDocument table cell count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalFlowDocumentScrollViewer", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("IsToolBarVisible=\"False\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK FlowDocumentScrollViewer list marker style", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalFlowDocumentReader", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ViewingMode=\"Scroll\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK FlowDocumentReader viewing mode", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateRichTextEditingCommands(richTextBox, introParagraph, plainRun, documentList)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("EditingCommands.ToggleBold.Execute(null, richTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK RichTextBox ToggleBold applied weight", externalSdkHarnessProgram, StringComparison.Ordinal);

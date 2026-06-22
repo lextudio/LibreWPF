@@ -561,6 +561,27 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void NativeResizeUsesPortablePresentationSourceLogicalCacheWhenHostCacheWasPhysical()
+    {
+        using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
+        {
+            Width = 840,
+            Height = 1680
+        });
+        var source = new FakePortablePresentationSource();
+        Assert.True(host.TryBindPortablePresentationSource(source));
+        Assert.True(host.UpdatePortablePresentationSourceClientSize(420, 840));
+
+        Assert.True(host.UpdateClientSizeFromNativeResize(
+            new Vector2D<int>(840, 1680),
+            new Vector2D<int>(1680, 3360),
+            monitorDpiScale: 1.0));
+
+        Assert.Equal(420, host.Width);
+        Assert.Equal(840, host.Height);
+    }
+
+    [Fact]
     public void NativeResizeIgnoresZeroSizeAndReturnsFalseForUnchangedClientSize()
     {
         using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
@@ -831,6 +852,27 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Equal(640, source.ClientWidth);
         Assert.Equal(480, source.ClientHeight);
         Assert.Equal(2, source.ClientSizeChangeCount);
+        Assert.Equal(2, scheduler.RequestCount);
+    }
+
+    [Fact]
+    public void SetClientSizeSynchronizesBoundPortablePresentationSourceImmediately()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var source = new FakePortablePresentationSource();
+        Assert.True(host.TryBindPortablePresentationSource(source));
+
+        host.SetClientSize(640, 480);
+
+        Assert.Equal(640, host.Width);
+        Assert.Equal(480, host.Height);
+        Assert.Equal(640, source.ClientWidth);
+        Assert.Equal(480, source.ClientHeight);
+        Assert.Equal(1, source.ClientSizeChangeCount);
         Assert.Equal(2, scheduler.RequestCount);
     }
 

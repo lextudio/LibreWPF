@@ -251,6 +251,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _window.Size = new Vector2D<int>(_clientWidth, _clientHeight);
         }
 
+        UpdatePortablePresentationSourceClientSize((uint)_clientWidth, (uint)_clientHeight);
         WpfRenderScheduler.RequestRender();
     }
 
@@ -679,12 +680,14 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private RenderSurfaceGeometry ResolveCurrentRenderSurfaceGeometry()
     {
         RenderSurfaceGeometry geometry;
+        var cachedLogicalClientWidth = GetCachedLogicalClientWidth();
+        var cachedLogicalClientHeight = GetCachedLogicalClientHeight();
         if (_window == null)
         {
             geometry = ResolveRenderSurfaceGeometry(
-                _clientWidth,
-                _clientHeight,
-                new Vector2D<int>(_clientWidth, _clientHeight),
+                cachedLogicalClientWidth,
+                cachedLogicalClientHeight,
+                new Vector2D<int>(cachedLogicalClientWidth, cachedLogicalClientHeight),
                 1.0);
             LastResolvedRenderSurfaceGeometry = geometry;
             return geometry;
@@ -696,8 +699,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         var logicalSize = ResolveLogicalClientSize(
             clientSize,
             framebufferSize,
-            _clientWidth,
-            _clientHeight,
+            cachedLogicalClientWidth,
+            cachedLogicalClientHeight,
             monitorDpiScale);
         geometry = ResolveRenderSurfaceGeometry(
             logicalSize.X,
@@ -747,8 +750,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         var logicalSize = ResolveLogicalClientSize(
             size,
             framebufferSize,
-            _clientWidth,
-            _clientHeight,
+            GetCachedLogicalClientWidth(),
+            GetCachedLogicalClientHeight(),
             monitorDpiScale);
         var clientWidth = logicalSize.X;
         var clientHeight = logicalSize.Y;
@@ -760,6 +763,20 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _clientWidth = clientWidth;
         _clientHeight = clientHeight;
         return true;
+    }
+
+    private int GetCachedLogicalClientWidth()
+    {
+        return _portablePresentationSourceClientWidth > 0
+            ? _portablePresentationSourceClientWidth
+            : _clientWidth;
+    }
+
+    private int GetCachedLogicalClientHeight()
+    {
+        return _portablePresentationSourceClientHeight > 0
+            ? _portablePresentationSourceClientHeight
+            : _clientHeight;
     }
 
     internal static Vector2D<int> ResolveLogicalClientSize(

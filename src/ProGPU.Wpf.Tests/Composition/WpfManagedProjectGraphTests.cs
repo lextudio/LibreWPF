@@ -4845,6 +4845,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ReadSample(source, sourceRow, x, 3, componentCount, bitDepth)", pngBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("ScaleSampleToByte", pngBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("IsTransparentRgb", pngBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("DecodeAdam7Pixels", pngBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("Adam7StartX", pngBitmapDecoder, StringComparison.Ordinal);
+        Assert.Contains("interlaceMethod > 1", pngBitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("PngBitmapDecoder.TryCreatePortableFrameFromUri", bitmapDecoder, StringComparison.Ordinal);
         Assert.Contains("return new PngBitmapDecoder(portablePngUriFrame", bitmapDecoder, StringComparison.Ordinal);
         AssertGuardBefore(bitmapDecoder, "PngBitmapDecoder.TryCreatePortableFrame", "SetupDecoderFromUriOrStream");
@@ -6552,6 +6555,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK BitmapDecoder.Create URI PNG decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new BitmapImage(pngUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapImage URI PNG top-left blue byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CreateAdam7RgbaPngBytes(pixels, 2, 2, 8)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create interlaced PNG decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create interlaced PNG bottom-right red byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapDecoder.Create URI interlaced PNG decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new BitmapImage(interlacedPngUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK BitmapImage URI interlaced PNG bottom-right red byte", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreatePngIconBytes(pngBytes, 2, 2)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new IconBitmapDecoder(", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapDecoder.Create ICO decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -3585,6 +3585,21 @@ internal static class Program
                     AssertEqual(1, directPngDecoder.Frames.Count, "external SDK PngBitmapDecoder frame count");
                     AssertEqual(PixelFormats.Bgra32, directPngDecoder.Frames[0].Format, "external SDK PngBitmapDecoder Bgra32 format");
 
+                    byte[] interlacedPngBytes = CreateAdam7RgbaPngBytes(pixels, 2, 2, 8);
+                    var interlacedPngDecoder = BitmapDecoder.Create(
+                        new MemoryStream(interlacedPngBytes),
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    AssertEqual(typeof(PngBitmapDecoder), interlacedPngDecoder.GetType(), "external SDK BitmapDecoder.Create interlaced PNG decoder type");
+                    AssertEqual(1, interlacedPngDecoder.Frames.Count, "external SDK BitmapDecoder.Create interlaced PNG frame count");
+                    AssertEqual(2, interlacedPngDecoder.Frames[0].PixelWidth, "external SDK BitmapDecoder.Create interlaced PNG pixel width");
+                    AssertEqual(2, interlacedPngDecoder.Frames[0].PixelHeight, "external SDK BitmapDecoder.Create interlaced PNG pixel height");
+                    AssertEqual(PixelFormats.Bgra32, interlacedPngDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create interlaced PNG Bgra32 format");
+                    var decodedInterlacedPngPixels = new byte[pixels.Length];
+                    interlacedPngDecoder.Frames[0].CopyPixels(decodedInterlacedPngPixels, 8, 0);
+                    AssertEqual(pixels[0], decodedInterlacedPngPixels[0], "external SDK BitmapDecoder.Create interlaced PNG top-left blue byte");
+                    AssertEqual(pixels[14], decodedInterlacedPngPixels[14], "external SDK BitmapDecoder.Create interlaced PNG bottom-right red byte");
+
                     byte[] iconBytes = CreatePngIconBytes(pngBytes, 2, 2);
                     AssertEqual((byte)0x00, iconBytes[0], "external SDK generated ICO reserved byte 0");
                     AssertEqual((byte)0x01, iconBytes[2], "external SDK generated ICO type byte 0");
@@ -3829,6 +3844,33 @@ internal static class Program
                     finally
                     {
                         File.Delete(pngPath);
+                    }
+
+                    string interlacedPngPath = Path.Combine(Path.GetTempPath(), "external-sdk-managed-image-" + Guid.NewGuid().ToString("N") + "-interlaced.png");
+                    File.WriteAllBytes(interlacedPngPath, interlacedPngBytes);
+                    try
+                    {
+                        var interlacedPngUri = new Uri(interlacedPngPath);
+                        var uriInterlacedPngDecoder = BitmapDecoder.Create(
+                            interlacedPngUri,
+                            BitmapCreateOptions.PreservePixelFormat,
+                            BitmapCacheOption.OnLoad);
+                        AssertEqual(typeof(PngBitmapDecoder), uriInterlacedPngDecoder.GetType(), "external SDK BitmapDecoder.Create URI interlaced PNG decoder type");
+                        AssertEqual(1, uriInterlacedPngDecoder.Frames.Count, "external SDK BitmapDecoder.Create URI interlaced PNG frame count");
+                        AssertEqual(PixelFormats.Bgra32, uriInterlacedPngDecoder.Frames[0].Format, "external SDK BitmapDecoder.Create URI interlaced PNG Bgra32 format");
+
+                        var interlacedPngBitmapImage = new BitmapImage(interlacedPngUri);
+                        AssertEqual(2, interlacedPngBitmapImage.PixelWidth, "external SDK BitmapImage URI interlaced PNG pixel width");
+                        AssertEqual(2, interlacedPngBitmapImage.PixelHeight, "external SDK BitmapImage URI interlaced PNG pixel height");
+                        AssertEqual(PixelFormats.Bgra32, interlacedPngBitmapImage.Format, "external SDK BitmapImage URI interlaced PNG Bgra32 format");
+                        var interlacedPngBitmapImagePixels = new byte[pixels.Length];
+                        interlacedPngBitmapImage.CopyPixels(interlacedPngBitmapImagePixels, 8, 0);
+                        AssertEqual(pixels[0], interlacedPngBitmapImagePixels[0], "external SDK BitmapImage URI interlaced PNG top-left blue byte");
+                        AssertEqual(pixels[14], interlacedPngBitmapImagePixels[14], "external SDK BitmapImage URI interlaced PNG bottom-right red byte");
+                    }
+                    finally
+                    {
+                        File.Delete(interlacedPngPath);
                     }
 
                     string iconPath = Path.Combine(Path.GetTempPath(), "external-sdk-managed-image-" + Guid.NewGuid().ToString("N") + ".ico");
@@ -4278,6 +4320,66 @@ internal static class Program
                     WritePngChunk(png, "IDAT", compressed.ToArray());
                     WritePngChunk(png, "IEND", Array.Empty<byte>());
                     return png.ToArray();
+                }
+
+                private static byte[] CreateAdam7RgbaPngBytes(byte[] bgraPixels, int width, int height, int stride)
+                {
+                    int[] startX = [0, 4, 0, 2, 0, 1, 0];
+                    int[] startY = [0, 0, 4, 0, 2, 0, 1];
+                    int[] deltaX = [8, 8, 4, 4, 2, 2, 1];
+                    int[] deltaY = [8, 8, 8, 4, 4, 2, 2];
+
+                    using var rawRows = new MemoryStream();
+                    for (int pass = 0; pass < startX.Length; pass++)
+                    {
+                        int passWidth = GetAdam7PassSize(width, startX[pass], deltaX[pass]);
+                        int passHeight = GetAdam7PassSize(height, startY[pass], deltaY[pass]);
+                        if (passWidth == 0 || passHeight == 0)
+                        {
+                            continue;
+                        }
+
+                        for (int y = 0; y < passHeight; y++)
+                        {
+                            rawRows.WriteByte(0);
+                            int sourceY = startY[pass] + y * deltaY[pass];
+                            int sourceRow = sourceY * stride;
+                            for (int x = 0; x < passWidth; x++)
+                            {
+                                int sourceX = startX[pass] + x * deltaX[pass];
+                                int sourceOffset = sourceRow + sourceX * 4;
+                                rawRows.WriteByte(bgraPixels[sourceOffset + 2]);
+                                rawRows.WriteByte(bgraPixels[sourceOffset + 1]);
+                                rawRows.WriteByte(bgraPixels[sourceOffset]);
+                                rawRows.WriteByte(bgraPixels[sourceOffset + 3]);
+                            }
+                        }
+                    }
+
+                    using var compressed = new MemoryStream();
+                    using (var zlib = new ZLibStream(compressed, CompressionLevel.SmallestSize, leaveOpen: true))
+                    {
+                        byte[] rawBytes = rawRows.ToArray();
+                        zlib.Write(rawBytes, 0, rawBytes.Length);
+                    }
+
+                    using var png = new MemoryStream();
+                    png.Write(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 });
+                    byte[] ihdr = new byte[13];
+                    WriteBigEndianUInt32(ihdr, 0, (uint)width);
+                    WriteBigEndianUInt32(ihdr, 4, (uint)height);
+                    ihdr[8] = 8;
+                    ihdr[9] = 6;
+                    ihdr[12] = 1;
+                    WritePngChunk(png, "IHDR", ihdr);
+                    WritePngChunk(png, "IDAT", compressed.ToArray());
+                    WritePngChunk(png, "IEND", Array.Empty<byte>());
+                    return png.ToArray();
+                }
+
+                private static int GetAdam7PassSize(int size, int start, int delta)
+                {
+                    return size <= start ? 0 : ((size - start + delta - 1) / delta);
                 }
 
                 private static byte[] CreateRgba16PngBytes(byte[] bgraPixels, int width, int height, int stride)

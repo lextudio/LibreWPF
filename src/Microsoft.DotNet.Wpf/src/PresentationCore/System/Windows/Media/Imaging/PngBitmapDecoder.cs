@@ -210,7 +210,7 @@ namespace System.Windows.Media.Imaging
                             byte compressionMethod = chunkData[10];
                             byte filterMethod = chunkData[11];
                             interlaceMethod = chunkData[12];
-                            if (width <= 0 || height <= 0 || compressionMethod != 0 || filterMethod != 0 || interlaceMethod != 0)
+                            if (width <= 0 || height <= 0 || compressionMethod != 0 || filterMethod != 0 || interlaceMethod > 1)
                             {
                                 throw new FileFormatException(null, SR.Image_CantDealWithStream);
                             }
@@ -226,7 +226,7 @@ namespace System.Windows.Media.Imaging
                             idat.Write(chunkData, 0, chunkData.Length);
                             break;
                         case "IEND":
-                            frame = CreateFrame(width, height, bitDepth, colorType, paletteColors, paletteAlpha, idat);
+                            frame = CreateFrame(width, height, bitDepth, colorType, interlaceMethod, paletteColors, paletteAlpha, idat);
                             if (!frame.IsFrozen && frame.CanFreeze)
                             {
                                 frame.Freeze();
@@ -265,6 +265,7 @@ namespace System.Windows.Media.Imaging
             int height,
             byte bitDepth,
             byte colorType,
+            byte interlaceMethod,
             List<Color> paletteColors,
             byte[] paletteAlpha,
             MemoryStream compressedData)
@@ -279,19 +280,39 @@ namespace System.Windows.Media.Imaging
             int sourceStride = checked((width * bitsPerPixel + 7) / 8);
             int filterBytesPerPixel = Math.Max(1, checked((bitsPerPixel + 7) / 8));
             int targetStride = checked(width * 4);
-            byte[] rawRows = Inflate(compressedData, checked((sourceStride + 1) * height));
-            byte[] unfiltered = Unfilter(rawRows, width, height, sourceStride, filterBytesPerPixel);
             byte[] pixels = new byte[checked(targetStride * height)];
 
-            for (int y = 0; y < height; y++)
+            if (interlaceMethod == 0)
             {
-                int sourceRow = y * sourceStride;
-                int targetRow = y * targetStride;
-                for (int x = 0; x < width; x++)
+                byte[] rawRows = Inflate(compressedData, checked((sourceStride + 1) * height));
+                byte[] unfiltered = Unfilter(rawRows, width, height, sourceStride, filterBytesPerPixel);
+
+                for (int y = 0; y < height; y++)
                 {
-                    int targetOffset = targetRow + x * 4;
-                    WriteBgraPixel(colorType, bitDepth, componentCount, unfiltered, sourceRow, x, paletteColors, paletteAlpha, pixels, targetOffset);
+                    int sourceRow = y * sourceStride;
+                    int targetRow = y * targetStride;
+                    for (int x = 0; x < width; x++)
+                    {
+                        int targetOffset = targetRow + x * 4;
+                        WriteBgraPixel(colorType, bitDepth, componentCount, unfiltered, sourceRow, x, paletteColors, paletteAlpha, pixels, targetOffset);
+                    }
                 }
+            }
+            else
+            {
+                DecodeAdam7Pixels(
+                    width,
+                    height,
+                    bitDepth,
+                    colorType,
+                    componentCount,
+                    bitsPerPixel,
+                    filterBytesPerPixel,
+                    targetStride,
+                    paletteColors,
+                    paletteAlpha,
+                    compressedData,
+                    pixels);
             }
 
             BitmapSource source = BitmapSource.Create(
@@ -305,6 +326,71 @@ namespace System.Windows.Media.Imaging
                 targetStride);
 
             return BitmapFrame.Create(source);
+        }
+
+        private static void DecodeAdam7Pixels(
+            int width,
+            int height,
+            byte bitDepth,
+            byte colorType,
+            int componentCount,
+            int bitsPerPixel,
+            int filterBytesPerPixel,
+            int targetStride,
+            List<Color> paletteColors,
+            byte[] paletteAlpha,
+            MemoryStream compressedData,
+            byte[] pixels)
+        {
+            int expectedLength = 0;
+            for (int pass = 0; pass < Adam7StartX.Length; pass++)
+            {
+                int passWidth = GetAdam7PassSize(width, Adam7StartX[pass], Adam7DeltaX[pass]);
+                int passHeight = GetAdam7PassSize(height, Adam7StartY[pass], Adam7DeltaY[pass]);
+                if (passWidth == 0 || passHeight == 0)
+                {
+                    continue;
+                }
+
+                int passStride = checked((passWidth * bitsPerPixel + 7) / 8);
+                expectedLength = checked(expectedLength + ((passStride + 1) * passHeight));
+            }
+
+            byte[] rawRows = Inflate(compressedData, expectedLength);
+            int rawOffset = 0;
+            for (int pass = 0; pass < Adam7StartX.Length; pass++)
+            {
+                int passWidth = GetAdam7PassSize(width, Adam7StartX[pass], Adam7DeltaX[pass]);
+                int passHeight = GetAdam7PassSize(height, Adam7StartY[pass], Adam7DeltaY[pass]);
+                if (passWidth == 0 || passHeight == 0)
+                {
+                    continue;
+                }
+
+                int passStride = checked((passWidth * bitsPerPixel + 7) / 8);
+                int passRawLength = checked((passStride + 1) * passHeight);
+                byte[] passRows = new byte[passRawLength];
+                Buffer.BlockCopy(rawRows, rawOffset, passRows, 0, passRawLength);
+                rawOffset += passRawLength;
+
+                byte[] unfiltered = Unfilter(passRows, passWidth, passHeight, passStride, filterBytesPerPixel);
+                for (int y = 0; y < passHeight; y++)
+                {
+                    int sourceRow = y * passStride;
+                    int targetY = Adam7StartY[pass] + y * Adam7DeltaY[pass];
+                    for (int x = 0; x < passWidth; x++)
+                    {
+                        int targetX = Adam7StartX[pass] + x * Adam7DeltaX[pass];
+                        int targetOffset = targetY * targetStride + targetX * 4;
+                        WriteBgraPixel(colorType, bitDepth, componentCount, unfiltered, sourceRow, x, paletteColors, paletteAlpha, pixels, targetOffset);
+                    }
+                }
+            }
+        }
+
+        private static int GetAdam7PassSize(int size, int start, int delta)
+        {
+            return size <= start ? 0 : ((size - start + delta - 1) / delta);
         }
 
         private static bool IsSupportedBitDepth(byte colorType, byte bitDepth)
@@ -618,6 +704,11 @@ namespace System.Windows.Media.Imaging
                 throw new EndOfStreamException();
             }
         }
+
+        private static readonly int[] Adam7StartX = [0, 4, 0, 2, 0, 1, 0];
+        private static readonly int[] Adam7StartY = [0, 0, 4, 0, 2, 0, 1];
+        private static readonly int[] Adam7DeltaX = [8, 8, 4, 4, 2, 2, 1];
+        private static readonly int[] Adam7DeltaY = [8, 8, 8, 4, 4, 2, 2];
 
         #region Internal Abstract
 

@@ -3989,6 +3989,18 @@ internal static class Program
 
                 private static void ValidatePopupOpeningAfterRun(MainWindow window)
                 {
+                    var rootMenuItem = RequireType<MenuItem>(
+                        window.FindName("ExternalRootMenuItem"),
+                        "external SDK Application.Run root menu item");
+                    rootMenuItem.UpdateLayout();
+                    AssertEqual(false, rootMenuItem.IsSubmenuOpen, "external SDK Application.Run menu item initial submenu state");
+                    rootMenuItem.IsSubmenuOpen = true;
+                    DrainDispatcher();
+                    AssertEqual(true, rootMenuItem.IsSubmenuOpen, "external SDK Application.Run menu item opened through portable popup");
+                    rootMenuItem.IsSubmenuOpen = false;
+                    DrainDispatcher();
+                    AssertEqual(false, rootMenuItem.IsSubmenuOpen, "external SDK Application.Run menu item closed through portable popup");
+
                     var popupOwner = RequireType<Button>(
                         window.FindName("ExternalPopupOwnerButton"),
                         "external SDK Application.Run popup owner button");

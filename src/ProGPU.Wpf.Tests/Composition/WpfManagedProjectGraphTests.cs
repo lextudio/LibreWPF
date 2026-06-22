@@ -5199,6 +5199,8 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(bitmapDecoder, "IconBitmapDecoder.TryCreatePortableFrame", "SetupDecoderFromUriOrStream");
         AssertGuardBefore(uiElement, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetDC(desktopWnd)");
         AssertGuardBefore(pathGeometry, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.MilCoreApi.MilUtility_PathGeometryBounds");
+        AssertGuardBefore(pathGeometry, "if (!OperatingSystem.IsWindows())\n            {\n                return InternalCombineManaged", "UnsafeNativeMethods.MilCoreApi.MilUtility_PathGeometryCombine");
+        Assert.Contains("private static PathGeometry InternalCombineManaged(", pathGeometry, StringComparison.Ordinal);
         AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())", "MilCoreApi.MilUtility_PolygonBounds");
         Assert.Contains("return GetManagedPolygonBounds(", geometry, StringComparison.Ordinal);
         Assert.Contains("private static unsafe Rect GetManagedPolygonBounds", geometry, StringComparison.Ordinal);
@@ -7100,6 +7102,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("OnExternalBubbledThumbDragDelta", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMenusAndChoiceControls(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePopupOpeningAfterRun(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Application.Run menu item opened through portable popup", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Application.Run tooltip opened through portable popup", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Application.Run context menu opened through portable popup", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateToolbarStatusRangePasswordDateControls(window)", externalSdkHarnessProgram, StringComparison.Ordinal);

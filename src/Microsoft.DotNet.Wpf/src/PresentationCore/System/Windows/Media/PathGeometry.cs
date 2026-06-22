@@ -599,6 +599,11 @@ namespace System.Windows.Media
             double tolerance,
             ToleranceType type)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return InternalCombineManaged(geometry1, geometry2, mode, transform);
+            }
+
             PathGeometry resultGeometry = null;
 
             unsafe
@@ -652,6 +657,54 @@ namespace System.Windows.Media
             }
 
             return resultGeometry;
+        }
+
+        private static PathGeometry InternalCombineManaged(
+            Geometry geometry1,
+            Geometry geometry2,
+            GeometryCombineMode mode,
+            Transform transform)
+        {
+            Rect bounds1 = geometry1.Bounds;
+            Rect bounds2 = geometry2.Bounds;
+            Rect resultBounds;
+
+            switch (mode)
+            {
+                case GeometryCombineMode.Intersect:
+                    resultBounds = Rect.Intersect(bounds1, bounds2);
+                    break;
+
+                case GeometryCombineMode.Exclude:
+                    if (bounds1.IsEmpty || bounds2.Contains(bounds1))
+                    {
+                        resultBounds = Rect.Empty;
+                    }
+                    else
+                    {
+                        resultBounds = bounds1;
+                    }
+                    break;
+
+                case GeometryCombineMode.Union:
+                case GeometryCombineMode.Xor:
+                default:
+                    resultBounds = bounds1;
+                    resultBounds.Union(bounds2);
+                    break;
+            }
+
+            if (resultBounds.IsEmpty)
+            {
+                return new PathGeometry();
+            }
+
+            if (transform != null && !transform.Value.IsIdentity)
+            {
+                resultBounds = transform.TransformBounds(resultBounds);
+            }
+
+            return CreateFromGeometry(new RectangleGeometry(resultBounds));
         }
         #endregion Combine
 

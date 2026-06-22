@@ -6900,6 +6900,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("validationPeer.GetLabeledBy()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalStandaloneAccessText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Text=\"_External standalone access\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PresentationSource.FromVisual(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AccessKeyManager.IsKeyRegistered(presentationSource, \"E\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AccessKeyManager.ProcessKey(presentationSource, \"E\", false)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK access-key manager focused label target", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Click=\"OnExternalCommandButtonClick\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalRequeryCommandButton", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Command=\"{Binding ExternalRequeryCommand}\"", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -1663,6 +1663,8 @@
 
 - Extended the generated external SDK smoke through WPF binding transfer events outside the repository build graph. The SDK-only app now declares an explicit two-way `TextBox.Text` binding with `NotifyOnSourceUpdated=True` and `NotifyOnTargetUpdated=True`, routes `SourceUpdated`/`TargetUpdated` into package-built code-behind, and validates binding metadata, target refresh, source update, sender, target object, dependency-property name, and routed-event name from SDK-built output. This keeps binding expression transfer-event ownership in WPF's managed binding engine for apps that only change project SDK.
 
+- Extended the generated external SDK smoke from access-key metadata into WPF access-key routing outside the repository build graph. The SDK-only app now validates `AccessKeyManager.IsKeyRegistered(...)` for the compiled `_External access target` label, processes the key through the window `PresentationSource`, and verifies WPF transfers keyboard focus to the `Label.Target` `TextBox`. This keeps mnemonic routing in WPF's managed access-key/focus managers for apps that only change project SDK.
+
 ## Open Porting Items
 
 - Finish SDK deliverable hardening for the no-source-change migration contract: existing WPF apps should change only the project `Sdk` to use the ProGPU/Silk.NET platform. Promote the new SDK nupkg preflight plus package-mode transport/progpu package validation into CI, publish the managed WPF transport and ProGPU/Silk.NET packages from a clean source build, broaden external-app validation beyond the smoke app, and classify every extra app-code requirement as either a compatibility bug or an explicit Windows-only interop exception.

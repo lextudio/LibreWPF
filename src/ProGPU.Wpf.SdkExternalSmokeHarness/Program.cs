@@ -2865,6 +2865,7 @@ internal static class Program
                     ValidateMultiDataTriggerActionsAfterRun(window);
                     ValidateVisualStateTransitions(window);
                     ValidateAdornerLayer(window);
+                    ValidateAccessKeyRoutingAfterRun(window);
 
                     App.MarkExternalRunValidated();
                     app.Shutdown(0);
@@ -7660,6 +7661,22 @@ internal static class Program
                         .Execute(requeryCommandButton.CommandParameter);
                     AssertEqual(requeryExecuteBefore + 1, window.ExternalRequeryCommand.ExecuteCount, "external SDK requery command execute count");
                     AssertEqual("ExternalRequeryParameter", window.ExternalRequeryCommand.LastParameter, "external SDK requery command last parameter");
+                }
+
+                private static void ValidateAccessKeyRoutingAfterRun(MainWindow window)
+                {
+                    var validationTextBox = RequireType<TextBox>(
+                        window.FindName("ExternalValidationTextBox"),
+                        "external SDK access-key routing target text box");
+                    var presentationSource = PresentationSource.FromVisual(window)
+                        ?? throw new InvalidOperationException("Expected external SDK window to have a presentation source.");
+
+                    AssertEqual(true, AccessKeyManager.IsKeyRegistered(presentationSource, "E"), "external SDK access-key manager registered label key");
+                    Keyboard.ClearFocus();
+                    AssertEqual(false, ReferenceEquals(validationTextBox, Keyboard.FocusedElement), "external SDK access-key manager cleared focus");
+                    AssertEqual(false, AccessKeyManager.ProcessKey(presentationSource, "E", false), "external SDK access-key manager process last key");
+                    AssertEqual(validationTextBox, Keyboard.FocusedElement, "external SDK access-key manager focused label target");
+                    Keyboard.ClearFocus();
                 }
 
                 private static void DrainDispatcher()

@@ -7601,10 +7601,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK RelativeSource ancestor-level value", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Validation.GetHasError(validationTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Validation.GetErrors(validationTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"ExternalValidationErrorTemplate\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AdornedElementPlaceholder x:Name=\"ExternalValidationErrorPlaceholder\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Validation.ErrorTemplate=\"{StaticResource ExternalValidationErrorTemplate}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK validation error added count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK validation error added routed event", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK validation error removed count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK validation error removed sender", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateValidationErrorTemplateAfterRun(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AdornerLayer.GetAdornerLayer(validationTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK validation ErrorTemplate adorner count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK validation ErrorTemplate recovery state", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK IDataErrorInfo binding ValidatesOnDataErrors", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK IDataErrorInfo validation error content", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK IDataErrorInfo validation recovered source", externalSdkHarnessProgram, StringComparison.Ordinal);

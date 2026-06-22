@@ -917,6 +917,17 @@ internal static class Program
                     <CollectionViewSource
                         x:Key="ExternalCurrencyItems"
                         Source="{Binding ExternalItems}" />
+                    <ControlTemplate x:Key="ExternalValidationErrorTemplate">
+                        <DockPanel LastChildFill="True">
+                            <TextBlock
+                                x:Name="ExternalValidationErrorGlyph"
+                                DockPanel.Dock="Right"
+                                Foreground="Crimson"
+                                Tag="{Binding [0].ErrorContent}"
+                                Text="!" />
+                            <AdornedElementPlaceholder x:Name="ExternalValidationErrorPlaceholder" />
+                        </DockPanel>
+                    </ControlTemplate>
                     <Style
                         x:Key="ExternalEventSetterButtonStyle"
                         TargetType="{x:Type Button}">
@@ -1917,6 +1928,7 @@ internal static class Program
                         InputMethod.PreferredImeSentenceMode="Automatic"
                         InputMethod.PreferredImeState="On"
                         Validation.Error="OnExternalValidationError"
+                        Validation.ErrorTemplate="{StaticResource ExternalValidationErrorTemplate}"
                         TextChanged="OnExternalValidationTextChanged">
                         <TextBox.Text>
                             <Binding
@@ -3994,6 +4006,7 @@ internal static class Program
                     ValidateAlternationAfterRun(window);
                     ValidateMultiSelectionAfterRun(window);
                     ValidateAdornerLayer(window);
+                    ValidateValidationErrorTemplateAfterRun(window);
                     ValidateAccessKeyRoutingAfterRun(window);
                     ValidateClassInputBindingAfterRun(window);
                     ValidateKeyboardNavigationAfterRun(window);
@@ -9404,6 +9417,46 @@ internal static class Program
                     {
                         throw new InvalidOperationException(
                             $"Expected external SDK AdornerLayer to remove adorner, but found '{remainingAdorners.Length}'.");
+                    }
+                }
+
+                private static void ValidateValidationErrorTemplateAfterRun(MainWindow window)
+                {
+                    var validationTextBox = RequireType<TextBox>(
+                        window.FindName("ExternalValidationTextBox"),
+                        "external SDK Application.Run validation TextBox");
+                    var errorTemplate = Validation.GetErrorTemplate(validationTextBox)
+                        ?? throw new InvalidOperationException("Expected external SDK validation TextBox ErrorTemplate.");
+                    AssertEqual(
+                        window.FindResource("ExternalValidationErrorTemplate"),
+                        errorTemplate,
+                        "external SDK validation ErrorTemplate resource");
+
+                    var bindingExpression = validationTextBox.GetBindingExpression(TextBox.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK validation TextBox BindingExpression.");
+                    var adornerLayer = AdornerLayer.GetAdornerLayer(validationTextBox)
+                        ?? throw new InvalidOperationException("Expected external SDK validation AdornerLayer after Application.Run startup.");
+
+                    validationTextBox.Text = string.Empty;
+                    bindingExpression.UpdateSource();
+                    validationTextBox.UpdateLayout();
+                    window.UpdateLayout();
+                    AssertEqual(true, Validation.GetHasError(validationTextBox), "external SDK validation ErrorTemplate failure state");
+                    var validationAdorners = adornerLayer.GetAdorners(validationTextBox)
+                        ?? throw new InvalidOperationException("Expected external SDK validation ErrorTemplate adorner after invalid update.");
+                    AssertAtLeast(1, validationAdorners.Length, "external SDK validation ErrorTemplate adorner count");
+                    AssertEqual(validationTextBox, validationAdorners[0].AdornedElement, "external SDK validation ErrorTemplate adorned element");
+
+                    validationTextBox.Text = "template recovered external text";
+                    bindingExpression.UpdateSource();
+                    validationTextBox.UpdateLayout();
+                    window.UpdateLayout();
+                    AssertEqual(false, Validation.GetHasError(validationTextBox), "external SDK validation ErrorTemplate recovery state");
+                    var remainingAdorners = adornerLayer.GetAdorners(validationTextBox);
+                    if (remainingAdorners is { Length: > 0 })
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected external SDK validation ErrorTemplate adorner removal, but found '{remainingAdorners.Length}'.");
                     }
                 }
 

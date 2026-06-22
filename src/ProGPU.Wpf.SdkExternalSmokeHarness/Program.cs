@@ -1555,6 +1555,19 @@ internal static class Program
                         ItemsSource="{Binding ExternalItems}"
                         ItemStringFormat="External item {0}" />
                     <ListBox
+                        x:Name="ExternalVirtualizingItemsList"
+                        DisplayMemberPath="Name"
+                        ItemsSource="{Binding ExternalItems}"
+                        ScrollViewer.CanContentScroll="True"
+                        VirtualizingPanel.IsVirtualizing="True"
+                        VirtualizingPanel.VirtualizationMode="Recycling">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel Orientation="Vertical" />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                    </ListBox>
+                    <ListBox
                         x:Name="ExternalGroupedItemsList"
                         ItemsSource="{Binding Source={StaticResource ExternalGroupedItems}}">
                         <ListBox.GroupStyle>
@@ -8586,6 +8599,18 @@ internal static class Program
                     AssertEqual(4, itemPanelList.AlternationCount, "external SDK item panel list alternation count");
                     AssertEqual("External item {0}", itemPanelList.ItemStringFormat, "external SDK item panel list string format");
                     AssertEqual(3, itemPanelList.Items.Count, "external SDK item panel list collection count after mutation");
+
+                    var virtualizingList = RequireType<ListBox>(
+                        window.FindName("ExternalVirtualizingItemsList"),
+                        "external SDK virtualizing items list");
+                    AssertEqual(window.ExternalItems, virtualizingList.ItemsSource, "external SDK virtualizing list ItemsSource");
+                    AssertEqual(true, VirtualizingPanel.GetIsVirtualizing(virtualizingList), "external SDK VirtualizingPanel IsVirtualizing attached value");
+                    AssertEqual(VirtualizationMode.Recycling, VirtualizingPanel.GetVirtualizationMode(virtualizingList), "external SDK VirtualizingPanel virtualization mode");
+                    AssertEqual(true, ScrollViewer.GetCanContentScroll(virtualizingList), "external SDK virtualizing list logical scrolling");
+                    var virtualizingPanelRoot = RequireType<VirtualizingStackPanel>(
+                        virtualizingList.ItemsPanel.LoadContent(),
+                        "external SDK virtualizing items panel root");
+                    AssertEqual(Orientation.Vertical, virtualizingPanelRoot.Orientation, "external SDK virtualizing items panel orientation");
 
                     var groupedItems = RequireType<CollectionViewSource>(
                         window.FindResource("ExternalGroupedItems"),

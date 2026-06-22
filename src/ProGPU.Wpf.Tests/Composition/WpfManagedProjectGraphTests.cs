@@ -7602,6 +7602,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK live grouped CollectionViewSource live regroup Framework count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window.ExternalLiveItems[2].Kind = \"Framework\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK live grouped CollectionViewSource live regroup removed Data group", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalVirtualizingItemsList\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("VirtualizingPanel.IsVirtualizing=\"True\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("VirtualizingPanel.VirtualizationMode=\"Recycling\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("VirtualizingStackPanel Orientation=\"Vertical\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK VirtualizingPanel IsVirtualizing attached value", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK VirtualizingPanel virtualization mode", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new MainWindow()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("window.FindName(\"ExternalThemedControl\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("themedControl.Template.FindName(\"ThemeRoot\", themedControl)", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7685,7 +7691,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK ProGPU WPF host portable source logical-size synchronization", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU WPF host logical-size cache DPI reconciliation", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Backend.DisplayScaleResolver", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("external SDK ProGPU backend native display-scale fallback", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertDisplayScaleResolver(displayScaleResolverType, \"external SDK\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGPU backend native display-scale fallback", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU WPF host delegates display-scale fallback to ProGPU backend", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU WPF composition target forwards logical/physical render surface", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU compositor render logical/physical surface", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7722,7 +7729,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SDK ProGPU WPF host portable source logical-size synchronization", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU WPF host logical-size cache DPI reconciliation", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Backend.DisplayScaleResolver", runtimeHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("SDK ProGPU backend native display-scale fallback", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertDisplayScaleResolver(displayScaleResolverType, \"SDK\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGPU backend native display-scale fallback", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU WPF host delegates display-scale fallback to ProGPU backend", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU WPF composition target forwards logical/physical render surface", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU compositor render logical/physical surface", runtimeHarnessProgram, StringComparison.Ordinal);

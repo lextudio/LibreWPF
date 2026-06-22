@@ -7383,6 +7383,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"ExternalIndexedBindingText\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalIndexedItems[1].Name", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK indexed binding updated target text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalStringFormatBindingText\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("StringFormat=External formatted {0}", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK StringFormat binding metadata", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ExternalBindingTransferTextBox\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SourceUpdated=\"OnExternalBindingSourceUpdated\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("TargetUpdated=\"OnExternalBindingTargetUpdated\"", externalSdkHarnessProgram, StringComparison.Ordinal);

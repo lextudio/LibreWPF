@@ -1849,6 +1849,9 @@ internal static class Program
                     <TextBlock
                         x:Name="ExternalIndexedBindingText"
                         Text="{Binding ExternalIndexedItems[1].Name}" />
+                    <TextBlock
+                        x:Name="ExternalStringFormatBindingText"
+                        Text="{Binding SelectedExternalItem.Name, StringFormat=External formatted {0}}" />
                     <TextBox
                         x:Name="ExternalSpellCheckTextBox"
                         SpellCheck.IsEnabled="True"
@@ -7568,6 +7571,15 @@ internal static class Program
                     window.ExternalIndexedItems[1].Name = "Indexed Beta Updated";
                     DrainDispatcher();
                     AssertEqual("Indexed Beta Updated", indexedBindingText.Text, "external SDK indexed binding updated target text");
+
+                    var stringFormatBindingText = RequireType<TextBlock>(
+                        window.FindName("ExternalStringFormatBindingText"),
+                        "external SDK StringFormat binding text block");
+                    AssertEqual("External formatted Alpha", stringFormatBindingText.Text, "external SDK StringFormat binding target text");
+                    var stringFormatBindingExpression = stringFormatBindingText.GetBindingExpression(TextBlock.TextProperty)
+                        ?? throw new InvalidOperationException("Expected external SDK StringFormat BindingExpression.");
+                    AssertEqual("SelectedExternalItem.Name", stringFormatBindingExpression.ParentBinding.Path.Path, "external SDK StringFormat binding path");
+                    AssertEqual("External formatted {0}", stringFormatBindingExpression.ParentBinding.StringFormat, "external SDK StringFormat binding metadata");
 
                     var transferTextBox = RequireType<TextBox>(
                         window.FindName("ExternalBindingTransferTextBox"),

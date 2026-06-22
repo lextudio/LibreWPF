@@ -1704,6 +1704,7 @@ internal static class Program
                 {
                     DataContext = this;
                     InitializeComponent();
+                    Loaded += OnExternalRunValidationLoaded;
                 }
 
                 public ObservableCollection<ExternalItem> ExternalItems { get; } =
@@ -2374,6 +2375,19 @@ internal static class Program
                     LastExternalLoadedStoryboardTextRoutedEventName = e.RoutedEvent?.Name;
                 }
 
+                private void OnExternalRunValidationLoaded(object sender, RoutedEventArgs e)
+                {
+                    if (!App.ExternalRunValidationRequested || App.ExternalRunValidated)
+                    {
+                        return;
+                    }
+
+                    Loaded -= OnExternalRunValidationLoaded;
+                    Dispatcher.BeginInvoke(
+                        DispatcherPriority.Send,
+                        new Action(ExternalSdkValidation.ValidateApplicationRunAndShutdown));
+                }
+
                 private void OnExternalItemsFilter(object sender, FilterEventArgs e)
                 {
                     ExternalItemsFilterCount++;
@@ -2811,6 +2825,8 @@ internal static class Program
 
                 public static bool ExternalRunValidated { get; private set; }
 
+                public static bool ExternalRunValidationRequested => s_externalRunValidationRequested;
+
                 protected override void OnStartup(StartupEventArgs e)
                 {
                     if (Environment.GetEnvironmentVariable("PROGPU_WPF_EXTERNAL_VALIDATE") == "1")
@@ -2824,9 +2840,6 @@ internal static class Program
                     {
                         s_externalRunValidationRequested = true;
                         base.OnStartup(e);
-                        Dispatcher.BeginInvoke(
-                            DispatcherPriority.Render,
-                            new Action(ExternalSdkValidation.ValidateApplicationRunAndShutdown));
                         return;
                     }
 
@@ -2997,6 +3010,24 @@ internal static class Program
                     AssertAtLeast(navigatedCountBeforeBack + 1, window.ExternalFrameNavigatedCount, "external SDK back frame navigated count");
                     AssertEqual("Back", window.LastExternalFrameNavigationMode, "external SDK back frame navigation mode");
                     AssertEqual(typeof(ExternalPage).FullName, window.LastExternalFrameContentType, "external SDK back frame content type");
+                    AssertEqual(true, frame.CanGoForward, "external SDK frame can go forward");
+
+                    int navigatingCountBeforeForward = window.ExternalFrameNavigatingCount;
+                    int navigatedCountBeforeForward = window.ExternalFrameNavigatedCount;
+                    int loadCompletedCountBeforeForward = window.ExternalFrameLoadCompletedCount;
+                    frame.GoForward();
+                    DrainDispatcher();
+
+                    RequireType<ExternalSecondPage>(
+                        frame.Content,
+                        "external SDK forwarded compiled page");
+                    AssertAtLeast(navigatingCountBeforeForward + 1, window.ExternalFrameNavigatingCount, "external SDK forward frame navigating count");
+                    AssertAtLeast(navigatedCountBeforeForward + 1, window.ExternalFrameNavigatedCount, "external SDK forward frame navigated count");
+                    AssertAtLeast(loadCompletedCountBeforeForward + 1, window.ExternalFrameLoadCompletedCount, "external SDK forward frame load completed count");
+                    AssertEqual("Forward", window.LastExternalFrameNavigationMode, "external SDK forward frame navigation mode");
+                    AssertEqual(typeof(ExternalSecondPage).FullName, window.LastExternalFrameContentType, "external SDK forward frame content type");
+                    AssertEqual(true, frame.CanGoBack, "external SDK frame can go back after forward");
+                    AssertEqual(false, frame.CanGoForward, "external SDK frame cannot go forward after forward");
                 }
 
                 public static void ValidateApplicationRunAndShutdown()

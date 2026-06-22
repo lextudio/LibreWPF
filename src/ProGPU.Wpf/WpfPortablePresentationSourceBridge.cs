@@ -10,11 +10,13 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     private const string CompositionTargetPropertyName = "CompositionTarget";
     private const string RenderRequestedEventName = "RenderRequested";
     private const string SetDeviceScaleMethodName = "SetDeviceScale";
+    private const string SetClientSizeMethodName = "SetClientSize";
 
     private readonly ProGpuWpfWindowHost _host;
     private readonly PropertyInfo _rootVisualProperty;
     private readonly PropertyInfo _compositionTargetProperty;
     private readonly MethodInfo? _setDeviceScaleMethod;
+    private readonly MethodInfo? _setClientSizeMethod;
     private readonly MethodInfo? _disposeMethod;
     private readonly bool _ownsSource;
     private MethodInfo? _removeRenderRequestedMethod;
@@ -27,6 +29,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         PropertyInfo rootVisualProperty,
         PropertyInfo compositionTargetProperty,
         MethodInfo? setDeviceScaleMethod,
+        MethodInfo? setClientSizeMethod,
         MethodInfo? disposeMethod,
         bool ownsSource)
     {
@@ -35,6 +38,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         _rootVisualProperty = rootVisualProperty;
         _compositionTargetProperty = compositionTargetProperty;
         _setDeviceScaleMethod = setDeviceScaleMethod;
+        _setClientSizeMethod = setClientSizeMethod;
         _disposeMethod = disposeMethod;
         _ownsSource = ownsSource;
     }
@@ -125,6 +129,19 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         return true;
     }
 
+    public bool TrySetClientSize(double width, double height)
+    {
+        ThrowIfDisposed();
+
+        if (_setClientSizeMethod == null)
+        {
+            return false;
+        }
+
+        _setClientSizeMethod.Invoke(Source, new object[] { width, height });
+        return true;
+    }
+
     public bool SyncHostRootVisual()
     {
         ThrowIfDisposed();
@@ -188,7 +205,16 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
             return false;
         }
 
-        MethodInfo? setDeviceScaleMethod = FindSetDeviceScaleMethod(sourceType);
+        MethodInfo? setDeviceScaleMethod = FindVoidMethod(
+            sourceType,
+            SetDeviceScaleMethodName,
+            typeof(double),
+            typeof(double));
+        MethodInfo? setClientSizeMethod = FindVoidMethod(
+            sourceType,
+            SetClientSizeMethodName,
+            typeof(double),
+            typeof(double));
         MethodInfo? disposeMethod = sourceType.GetMethod(
             nameof(IDisposable.Dispose),
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
@@ -206,6 +232,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
             rootVisualProperty,
             compositionTargetProperty,
             setDeviceScaleMethod,
+            setClientSizeMethod,
             disposeMethod,
             ownsSource);
         bridge.TrySubscribeToRenderRequested(renderRequestedEvent);
@@ -221,13 +248,13 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
     }
 
-    private static MethodInfo? FindSetDeviceScaleMethod(Type sourceType)
+    private static MethodInfo? FindVoidMethod(Type sourceType, string name, params Type[] parameterTypes)
     {
         MethodInfo? method = sourceType.GetMethod(
-            SetDeviceScaleMethodName,
+            name,
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
             binder: null,
-            types: new[] { typeof(double), typeof(double) },
+            types: parameterTypes,
             modifiers: null);
 
         return method?.ReturnType == typeof(void) ? method : null;

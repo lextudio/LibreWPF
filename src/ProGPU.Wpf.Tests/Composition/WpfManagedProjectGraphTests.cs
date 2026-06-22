@@ -292,8 +292,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("var dpiScaleY = pixelHeight / (double)logicalHeight", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("NativeDimensionLooksPhysicalForCachedDips(nativeDimension, cached, dpiScale)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("private static bool NativeDimensionLooksPhysicalForCachedDips", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("SynchronizePortablePresentationSourceDpiScale();", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("SynchronizePortablePresentationSourceDpiScale(geometry);", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("SynchronizePortablePresentationSourceGeometry();", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("SynchronizePortablePresentationSourceGeometry(geometry);", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("UpdatePortablePresentationSourceClientSize(geometry.LogicalWidth, geometry.LogicalHeight)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("internal bool UpdatePortablePresentationSourceClientSize(uint logicalWidth, uint logicalHeight)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("LastResolvedRenderSurfaceGeometry = geometry;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_retainedWpfVisualRoot.Scale = new Vector3((float)DpiScaleX, (float)DpiScaleY, 1f)", proGpuDrawingFrame, StringComparison.Ordinal);
         Assert.Contains("logicalWidth,\n                logicalHeight,\n                dpiScaleX,\n                dpiScaleY", proGpuHost, StringComparison.Ordinal);
@@ -6604,6 +6606,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK BitmapDecoder.Create pack PNG decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK PngBitmapDecoder pack URI frame count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapImage pack PNG top-left red byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalXamlResourceImage\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Source=\"Assets/ExternalImage.png\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalXamlImageBrushRectangle\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<ImageBrush ImageSource=\"pack://application:,,,/Assets/ExternalImage.png\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK XAML resource image top-left red byte", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK XAML ImageBrush top-right green byte", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CreateAdam7RgbaPngBytes(pixels, 2, 2, 8)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapDecoder.Create interlaced PNG decoder type", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK BitmapDecoder.Create interlaced PNG bottom-right red byte", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7002,6 +7010,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetNativeAssetCandidates(\"glfw\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateProGpuHiDpiRenderSurface(outputRoot)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU WPF host logical width property", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK portable presentation source client-size return type", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU WPF composition render logical/physical surface", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU compositor render logical/physical surface", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU compositor canvas pixel width explicit render target", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7013,6 +7022,7 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("ValidateProGpuHiDpiRenderSurface(inputs)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU WPF host logical width property", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SDK portable presentation source client-size return type", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU WPF composition render logical/physical surface", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU compositor render logical/physical surface", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU compositor canvas pixel width explicit render target", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -7537,6 +7547,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("_keyboardInputProvider.OnRootChanged(oldRootVisual, _rootVisual)", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal event EventHandler RenderRequested", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal void SetDeviceScale(double dpiScaleX, double dpiScaleY)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("internal void SetClientSize(double width, double height)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("private void ApplyRootVisualLayout()", portableSource, StringComparison.Ordinal);
+        Assert.Contains("rootUIElement.Measure(_clientSize);", portableSource, StringComparison.Ordinal);
+        Assert.Contains("rootUIElement.Arrange(new Rect(new Point(), _clientSize));", portableSource, StringComparison.Ordinal);
         Assert.Contains("protected override CompositionTarget GetCompositionTargetCore()", portableSource, StringComparison.Ordinal);
         Assert.Contains("return _isDisposed ? null : _compositionTarget;", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal override IInputProvider GetInputProvider(Type inputDevice)", portableSource, StringComparison.Ordinal);

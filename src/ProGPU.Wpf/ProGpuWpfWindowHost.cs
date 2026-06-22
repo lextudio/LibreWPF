@@ -33,6 +33,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private object? _wpfRootVisual;
     private double _portablePresentationSourceDpiScaleX = double.NaN;
     private double _portablePresentationSourceDpiScaleY = double.NaN;
+    private int _portablePresentationSourceClientWidth = -1;
+    private int _portablePresentationSourceClientHeight = -1;
     private bool _isDisposed;
     private bool _hasPresentedFrame;
     private bool _ownsRenderScheduler;
@@ -401,7 +403,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         AttachInputService();
         AttachDragDropService();
         AttachWindowEventService();
-        SynchronizePortablePresentationSourceDpiScale();
+        SynchronizePortablePresentationSourceGeometry();
         WpfRenderScheduler.RequestRender();
     }
 
@@ -425,7 +427,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         var geometry = ResolveCurrentRenderSurfaceGeometry();
-        SynchronizePortablePresentationSourceDpiScale(geometry);
+        SynchronizePortablePresentationSourceGeometry(geometry);
         _target.Context.ConfigureSwapChain(
             geometry.PixelWidth,
             geometry.PixelHeight);
@@ -464,6 +466,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             var dpiScaleX = geometry.DpiScaleX;
             var dpiScaleY = geometry.DpiScaleY;
             var dpiScale = geometry.DpiScale;
+            UpdatePortablePresentationSourceClientSize(geometry.LogicalWidth, geometry.LogicalHeight);
             UpdatePortablePresentationSourceDpiScale(geometry.DpiScaleX, geometry.DpiScaleY);
             _target.DetectWpfSourceChanges();
             var frameState = CaptureFrameState(_target, pixelWidth, pixelHeight);
@@ -715,6 +718,20 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     {
         var geometry = ResolveCurrentRenderSurfaceGeometry();
         return SynchronizePortablePresentationSourceDpiScale(geometry);
+    }
+
+    internal bool SynchronizePortablePresentationSourceGeometry(RenderSurfaceGeometry geometry)
+    {
+        LastResolvedRenderSurfaceGeometry = geometry;
+        bool clientSizeChanged = UpdatePortablePresentationSourceClientSize(geometry.LogicalWidth, geometry.LogicalHeight);
+        bool dpiScaleChanged = UpdatePortablePresentationSourceDpiScale(geometry.DpiScaleX, geometry.DpiScaleY);
+        return clientSizeChanged || dpiScaleChanged;
+    }
+
+    private bool SynchronizePortablePresentationSourceGeometry()
+    {
+        var geometry = ResolveCurrentRenderSurfaceGeometry();
+        return SynchronizePortablePresentationSourceGeometry(geometry);
     }
 
     internal bool UpdateClientSizeFromNativeResize(Vector2D<int> size)
@@ -1444,6 +1461,31 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return true;
     }
 
+    internal bool UpdatePortablePresentationSourceClientSize(uint logicalWidth, uint logicalHeight)
+    {
+        if (_portablePresentationSourceBridge == null)
+        {
+            return false;
+        }
+
+        var clientWidth = (int)Math.Min((uint)int.MaxValue, Math.Max(1u, logicalWidth));
+        var clientHeight = (int)Math.Min((uint)int.MaxValue, Math.Max(1u, logicalHeight));
+        if (_portablePresentationSourceClientWidth == clientWidth &&
+            _portablePresentationSourceClientHeight == clientHeight)
+        {
+            return false;
+        }
+
+        if (!_portablePresentationSourceBridge.TrySetClientSize(clientWidth, clientHeight))
+        {
+            return false;
+        }
+
+        _portablePresentationSourceClientWidth = clientWidth;
+        _portablePresentationSourceClientHeight = clientHeight;
+        return true;
+    }
+
     private void AttachPortablePresentationSourceBridge(
         WpfPortablePresentationSourceBridge bridge,
         double dpiScaleX,
@@ -1453,6 +1495,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _portablePresentationSourceBridge = bridge;
         _portablePresentationSourceDpiScaleX = dpiScaleX;
         _portablePresentationSourceDpiScaleY = dpiScaleY;
+        _portablePresentationSourceClientWidth = -1;
+        _portablePresentationSourceClientHeight = -1;
         bridge.SyncHostRootVisual();
     }
 
@@ -1462,6 +1506,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _portablePresentationSourceBridge = null;
         _portablePresentationSourceDpiScaleX = double.NaN;
         _portablePresentationSourceDpiScaleY = double.NaN;
+        _portablePresentationSourceClientWidth = -1;
+        _portablePresentationSourceClientHeight = -1;
     }
 
     private void DisposeOwnedRenderScheduler()

@@ -782,7 +782,29 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
-    public void SynchronizePortablePresentationSourceDpiScaleCachesHighDpiSurfaceGeometry()
+    public void UpdatePortablePresentationSourceClientSizeCoalescesUnchangedLogicalSize()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var source = new FakePortablePresentationSource();
+
+        Assert.True(host.TryBindPortablePresentationSource(source));
+
+        Assert.True(host.UpdatePortablePresentationSourceClientSize(420, 840));
+        Assert.False(host.UpdatePortablePresentationSourceClientSize(420, 840));
+        Assert.True(host.UpdatePortablePresentationSourceClientSize(640, 480));
+
+        Assert.Equal(640, source.ClientWidth);
+        Assert.Equal(480, source.ClientHeight);
+        Assert.Equal(2, source.ClientSizeChangeCount);
+        Assert.Equal(2, scheduler.RequestCount);
+    }
+
+    [Fact]
+    public void SynchronizePortablePresentationSourceGeometryCachesHighDpiSurfaceGeometry()
     {
         var scheduler = new TestRenderScheduler();
         using var host = new ProGpuWpfWindowHost
@@ -801,13 +823,16 @@ public sealed class ProGpuWpfWindowHostTests
 
         Assert.True(host.TryBindPortablePresentationSource(source));
 
-        Assert.True(host.SynchronizePortablePresentationSourceDpiScale(geometry));
+        Assert.True(host.SynchronizePortablePresentationSourceGeometry(geometry));
 
         Assert.Equal(geometry, host.LastResolvedRenderSurfaceGeometry);
+        Assert.Equal(420, source.ClientWidth);
+        Assert.Equal(840, source.ClientHeight);
         Assert.Equal(2.0, source.DpiScaleX);
         Assert.Equal(2.0, source.DpiScaleY);
+        Assert.Equal(1, source.ClientSizeChangeCount);
         Assert.Equal(1, source.DeviceScaleChangeCount);
-        Assert.Equal(1, scheduler.RequestCount);
+        Assert.Equal(2, scheduler.RequestCount);
     }
 
     [Fact]
@@ -997,7 +1022,13 @@ public sealed class ProGpuWpfWindowHostTests
 
         public double DpiScaleY { get; private set; } = 1.0;
 
+        public double ClientWidth { get; private set; }
+
+        public double ClientHeight { get; private set; }
+
         public int DeviceScaleChangeCount { get; private set; }
+
+        public int ClientSizeChangeCount { get; private set; }
 
         public bool IsDisposed { get; private set; }
 
@@ -1006,6 +1037,14 @@ public sealed class ProGpuWpfWindowHostTests
             DpiScaleX = dpiScaleX;
             DpiScaleY = dpiScaleY;
             DeviceScaleChangeCount++;
+            RenderRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        internal void SetClientSize(double width, double height)
+        {
+            ClientWidth = width;
+            ClientHeight = height;
+            ClientSizeChangeCount++;
             RenderRequested?.Invoke(this, EventArgs.Empty);
         }
 

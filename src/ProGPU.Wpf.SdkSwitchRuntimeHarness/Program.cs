@@ -346,6 +346,7 @@ internal static class Program
         using var loadContext = CreateLoadContext(inputs);
         Assembly proGpuWpf = loadContext.LoadFromAssemblyName(new AssemblyName("ProGPU.Wpf"));
         Assembly proGpuScene = loadContext.LoadFromAssemblyName(new AssemblyName("ProGPU.Scene"));
+        Assembly presentationCore = loadContext.LoadFromAssemblyName(new AssemblyName("PresentationCore"));
 
         Type windowHostType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfWindowHost");
         AssertPropertyType(windowHostType, "Width", typeof(int), "SDK ProGPU WPF host logical width property");
@@ -359,6 +360,16 @@ internal static class Program
             modifiers: null)
             ?? throw new MissingMethodException(windowHostType.FullName, "SetClientSize");
         AssertEqual(2, setClientSize.GetParameters().Length, "SDK ProGPU WPF host client-size method parameter count");
+
+        Type portablePresentationSourceType = GetRequiredType(presentationCore, "System.Windows.PortablePresentationSource");
+        MethodInfo setPortableClientSize = portablePresentationSourceType.GetMethod(
+            "SetClientSize",
+            BindingFlags.Instance | BindingFlags.NonPublic,
+            binder: null,
+            [typeof(double), typeof(double)],
+            modifiers: null)
+            ?? throw new MissingMethodException(portablePresentationSourceType.FullName, "SetClientSize");
+        AssertEqual(typeof(void), setPortableClientSize.ReturnType, "SDK portable presentation source client-size return type");
 
         Type compositionTargetType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfCompositionTarget");
         MethodInfo compositionRender = FindMethodByParameterNames(
@@ -784,9 +795,12 @@ internal static class Program
     {
         Type systemCommandsType = GetRequiredType(presentationFramework, "System.Windows.SystemCommands");
         Type windowStateType = GetRequiredType(presentationFramework, "System.Windows.WindowState");
-        Type pointType = AppDomain.CurrentDomain.GetAssemblies()
-            .Select(assembly => assembly.GetType("System.Windows.Point", throwOnError: false))
-            .FirstOrDefault(type => type is not null)
+        Type pointType = systemCommandsType.GetMethods(BindingFlags.Static | BindingFlags.Public)
+            .Where(method => string.Equals(method.Name, "ShowSystemMenu", StringComparison.Ordinal))
+            .Select(method => method.GetParameters())
+            .Where(parameters => parameters.Length == 2)
+            .Select(parameters => parameters[1].ParameterType)
+            .FirstOrDefault(type => string.Equals(type.FullName, "System.Windows.Point", StringComparison.Ordinal))
             ?? throw new TypeLoadException("System.Windows.Point");
 
         InvokeStaticVoid(systemCommandsType, "MaximizeWindow", window);

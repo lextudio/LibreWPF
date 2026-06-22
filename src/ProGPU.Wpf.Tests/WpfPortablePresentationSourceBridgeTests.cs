@@ -71,6 +71,27 @@ public sealed class WpfPortablePresentationSourceBridgeTests
     }
 
     [Fact]
+    public void SourceClientSizeRequestSchedulesRenderWhenRootIsUnchanged()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var source = new FakePortablePresentationSource();
+
+        var bound = WpfPortablePresentationSourceBridge.TryBind(host, source, out var bridge);
+        Assert.True(bound);
+
+        Assert.True(bridge!.TrySetClientSize(420, 840));
+
+        Assert.Equal(420, source.ClientWidth);
+        Assert.Equal(840, source.ClientHeight);
+        Assert.Null(host.WpfRootVisual);
+        Assert.Equal(1, scheduler.RequestCount);
+    }
+
+    [Fact]
     public void DisposeUnsubscribesFromSourceRenderRequests()
     {
         var scheduler = new TestRenderScheduler();
@@ -127,12 +148,23 @@ public sealed class WpfPortablePresentationSourceBridgeTests
 
         public double DpiScaleY { get; private set; } = 1.0;
 
+        public double ClientWidth { get; private set; }
+
+        public double ClientHeight { get; private set; }
+
         public bool IsDisposed { get; private set; }
 
         internal void SetDeviceScale(double dpiScaleX, double dpiScaleY)
         {
             DpiScaleX = dpiScaleX;
             DpiScaleY = dpiScaleY;
+            RenderRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        internal void SetClientSize(double width, double height)
+        {
+            ClientWidth = width;
+            ClientHeight = height;
             RenderRequested?.Invoke(this, EventArgs.Empty);
         }
 

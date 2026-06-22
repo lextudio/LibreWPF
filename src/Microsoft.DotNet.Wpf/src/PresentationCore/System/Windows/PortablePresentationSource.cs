@@ -16,6 +16,8 @@ namespace System.Windows
         private readonly PortableKeyboardInputProvider _keyboardInputProvider;
         private readonly PortableMouseInputProvider _mouseInputProvider;
         private Visual _rootVisual;
+        private Size _clientSize;
+        private bool _hasClientSize;
         private bool _contentRenderedQueued;
         private bool _isDisposed;
 
@@ -68,6 +70,26 @@ namespace System.Windows
         {
             VerifyNotDisposed();
             _compositionTarget.SetDeviceScale(dpiScaleX, dpiScaleY);
+            RequestRender();
+        }
+
+        internal void SetClientSize(double width, double height)
+        {
+            VerifyNotDisposed();
+
+            Size clientSize = new Size(
+                ToPositiveFiniteClientSize(width),
+                ToPositiveFiniteClientSize(height));
+            if (_hasClientSize &&
+                _clientSize.Width == clientSize.Width &&
+                _clientSize.Height == clientSize.Height)
+            {
+                return;
+            }
+
+            _clientSize = clientSize;
+            _hasClientSize = true;
+            ApplyRootVisualLayout();
             RequestRender();
         }
 
@@ -141,6 +163,7 @@ namespace System.Windows
 
                 _compositionTarget.RootVisual = rootVisual;
                 UIElement.PropagateResumeLayout(null, rootVisual);
+                ApplyRootVisualLayout();
             }
             else
             {
@@ -163,6 +186,24 @@ namespace System.Windows
         {
             QueueContentRendered();
             RequestRender();
+        }
+
+        private void ApplyRootVisualLayout()
+        {
+            if (!_hasClientSize || _rootVisual is not UIElement rootUIElement)
+            {
+                return;
+            }
+
+            rootUIElement.InvalidateMeasure();
+            rootUIElement.Measure(_clientSize);
+            rootUIElement.Arrange(new Rect(new Point(), _clientSize));
+            rootUIElement.UpdateLayout();
+        }
+
+        private static double ToPositiveFiniteClientSize(double value)
+        {
+            return double.IsFinite(value) && value > 0.0 ? value : 1.0;
         }
 
         private void QueueContentRendered()

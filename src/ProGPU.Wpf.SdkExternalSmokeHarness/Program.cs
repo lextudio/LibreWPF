@@ -917,6 +917,20 @@ internal static class Program
                         x:Name="ExternalStartupResourceText"
                         Foreground="{DynamicResource ExternalStartupBrush}"
                         Text="{DynamicResource ExternalStartupText}" />
+                    <Image
+                        x:Name="ExternalXamlResourceImage"
+                        Width="2"
+                        Height="2"
+                        Stretch="None"
+                        Source="Assets/ExternalImage.png" />
+                    <Rectangle
+                        x:Name="ExternalXamlImageBrushRectangle"
+                        Width="2"
+                        Height="2">
+                        <Rectangle.Fill>
+                            <ImageBrush ImageSource="pack://application:,,,/Assets/ExternalImage.png" />
+                        </Rectangle.Fill>
+                    </Rectangle>
                     <TextBlock
                         x:Name="ExternalObjectProviderText"
                         Text="{Binding Source={StaticResource ExternalObjectDataProvider}}" />
@@ -2767,6 +2781,37 @@ internal static class Program
                         "external SDK ComponentResourceKey text block");
                     AssertEqual("External component resource", componentResourceText.Text, "external SDK ComponentResourceKey text");
                     AssertBrushColor(componentResourceText.Foreground, "#FF4E7A9D", "external SDK ComponentResourceKey foreground");
+
+                    var xamlResourceImage = RequireType<Image>(
+                        window.FindName("ExternalXamlResourceImage"),
+                        "external SDK XAML resource image");
+                    var xamlResourceImageSource = RequireType<BitmapSource>(
+                        xamlResourceImage.Source,
+                        "external SDK XAML resource image source");
+                    AssertEqual(2, xamlResourceImageSource.PixelWidth, "external SDK XAML resource image pixel width");
+                    AssertEqual(2, xamlResourceImageSource.PixelHeight, "external SDK XAML resource image pixel height");
+                    AssertEqual(PixelFormats.Bgra32, xamlResourceImageSource.Format, "external SDK XAML resource image Bgra32 format");
+                    byte[] xamlResourceImagePixels = new byte[16];
+                    xamlResourceImageSource.CopyPixels(xamlResourceImagePixels, 8, 0);
+                    AssertEqual((byte)0xFF, xamlResourceImagePixels[2], "external SDK XAML resource image top-left red byte");
+                    AssertEqual((byte)0xFF, xamlResourceImagePixels[15], "external SDK XAML resource image final alpha byte");
+
+                    var xamlImageBrushRectangle = RequireType<System.Windows.Shapes.Rectangle>(
+                        window.FindName("ExternalXamlImageBrushRectangle"),
+                        "external SDK XAML ImageBrush rectangle");
+                    var xamlImageBrush = RequireType<ImageBrush>(
+                        xamlImageBrushRectangle.Fill,
+                        "external SDK XAML ImageBrush fill");
+                    var xamlImageBrushSource = RequireType<BitmapSource>(
+                        xamlImageBrush.ImageSource,
+                        "external SDK XAML ImageBrush source");
+                    AssertEqual(2, xamlImageBrushSource.PixelWidth, "external SDK XAML ImageBrush pixel width");
+                    AssertEqual(2, xamlImageBrushSource.PixelHeight, "external SDK XAML ImageBrush pixel height");
+                    AssertEqual(PixelFormats.Bgra32, xamlImageBrushSource.Format, "external SDK XAML ImageBrush Bgra32 format");
+                    byte[] xamlImageBrushPixels = new byte[16];
+                    xamlImageBrushSource.CopyPixels(xamlImageBrushPixels, 8, 0);
+                    AssertEqual((byte)0xFF, xamlImageBrushPixels[5], "external SDK XAML ImageBrush top-right green byte");
+                    AssertEqual((byte)0xFF, xamlImageBrushPixels[15], "external SDK XAML ImageBrush final alpha byte");
 
                     var unsharedBrushTextA = RequireType<TextBlock>(
                         window.FindName("ExternalUnsharedBrushTextA"),
@@ -7619,6 +7664,7 @@ internal static class Program
         {
             Assembly proGpuWpf = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "ProGPU.Wpf.dll"));
             Assembly proGpuScene = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "ProGPU.Scene.dll"));
+            Assembly presentationCore = loadContext.LoadFromAssemblyPath(Path.Combine(outputRoot, "PresentationCore.dll"));
 
             Type windowHostType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfWindowHost");
             AssertPropertyType(windowHostType, "Width", typeof(int), "external SDK ProGPU WPF host logical width property");
@@ -7632,6 +7678,16 @@ internal static class Program
                 modifiers: null)
                 ?? throw new MissingMethodException(windowHostType.FullName, "SetClientSize");
             AssertEqual(2, setClientSize.GetParameters().Length, "external SDK ProGPU WPF host client-size method parameter count");
+
+            Type portablePresentationSourceType = GetRequiredType(presentationCore, "System.Windows.PortablePresentationSource");
+            MethodInfo setPortableClientSize = portablePresentationSourceType.GetMethod(
+                "SetClientSize",
+                BindingFlags.Instance | BindingFlags.NonPublic,
+                binder: null,
+                [typeof(double), typeof(double)],
+                modifiers: null)
+                ?? throw new MissingMethodException(portablePresentationSourceType.FullName, "SetClientSize");
+            AssertEqual(typeof(void), setPortableClientSize.ReturnType, "external SDK portable presentation source client-size return type");
 
             Type compositionTargetType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfCompositionTarget");
             MethodInfo compositionRender = FindMethodByParameterNames(

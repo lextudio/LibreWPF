@@ -2120,6 +2120,7 @@ internal static class Program
             using System.Windows;
             using System.Windows.Automation;
             using System.Windows.Automation.Peers;
+            using System.Windows.Automation.Provider;
             using System.Windows.Controls;
             using System.Windows.Controls.Primitives;
             using System.Windows.Data;
@@ -9981,6 +9982,7 @@ internal static class Program
                     AssertEqual("External SDK validation text", validationPeer.GetHelpText(), "external SDK automation peer help text");
                     AssertEqual(labelPeer, validationPeer.GetLabeledBy(), "external SDK automation peer labeled-by peer");
                     AssertEqual(accessLabel, labelPeer.Owner, "external SDK label automation peer owner");
+                    ValidateAutomationPatternProviders(window, commandButton, validationTextBox);
                     AssertEqual(MainWindow.ExternalCommand, commandButton.Command, "external SDK command button command");
                     AssertEqual("ExternalCommandParameter", commandButton.CommandParameter, "external SDK command button parameter");
                     AssertEqual(ExternalClassCommandTextBox.ExternalClassCommand, classCommandButton.Command, "external SDK class command button command");
@@ -10078,6 +10080,88 @@ internal static class Program
                         .Execute(requeryCommandButton.CommandParameter);
                     AssertEqual(requeryExecuteBefore + 1, window.ExternalRequeryCommand.ExecuteCount, "external SDK requery command execute count");
                     AssertEqual("ExternalRequeryParameter", window.ExternalRequeryCommand.LastParameter, "external SDK requery command last parameter");
+                }
+
+                private static void ValidateAutomationPatternProviders(
+                    MainWindow window,
+                    Button commandButton,
+                    TextBox validationTextBox)
+                {
+                    var commandButtonPeer = RequireType<ButtonAutomationPeer>(
+                        UIElementAutomationPeer.CreatePeerForElement(commandButton),
+                        "external SDK command button automation peer");
+                    var invokeProvider = RequireType<IInvokeProvider>(
+                        commandButtonPeer.GetPattern(PatternInterface.Invoke),
+                        "external SDK command button invoke provider");
+                    int automationClickBefore = window.ExternalCommandButtonClickCount;
+                    int automationExecutedBefore = window.ExternalCommandExecutedCount;
+                    invokeProvider.Invoke();
+                    DrainDispatcher();
+                    AssertEqual(automationClickBefore + 1, window.ExternalCommandButtonClickCount, "external SDK automation invoke click count");
+                    AssertEqual(automationExecutedBefore + 1, window.ExternalCommandExecutedCount, "external SDK automation invoke command count");
+                    AssertEqual("ExternalCommandParameter", window.LastExternalCommandParameter, "external SDK automation invoke command parameter");
+
+                    var validationPeer = RequireType<TextBoxAutomationPeer>(
+                        UIElementAutomationPeer.CreatePeerForElement(validationTextBox),
+                        "external SDK text box automation peer for value pattern");
+                    var valueProvider = RequireType<IValueProvider>(
+                        validationPeer.GetPattern(PatternInterface.Value),
+                        "external SDK text box value provider");
+                    AssertEqual(false, valueProvider.IsReadOnly, "external SDK automation value provider read-only state");
+                    valueProvider.SetValue("external automation value");
+                    AssertEqual("external automation value", valueProvider.Value, "external SDK automation value provider value");
+                    AssertEqual("external automation value", validationTextBox.Text, "external SDK automation value provider text box text");
+
+                    var checkBox = RequireType<CheckBox>(
+                        window.FindName("ExternalCheckBox"),
+                        "external SDK check box for automation peer");
+                    checkBox.IsChecked = false;
+                    DrainDispatcher();
+                    var checkBoxPeer = RequireType<CheckBoxAutomationPeer>(
+                        UIElementAutomationPeer.CreatePeerForElement(checkBox),
+                        "external SDK check box automation peer");
+                    var toggleProvider = RequireType<IToggleProvider>(
+                        checkBoxPeer.GetPattern(PatternInterface.Toggle),
+                        "external SDK check box toggle provider");
+                    AssertEqual(ToggleState.Off, toggleProvider.ToggleState, "external SDK automation toggle initial state");
+                    int automationCheckedBefore = window.ExternalCheckBoxCheckedCount;
+                    toggleProvider.Toggle();
+                    DrainDispatcher();
+                    AssertEqual(ToggleState.On, toggleProvider.ToggleState, "external SDK automation toggle on state");
+                    AssertEqual(true, checkBox.IsChecked == true, "external SDK automation toggle check box state");
+                    AssertAtLeast(automationCheckedBefore + 1, window.ExternalCheckBoxCheckedCount, "external SDK automation toggle checked count");
+                    int automationUncheckedBefore = window.ExternalCheckBoxUncheckedCount;
+                    toggleProvider.Toggle();
+                    DrainDispatcher();
+                    AssertEqual(ToggleState.Off, toggleProvider.ToggleState, "external SDK automation toggle restored state");
+                    AssertEqual(false, checkBox.IsChecked == true, "external SDK automation toggle check box restored state");
+                    AssertAtLeast(automationUncheckedBefore + 1, window.ExternalCheckBoxUncheckedCount, "external SDK automation toggle unchecked count");
+
+                    var slider = RequireType<Slider>(
+                        window.FindName("ExternalSlider"),
+                        "external SDK slider for automation peer");
+                    var progressBar = RequireType<ProgressBar>(
+                        window.FindName("ExternalProgressBar"),
+                        "external SDK progress bar for automation peer");
+                    var sliderPeer = RequireType<SliderAutomationPeer>(
+                        UIElementAutomationPeer.CreatePeerForElement(slider),
+                        "external SDK slider automation peer");
+                    var rangeProvider = RequireType<IRangeValueProvider>(
+                        sliderPeer.GetPattern(PatternInterface.RangeValue),
+                        "external SDK slider range provider");
+                    AssertEqual(false, rangeProvider.IsReadOnly, "external SDK automation range read-only state");
+                    AssertEqual(0.0, rangeProvider.Minimum, "external SDK automation range minimum");
+                    AssertEqual(100.0, rangeProvider.Maximum, "external SDK automation range maximum");
+                    AssertEqual(2.0, rangeProvider.SmallChange, "external SDK automation range small change");
+                    AssertEqual(10.0, rangeProvider.LargeChange, "external SDK automation range large change");
+                    int automationSliderChangedBefore = window.ExternalSliderValueChangedCount;
+                    rangeProvider.SetValue(55.0);
+                    DrainDispatcher();
+                    AssertClose(55.0, rangeProvider.Value, "external SDK automation range value");
+                    AssertClose(55.0, slider.Value, "external SDK automation range slider value");
+                    AssertClose(55.0, progressBar.Value, "external SDK automation range progress value");
+                    AssertClose(55.0, window.LastExternalSliderValue, "external SDK automation range event value");
+                    AssertAtLeast(automationSliderChangedBefore + 1, window.ExternalSliderValueChangedCount, "external SDK automation range changed count");
                 }
 
                 private static void ValidateSystemCommandButton(

@@ -4912,6 +4912,16 @@ public sealed class WpfManagedProjectGraphTests
             "Internal",
             "Automation",
             "UiaCoreTypesApi.cs"));
+        var uiaCoreProviderApi = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "UIAutomation",
+            "UIAutomationProvider",
+            "MS",
+            "Internal",
+            "Automation",
+            "UiaCoreProviderApi.cs"));
         var pointUtil = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -5375,6 +5385,7 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(uiaCoreTypesApi, "if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))", "LoadLibraryHelper.SecureLoadLibraryEx(DllImport.UIAutomationCore");
         Assert.Contains("s_reservedNotSupportedValue", uiaCoreTypesApi, StringComparison.Ordinal);
         Assert.Contains("s_reservedMixedAttributeValue", uiaCoreTypesApi, StringComparison.Ordinal);
+        AssertGuardBefore(uiaCoreProviderApi, "if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))", "RawUiaClientsAreListening()");
         Assert.Contains("internal static Rect ClientToScreen(Rect rectClient, PresentationSource presentationSource)", pointUtil, StringComparison.Ordinal);
         Assert.Contains("Point corner1 = ClientToScreen(rectClient.TopLeft, presentationSource);", pointUtil, StringComparison.Ordinal);
         Assert.DoesNotContain("ClientToScreen(Rect rectClient, HwndSource hwndSource)", pointUtil, StringComparison.Ordinal);
@@ -7570,6 +7581,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("UIElementAutomationPeer.CreatePeerForElement(validationTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("UIElementAutomationPeer.CreatePeerForElement(accessLabel)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("validationPeer.GetLabeledBy()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("using System.Windows.Automation.Provider;", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateAutomationPatternProviders(window, commandButton, validationTextBox)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("commandButtonPeer.GetPattern(PatternInterface.Invoke)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK automation invoke command count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("validationPeer.GetPattern(PatternInterface.Value)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK automation value provider text box text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("checkBoxPeer.GetPattern(PatternInterface.Toggle)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK automation toggle checked count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("sliderPeer.GetPattern(PatternInterface.RangeValue)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK automation range progress value", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalStandaloneAccessText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Text=\"_External standalone access\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ExternalKeyboardNavigationPanel\"", externalSdkHarnessProgram, StringComparison.Ordinal);

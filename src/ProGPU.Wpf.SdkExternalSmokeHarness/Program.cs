@@ -1364,6 +1364,22 @@ internal static class Program
                             </ContextMenu>
                         </Button.ContextMenu>
                     </Button>
+                    <primitives:Popup
+                        x:Name="ExternalStandalonePopup"
+                        AllowsTransparency="True"
+                        Placement="Bottom"
+                        PlacementTarget="{Binding ElementName=ExternalPopupOwnerButton}"
+                        StaysOpen="False">
+                        <Border
+                            BorderBrush="DarkSlateGray"
+                            BorderThickness="1"
+                            Background="White"
+                            Padding="4">
+                            <TextBlock
+                                x:Name="ExternalStandalonePopupText"
+                                Text="External standalone popup content" />
+                        </Border>
+                    </primitives:Popup>
                     <CheckBox
                         x:Name="ExternalCheckBox"
                         Content="External check"
@@ -4017,6 +4033,23 @@ internal static class Program
                     var popupOwner = RequireType<Button>(
                         window.FindName("ExternalPopupOwnerButton"),
                         "external SDK Application.Run popup owner button");
+
+                    var standalonePopup = RequireType<Popup>(
+                        window.FindName("ExternalStandalonePopup"),
+                        "external SDK Application.Run standalone popup");
+                    AssertEqual(PlacementMode.Bottom, standalonePopup.Placement, "external SDK Application.Run standalone popup placement");
+                    AssertEqual(popupOwner, standalonePopup.PlacementTarget, "external SDK Application.Run standalone popup placement target");
+                    AssertEqual(false, standalonePopup.IsOpen, "external SDK Application.Run standalone popup initial open state");
+                    standalonePopup.IsOpen = true;
+                    DrainDispatcher();
+                    AssertEqual(true, standalonePopup.IsOpen, "external SDK Application.Run standalone popup opened through portable popup");
+                    var standalonePopupText = RequireType<TextBlock>(
+                        standalonePopup.Child is Border border ? border.Child : null,
+                        "external SDK Application.Run standalone popup text");
+                    AssertEqual("External standalone popup content", standalonePopupText.Text, "external SDK Application.Run standalone popup content");
+                    standalonePopup.IsOpen = false;
+                    DrainDispatcher();
+                    AssertEqual(false, standalonePopup.IsOpen, "external SDK Application.Run standalone popup closed through portable popup");
 
                     var toolTip = RequireType<ToolTip>(
                         popupOwner.ToolTip,

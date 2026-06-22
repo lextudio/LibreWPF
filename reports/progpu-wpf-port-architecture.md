@@ -360,6 +360,8 @@ The combined-geometry dash item above is narrowed by the `ba59fdf`/WPF bridge up
 
 Selector popup behavior stays a managed WPF responsibility. `ComboBox.IsDropDownOpen` should keep using WPF's selector, mouse-capture, popup, item-container, and auto-scroll timing code; the non-Windows port should only replace the native services those managers query. `SafeNativeMethods.GetDoubleClickTime()` therefore has a portable default fallback at the shared interop boundary, while Windows keeps the real `user32` value. ProGPU/Silk.NET should provide native input, focus, capture, presentation-source, and popup-host services, not a separate ComboBox dropdown or selection manager.
 
+Visual hit testing is also a manager boundary. WPF should continue to own `VisualTreeHelper.HitTest`, enabled/visible filtering, popup capture synchronization, and routed input promotion; the non-Windows port should remove native MILCore assumptions from the geometry queries those managers call. The current `Geometry.ContainsInternal(...)` non-Windows fallback is intentionally conservative and bounds-based for serialized path and polygon helper hit tests so generic popup opening can run. Exact fill/stroke hit testing for complex paths, curves, transforms, and high-volume input should be promoted to ProGPU vector/backend APIs instead of expanding managed WPF into a second geometry engine.
+
 ## Win32 Abstraction Strategy
 
 Win32 usage should be split into three groups:

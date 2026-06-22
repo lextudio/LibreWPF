@@ -483,6 +483,11 @@ namespace System.Windows.Media
                 return false;
             }
 
+            if (!OperatingSystem.IsWindows())
+            {
+                return ContainsManagedByBounds(pen, hitPoint, tolerance, type);
+            }
+
             bool contains = false;
 
             unsafe
@@ -534,6 +539,19 @@ namespace System.Windows.Media
         internal unsafe bool ContainsInternal(Pen pen, Point hitPoint, double tolerance, ToleranceType type, 
                                                 Point *pPoints, uint pointCount, byte *pTypes, uint typeCount)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return ContainsPolygonManagedByBounds(
+                    pen,
+                    hitPoint,
+                    tolerance,
+                    type,
+                    pPoints,
+                    pointCount,
+                    pTypes,
+                    typeCount);
+            }
+
             bool contains = false;
 
             MilMatrix3x2D matrix = CompositionResourceManager.TransformToMilMatrix3x2D(Transform);
@@ -571,6 +589,61 @@ namespace System.Windows.Media
             }
 
             return contains;
+        }
+
+        private bool ContainsManagedByBounds(Pen pen, Point hitPoint, double tolerance, ToleranceType type)
+        {
+            Rect bounds = GetBoundsInternal(pen, Matrix.Identity, tolerance, type);
+            InflateForHitTolerance(ref bounds, tolerance, type);
+            return !bounds.IsEmpty && bounds.Contains(hitPoint);
+        }
+
+        private unsafe bool ContainsPolygonManagedByBounds(
+            Pen pen,
+            Point hitPoint,
+            double tolerance,
+            ToleranceType type,
+            Point* pPoints,
+            uint pointCount,
+            byte* pTypes,
+            uint typeCount)
+        {
+            Matrix worldMatrix = Matrix.Identity;
+            Matrix geometryMatrix;
+            Transform.GetTransformValue(Transform, out geometryMatrix);
+
+            Rect bounds = GetBoundsHelper(
+                pen,
+                &worldMatrix,
+                pPoints,
+                pTypes,
+                pointCount,
+                typeCount,
+                &geometryMatrix,
+                tolerance,
+                type,
+                fSkipHollows: false);
+            InflateForHitTolerance(ref bounds, tolerance, type);
+            return !bounds.IsEmpty && bounds.Contains(hitPoint);
+        }
+
+        private static void InflateForHitTolerance(ref Rect bounds, double tolerance, ToleranceType type)
+        {
+            if (bounds.IsEmpty || tolerance <= 0.0)
+            {
+                return;
+            }
+
+            double padding = tolerance;
+            if (type == ToleranceType.Relative)
+            {
+                padding *= Math.Max(Math.Abs(bounds.Width), Math.Abs(bounds.Height));
+            }
+
+            if (padding > 0.0)
+            {
+                bounds.Inflate(padding, padding);
+            }
         }
 
         /// <summary>

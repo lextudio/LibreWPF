@@ -5201,6 +5201,9 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(pathGeometry, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.MilCoreApi.MilUtility_PathGeometryBounds");
         AssertGuardBefore(pathGeometry, "if (!OperatingSystem.IsWindows())\n            {\n                return InternalCombineManaged", "UnsafeNativeMethods.MilCoreApi.MilUtility_PathGeometryCombine");
         Assert.Contains("private static PathGeometry InternalCombineManaged(", pathGeometry, StringComparison.Ordinal);
+        AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())\n            {\n                return ContainsManagedByBounds", "MilCoreApi.MilUtility_PathGeometryHitTest");
+        AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())\n            {\n                return ContainsPolygonManagedByBounds", "MilCoreApi.MilUtility_PolygonHitTest");
+        Assert.Contains("private bool ContainsManagedByBounds(", geometry, StringComparison.Ordinal);
         AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())", "MilCoreApi.MilUtility_PolygonBounds");
         Assert.Contains("return GetManagedPolygonBounds(", geometry, StringComparison.Ordinal);
         Assert.Contains("private static unsafe Rect GetManagedPolygonBounds", geometry, StringComparison.Ordinal);
@@ -7073,6 +7076,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalCommandMenuItem", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalCheckableMenuItem", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalPopupOwnerButton", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalStandalonePopup", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalToolTip", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalContextMenu", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalContextCheckableMenuItem", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7105,6 +7109,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePopupOpeningAfterRun(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Application.Run menu item opened through portable popup", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Application.Run combo box opened through portable popup", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Application.Run standalone popup opened through portable popup", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Application.Run tooltip opened through portable popup", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Application.Run context menu opened through portable popup", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateToolbarStatusRangePasswordDateControls(window)", externalSdkHarnessProgram, StringComparison.Ordinal);

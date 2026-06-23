@@ -225,6 +225,14 @@ public partial class MainWindow : Window
 
     internal string LastFolderDialogSafeFolderName { get; private set; } = string.Empty;
 
+    internal int SystemCommandCanExecuteCount { get; private set; }
+
+    internal int SystemCommandExecutedCount { get; private set; }
+
+    internal string? LastSystemCommandName { get; private set; }
+
+    internal string? LastSystemCommandParameter { get; private set; }
+
     public MainWindow()
     {
         var viewModel = new MainViewModel();
@@ -360,6 +368,43 @@ public partial class MainWindow : Window
         if (DataContext is MainViewModel viewModel)
         {
             viewModel.RefreshCommandStatus();
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnSystemCommandCanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+        SystemCommandCanExecuteCount++;
+        e.CanExecute = true;
+        e.Handled = true;
+    }
+
+    private void OnSystemCommandExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        SystemCommandExecutedCount++;
+        LastSystemCommandName = (e.Command as RoutedCommand)?.Name;
+        LastSystemCommandParameter = e.Parameter?.ToString();
+
+        if (ReferenceEquals(e.Command, SystemCommands.MaximizeWindowCommand))
+        {
+            SystemCommands.MaximizeWindow(this);
+        }
+        else if (ReferenceEquals(e.Command, SystemCommands.MinimizeWindowCommand))
+        {
+            SystemCommands.MinimizeWindow(this);
+        }
+        else if (ReferenceEquals(e.Command, SystemCommands.RestoreWindowCommand))
+        {
+            SystemCommands.RestoreWindow(this);
+        }
+        else if (ReferenceEquals(e.Command, SystemCommands.ShowSystemMenuCommand))
+        {
+            SystemCommands.ShowSystemMenu(this, new Point(12.0, 24.0));
+        }
+        else
+        {
+            throw new InvalidOperationException($"Unexpected MVP system command '{e.Command}'.");
         }
 
         e.Handled = true;
@@ -1275,6 +1320,7 @@ internal static class MvpSelfTest
         var mainMenu = Require<Menu>(window.FindName("MainMenu"), "main Menu");
         var fileMenuItem = Require<MenuItem>(window.FindName("FileMenuItem"), "file MenuItem");
         var viewMenuItem = Require<MenuItem>(window.FindName("ViewMenuItem"), "view MenuItem");
+        var windowMenuItem = Require<MenuItem>(window.FindName("WindowMenuItem"), "window MenuItem");
         var addMenuItem = Require<MenuItem>(window.FindName("AddMenuItem"), "add MenuItem");
         var resetMenuItem = Require<MenuItem>(window.FindName("ResetMenuItem"), "reset MenuItem");
         var aboutMenuItem = Require<MenuItem>(window.FindName("AboutMenuItem"), "about MenuItem");
@@ -1282,6 +1328,18 @@ internal static class MvpSelfTest
         var actionsEnabledMenuItem = Require<MenuItem>(
             window.FindName("ActionsEnabledMenuItem"),
             "actions enabled MenuItem");
+        var windowMaximizeMenuItem = Require<MenuItem>(
+            window.FindName("WindowMaximizeMenuItem"),
+            "window maximize MenuItem");
+        var windowMinimizeMenuItem = Require<MenuItem>(
+            window.FindName("WindowMinimizeMenuItem"),
+            "window minimize MenuItem");
+        var windowRestoreMenuItem = Require<MenuItem>(
+            window.FindName("WindowRestoreMenuItem"),
+            "window restore MenuItem");
+        var windowSystemMenuItem = Require<MenuItem>(
+            window.FindName("WindowSystemMenuItem"),
+            "window system menu MenuItem");
         var commandStatusText = Require<TextBlock>(
             window.FindName("CommandStatusText"),
             "command status TextBlock");
@@ -1748,18 +1806,29 @@ internal static class MvpSelfTest
         var enabledCheckBox = Require<CheckBox>(window.FindName("EnabledCheckBox"), "enabled CheckBox");
         var progressSlider = Require<Slider>(window.FindName("ProgressSlider"), "progress Slider");
         Require<ComboBox>(window.FindName("CategoryCombo"), "category ComboBox");
-        AssertEqual(2, mainMenu.Items.Count, "main menu item count");
+        AssertEqual(3, mainMenu.Items.Count, "main menu item count");
         AssertEqual(5, fileMenuItem.Items.Count, "file menu item count");
         AssertEqual(3, viewMenuItem.Items.Count, "view menu item count");
+        AssertEqual(5, windowMenuItem.Items.Count, "window menu item count");
         AssertEqual(viewModel.AddItemCommand, addMenuItem.Command, "add menu command binding");
         AssertEqual("Ctrl+N", addMenuItem.InputGestureText, "add menu input gesture text");
         AssertEqual(viewModel.ResetCommand, resetMenuItem.Command, "reset menu command binding");
         AssertEqual("_About", aboutMenuItem.Header, "about menu item header");
         AssertEqual(MainWindow.RefreshStatusCommand, refreshMenuItem.Command, "refresh menu routed command");
         AssertEqual("Ctrl+R", refreshMenuItem.InputGestureText, "refresh menu input gesture text");
-        AssertEqual(1, window.CommandBindings.Count, "window command binding count");
+        AssertEqual(5, window.CommandBindings.Count, "window command binding count");
         AssertEqual(MainWindow.RefreshStatusCommand, window.CommandBindings[0].Command, "window routed command binding");
+        AssertEqual(SystemCommands.MaximizeWindowCommand, window.CommandBindings[1].Command, "window maximize command binding");
+        AssertEqual(SystemCommands.MinimizeWindowCommand, window.CommandBindings[2].Command, "window minimize command binding");
+        AssertEqual(SystemCommands.RestoreWindowCommand, window.CommandBindings[3].Command, "window restore command binding");
+        AssertEqual(SystemCommands.ShowSystemMenuCommand, window.CommandBindings[4].Command, "window system-menu command binding");
         AssertEqual(2, window.InputBindings.Count, "window input binding count");
+        ValidateMvpSystemCommands(
+            window,
+            windowMaximizeMenuItem,
+            windowMinimizeMenuItem,
+            windowRestoreMenuItem,
+            windowSystemMenuItem);
         ValidateMessageBox(window, messageBoxButton, messageBoxStatusText);
         ValidateFileDialogs(window, fileDialogButton, fileDialogStatusText);
         var refreshKeyBinding = Require<KeyBinding>(window.InputBindings[0], "refresh KeyBinding");
@@ -2301,6 +2370,93 @@ internal static class MvpSelfTest
         actionsItem.IsChecked = true;
         DrainDispatcher(window);
         AssertEqual(true, viewModel.ActionsEnabled, "context actions checked view model state");
+    }
+
+    private static void ValidateMvpSystemCommands(
+        MainWindow window,
+        MenuItem maximizeItem,
+        MenuItem minimizeItem,
+        MenuItem restoreItem,
+        MenuItem systemMenuItem)
+    {
+        var originalState = window.WindowState;
+        int initialCanExecuteCount = window.SystemCommandCanExecuteCount;
+        int initialExecutedCount = window.SystemCommandExecutedCount;
+
+        try
+        {
+            ExecuteMvpSystemCommand(
+                window,
+                maximizeItem,
+                SystemCommands.MaximizeWindowCommand,
+                "mvp maximize",
+                WindowState.Maximized,
+                "maximize");
+            ExecuteMvpSystemCommand(
+                window,
+                minimizeItem,
+                SystemCommands.MinimizeWindowCommand,
+                "mvp minimize",
+                WindowState.Minimized,
+                "minimize");
+            ExecuteMvpSystemCommand(
+                window,
+                restoreItem,
+                SystemCommands.RestoreWindowCommand,
+                "mvp restore",
+                WindowState.Normal,
+                "restore");
+            ExecuteMvpSystemCommand(
+                window,
+                systemMenuItem,
+                SystemCommands.ShowSystemMenuCommand,
+                "mvp system menu",
+                WindowState.Normal,
+                "show system menu");
+        }
+        finally
+        {
+            window.WindowState = originalState;
+            DrainDispatcher(window);
+        }
+
+        AssertGreaterThan(
+            initialCanExecuteCount,
+            window.SystemCommandCanExecuteCount,
+            "MVP SystemCommands CanExecute count");
+        AssertEqual(
+            initialExecutedCount + 4,
+            window.SystemCommandExecutedCount,
+            "MVP SystemCommands executed count");
+    }
+
+    private static void ExecuteMvpSystemCommand(
+        MainWindow window,
+        MenuItem menuItem,
+        RoutedCommand command,
+        string parameter,
+        WindowState expectedState,
+        string description)
+    {
+        AssertEqual(command, menuItem.Command, $"MVP SystemCommands {description} command");
+        AssertEqual(window, menuItem.CommandTarget, $"MVP SystemCommands {description} target");
+        AssertEqual(parameter, menuItem.CommandParameter, $"MVP SystemCommands {description} parameter");
+        AssertEqual(
+            true,
+            command.CanExecute(parameter, window),
+            $"MVP SystemCommands {description} CanExecute");
+
+        int initialExecutedCount = window.SystemCommandExecutedCount;
+        command.Execute(parameter, window);
+        DrainDispatcher(window);
+
+        AssertEqual(
+            initialExecutedCount + 1,
+            window.SystemCommandExecutedCount,
+            $"MVP SystemCommands {description} executed count");
+        AssertEqual(command.Name, window.LastSystemCommandName, $"MVP SystemCommands {description} name");
+        AssertEqual(parameter, window.LastSystemCommandParameter, $"MVP SystemCommands {description} parameter result");
+        AssertEqual(expectedState, window.WindowState, $"MVP SystemCommands {description} state");
     }
 
     private static void ValidateMvpTabControl(

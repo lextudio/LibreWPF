@@ -6,6 +6,7 @@
     xmlns:local="clr-namespace:ProGPU.Wpf.MvpApp"
     xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework"
     xmlns:sys="clr-namespace:System;assembly=mscorlib"
+    xmlns:wpf="clr-namespace:System.Windows;assembly=PresentationFramework"
     x:Name="RootWindow"
     Title="ProGPU WPF MVP"
     Width="760"
@@ -17,6 +18,22 @@
             Command="{x:Static local:MainWindow.RefreshStatusCommand}"
             CanExecute="OnRefreshStatusCommandCanExecute"
             Executed="OnRefreshStatusCommandExecuted" />
+        <CommandBinding
+            Command="{x:Static wpf:SystemCommands.MaximizeWindowCommand}"
+            CanExecute="OnSystemCommandCanExecute"
+            Executed="OnSystemCommandExecuted" />
+        <CommandBinding
+            Command="{x:Static wpf:SystemCommands.MinimizeWindowCommand}"
+            CanExecute="OnSystemCommandCanExecute"
+            Executed="OnSystemCommandExecuted" />
+        <CommandBinding
+            Command="{x:Static wpf:SystemCommands.RestoreWindowCommand}"
+            CanExecute="OnSystemCommandCanExecute"
+            Executed="OnSystemCommandExecuted" />
+        <CommandBinding
+            Command="{x:Static wpf:SystemCommands.ShowSystemMenuCommand}"
+            CanExecute="OnSystemCommandCanExecute"
+            Executed="OnSystemCommandExecuted" />
     </Window.CommandBindings>
     <Window.InputBindings>
         <KeyBinding
@@ -250,6 +267,35 @@
                         Command="{x:Static local:MainWindow.RefreshStatusCommand}"
                         Header="_Refresh status"
                         InputGestureText="Ctrl+R" />
+                </MenuItem>
+                <MenuItem
+                    x:Name="WindowMenuItem"
+                    Header="_Window">
+                    <MenuItem
+                        x:Name="WindowMaximizeMenuItem"
+                        Command="{x:Static wpf:SystemCommands.MaximizeWindowCommand}"
+                        CommandParameter="mvp maximize"
+                        CommandTarget="{Binding ElementName=RootWindow}"
+                        Header="Ma_ximize" />
+                    <MenuItem
+                        x:Name="WindowMinimizeMenuItem"
+                        Command="{x:Static wpf:SystemCommands.MinimizeWindowCommand}"
+                        CommandParameter="mvp minimize"
+                        CommandTarget="{Binding ElementName=RootWindow}"
+                        Header="Mi_nimize" />
+                    <MenuItem
+                        x:Name="WindowRestoreMenuItem"
+                        Command="{x:Static wpf:SystemCommands.RestoreWindowCommand}"
+                        CommandParameter="mvp restore"
+                        CommandTarget="{Binding ElementName=RootWindow}"
+                        Header="_Restore" />
+                    <Separator />
+                    <MenuItem
+                        x:Name="WindowSystemMenuItem"
+                        Command="{x:Static wpf:SystemCommands.ShowSystemMenuCommand}"
+                        CommandParameter="mvp system menu"
+                        CommandTarget="{Binding ElementName=RootWindow}"
+                        Header="_System menu" />
                 </MenuItem>
             </Menu>
             <TextBlock

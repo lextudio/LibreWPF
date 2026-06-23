@@ -6982,6 +6982,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<OutputType>WinExe</OutputType>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("private const string ExternalAppTargetFramework = \"net11.0-windows\";", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<TargetFrameworks>{ExternalAppTargetFramework}</TargetFrameworks>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external library Windows target frameworks", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<UseWPF>true</UseWPF>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Resource Include=\"Assets/ExternalResource.txt\" />", externalSdkHarnessProgram, StringComparison.Ordinal);

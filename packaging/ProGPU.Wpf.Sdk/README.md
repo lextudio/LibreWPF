@@ -10,7 +10,7 @@ For mutable development package versions such as `11.0.0-dev`, the SDK clears kn
 
 The SDK owns the package dependency closure. The WPF transport package supplies the real managed WPF assembly identities and runtime payload, while `ProGPU.Wpf` is the adapter/runtime bridge package and does not publish dependencies on the ProGPU shim `PresentationCore` package.
 
-Existing WPF application projects should keep their normal WPF project shape and switch only the project SDK. The SDK treats `UseWPF=true` as the app's markup intent, then internally redirects framework references to the portable WPF transport and ProGPU/Silk.NET package graph.
+Existing WPF application projects should keep their normal WPF project shape and switch only the project SDK, whether the original project used `Microsoft.NET.Sdk.WindowsDesktop` or the newer `Microsoft.NET.Sdk` plus `UseWPF=true`. The SDK treats `UseWPF=true` as the app's markup intent, keeps the normal `net*-windows` target-framework shape, and internally redirects framework references to the portable WPF transport and ProGPU/Silk.NET package graph.
 
 The SDK also supplies the WPF markup compiler defaults and portable runtime-framework default needed by the current build lane, so applications do not need ProGPU-specific item includes, PresentationBuildTasks compatibility properties, or runtime-version pins.
 
@@ -18,7 +18,7 @@ The SDK also supplies the WPF markup compiler defaults and portable runtime-fram
 <Project Sdk="ProGPU.Wpf.Sdk/11.0.0-dev">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net11.0</TargetFramework>
+    <TargetFramework>net11.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 </Project>

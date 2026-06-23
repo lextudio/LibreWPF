@@ -421,7 +421,7 @@ internal static class Program
                 $"""
             <Project Sdk="{OriginalWpfSdk}">
               <PropertyGroup>
-                <TargetFramework>{ExternalAppTargetFramework}</TargetFramework>
+                <TargetFrameworks>{ExternalAppTargetFramework}</TargetFrameworks>
                 <UseWPF>true</UseWPF>
               </PropertyGroup>
             </Project>
@@ -11575,7 +11575,7 @@ internal static class Program
         AssertContains(appProject, "<SplashScreen Include=\"Assets/ExternalSplash.png\" />", "external app WPF splash item");
         AssertContains(libraryProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external library SDK");
         AssertDoesNotContain(libraryProject, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external library original SDK");
-        AssertContains(libraryProject, $"<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", "external library Windows target framework");
+        AssertContains(libraryProject, $"<TargetFrameworks>{ExternalAppTargetFramework}</TargetFrameworks>", "external library Windows target frameworks");
         AssertContains(libraryProject, "<UseWPF>true</UseWPF>", "external library WPF property");
         AssertContains(localizationProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external localization SDK");
         AssertDoesNotContain(localizationProject, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external localization original SDK");

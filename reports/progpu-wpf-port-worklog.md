@@ -1911,6 +1911,7 @@
 - Added MVP `Thumb` drag manager coverage. The Input tab now compiles a normal `Thumb` with `DragStarted`, `DragDelta`, and `DragCompleted` handlers plus a bubbled parent `Thumb.DragDelta` handler; the package-mode self-test raises those routed events and validates sender/original-source metadata, drag offsets/deltas, canceled state, and status updates from SDK-built BAML.
 - Added MVP automation metadata and peer/provider coverage. The runnable SDK-only app now uses normal `AutomationProperties` on common controls, and the package-mode self-test validates `TextBoxAutomationPeer` value updates, `ButtonAutomationPeer` invoke execution, `CheckBoxAutomationPeer` toggle state, and `SliderAutomationPeer` range values through WPF's managed automation peers.
 - Added MVP secondary-window lifecycle coverage in the bounded `Application.Run()` path. The SDK-only sample now shows its compiled `AboutWindow` with a real owner, validates `Application.Windows` and `OwnedWindows` membership while visible, closes it, and verifies `Closing`/`Closed` event counts plus owner/application-window cleanup without app-side ProGPU APIs.
+- Added MVP modal dialog coverage in the bounded `Application.Run()` path. The SDK-only sample now shows the same compiled `AboutWindow` through `ShowDialog()`, auto-completes it with `DialogResult=true` from dispatcher work, and validates owner membership, loaded/closing/closed events, returned result, visibility, and `Application.Windows`/`OwnedWindows` cleanup through WPF's normal window manager.
 
 ## Open Porting Items
 

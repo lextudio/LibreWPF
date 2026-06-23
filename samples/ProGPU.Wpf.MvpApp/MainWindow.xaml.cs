@@ -3932,6 +3932,52 @@ internal static class MvpSelfTest
         AssertEqual(0, window.OwnedWindows.Count, "main window owned window count after secondary close");
         AssertEqual(initialWindowCount - 1, CountApplicationWindows(application), "Application Windows count after secondary close");
         AssertEqual(false, ApplicationContainsWindow(application, dialog), "Application Windows excludes secondary window after close");
+
+        var modalDialog = new AboutWindow
+        {
+            Owner = window
+        };
+        int modalLoadedCount = 0;
+        int modalClosingCount = 0;
+        int modalClosedCount = 0;
+        bool modalOwnerDuringLoaded = false;
+        bool modalInApplicationWindowsDuringLoaded = false;
+        int ownerOwnedWindowsCountDuringModal = 0;
+        modalDialog.Loaded += (_, _) =>
+        {
+            modalLoadedCount++;
+            modalOwnerDuringLoaded = ReferenceEquals(window, modalDialog.Owner);
+            modalInApplicationWindowsDuringLoaded = ApplicationContainsWindow(application, modalDialog);
+            ownerOwnedWindowsCountDuringModal = window.OwnedWindows.Count;
+            modalDialog.Dispatcher.BeginInvoke(
+                DispatcherPriority.Render,
+                new Action(() => modalDialog.DialogResult = true));
+        };
+        modalDialog.Closing += (_, e) =>
+        {
+            modalClosingCount++;
+            AssertEqual(false, e.Cancel, "secondary modal dialog Closing cancel state");
+        };
+        modalDialog.Closed += (_, _) => modalClosedCount++;
+
+        int modalInitialWindowCount = CountApplicationWindows(application);
+        AssertEqual(true, ApplicationContainsWindow(application, modalDialog), "Application Windows contains constructed modal dialog");
+        AssertEqual(1, window.OwnedWindows.Count, "main window owned window count before modal dialog");
+
+        bool? modalResult = modalDialog.ShowDialog();
+        DrainDispatcher(window);
+
+        AssertEqual(true, modalResult, "secondary modal dialog result");
+        AssertEqual(1, modalLoadedCount, "secondary modal dialog Loaded count");
+        AssertEqual(1, modalClosingCount, "secondary modal dialog Closing count");
+        AssertEqual(1, modalClosedCount, "secondary modal dialog Closed count");
+        AssertEqual(true, modalOwnerDuringLoaded, "secondary modal dialog owner during Loaded");
+        AssertEqual(true, modalInApplicationWindowsDuringLoaded, "secondary modal dialog Application.Windows during Loaded");
+        AssertEqual(1, ownerOwnedWindowsCountDuringModal, "main window owned window count during modal dialog");
+        AssertEqual(false, modalDialog.IsVisible, "secondary modal dialog visibility after close");
+        AssertEqual(0, window.OwnedWindows.Count, "main window owned window count after modal dialog");
+        AssertEqual(modalInitialWindowCount - 1, CountApplicationWindows(application), "Application Windows count after modal dialog");
+        AssertEqual(false, ApplicationContainsWindow(application, modalDialog), "Application Windows excludes modal dialog after close");
     }
 
     private static int CountApplicationWindows(Application application)

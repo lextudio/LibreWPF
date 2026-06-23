@@ -10,6 +10,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
 namespace ProGPU.Wpf.MvpApp;
@@ -539,6 +540,12 @@ internal static class MvpSelfTest
         var bindingGroupLastEchoText = Require<TextBlock>(
             window.FindName("BindingGroupLastEchoText"),
             "BindingGroup last echo TextBlock");
+        var loadedStoryboardText = Require<TextBlock>(
+            window.FindName("LoadedStoryboardText"),
+            "loaded storyboard TextBlock");
+        var clickStoryboardButton = Require<Button>(
+            window.FindName("ClickStoryboardButton"),
+            "click storyboard Button");
         var summaryPanel = Require<SummaryPanel>(window.FindName("SummaryPanel"), "summary Panel");
         var summaryNameText = Require<TextBlock>(
             summaryPanel.FindName("SummaryNameText"),
@@ -606,6 +613,7 @@ internal static class MvpSelfTest
             bindingGroupStatusText,
             bindingGroupFirstEchoText,
             bindingGroupLastEchoText);
+        ValidateStoryboards(window, loadedStoryboardText, clickStoryboardButton);
         AssertEqual(viewModel.Nodes, nodesTreeView.ItemsSource, "TreeView items source");
         AssertEqual(2, viewModel.Nodes.Count, "TreeView root node count");
         AssertEqual("Startup", viewModel.Nodes[0].Children[0].Name, "TreeView first child node");
@@ -980,6 +988,59 @@ internal static class MvpSelfTest
         AssertEqual("Group committed", statusText.Text, "BindingGroup accepted status");
         AssertEqual("First: group: Grace", firstEchoText.Text, "BindingGroup first accepted echo");
         AssertEqual("Last: group: Hopper", lastEchoText.Text, "BindingGroup last accepted echo");
+    }
+
+    private static void ValidateStoryboards(
+        Window window,
+        TextBlock loadedText,
+        Button clickButton)
+    {
+        var loadedTrigger = Require<EventTrigger>(
+            loadedText.Triggers[0],
+            "loaded storyboard EventTrigger");
+        AssertEqual(FrameworkElement.LoadedEvent, loadedTrigger.RoutedEvent, "loaded storyboard routed event");
+        ValidateStoryboardAction(
+            loadedTrigger,
+            "LoadedStoryboardText",
+            0.42,
+            "loaded storyboard");
+
+        var clickTrigger = Require<EventTrigger>(
+            clickButton.Triggers[0],
+            "click storyboard EventTrigger");
+        AssertEqual(Button.ClickEvent, clickTrigger.RoutedEvent, "click storyboard routed event");
+        ValidateStoryboardAction(
+            clickTrigger,
+            "ClickStoryboardButton",
+            0.58,
+            "click storyboard");
+
+        AssertEqual(1.0, loadedText.Opacity, "loaded storyboard initial opacity");
+        AssertEqual(1.0, clickButton.Opacity, "click storyboard initial opacity");
+    }
+
+    private static void ValidateStoryboardAction(
+        EventTrigger trigger,
+        string targetName,
+        double targetOpacity,
+        string description)
+    {
+        AssertEqual(1, trigger.Actions.Count, $"{description} action count");
+        var beginStoryboard = Require<BeginStoryboard>(
+            trigger.Actions[0],
+            $"{description} BeginStoryboard");
+        var storyboard = Require<Storyboard>(
+            beginStoryboard.Storyboard,
+            $"{description} Storyboard");
+        AssertEqual(1, storyboard.Children.Count, $"{description} animation count");
+        var animation = Require<DoubleAnimation>(
+            storyboard.Children[0],
+            $"{description} DoubleAnimation");
+
+        AssertEqual(targetName, Storyboard.GetTargetName(animation), $"{description} target name");
+        AssertEqual("Opacity", Storyboard.GetTargetProperty(animation).Path, $"{description} target property");
+        AssertEqual(TimeSpan.Zero, animation.Duration.TimeSpan, $"{description} duration");
+        AssertEqual(targetOpacity, animation.To ?? double.NaN, $"{description} target value");
     }
 
     private static string GetTextBindingPath(TextBlock textBlock)

@@ -600,6 +600,76 @@
                 </Grid>
             </TabItem>
 
+            <TabItem Header="Animation">
+                <Grid Margin="0,14,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel>
+                        <TextBlock
+                            Margin="0,0,0,8"
+                            FontWeight="SemiBold"
+                            Text="Storyboard triggers" />
+                        <TextBlock
+                            x:Name="LoadedStoryboardText"
+                            Opacity="1"
+                            Text="Loaded storyboard target">
+                            <TextBlock.Triggers>
+                                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation
+                                                Storyboard.TargetName="LoadedStoryboardText"
+                                                Storyboard.TargetProperty="Opacity"
+                                                Duration="0:0:0"
+                                                To="0.42" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </TextBlock.Triggers>
+                        </TextBlock>
+                        <Button
+                            x:Name="ClickStoryboardButton"
+                            Margin="0,14,0,0"
+                            Content="Animate click target"
+                            Opacity="1">
+                            <Button.Triggers>
+                                <EventTrigger RoutedEvent="Button.Click">
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation
+                                                Storyboard.TargetName="ClickStoryboardButton"
+                                                Storyboard.TargetProperty="Opacity"
+                                                Duration="0:0:0"
+                                                To="0.58" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </Button.Triggers>
+                        </Button>
+                    </StackPanel>
+
+                    <Border
+                        Grid.Column="1"
+                        Margin="18,0,0,0"
+                        Padding="12"
+                        Background="{DynamicResource MvpPanelBrush}">
+                        <StackPanel>
+                            <TextBlock
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Text="EventTrigger clocks" />
+                            <TextBlock
+                                Margin="0,8,0,0"
+                                TextWrapping="Wrap"
+                                Text="This tab uses compiled EventTrigger and BeginStoryboard timelines loaded through the ProGPU WPF SDK." />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+
             <TabItem Header="Navigation">
                 <Grid Margin="0,14,0,0">
                     <Grid.ColumnDefinitions>

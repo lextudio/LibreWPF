@@ -6112,6 +6112,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<UseWPF>true</UseWPF>", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<Resource Include=\"Assets/MvpResource.txt\" />", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<ResourceDictionary Source=\"Resources/Theme.xaml\" />", mvpAppXaml, StringComparison.Ordinal);
+        Assert.Contains("Startup=\"OnAppStartup\"", mvpAppXaml, StringComparison.Ordinal);
+        Assert.Contains("Exit=\"OnAppExit\"", mvpAppXaml, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_VALIDATE", mvpAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_RUN_VALIDATE", mvpAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DispatcherPriority.ApplicationIdle", mvpAppCodeBehind, StringComparison.Ordinal);
@@ -6119,6 +6121,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Expected MVP StartupUri MainWindow", mvpAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("expectLoadedStoryboardApplied: true", mvpAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MvpSelfTest.Validate", mvpAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("internal static int StartupEventCount", mvpAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("internal static int ExitEventCount", mvpAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Resources[\"MvpStartupText\"]", mvpAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Resources[\"MvpStartupBrush\"]", mvpAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnAppStartup", mvpAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnAppExit", mvpAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MainMenu\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:local=\"clr-namespace:ProGPU.Wpf.MvpApp\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:componentModel=\"clr-namespace:System.ComponentModel;assembly=WindowsBase\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6270,6 +6278,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"NullIntrinsicText\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Tag=\"{x:Null}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"PackResourceText\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"StartupResourceText\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{DynamicResource MvpStartupText}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Foreground=\"{DynamicResource MvpStartupBrush}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<DrawingImage x:Key=\"MvpDrawingImage\">", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<GeometryDrawing Brush=\"#2F80ED\">", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<RectangleGeometry Rect=\"0,0,32,32\" />", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6379,6 +6390,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("MvpActiveTextConverter : IValueConverter", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MvpItemSummaryConverter : IMultiValueConverter", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MvpItemTemplateSelector : DataTemplateSelector", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Application Startup event count", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("startup DynamicResource text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("startup DynamicResource foreground color", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Controls.Primitives;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal int SelectorSelectionChangedCount", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal int MultiSelectorSelectionChangedCount", mvpMainWindowCodeBehind, StringComparison.Ordinal);

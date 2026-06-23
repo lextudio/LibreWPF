@@ -871,6 +871,9 @@ internal static class MvpSelfTest
         var packResourceText = Require<TextBlock>(
             window.FindName("PackResourceText"),
             "pack resource TextBlock");
+        var startupResourceText = Require<TextBlock>(
+            window.FindName("StartupResourceText"),
+            "startup resource TextBlock");
         var drawingImageControl = Require<Image>(
             window.FindName("MvpDrawingImageControl"),
             "MVP DrawingImage Image");
@@ -1150,9 +1153,11 @@ internal static class MvpSelfTest
             resourceArrayItemsControl,
             nullIntrinsicText,
             packResourceText,
+            startupResourceText,
             drawingImageControl,
             drawingImageBrushBorder,
-            resourceDynamicBorder);
+            resourceDynamicBorder,
+            expectLoadedStoryboardApplied);
         ValidateItemsContextMenu(window, viewModel, itemsList);
         ValidateNavigation(window, navigationFrame, detailsNavigationButton);
         ValidateSecondaryWindow(window, aboutMenuItem);
@@ -1546,9 +1551,11 @@ internal static class MvpSelfTest
         ItemsControl arrayItemsControl,
         TextBlock nullIntrinsicText,
         TextBlock packResourceText,
+        TextBlock startupResourceText,
         Image drawingImageControl,
         Border drawingImageBrushBorder,
-        Border dynamicResourceBorder)
+        Border dynamicResourceBorder,
+        bool expectStartupResources)
     {
         var componentKey = new ComponentResourceKey(typeof(MainWindow), "MvpComponentAccentBrush");
         var appBrush = Require<SolidColorBrush>(
@@ -1612,6 +1619,26 @@ internal static class MvpSelfTest
         AssertEqual("Null intrinsic target", nullIntrinsicText.Text, "x:Null TextBlock text");
 
         AssertEqual("Pack resource loaded from Assets/MvpResource.txt", packResourceText.Text, "pack resource TextBlock text");
+        var applicationResources = Application.Current?.Resources
+            ?? throw new InvalidOperationException("Expected application resources.");
+        if (expectStartupResources)
+        {
+            AssertEqual(1, App.StartupEventCount, "Application Startup event count");
+            AssertEqual(0, App.StartupArgumentCount, "Application Startup argument count");
+            AssertEqual(0, App.ExitEventCount, "Application Exit event count before shutdown");
+            AssertEqual(-1, App.LastExitCode, "Application Exit code before shutdown");
+            AssertEqual("Startup resource ready", applicationResources["MvpStartupText"], "startup application text resource");
+            AssertEqual("Startup resource ready", startupResourceText.Text, "startup DynamicResource text");
+            var startupBrush = Require<SolidColorBrush>(
+                applicationResources["MvpStartupBrush"],
+                "startup application brush resource");
+            var startupForeground = Require<SolidColorBrush>(
+                startupResourceText.Foreground,
+                "startup DynamicResource foreground");
+            AssertEqual(Color.FromRgb(0x45, 0x5A, 0x64), startupBrush.Color, "startup application brush color");
+            AssertEqual(startupBrush.Color, startupForeground.Color, "startup DynamicResource foreground color");
+        }
+
         var drawingImage = Require<DrawingImage>(
             window.FindResource("MvpDrawingImage"),
             "MVP DrawingImage resource");
@@ -1649,8 +1676,6 @@ internal static class MvpSelfTest
             "dynamic resource Border initial background");
         AssertEqual(Color.FromRgb(0xF4, 0xF7, 0xFB), initialDynamicBrush.Color, "dynamic resource Border initial background color");
 
-        var applicationResources = Application.Current?.Resources
-            ?? throw new InvalidOperationException("Expected application resources.");
         applicationResources["MvpPanelBrush"] = new SolidColorBrush(Color.FromRgb(0xFF, 0xF2, 0xCC));
         DrainDispatcher(window);
         var updatedDynamicBrush = Require<SolidColorBrush>(

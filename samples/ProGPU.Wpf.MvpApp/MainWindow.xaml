@@ -934,6 +934,11 @@
                             x:Name="PackResourceText"
                             Margin="0,12,0,0"
                             Text="Pack resource loaded from Assets/MvpResource.txt" />
+                        <TextBlock
+                            x:Name="StartupResourceText"
+                            Margin="0,12,0,0"
+                            Foreground="{DynamicResource MvpStartupBrush}"
+                            Text="{DynamicResource MvpStartupText}" />
                         <StackPanel
                             Margin="0,12,0,0"
                             Orientation="Horizontal">

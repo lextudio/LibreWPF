@@ -1,11 +1,20 @@
 using System;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace ProGPU.Wpf.MvpApp;
 
 public partial class App : Application
 {
+    internal static int StartupEventCount { get; private set; }
+
+    internal static int StartupArgumentCount { get; private set; }
+
+    internal static int ExitEventCount { get; private set; }
+
+    internal static int LastExitCode { get; private set; } = -1;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         if (Environment.GetEnvironmentVariable("PROGPU_WPF_MVP_VALIDATE") == "1")
@@ -27,6 +36,20 @@ public partial class App : Application
         }
 
         base.OnStartup(e);
+    }
+
+    private void OnAppStartup(object sender, StartupEventArgs e)
+    {
+        StartupEventCount++;
+        StartupArgumentCount = e.Args.Length;
+        Resources["MvpStartupText"] = "Startup resource ready";
+        Resources["MvpStartupBrush"] = new SolidColorBrush(Color.FromRgb(0x45, 0x5A, 0x64));
+    }
+
+    private void OnAppExit(object sender, ExitEventArgs e)
+    {
+        ExitEventCount++;
+        LastExitCode = e.ApplicationExitCode;
     }
 
     private static void ValidateRunningApplication()

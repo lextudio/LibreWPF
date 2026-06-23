@@ -1796,6 +1796,37 @@
                             Command="ApplicationCommands.SelectAll"
                             CommandTarget="{Binding ElementName=DataObjectPayloadTextBox}"
                             Content="Select all payload" />
+                        <WrapPanel Margin="0,6,0,0">
+                            <Button
+                                x:Name="CopyPayloadButton"
+                                Command="ApplicationCommands.Copy"
+                                CommandTarget="{Binding ElementName=DataObjectPayloadTextBox}"
+                                Content="Copy payload" />
+                            <Button
+                                x:Name="CutPayloadButton"
+                                Margin="6,0,0,0"
+                                Command="ApplicationCommands.Cut"
+                                CommandTarget="{Binding ElementName=DataObjectPayloadTextBox}"
+                                Content="Cut payload" />
+                            <Button
+                                x:Name="PastePayloadButton"
+                                Margin="6,0,0,0"
+                                Command="ApplicationCommands.Paste"
+                                CommandTarget="{Binding ElementName=DataObjectPayloadTextBox}"
+                                Content="Paste payload" />
+                            <Button
+                                x:Name="UndoPayloadButton"
+                                Margin="6,0,0,0"
+                                Command="ApplicationCommands.Undo"
+                                CommandTarget="{Binding ElementName=DataObjectPayloadTextBox}"
+                                Content="Undo payload" />
+                            <Button
+                                x:Name="RedoPayloadButton"
+                                Margin="6,0,0,0"
+                                Command="ApplicationCommands.Redo"
+                                CommandTarget="{Binding ElementName=DataObjectPayloadTextBox}"
+                                Content="Redo payload" />
+                        </WrapPanel>
                         <StackPanel
                             Margin="0,6,0,0"
                             Orientation="Horizontal">
@@ -1846,7 +1877,7 @@
                             <TextBlock
                                 Margin="0,8,0,0"
                                 TextWrapping="Wrap"
-                                Text="This tab uses WPF PasswordBox, RichTextBox, FlowDocument, TextRange, EditingCommands, DataObject, and Clipboard through SDK-built BAML." />
+                                Text="This tab uses WPF PasswordBox, RichTextBox, FlowDocument, TextRange, EditingCommands, text editor commands, DataObject, and Clipboard through SDK-built BAML." />
                         </StackPanel>
                     </Border>
                 </Grid>

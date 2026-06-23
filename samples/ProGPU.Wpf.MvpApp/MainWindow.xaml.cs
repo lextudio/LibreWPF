@@ -1712,6 +1712,21 @@ internal static class MvpSelfTest
         var selectAllPayloadButton = Require<Button>(
             window.FindName("SelectAllPayloadButton"),
             "SelectAll payload Button");
+        var copyPayloadButton = Require<Button>(
+            window.FindName("CopyPayloadButton"),
+            "copy payload Button");
+        var cutPayloadButton = Require<Button>(
+            window.FindName("CutPayloadButton"),
+            "cut payload Button");
+        var pastePayloadButton = Require<Button>(
+            window.FindName("PastePayloadButton"),
+            "paste payload Button");
+        var undoPayloadButton = Require<Button>(
+            window.FindName("UndoPayloadButton"),
+            "undo payload Button");
+        var redoPayloadButton = Require<Button>(
+            window.FindName("RedoPayloadButton"),
+            "redo payload Button");
         var copyRichTextButton = Require<Button>(
             window.FindName("CopyRichTextButton"),
             "copy rich text Button");
@@ -1995,6 +2010,11 @@ internal static class MvpSelfTest
             dataObjectRoundTripButton,
             clipboardRoundTripButton,
             selectAllPayloadButton,
+            copyPayloadButton,
+            cutPayloadButton,
+            pastePayloadButton,
+            undoPayloadButton,
+            redoPayloadButton,
             copyRichTextButton,
             pasteRichTextButton,
             dataObjectStatusText);
@@ -5013,6 +5033,11 @@ internal static class MvpSelfTest
         Button dataObjectRoundTripButton,
         Button clipboardRoundTripButton,
         Button selectAllPayloadButton,
+        Button copyPayloadButton,
+        Button cutPayloadButton,
+        Button pastePayloadButton,
+        Button undoPayloadButton,
+        Button redoPayloadButton,
         Button copyRichTextButton,
         Button pasteRichTextButton,
         TextBlock dataObjectStatusText)
@@ -5023,6 +5048,16 @@ internal static class MvpSelfTest
         AssertEqual("data object payload", dataObjectPayloadTextBox.Text, "DataObject initial payload");
         AssertEqual(ApplicationCommands.SelectAll, selectAllPayloadButton.Command, "DataObject payload SelectAll command");
         AssertEqual(dataObjectPayloadTextBox, selectAllPayloadButton.CommandTarget, "DataObject payload SelectAll target");
+        AssertEqual(ApplicationCommands.Copy, copyPayloadButton.Command, "TextBox payload Copy command");
+        AssertEqual(dataObjectPayloadTextBox, copyPayloadButton.CommandTarget, "TextBox payload Copy command target");
+        AssertEqual(ApplicationCommands.Cut, cutPayloadButton.Command, "TextBox payload Cut command");
+        AssertEqual(dataObjectPayloadTextBox, cutPayloadButton.CommandTarget, "TextBox payload Cut command target");
+        AssertEqual(ApplicationCommands.Paste, pastePayloadButton.Command, "TextBox payload Paste command");
+        AssertEqual(dataObjectPayloadTextBox, pastePayloadButton.CommandTarget, "TextBox payload Paste command target");
+        AssertEqual(ApplicationCommands.Undo, undoPayloadButton.Command, "TextBox payload Undo command");
+        AssertEqual(dataObjectPayloadTextBox, undoPayloadButton.CommandTarget, "TextBox payload Undo command target");
+        AssertEqual(ApplicationCommands.Redo, redoPayloadButton.Command, "TextBox payload Redo command");
+        AssertEqual(dataObjectPayloadTextBox, redoPayloadButton.CommandTarget, "TextBox payload Redo command target");
         AssertEqual(ApplicationCommands.Copy, copyRichTextButton.Command, "RichTextBox Copy command");
         AssertEqual(richTextBox, copyRichTextButton.CommandTarget, "RichTextBox Copy command target");
         AssertEqual(ApplicationCommands.Paste, pasteRichTextButton.Command, "RichTextBox Paste command");
@@ -5087,6 +5122,29 @@ internal static class MvpSelfTest
         ApplicationCommands.SelectAll.Execute(null, dataObjectPayloadTextBox);
         AssertEqual(0, dataObjectPayloadTextBox.SelectionStart, "DataObject payload SelectAll selection start");
         AssertEqual(dataObjectPayloadTextBox.Text.Length, dataObjectPayloadTextBox.SelectionLength, "DataObject payload SelectAll selection length");
+
+        dataObjectPayloadTextBox.Text = "alpha beta gamma";
+        dataObjectPayloadTextBox.Select(0, 5);
+        AssertEqual(true, ApplicationCommands.Copy.CanExecute(null, dataObjectPayloadTextBox), "TextBox payload Copy CanExecute");
+        ApplicationCommands.Copy.Execute(null, dataObjectPayloadTextBox);
+        DrainDispatcher(window);
+        AssertEqual("alpha", Clipboard.GetText(), "TextBox payload copied clipboard text");
+        dataObjectPayloadTextBox.Select(6, 4);
+        AssertEqual(true, ApplicationCommands.Cut.CanExecute(null, dataObjectPayloadTextBox), "TextBox payload Cut CanExecute");
+        ApplicationCommands.Cut.Execute(null, dataObjectPayloadTextBox);
+        DrainDispatcher(window);
+        AssertEqual("beta", Clipboard.GetText(), "TextBox payload cut clipboard text");
+        AssertEqual("alpha  gamma", dataObjectPayloadTextBox.Text, "TextBox payload cut result");
+        dataObjectPayloadTextBox.Text = "alpha gamma";
+        dataObjectPayloadTextBox.CaretIndex = 5;
+        Clipboard.SetText(" beta");
+        AssertEqual(true, ApplicationCommands.Paste.CanExecute(null, dataObjectPayloadTextBox), "TextBox payload Paste CanExecute");
+        ApplicationCommands.Paste.Execute(null, dataObjectPayloadTextBox);
+        DrainDispatcher(window);
+        AssertEqual("alpha beta gamma", dataObjectPayloadTextBox.Text, "TextBox payload paste result");
+        Clipboard.Clear();
+
+        dataObjectPayloadTextBox.Text = "mvp data object";
         dataObjectRoundTripButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, dataObjectRoundTripButton));
         DrainDispatcher(window);
         AssertEqual(1, window.DataObjectRoundTripCount, "DataObject round-trip count");

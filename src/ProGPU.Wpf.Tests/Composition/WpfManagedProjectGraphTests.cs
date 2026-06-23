@@ -6487,9 +6487,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Source=\"OverviewPage.xaml\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"OnDetailsNavigationClick\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"BackNavigationButton\"", mvpMainWindowXaml, StringComparison.Ordinal);
-        Assert.Contains("Click=\"OnBackNavigationClick\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Command=\"NavigationCommands.BrowseBack\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CommandTarget=\"{Binding ElementName=NavigationFrame}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ForwardNavigationButton\"", mvpMainWindowXaml, StringComparison.Ordinal);
-        Assert.Contains("Click=\"OnForwardNavigationClick\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Command=\"NavigationCommands.BrowseForward\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<TabItem Header=\"Editing\">", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"EditorPasswordBox\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("MaxLength=\"16\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6503,6 +6504,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"DataObjectPayloadTextBox\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"DataObjectRoundTripButton\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"OnDataObjectRoundTripClick\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SelectAllPayloadButton\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Command=\"ApplicationCommands.SelectAll\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CommandTarget=\"{Binding ElementName=DataObjectPayloadTextBox}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"DataObjectStatusText\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("TextBox", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ListBox", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6788,8 +6792,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Button Click EventSetter", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("EventSetter handled flag", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("NavigationFrame.Navigate(new Uri(\"DetailsPage.xaml\", UriKind.Relative))", mvpMainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("NavigationFrame.GoBack();", mvpMainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("NavigationFrame.GoForward();", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("NavigationCommands.BrowseBack.Execute(null, frame)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("NavigationCommands.BrowseForward.Execute(null, frame)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnAboutMenuItemClick", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("var dialog = new AboutWindow();", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("dialog.Owner = this;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
@@ -6809,6 +6813,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("dataObject.SetText(payload)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DataFormats.UnicodeText", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DataObjectRoundTripCount", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ApplicationCommands.SelectAll.Execute(null, dataObjectPayloadTextBox)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DataObject payload SelectAll selection length", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("dataObjectPayloadTextBox", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("editor PasswordBox secure password length", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("new TextRange(document.ContentStart, document.ContentEnd).Text", mvpMainWindowCodeBehind, StringComparison.Ordinal);

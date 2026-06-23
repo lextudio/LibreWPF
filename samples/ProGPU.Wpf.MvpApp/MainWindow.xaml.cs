@@ -222,22 +222,6 @@ public partial class MainWindow : Window
         NavigationFrame.Navigate(new Uri("DetailsPage.xaml", UriKind.Relative));
     }
 
-    private void OnBackNavigationClick(object sender, RoutedEventArgs e)
-    {
-        if (NavigationFrame.CanGoBack)
-        {
-            NavigationFrame.GoBack();
-        }
-    }
-
-    private void OnForwardNavigationClick(object sender, RoutedEventArgs e)
-    {
-        if (NavigationFrame.CanGoForward)
-        {
-            NavigationFrame.GoForward();
-        }
-    }
-
     private void OnAboutMenuItemClick(object sender, RoutedEventArgs e)
     {
         var dialog = new AboutWindow();
@@ -1598,6 +1582,9 @@ internal static class MvpSelfTest
         var dataObjectRoundTripButton = Require<Button>(
             window.FindName("DataObjectRoundTripButton"),
             "DataObject round-trip Button");
+        var selectAllPayloadButton = Require<Button>(
+            window.FindName("SelectAllPayloadButton"),
+            "SelectAll payload Button");
         var dataObjectStatusText = Require<TextBlock>(
             window.FindName("DataObjectStatusText"),
             "DataObject status TextBlock");
@@ -1860,6 +1847,7 @@ internal static class MvpSelfTest
             editorRichTextBox,
             dataObjectPayloadTextBox,
             dataObjectRoundTripButton,
+            selectAllPayloadButton,
             dataObjectStatusText);
         ValidateDocument(window, documentViewer, documentPageViewer, documentReader);
 
@@ -4114,8 +4102,12 @@ internal static class MvpSelfTest
         AssertEqual(new Uri("DetailsPage.xaml", UriKind.Relative), frame.Source, "navigation frame source");
         AssertEqual(true, frame.CanGoBack, "navigation frame back stack state");
         AssertEqual(false, frame.CanGoForward, "navigation frame forward stack before journal back");
+        AssertEqual(NavigationCommands.BrowseBack, backButton.Command, "navigation back command");
+        AssertEqual(frame, backButton.CommandTarget, "navigation back command target");
+        AssertEqual(NavigationCommands.BrowseForward, forwardButton.Command, "navigation forward command");
+        AssertEqual(frame, forwardButton.CommandTarget, "navigation forward command target");
 
-        backButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, backButton));
+        NavigationCommands.BrowseBack.Execute(null, frame);
         DrainDispatcher(window);
         var journalOverviewPage = Require<OverviewPage>(frame.Content, "journal overview page");
         var journalOverviewTitle = Require<TextBlock>(
@@ -4124,7 +4116,7 @@ internal static class MvpSelfTest
         AssertEqual("SDK overview page", journalOverviewTitle.Text, "journal overview page title text");
         AssertEqual(true, frame.CanGoForward, "navigation frame forward stack after journal back");
 
-        forwardButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, forwardButton));
+        NavigationCommands.BrowseForward.Execute(null, frame);
         DrainDispatcher(window);
         var journalDetailsPage = Require<DetailsPage>(frame.Content, "journal details page");
         var journalDetailsTitle = Require<TextBlock>(
@@ -4623,12 +4615,15 @@ internal static class MvpSelfTest
         RichTextBox richTextBox,
         TextBox dataObjectPayloadTextBox,
         Button dataObjectRoundTripButton,
+        Button selectAllPayloadButton,
         TextBlock dataObjectStatusText)
     {
         AssertEqual(16, passwordBox.MaxLength, "editor PasswordBox max length");
         AssertEqual('*', passwordBox.PasswordChar, "editor PasswordBox password char");
         AssertEqual(0, window.EditorPasswordChangedCount, "editor PasswordBox initial changed count");
         AssertEqual("data object payload", dataObjectPayloadTextBox.Text, "DataObject initial payload");
+        AssertEqual(ApplicationCommands.SelectAll, selectAllPayloadButton.Command, "DataObject payload SelectAll command");
+        AssertEqual(dataObjectPayloadTextBox, selectAllPayloadButton.CommandTarget, "DataObject payload SelectAll target");
         AssertEqual("DataObject idle", dataObjectStatusText.Text, "DataObject initial status");
 
         passwordBox.Password = "mvp-secret";
@@ -4669,6 +4664,10 @@ internal static class MvpSelfTest
             "editor RichTextBox ToggleBold restored weight");
 
         dataObjectPayloadTextBox.Text = "mvp data object";
+        dataObjectPayloadTextBox.Select(3, 4);
+        ApplicationCommands.SelectAll.Execute(null, dataObjectPayloadTextBox);
+        AssertEqual(0, dataObjectPayloadTextBox.SelectionStart, "DataObject payload SelectAll selection start");
+        AssertEqual(dataObjectPayloadTextBox.Text.Length, dataObjectPayloadTextBox.SelectionLength, "DataObject payload SelectAll selection length");
         dataObjectRoundTripButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, dataObjectRoundTripButton));
         DrainDispatcher(window);
         AssertEqual(1, window.DataObjectRoundTripCount, "DataObject round-trip count");

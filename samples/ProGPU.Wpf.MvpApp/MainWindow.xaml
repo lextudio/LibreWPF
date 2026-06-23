@@ -1648,13 +1648,15 @@
                         <Button
                             x:Name="BackNavigationButton"
                             Margin="0,12,0,0"
-                            Content="Back"
-                            Click="OnBackNavigationClick" />
+                            Command="NavigationCommands.BrowseBack"
+                            CommandTarget="{Binding ElementName=NavigationFrame}"
+                            Content="Back" />
                         <Button
                             x:Name="ForwardNavigationButton"
                             Margin="0,6,0,0"
-                            Content="Forward"
-                            Click="OnForwardNavigationClick" />
+                            Command="NavigationCommands.BrowseForward"
+                            CommandTarget="{Binding ElementName=NavigationFrame}"
+                            Content="Forward" />
                     </StackPanel>
                 </Grid>
             </TabItem>
@@ -1692,6 +1694,12 @@
                             Margin="0,10,0,0"
                             Click="OnDataObjectRoundTripClick"
                             Content="Round-trip DataObject" />
+                        <Button
+                            x:Name="SelectAllPayloadButton"
+                            Margin="0,6,0,0"
+                            Command="ApplicationCommands.SelectAll"
+                            CommandTarget="{Binding ElementName=DataObjectPayloadTextBox}"
+                            Content="Select all payload" />
                         <TextBlock
                             x:Name="DataObjectStatusText"
                             Margin="0,8,0,0"

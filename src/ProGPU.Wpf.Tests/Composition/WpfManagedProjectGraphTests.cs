@@ -6180,6 +6180,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"NavigationFrame\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Source=\"OverviewPage.xaml\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"OnDetailsNavigationClick\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<TabItem Header=\"Editing\">", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"EditorPasswordBox\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("MaxLength=\"16\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("PasswordChanged=\"OnEditorPasswordChanged\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("PasswordChar=\"*\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"EditorRichTextBox\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<FlowDocument PagePadding=\"6\">", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<Run Text=\"Editable plain text\" />", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<Bold>", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<Run Text=\"bold text\" />", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("TextBox", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ListBox", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DataGrid", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6199,6 +6209,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("MvpActiveTextConverter : IValueConverter", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MvpItemSummaryConverter : IMultiValueConverter", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MvpItemTemplateSelector : DataTemplateSelector", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("using System.Windows.Documents;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("internal int EditorPasswordChangedCount", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("OnEditorPasswordChanged", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnRefreshStatusCommandCanExecute", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnRefreshStatusCommandExecuted", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("CommandStatusText", mvpMainWindowCodeBehind, StringComparison.Ordinal);
@@ -6254,6 +6267,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("app Button implicit style target type", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("NavigationFrame.Navigate(new Uri(\"DetailsPage.xaml\", UriKind.Relative))", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateNavigation(window, navigationFrame, detailsNavigationButton)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateEditor(window, editorPasswordBox, editorRichTextBox)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("editor PasswordBox secure password length", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("new TextRange(document.ContentStart, document.ContentEnd).Text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("EditingCommands.ToggleBold.Execute(null, richTextBox)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("editor RichTextBox ToggleBold applied weight", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("summary updated progress text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GetColumnBindingPath", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GetTemplateItemsSourcePath", mvpMainWindowCodeBehind, StringComparison.Ordinal);

@@ -718,6 +718,63 @@
                 </Grid>
             </TabItem>
 
+            <TabItem Header="Editing">
+                <Grid Margin="0,14,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock
+                            Margin="0,0,0,8"
+                            FontWeight="SemiBold"
+                            Text="Password entry" />
+                        <PasswordBox
+                            x:Name="EditorPasswordBox"
+                            MaxLength="16"
+                            PasswordChanged="OnEditorPasswordChanged"
+                            PasswordChar="*" />
+                    </StackPanel>
+
+                    <RichTextBox
+                        x:Name="EditorRichTextBox"
+                        Grid.Row="1"
+                        Margin="0,16,0,0">
+                        <FlowDocument PagePadding="6">
+                            <Paragraph>
+                                <Run Text="Editable plain text" />
+                                <Bold>
+                                    <Run Text="bold text" />
+                                </Bold>
+                            </Paragraph>
+                        </FlowDocument>
+                    </RichTextBox>
+
+                    <Border
+                        Grid.Column="1"
+                        Grid.RowSpan="2"
+                        Margin="18,0,0,0"
+                        Padding="12"
+                        Background="{DynamicResource MvpPanelBrush}">
+                        <StackPanel>
+                            <TextBlock
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Text="Text editing" />
+                            <TextBlock
+                                Margin="0,8,0,0"
+                                TextWrapping="Wrap"
+                                Text="This tab uses WPF PasswordBox, RichTextBox, FlowDocument, TextRange, and EditingCommands through SDK-built BAML." />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+
             <TabItem Header="Document">
                 <FlowDocumentScrollViewer Margin="0,14,0,0">
                     <FlowDocument PagePadding="12">

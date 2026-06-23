@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -19,6 +20,8 @@ public partial class MainWindow : Window
 {
     public static readonly RoutedUICommand RefreshStatusCommand =
         new("Refresh status", nameof(RefreshStatusCommand), typeof(MainWindow));
+
+    internal int EditorPasswordChangedCount { get; private set; }
 
     public MainWindow()
     {
@@ -90,6 +93,11 @@ public partial class MainWindow : Window
                 ? "Group committed"
                 : "Group has validation errors";
         }
+    }
+
+    private void OnEditorPasswordChanged(object sender, RoutedEventArgs e)
+    {
+        EditorPasswordChangedCount++;
     }
 }
 
@@ -561,6 +569,12 @@ internal static class MvpSelfTest
         var detailsNavigationButton = Require<Button>(
             window.FindName("DetailsNavigationButton"),
             "details navigation Button");
+        var editorPasswordBox = Require<PasswordBox>(
+            window.FindName("EditorPasswordBox"),
+            "editor PasswordBox");
+        var editorRichTextBox = Require<RichTextBox>(
+            window.FindName("EditorRichTextBox"),
+            "editor RichTextBox");
         Require<CheckBox>(window.FindName("EnabledCheckBox"), "enabled CheckBox");
         Require<Slider>(window.FindName("ProgressSlider"), "progress Slider");
         Require<ComboBox>(window.FindName("CategoryCombo"), "category ComboBox");
@@ -629,6 +643,7 @@ internal static class MvpSelfTest
         AssertEqual("Alpha / Framework / 35%", selectedItemSummaryText.Text, "initial selected summary text");
         ValidateItemsContextMenu(window, viewModel, itemsList);
         ValidateNavigation(window, navigationFrame, detailsNavigationButton);
+        ValidateEditor(window, editorPasswordBox, editorRichTextBox);
 
         AssertEqual(true, MainWindow.RefreshStatusCommand.CanExecute(null, window), "refresh command initial CanExecute state");
         MainWindow.RefreshStatusCommand.Execute(null, window);
@@ -1174,6 +1189,50 @@ internal static class MvpSelfTest
         AssertEqual(true, frame.CanGoBack, "navigation frame back stack state");
     }
 
+    private static void ValidateEditor(MainWindow window, PasswordBox passwordBox, RichTextBox richTextBox)
+    {
+        AssertEqual(16, passwordBox.MaxLength, "editor PasswordBox max length");
+        AssertEqual('*', passwordBox.PasswordChar, "editor PasswordBox password char");
+        AssertEqual(0, window.EditorPasswordChangedCount, "editor PasswordBox initial changed count");
+
+        passwordBox.Password = "mvp-secret";
+        DrainDispatcher(window);
+        AssertEqual("mvp-secret", passwordBox.Password, "editor PasswordBox password");
+        AssertEqual(10, passwordBox.SecurePassword.Length, "editor PasswordBox secure password length");
+        AssertEqual(1, window.EditorPasswordChangedCount, "editor PasswordBox changed count");
+
+        passwordBox.Clear();
+        DrainDispatcher(window);
+        AssertEqual(string.Empty, passwordBox.Password, "editor PasswordBox cleared password");
+        AssertEqual(2, window.EditorPasswordChangedCount, "editor PasswordBox clear changed count");
+
+        var document = Require<FlowDocument>(richTextBox.Document, "editor FlowDocument");
+        AssertEqual(new Thickness(6), document.PagePadding, "editor FlowDocument page padding");
+        var paragraph = Require<Paragraph>(document.Blocks.FirstBlock, "editor document paragraph");
+        var plainRun = FindDirectRun(paragraph, "Editable plain text", "editor plain Run");
+        var bold = FindDirectBold(paragraph, "editor Bold inline");
+        var boldRun = Require<Run>(bold.Inlines.FirstInline, "editor bold Run");
+
+        AssertEqual("Editable plain text", plainRun.Text, "editor plain Run text");
+        AssertEqual("bold text", boldRun.Text, "editor bold Run text");
+        var documentText = new TextRange(document.ContentStart, document.ContentEnd).Text;
+        AssertContains("Editable plain text", documentText, "editor FlowDocument TextRange plain text");
+        AssertContains("bold text", documentText, "editor FlowDocument TextRange bold text");
+
+        richTextBox.Selection.Select(plainRun.ContentStart, plainRun.ContentEnd);
+        AssertEqual(true, EditingCommands.ToggleBold.CanExecute(null, richTextBox), "editor RichTextBox ToggleBold CanExecute");
+        EditingCommands.ToggleBold.Execute(null, richTextBox);
+        AssertEqual(
+            FontWeights.Bold,
+            richTextBox.Selection.GetPropertyValue(TextElement.FontWeightProperty),
+            "editor RichTextBox ToggleBold applied weight");
+        EditingCommands.ToggleBold.Execute(null, richTextBox);
+        AssertEqual(
+            FontWeights.Normal,
+            richTextBox.Selection.GetPropertyValue(TextElement.FontWeightProperty),
+            "editor RichTextBox ToggleBold restored weight");
+    }
+
     private static void DrainDispatcher(DispatcherObject dispatcherObject)
     {
         dispatcherObject.Dispatcher.Invoke(
@@ -1184,6 +1243,32 @@ internal static class MvpSelfTest
     private static void UpdateBinding(DependencyObject target, DependencyProperty property)
     {
         BindingOperations.GetBindingExpression(target, property)?.UpdateTarget();
+    }
+
+    private static Run FindDirectRun(Paragraph paragraph, string text, string description)
+    {
+        foreach (Inline inline in paragraph.Inlines)
+        {
+            if (inline is Run run && run.Text == text)
+            {
+                return run;
+            }
+        }
+
+        throw new InvalidOperationException($"Expected {description}.");
+    }
+
+    private static Bold FindDirectBold(Paragraph paragraph, string description)
+    {
+        foreach (Inline inline in paragraph.Inlines)
+        {
+            if (inline is Bold bold)
+            {
+                return bold;
+            }
+        }
+
+        throw new InvalidOperationException($"Expected {description}.");
     }
 
     private static T Require<T>(object? value, string description)
@@ -1199,6 +1284,15 @@ internal static class MvpSelfTest
         {
             throw new InvalidOperationException(
                 $"Expected {description} to be '{expected}', but found '{actual}'.");
+        }
+    }
+
+    private static void AssertContains(string expectedText, string actualText, string description)
+    {
+        if (!actualText.Contains(expectedText, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to contain '{expectedText}', but found '{actualText}'.");
         }
     }
 }

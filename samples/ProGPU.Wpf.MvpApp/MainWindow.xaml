@@ -1461,6 +1461,28 @@
                                 x:Name="BindingGroupLastEchoText"
                                 Text="{Binding BindingGroupLastName, StringFormat=Last: {0}}" />
                         </StackPanel>
+                        <Separator Margin="0,18,0,14" />
+                        <TextBlock
+                            Margin="0,0,0,8"
+                            FontWeight="SemiBold"
+                            Text="Adorner layer" />
+                        <AdornerDecorator
+                            x:Name="MvpAdornerDecorator"
+                            Margin="0,0,0,0">
+                            <Border
+                                x:Name="MvpAdornerTarget"
+                                MinHeight="38"
+                                Padding="8"
+                                Background="#FFFFFF"
+                                BorderBrush="#94A3B8"
+                                BorderThickness="1">
+                                <TextBlock Text="Adorner target" />
+                            </Border>
+                        </AdornerDecorator>
+                        <TextBlock
+                            x:Name="MvpAdornerStatusText"
+                            Margin="0,8,0,0"
+                            Text="Adorner idle" />
                     </StackPanel>
 
                     <Border

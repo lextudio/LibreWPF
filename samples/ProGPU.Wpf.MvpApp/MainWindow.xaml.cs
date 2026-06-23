@@ -960,6 +960,37 @@ public sealed class MvpTextExtension : MarkupExtension
     }
 }
 
+internal sealed class MvpStatusAdorner : Adorner
+{
+    public MvpStatusAdorner(UIElement adornedElement, string status)
+        : base(adornedElement)
+    {
+        Status = status;
+        IsHitTestVisible = false;
+    }
+
+    public string Status { get; }
+
+    protected override void OnRender(DrawingContext drawingContext)
+    {
+        var size = AdornedElement.RenderSize;
+        if (size.Width <= 0 || size.Height <= 0)
+        {
+            return;
+        }
+
+        var rect = new Rect(size);
+        var pen = new Pen(Brushes.DodgerBlue, 2);
+        drawingContext.DrawRectangle(null, pen, rect);
+        drawingContext.DrawEllipse(
+            Brushes.DodgerBlue,
+            null,
+            new Point(rect.Right, rect.Top),
+            4,
+            4);
+    }
+}
+
 internal static class MvpSelfTest
 {
     public static void Validate(MainWindow window, bool expectLoadedStoryboardApplied = false)
@@ -1361,6 +1392,15 @@ internal static class MvpSelfTest
         var bindingGroupLastEchoText = Require<TextBlock>(
             window.FindName("BindingGroupLastEchoText"),
             "BindingGroup last echo TextBlock");
+        var mvpAdornerDecorator = Require<AdornerDecorator>(
+            window.FindName("MvpAdornerDecorator"),
+            "MVP AdornerDecorator");
+        var mvpAdornerTarget = Require<Border>(
+            window.FindName("MvpAdornerTarget"),
+            "MVP adorner target Border");
+        var mvpAdornerStatusText = Require<TextBlock>(
+            window.FindName("MvpAdornerStatusText"),
+            "MVP adorner status TextBlock");
         var loadedStoryboardText = Require<TextBlock>(
             window.FindName("LoadedStoryboardText"),
             "loaded storyboard TextBlock");
@@ -1527,6 +1567,11 @@ internal static class MvpSelfTest
             bindingGroupStatusText,
             bindingGroupFirstEchoText,
             bindingGroupLastEchoText);
+        ValidateAdornerLayer(
+            window,
+            mvpAdornerDecorator,
+            mvpAdornerTarget,
+            mvpAdornerStatusText);
         ValidateStoryboards(window, loadedStoryboardText, clickStoryboardButton, expectLoadedStoryboardApplied);
         ValidateNativeEffects(dropShadowEffectBorder, blurEffectBorder);
         AssertEqual(viewModel.Nodes, nodesTreeView.ItemsSource, "TreeView items source");
@@ -3633,6 +3678,40 @@ internal static class MvpSelfTest
         AssertEqual("Group committed", statusText.Text, "BindingGroup accepted status");
         AssertEqual("First: group: Grace", firstEchoText.Text, "BindingGroup first accepted echo");
         AssertEqual("Last: group: Hopper", lastEchoText.Text, "BindingGroup last accepted echo");
+    }
+
+    private static void ValidateAdornerLayer(
+        Window window,
+        AdornerDecorator decorator,
+        Border target,
+        TextBlock statusText)
+    {
+        var targetText = Require<TextBlock>(target.Child, "MVP adorner target TextBlock");
+        AssertEqual("Adorner target", targetText.Text, "MVP adorner target text");
+        AssertEqual("Adorner idle", statusText.Text, "MVP adorner initial status");
+
+        var layer = Require<AdornerLayer>(
+            AdornerLayer.GetAdornerLayer(target),
+            "MVP AdornerLayer");
+        AssertEqual(layer, decorator.AdornerLayer, "MVP AdornerDecorator layer");
+        AssertEqual(null, layer.GetAdorners(target), "MVP initial adorner collection");
+
+        var adorner = new MvpStatusAdorner(target, "managed adorner active");
+        layer.Add(adorner);
+        DrainDispatcher(window);
+
+        var adorners = layer.GetAdorners(target)
+            ?? throw new InvalidOperationException("Expected MVP target adorners after Add.");
+        AssertEqual(1, adorners.Length, "MVP adorner count after Add");
+        AssertEqual(adorner, adorners[0], "MVP attached adorner instance");
+        AssertEqual(target, adorner.AdornedElement, "MVP adorner adorned element");
+        AssertEqual("managed adorner active", adorner.Status, "MVP adorner status");
+        statusText.Text = $"Adorners: {adorners.Length}";
+
+        layer.Remove(adorner);
+        DrainDispatcher(window);
+        AssertEqual(null, layer.GetAdorners(target), "MVP adorner collection after Remove");
+        AssertEqual("Adorners: 1", statusText.Text, "MVP adorner status after Add");
     }
 
     private static void ValidateStoryboards(

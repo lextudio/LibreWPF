@@ -4018,6 +4018,9 @@ internal static class Program
                     ExternalStartupEventCount++;
                     ExternalStartupArgumentCount = e.Args.Length;
                     ExternalStartupArguments = e.Args;
+                    Properties["ExternalStartupArgumentCount"] = e.Args.Length;
+                    Properties["ExternalStartupFirstArgument"] = e.Args.Length > 0 ? e.Args[0] : string.Empty;
+                    Properties["ExternalStartupState"] = "External SDK startup state";
                     Resources["ExternalStartupText"] = "External SDK startup resource";
                     Resources["ExternalStartupBrush"] = new SolidColorBrush(Color.FromRgb(0x17, 0x62, 0x83));
                 }
@@ -4227,6 +4230,9 @@ internal static class Program
                     AssertEqual(2, App.ExternalStartupArgumentCount, "external SDK application startup argument count");
                     AssertEqual("external-startup-alpha", App.ExternalStartupArguments[0], "external SDK application startup first argument");
                     AssertEqual("external startup beta", App.ExternalStartupArguments[1], "external SDK application startup second argument");
+                    AssertEqual(2, app.Properties["ExternalStartupArgumentCount"], "external SDK application startup argument count property");
+                    AssertEqual("external-startup-alpha", app.Properties["ExternalStartupFirstArgument"], "external SDK application startup first argument property");
+                    AssertEqual("External SDK startup state", app.Properties["ExternalStartupState"], "external SDK application startup state property");
                     AssertEqual(ShutdownMode.OnLastWindowClose, app.ShutdownMode, "external SDK application shutdown mode");
 
                     var window = RequireType<MainWindow>(

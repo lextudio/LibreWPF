@@ -7883,8 +7883,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"external-startup-alpha\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"external startup beta\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalStartupArguments = e.Args", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Properties[\"ExternalStartupArgumentCount\"]", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Properties[\"ExternalStartupFirstArgument\"]", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Properties[\"ExternalStartupState\"]", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK application startup first argument", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK application startup second argument", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK application startup state property", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("External SDK Application.Run validation succeeded.", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertContains(locText, \"ExternalLocalizationRoot\",", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertContains(locText, \"ExternalLocalizationText\",", externalSdkHarnessProgram, StringComparison.Ordinal);

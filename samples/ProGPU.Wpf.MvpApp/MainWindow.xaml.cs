@@ -275,10 +275,15 @@ internal static class MvpSelfTest
             "app merged theme ResourceDictionary");
         AssertEqual(true, themeResources.Contains("MvpPanelBrush"), "app theme panel brush key");
         AssertEqual(true, themeResources.Contains(typeof(Button)), "app theme implicit Button style key");
+        AssertEqual(true, themeResources.Contains("SelectedItemTemplate"), "app theme selected item template key");
         var panelBrush = Require<SolidColorBrush>(window.FindResource("MvpPanelBrush"), "MVP panel brush");
         var buttonStyle = Require<Style>(application.TryFindResource(typeof(Button)), "app Button style");
+        var selectedItemTemplate = Require<DataTemplate>(
+            application.TryFindResource("SelectedItemTemplate"),
+            "selected item DataTemplate");
         AssertEqual(Color.FromRgb(0xF4, 0xF7, 0xFB), panelBrush.Color, "MVP panel brush color");
         AssertEqual(typeof(Button), buttonStyle.TargetType, "app Button implicit style target type");
+        AssertEqual(typeof(MvpItem), selectedItemTemplate.DataType, "selected item template data type");
         var mainMenu = Require<Menu>(window.FindName("MainMenu"), "main Menu");
         var fileMenuItem = Require<MenuItem>(window.FindName("FileMenuItem"), "file MenuItem");
         var viewMenuItem = Require<MenuItem>(window.FindName("ViewMenuItem"), "view MenuItem");
@@ -294,6 +299,9 @@ internal static class MvpSelfTest
         Require<TextBox>(window.FindName("NameTextBox"), "name TextBox");
         Require<ListBox>(window.FindName("ItemsList"), "items ListBox");
         var itemsDataGrid = Require<DataGrid>(window.FindName("ItemsDataGrid"), "items DataGrid");
+        var selectedItemContent = Require<ContentControl>(
+            window.FindName("SelectedItemContent"),
+            "selected item ContentControl");
         var summaryPanel = Require<SummaryPanel>(window.FindName("SummaryPanel"), "summary Panel");
         var summaryNameText = Require<TextBlock>(
             summaryPanel.FindName("SummaryNameText"),
@@ -334,6 +342,12 @@ internal static class MvpSelfTest
         AssertEqual("Name", GetColumnBindingPath(itemsDataGrid.Columns[0]), "DataGrid name column binding");
         AssertEqual("Category", GetColumnBindingPath(itemsDataGrid.Columns[1]), "DataGrid category column binding");
         AssertEqual("IsActive", GetColumnBindingPath(itemsDataGrid.Columns[2]), "DataGrid active column binding");
+        AssertEqual(viewModel.SelectedItem, selectedItemContent.Content, "selected item content");
+        AssertEqual(
+            selectedItemTemplate,
+            selectedItemContent.ContentTemplate,
+            "selected item content template");
+        ValidateSelectedItemTemplate(selectedItemTemplate);
         AssertEqual(viewModel.Nodes, nodesTreeView.ItemsSource, "TreeView items source");
         AssertEqual(2, viewModel.Nodes.Count, "TreeView root node count");
         AssertEqual("Startup", viewModel.Nodes[0].Children[0].Name, "TreeView first child node");
@@ -383,6 +397,32 @@ internal static class MvpSelfTest
         return column is DataGridBoundColumn { Binding: Binding binding }
             ? binding.Path.Path
             : throw new InvalidOperationException($"Expected {column.Header} column to have a Binding.");
+    }
+
+    private static void ValidateSelectedItemTemplate(DataTemplate template)
+    {
+        var root = Require<FrameworkElement>(
+            template.LoadContent(),
+            "selected item template root");
+        var nameText = Require<TextBlock>(
+            root.FindName("TemplateNameText"),
+            "selected item template name TextBlock");
+        var categoryText = Require<TextBlock>(
+            root.FindName("TemplateCategoryText"),
+            "selected item template category TextBlock");
+        var activeText = Require<TextBlock>(
+            root.FindName("TemplateActiveText"),
+            "selected item template active TextBlock");
+
+        AssertEqual("Name", GetTextBindingPath(nameText), "selected item template name binding path");
+        AssertEqual("Category", GetTextBindingPath(categoryText), "selected item template category binding path");
+        AssertEqual("IsActive", GetTextBindingPath(activeText), "selected item template active binding path");
+    }
+
+    private static string GetTextBindingPath(TextBlock textBlock)
+    {
+        return BindingOperations.GetBinding(textBlock, TextBlock.TextProperty)?.Path.Path
+            ?? throw new InvalidOperationException($"Expected {textBlock.Name} text to have a Binding.");
     }
 
     private static string GetTemplateItemsSourcePath(HierarchicalDataTemplate template)

@@ -1,8 +1,36 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:ProGPU.Wpf.MvpApp">
     <SolidColorBrush x:Key="MvpAccentBrush" Color="#246BFE" />
     <SolidColorBrush x:Key="MvpPanelBrush" Color="#F4F7FB" />
+
+    <DataTemplate
+        x:Key="SelectedItemTemplate"
+        DataType="{x:Type local:MvpItem}">
+        <Border
+            Padding="12"
+            Background="{DynamicResource MvpPanelBrush}">
+            <StackPanel>
+                <TextBlock
+                    FontSize="16"
+                    FontWeight="SemiBold"
+                    Text="Selected item template" />
+                <TextBlock
+                    x:Name="TemplateNameText"
+                    Margin="0,8,0,0"
+                    Text="{Binding Name, StringFormat=Name: {0}}" />
+                <TextBlock
+                    x:Name="TemplateCategoryText"
+                    Margin="0,4,0,0"
+                    Text="{Binding Category, StringFormat=Category: {0}}" />
+                <TextBlock
+                    x:Name="TemplateActiveText"
+                    Margin="0,4,0,0"
+                    Text="{Binding IsActive, StringFormat=Active: {0}}" />
+            </StackPanel>
+        </Border>
+    </DataTemplate>
 
     <Style TargetType="{x:Type Button}">
         <Setter Property="MinWidth" Value="104" />

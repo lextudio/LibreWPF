@@ -5761,6 +5761,12 @@ namespace System.Windows
             // SizeToContent is not allowed
             VerifyApiSupported();
 
+            if (IsPortableWindowActive)
+            {
+                RefreshPortableRootVisualState();
+                return;
+            }
+
             // Update HwndSource's SizeToContent.
             // HwndSource will only update layout if the value has changed.
             //
@@ -7106,6 +7112,36 @@ namespace System.Windows
             return new Size(ToNonNegativeFiniteSize(width), ToNonNegativeFiniteSize(height));
         }
 
+        private Size GetPortableMeasureSizeInMeasureUnits(Size windowSize)
+        {
+            SizeToContent sizeToContent = SizeToContent;
+            double width = ((sizeToContent == SizeToContent.Width) || (sizeToContent == SizeToContent.WidthAndHeight))
+                ? Double.PositiveInfinity
+                : windowSize.Width;
+            double height = ((sizeToContent == SizeToContent.Height) || (sizeToContent == SizeToContent.WidthAndHeight))
+                ? Double.PositiveInfinity
+                : windowSize.Height;
+
+            return new Size(width, height);
+        }
+
+        private Size GetPortableArrangeSizeInMeasureUnits(Size measuredSize, Size fallbackSize)
+        {
+            SizeToContent sizeToContent = SizeToContent;
+            double width = ((sizeToContent == SizeToContent.Width) || (sizeToContent == SizeToContent.WidthAndHeight))
+                ? measuredSize.Width
+                : fallbackSize.Width;
+            double height = ((sizeToContent == SizeToContent.Height) || (sizeToContent == SizeToContent.WidthAndHeight))
+                ? measuredSize.Height
+                : fallbackSize.Height;
+
+            WindowMinMax minMax = GetWindowMinMax();
+            width = Math.Max(minMax.minWidth, Math.Min(ToNonNegativeFiniteSize(width), minMax.maxWidth));
+            height = Math.Max(minMax.minHeight, Math.Min(ToNonNegativeFiniteSize(height), minMax.maxHeight));
+
+            return new Size(width, height);
+        }
+
         private static double ToNonNegativeFiniteSize(double value)
         {
             return double.IsNaN(value) || double.IsInfinity(value)
@@ -7125,10 +7161,16 @@ namespace System.Windows
             InvalidateMeasure();
             InvalidateArrange();
             Size windowSize = GetWindowSizeInMeasureUnits();
-            if (!DoubleUtil.IsZero(windowSize.Width) || !DoubleUtil.IsZero(windowSize.Height))
+            Size measureSize = GetPortableMeasureSizeInMeasureUnits(windowSize);
+            if (!DoubleUtil.IsZero(measureSize.Width) || !DoubleUtil.IsZero(measureSize.Height))
             {
-                Measure(windowSize);
-                Arrange(new Rect(windowSize));
+                Measure(measureSize);
+                Size arrangeSize = GetPortableArrangeSizeInMeasureUnits(DesiredSize, windowSize);
+                Arrange(new Rect(arrangeSize));
+                if (SizeToContent != SizeToContent.Manual)
+                {
+                    PortableWindowActivationService.SetClientSize(_portableWindowActivation, arrangeSize.Width, arrangeSize.Height);
+                }
             }
 
             UpdateLayout();

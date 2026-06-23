@@ -4263,6 +4263,46 @@ internal static class Program
                     AssertEqual(true, ApplicationContainsWindow(app, window), "external SDK application windows keeps main window after secondary close");
                     AssertEqual(0, App.ExternalExitEventCount, "external SDK application exit count before main close");
 
+                    var sizeToContentWindow = new Window
+                    {
+                        Title = "External SDK size-to-content window",
+                        SizeToContent = SizeToContent.WidthAndHeight,
+                        Content = new Border
+                        {
+                            Width = 132.0,
+                            Height = 74.0,
+                            Child = new TextBlock { Text = "External sized content" }
+                        }
+                    };
+                    int sizeToContentClosingCount = 0;
+                    int sizeToContentClosedCount = 0;
+                    sizeToContentWindow.Closing += (_, e) =>
+                    {
+                        sizeToContentClosingCount++;
+                        AssertEqual(false, e.Cancel, "external SDK size-to-content window Closing cancel state");
+                    };
+                    sizeToContentWindow.Closed += (_, _) => sizeToContentClosedCount++;
+
+                    sizeToContentWindow.Show();
+                    DrainDispatcher();
+                    sizeToContentWindow.UpdateLayout();
+
+                    AssertEqual(true, sizeToContentWindow.IsVisible, "external SDK size-to-content window visibility after show");
+                    AssertEqual(true, ApplicationContainsWindow(app, sizeToContentWindow), "external SDK application windows contains size-to-content window");
+                    AssertClose(132.0, sizeToContentWindow.ActualWidth, "external SDK size-to-content window ActualWidth");
+                    AssertClose(74.0, sizeToContentWindow.ActualHeight, "external SDK size-to-content window ActualHeight");
+                    AssertClose(132.0, GetPortableHostDouble(sizeToContentWindow, "Width"), "external SDK size-to-content portable host width");
+                    AssertClose(74.0, GetPortableHostDouble(sizeToContentWindow, "Height"), "external SDK size-to-content portable host height");
+
+                    sizeToContentWindow.Close();
+                    DrainDispatcher();
+
+                    AssertEqual(1, sizeToContentClosingCount, "external SDK size-to-content window Closing count");
+                    AssertEqual(1, sizeToContentClosedCount, "external SDK size-to-content window Closed count");
+                    AssertEqual(false, sizeToContentWindow.IsVisible, "external SDK size-to-content window visibility after close");
+                    AssertEqual(false, ApplicationContainsWindow(app, sizeToContentWindow), "external SDK application windows excludes size-to-content window");
+                    AssertEqual(true, ApplicationContainsWindow(app, window), "external SDK application windows keeps main window after size-to-content close");
+
                     var ownedWindow = new Window
                     {
                         Title = "External SDK owned window",
@@ -4354,6 +4394,26 @@ internal static class Program
                     AssertEqual(false, ownedClosingCancelBefore, "external SDK owned window Closing initial cancel state");
                     AssertEqual(true, ownedClosingCancelAfter, "external SDK owned window Closing attempted cancel state");
                     AssertEqual(false, ownedWindow.IsVisible, "external SDK owned window visibility after owner close");
+                }
+
+                private static double GetPortableHostDouble(Window window, string propertyName)
+                {
+                    var activationProperty = typeof(Window).GetProperty(
+                        "PortableWindowActivation",
+                        BindingFlags.Instance | BindingFlags.NonPublic);
+                    object activation = activationProperty?.GetValue(window)
+                        ?? throw new InvalidOperationException($"Expected {window.Title} to have a portable activation.");
+                    var hostProperty = activation.GetType().GetProperty(
+                        "Host",
+                        BindingFlags.Instance | BindingFlags.Public);
+                    object host = hostProperty?.GetValue(activation)
+                        ?? throw new InvalidOperationException($"Expected {window.Title} portable activation to expose a host.");
+                    var valueProperty = host.GetType().GetProperty(
+                        propertyName,
+                        BindingFlags.Instance | BindingFlags.Public);
+                    object value = valueProperty?.GetValue(host)
+                        ?? throw new InvalidOperationException($"Expected {window.Title} portable host to expose {propertyName}.");
+                    return Convert.ToDouble(value, CultureInfo.InvariantCulture);
                 }
 
                 private static bool ApplicationContainsWindow(App app, Window window)

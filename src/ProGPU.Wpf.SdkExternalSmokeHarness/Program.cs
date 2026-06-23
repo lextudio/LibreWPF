@@ -14,6 +14,7 @@ using System.Security.Cryptography;
 
 internal static class Program
 {
+    private const string OriginalWpfSdk = "Microsoft.NET.Sdk";
     private const string SdkVersion = "11.0.0-dev";
     private const string ExternalAppTargetFramework = "net11.0-windows";
     private const string AppAssemblyName = "ExternalSdkApp";
@@ -415,14 +416,16 @@ internal static class Program
 
         WriteFile(
             Path.Combine(libraryRoot, LibraryAssemblyName + ".csproj"),
-            $"""
-            <Project Sdk="ProGPU.Wpf.Sdk/{SdkVersion}">
+            SwitchWpfSdkOnly(
+                $"""
+            <Project Sdk="{OriginalWpfSdk}">
               <PropertyGroup>
                 <TargetFramework>{ExternalAppTargetFramework}</TargetFramework>
                 <UseWPF>true</UseWPF>
               </PropertyGroup>
             </Project>
-            """);
+            """,
+                "external SDK library"));
 
         WriteFile(
             Path.Combine(libraryRoot, "Properties", "AssemblyInfo.cs"),
@@ -548,8 +551,9 @@ internal static class Program
         string appProjectPath = Path.Combine(appRoot, AppAssemblyName + ".csproj");
         WriteFile(
             appProjectPath,
-            $"""
-            <Project Sdk="ProGPU.Wpf.Sdk/{SdkVersion}">
+            SwitchWpfSdkOnly(
+                $"""
+            <Project Sdk="{OriginalWpfSdk}">
               <PropertyGroup>
                 <OutputType>WinExe</OutputType>
                 <TargetFramework>{ExternalAppTargetFramework}</TargetFramework>
@@ -563,7 +567,8 @@ internal static class Program
                 <SplashScreen Include="Assets/ExternalSplash.png" />
               </ItemGroup>
             </Project>
-            """);
+            """,
+                "external SDK app"));
 
         WriteFile(
             Path.Combine(appRoot, "Assets", "ExternalResource.txt"),
@@ -11518,15 +11523,17 @@ internal static class Program
         string localizationProjectPath = Path.Combine(localizationRoot, LocalizationAssemblyName + ".csproj");
         WriteFile(
             localizationProjectPath,
-            $"""
-            <Project Sdk="ProGPU.Wpf.Sdk/{SdkVersion}">
+            SwitchWpfSdkOnly(
+                $"""
+            <Project Sdk="{OriginalWpfSdk}">
               <PropertyGroup>
                 <TargetFramework>{ExternalAppTargetFramework}</TargetFramework>
                 <UseWPF>true</UseWPF>
                 <LocalizationDirectivesToLocFile>All</LocalizationDirectivesToLocFile>
               </PropertyGroup>
             </Project>
-            """);
+            """,
+                "external SDK localization app"));
 
         WriteFile(
             Path.Combine(localizationRoot, "LocalizedView.xaml"),
@@ -11555,6 +11562,7 @@ internal static class Program
         string localizationProject = File.ReadAllText(Path.Combine(workRoot, LocalizationAssemblyName, LocalizationAssemblyName + ".csproj"));
 
         AssertContains(appProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external app SDK");
+        AssertDoesNotContain(appProject, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external app original SDK");
         AssertContains(appProject, "<OutputType>WinExe</OutputType>", "external app output type");
         AssertContains(appProject, $"<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", "external app Windows target framework");
         AssertContains(appProject, "<UseWPF>true</UseWPF>", "external app WPF property");
@@ -11563,9 +11571,11 @@ internal static class Program
         AssertContains(appProject, "<Resource Include=\"Assets/ExternalImage.png\" />", "external app WPF image resource item");
         AssertContains(appProject, "<SplashScreen Include=\"Assets/ExternalSplash.png\" />", "external app WPF splash item");
         AssertContains(libraryProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external library SDK");
+        AssertDoesNotContain(libraryProject, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external library original SDK");
         AssertContains(libraryProject, $"<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", "external library Windows target framework");
         AssertContains(libraryProject, "<UseWPF>true</UseWPF>", "external library WPF property");
         AssertContains(localizationProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external localization SDK");
+        AssertDoesNotContain(localizationProject, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external localization original SDK");
         AssertContains(localizationProject, $"<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", "external localization Windows target framework");
         AssertContains(localizationProject, "<UseWPF>true</UseWPF>", "external localization WPF property");
         AssertContains(localizationProject, "<LocalizationDirectivesToLocFile>All</LocalizationDirectivesToLocFile>", "external localization directive output");
@@ -11595,6 +11605,24 @@ internal static class Program
         {
             throw new InvalidOperationException("External SDK smoke must not rely on generated Directory.Build.props or Directory.Build.targets files.");
         }
+    }
+
+    private static string SwitchWpfSdkOnly(string normalWpfProject, string description)
+    {
+        string originalSdk = $"<Project Sdk=\"{OriginalWpfSdk}\">";
+        string proGpuSdk = $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">";
+
+        AssertContains(normalWpfProject, originalSdk, $"{description} original WPF SDK");
+        string switchedProject = normalWpfProject.Replace(originalSdk, proGpuSdk, StringComparison.Ordinal);
+        string revertedProject = switchedProject.Replace(proGpuSdk, originalSdk, StringComparison.Ordinal);
+
+        if (!string.Equals(normalWpfProject, revertedProject, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"The {description} project changed more than its root SDK during ProGPU SDK switching.");
+        }
+
+        return switchedProject;
     }
 
     private static void ValidateExternalLocalizationDirectives(string workRoot)

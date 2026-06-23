@@ -7005,8 +7005,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Resource Include=\"Assets/ExternalResource.txt\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Resource Include=\"Assets/ExternalImage.png\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<Content Include=\"Assets/ExternalContent.txt\">", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<TargetPath>Assets/ExternalContent.txt</TargetPath>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Path.Combine(appRoot, \"Assets\", \"ExternalResource.txt\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Path.Combine(appRoot, \"Assets\", \"ExternalImage.png\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Path.Combine(appRoot, \"Assets\", \"ExternalContent.txt\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK copied content output", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ThemeInfo(ResourceDictionaryLocation.None, ResourceDictionaryLocation.SourceAssembly)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalThemedControl : Control", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultStyleKeyProperty.OverrideMetadata", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -583,6 +583,10 @@ internal static class Program
                 <Resource Include="Assets/ExternalResource.txt" />
                 <Resource Include="Assets/ExternalImage.png" />
                 <SplashScreen Include="Assets/ExternalSplash.png" />
+                <Content Include="Assets/ExternalContent.txt">
+                  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+                  <TargetPath>Assets/ExternalContent.txt</TargetPath>
+                </Content>
               </ItemGroup>
             </Project>
             """,
@@ -598,6 +602,9 @@ internal static class Program
         File.WriteAllBytes(
             Path.Combine(appRoot, "Assets", "ExternalSplash.png"),
             Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAE0lEQVR4nGP4z8DwHwwZGP6DAQBJyAn3FGMynQAAAABJRU5ErkJggg=="));
+        WriteFile(
+            Path.Combine(appRoot, "Assets", "ExternalContent.txt"),
+            "External SDK copied content text");
 
         WriteFile(
             Path.Combine(appRoot, "App.xaml"),
@@ -11595,6 +11602,9 @@ internal static class Program
         AssertContains(appProject, "<Resource Include=\"Assets/ExternalResource.txt\" />", "external app WPF resource item");
         AssertContains(appProject, "<Resource Include=\"Assets/ExternalImage.png\" />", "external app WPF image resource item");
         AssertContains(appProject, "<SplashScreen Include=\"Assets/ExternalSplash.png\" />", "external app WPF splash item");
+        AssertContains(appProject, "<Content Include=\"Assets/ExternalContent.txt\">", "external app content item");
+        AssertContains(appProject, "<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>", "external app content output metadata");
+        AssertContains(appProject, "<TargetPath>Assets/ExternalContent.txt</TargetPath>", "external app content target path metadata");
         AssertContains(libraryProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external library SDK");
         AssertDoesNotContain(libraryProject, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external library original SDK");
         AssertContains(libraryProject, $"<AssemblyName>{LibraryOutputAssemblyName}</AssemblyName>", "external library custom assembly name");
@@ -11617,6 +11627,7 @@ internal static class Program
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "Assets", "ExternalResource.txt"), "external SDK app WPF resource source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "Assets", "ExternalImage.png"), "external SDK app WPF image resource source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "Assets", "ExternalSplash.png"), "external SDK app WPF splash source");
+        RequireFile(Path.Combine(workRoot, AppAssemblyName, "Assets", "ExternalContent.txt"), "external SDK app copied content source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalResources.xaml"), "external SDK app merged resource dictionary source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalPage.xaml"), "external SDK app compiled page source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalSecondPage.xaml"), "external SDK app second compiled page source");
@@ -11695,6 +11706,12 @@ internal static class Program
     {
         RequireFile(Path.Combine(outputRoot, AppOutputAssemblyName + ".dll"), "external SDK app assembly");
         RequireFile(Path.Combine(outputRoot, LibraryOutputAssemblyName + ".dll"), "external SDK library assembly");
+        string copiedContentPath = Path.Combine(outputRoot, "Assets", "ExternalContent.txt");
+        RequireFile(copiedContentPath, "external SDK copied content output");
+        AssertEqual(
+            "External SDK copied content text",
+            File.ReadAllText(copiedContentPath),
+            "external SDK copied content output text");
 
         foreach (string assemblyName in s_requiredWpfRuntimeAssemblies
                      .Concat(s_requiredProGpuRuntimeAssemblies)

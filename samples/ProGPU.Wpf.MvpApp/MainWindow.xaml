@@ -373,6 +373,12 @@
                             Margin="0,14,0,0"
                             Command="{Binding ResetCommand}"
                             Content="Reset" />
+                        <Button
+                            x:Name="RequeryCommandButton"
+                            Margin="0,8,0,0"
+                            Command="{Binding RequeryCommand}"
+                            CommandParameter="mvp requery command payload"
+                            Content="Run requery command" />
                         <local:SummaryPanel
                             x:Name="SummaryPanel"
                             Margin="0,18,0,0"

@@ -6198,6 +6198,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Key=\"R\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Modifiers=\"Control\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{Binding AddItemCommand}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"RequeryCommandButton\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{Binding RequeryCommand}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CommandParameter=\"mvp requery command payload\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("InputGestureText=\"Ctrl+N\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"AboutMenuItem\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"OnAboutMenuItemClick\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6458,6 +6461,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("INotifyPropertyChanged", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ICommand", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RoutedUICommand RefreshStatusCommand", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public MvpRequeryCommand RequeryCommand", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class MvpRequeryCommand : ICommand", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("CommandManager.RequerySuggested += value", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("CommandManager.InvalidateRequerySuggested()", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnItemsViewSourceFilter", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnActiveOnlyFilterChanged", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RefreshItemsView", mvpMainWindowCodeBehind, StringComparison.Ordinal);
@@ -6646,6 +6653,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ObservableCollection<MvpNode>", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("addMenuItem.Command.Execute(addMenuItem.CommandParameter)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MainWindow.RefreshStatusCommand.Execute(null, window)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateRequeryCommand(window, viewModel, requeryCommandButton)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("requery command second CanExecuteChanged count", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("refresh command disabled CanExecute state", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("actions menu unchecked view model state", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("app merged theme ResourceDictionary", mvpMainWindowCodeBehind, StringComparison.Ordinal);

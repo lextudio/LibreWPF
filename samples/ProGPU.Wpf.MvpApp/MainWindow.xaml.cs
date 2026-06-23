@@ -319,6 +319,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         _selectedItem = Items[0];
         AddItemCommand = new RelayCommand(AddItem, () => ActionsEnabled);
         ResetCommand = new RelayCommand(Reset);
+        RequeryCommand = new MvpRequeryCommand();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -332,6 +333,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ICommand AddItemCommand { get; }
 
     public ICommand ResetCommand { get; }
+
+    public MvpRequeryCommand RequeryCommand { get; }
 
     public string NewItemName
     {
@@ -544,6 +547,35 @@ public sealed class RelayCommand : ICommand
     }
 }
 
+public sealed class MvpRequeryCommand : ICommand
+{
+    public int CanExecuteProbeCount { get; private set; }
+
+    public int ExecuteCount { get; private set; }
+
+    public bool CanExecuteValue { get; set; }
+
+    public object? LastParameter { get; private set; }
+
+    public event EventHandler? CanExecuteChanged
+    {
+        add => CommandManager.RequerySuggested += value;
+        remove => CommandManager.RequerySuggested -= value;
+    }
+
+    public bool CanExecute(object? parameter)
+    {
+        CanExecuteProbeCount++;
+        return CanExecuteValue;
+    }
+
+    public void Execute(object? parameter)
+    {
+        ExecuteCount++;
+        LastParameter = parameter;
+    }
+}
+
 public sealed class MvpActiveTextConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
@@ -741,6 +773,9 @@ internal static class MvpSelfTest
         var commandStatusText = Require<TextBlock>(
             window.FindName("CommandStatusText"),
             "command status TextBlock");
+        var requeryCommandButton = Require<Button>(
+            window.FindName("RequeryCommandButton"),
+            "requery command Button");
         Require<TextBox>(window.FindName("NameTextBox"), "name TextBox");
         var itemsList = Require<ListBox>(window.FindName("ItemsList"), "items ListBox");
         var itemsDataGrid = Require<DataGrid>(window.FindName("ItemsDataGrid"), "items DataGrid");
@@ -1268,6 +1303,7 @@ internal static class MvpSelfTest
         actionsEnabledMenuItem.IsChecked = true;
         AssertEqual(true, viewModel.ActionsEnabled, "actions menu checked view model state");
         AssertEqual(true, MainWindow.RefreshStatusCommand.CanExecute(null, window), "refresh command reenabled CanExecute state");
+        ValidateRequeryCommand(window, viewModel, requeryCommandButton);
 
         viewModel.Progress = 72.0;
         DrainDispatcher(window);
@@ -1465,6 +1501,44 @@ internal static class MvpSelfTest
         actionsItem.IsChecked = true;
         DrainDispatcher(window);
         AssertEqual(true, viewModel.ActionsEnabled, "context actions checked view model state");
+    }
+
+    private static void ValidateRequeryCommand(Window window, MainViewModel viewModel, Button button)
+    {
+        var command = viewModel.RequeryCommand;
+        AssertEqual(command, button.Command, "requery command Button command binding");
+        AssertEqual("mvp requery command payload", button.CommandParameter, "requery command Button parameter");
+
+        var canExecuteChangedCount = 0;
+        EventHandler handler = (_, _) => canExecuteChangedCount++;
+        command.CanExecuteChanged += handler;
+        try
+        {
+            command.CanExecuteValue = false;
+            var disabledProbeBaseline = command.CanExecuteProbeCount;
+            CommandManager.InvalidateRequerySuggested();
+            DrainDispatcher(window);
+            AssertGreaterThan(0, canExecuteChangedCount, "requery command CanExecuteChanged count");
+            AssertEqual(false, command.CanExecute(button.CommandParameter), "requery command disabled CanExecute state");
+            AssertGreaterThan(disabledProbeBaseline, command.CanExecuteProbeCount, "requery command disabled probe count");
+
+            var firstRequeryCount = canExecuteChangedCount;
+            var enabledProbeBaseline = command.CanExecuteProbeCount;
+            command.CanExecuteValue = true;
+            CommandManager.InvalidateRequerySuggested();
+            DrainDispatcher(window);
+            AssertGreaterThan(firstRequeryCount, canExecuteChangedCount, "requery command second CanExecuteChanged count");
+            AssertEqual(true, command.CanExecute(button.CommandParameter), "requery command enabled CanExecute state");
+            AssertGreaterThan(enabledProbeBaseline, command.CanExecuteProbeCount, "requery command enabled probe count");
+
+            button.Command.Execute(button.CommandParameter);
+            AssertEqual(1, command.ExecuteCount, "requery command execution count");
+            AssertEqual("mvp requery command payload", command.LastParameter, "requery command execution parameter");
+        }
+        finally
+        {
+            command.CanExecuteChanged -= handler;
+        }
     }
 
     private static void ValidateGroupedItemTemplate(DataTemplate template, MvpActiveTextConverter converter)

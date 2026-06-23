@@ -2306,6 +2306,38 @@ internal static class Program
             """);
 
         WriteFile(
+            Path.Combine(appRoot, "ExternalManualLoadComponentView.xaml"),
+            """
+            <UserControl
+                x:Class="ExternalSdkApp.ExternalManualLoadComponentView"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:library="clr-namespace:ExternalSdkLibrary;assembly=ExternalSdkControls">
+                <StackPanel>
+                    <TextBlock
+                        x:Name="ExternalManualLoadComponentText"
+                        Foreground="{StaticResource ExternalStaticBrush}"
+                        Text="{StaticResource ExternalStaticText}" />
+                    <library:ExternalPanel
+                        x:Name="ExternalManualLoadComponentPanel"
+                        Caption="External manual loaded component panel" />
+                </StackPanel>
+            </UserControl>
+            """);
+
+        WriteFile(
+            Path.Combine(appRoot, "ExternalManualLoadComponentView.xaml.cs"),
+            """
+            using System.Windows.Controls;
+
+            namespace ExternalSdkApp;
+
+            public partial class ExternalManualLoadComponentView : UserControl
+            {
+            }
+            """);
+
+        WriteFile(
             Path.Combine(appRoot, "MainWindow.xaml.cs"),
             """
             using System;
@@ -5124,6 +5156,24 @@ internal static class Program
                         loadedPanel.FindName("CaptionText"),
                         "external SDK Application.LoadComponent library user-control caption");
                     AssertEqual("External loaded component panel", loadedPanelCaption.Text, "external SDK Application.LoadComponent library binding");
+
+                    var manuallyLoadedView = new ExternalManualLoadComponentView();
+                    Application.LoadComponent(
+                        manuallyLoadedView,
+                        new Uri("/ExternalSdkShell;component/ExternalManualLoadComponentView.xaml", UriKind.Relative));
+                    var manuallyLoadedText = RequireType<TextBlock>(
+                        manuallyLoadedView.FindName("ExternalManualLoadComponentText"),
+                        "external SDK Application.LoadComponent instance text block");
+                    AssertEqual("External SDK resource text", manuallyLoadedText.Text, "external SDK Application.LoadComponent instance static resource text");
+                    AssertBrushColor(manuallyLoadedText.Foreground, "#FFA65A2A", "external SDK Application.LoadComponent instance static resource foreground");
+
+                    var manuallyLoadedPanel = RequireType<ExternalPanel>(
+                        manuallyLoadedView.FindName("ExternalManualLoadComponentPanel"),
+                        "external SDK Application.LoadComponent instance library user-control");
+                    var manuallyLoadedPanelCaption = RequireType<TextBlock>(
+                        manuallyLoadedPanel.FindName("CaptionText"),
+                        "external SDK Application.LoadComponent instance library user-control caption");
+                    AssertEqual("External manual loaded component panel", manuallyLoadedPanelCaption.Text, "external SDK Application.LoadComponent instance library binding");
                 }
 
                 private static void ValidatePackResources()
@@ -11977,6 +12027,7 @@ internal static class Program
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalPage.xaml"), "external SDK app compiled page source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalSecondPage.xaml"), "external SDK app second compiled page source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalLoadComponentView.xaml"), "external SDK app LoadComponent user-control source");
+        RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalManualLoadComponentView.xaml"), "external SDK app manual LoadComponent user-control source");
 
         AssertDoesNotContain(appProject, "ProGpuWpfReferenceMode", "external app local artifact mode");
         AssertDoesNotContain(appProject, "ProGpuWpfManagedReferenceRoot", "external app managed artifact root");

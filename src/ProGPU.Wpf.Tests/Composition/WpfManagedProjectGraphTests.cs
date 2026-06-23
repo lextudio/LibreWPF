@@ -7991,8 +7991,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK runtime namescope replacement object", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Path.Combine(appRoot, \"ExternalLoadComponentView.xaml\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("public partial class ExternalLoadComponentView : UserControl", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Path.Combine(appRoot, \"ExternalManualLoadComponentView.xaml\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("public partial class ExternalManualLoadComponentView : UserControl", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateApplicationLoadComponent()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Application.LoadComponent(new Uri(\"/ExternalSdkShell;component/ExternalLoadComponentView.xaml\", UriKind.Relative))", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Application.LoadComponent(\n                        manuallyLoadedView,", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("/ExternalSdkShell;component/ExternalManualLoadComponentView.xaml", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Application.LoadComponent instance static resource text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Application.LoadComponent instance library binding", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalLoadComponentText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Application.LoadComponent static resource text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalLoadComponentPanel", externalSdkHarnessProgram, StringComparison.Ordinal);

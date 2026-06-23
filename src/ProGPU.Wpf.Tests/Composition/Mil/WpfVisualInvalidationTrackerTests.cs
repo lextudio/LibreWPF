@@ -311,6 +311,20 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
+    public void AttachSkipsFrozenFreezableChangedSubscription()
+    {
+        var transform = new FakeFrozenFreezableLikeResource();
+        using var tracker = new WpfVisualInvalidationTracker();
+
+        var exception = Record.Exception(() => tracker.Attach(transform));
+
+        Assert.Null(exception);
+        Assert.Same(transform, tracker.Root);
+        Assert.True(tracker.IsDirty);
+        Assert.Equal(0, tracker.SubscriptionCount);
+    }
+
+    [Fact]
     public void GradientStopCollectionChangeRefreshesSubscriptionsForNewStops()
     {
         var brush = new LinearGradientBrush
@@ -457,6 +471,15 @@ public sealed class WpfVisualInvalidationTrackerTests
         public void RaiseChanged()
         {
             Changed?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private sealed class FakeFrozenFreezableLikeResource
+    {
+        public event EventHandler? Changed
+        {
+            add => throw new InvalidOperationException("Specified value must have IsFrozen set to false to modify.");
+            remove => throw new InvalidOperationException("Specified value must have IsFrozen set to false to modify.");
         }
     }
 

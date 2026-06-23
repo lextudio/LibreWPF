@@ -254,6 +254,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf",
             "ProGpuWpfCompositionTarget.cs");
+        var proGpuInvalidationTrackerPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfVisualInvalidationTracker.cs");
         var proGpuCompositorPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -270,6 +276,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.Tests",
             "ProGpuWpfDrawingFrameTests.cs");
+        var proGpuInvalidationTrackerTestsPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "Mil",
+            "WpfVisualInvalidationTrackerTests.cs");
         var proGpuWindowHostTestsPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.Tests",
@@ -291,9 +303,11 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuOptions = File.ReadAllText(proGpuOptionsPath);
         var proGpuDrawingFrame = File.ReadAllText(proGpuDrawingFramePath);
         var proGpuCompositionTarget = File.ReadAllText(proGpuCompositionTargetPath);
+        var proGpuInvalidationTracker = File.ReadAllText(proGpuInvalidationTrackerPath);
         var proGpuCompositor = File.ReadAllText(proGpuCompositorPath);
         var proGpuCompositorReviewTests = File.ReadAllText(proGpuCompositorReviewTestsPath);
         var proGpuDrawingFrameTests = File.ReadAllText(proGpuDrawingFrameTestsPath);
+        var proGpuInvalidationTrackerTests = File.ReadAllText(proGpuInvalidationTrackerTestsPath);
         var proGpuWindowHostTests = File.ReadAllText(proGpuWindowHostTestsPath);
         var proGpuActivationTests = File.ReadAllText(proGpuActivationTestsPath);
 
@@ -466,7 +480,10 @@ public sealed class WpfManagedProjectGraphTests
             hostPreReplayGeometrySync < hostPreReplayDispatcherDrain &&
             hostPreReplayDispatcherDrain < hostDetectWpfSourceChanges,
             "The Silk.NET render callback must synchronize WPF logical geometry before draining dispatcher/layout work and before polling WPF render data.");
-        Assert.Contains("_retainedWpfVisualRoot.Scale = new Vector3((float)DpiScaleX, (float)DpiScaleY, 1f)", proGpuDrawingFrame, StringComparison.Ordinal);
+        Assert.Contains("_retainedWpfVisualRoot.Scale = Vector3.One", proGpuDrawingFrame, StringComparison.Ordinal);
+        Assert.Contains("TrySubscribeInvalidationCallback(", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("TryRunInvalidationSubscriptionAction", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("IsIgnorableInvalidationSubscriptionFailure", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("logicalWidth,\n                logicalHeight,\n                dpiScaleX,\n                dpiScaleY", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("Present(logicalWidth, logicalHeight, pixelWidth, pixelHeight, dpiScale)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_target.Render(logicalWidth, logicalHeight, pixelWidth, pixelHeight, (float)dpiScale, targetView)", proGpuHost, StringComparison.Ordinal);
@@ -480,9 +497,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CurrentCanvasPixelWidth => _explicitRenderTargetWidth.HasValue", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("CurrentCanvasPixelHeight => _explicitRenderTargetHeight.HasValue", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("ExplicitPhysicalRenderTargetPinsViewportToPhysicalFramebuffer", proGpuCompositorReviewTests, StringComparison.Ordinal);
+        Assert.Contains("ConstructorKeepsWpfLayerBoundsAndTransformLogicalForHighDpiFrames", proGpuDrawingFrameTests, StringComparison.Ordinal);
+        Assert.Contains("HighDpiRetainedWpfLayerPreservesLogicalMarkerOrigin", proGpuDrawingFrameTests, StringComparison.Ordinal);
         Assert.Contains("HighDpiRetainedWpfLayerRendersAcrossPhysicalFramebuffer", proGpuDrawingFrameTests, StringComparison.Ordinal);
         Assert.Contains("HighDpiSourceDrawingLayerRendersAcrossPhysicalFramebuffer", proGpuDrawingFrameTests, StringComparison.Ordinal);
         Assert.Contains("LegacyRenderOverloadPreservesLogicalHighDpiFrameAcrossPhysicalFramebuffer", proGpuDrawingFrameTests, StringComparison.Ordinal);
+        Assert.Contains("AttachSkipsFrozenFreezableChangedSubscription", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("NativeResizeUsesPortablePresentationSourceLogicalCacheWhenHostCacheWasPhysical", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("NativeResizeRestoresRequestedDipsWhenStartupNativeCacheWasPolluted", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("NativeResizeRestoresDeclaredDipsWhenRequestedCacheWasPolluted", proGpuWindowHostTests, StringComparison.Ordinal);
@@ -7088,15 +7108,20 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RenderScene", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Assembly silkNetWebGpu = LoadRequiredAssembly(\"Silk.NET.WebGPU\")", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateRetainedOwnerBranchFillsPhysicalTarget(proGpuWpf, proGpuBackend, silkNetWebGpu)", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateRetainedOwnerBranchPreservesLogicalMarkerOrigin(proGpuWpf, proGpuBackend, silkNetWebGpu)", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(proGpuWpf, \"System.Windows.Media.ProGPU.Composition.ProGpuRetainedCompositionCommandSink\")", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Controls;", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Runtime.InteropServices;", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("string runtimeRoot = Path.GetDirectoryName(proGpuWpf.Location) ?? AppContext.BaseDirectory", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PreloadWebGpuNativeRuntime(runtimeRoot);", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("CreateRedWpfVisual()", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("CreateLogicalMarkerWpfVisual()", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("new SolidColorBrush(Color.FromRgb(0xFF, 0x00, 0x00))", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("new SolidColorBrush(Color.FromRgb(0x10, 0x70, 0x20))", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Invoke(target, \"ReplayVisualSubtree\", wpfVisual, sink, null, null)", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SDK smoke retained-owner WPF HiDPI lower-right pixel", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SDK smoke retained-owner WPF logical marker pixel", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SDK smoke retained-owner WPF double-scaled marker pixel", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Media;", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnAppStartup(object sender, StartupEventArgs e)", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("StartupEventCount++", smokeAppCodeBehind, StringComparison.Ordinal);

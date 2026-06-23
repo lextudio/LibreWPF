@@ -115,6 +115,7 @@ public partial class App : Application
         ValidateHostRecoversDeclaredLogicalSize(hostType, vector2DIntType, dpiScale);
 
         ValidateRetainedOwnerBranchFillsPhysicalTarget(proGpuWpf, proGpuBackend, silkNetWebGpu);
+        ValidateRetainedOwnerBranchPreservesLogicalMarkerOrigin(proGpuWpf, proGpuBackend, silkNetWebGpu);
 
         ValidateRuntimeAssetMatchesLocalPackage(proGpuWpf, "ProGPU.Wpf", "ProGPU.Wpf", "net10.0");
         ValidateRuntimeAssetMatchesLocalPackage(proGpuScene, "ProGPU.Scene", "ProGPU.Scene", "net10.0");
@@ -322,6 +323,106 @@ public partial class App : Application
         }
     }
 
+    private static void ValidateRetainedOwnerBranchPreservesLogicalMarkerOrigin(
+        Assembly proGpuWpf,
+        Assembly proGpuBackend,
+        Assembly silkNetWebGpu)
+    {
+        Type compositionTargetType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfCompositionTarget");
+        Type retainedSinkType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.Composition.ProGpuRetainedCompositionCommandSink");
+        Type gpuTextureType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTexture");
+        Type gpuTextureAlphaModeType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTextureAlphaMode");
+        Type textureFormatType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureFormat");
+        Type textureUsageType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureUsage");
+        object wpfVisual = CreateLogicalMarkerWpfVisual();
+        string runtimeRoot = Path.GetDirectoryName(proGpuWpf.Location) ?? AppContext.BaseDirectory;
+
+        PreloadWebGpuNativeRuntime(runtimeRoot);
+        using IDisposable currentDirectory = new CurrentDirectoryScope(runtimeRoot);
+        object rgba8Unorm = Enum.Parse(textureFormatType, "Rgba8Unorm");
+        object renderTargetUsage = CombineEnumFlags(
+            textureUsageType,
+            Enum.Parse(textureUsageType, "RenderAttachment"),
+            Enum.Parse(textureUsageType, "CopySrc"));
+        object straightAlphaMode = Enum.Parse(gpuTextureAlphaModeType, "Straight");
+        object target = InvokeStatic(compositionTargetType, "CreateHeadless", rgba8Unorm);
+        object texture = Create(
+            gpuTextureType,
+            GetProperty(target, "Context"),
+            840u,
+            1680u,
+            rgba8Unorm,
+            renderTargetUsage,
+            "SDK smoke retained-owner logical marker HiDPI target",
+            1u,
+            straightAlphaMode);
+
+        try
+        {
+            object frame = Invoke(
+                target,
+                "BeginDrawingFrame",
+                840u,
+                1680u,
+                true,
+                420u,
+                840u,
+                2.0,
+                2.0);
+            object sink = Create(
+                retainedSinkType,
+                frame,
+                GetProperty(target, "Context"),
+                GetProperty(target, "Viewport3DTextureCache"));
+            try
+            {
+                Invoke(target, "ReplayVisualSubtree", wpfVisual, sink, null, null);
+            }
+            finally
+            {
+                (sink as IDisposable)?.Dispose();
+            }
+
+            MethodInfo render = RequireMethodByParameterNames(
+                compositionTargetType,
+                "Render",
+                "logicalWidth",
+                "logicalHeight",
+                "pixelWidth",
+                "pixelHeight",
+                "dpiScale",
+                "targetView");
+            InvokeMethod(
+                render,
+                target,
+                420u,
+                840u,
+                840u,
+                1680u,
+                2f,
+                GetProperty(texture, "ViewPtr"));
+
+            byte[] pixels = (byte[])Invoke(texture, "ReadPixels");
+            AssertRgbaPixelIsGreen(
+                pixels,
+                width: 840,
+                x: 340,
+                y: 660,
+                "SDK smoke retained-owner WPF logical marker pixel");
+            AssertRgbaPixelIsNotGreen(
+                pixels,
+                width: 840,
+                x: 660,
+                y: 1300,
+                "SDK smoke retained-owner WPF double-scaled marker pixel");
+        }
+        finally
+        {
+            (texture as IDisposable)?.Dispose();
+            (target as IDisposable)?.Dispose();
+        }
+    }
+
     private static Border CreateRedWpfVisual()
     {
         var border = new Border
@@ -334,6 +435,17 @@ public partial class App : Application
         border.Arrange(new Rect(0.0, 0.0, 420.0, 840.0));
         border.UpdateLayout();
         return border;
+    }
+
+    private static DrawingVisual CreateLogicalMarkerWpfVisual()
+    {
+        var visual = new DrawingVisual();
+        using DrawingContext context = visual.RenderOpen();
+        context.DrawRectangle(
+            new SolidColorBrush(Color.FromRgb(0x10, 0x70, 0x20)),
+            pen: null,
+            new Rect(160, 320, 80, 80));
+        return visual;
     }
 
     private static object Create(Type type, params object?[] args)
@@ -464,6 +576,54 @@ public partial class App : Application
         {
             throw new InvalidOperationException(
                 $"Expected {description} to be red, but found RGBA({r}, {g}, {b}, {a}). Rebuild the package-mode SDK smoke output.");
+        }
+    }
+
+    private static void AssertRgbaPixelIsGreen(
+        byte[] pixels,
+        int width,
+        int x,
+        int y,
+        string description)
+    {
+        int index = ((y * width) + x) * 4;
+        if (index < 0 || index + 3 >= pixels.Length)
+        {
+            throw new InvalidOperationException($"Expected {description} pixel index to be inside the readback buffer.");
+        }
+
+        byte r = pixels[index];
+        byte g = pixels[index + 1];
+        byte b = pixels[index + 2];
+        byte a = pixels[index + 3];
+        if (r > 60 || g < 90 || b > 70 || a != 255)
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to be green, but found RGBA({r}, {g}, {b}, {a}). Rebuild the package-mode SDK smoke output.");
+        }
+    }
+
+    private static void AssertRgbaPixelIsNotGreen(
+        byte[] pixels,
+        int width,
+        int x,
+        int y,
+        string description)
+    {
+        int index = ((y * width) + x) * 4;
+        if (index < 0 || index + 3 >= pixels.Length)
+        {
+            throw new InvalidOperationException($"Expected {description} pixel index to be inside the readback buffer.");
+        }
+
+        byte r = pixels[index];
+        byte g = pixels[index + 1];
+        byte b = pixels[index + 2];
+        byte a = pixels[index + 3];
+        if (r <= 60 && g >= 90 && b <= 70 && a == 255)
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} not to contain the logical marker, but found RGBA({r}, {g}, {b}, {a}). Rebuild the package-mode SDK smoke output.");
         }
     }
 

@@ -254,8 +254,9 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         if (source is INotifyCollectionChanged collectionChanged)
         {
             NotifyCollectionChangedEventHandler handler = (_, _) => MarkDirtyAndRefresh(source);
-            collectionChanged.CollectionChanged += handler;
-            _unsubscribeActions.Add(() => collectionChanged.CollectionChanged -= handler);
+            TrySubscribeInvalidationCallback(
+                () => collectionChanged.CollectionChanged += handler,
+                () => collectionChanged.CollectionChanged -= handler);
         }
 
         foreach (var item in EnumerateCollection(source))
@@ -479,8 +480,9 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         if (source is INotifyPropertyChanged propertyChanged)
         {
             PropertyChangedEventHandler handler = (_, _) => MarkDirtyAndRefresh(source);
-            propertyChanged.PropertyChanged += handler;
-            _unsubscribeActions.Add(() => propertyChanged.PropertyChanged -= handler);
+            TrySubscribeInvalidationCallback(
+                () => propertyChanged.PropertyChanged += handler,
+                () => propertyChanged.PropertyChanged -= handler);
         }
 
         foreach (var eventName in s_eventNames)
@@ -492,9 +494,55 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             }
 
             EventHandler handler = (_, _) => MarkDirtyAndRefresh(source);
-            eventInfo.AddEventHandler(source, handler);
-            _unsubscribeActions.Add(() => eventInfo.RemoveEventHandler(source, handler));
+            TrySubscribeInvalidationCallback(
+                () => eventInfo.AddEventHandler(source, handler),
+                () => eventInfo.RemoveEventHandler(source, handler));
         }
+    }
+
+    private bool TrySubscribeInvalidationCallback(Action subscribe, Action unsubscribe)
+    {
+        if (!TryRunInvalidationSubscriptionAction(subscribe))
+        {
+            return false;
+        }
+
+        _unsubscribeActions.Add(() => TryRunInvalidationSubscriptionAction(unsubscribe));
+        return true;
+    }
+
+    private static bool TryRunInvalidationSubscriptionAction(Action action)
+    {
+        try
+        {
+            action();
+            return true;
+        }
+        catch (TargetInvocationException ex) when (IsIgnorableInvalidationSubscriptionFailure(ex.InnerException))
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+        catch (ArgumentException)
+        {
+        }
+        catch (MethodAccessException)
+        {
+        }
+        catch (NotSupportedException)
+        {
+        }
+
+        return false;
+    }
+
+    private static bool IsIgnorableInvalidationSubscriptionFailure(Exception? exception)
+    {
+        return exception is InvalidOperationException
+            or ArgumentException
+            or MethodAccessException
+            or NotSupportedException;
     }
 
     private static IReadOnlyList<object?> EnumerateCollection(object source)

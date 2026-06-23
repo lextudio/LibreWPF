@@ -89,7 +89,7 @@ public sealed class ProGpuWpfDrawingFrame
             _retainedWpfVisualRoot.Size = new Vector2(LogicalWidth, LogicalHeight);
             _retainedWpfVisualRoot.Offset = Vector2.Zero;
             _retainedWpfVisualRoot.Transform = Matrix4x4.Identity;
-            _retainedWpfVisualRoot.Scale = new Vector3((float)DpiScaleX, (float)DpiScaleY, 1f);
+            _retainedWpfVisualRoot.Scale = Vector3.One;
             _retainedWpfVisualRoot.RenderTransformOrigin = Vector2.Zero;
         }
 

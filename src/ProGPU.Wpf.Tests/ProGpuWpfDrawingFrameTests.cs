@@ -81,7 +81,7 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
-    public void ConstructorKeepsWpfLayerBoundsLogicalAndScalesRetainedLayerForHighDpiFrames()
+    public void ConstructorKeepsWpfLayerBoundsAndTransformLogicalForHighDpiFrames()
     {
         var sceneRoot = new ProGpuContainerVisual();
         var retainedRoot = new ProGpuContainerVisual();
@@ -108,7 +108,7 @@ public sealed class ProGpuWpfDrawingFrameTests
         Assert.Equal(new Vector2(420, 840), retainedRoot.Size);
         Assert.Equal(new Vector2(420, 840), flatRoot.Size);
         Assert.Equal(Matrix4x4.Identity, retainedRoot.Transform);
-        Assert.Equal(new Vector3(2f, 2f, 1f), retainedRoot.Scale);
+        Assert.Equal(Vector3.One, retainedRoot.Scale);
         Assert.Equal(Vector2.Zero, retainedRoot.RenderTransformOrigin);
 
         using var sink = new ProGpuRetainedCompositionCommandSink(frame, context: null, viewport3DTextureCache: null);
@@ -163,6 +163,59 @@ public sealed class ProGpuWpfDrawingFrameTests
         Assert.True(lowerRight.G <= 50, $"Expected retained WPF content green channel to stay low, found {lowerRight}.");
         Assert.True(lowerRight.B <= 50, $"Expected retained WPF content blue channel to stay low, found {lowerRight}.");
         Assert.Equal(255, lowerRight.A);
+    }
+
+    [Fact]
+    public unsafe void HighDpiRetainedWpfLayerPreservesLogicalMarkerOrigin()
+    {
+        using var target = ProGpuWpfCompositionTarget.CreateHeadless(WgpuTextureFormat.Rgba8Unorm);
+        using var texture = new ProGpuTexture(
+            target.Context,
+            840,
+            1680,
+            WgpuTextureFormat.Rgba8Unorm,
+            WgpuTextureUsage.RenderAttachment | WgpuTextureUsage.CopySrc,
+            "WPF retained HiDPI logical marker target");
+
+        var frame = target.BeginDrawingFrame(
+            pixelWidth: 840,
+            pixelHeight: 1680,
+            clearRetainedWpfVisualRoot: true,
+            logicalWidth: 420,
+            logicalHeight: 840,
+            dpiScaleX: 2.0,
+            dpiScaleY: 2.0);
+
+        using (var sink = new ProGpuRetainedCompositionCommandSink(
+                   frame,
+                   target.Context,
+                   target.Viewport3DTextureCache))
+        {
+            sink.DrawRectangle(
+                new SolidColorBrush(Color.FromRgb(0x10, 0x70, 0x20)),
+                pen: null,
+                new Rect(160, 320, 80, 80));
+        }
+
+        target.Render(
+            logicalWidth: 420,
+            logicalHeight: 840,
+            pixelWidth: 840,
+            pixelHeight: 1680,
+            dpiScale: 2f,
+            texture.ViewPtr);
+
+        var pixels = texture.ReadPixels();
+        var logicalMarker = ReadPixel(pixels, texture.Width, x: 340, y: 660);
+        var doubleScaledMarker = ReadPixel(pixels, texture.Width, x: 660, y: 1300);
+
+        Assert.True(logicalMarker.G >= 90, $"Expected retained WPF marker at logical-origin physical position, found {logicalMarker}.");
+        Assert.True(logicalMarker.R <= 40, $"Expected retained WPF marker red channel to stay low, found {logicalMarker}.");
+        Assert.True(logicalMarker.B <= 50, $"Expected retained WPF marker blue channel to stay low, found {logicalMarker}.");
+        Assert.Equal(255, logicalMarker.A);
+        Assert.True(
+            doubleScaledMarker.G <= 40,
+            $"Expected retained WPF marker not to be shifted by a second DPI scale, found {doubleScaledMarker}.");
     }
 
     [Fact]

@@ -536,6 +536,105 @@
                 </Grid>
             </TabItem>
 
+            <TabItem Header="Input">
+                <Grid Margin="0,14,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <ToolBarTray
+                        x:Name="MvpToolBarTray"
+                        Grid.ColumnSpan="2">
+                        <ToolBar
+                            x:Name="MvpToolBar"
+                            Header="MVP tools">
+                            <Button
+                                x:Name="ToolBarRefreshButton"
+                                Command="{x:Static local:MainWindow.RefreshStatusCommand}"
+                                Content="Refresh">
+                                <Button.ToolTip>
+                                    <ToolTip
+                                        x:Name="ToolBarRefreshToolTip"
+                                        Placement="Bottom">
+                                        <TextBlock
+                                            x:Name="ToolBarRefreshToolTipText"
+                                            Text="Refresh status command" />
+                                    </ToolTip>
+                                </Button.ToolTip>
+                            </Button>
+                            <Separator x:Name="ToolBarSeparator" />
+                            <ToggleButton
+                                x:Name="ToolBarToggleButton"
+                                Checked="OnInputToggleChecked"
+                                Content="Actions"
+                                IsChecked="{Binding ActionsEnabled, Mode=TwoWay}"
+                                Unchecked="OnInputToggleUnchecked" />
+                        </ToolBar>
+                    </ToolBarTray>
+
+                    <StackPanel Grid.Row="1" Margin="0,14,0,0">
+                        <TextBlock
+                            Margin="0,0,0,8"
+                            FontWeight="SemiBold"
+                            Text="Choice controls" />
+                        <ToggleButton
+                            x:Name="InputToggleButton"
+                            Checked="OnInputToggleChecked"
+                            Content="Enable actions"
+                            IsChecked="{Binding ActionsEnabled, Mode=TwoWay}"
+                            Unchecked="OnInputToggleUnchecked" />
+                        <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
+                            <RadioButton
+                                x:Name="FrameworkRadioButton"
+                                GroupName="MvpCategory"
+                                Checked="OnCategoryRadioChecked"
+                                Content="Framework"
+                                IsChecked="True"
+                                Tag="Framework" />
+                            <RadioButton
+                                x:Name="RenderingRadioButton"
+                                Margin="14,0,0,0"
+                                GroupName="MvpCategory"
+                                Checked="OnCategoryRadioChecked"
+                                Content="Rendering"
+                                Tag="Rendering" />
+                        </StackPanel>
+                        <RepeatButton
+                            x:Name="InputRepeatButton"
+                            Margin="0,14,0,0"
+                            Click="OnInputRepeatButtonClick"
+                            Content="Repeat action"
+                            Delay="180"
+                            Interval="70" />
+                    </StackPanel>
+
+                    <StackPanel
+                        Grid.Row="1"
+                        Grid.Column="1"
+                        Margin="18,14,0,0">
+                        <TextBlock
+                            Margin="0,0,0,8"
+                            FontWeight="SemiBold"
+                            Text="Date controls" />
+                        <Calendar
+                            x:Name="InputCalendar"
+                            SelectedDate="{Binding SelectedDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            SelectedDatesChanged="OnInputDateSelectionChanged"
+                            SelectionMode="SingleDate" />
+                        <DatePicker
+                            x:Name="InputDatePicker"
+                            Margin="0,12,0,0"
+                            SelectedDate="{Binding SelectedDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            SelectedDateChanged="OnInputDateSelectionChanged" />
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
             <TabItem Header="Explorer">
                 <Grid Margin="0,14,0,0">
                     <Grid.ColumnDefinitions>

@@ -14,6 +14,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using WpfCalendar = System.Windows.Controls.Calendar;
 
 namespace ProGPU.Wpf.MvpApp;
 
@@ -31,6 +32,20 @@ public partial class MainWindow : Window
     internal int SelectorExpanderExpandedCount { get; private set; }
 
     internal int SelectorExpanderCollapsedCount { get; private set; }
+
+    internal int InputToggleCheckedCount { get; private set; }
+
+    internal int InputToggleUncheckedCount { get; private set; }
+
+    internal int CategoryRadioCheckedCount { get; private set; }
+
+    internal string? LastCategoryRadioName { get; private set; }
+
+    internal int InputRepeatButtonClickCount { get; private set; }
+
+    internal int InputDateSelectionChangedCount { get; private set; }
+
+    internal string? LastDateSelectionSenderName { get; private set; }
 
     public MainWindow()
     {
@@ -128,6 +143,38 @@ public partial class MainWindow : Window
     {
         SelectorExpanderCollapsedCount++;
     }
+
+    private void OnInputToggleChecked(object sender, RoutedEventArgs e)
+    {
+        InputToggleCheckedCount++;
+    }
+
+    private void OnInputToggleUnchecked(object sender, RoutedEventArgs e)
+    {
+        InputToggleUncheckedCount++;
+    }
+
+    private void OnCategoryRadioChecked(object sender, RoutedEventArgs e)
+    {
+        CategoryRadioCheckedCount++;
+        LastCategoryRadioName = (sender as FrameworkElement)?.Name;
+
+        if (DataContext is MainViewModel viewModel && sender is FrameworkElement { Tag: string category })
+        {
+            viewModel.SelectedCategory = category;
+        }
+    }
+
+    private void OnInputRepeatButtonClick(object sender, RoutedEventArgs e)
+    {
+        InputRepeatButtonClickCount++;
+    }
+
+    private void OnInputDateSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        InputDateSelectionChangedCount++;
+        LastDateSelectionSenderName = (sender as FrameworkElement)?.Name;
+    }
 }
 
 public sealed class MainViewModel : INotifyPropertyChanged
@@ -143,6 +190,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _bindingGroupFirstName = "group: Ada";
     private string _bindingGroupLastName = "group: Lovelace";
     private string _bindingGroupStatus = "Group ready";
+    private DateTime? _selectedDate = new(2026, 6, 23);
     private string? _nullDisplayText;
 
     public MainViewModel()
@@ -249,6 +297,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
         set => SetField(ref _bindingGroupStatus, value);
     }
 
+    public DateTime? SelectedDate
+    {
+        get => _selectedDate;
+        set => SetField(ref _selectedDate, value);
+    }
+
     public string? NullDisplayText
     {
         get => _nullDisplayText;
@@ -319,6 +373,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         BindingGroupFirstName = "group: Ada";
         BindingGroupLastName = "group: Lovelace";
         BindingGroupStatus = "Group ready";
+        SelectedDate = new DateTime(2026, 6, 23);
         NullDisplayText = null;
     }
 
@@ -587,6 +642,39 @@ internal static class MvpSelfTest
         var selectorScrollText = Require<TextBlock>(
             window.FindName("SelectorScrollText"),
             "selector scroll TextBlock");
+        var mvpToolBarTray = Require<ToolBarTray>(
+            window.FindName("MvpToolBarTray"),
+            "MVP ToolBarTray");
+        var mvpToolBar = Require<ToolBar>(
+            window.FindName("MvpToolBar"),
+            "MVP ToolBar");
+        var toolBarRefreshButton = Require<Button>(
+            window.FindName("ToolBarRefreshButton"),
+            "toolbar refresh Button");
+        var toolBarSeparator = Require<Separator>(
+            window.FindName("ToolBarSeparator"),
+            "toolbar Separator");
+        var toolBarToggleButton = Require<ToggleButton>(
+            window.FindName("ToolBarToggleButton"),
+            "toolbar ToggleButton");
+        var inputToggleButton = Require<ToggleButton>(
+            window.FindName("InputToggleButton"),
+            "input ToggleButton");
+        var frameworkRadioButton = Require<RadioButton>(
+            window.FindName("FrameworkRadioButton"),
+            "framework RadioButton");
+        var renderingRadioButton = Require<RadioButton>(
+            window.FindName("RenderingRadioButton"),
+            "rendering RadioButton");
+        var inputRepeatButton = Require<RepeatButton>(
+            window.FindName("InputRepeatButton"),
+            "input RepeatButton");
+        var inputCalendar = Require<WpfCalendar>(
+            window.FindName("InputCalendar"),
+            "input Calendar");
+        var inputDatePicker = Require<DatePicker>(
+            window.FindName("InputDatePicker"),
+            "input DatePicker");
         var selectedItemContent = Require<ContentControl>(
             window.FindName("SelectedItemContent"),
             "selected item ContentControl");
@@ -732,6 +820,20 @@ internal static class MvpSelfTest
             selectorExpander,
             selectorScrollViewer,
             selectorScrollText);
+        ValidateInputControls(
+            window,
+            viewModel,
+            mvpToolBarTray,
+            mvpToolBar,
+            toolBarRefreshButton,
+            toolBarSeparator,
+            toolBarToggleButton,
+            inputToggleButton,
+            frameworkRadioButton,
+            renderingRadioButton,
+            inputRepeatButton,
+            inputCalendar,
+            inputDatePicker);
         ValidateItemsContextMenu(window, viewModel, itemsList);
         ValidateNavigation(window, navigationFrame, detailsNavigationButton);
         ValidateEditor(window, editorPasswordBox, editorRichTextBox);
@@ -1108,6 +1210,128 @@ internal static class MvpSelfTest
             "selector Expander collapsed count");
     }
 
+    private static void ValidateInputControls(
+        MainWindow window,
+        MainViewModel viewModel,
+        ToolBarTray toolBarTray,
+        ToolBar toolBar,
+        Button refreshButton,
+        Separator toolBarSeparator,
+        ToggleButton toolBarToggle,
+        ToggleButton inputToggle,
+        RadioButton frameworkRadio,
+        RadioButton renderingRadio,
+        RepeatButton repeatButton,
+        WpfCalendar calendar,
+        DatePicker datePicker)
+    {
+        AssertEqual(1, toolBarTray.ToolBars.Count, "MVP ToolBarTray toolbar count");
+        AssertEqual(toolBar, toolBarTray.ToolBars[0], "MVP ToolBarTray toolbar reference");
+        AssertEqual("MVP tools", toolBar.Header, "MVP ToolBar header");
+        AssertEqual(3, toolBar.Items.Count, "MVP ToolBar item count");
+        AssertEqual(refreshButton, toolBar.Items[0], "MVP ToolBar refresh item");
+        AssertEqual(toolBarSeparator, toolBar.Items[1], "MVP ToolBar separator item");
+        AssertEqual(toolBarToggle, toolBar.Items[2], "MVP ToolBar toggle item");
+        AssertEqual(MainWindow.RefreshStatusCommand, refreshButton.Command, "MVP ToolBar refresh command");
+
+        var toolTip = Require<ToolTip>(refreshButton.ToolTip, "toolbar refresh ToolTip");
+        var toolTipText = Require<TextBlock>(toolTip.Content, "toolbar refresh ToolTip text");
+        AssertEqual(PlacementMode.Bottom, toolTip.Placement, "toolbar refresh ToolTip placement");
+        AssertEqual("Refresh status command", toolTipText.Text, "toolbar refresh ToolTip text");
+
+        ValidateToggleBinding(window, viewModel, toolBarToggle, "toolbar ToggleButton");
+        ValidateToggleBinding(window, viewModel, inputToggle, "input ToggleButton");
+
+        AssertEqual("MvpCategory", frameworkRadio.GroupName, "framework RadioButton group");
+        AssertEqual("MvpCategory", renderingRadio.GroupName, "rendering RadioButton group");
+        AssertEqual("Framework", frameworkRadio.Tag, "framework RadioButton tag");
+        AssertEqual("Rendering", renderingRadio.Tag, "rendering RadioButton tag");
+        AssertEqual(true, frameworkRadio.IsChecked == true, "framework RadioButton initial state");
+        AssertEqual(false, renderingRadio.IsChecked == true, "rendering RadioButton initial state");
+
+        int initialRadioEvents = window.CategoryRadioCheckedCount;
+        renderingRadio.IsChecked = true;
+        DrainDispatcher(window);
+        AssertEqual(false, frameworkRadio.IsChecked == true, "framework RadioButton unchecked state");
+        AssertEqual(true, renderingRadio.IsChecked == true, "rendering RadioButton checked state");
+        AssertEqual("RenderingRadioButton", window.LastCategoryRadioName, "last checked RadioButton name");
+        AssertEqual("Rendering", viewModel.SelectedCategory, "RadioButton updated selected category");
+        AssertGreaterThan(initialRadioEvents, window.CategoryRadioCheckedCount, "RadioButton checked event count");
+
+        frameworkRadio.IsChecked = true;
+        DrainDispatcher(window);
+        AssertEqual(true, frameworkRadio.IsChecked == true, "framework RadioButton restored state");
+        AssertEqual(false, renderingRadio.IsChecked == true, "rendering RadioButton restored state");
+        AssertEqual("FrameworkRadioButton", window.LastCategoryRadioName, "last restored RadioButton name");
+        AssertEqual("Framework", viewModel.SelectedCategory, "RadioButton restored selected category");
+
+        AssertEqual(180, repeatButton.Delay, "RepeatButton delay");
+        AssertEqual(70, repeatButton.Interval, "RepeatButton interval");
+        AssertEqual("Repeat action", repeatButton.Content, "RepeatButton content");
+        int initialRepeatClicks = window.InputRepeatButtonClickCount;
+        repeatButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, repeatButton));
+        DrainDispatcher(window);
+        AssertEqual(initialRepeatClicks + 1, window.InputRepeatButtonClickCount, "RepeatButton click count");
+
+        var expectedInitialDate = new DateTime(2026, 6, 23);
+        AssertEqual(CalendarSelectionMode.SingleDate, calendar.SelectionMode, "Calendar selection mode");
+        AssertEqual(expectedInitialDate, calendar.SelectedDate, "Calendar initial selected date");
+        AssertEqual(expectedInitialDate, datePicker.SelectedDate, "DatePicker initial selected date");
+        AssertEqual(expectedInitialDate, viewModel.SelectedDate, "view model initial selected date");
+        AssertEqual("SelectedDate", GetSelectedDateBindingPath(calendar), "Calendar SelectedDate binding path");
+        AssertEqual("SelectedDate", GetSelectedDateBindingPath(datePicker), "DatePicker SelectedDate binding path");
+
+        int initialDateEvents = window.InputDateSelectionChangedCount;
+        datePicker.SelectedDate = new DateTime(2026, 6, 24);
+        UpdateSource(datePicker, DatePicker.SelectedDateProperty);
+        UpdateBinding(calendar, WpfCalendar.SelectedDateProperty);
+        DrainDispatcher(window);
+        AssertEqual(new DateTime(2026, 6, 24), viewModel.SelectedDate, "DatePicker updated view model date");
+        AssertEqual(new DateTime(2026, 6, 24), calendar.SelectedDate, "DatePicker updated Calendar date");
+        AssertEqual("InputDatePicker", window.LastDateSelectionSenderName, "DatePicker selection sender");
+        AssertGreaterThan(initialDateEvents, window.InputDateSelectionChangedCount, "DatePicker selection event count");
+
+        int afterDatePickerEvents = window.InputDateSelectionChangedCount;
+        calendar.SelectedDate = new DateTime(2026, 6, 25);
+        UpdateSource(calendar, WpfCalendar.SelectedDateProperty);
+        UpdateBinding(datePicker, DatePicker.SelectedDateProperty);
+        DrainDispatcher(window);
+        AssertEqual(new DateTime(2026, 6, 25), viewModel.SelectedDate, "Calendar updated view model date");
+        AssertEqual(new DateTime(2026, 6, 25), datePicker.SelectedDate, "Calendar updated DatePicker date");
+        AssertEqual(1, calendar.SelectedDates.Count, "Calendar selected dates count");
+        AssertEqual(new DateTime(2026, 6, 25), calendar.SelectedDates[0], "Calendar selected date collection item");
+        AssertEqual("InputCalendar", window.LastDateSelectionSenderName, "Calendar selection sender");
+        AssertGreaterThan(afterDatePickerEvents, window.InputDateSelectionChangedCount, "Calendar selection event count");
+    }
+
+    private static void ValidateToggleBinding(
+        MainWindow window,
+        MainViewModel viewModel,
+        ToggleButton toggleButton,
+        string description)
+    {
+        var binding = Require<Binding>(
+            BindingOperations.GetBinding(toggleButton, ToggleButton.IsCheckedProperty),
+            $"{description} IsChecked binding");
+        AssertEqual("ActionsEnabled", binding.Path.Path, $"{description} IsChecked path");
+        AssertEqual(BindingMode.TwoWay, binding.Mode, $"{description} IsChecked mode");
+        AssertEqual(true, toggleButton.IsChecked == true, $"{description} initial checked state");
+
+        int initialUncheckedEvents = window.InputToggleUncheckedCount;
+        toggleButton.IsChecked = false;
+        DrainDispatcher(window);
+        AssertEqual(false, viewModel.ActionsEnabled, $"{description} unchecked view model state");
+        AssertEqual(false, toggleButton.IsChecked == true, $"{description} unchecked state");
+        AssertGreaterThan(initialUncheckedEvents, window.InputToggleUncheckedCount, $"{description} unchecked event count");
+
+        int initialCheckedEvents = window.InputToggleCheckedCount;
+        toggleButton.IsChecked = true;
+        DrainDispatcher(window);
+        AssertEqual(true, viewModel.ActionsEnabled, $"{description} restored view model state");
+        AssertEqual(true, toggleButton.IsChecked == true, $"{description} restored checked state");
+        AssertGreaterThan(initialCheckedEvents, window.InputToggleCheckedCount, $"{description} checked event count");
+    }
+
     private static string GetColumnBindingPath(DataGridColumn column)
     {
         return column is DataGridBoundColumn { Binding: Binding binding }
@@ -1412,6 +1636,19 @@ internal static class MvpSelfTest
             ?? throw new InvalidOperationException($"Expected {textBox.Name} text to have a Binding.");
     }
 
+    private static string GetSelectedDateBindingPath(Control control)
+    {
+        DependencyProperty property = control switch
+        {
+            WpfCalendar => WpfCalendar.SelectedDateProperty,
+            DatePicker => DatePicker.SelectedDateProperty,
+            _ => throw new InvalidOperationException($"Unsupported selected-date control {control.GetType().Name}.")
+        };
+
+        return BindingOperations.GetBinding(control, property)?.Path.Path
+            ?? throw new InvalidOperationException($"Expected {control.Name} SelectedDate to have a Binding.");
+    }
+
     private static string GetTemplateItemsSourcePath(HierarchicalDataTemplate template)
     {
         return template.ItemsSource is Binding binding
@@ -1497,6 +1734,11 @@ internal static class MvpSelfTest
     private static void UpdateBinding(DependencyObject target, DependencyProperty property)
     {
         BindingOperations.GetBindingExpression(target, property)?.UpdateTarget();
+    }
+
+    private static void UpdateSource(DependencyObject target, DependencyProperty property)
+    {
+        BindingOperations.GetBindingExpression(target, property)?.UpdateSource();
     }
 
     private static Run FindDirectRun(Paragraph paragraph, string text, string description)

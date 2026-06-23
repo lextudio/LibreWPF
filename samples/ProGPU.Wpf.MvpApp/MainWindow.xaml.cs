@@ -1697,6 +1697,8 @@ internal static class MvpSelfTest
             AssertEqual(0, App.StartupArgumentCount, "Application Startup argument count");
             AssertEqual(0, App.ExitEventCount, "Application Exit event count before shutdown");
             AssertEqual(-1, App.LastExitCode, "Application Exit code before shutdown");
+            AssertEqual("Startup property ready", Application.Current.Properties["MvpStartupProperty"], "startup application property");
+            AssertEqual(0, Application.Current.Properties["MvpStartupArgumentCount"], "startup argument count property");
             AssertEqual("Startup resource ready", applicationResources["MvpStartupText"], "startup application text resource");
             AssertEqual("Startup resource ready", startupResourceText.Text, "startup DynamicResource text");
             var startupBrush = Require<SolidColorBrush>(

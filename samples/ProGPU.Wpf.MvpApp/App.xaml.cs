@@ -42,6 +42,8 @@ public partial class App : Application
     {
         StartupEventCount++;
         StartupArgumentCount = e.Args.Length;
+        Properties["MvpStartupProperty"] = "Startup property ready";
+        Properties["MvpStartupArgumentCount"] = e.Args.Length;
         Resources["MvpStartupText"] = "Startup resource ready";
         Resources["MvpStartupBrush"] = new SolidColorBrush(Color.FromRgb(0x45, 0x5A, 0x64));
     }

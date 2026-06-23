@@ -6134,6 +6134,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("MvpSelfTest.Validate", mvpAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal static int StartupEventCount", mvpAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal static int ExitEventCount", mvpAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Properties[\"MvpStartupProperty\"]", mvpAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Properties[\"MvpStartupArgumentCount\"]", mvpAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Resources[\"MvpStartupText\"]", mvpAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Resources[\"MvpStartupBrush\"]", mvpAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnAppStartup", mvpAppCodeBehind, StringComparison.Ordinal);

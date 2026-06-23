@@ -557,7 +557,7 @@ internal static class Program
                 <ProjectReference Include="../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj" />
                 <Resource Include="Assets/ExternalResource.txt" />
                 <Resource Include="Assets/ExternalImage.png" />
-                <Resource Include="Assets/ExternalSplash.png" />
+                <SplashScreen Include="Assets/ExternalSplash.png" />
               </ItemGroup>
             </Project>
             """);
@@ -11405,7 +11405,7 @@ internal static class Program
         AssertContains(appProject, $"<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", "external app project reference");
         AssertContains(appProject, "<Resource Include=\"Assets/ExternalResource.txt\" />", "external app WPF resource item");
         AssertContains(appProject, "<Resource Include=\"Assets/ExternalImage.png\" />", "external app WPF image resource item");
-        AssertContains(appProject, "<Resource Include=\"Assets/ExternalSplash.png\" />", "external app WPF splash resource item");
+        AssertContains(appProject, "<SplashScreen Include=\"Assets/ExternalSplash.png\" />", "external app WPF splash item");
         AssertContains(libraryProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external library SDK");
         AssertContains(libraryProject, "<UseWPF>true</UseWPF>", "external library WPF property");
         AssertContains(localizationProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external localization SDK");

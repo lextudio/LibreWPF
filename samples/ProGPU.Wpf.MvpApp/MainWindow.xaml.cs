@@ -1190,6 +1190,7 @@ internal static class MvpSelfTest
         ValidateItemsContextMenu(window, viewModel, itemsList);
         ValidateApplicationLoadComponent();
         ValidateLooseXamlReaderWriter();
+        ValidateDispatcherOperations(window);
         ValidateNavigation(window, navigationFrame, detailsNavigationButton);
         ValidateSecondaryWindow(window, aboutMenuItem);
         ValidateEditor(window, editorPasswordBox, editorRichTextBox);
@@ -2628,6 +2629,23 @@ internal static class MvpSelfTest
             "loose XamlWriter round-trip Button");
         AssertEqual("Loose action", roundTrippedButton.Content, "loose XamlWriter round-trip Button content");
         AssertEqual(96.0, roundTrippedButton.MinWidth, "loose XamlWriter round-trip Button MinWidth");
+    }
+
+    private static void ValidateDispatcherOperations(Window window)
+    {
+        AssertEqual(true, window.Dispatcher.CheckAccess(), "dispatcher CheckAccess on validation thread");
+        string invokeResult = window.Dispatcher.Invoke(
+            static () => "dispatcher invoke result",
+            DispatcherPriority.Send);
+        AssertEqual("dispatcher invoke result", invokeResult, "dispatcher Invoke result");
+
+        int beginInvokeCount = 0;
+        var operation = window.Dispatcher.BeginInvoke(
+            DispatcherPriority.Background,
+            new Action(() => beginInvokeCount++));
+        DrainDispatcher(window);
+        AssertEqual(1, beginInvokeCount, "dispatcher BeginInvoke execution count");
+        AssertEqual(DispatcherOperationStatus.Completed, operation.Status, "dispatcher BeginInvoke status");
     }
 
     private static void ValidateSecondaryWindow(MainWindow window, MenuItem aboutMenuItem)

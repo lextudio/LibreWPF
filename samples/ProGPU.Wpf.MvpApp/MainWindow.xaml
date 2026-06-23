@@ -229,6 +229,33 @@
                 </Grid>
             </TabItem>
 
+            <TabItem Header="Navigation">
+                <Grid Margin="0,14,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Frame
+                        x:Name="NavigationFrame"
+                        NavigationUIVisibility="Visible"
+                        Source="OverviewPage.xaml" />
+
+                    <StackPanel
+                        Grid.Column="1"
+                        Margin="18,0,0,0">
+                        <Button
+                            x:Name="OverviewNavigationButton"
+                            Content="Overview"
+                            Click="OnOverviewNavigationClick" />
+                        <Button
+                            x:Name="DetailsNavigationButton"
+                            Content="Details"
+                            Click="OnDetailsNavigationClick" />
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
             <TabItem Header="Document">
                 <FlowDocumentScrollViewer Margin="0,14,0,0">
                     <FlowDocument PagePadding="12">

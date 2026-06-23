@@ -5896,6 +5896,22 @@ public sealed class WpfManagedProjectGraphTests
             "samples",
             "ProGPU.Wpf.MvpApp",
             "MainWindow.xaml.cs");
+        var mvpOverviewPageXamlPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.MvpApp",
+            "OverviewPage.xaml");
+        var mvpOverviewPageCodeBehindPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.MvpApp",
+            "OverviewPage.xaml.cs");
+        var mvpDetailsPageXamlPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.MvpApp",
+            "DetailsPage.xaml");
+        var mvpDetailsPageCodeBehindPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.MvpApp",
+            "DetailsPage.xaml.cs");
         var mvpRunScriptPath = FindRepoPath(
             "eng",
             "run-progpu-wpf-mvp.sh");
@@ -5957,6 +5973,10 @@ public sealed class WpfManagedProjectGraphTests
         var mvpAppCodeBehind = File.ReadAllText(mvpAppCodeBehindPath);
         var mvpMainWindowXaml = File.ReadAllText(mvpMainWindowXamlPath);
         var mvpMainWindowCodeBehind = File.ReadAllText(mvpMainWindowCodeBehindPath);
+        var mvpOverviewPageXaml = File.ReadAllText(mvpOverviewPageXamlPath);
+        var mvpOverviewPageCodeBehind = File.ReadAllText(mvpOverviewPageCodeBehindPath);
+        var mvpDetailsPageXaml = File.ReadAllText(mvpDetailsPageXamlPath);
+        var mvpDetailsPageCodeBehind = File.ReadAllText(mvpDetailsPageCodeBehindPath);
         var mvpRunScript = File.ReadAllText(mvpRunScriptPath);
         string[] wpfThemeAssemblies =
         [
@@ -6051,6 +6071,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Command=\"{Binding AddItemCommand}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("InputGestureText=\"Ctrl+N\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("IsCheckable=\"True\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"NavigationFrame\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Source=\"OverviewPage.xaml\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Click=\"OnDetailsNavigationClick\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("TextBox", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ListBox", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DataGrid", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6065,9 +6088,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ObservableCollection<MvpNode>", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("addMenuItem.Command.Execute(addMenuItem.CommandParameter)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("actions menu unchecked view model state", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("NavigationFrame.Navigate(new Uri(\"DetailsPage.xaml\", UriKind.Relative))", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateNavigation(window, navigationFrame, detailsNavigationButton)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GetColumnBindingPath", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GetTemplateItemsSourcePath", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"IsActive\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("x:Class=\"ProGPU.Wpf.MvpApp.OverviewPage\"", mvpOverviewPageXaml, StringComparison.Ordinal);
+        Assert.Contains("OverviewTitle", mvpOverviewPageXaml, StringComparison.Ordinal);
+        Assert.Contains("partial class OverviewPage : Page", mvpOverviewPageCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("x:Class=\"ProGPU.Wpf.MvpApp.DetailsPage\"", mvpDetailsPageXaml, StringComparison.Ordinal);
+        Assert.Contains("DetailsList", mvpDetailsPageXaml, StringComparison.Ordinal);
+        Assert.Contains("partial class DetailsPage : Page", mvpDetailsPageCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal static class MvpSelfTest", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("dotnet", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("run --project \"${mvp_project}\"", mvpRunScript, StringComparison.Ordinal);

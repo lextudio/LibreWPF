@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace ProGPU.Wpf.MvpApp;
 
@@ -15,6 +16,16 @@ public partial class MainWindow : Window
     {
         DataContext = new MainViewModel();
         InitializeComponent();
+    }
+
+    private void OnOverviewNavigationClick(object sender, RoutedEventArgs e)
+    {
+        NavigationFrame.Navigate(new Uri("OverviewPage.xaml", UriKind.Relative));
+    }
+
+    private void OnDetailsNavigationClick(object sender, RoutedEventArgs e)
+    {
+        NavigationFrame.Navigate(new Uri("DetailsPage.xaml", UriKind.Relative));
     }
 }
 
@@ -223,6 +234,10 @@ internal static class MvpSelfTest
         Require<ListBox>(window.FindName("ItemsList"), "items ListBox");
         var itemsDataGrid = Require<DataGrid>(window.FindName("ItemsDataGrid"), "items DataGrid");
         var nodesTreeView = Require<TreeView>(window.FindName("NodesTreeView"), "nodes TreeView");
+        var navigationFrame = Require<Frame>(window.FindName("NavigationFrame"), "navigation Frame");
+        var detailsNavigationButton = Require<Button>(
+            window.FindName("DetailsNavigationButton"),
+            "details navigation Button");
         Require<CheckBox>(window.FindName("EnabledCheckBox"), "enabled CheckBox");
         Require<Slider>(window.FindName("ProgressSlider"), "progress Slider");
         Require<ComboBox>(window.FindName("CategoryCombo"), "category ComboBox");
@@ -245,6 +260,7 @@ internal static class MvpSelfTest
             nodesTreeView.ItemTemplate,
             "node hierarchical data template");
         AssertEqual("Children", GetTemplateItemsSourcePath(nodeTemplate), "TreeView hierarchical template ItemsSource path");
+        ValidateNavigation(window, navigationFrame, detailsNavigationButton);
 
         int initialCount = viewModel.Items.Count;
         viewModel.NewItemName = "Validated";
@@ -276,6 +292,37 @@ internal static class MvpSelfTest
         return template.ItemsSource is Binding binding
             ? binding.Path.Path
             : throw new InvalidOperationException("Expected hierarchical data template to bind ItemsSource.");
+    }
+
+    private static void ValidateNavigation(Window window, Frame frame, Button detailsButton)
+    {
+        DrainDispatcher(window);
+        var overviewPage = Require<OverviewPage>(frame.Content, "initial overview page");
+        var overviewTitle = Require<TextBlock>(
+            overviewPage.FindName("OverviewTitle"),
+            "overview page title");
+        AssertEqual("SDK overview page", overviewTitle.Text, "overview page title text");
+
+        detailsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, detailsButton));
+        DrainDispatcher(window);
+        var detailsPage = Require<DetailsPage>(frame.Content, "navigated details page");
+        var detailsTitle = Require<TextBlock>(
+            detailsPage.FindName("DetailsTitle"),
+            "details page title");
+        var detailsList = Require<ListBox>(
+            detailsPage.FindName("DetailsList"),
+            "details page list");
+        AssertEqual("SDK details page", detailsTitle.Text, "details page title text");
+        AssertEqual(3, detailsList.Items.Count, "details page list item count");
+        AssertEqual(new Uri("DetailsPage.xaml", UriKind.Relative), frame.Source, "navigation frame source");
+        AssertEqual(true, frame.CanGoBack, "navigation frame back stack state");
+    }
+
+    private static void DrainDispatcher(DispatcherObject dispatcherObject)
+    {
+        dispatcherObject.Dispatcher.Invoke(
+            static () => { },
+            DispatcherPriority.ApplicationIdle);
     }
 
     private static T Require<T>(object? value, string description)

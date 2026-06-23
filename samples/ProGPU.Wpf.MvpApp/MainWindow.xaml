@@ -635,6 +635,133 @@
                 </Grid>
             </TabItem>
 
+            <TabItem Header="Layout">
+                <Grid Margin="0,14,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <DockPanel
+                        x:Name="MvpDockPanel"
+                        MinHeight="92"
+                        LastChildFill="True">
+                        <Border
+                            x:Name="DockTopBand"
+                            DockPanel.Dock="Top"
+                            Padding="8"
+                            Background="{DynamicResource MvpPanelBrush}">
+                            <TextBlock Text="Docked header" />
+                        </Border>
+                        <Border
+                            x:Name="DockLeftBand"
+                            Width="92"
+                            DockPanel.Dock="Left"
+                            Padding="8"
+                            Background="#E7F5EE">
+                            <TextBlock Text="Left dock" />
+                        </Border>
+                        <Border
+                            x:Name="DockRightBand"
+                            Width="92"
+                            DockPanel.Dock="Right"
+                            Padding="8"
+                            Background="#F2F3F6">
+                            <TextBlock Text="Right dock" />
+                        </Border>
+                        <TextBlock
+                            x:Name="DockFillText"
+                            Padding="8"
+                            Text="Fill content" />
+                    </DockPanel>
+
+                    <WrapPanel
+                        x:Name="MvpWrapPanel"
+                        Grid.Row="1"
+                        Margin="0,14,0,0"
+                        ItemHeight="28"
+                        ItemWidth="90"
+                        Orientation="Horizontal">
+                        <Button Content="One" />
+                        <Button Content="Two" />
+                        <Button Content="Three" />
+                    </WrapPanel>
+
+                    <UniformGrid
+                        x:Name="MvpUniformGrid"
+                        Grid.Row="2"
+                        Margin="0,14,0,0"
+                        Columns="3"
+                        FirstColumn="1"
+                        Rows="2">
+                        <TextBlock Text="Alpha" />
+                        <TextBlock Text="Beta" />
+                        <TextBlock Text="Gamma" />
+                    </UniformGrid>
+
+                    <Grid
+                        x:Name="MvpGridSplitterGrid"
+                        Grid.Column="1"
+                        Grid.RowSpan="3"
+                        Margin="18,0,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition
+                                x:Name="SplitterLeftColumn"
+                                Width="120" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition
+                                x:Name="SplitterRightColumn"
+                                Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border
+                            x:Name="SplitterLeftPane"
+                            Padding="8"
+                            Background="{DynamicResource MvpPanelBrush}">
+                            <TextBlock Text="Left pane" />
+                        </Border>
+                        <GridSplitter
+                            x:Name="MvpGridSplitter"
+                            Grid.Column="1"
+                            Width="6"
+                            HorizontalAlignment="Stretch"
+                            KeyboardIncrement="12"
+                            ResizeBehavior="PreviousAndNext"
+                            ShowsPreview="False"
+                            VerticalAlignment="Stretch" />
+                        <Border
+                            x:Name="SplitterRightPane"
+                            Grid.Column="2"
+                            Padding="8"
+                            Background="#F2F3F6">
+                            <TextBlock Text="Right pane" />
+                        </Border>
+
+                        <Viewbox
+                            x:Name="MvpViewbox"
+                            Grid.Row="1"
+                            Grid.ColumnSpan="3"
+                            Margin="0,14,0,0"
+                            MaxHeight="54"
+                            Stretch="Uniform">
+                            <TextBlock
+                                x:Name="ViewboxText"
+                                FontSize="20"
+                                Text="Scaled layout content" />
+                        </Viewbox>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
             <TabItem Header="Explorer">
                 <Grid Margin="0,14,0,0">
                     <Grid.ColumnDefinitions>

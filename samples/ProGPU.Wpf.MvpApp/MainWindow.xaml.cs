@@ -675,6 +675,51 @@ internal static class MvpSelfTest
         var inputDatePicker = Require<DatePicker>(
             window.FindName("InputDatePicker"),
             "input DatePicker");
+        var mvpDockPanel = Require<DockPanel>(
+            window.FindName("MvpDockPanel"),
+            "MVP DockPanel");
+        var dockTopBand = Require<Border>(
+            window.FindName("DockTopBand"),
+            "dock top Border");
+        var dockLeftBand = Require<Border>(
+            window.FindName("DockLeftBand"),
+            "dock left Border");
+        var dockRightBand = Require<Border>(
+            window.FindName("DockRightBand"),
+            "dock right Border");
+        var dockFillText = Require<TextBlock>(
+            window.FindName("DockFillText"),
+            "dock fill TextBlock");
+        var mvpWrapPanel = Require<WrapPanel>(
+            window.FindName("MvpWrapPanel"),
+            "MVP WrapPanel");
+        var mvpUniformGrid = Require<UniformGrid>(
+            window.FindName("MvpUniformGrid"),
+            "MVP UniformGrid");
+        var mvpGridSplitterGrid = Require<Grid>(
+            window.FindName("MvpGridSplitterGrid"),
+            "MVP GridSplitter grid");
+        var splitterLeftColumn = Require<ColumnDefinition>(
+            window.FindName("SplitterLeftColumn"),
+            "splitter left ColumnDefinition");
+        var splitterRightColumn = Require<ColumnDefinition>(
+            window.FindName("SplitterRightColumn"),
+            "splitter right ColumnDefinition");
+        var splitterLeftPane = Require<Border>(
+            window.FindName("SplitterLeftPane"),
+            "splitter left Border");
+        var mvpGridSplitter = Require<GridSplitter>(
+            window.FindName("MvpGridSplitter"),
+            "MVP GridSplitter");
+        var splitterRightPane = Require<Border>(
+            window.FindName("SplitterRightPane"),
+            "splitter right Border");
+        var mvpViewbox = Require<Viewbox>(
+            window.FindName("MvpViewbox"),
+            "MVP Viewbox");
+        var viewboxText = Require<TextBlock>(
+            window.FindName("ViewboxText"),
+            "viewbox TextBlock");
         var selectedItemContent = Require<ContentControl>(
             window.FindName("SelectedItemContent"),
             "selected item ContentControl");
@@ -834,6 +879,22 @@ internal static class MvpSelfTest
             inputRepeatButton,
             inputCalendar,
             inputDatePicker);
+        ValidateLayoutControls(
+            mvpDockPanel,
+            dockTopBand,
+            dockLeftBand,
+            dockRightBand,
+            dockFillText,
+            mvpWrapPanel,
+            mvpUniformGrid,
+            mvpGridSplitterGrid,
+            splitterLeftColumn,
+            splitterRightColumn,
+            splitterLeftPane,
+            mvpGridSplitter,
+            splitterRightPane,
+            mvpViewbox,
+            viewboxText);
         ValidateItemsContextMenu(window, viewModel, itemsList);
         ValidateNavigation(window, navigationFrame, detailsNavigationButton);
         ValidateEditor(window, editorPasswordBox, editorRichTextBox);
@@ -1208,6 +1269,69 @@ internal static class MvpSelfTest
             initialCollapsedEvents,
             window.SelectorExpanderCollapsedCount,
             "selector Expander collapsed count");
+    }
+
+    private static void ValidateLayoutControls(
+        DockPanel dockPanel,
+        Border dockTop,
+        Border dockLeft,
+        Border dockRight,
+        TextBlock dockFillText,
+        WrapPanel wrapPanel,
+        UniformGrid uniformGrid,
+        Grid splitterGrid,
+        ColumnDefinition splitterLeftColumn,
+        ColumnDefinition splitterRightColumn,
+        Border splitterLeftPane,
+        GridSplitter gridSplitter,
+        Border splitterRightPane,
+        Viewbox viewbox,
+        TextBlock viewboxText)
+    {
+        AssertEqual(true, dockPanel.LastChildFill, "DockPanel LastChildFill");
+        AssertEqual(4, dockPanel.Children.Count, "DockPanel child count");
+        AssertEqual(Dock.Top, DockPanel.GetDock(dockTop), "DockPanel top attached Dock");
+        AssertEqual(Dock.Left, DockPanel.GetDock(dockLeft), "DockPanel left attached Dock");
+        AssertEqual(Dock.Right, DockPanel.GetDock(dockRight), "DockPanel right attached Dock");
+        AssertEqual("Fill content", dockFillText.Text, "DockPanel fill text");
+
+        AssertEqual(Orientation.Horizontal, wrapPanel.Orientation, "WrapPanel orientation");
+        AssertEqual(90.0, wrapPanel.ItemWidth, "WrapPanel item width");
+        AssertEqual(28.0, wrapPanel.ItemHeight, "WrapPanel item height");
+        AssertEqual(3, wrapPanel.Children.Count, "WrapPanel child count");
+        var thirdWrapButton = Require<Button>(wrapPanel.Children[2], "third WrapPanel Button");
+        AssertEqual("Three", thirdWrapButton.Content, "third WrapPanel button content");
+
+        AssertEqual(2, uniformGrid.Rows, "UniformGrid rows");
+        AssertEqual(3, uniformGrid.Columns, "UniformGrid columns");
+        AssertEqual(1, uniformGrid.FirstColumn, "UniformGrid first column");
+        AssertEqual(3, uniformGrid.Children.Count, "UniformGrid child count");
+        var secondUniformText = Require<TextBlock>(uniformGrid.Children[1], "second UniformGrid TextBlock");
+        AssertEqual("Beta", secondUniformText.Text, "UniformGrid second child text");
+
+        AssertEqual(3, splitterGrid.ColumnDefinitions.Count, "GridSplitter grid column count");
+        AssertEqual(splitterLeftColumn, splitterGrid.ColumnDefinitions[0], "GridSplitter left column reference");
+        AssertEqual(splitterRightColumn, splitterGrid.ColumnDefinitions[2], "GridSplitter right column reference");
+        AssertEqual(120.0, splitterLeftColumn.Width.Value, "GridSplitter left column width");
+        AssertEqual(true, splitterRightColumn.Width.IsStar, "GridSplitter right column star width");
+        AssertEqual(0, Grid.GetColumn(splitterLeftPane), "GridSplitter left pane column");
+        AssertEqual(1, Grid.GetColumn(gridSplitter), "GridSplitter column");
+        AssertEqual(2, Grid.GetColumn(splitterRightPane), "GridSplitter right pane column");
+        AssertEqual(6.0, gridSplitter.Width, "GridSplitter width");
+        AssertEqual(GridResizeBehavior.PreviousAndNext, gridSplitter.ResizeBehavior, "GridSplitter resize behavior");
+        AssertEqual(false, gridSplitter.ShowsPreview, "GridSplitter preview state");
+        AssertEqual(12.0, gridSplitter.KeyboardIncrement, "GridSplitter keyboard increment");
+        AssertEqual(HorizontalAlignment.Stretch, gridSplitter.HorizontalAlignment, "GridSplitter horizontal alignment");
+        AssertEqual(VerticalAlignment.Stretch, gridSplitter.VerticalAlignment, "GridSplitter vertical alignment");
+
+        splitterLeftColumn.Width = new GridLength(150.0);
+        AssertEqual(150.0, splitterLeftColumn.Width.Value, "GridSplitter left column updated width");
+        splitterLeftColumn.Width = new GridLength(120.0);
+
+        AssertEqual(Stretch.Uniform, viewbox.Stretch, "Viewbox stretch");
+        AssertEqual(54.0, viewbox.MaxHeight, "Viewbox max height");
+        AssertEqual(viewboxText, viewbox.Child, "Viewbox child reference");
+        AssertEqual("Scaled layout content", viewboxText.Text, "Viewbox text");
     }
 
     private static void ValidateInputControls(

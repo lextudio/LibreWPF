@@ -91,6 +91,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _showActiveOnly;
     private double _progress = 35.0;
     private int _refreshCount;
+    private string _validationText = "valid: ready";
 
     public MainViewModel()
     {
@@ -172,6 +173,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
         set => SetField(ref _showActiveOnly, value);
     }
 
+    public string ValidationText
+    {
+        get => _validationText;
+        set => SetField(ref _validationText, value);
+    }
+
     public double Progress
     {
         get => _progress;
@@ -232,6 +239,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ActionsEnabled = true;
         ShowActiveOnly = false;
         RefreshCount = 0;
+        ValidationText = "valid: ready";
     }
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
@@ -345,6 +353,16 @@ public sealed class MvpItemTemplateSelector : DataTemplateSelector
     }
 }
 
+public sealed class MvpNonEmptyValidationRule : ValidationRule
+{
+    public override ValidationResult Validate(object value, CultureInfo cultureInfo)
+    {
+        return value is string text && text.StartsWith("valid:", StringComparison.Ordinal)
+            ? ValidationResult.ValidResult
+            : new ValidationResult(false, "Value must start with valid:");
+    }
+}
+
 internal static class MvpSelfTest
 {
     public static void Validate(MainWindow window)
@@ -425,6 +443,12 @@ internal static class MvpSelfTest
             window.FindName("SelectorItemsList"),
             "selector items ListBox");
         var templateButton = Require<Button>(window.FindName("TemplateButton"), "template Button");
+        var validationTextBox = Require<TextBox>(
+            window.FindName("ValidationTextBox"),
+            "validation TextBox");
+        var validationEchoText = Require<TextBlock>(
+            window.FindName("ValidationEchoText"),
+            "validation echo TextBlock");
         var summaryPanel = Require<SummaryPanel>(window.FindName("SummaryPanel"), "summary Panel");
         var summaryNameText = Require<TextBlock>(
             summaryPanel.FindName("SummaryNameText"),
@@ -481,6 +505,7 @@ internal static class MvpSelfTest
             itemTemplateSelector,
             selectorItemContainerStyle);
         ValidateTemplateButton(window, templateButton, templateButtonStyle);
+        ValidateValidation(window, viewModel, validationTextBox, validationEchoText);
         AssertEqual(viewModel.Nodes, nodesTreeView.ItemsSource, "TreeView items source");
         AssertEqual(2, viewModel.Nodes.Count, "TreeView root node count");
         AssertEqual("Startup", viewModel.Nodes[0].Children[0].Name, "TreeView first child node");
@@ -740,6 +765,59 @@ internal static class MvpSelfTest
         button.IsEnabled = true;
         DrainDispatcher(window);
         AssertEqual(1.0, border.Opacity, "template Button restored opacity");
+    }
+
+    private static void ValidateValidation(
+        Window window,
+        MainViewModel viewModel,
+        TextBox textBox,
+        TextBlock echoText)
+    {
+        var binding = Require<Binding>(
+            BindingOperations.GetBinding(textBox, TextBox.TextProperty),
+            "validation TextBox binding");
+
+        AssertEqual("ValidationText", binding.Path.Path, "validation binding path");
+        AssertEqual(BindingMode.TwoWay, binding.Mode, "validation binding mode");
+        AssertEqual(UpdateSourceTrigger.Explicit, binding.UpdateSourceTrigger, "validation update trigger");
+        AssertEqual(true, binding.NotifyOnValidationError, "validation notification flag");
+        AssertEqual(1, binding.ValidationRules.Count, "validation rule count");
+        Require<MvpNonEmptyValidationRule>(
+            binding.ValidationRules[0],
+            "MVP non-empty validation rule");
+
+        var errorTemplate = Require<ControlTemplate>(
+            Validation.GetErrorTemplate(textBox),
+            "validation error template");
+        AssertEqual(
+            window.FindResource("MvpValidationErrorTemplate"),
+            errorTemplate,
+            "validation error template resource");
+
+        DrainDispatcher(window);
+        AssertEqual("valid: ready", textBox.Text, "initial validation TextBox text");
+        AssertEqual("Current: valid: ready", echoText.Text, "initial validation echo text");
+
+        var bindingExpression = Require<BindingExpression>(
+            BindingOperations.GetBindingExpression(textBox, TextBox.TextProperty),
+            "validation TextBox binding expression");
+        textBox.Text = "invalid";
+        bindingExpression.UpdateSource();
+        DrainDispatcher(window);
+        AssertEqual("valid: ready", viewModel.ValidationText, "invalid validation leaves source unchanged");
+        AssertEqual(true, Validation.GetHasError(textBox), "invalid validation error flag");
+        AssertEqual(1, Validation.GetErrors(textBox).Count, "invalid validation error count");
+        AssertEqual(
+            "Value must start with valid:",
+            Validation.GetErrors(textBox)[0].ErrorContent,
+            "invalid validation error content");
+
+        textBox.Text = "valid: updated";
+        bindingExpression.UpdateSource();
+        DrainDispatcher(window);
+        AssertEqual(false, Validation.GetHasError(textBox), "valid validation clears error flag");
+        AssertEqual("valid: updated", viewModel.ValidationText, "valid validation updates source");
+        AssertEqual("Current: valid: updated", echoText.Text, "updated validation echo text");
     }
 
     private static string GetTextBindingPath(TextBlock textBlock)

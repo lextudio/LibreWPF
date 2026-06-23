@@ -1645,6 +1645,16 @@
                             x:Name="DetailsNavigationButton"
                             Content="Details"
                             Click="OnDetailsNavigationClick" />
+                        <Button
+                            x:Name="BackNavigationButton"
+                            Margin="0,12,0,0"
+                            Content="Back"
+                            Click="OnBackNavigationClick" />
+                        <Button
+                            x:Name="ForwardNavigationButton"
+                            Margin="0,6,0,0"
+                            Content="Forward"
+                            Click="OnForwardNavigationClick" />
                     </StackPanel>
                 </Grid>
             </TabItem>

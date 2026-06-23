@@ -222,6 +222,22 @@ public partial class MainWindow : Window
         NavigationFrame.Navigate(new Uri("DetailsPage.xaml", UriKind.Relative));
     }
 
+    private void OnBackNavigationClick(object sender, RoutedEventArgs e)
+    {
+        if (NavigationFrame.CanGoBack)
+        {
+            NavigationFrame.GoBack();
+        }
+    }
+
+    private void OnForwardNavigationClick(object sender, RoutedEventArgs e)
+    {
+        if (NavigationFrame.CanGoForward)
+        {
+            NavigationFrame.GoForward();
+        }
+    }
+
     private void OnAboutMenuItemClick(object sender, RoutedEventArgs e)
     {
         var dialog = new AboutWindow();
@@ -1564,6 +1580,12 @@ internal static class MvpSelfTest
         var detailsNavigationButton = Require<Button>(
             window.FindName("DetailsNavigationButton"),
             "details navigation Button");
+        var backNavigationButton = Require<Button>(
+            window.FindName("BackNavigationButton"),
+            "back navigation Button");
+        var forwardNavigationButton = Require<Button>(
+            window.FindName("ForwardNavigationButton"),
+            "forward navigation Button");
         var editorPasswordBox = Require<PasswordBox>(
             window.FindName("EditorPasswordBox"),
             "editor PasswordBox");
@@ -1825,7 +1847,12 @@ internal static class MvpSelfTest
         ValidateApplicationLoadComponent();
         ValidateLooseXamlReaderWriter();
         ValidateDispatcherOperations(window);
-        ValidateNavigation(window, navigationFrame, detailsNavigationButton);
+        ValidateNavigation(
+            window,
+            navigationFrame,
+            detailsNavigationButton,
+            backNavigationButton,
+            forwardNavigationButton);
         ValidateSecondaryWindow(window, aboutMenuItem);
         ValidateEditor(
             window,
@@ -4059,7 +4086,12 @@ internal static class MvpSelfTest
             : throw new InvalidOperationException("Expected hierarchical data template to bind ItemsSource.");
     }
 
-    private static void ValidateNavigation(Window window, Frame frame, Button detailsButton)
+    private static void ValidateNavigation(
+        Window window,
+        Frame frame,
+        Button detailsButton,
+        Button backButton,
+        Button forwardButton)
     {
         DrainDispatcher(window);
         var overviewPage = Require<OverviewPage>(frame.Content, "initial overview page");
@@ -4081,6 +4113,25 @@ internal static class MvpSelfTest
         AssertEqual(3, detailsList.Items.Count, "details page list item count");
         AssertEqual(new Uri("DetailsPage.xaml", UriKind.Relative), frame.Source, "navigation frame source");
         AssertEqual(true, frame.CanGoBack, "navigation frame back stack state");
+        AssertEqual(false, frame.CanGoForward, "navigation frame forward stack before journal back");
+
+        backButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, backButton));
+        DrainDispatcher(window);
+        var journalOverviewPage = Require<OverviewPage>(frame.Content, "journal overview page");
+        var journalOverviewTitle = Require<TextBlock>(
+            journalOverviewPage.FindName("OverviewTitle"),
+            "journal overview page title");
+        AssertEqual("SDK overview page", journalOverviewTitle.Text, "journal overview page title text");
+        AssertEqual(true, frame.CanGoForward, "navigation frame forward stack after journal back");
+
+        forwardButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, forwardButton));
+        DrainDispatcher(window);
+        var journalDetailsPage = Require<DetailsPage>(frame.Content, "journal details page");
+        var journalDetailsTitle = Require<TextBlock>(
+            journalDetailsPage.FindName("DetailsTitle"),
+            "journal details page title");
+        AssertEqual("SDK details page", journalDetailsTitle.Text, "journal details page title text");
+        AssertEqual(true, frame.CanGoBack, "navigation frame back stack after journal forward");
     }
 
     private static void ValidateApplicationLoadComponent()

@@ -6502,9 +6502,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("IsDefault=\"True\"", mvpAboutWindowXaml, StringComparison.Ordinal);
         Assert.Contains("partial class AboutWindow : Window", mvpAboutWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("x:Class=\"ProGPU.Wpf.MvpApp.SummaryPanel\"", mvpSummaryPanelXaml, StringComparison.Ordinal);
+        Assert.Contains("xmlns:local=\"clr-namespace:ProGPU.Wpf.MvpApp\"", mvpSummaryPanelXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SummaryHeaderText\"", mvpSummaryPanelXaml, StringComparison.Ordinal);
+        Assert.Contains("HeaderText, RelativeSource={RelativeSource AncestorType={x:Type local:SummaryPanel}}", mvpSummaryPanelXaml, StringComparison.Ordinal);
         Assert.Contains("SummaryNameText", mvpSummaryPanelXaml, StringComparison.Ordinal);
         Assert.Contains("SelectedItem.Name", mvpSummaryPanelXaml, StringComparison.Ordinal);
         Assert.Contains("Progress, StringFormat=Progress: {0:0}%", mvpSummaryPanelXaml, StringComparison.Ordinal);
+        Assert.Contains("public static readonly DependencyProperty HeaderTextProperty", mvpSummaryPanelCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DependencyProperty.Register", mvpSummaryPanelCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsRender", mvpSummaryPanelCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public string HeaderText", mvpSummaryPanelCodeBehind, StringComparison.Ordinal);
         Assert.Contains("partial class SummaryPanel : UserControl", mvpSummaryPanelCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SolidColorBrush x:Key=\"MvpPanelBrush\"", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:local=\"clr-namespace:ProGPU.Wpf.MvpApp\"", mvpThemeXaml, StringComparison.Ordinal);

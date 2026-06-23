@@ -828,6 +828,9 @@ internal static class MvpSelfTest
             window.FindName("ClickStoryboardButton"),
             "click storyboard Button");
         var summaryPanel = Require<SummaryPanel>(window.FindName("SummaryPanel"), "summary Panel");
+        var summaryHeaderText = Require<TextBlock>(
+            summaryPanel.FindName("SummaryHeaderText"),
+            "summary header text");
         var summaryNameText = Require<TextBlock>(
             summaryPanel.FindName("SummaryNameText"),
             "summary name text");
@@ -925,9 +928,18 @@ internal static class MvpSelfTest
         AssertEqual("IsActive", GetGridViewColumnBindingPath(explorerGridView.Columns[2]), "explorer GridView active binding");
         DrainDispatcher(window);
         AssertEqual("Commands idle", commandStatusText.Text, "initial command status text");
+        AssertEqual("StatusText", GetBindingPath(summaryPanel, SummaryPanel.HeaderTextProperty), "summary header binding path");
+        AssertEqual("Alpha selected, progress 35%", summaryPanel.HeaderText, "summary initial header property");
+        AssertEqual("Alpha selected, progress 35%", summaryHeaderText.Text, "summary initial header text");
         AssertEqual("Name: Alpha", summaryNameText.Text, "summary initial name text");
         AssertEqual("Category: Framework", summaryCategoryText.Text, "summary initial category text");
         AssertEqual("Progress: 35%", summaryProgressText.Text, "summary initial progress text");
+        summaryPanel.SetCurrentValue(SummaryPanel.HeaderTextProperty, "Manual dependency property header");
+        DrainDispatcher(window);
+        AssertEqual("Manual dependency property header", summaryHeaderText.Text, "summary SetCurrentValue header text");
+        UpdateBinding(summaryPanel, SummaryPanel.HeaderTextProperty);
+        DrainDispatcher(window);
+        AssertEqual("Alpha selected, progress 35%", summaryHeaderText.Text, "summary rebound header text");
         AssertEqual("Alpha / Framework / 35%", selectedItemSummaryText.Text, "initial selected summary text");
         ValidateBindingFallbacks(
             window,
@@ -1026,6 +1038,8 @@ internal static class MvpSelfTest
         viewModel.Progress = 72.0;
         DrainDispatcher(window);
         AssertEqual("Validated selected, progress 72%", viewModel.StatusText, "status text");
+        AssertEqual("Validated selected, progress 72%", summaryPanel.HeaderText, "summary updated header property");
+        AssertEqual("Validated selected, progress 72%", summaryHeaderText.Text, "summary updated header text");
         AssertEqual("Validated", priorityBindingText.Text, "updated priority binding selected item text");
         AssertEqual("Name: Validated", summaryNameText.Text, "summary updated name text");
         AssertEqual("Category: Input", summaryCategoryText.Text, "summary updated category text");
@@ -2063,6 +2077,12 @@ internal static class MvpSelfTest
     {
         return BindingOperations.GetBinding(textBox, TextBox.TextProperty)?.Path.Path
             ?? throw new InvalidOperationException($"Expected {textBox.Name} text to have a Binding.");
+    }
+
+    private static string GetBindingPath(DependencyObject target, DependencyProperty property)
+    {
+        return BindingOperations.GetBinding(target, property)?.Path.Path
+            ?? throw new InvalidOperationException($"Expected {property.Name} to have a Binding.");
     }
 
     private static string GetSelectedDateBindingPath(Control control)

@@ -341,7 +341,8 @@
                             Content="Reset" />
                         <local:SummaryPanel
                             x:Name="SummaryPanel"
-                            Margin="0,18,0,0" />
+                            Margin="0,18,0,0"
+                            HeaderText="{Binding StatusText}" />
                         <TextBlock
                             Margin="0,18,0,4"
                             FontWeight="SemiBold"

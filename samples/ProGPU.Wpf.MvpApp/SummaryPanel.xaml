@@ -1,15 +1,17 @@
 <UserControl
     x:Class="ProGPU.Wpf.MvpApp.SummaryPanel"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:ProGPU.Wpf.MvpApp">
     <Border
         Padding="12"
         Background="{DynamicResource MvpPanelBrush}">
         <StackPanel>
             <TextBlock
+                x:Name="SummaryHeaderText"
                 FontSize="16"
                 FontWeight="SemiBold"
-                Text="Selection summary" />
+                Text="{Binding HeaderText, RelativeSource={RelativeSource AncestorType={x:Type local:SummaryPanel}}}" />
             <TextBlock
                 x:Name="SummaryNameText"
                 Margin="0,8,0,0"

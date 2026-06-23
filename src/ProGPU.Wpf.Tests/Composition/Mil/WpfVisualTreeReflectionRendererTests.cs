@@ -581,6 +581,62 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeAppliesWpfVisualOffsetAroundContent()
+    {
+        var root = new FakeVisualOffsetDrawingVisual(
+            CreateRenderData(Brushes.Green),
+            new WpfVector(16, 24));
+        var sink = new TestSink();
+
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushTransform", "DrawRectangle", "Pop" }, sink.Operations);
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(16, transform.M41);
+        Assert.Equal(24, transform.M42);
+        Assert.Equal(1, result.VisualCount);
+        Assert.Equal(1, result.ContentCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeLowersWpfVisualOffsetIntoRetainedOwnerState()
+    {
+        var root = new FakeVisualOffsetDrawingVisual(
+            CreateRenderData(Brushes.Green),
+            new WpfVector(16, 24));
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushVisualOwner", "ApplyVisualState", "DrawRectangle", "PopVisualOwner" }, sink.Operations);
+        var state = Assert.Single(sink.RetainedVisualStates);
+        Assert.Equal(new Vector2(16, 24), state.Offset);
+        Assert.Equal(1, result.VisualCount);
+        Assert.Equal(1, result.ContentCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeAppliesWpfVisualTransformAroundContent()
+    {
+        var root = new FakeVisualTransformDrawingVisual(
+            CreateRenderData(Brushes.Green),
+            new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 3, 4)));
+        var sink = new TestSink();
+
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushTransform", "DrawRectangle", "Pop" }, sink.Operations);
+        var transform = Assert.Single(sink.NativeTransforms);
+        Assert.Equal(3, transform.M41);
+        Assert.Equal(4, transform.M42);
+        Assert.Equal(1, result.VisualCount);
+        Assert.Equal(1, result.ContentCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
     public void ReplaySubtreeCountsUnsupportedContentWithoutThrowing()
     {
         var root = new FakeDrawingVisual(new object());
@@ -1392,6 +1448,32 @@ public sealed class WpfVisualTreeReflectionRendererTests
         {
             _drawingContent = drawingContent;
         }
+    }
+
+    private sealed class FakeVisualOffsetDrawingVisual
+    {
+        private readonly object? _content;
+
+        public FakeVisualOffsetDrawingVisual(object? content, WpfVector visualOffset)
+        {
+            _content = content;
+            VisualOffset = visualOffset;
+        }
+
+        private WpfVector VisualOffset { get; }
+    }
+
+    private sealed class FakeVisualTransformDrawingVisual
+    {
+        private readonly object? _content;
+
+        public FakeVisualTransformDrawingVisual(object? content, object? visualTransform)
+        {
+            _content = content;
+            VisualTransform = visualTransform;
+        }
+
+        private object? VisualTransform { get; }
     }
 
     private sealed class FakeVisualCollection

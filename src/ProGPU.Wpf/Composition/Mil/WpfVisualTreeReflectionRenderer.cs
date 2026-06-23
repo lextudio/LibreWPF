@@ -308,7 +308,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             return false;
         }
 
-        if (TryGetPropertyValue(visual, "Transform", out var transformValue) && transformValue != null)
+        if (TryReadVisualTransform(visual, out var transformValue))
         {
             if (!WpfReflectionResourceResolver.TryAdaptTransformMatrix(transformValue, out transform))
             {
@@ -718,7 +718,7 @@ public sealed class WpfVisualTreeReflectionRenderer
     {
         var popCount = 0;
 
-        if (TryGetPropertyValue(visual, "Transform", out var transform) && transform != null)
+        if (TryReadVisualTransform(visual, out var transform))
         {
             if (sink is IWpfNativeTransformCommandSink nativeTransformSink
                 && WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out var nativeTransform))
@@ -1058,13 +1058,59 @@ public sealed class WpfVisualTreeReflectionRenderer
         x = 0;
         y = 0;
 
-        if (!TryGetPropertyValue(visual, "Offset", out var offset) || offset == null)
+        if (TryReadVectorLikeProperty(visual, "Offset", out x, out y) && (x != 0 || y != 0))
         {
-            return false;
+            return true;
         }
 
-        return TryReadDoubleProperty(offset, "X", out x)
-            && TryReadDoubleProperty(offset, "Y", out y);
+        if (TryReadVectorLikeProperty(visual, "VisualOffset", out x, out y))
+        {
+            return true;
+        }
+
+        if (TryReadVectorLikeField(visual, "_offset", out x, out y))
+        {
+            return true;
+        }
+
+        return TryReadVectorLikeProperty(visual, "Offset", out x, out y);
+    }
+
+    private static bool TryReadVisualTransform(object visual, out object? transform)
+    {
+        if (TryGetPropertyValue(visual, "Transform", out transform) && transform != null)
+        {
+            return true;
+        }
+
+        if (TryGetPropertyValue(visual, "VisualTransform", out transform) && transform != null)
+        {
+            return true;
+        }
+
+        return TryGetFieldValue(visual, "_transform", out transform) && transform != null;
+    }
+
+    private static bool TryReadVectorLikeProperty(object instance, string propertyName, out double x, out double y)
+    {
+        x = 0;
+        y = 0;
+
+        return TryGetPropertyValue(instance, propertyName, out var value)
+            && value != null
+            && TryReadDoubleProperty(value, "X", out x)
+            && TryReadDoubleProperty(value, "Y", out y);
+    }
+
+    private static bool TryReadVectorLikeField(object instance, string fieldName, out double x, out double y)
+    {
+        x = 0;
+        y = 0;
+
+        return TryGetFieldValue(instance, fieldName, out var value)
+            && value != null
+            && TryReadDoubleProperty(value, "X", out x)
+            && TryReadDoubleProperty(value, "Y", out y);
     }
 
     private static bool TryReadOpacityMaskBounds(object visual, out WpfReplayRect bounds)
@@ -1157,7 +1203,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
 
         var transform = Matrix4x4.Identity;
-        if (TryGetPropertyValue(child, "Transform", out var transformValue) && transformValue != null)
+        if (TryReadVisualTransform(child, out var transformValue))
         {
             if (!WpfReflectionResourceResolver.TryAdaptTransformMatrix(transformValue, out transform))
             {
@@ -1365,6 +1411,19 @@ public sealed class WpfVisualTreeReflectionRenderer
         return true;
     }
 
+    private static bool TryGetFieldValue(object instance, string fieldName, out object? value)
+    {
+        var field = FindField(instance.GetType(), fieldName);
+        if (field == null)
+        {
+            value = null;
+            return false;
+        }
+
+        value = field.GetValue(instance);
+        return true;
+    }
+
     private static Func<object, int, object?>? FindIndexer(Type type)
     {
         var indexer = type.GetProperty("Item", MemberFlags, binder: null, returnType: null, types: new[] { typeof(int) }, modifiers: null);
@@ -1390,6 +1449,20 @@ public sealed class WpfVisualTreeReflectionRenderer
             if (property != null)
             {
                 return property;
+            }
+        }
+
+        return null;
+    }
+
+    private static FieldInfo? FindField(Type type, string name)
+    {
+        for (var current = type; current != null; current = current.BaseType)
+        {
+            var field = current.GetField(name, MemberFlags);
+            if (field != null)
+            {
+                return field;
             }
         }
 
@@ -1441,20 +1514,6 @@ public sealed class WpfVisualTreeReflectionRenderer
         return FindField(contentType, "_buffer") != null
             && FindField(contentType, "_curOffset") != null
             && FindField(contentType, "_dependentResources") != null;
-    }
-
-    private static FieldInfo? FindField(Type type, string name)
-    {
-        for (var current = type; current != null; current = current.BaseType)
-        {
-            var field = current.GetField(name, BindingFlags.Instance | BindingFlags.NonPublic);
-            if (field != null)
-            {
-                return field;
-            }
-        }
-
-        return null;
     }
 
     private sealed class BoundsAccumulatingSink : IWpfCompositionCommandSink

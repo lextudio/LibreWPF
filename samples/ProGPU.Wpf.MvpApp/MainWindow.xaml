@@ -1013,6 +1013,7 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
@@ -1020,16 +1021,21 @@
                             x:Name="SelectedItemContent"
                             Content="{Binding SelectedItem}"
                             ContentTemplate="{StaticResource SelectedItemTemplate}" />
+                        <ContentControl
+                            x:Name="ImplicitTemplateContent"
+                            Grid.Row="1"
+                            Margin="0,14,0,0"
+                            Content="{Binding SelectedItem}" />
 
                         <TextBlock
-                            Grid.Row="1"
+                            Grid.Row="2"
                             Margin="0,14,0,8"
                             FontWeight="SemiBold"
                             Text="Template selector list" />
 
                         <ListBox
                             x:Name="SelectorItemsList"
-                            Grid.Row="2"
+                            Grid.Row="3"
                             ItemContainerStyle="{StaticResource MvpSelectorItemContainerStyle}"
                             ItemTemplateSelector="{StaticResource MvpItemTemplateSelector}"
                             ItemsSource="{Binding Items}">

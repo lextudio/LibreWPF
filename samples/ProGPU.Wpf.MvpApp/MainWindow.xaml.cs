@@ -645,6 +645,9 @@ internal static class MvpSelfTest
         AssertEqual(true, themeResources.Contains("MvpTriggerTextBlockStyle"), "app theme trigger TextBlock style key");
         var panelBrush = Require<SolidColorBrush>(window.FindResource("MvpPanelBrush"), "MVP panel brush");
         var buttonStyle = Require<Style>(application.TryFindResource(typeof(Button)), "app Button style");
+        var implicitItemTemplate = Require<DataTemplate>(
+            application.TryFindResource(new DataTemplateKey(typeof(MvpItem))),
+            "implicit item DataTemplate");
         var basedOnButtonStyle = Require<Style>(
             application.TryFindResource("MvpBasedOnButtonStyle"),
             "BasedOn Button style");
@@ -685,6 +688,7 @@ internal static class MvpSelfTest
         AssertEqual(typeof(Button), templateButtonStyle.TargetType, "template Button style target type");
         AssertEqual(typeof(TextBlock), triggerTextBlockStyle.TargetType, "trigger TextBlock style target type");
         AssertEqual(typeof(Button), eventSetterButtonStyle.TargetType, "EventSetter Button style target type");
+        AssertEqual(typeof(MvpItem), implicitItemTemplate.DataType, "implicit item template data type");
         AssertEqual(typeof(MvpItem), selectedItemTemplate.DataType, "selected item template data type");
         var mainMenu = Require<Menu>(window.FindName("MainMenu"), "main Menu");
         var fileMenuItem = Require<MenuItem>(window.FindName("FileMenuItem"), "file MenuItem");
@@ -873,6 +877,9 @@ internal static class MvpSelfTest
         var selectedItemContent = Require<ContentControl>(
             window.FindName("SelectedItemContent"),
             "selected item ContentControl");
+        var implicitTemplateContent = Require<ContentControl>(
+            window.FindName("ImplicitTemplateContent"),
+            "implicit template ContentControl");
         var selectorItemsList = Require<ListBox>(
             window.FindName("SelectorItemsList"),
             "selector items ListBox");
@@ -995,6 +1002,7 @@ internal static class MvpSelfTest
             selectedItemContent.ContentTemplate,
             "selected item content template");
         ValidateSelectedItemTemplate(selectedItemTemplate);
+        ValidateImplicitItemTemplate(viewModel, implicitTemplateContent, implicitItemTemplate);
         ValidateTemplateSelector(
             viewModel,
             selectorItemsList,
@@ -1158,6 +1166,7 @@ internal static class MvpSelfTest
         AssertEqual("Input", viewModel.SelectedItem?.Category, "selected item category");
         AssertEqual(true, viewModel.SelectedItem?.IsActive ?? false, "selected item active state");
         DrainDispatcher(window);
+        AssertEqual(viewModel.SelectedItem, implicitTemplateContent.Content, "implicit item content updated selected item");
         AssertEqual(viewModel.SelectedItem, explorerListView.SelectedItem, "explorer ListView updated selected item");
         actionsEnabledMenuItem.IsChecked = false;
         AssertEqual(false, viewModel.ActionsEnabled, "actions menu unchecked view model state");
@@ -1908,6 +1917,31 @@ internal static class MvpSelfTest
         AssertEqual("Name", GetTextBindingPath(nameText), "selected item template name binding path");
         AssertEqual("Category", GetTextBindingPath(categoryText), "selected item template category binding path");
         AssertEqual("IsActive", GetTextBindingPath(activeText), "selected item template active binding path");
+    }
+
+    private static void ValidateImplicitItemTemplate(
+        MainViewModel viewModel,
+        ContentControl contentControl,
+        DataTemplate template)
+    {
+        AssertEqual(viewModel.SelectedItem, contentControl.Content, "implicit item content");
+        AssertEqual<DataTemplate?>(null, contentControl.ContentTemplate, "implicit item explicit ContentTemplate");
+
+        var templateKey = Require<DataTemplateKey>(template.DataTemplateKey, "implicit item DataTemplate key");
+        AssertEqual(typeof(MvpItem), templateKey.DataType, "implicit item DataTemplate key type");
+
+        var root = Require<FrameworkElement>(
+            template.LoadContent(),
+            "implicit item template root");
+        var nameText = Require<TextBlock>(
+            root.FindName("ImplicitTemplateNameText"),
+            "implicit item template name TextBlock");
+        var categoryText = Require<TextBlock>(
+            root.FindName("ImplicitTemplateCategoryText"),
+            "implicit item template category TextBlock");
+
+        AssertEqual("Name", GetTextBindingPath(nameText), "implicit item template name binding path");
+        AssertEqual("Category", GetTextBindingPath(categoryText), "implicit item template category binding path");
     }
 
     private static void ValidateTemplateSelector(

@@ -819,6 +819,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             cachedLogicalClientWidth,
             cachedLogicalClientHeight,
             monitorDpiScale);
+        logicalSize = ReconcileResolvedLogicalClientSizeWithRootRenderSize(
+            logicalSize,
+            framebufferSize,
+            monitorDpiScale);
         geometry = ResolveRenderSurfaceGeometry(
             logicalSize.X,
             logicalSize.Y,
@@ -874,6 +878,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             logicalSize,
             GetCachedLogicalClientWidth(),
             GetCachedLogicalClientHeight(),
+            monitorDpiScale);
+        logicalSize = ReconcileResolvedLogicalClientSizeWithRootRenderSize(
+            logicalSize,
+            framebufferSize,
             monitorDpiScale);
         var clientWidth = logicalSize.X;
         var clientHeight = logicalSize.Y;
@@ -932,6 +940,114 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             DimensionsDifferByDpiScale(larger, smaller, monitorDpiScale)
                 ? smaller
                 : resolvedDimension;
+    }
+
+    private Vector2D<int> ReconcileResolvedLogicalClientSizeWithRootRenderSize(
+        Vector2D<int> resolvedSize,
+        Vector2D<int> framebufferSize,
+        double monitorDpiScale)
+    {
+        if (!TryGetWpfRootRenderSize(out var rootRenderSize))
+        {
+            return resolvedSize;
+        }
+
+        return new Vector2D<int>(
+            ReconcileResolvedLogicalClientDimensionWithRootRenderSize(
+                resolvedSize.X,
+                rootRenderSize.X,
+                framebufferSize.X,
+                monitorDpiScale),
+            ReconcileResolvedLogicalClientDimensionWithRootRenderSize(
+                resolvedSize.Y,
+                rootRenderSize.Y,
+                framebufferSize.Y,
+                monitorDpiScale));
+    }
+
+    private static int ReconcileResolvedLogicalClientDimensionWithRootRenderSize(
+        int resolvedDimension,
+        int rootRenderDimension,
+        int framebufferDimension,
+        double monitorDpiScale)
+    {
+        if (resolvedDimension <= 0 ||
+            rootRenderDimension <= 0 ||
+            framebufferDimension <= 0)
+        {
+            return resolvedDimension;
+        }
+
+        if (Math.Abs(resolvedDimension - framebufferDimension) > 1)
+        {
+            return resolvedDimension;
+        }
+
+        var larger = Math.Max(resolvedDimension, rootRenderDimension);
+        var smaller = Math.Min(resolvedDimension, rootRenderDimension);
+        if (larger != resolvedDimension)
+        {
+            return resolvedDimension;
+        }
+
+        return DimensionsDifferByDpiScale(larger, smaller, monitorDpiScale)
+            ? rootRenderDimension
+            : resolvedDimension;
+    }
+
+    private bool TryGetWpfRootRenderSize(out Vector2D<int> renderSize)
+    {
+        renderSize = default;
+        if (_wpfRootVisual == null)
+        {
+            return false;
+        }
+
+        var renderSizeProperty = _wpfRootVisual.GetType().GetProperty(
+            "RenderSize",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        object? rawRenderSize = renderSizeProperty?.GetValue(_wpfRootVisual);
+        if (!TryReadPositiveFiniteDimension(rawRenderSize, "Width", out var width) ||
+            !TryReadPositiveFiniteDimension(rawRenderSize, "Height", out var height))
+        {
+            return false;
+        }
+
+        renderSize = new Vector2D<int>(
+            Math.Max(1, (int)Math.Ceiling(width)),
+            Math.Max(1, (int)Math.Ceiling(height)));
+        return true;
+    }
+
+    private static bool TryReadPositiveFiniteDimension(
+        object? value,
+        string propertyName,
+        out double dimension)
+    {
+        dimension = 0.0;
+        if (value == null)
+        {
+            return false;
+        }
+
+        var property = value.GetType().GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        object? rawDimension = property?.GetValue(value);
+        try
+        {
+            dimension = Convert.ToDouble(rawDimension);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+        catch (InvalidCastException)
+        {
+            return false;
+        }
+
+        return double.IsFinite(dimension) && dimension > 0.0;
     }
 
     internal static int ResolveCachedLogicalClientDimension(

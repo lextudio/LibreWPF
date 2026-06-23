@@ -35,6 +35,26 @@
         </Border>
     </DataTemplate>
 
+    <DataTemplate DataType="{x:Type local:MvpItem}">
+        <Border
+            Padding="10"
+            Background="#E7F5EE">
+            <StackPanel>
+                <TextBlock
+                    FontWeight="SemiBold"
+                    Text="Implicit item template" />
+                <TextBlock
+                    x:Name="ImplicitTemplateNameText"
+                    Margin="0,6,0,0"
+                    Text="{Binding Name, StringFormat=Implicit name: {0}}" />
+                <TextBlock
+                    x:Name="ImplicitTemplateCategoryText"
+                    Margin="0,3,0,0"
+                    Text="{Binding Category, StringFormat=Implicit category: {0}}" />
+            </StackPanel>
+        </Border>
+    </DataTemplate>
+
     <Style TargetType="{x:Type Button}">
         <Setter Property="MinWidth" Value="104" />
         <Setter Property="Padding" Value="10,5" />

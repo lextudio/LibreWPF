@@ -720,6 +720,55 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void NativeResizeRestoresRootRenderDipsWhenAllStartupCachesArePhysical()
+    {
+        using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
+        {
+            Width = 420,
+            Height = 840
+        });
+        var root = new TestRootElement();
+        root.SetRenderSize(420, 840);
+        host.WpfRootVisual = root;
+
+        SetPrivateField(host, "_clientWidth", 840);
+        SetPrivateField(host, "_clientHeight", 1680);
+        SetPrivateField(host, "_requestedLogicalClientWidth", 840);
+        SetPrivateField(host, "_requestedLogicalClientHeight", 1680);
+        SetPrivateField(host, "_declaredLogicalClientWidth", 840);
+        SetPrivateField(host, "_declaredLogicalClientHeight", 1680);
+
+        Assert.True(host.UpdateClientSizeFromNativeResize(
+            new Vector2D<int>(840, 1680),
+            new Vector2D<int>(840, 1680),
+            monitorDpiScale: 2.0));
+
+        Assert.Equal(420, host.Width);
+        Assert.Equal(840, host.Height);
+    }
+
+    [Fact]
+    public void NativeResizeDoesNotUseStaleRootRenderSizeForRealLogicalResize()
+    {
+        using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
+        {
+            Width = 420,
+            Height = 840
+        });
+        var root = new TestRootElement();
+        root.SetRenderSize(420, 840);
+        host.WpfRootVisual = root;
+
+        Assert.True(host.UpdateClientSizeFromNativeResize(
+            new Vector2D<int>(600, 900),
+            new Vector2D<int>(1200, 1800),
+            monitorDpiScale: 2.0));
+
+        Assert.Equal(600, host.Width);
+        Assert.Equal(900, host.Height);
+    }
+
+    [Fact]
     public void NativeResizeUsesPortablePresentationSourceLogicalCacheWhenHostCacheWasPhysical()
     {
         using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
@@ -1295,6 +1344,18 @@ public sealed class ProGpuWpfWindowHostTests
             IsDisposed = true;
         }
     }
+
+    private sealed class TestRootElement
+    {
+        public TestRenderSize RenderSize { get; private set; }
+
+        public void SetRenderSize(double width, double height)
+        {
+            RenderSize = new TestRenderSize(width, height);
+        }
+    }
+
+    private readonly record struct TestRenderSize(double Width, double Height);
 
     private sealed class FakePortablePresentationSource : IDisposable
     {

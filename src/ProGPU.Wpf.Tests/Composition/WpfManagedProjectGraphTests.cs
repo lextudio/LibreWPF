@@ -398,6 +398,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ResolveRenderSurfaceGeometry(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ResolveLogicalClientSize(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ResolveLogicalClientDpiScale(", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("ReconcileResolvedLogicalClientSizeWithRootRenderSize(", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("TryGetWpfRootRenderSize(out var rootRenderSize)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("\"RenderSize\"", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("TryReadPositiveFiniteDimension(rawRenderSize, \"Width\", out var width)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("TryReadPositiveFiniteDimension(rawRenderSize, \"Height\", out var height)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("UpdateClientSizeFromNativeResize(size, framebufferSize, monitorDpiScale);", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var clientSize = _window.Size;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var framebufferSize = _window.FramebufferSize;", proGpuHost, StringComparison.Ordinal);
@@ -428,6 +433,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("TryResolveMacOsBackingScaleFactor", proGpuHost, StringComparison.Ordinal);
         Assert.DoesNotContain("window is not INativeWindowSource nativeWindowSource", proGpuHost, StringComparison.Ordinal);
         Assert.DoesNotContain("sel_registerName(\"screen\")", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("NativeResizeRestoresRootRenderDipsWhenAllStartupCachesArePhysical", proGpuWindowHostTests, StringComparison.Ordinal);
+        Assert.Contains("NativeResizeDoesNotUseStaleRootRenderSizeForRealLogicalResize", proGpuWindowHostTests, StringComparison.Ordinal);
+        Assert.Contains("SetPrivateField(host, \"_declaredLogicalClientWidth\", 840)", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.DoesNotContain("backingScaleFactor", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var dpiScaleX = pixelWidth / (double)logicalWidth", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var dpiScaleY = pixelHeight / (double)logicalHeight", proGpuHost, StringComparison.Ordinal);
@@ -6260,6 +6268,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DynamicResource invalidation", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SelectedItemContent\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ContentTemplate=\"{StaticResource SelectedItemTemplate}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ImplicitTemplateContent\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"{Binding SelectedItem}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SelectorItemsList\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemTemplateSelector=\"{StaticResource MvpItemTemplateSelector}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemContainerStyle=\"{StaticResource MvpSelectorItemContainerStyle}\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6481,6 +6491,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("app Button implicit style target type", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("app theme BasedOn Button style key", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("BasedOn Button style base style", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("new DataTemplateKey(typeof(MvpItem))", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateImplicitItemTemplate(viewModel, implicitTemplateContent, implicitItemTemplate)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("implicit item DataTemplate key type", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("implicit item content updated selected item", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateBasedOnButton(basedOnStyleButton, basedOnButtonStyle)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("BasedOn Button inherited MinWidth setter", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("BasedOn Button derived background color", mvpMainWindowCodeBehind, StringComparison.Ordinal);
@@ -6587,6 +6601,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Key=\"SelectedItemTemplate\"", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("DataType=\"{x:Type local:MvpItem}\"", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("TemplateNameText", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("<DataTemplate DataType=\"{x:Type local:MvpItem}\">", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("ImplicitTemplateNameText", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("ImplicitTemplateCategoryText", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"MvpBasedOnButtonStyle\"", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("BasedOn=\"{StaticResource {x:Type Button}}\"", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"MvpTriggerTextBlockStyle\"", mvpThemeXaml, StringComparison.Ordinal);

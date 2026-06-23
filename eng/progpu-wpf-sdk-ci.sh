@@ -102,6 +102,9 @@ run_dotnet build "${repo_root}/samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.cspro
 echo "Running MVP SDK app validation..."
 PROGPU_WPF_MVP_VALIDATE=1 run_dotnet run --project "${repo_root}/samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj" -v:minimal
 
+echo "Running MVP SDK app Application.Run validation..."
+PROGPU_WPF_MVP_RUN_VALIDATE=1 run_dotnet run --project "${repo_root}/samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj" -v:minimal
+
 echo "Building focused WPF graph tests..."
 run_dotnet build "${repo_root}/src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj" -v:minimal
 

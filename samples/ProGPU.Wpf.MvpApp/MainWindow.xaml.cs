@@ -624,7 +624,7 @@ public static class MvpResourceFactory
 
 internal static class MvpSelfTest
 {
-    public static void Validate(MainWindow window)
+    public static void Validate(MainWindow window, bool expectLoadedStoryboardApplied = false)
     {
         ArgumentNullException.ThrowIfNull(window);
 
@@ -1031,7 +1031,7 @@ internal static class MvpSelfTest
             bindingGroupStatusText,
             bindingGroupFirstEchoText,
             bindingGroupLastEchoText);
-        ValidateStoryboards(window, loadedStoryboardText, clickStoryboardButton);
+        ValidateStoryboards(window, loadedStoryboardText, clickStoryboardButton, expectLoadedStoryboardApplied);
         AssertEqual(viewModel.Nodes, nodesTreeView.ItemsSource, "TreeView items source");
         AssertEqual(2, viewModel.Nodes.Count, "TreeView root node count");
         AssertEqual("Startup", viewModel.Nodes[0].Children[0].Name, "TreeView first child node");
@@ -2278,7 +2278,8 @@ internal static class MvpSelfTest
     private static void ValidateStoryboards(
         Window window,
         TextBlock loadedText,
-        Button clickButton)
+        Button clickButton,
+        bool expectLoadedStoryboardApplied)
     {
         var loadedTrigger = Require<EventTrigger>(
             loadedText.Triggers[0],
@@ -2300,7 +2301,13 @@ internal static class MvpSelfTest
             0.58,
             "click storyboard");
 
-        AssertEqual(1.0, loadedText.Opacity, "loaded storyboard initial opacity");
+        AssertClose(
+            expectLoadedStoryboardApplied ? 0.42 : 1.0,
+            loadedText.Opacity,
+            0.0001,
+            expectLoadedStoryboardApplied
+                ? "loaded storyboard applied opacity"
+                : "loaded storyboard initial opacity");
         AssertEqual(1.0, clickButton.Opacity, "click storyboard initial opacity");
     }
 
@@ -2553,6 +2560,15 @@ internal static class MvpSelfTest
         {
             throw new InvalidOperationException(
                 $"Expected {description} to be '{expected}', but found '{actual}'.");
+        }
+    }
+
+    private static void AssertClose(double expected, double actual, double tolerance, string description)
+    {
+        if (Math.Abs(expected - actual) > tolerance)
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to be close to '{expected}', but found '{actual}'.");
         }
     }
 

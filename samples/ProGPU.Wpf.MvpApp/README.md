@@ -14,6 +14,12 @@ Run from the repository root:
 ./eng/run-progpu-wpf-mvp.sh
 ```
 
+Run the same app through a bounded `Application.Run()` validation that opens via `StartupUri`, validates the WPF object graph, and shuts down automatically:
+
+```bash
+PROGPU_WPF_MVP_RUN_VALIDATE=1 ./eng/run-progpu-wpf-mvp.sh
+```
+
 If the local `11.0.0-dev` packages are stale or missing, rebuild the SDK package feed first:
 
 ```bash

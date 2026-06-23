@@ -6099,6 +6099,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("artifacts/nuget/ProGPU.Wpf.MvpApp", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_VALIDATE=1", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_MVP_RUN_VALIDATE=1", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfSdkProvidesSwitchOnlyPackagingSurface", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("dev_package_version=\"${PROGPU_WPF_DEV_PACKAGE_VERSION:-11.0.0-dev}\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("\"${package_output}/${package_id}.${dev_package_version}.nupkg\"", sdkCiScript, StringComparison.Ordinal);
@@ -6112,6 +6113,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<Resource Include=\"Assets/MvpResource.txt\" />", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<ResourceDictionary Source=\"Resources/Theme.xaml\" />", mvpAppXaml, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_VALIDATE", mvpAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_MVP_RUN_VALIDATE", mvpAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DispatcherPriority.ApplicationIdle", mvpAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateRunningApplication", mvpAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Expected MVP StartupUri MainWindow", mvpAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("expectLoadedStoryboardApplied: true", mvpAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MvpSelfTest.Validate", mvpAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MainMenu\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:local=\"clr-namespace:ProGPU.Wpf.MvpApp\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6465,6 +6471,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Grouped values must start with", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Media.Animation;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateStoryboards", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("expectLoadedStoryboardApplied", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("loaded storyboard applied opacity", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertClose(", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateStoryboardAction", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Storyboard.GetTargetName(animation)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Storyboard.GetTargetProperty(animation).Path", mvpMainWindowCodeBehind, StringComparison.Ordinal);

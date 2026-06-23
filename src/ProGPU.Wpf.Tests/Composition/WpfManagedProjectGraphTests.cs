@@ -6232,6 +6232,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Unchecked=\"OnActiveOnlyFilterChanged\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"GroupedItemsList\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Source={StaticResource ItemsViewSource}}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<ListBox.GroupStyle>", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<GroupStyle.HeaderTemplate>", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"GroupedItemActiveText\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Converter={StaticResource MvpActiveTextConverter}", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<TabItem Header=\"Bindings\">", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6627,6 +6629,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateCollectionView", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("CollectionViewSource source", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("items PropertyGroupDescription", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateGroupedItemsGroupStyle", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("grouped ListBox GroupStyle HeaderTemplate", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("active-only checked view model state", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateSelectedSummaryBinding", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("selected summary MultiBinding", mvpMainWindowCodeBehind, StringComparison.Ordinal);

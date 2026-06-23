@@ -1542,6 +1542,7 @@ internal static class MvpSelfTest
         AssertEqual(false, activeOnlyCheckBox.IsChecked == true, "active-only initial check state");
         AssertEqual(false, viewModel.ShowActiveOnly, "active-only initial view model state");
         AssertEqual(itemsViewSource.View, groupedItemsList.ItemsSource, "grouped ListBox ItemsSource view");
+        ValidateGroupedItemsGroupStyle(groupedItemsList.GroupStyle);
         ValidateGroupedItemTemplate(groupedItemsList.ItemTemplate, activeTextConverter);
 
         var initialItems = CopyItems(itemsViewSource.View);
@@ -1566,6 +1567,26 @@ internal static class MvpSelfTest
         var restoredItems = CopyItems(itemsViewSource.View);
         AssertEqual(false, viewModel.ShowActiveOnly, "active-only restored view model state");
         AssertEqual(2, restoredItems.Count, "restored collection view item count");
+    }
+
+    private static void ValidateGroupedItemsGroupStyle(Collection<GroupStyle> groupStyles)
+    {
+        AssertEqual(1, groupStyles.Count, "grouped ListBox GroupStyle count");
+        var groupStyle = Require<GroupStyle>(groupStyles[0], "grouped ListBox GroupStyle");
+        var headerTemplate = Require<DataTemplate>(
+            groupStyle.HeaderTemplate,
+            "grouped ListBox GroupStyle HeaderTemplate");
+        var root = Require<Border>(
+            headerTemplate.LoadContent(),
+            "grouped ListBox GroupStyle HeaderTemplate root");
+        var headerText = Require<TextBlock>(
+            root.Child,
+            "grouped ListBox GroupStyle HeaderTemplate TextBlock");
+
+        AssertEqual(new Thickness(0, 8, 0, 4), root.Margin, "grouped ListBox GroupStyle header margin");
+        AssertEqual(new Thickness(6, 3, 6, 3), root.Padding, "grouped ListBox GroupStyle header padding");
+        AssertEqual(FontWeights.SemiBold, headerText.FontWeight, "grouped ListBox GroupStyle header weight");
+        AssertEqual("Name", GetTextBindingPath(headerText), "grouped ListBox GroupStyle header binding path");
     }
 
     private static void ValidateItemsContextMenu(Window window, MainViewModel viewModel, ListBox itemsList)

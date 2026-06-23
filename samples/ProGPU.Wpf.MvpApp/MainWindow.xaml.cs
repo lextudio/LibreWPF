@@ -1188,6 +1188,7 @@ internal static class MvpSelfTest
             resourceDynamicBorder,
             expectLoadedStoryboardApplied);
         ValidateItemsContextMenu(window, viewModel, itemsList);
+        ValidateApplicationLoadComponent();
         ValidateNavigation(window, navigationFrame, detailsNavigationButton);
         ValidateSecondaryWindow(window, aboutMenuItem);
         ValidateEditor(window, editorPasswordBox, editorRichTextBox);
@@ -2565,6 +2566,17 @@ internal static class MvpSelfTest
         AssertEqual(3, detailsList.Items.Count, "details page list item count");
         AssertEqual(new Uri("DetailsPage.xaml", UriKind.Relative), frame.Source, "navigation frame source");
         AssertEqual(true, frame.CanGoBack, "navigation frame back stack state");
+    }
+
+    private static void ValidateApplicationLoadComponent()
+    {
+        var component = Application.LoadComponent(
+            new Uri("/ProGPU.Wpf.MvpApp;component/OverviewPage.xaml", UriKind.Relative));
+        var overviewPage = Require<OverviewPage>(component, "Application.LoadComponent overview page");
+        var overviewTitle = Require<TextBlock>(
+            overviewPage.FindName("OverviewTitle"),
+            "Application.LoadComponent overview title");
+        AssertEqual("SDK overview page", overviewTitle.Text, "Application.LoadComponent overview title text");
     }
 
     private static void ValidateSecondaryWindow(MainWindow window, MenuItem aboutMenuItem)

@@ -2,11 +2,13 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Navigation;
+using System.Windows.Threading;
 
 namespace ProGPU.Wpf.SdkSwitchSmoke;
 
@@ -16,6 +18,8 @@ public partial class MainWindow : Window
         "Smoke Command",
         "SmokeCommand",
         typeof(MainWindow));
+
+    private const string LiveValidationEnvironmentVariable = "PROGPU_WPF_SDK_SWITCH_LIVE_VALIDATE";
 
     public MainWindow()
     {
@@ -89,6 +93,10 @@ public partial class MainWindow : Window
 
     public string? LastSmokeFrameLoadCompletedUri { get; private set; }
 
+    public int LiveRenderSurfaceValidationCount { get; private set; }
+
+    public string? LiveRenderSurfaceValidationStatus { get; private set; }
+
     public int DocumentLinkRequestNavigateCount { get; private set; }
 
     public string? LastDocumentLinkRequestNavigateUri { get; private set; }
@@ -102,6 +110,117 @@ public partial class MainWindow : Window
     public object? LastSmokeRoutedEventSender { get; private set; }
 
     public object? LastSmokeRoutedEventSource { get; private set; }
+
+    private void OnSdkSwitchSmokeWindowLoaded(object sender, RoutedEventArgs e)
+    {
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.ApplicationIdle,
+            new Action(ValidateLiveRenderSurfaceGeometry));
+    }
+
+    private void ValidateLiveRenderSurfaceGeometry()
+    {
+        bool requireLiveValidation = Environment.GetEnvironmentVariable(LiveValidationEnvironmentVariable) == "1";
+        if (!TryGetPortableActivationHost(out object? host))
+        {
+            if (requireLiveValidation)
+            {
+                throw new InvalidOperationException("Expected the SDK-switch smoke app to have a live ProGPU host.");
+            }
+
+            return;
+        }
+
+        object liveHost = host
+            ?? throw new InvalidOperationException("Expected the SDK-switch smoke app to have a live ProGPU host.");
+        object geometry = InvokeRequired(liveHost, "ResolveCurrentRenderSurfaceGeometry");
+        var logicalWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "LogicalWidth"));
+        var logicalHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "LogicalHeight"));
+        var pixelWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "PixelWidth"));
+        var pixelHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "PixelHeight"));
+        var dpiScale = Convert.ToDouble(GetRequiredProperty(geometry, "DpiScale"), CultureInfo.InvariantCulture);
+        var expectedLogicalWidth = ToExpectedLogicalDimension(Width, RenderSize.Width);
+        var expectedLogicalHeight = ToExpectedLogicalDimension(Height, RenderSize.Height);
+
+        AssertClose(logicalWidth, expectedLogicalWidth, "live ProGPU WPF logical width");
+        AssertClose(logicalHeight, expectedLogicalHeight, "live ProGPU WPF logical height");
+        if (pixelWidth < logicalWidth || pixelHeight < logicalHeight)
+        {
+            throw new InvalidOperationException(
+                $"Expected live ProGPU WPF pixels to cover logical content, but got logical {logicalWidth}x{logicalHeight} and pixels {pixelWidth}x{pixelHeight}.");
+        }
+
+        if (dpiScale > 1.01 &&
+            (pixelWidth <= logicalWidth || pixelHeight <= logicalHeight))
+        {
+            throw new InvalidOperationException(
+                $"Expected live ProGPU WPF high-DPI pixels to exceed logical size, but got logical {logicalWidth}x{logicalHeight}, pixels {pixelWidth}x{pixelHeight}, DPI {dpiScale}.");
+        }
+
+        LiveRenderSurfaceValidationCount++;
+        LiveRenderSurfaceValidationStatus = $"logical {logicalWidth}x{logicalHeight}, pixels {pixelWidth}x{pixelHeight}, dpi {dpiScale:0.###}";
+        if (requireLiveValidation)
+        {
+            Console.WriteLine($"ProGPU WPF SDK switch live geometry validation succeeded: {LiveRenderSurfaceValidationStatus}.");
+            Application.Current.Shutdown();
+        }
+    }
+
+    private bool TryGetPortableActivationHost(out object? host)
+    {
+        host = null;
+        PropertyInfo? activationProperty = typeof(Window).GetProperty(
+            "PortableWindowActivation",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        object? activation = activationProperty?.GetValue(this);
+        if (activation == null)
+        {
+            return false;
+        }
+
+        PropertyInfo? hostProperty = activation.GetType().GetProperty(
+            "Host",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        host = hostProperty?.GetValue(activation);
+        return host != null;
+    }
+
+    private static object InvokeRequired(object target, string methodName)
+    {
+        MethodInfo method = target.GetType().GetMethod(
+            methodName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMethodException(target.GetType().FullName, methodName);
+        return method.Invoke(target, null)
+            ?? throw new InvalidOperationException($"Expected {target.GetType().FullName}.{methodName} to return a value.");
+    }
+
+    private static object GetRequiredProperty(object target, string propertyName)
+    {
+        PropertyInfo property = target.GetType().GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(target.GetType().FullName, propertyName);
+        return property.GetValue(target)
+            ?? throw new InvalidOperationException($"Expected {target.GetType().FullName}.{propertyName} to return a value.");
+    }
+
+    private static uint ToExpectedLogicalDimension(double declaredDimension, double renderDimension)
+    {
+        double value = double.IsFinite(declaredDimension) && declaredDimension > 0.0
+            ? declaredDimension
+            : renderDimension;
+        return Math.Max(1u, (uint)Math.Round(value, MidpointRounding.AwayFromZero));
+    }
+
+    private static void AssertClose(uint actual, uint expected, string description)
+    {
+        if (Math.Abs((long)actual - expected) > 1)
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to be {expected}, but got {actual}.");
+        }
+    }
 
     private void OnActionButtonClick(object sender, RoutedEventArgs e)
     {

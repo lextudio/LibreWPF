@@ -4163,6 +4163,7 @@ internal static class MvpSelfTest
         ValidateDispatcherTimer(window);
         ValidateDispatcherSynchronizationContext(window);
         ValidateDispatcherAsyncContinuation(window);
+        ValidateDispatcherInvokeAsync(window);
     }
 
     private static void ValidateDispatcherTimer(Window window)
@@ -4248,6 +4249,34 @@ internal static class MvpSelfTest
     {
         await Task.Yield();
         complete(window.Dispatcher.CheckAccess());
+    }
+
+    private static void ValidateDispatcherInvokeAsync(Window window)
+    {
+        DispatcherOperation<string> resultOperation = window.Dispatcher.InvokeAsync(
+            () =>
+            {
+                AssertEqual(true, window.Dispatcher.CheckAccess(), "dispatcher InvokeAsync callback access");
+                return "dispatcher invoke async result";
+            },
+            DispatcherPriority.Background);
+        PumpDispatcherUntil(
+            window,
+            () => resultOperation.Status == DispatcherOperationStatus.Completed,
+            TimeSpan.FromSeconds(1),
+            "dispatcher InvokeAsync operation");
+        AssertEqual(DispatcherOperationStatus.Completed, resultOperation.Status, "dispatcher InvokeAsync status");
+        AssertEqual("dispatcher invoke async result", resultOperation.Result, "dispatcher InvokeAsync result");
+
+        DispatcherOperation actionOperation = window.Dispatcher.InvokeAsync(
+            () => AssertEqual(true, window.Dispatcher.CheckAccess(), "dispatcher InvokeAsync action access"),
+            DispatcherPriority.Background);
+        PumpDispatcherUntil(
+            window,
+            () => actionOperation.Status == DispatcherOperationStatus.Completed,
+            TimeSpan.FromSeconds(1),
+            "dispatcher InvokeAsync action operation");
+        AssertEqual(DispatcherOperationStatus.Completed, actionOperation.Status, "dispatcher InvokeAsync action status");
     }
 
     private static void ValidateMessageBox(MainWindow window, Button button, TextBlock statusText)

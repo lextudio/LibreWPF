@@ -1210,6 +1210,9 @@ internal static class Program
                         x:Name="ExternalAsyncContinuationText"
                         Text="{Binding ExternalAsyncContinuationStatus}" />
                     <TextBlock
+                        x:Name="ExternalDispatcherInvokeAsyncText"
+                        Text="{Binding ExternalDispatcherInvokeAsyncStatus}" />
+                    <TextBlock
                         x:Name="ExternalLocalizedText"
                         x:Uid="ExternalLocalizedText"
                         Localization.Attributes="$Content (Readable Modifiable Text)"
@@ -2534,6 +2537,21 @@ internal static class Program
                     }
                 }
 
+                private string _externalDispatcherInvokeAsyncStatus = "invoke async waiting";
+
+                public string ExternalDispatcherInvokeAsyncStatus
+                {
+                    get => _externalDispatcherInvokeAsyncStatus;
+                    private set
+                    {
+                        if (_externalDispatcherInvokeAsyncStatus != value)
+                        {
+                            _externalDispatcherInvokeAsyncStatus = value;
+                            OnPropertyChanged(nameof(ExternalDispatcherInvokeAsyncStatus));
+                        }
+                    }
+                }
+
                 public bool IsExternalDataTriggerActive
                 {
                     get => _isExternalDataTriggerActive;
@@ -2606,6 +2624,8 @@ internal static class Program
                 public int ExternalDispatcherTimerTickCount { get; private set; }
 
                 public int ExternalAsyncContinuationCount { get; private set; }
+
+                public int ExternalDispatcherInvokeAsyncCount { get; private set; }
 
                 public string? LastExternalSelectionSourceName { get; private set; }
 
@@ -3392,6 +3412,7 @@ internal static class Program
                     _externalDispatcherTimer.Tick += OnExternalDispatcherTimerTick;
                     _externalDispatcherTimer.Start();
                     _ = RunExternalAsyncContinuationAsync();
+                    _ = RunExternalDispatcherInvokeAsync();
                 }
 
                 private void OnExternalDispatcherTimerTick(object? sender, EventArgs e)
@@ -3408,6 +3429,20 @@ internal static class Program
                     ExternalAsyncContinuationStatus = Dispatcher.CheckAccess()
                         ? $"async dispatcher continuation {ExternalAsyncContinuationCount}"
                         : "async continuation left dispatcher";
+                }
+
+                private async Task RunExternalDispatcherInvokeAsync()
+                {
+                    DispatcherOperation<string> operation = Dispatcher.InvokeAsync(
+                        () =>
+                        {
+                            ExternalDispatcherInvokeAsyncCount++;
+                            return Dispatcher.CheckAccess()
+                                ? $"invoke async dispatcher {ExternalDispatcherInvokeAsyncCount}"
+                                : "invoke async left dispatcher";
+                        },
+                        DispatcherPriority.Background);
+                    ExternalDispatcherInvokeAsyncStatus = await operation.Task;
                 }
 
                 private void OnExternalLoadedStoryboardTextLoaded(object sender, RoutedEventArgs e)
@@ -4241,6 +4276,7 @@ internal static class Program
                     AssertBrushColor(startupResourceText.Foreground, "#FF176283", "external SDK startup dynamic resource foreground");
                     ValidateDispatcherSynchronizationContextAfterRun(window);
                     ValidateAsyncContinuationAfterRun(window);
+                    ValidateDispatcherInvokeAsyncAfterRun(window);
                     ValidateDispatcherTimerAfterRun(window);
                     ValidateLoadedStoryboardAfterRun(window);
                     ValidatePropertyTriggerActionsAfterRun(window);
@@ -4324,6 +4360,26 @@ internal static class Program
                         "async dispatcher continuation 1",
                         asyncText.Text,
                         "external SDK dispatcher async continuation bound text");
+                }
+
+                private static void ValidateDispatcherInvokeAsyncAfterRun(MainWindow window)
+                {
+                    var invokeText = RequireType<TextBlock>(
+                        window.FindName("ExternalDispatcherInvokeAsyncText"),
+                        "external SDK dispatcher InvokeAsync text");
+                    PumpDispatcherUntil(
+                        () => window.ExternalDispatcherInvokeAsyncCount > 0,
+                        TimeSpan.FromSeconds(1),
+                        "external SDK dispatcher InvokeAsync");
+                    AssertEqual(1, window.ExternalDispatcherInvokeAsyncCount, "external SDK dispatcher InvokeAsync count");
+                    AssertEqual(
+                        "invoke async dispatcher 1",
+                        window.ExternalDispatcherInvokeAsyncStatus,
+                        "external SDK dispatcher InvokeAsync status");
+                    AssertEqual(
+                        "invoke async dispatcher 1",
+                        invokeText.Text,
+                        "external SDK dispatcher InvokeAsync bound text");
                 }
 
                 private static void ValidateDispatcherTimerAfterRun(MainWindow window)

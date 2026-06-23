@@ -8,7 +8,8 @@
     x:Name="RootWindow"
     Title="ProGPU WPF SDK Smoke"
     Width="420"
-    Height="840">
+    Height="840"
+    Loaded="OnSdkSwitchSmokeWindowLoaded">
     <Window.CommandBindings>
         <CommandBinding
             CanExecute="OnSmokeCommandCanExecute"

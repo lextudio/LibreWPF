@@ -11938,6 +11938,14 @@ internal static class Program
             AssertEqual(420, GetProperty(host, "Width"), $"{descriptionPrefix} packaged Retina startup logical host width");
             AssertEqual(840, GetProperty(host, "Height"), $"{descriptionPrefix} packaged Retina startup logical host height");
 
+            SetField(host, "_clientWidth", 840);
+            SetField(host, "_clientHeight", 1680);
+            SetField(host, "_requestedLogicalClientWidth", 840);
+            SetField(host, "_requestedLogicalClientHeight", 1680);
+            InvokeMethod(updateNativeResize, host, nativeRetinaSize, nativeRetinaSize, dpiScale);
+            AssertEqual(420, GetProperty(host, "Width"), $"{descriptionPrefix} packaged Retina polluted-cache logical host width");
+            AssertEqual(840, GetProperty(host, "Height"), $"{descriptionPrefix} packaged Retina polluted-cache logical host height");
+
             MethodInfo resolveGeometry = windowHostType.GetMethod(
                 "ResolveRenderSurfaceGeometry",
                 BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public,
@@ -12573,6 +12581,15 @@ internal static class Program
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
             ?? throw new MissingMemberException(instance.GetType().FullName, propertyName);
         property.SetValue(instance, value);
+    }
+
+    private static void SetField(object instance, string fieldName, object? value)
+    {
+        FieldInfo field = instance.GetType().GetField(
+            fieldName,
+            BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new MissingFieldException(instance.GetType().FullName, fieldName);
+        field.SetValue(instance, value);
     }
 
     private static object Invoke(object instance, string methodName, params object?[] args)

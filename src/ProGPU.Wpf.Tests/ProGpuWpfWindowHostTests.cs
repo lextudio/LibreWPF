@@ -685,6 +685,41 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void NativeResizeRestoresDeclaredDipsWhenRequestedCacheWasPolluted()
+    {
+        using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
+        {
+            Width = 420,
+            Height = 840
+        });
+
+        SetPrivateField(host, "_clientWidth", 840);
+        SetPrivateField(host, "_clientHeight", 1680);
+        SetPrivateField(host, "_requestedLogicalClientWidth", 840);
+        SetPrivateField(host, "_requestedLogicalClientHeight", 1680);
+
+        Assert.True(host.UpdateClientSizeFromNativeResize(
+            new Vector2D<int>(840, 1680),
+            new Vector2D<int>(840, 1680),
+            monitorDpiScale: 2.0));
+
+        Assert.Equal(420, host.Width);
+        Assert.Equal(840, host.Height);
+
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            host.Width,
+            host.Height,
+            framebufferSize: new Vector2D<int>(840, 1680),
+            monitorDpiScale: 2.0);
+
+        Assert.Equal(420u, geometry.LogicalWidth);
+        Assert.Equal(840u, geometry.LogicalHeight);
+        Assert.Equal(840u, geometry.PixelWidth);
+        Assert.Equal(1680u, geometry.PixelHeight);
+        Assert.Equal(2.0, geometry.DpiScale);
+    }
+
+    [Fact]
     public void NativeResizeUsesPortablePresentationSourceLogicalCacheWhenHostCacheWasPhysical()
     {
         using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions

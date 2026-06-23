@@ -112,12 +112,52 @@ public partial class App : Application
         AssertEqual(840u, GetProperty(geometry, "PixelWidth"), "SDK smoke Retina physical width");
         AssertEqual(1680u, GetProperty(geometry, "PixelHeight"), "SDK smoke Retina physical height");
         AssertEqual(2.0, GetProperty(geometry, "DpiScale"), "SDK smoke Retina DPI scale");
+        ValidateHostRecoversDeclaredLogicalSize(hostType, vector2DIntType, dpiScale);
 
         ValidateRetainedOwnerBranchFillsPhysicalTarget(proGpuWpf, proGpuBackend, silkNetWebGpu);
 
         ValidateRuntimeAssetMatchesLocalPackage(proGpuWpf, "ProGPU.Wpf", "ProGPU.Wpf", "net10.0");
         ValidateRuntimeAssetMatchesLocalPackage(proGpuScene, "ProGPU.Scene", "ProGPU.Scene", "net10.0");
         ValidateRuntimeAssetMatchesLocalPackage(proGpuBackend, "ProGPU.Backend", "ProGPU.Backend", "net10.0");
+    }
+
+    private static void ValidateHostRecoversDeclaredLogicalSize(
+        Type hostType,
+        Type vector2DIntType,
+        double dpiScale)
+    {
+        Type optionsType = GetRequiredType(hostType.Assembly, "System.Windows.Media.ProGPU.ProGpuWpfWindowOptions");
+        object options = Activator.CreateInstance(optionsType)
+            ?? throw new InvalidOperationException("Could not create ProGPU WPF window options.");
+        SetProperty(options, "Width", 420);
+        SetProperty(options, "Height", 840);
+
+        object host = Activator.CreateInstance(hostType, options)
+            ?? throw new InvalidOperationException("Could not create ProGPU WPF window host.");
+        try
+        {
+            SetField(host, "_clientWidth", 840);
+            SetField(host, "_clientHeight", 1680);
+            SetField(host, "_requestedLogicalClientWidth", 840);
+            SetField(host, "_requestedLogicalClientHeight", 1680);
+
+            object nativeRetinaSize = Activator.CreateInstance(vector2DIntType, 840, 1680)
+                ?? throw new InvalidOperationException("Could not create Silk.NET Retina framebuffer size.");
+            MethodInfo updateNativeResize = RequireMethodByParameterNames(
+                hostType,
+                "UpdateClientSizeFromNativeResize",
+                "size",
+                "framebufferSize",
+                "monitorDpiScale");
+            updateNativeResize.Invoke(host, new[] { nativeRetinaSize, nativeRetinaSize, dpiScale });
+
+            AssertEqual(420, GetProperty(host, "Width"), "SDK smoke live host recovered logical width");
+            AssertEqual(840, GetProperty(host, "Height"), "SDK smoke live host recovered logical height");
+        }
+        finally
+        {
+            (host as IDisposable)?.Dispose();
+        }
     }
 
     private static Assembly LoadRequiredAssembly(string assemblyName)
@@ -162,6 +202,24 @@ public partial class App : Application
                 BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
             ?.GetValue(instance)
             ?? throw new MissingMemberException(instance.GetType().FullName, propertyName);
+    }
+
+    private static void SetProperty(object instance, string propertyName, object value)
+    {
+        PropertyInfo property = instance.GetType().GetProperty(
+                propertyName,
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+            ?? throw new MissingMemberException(instance.GetType().FullName, propertyName);
+        property.SetValue(instance, value);
+    }
+
+    private static void SetField(object instance, string fieldName, object value)
+    {
+        FieldInfo field = instance.GetType().GetField(
+                fieldName,
+                BindingFlags.NonPublic | BindingFlags.Instance)
+            ?? throw new MissingFieldException(instance.GetType().FullName, fieldName);
+        field.SetValue(instance, value);
     }
 
     private static void ValidateRetainedOwnerBranchFillsPhysicalTarget(

@@ -390,6 +390,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private int _requestedLogicalClientWidth = -1;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_requestedLogicalClientWidth = _clientWidth;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_requestedLogicalClientHeight = _clientHeight;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("private int _declaredLogicalClientWidth = -1;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_declaredLogicalClientWidth = _clientWidth;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_declaredLogicalClientHeight = _clientHeight;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal RenderSurfaceGeometry LastResolvedRenderSurfaceGeometry", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ResolveCurrentRenderSurfaceGeometry()", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ResolveRenderSurfaceGeometry(", proGpuHost, StringComparison.Ordinal);
@@ -408,7 +411,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private static bool DimensionsDifferByDpiScale", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("portablePresentationSourceDimension > 0", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("requestedLogicalDimension > 0", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("_requestedLogicalClientHeight = clientHeight;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("declaredLogicalDimension > 0", proGpuHost, StringComparison.Ordinal);
+        Assert.DoesNotContain("_requestedLogicalClientHeight = clientHeight;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var logicalSize = ResolveLogicalClientSize(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var logicalWidth = (uint)Math.Max(1, clientWidth);", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var logicalHeight = (uint)Math.Max(1, clientHeight);", proGpuHost, StringComparison.Ordinal);
@@ -473,6 +477,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("LegacyRenderOverloadPreservesLogicalHighDpiFrameAcrossPhysicalFramebuffer", proGpuDrawingFrameTests, StringComparison.Ordinal);
         Assert.Contains("NativeResizeUsesPortablePresentationSourceLogicalCacheWhenHostCacheWasPhysical", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("NativeResizeRestoresRequestedDipsWhenStartupNativeCacheWasPolluted", proGpuWindowHostTests, StringComparison.Ordinal);
+        Assert.Contains("NativeResizeRestoresDeclaredDipsWhenRequestedCacheWasPolluted", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("ResolveCachedLogicalClientDimensionKeepsRequestedDipsWhenSourceCacheIsPhysical", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("NativeResizeRestoresRequestedDipsWhenPortableSourceCacheWasPhysical", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("SetClientSizeSynchronizesBoundPortablePresentationSourceImmediately", proGpuWindowHostTests, StringComparison.Ordinal);

@@ -1925,6 +1925,24 @@ internal static class Program
                             </List>
                         </FlowDocument>
                     </FlowDocumentScrollViewer>
+                    <FlowDocumentPageViewer
+                        x:Name="ExternalFlowDocumentPageViewer"
+                        Zoom="125"
+                        MinZoom="50"
+                        MaxZoom="250">
+                        <FlowDocument
+                            ColumnWidth="360"
+                            PagePadding="5">
+                            <Paragraph>
+                                <Run Text="External page viewer document" />
+                            </Paragraph>
+                            <List MarkerStyle="Square">
+                                <ListItem>
+                                    <Paragraph><Run Text="External page viewer item" /></Paragraph>
+                                </ListItem>
+                            </List>
+                        </FlowDocument>
+                    </FlowDocumentPageViewer>
                     <FlowDocumentReader
                         x:Name="ExternalFlowDocumentReader"
                         ViewingMode="Scroll">
@@ -10567,6 +10585,30 @@ internal static class Program
                         "external SDK FlowDocumentScrollViewer list");
                     AssertEqual(TextMarkerStyle.Disc, scrollViewerList.MarkerStyle, "external SDK FlowDocumentScrollViewer list marker style");
                     AssertListItemText(scrollViewerList.ListItems.FirstListItem, "External scroll viewer item", "scroll viewer");
+
+                    var pageViewer = RequireType<FlowDocumentPageViewer>(
+                        window.FindName("ExternalFlowDocumentPageViewer"),
+                        "external SDK FlowDocumentPageViewer");
+                    AssertEqual(125.0, pageViewer.Zoom, "external SDK FlowDocumentPageViewer zoom");
+                    AssertEqual(50.0, pageViewer.MinZoom, "external SDK FlowDocumentPageViewer min zoom");
+                    AssertEqual(250.0, pageViewer.MaxZoom, "external SDK FlowDocumentPageViewer max zoom");
+                    var pageViewerDocument = RequireType<FlowDocument>(
+                        pageViewer.Document,
+                        "external SDK FlowDocumentPageViewer document");
+                    AssertEqual(5.0, pageViewerDocument.PagePadding.Left, "external SDK FlowDocumentPageViewer page padding");
+                    AssertEqual(360.0, pageViewerDocument.ColumnWidth, "external SDK FlowDocumentPageViewer column width");
+                    AssertEqual(2, pageViewerDocument.Blocks.Count, "external SDK FlowDocumentPageViewer block count");
+                    var pageViewerParagraph = RequireType<Paragraph>(
+                        pageViewerDocument.Blocks.FirstBlock,
+                        "external SDK FlowDocumentPageViewer paragraph");
+                    AssertParagraphText(pageViewerParagraph, "External page viewer document", "page viewer");
+                    var pageViewerList = RequireType<System.Windows.Documents.List>(
+                        pageViewerParagraph.NextBlock,
+                        "external SDK FlowDocumentPageViewer list");
+                    AssertEqual(TextMarkerStyle.Square, pageViewerList.MarkerStyle, "external SDK FlowDocumentPageViewer list marker style");
+                    AssertListItemText(pageViewerList.ListItems.FirstListItem, "External page viewer item", "page viewer");
+                    var pageViewerText = new TextRange(pageViewerDocument.ContentStart, pageViewerDocument.ContentEnd).Text;
+                    AssertContains("External page viewer item", pageViewerText, "external SDK FlowDocumentPageViewer TextRange text");
 
                     var reader = RequireType<FlowDocumentReader>(
                         window.FindName("ExternalFlowDocumentReader"),

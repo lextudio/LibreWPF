@@ -237,6 +237,26 @@ namespace MS.Internal.TextFormatting
 
             if (textLine == null)
             {
+                if (!IsNativeLineServicesAvailable)
+                {
+                    textLine = SimpleTextLine.Create(
+                        settings,
+                        firstCharIndex,
+                        0,
+                    textSource.PixelsPerDip
+                    ) as TextLine;
+
+                    textLine ??= SimpleTextLine.CreatePortableFallback(
+                        settings,
+                        firstCharIndex,
+                        RealToIdealFloor(paragraphWidth),
+                        textSource.PixelsPerDip
+                        ) as TextLine;
+                }
+            }
+
+            if (textLine == null)
+            {
                 // content is complex, creating complex line
                 textLine = new TextMetrics.FullTextLine(
                     settings,
@@ -305,6 +325,33 @@ namespace MS.Internal.TextFormatting
                 _textFormattingMode
                 );
 
+            if (!IsNativeLineServicesAvailable)
+            {
+                TextLine simpleLine = SimpleTextLine.Create(
+                    settings,
+                    firstCharIndex,
+                    0,
+                    textSource.PixelsPerDip
+                    ) as TextLine;
+
+                if (simpleLine != null)
+                {
+                    MinMaxParagraphWidth simpleMinMax = new MinMaxParagraphWidth(simpleLine.Width, simpleLine.WidthIncludingTrailingWhitespace);
+                    simpleLine.Dispose();
+                    return simpleMinMax;
+                }
+
+                TextLine fallbackLine = SimpleTextLine.CreatePortableFallback(
+                    settings,
+                    firstCharIndex,
+                    0,
+                    textSource.PixelsPerDip
+                    ) as TextLine;
+                MinMaxParagraphWidth fallbackMinMax = new MinMaxParagraphWidth(fallbackLine.Width, fallbackLine.WidthIncludingTrailingWhitespace);
+                fallbackLine.Dispose();
+                return fallbackMinMax;
+            }
+
             // create specialized line specifically for min/max calculation
             TextMetrics.FullTextLine line = new TextMetrics.FullTextLine(
                 settings,
@@ -327,6 +374,11 @@ namespace MS.Internal.TextFormatting
             {
                 return _textFormattingMode;
             }
+        }
+
+        private static bool IsNativeLineServicesAvailable
+        {
+            get { return OperatingSystem.IsWindows(); }
         }
 
         /// <summary>
@@ -773,4 +825,3 @@ namespace MS.Internal.TextFormatting
         }
     }
 }
-

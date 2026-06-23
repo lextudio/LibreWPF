@@ -4670,6 +4670,43 @@ public sealed class WpfManagedProjectGraphTests
             "Controls",
             "Primitives",
             "Popup.cs"));
+        var documentViewerBase = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Controls",
+            "Primitives",
+            "DocumentViewerBase.cs"));
+        var singlePageViewer = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Controls",
+            "SinglePageViewer.cs"));
+        var flowDocumentScrollViewer = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Controls",
+            "FlowDocumentScrollViewer.cs"));
+        var flowDocumentReader = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Controls",
+            "FlowDocumentReader.cs"));
         var menu = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4706,6 +4743,15 @@ public sealed class WpfManagedProjectGraphTests
             "Internal",
             "Documents",
             "FlowDocumentView.cs"));
+        var flowDocumentPaginator = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "MS",
+            "Internal",
+            "documents",
+            "FlowDocumentPaginator.cs"));
         var textSelection = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -4854,6 +4900,24 @@ public sealed class WpfManagedProjectGraphTests
             "Internal",
             "TextFormatting",
             "LineServices.cs"));
+        var textFormatterImp = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "MS",
+            "Internal",
+            "TextFormatting",
+            "TextFormatterImp.cs"));
+        var simpleTextLine = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "MS",
+            "Internal",
+            "TextFormatting",
+            "SimpleTextLine.cs"));
         var textBoxLine = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -5420,6 +5484,27 @@ public sealed class WpfManagedProjectGraphTests
             flowDocumentView.IndexOf("if (!IsNativePtsFormatterAvailable)", StringComparison.Ordinal)
                 < flowDocumentView.IndexOf("new DocumentPageTextView(this, _document.StructuralCache.TextContainer)", StringComparison.Ordinal),
             "FlowDocumentView must skip native PTS text-view creation before constructing DocumentPageTextView on non-Windows.");
+        Assert.Contains("private static bool IsNativePtsPaginationAvailable", flowDocumentPaginator, StringComparison.Ordinal);
+        Assert.Contains("OperatingSystem.IsWindows()", flowDocumentPaginator, StringComparison.Ordinal);
+        Assert.Contains("_backgroundPagination = IsNativePtsPaginationAvailable", flowDocumentPaginator, StringComparison.Ordinal);
+        Assert.Contains("return DocumentPage.Missing;", flowDocumentPaginator, StringComparison.Ordinal);
+        Assert.Contains("OnGetPageCompleted(new GetPageCompletedEventArgs(DocumentPage.Missing", flowDocumentPaginator, StringComparison.Ordinal);
+        Assert.Contains("OnGetPageNumberCompleted(new GetPageNumberCompletedEventArgs(contentPosition, -1", flowDocumentPaginator, StringComparison.Ordinal);
+        AssertGuardBefore(flowDocumentPaginator, "if (!IsNativePtsPaginationAvailable)", "FormatPage(_brt.Count)");
+        AssertGuardBefore(documentViewerBase, "if (!OperatingSystem.IsWindows())", "System.Windows.Xps.XpsDocumentWriter docWriter");
+        Assert.Contains("using System.Runtime.CompilerServices;", documentViewerBase, StringComparison.Ordinal);
+        Assert.Contains("[MethodImpl(MethodImplOptions.NoInlining)]\n        private void OnPrintCommandWindows()", documentViewerBase, StringComparison.Ordinal);
+        Assert.Contains("[MethodImpl(MethodImplOptions.NoInlining)]\n        private static void CanExecutePrintCommandWindows", documentViewerBase, StringComparison.Ordinal);
+        Assert.Contains("CanExecutePrintCommandWindows(dv, args);", documentViewerBase, StringComparison.Ordinal);
+        AssertGuardBefore(singlePageViewer, "if (!OperatingSystem.IsWindows())", "System.Windows.Xps.XpsDocumentWriter docWriter");
+        Assert.Contains("[MethodImpl(MethodImplOptions.NoInlining)]\n        private void OnPrintCommandWindows()", singlePageViewer, StringComparison.Ordinal);
+        Assert.Contains("if (!OperatingSystem.IsWindows() &&\n                (args.Command == ApplicationCommands.Print || args.Command == ApplicationCommands.CancelPrint))", singlePageViewer, StringComparison.Ordinal);
+        AssertGuardBefore(flowDocumentScrollViewer, "if (!OperatingSystem.IsWindows())", "System.Windows.Xps.XpsDocumentWriter docWriter");
+        Assert.Contains("[MethodImpl(MethodImplOptions.NoInlining)]\n        private void OnPrintCommandWindows()", flowDocumentScrollViewer, StringComparison.Ordinal);
+        Assert.Contains("args.CanExecute = OperatingSystem.IsWindows() && (viewer.Document != null);", flowDocumentScrollViewer, StringComparison.Ordinal);
+        Assert.Contains("if (!OperatingSystem.IsWindows() &&\n                (args.Command == ApplicationCommands.Print || args.Command == ApplicationCommands.CancelPrint))", flowDocumentScrollViewer, StringComparison.Ordinal);
+        Assert.Contains("args.CanExecute = OperatingSystem.IsWindows() && (viewer.Document != null) && viewer.IsPrintEnabled;", flowDocumentReader, StringComparison.Ordinal);
+        Assert.Contains("args.CanExecute = OperatingSystem.IsWindows() && IsPrintEnabled;", flowDocumentReader, StringComparison.Ordinal);
         AssertGuardBefore(fontCacheUtil, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.CreateFile(");
         Assert.Contains("OpenManagedFile(fileName)", fontCacheUtil, StringComparison.Ordinal);
         Assert.Contains("File.ReadAllBytes(fileName)", fontCacheUtil, StringComparison.Ordinal);
@@ -5434,6 +5519,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ManagedPrivateUseClass => CreateManagedAttribute", classification, StringComparison.Ordinal);
         AssertGuardBefore(lineServices, "if (OperatingSystem.IsWindows())", "LoGetEscStringImpl(ref escStringInfo)");
         Assert.Contains("s_managedObjectReplacement", lineServices, StringComparison.Ordinal);
+        Assert.Contains("private static bool IsNativeLineServicesAvailable", textFormatterImp, StringComparison.Ordinal);
+        Assert.Contains("return OperatingSystem.IsWindows();", textFormatterImp, StringComparison.Ordinal);
+        Assert.Contains("if (!IsNativeLineServicesAvailable)", textFormatterImp, StringComparison.Ordinal);
+        AssertGuardBefore(textFormatterImp, "if (!IsNativeLineServicesAvailable)", "new TextMetrics.FullTextLine");
+        Assert.Contains("new MinMaxParagraphWidth(simpleLine.Width, simpleLine.WidthIncludingTrailingWhitespace)", textFormatterImp, StringComparison.Ordinal);
+        Assert.Contains("SimpleTextLine.CreatePortableFallback", textFormatterImp, StringComparison.Ordinal);
+        Assert.Contains("public static TextLine CreatePortableFallback", simpleTextLine, StringComparison.Ordinal);
+        Assert.Contains("internal static SimpleRun CreatePortableEndOfParagraph", simpleTextLine, StringComparison.Ordinal);
+        Assert.Contains("new TextEndOfParagraph(1)", simpleTextLine, StringComparison.Ordinal);
         Assert.Contains("native LineServices fallback is unavailable in the portable bring-up", textBoxLine, StringComparison.Ordinal);
         Assert.Contains("!global::System.OperatingSystem.IsWindows() ||", textBoxLine, StringComparison.Ordinal);
         Assert.Contains("lineProperties.TextAlignment != TextAlignment.Justify", textBoxLine, StringComparison.Ordinal);
@@ -7305,6 +7399,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalFlowDocumentScrollViewer", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("IsToolBarVisible=\"False\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK FlowDocumentScrollViewer list marker style", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalFlowDocumentPageViewer", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Zoom=\"125\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK FlowDocumentPageViewer zoom", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK FlowDocumentPageViewer list marker style", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK FlowDocumentPageViewer TextRange text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalFlowDocumentReader", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ViewingMode=\"Scroll\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK FlowDocumentReader viewing mode", externalSdkHarnessProgram, StringComparison.Ordinal);

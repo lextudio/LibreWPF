@@ -41,9 +41,16 @@ namespace MS.Internal.Documents
             _brt = new BreakRecordTable(this);
             _dispatcherObject = new CustomDispatcherObject();
 
-            // Background pagination by default is enabled.
-            _backgroundPagination = true;
-            InitiateNextAsyncOperation();
+            // Background pagination by default is enabled when the native PTS
+            // formatter is available. The portable non-Windows bring-up keeps
+            // the managed document/viewer object model alive without probing
+            // PresentationNative_cor3.dll until a ProGPU text/layout backend
+            // replaces the native PTS page formatter.
+            _backgroundPagination = IsNativePtsPaginationAvailable;
+            if (_backgroundPagination)
+            {
+                InitiateNextAsyncOperation();
+            }
         }
 
         #endregion Constructors
@@ -81,6 +88,12 @@ namespace MS.Internal.Documents
             if (_document.StructuralCache.IsContentChangeInProgress)
             {
                 throw new InvalidOperationException(SR.TextContainerChangingReentrancyInvalid);
+            }
+
+            if (!IsNativePtsPaginationAvailable)
+            {
+                OnGetPageCompleted(new GetPageCompletedEventArgs(DocumentPage.Missing, pageNumber, null, false, userState));
+                return;
             }
 
             DocumentPage page = null;
@@ -154,6 +167,11 @@ namespace MS.Internal.Documents
             if (_document.StructuralCache.IsContentChangeInProgress)
             {
                 throw new InvalidOperationException(SR.TextContainerChangingReentrancyInvalid);
+            }
+
+            if (!IsNativePtsPaginationAvailable)
+            {
+                return DocumentPage.Missing;
             }
 
             // Disable processing of the queue during blocking operations to prevent unrelated reentrancy.
@@ -231,6 +249,12 @@ namespace MS.Internal.Documents
                 throw new ArgumentException(SR.IDPInvalidContentPosition, nameof(contentPosition));
             }
 
+            if (!IsNativePtsPaginationAvailable)
+            {
+                OnGetPageNumberCompleted(new GetPageNumberCompletedEventArgs(contentPosition, -1, null, false, userState));
+                return;
+            }
+
             int pageNumber = 0;
 
             if (!_backgroundPagination)
@@ -297,6 +321,11 @@ namespace MS.Internal.Documents
             if (_document.StructuralCache.IsContentChangeInProgress)
             {
                 throw new InvalidOperationException(SR.TextContainerChangingReentrancyInvalid);
+            }
+
+            if (!IsNativePtsPaginationAvailable)
+            {
+                return -1;
             }
 
             // Disable processing of the queue during blocking operations to prevent unrelated reentrancy.
@@ -569,6 +598,11 @@ namespace MS.Internal.Documents
                 // to protect it from random access from other threads.
                 _dispatcherObject.VerifyAccess();
 
+                if (!IsNativePtsPaginationAvailable && value)
+                {
+                    value = false;
+                }
+
                 if (value != _backgroundPagination)
                 {
                     _backgroundPagination = value;
@@ -605,6 +639,12 @@ namespace MS.Internal.Documents
         /// </summary>
         internal void InitiateNextAsyncOperation()
         {
+            if (!IsNativePtsPaginationAvailable)
+            {
+                CancelAllAsyncOperations();
+                return;
+            }
+
             // Do background pagination if it is enabled and BreakRecordTable is not clean or async requests are pending
             if (_backgroundPagination && _backgroundPaginationOperation == null && (!_brt.IsClean || _asyncRequests.Count > 0))
             {
@@ -744,6 +784,14 @@ namespace MS.Internal.Documents
             //       an exception here.
             _brt.UpdateEntry(pageNumber, page, breakRecordOut, page.DependentMax);
             return page;
+        }
+
+        private static bool IsNativePtsPaginationAvailable
+        {
+            get
+            {
+                return OperatingSystem.IsWindows();
+            }
         }
 
         /// <summary>

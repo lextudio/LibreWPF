@@ -233,6 +233,32 @@ namespace MS.Internal.TextFormatting
                 ) as TextLine;
         }
 
+        public static TextLine CreatePortableFallback(
+            FormatSettings settings,
+            int cpFirst,
+            int paragraphWidth,
+            double pixelsPerDip)
+        {
+            ArrayList runs = new ArrayList(1)
+            {
+                SimpleRun.CreatePortableEndOfParagraph(
+                    settings.Formatter,
+                    pixelsPerDip)
+            };
+
+            int trailing = 1;
+            int trailingSpaceWidth = 0;
+            return new SimpleTextLine(
+                settings,
+                cpFirst,
+                paragraphWidth,
+                runs,
+                ref trailing,
+                ref trailingSpaceWidth,
+                pixelsPerDip
+                ) as TextLine;
+        }
+
 
 
         /// <summary>
@@ -1718,6 +1744,18 @@ namespace MS.Internal.TextFormatting
             RunFlags = flags;
             _textFormatterImp = textFormatterImp;
             _pixelsPerDip = pixelsPerDip;
+        }
+
+        internal static SimpleRun CreatePortableEndOfParagraph(
+            TextFormatterImp textFormatterImp,
+            double pixelsPerDip)
+        {
+            return new SimpleRun(
+                1,
+                new TextEndOfParagraph(1),
+                Flags.EOT | Flags.Ghost,
+                textFormatterImp,
+                pixelsPerDip);
         }
 
 

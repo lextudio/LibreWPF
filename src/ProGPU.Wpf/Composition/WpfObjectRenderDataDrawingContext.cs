@@ -497,8 +497,43 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
     {
         ThrowIfClosed();
         MediaBrush? mediaBrush = WpfReflectionResourceResolver.AdaptBrush(foregroundBrush);
+        if (mediaBrush == null || glyphRun == null)
+        {
+            CountUnsupportedIfPresent(foregroundBrush, glyphRun);
+            return;
+        }
+
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            DrawNativeGlyphRun(foregroundBrush, glyphRun, mediaBrush, nativeSink);
+            return;
+        }
+
+        DrawGlyphRunTypedFallback(foregroundBrush, glyphRun, mediaBrush);
+    }
+
+    private void DrawNativeGlyphRun(
+        object? foregroundBrush,
+        object glyphRun,
+        MediaBrush mediaBrush,
+        IWpfNativePrimitiveCommandSink nativeSink)
+    {
+        if (!WpfReflectionResourceResolver.TryAdaptNativeGlyphRun(glyphRun, out _))
+        {
+            CountUnsupportedIfPresent(foregroundBrush, glyphRun);
+            return;
+        }
+
+        RegisterRetainedDependencies(foregroundBrush, glyphRun);
+        nativeSink.DrawNativeGlyphRun(mediaBrush, glyphRun);
+        CountApplied();
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private void DrawGlyphRunTypedFallback(object? foregroundBrush, object glyphRun, MediaBrush mediaBrush)
+    {
         MediaGlyphRun? mediaGlyphRun = WpfReflectionResourceResolver.AdaptGlyphRun(glyphRun);
-        if (mediaBrush == null || mediaGlyphRun == null)
+        if (mediaGlyphRun == null)
         {
             CountUnsupportedIfPresent(foregroundBrush, glyphRun);
             return;

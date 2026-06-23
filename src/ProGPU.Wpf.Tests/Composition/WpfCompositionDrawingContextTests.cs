@@ -100,12 +100,18 @@ public sealed class WpfCompositionDrawingContextTests
         using var context = new WpfObjectRenderDataDrawingContext(sink);
         var pen = new MediaPen(Brushes.Black, 2);
         var image = new FakeImageSource();
+        var glyphRun = new FakeGlyphRun(
+            glyphIndices: new ushort[] { 4 },
+            advanceWidths: new[] { 7.0 },
+            baselineOrigin: new FakePoint(21, 22),
+            fontRenderingEmSize: 12);
 
         context.DrawLine(pen, new FakePoint(1, 2), new FakePoint(3, 4));
         context.DrawRectangle(Brushes.Red, pen, new FakeRect(5, 6, 7, 8));
         context.DrawRoundedRectangle(Brushes.Green, pen, new FakeRect(9, 10, 11, 12), 2, 3);
         context.DrawEllipse(Brushes.Blue, null, new FakePoint(13, 14), 15, 16);
         context.DrawImage(image, new FakeRect(17, 18, 19, 20));
+        context.DrawGlyphRun(Brushes.Black, glyphRun);
 
         Assert.Equal(new[]
         {
@@ -113,19 +119,22 @@ public sealed class WpfCompositionDrawingContextTests
             "DrawNativeRectangle",
             "DrawNativeRoundedRectangle",
             "DrawNativeEllipse",
-            "DrawNativeImage"
+            "DrawNativeImage",
+            "DrawNativeGlyphRun"
         }, sink.Operations);
         Assert.Empty(sink.Rectangles);
         Assert.Empty(sink.Lines);
         Assert.Empty(sink.RoundedRectangles);
         Assert.Empty(sink.Ellipses);
         Assert.Empty(sink.Images);
+        Assert.Empty(sink.GlyphRuns);
         Assert.Equal((pen, new WpfReplayPoint(1, 2), new WpfReplayPoint(3, 4)), sink.NativeLines.Single());
         Assert.Equal((Brushes.Red, pen, new WpfReplayRect(5, 6, 7, 8)), sink.NativeRectangles.Single());
         Assert.Equal((Brushes.Green, pen, new WpfReplayRect(9, 10, 11, 12), 2d, 3d), sink.NativeRoundedRectangles.Single());
         Assert.Equal((Brushes.Blue, null, new WpfReplayPoint(13, 14), 15d, 16d), sink.NativeEllipses.Single());
         Assert.Equal((image, new WpfReplayRect(17, 18, 19, 20)), sink.NativeImages.Single());
-        Assert.Equal(new WpfCompositionDrawingContextResult(5, 5, 0), context.Result);
+        Assert.Equal((Brushes.Black, glyphRun), sink.NativeGlyphRuns.Single());
+        Assert.Equal(new WpfCompositionDrawingContextResult(6, 6, 0), context.Result);
     }
 
     [Fact]
@@ -784,6 +793,37 @@ public sealed class WpfCompositionDrawingContextTests
         public FakeRect Rect { get; }
     }
 
+    private sealed class FakeGlyphRun
+    {
+        public FakeGlyphRun(
+            ushort[] glyphIndices,
+            double[] advanceWidths,
+            FakePoint baselineOrigin,
+            double fontRenderingEmSize)
+        {
+            GlyphIndices = glyphIndices;
+            AdvanceWidths = advanceWidths;
+            BaselineOrigin = baselineOrigin;
+            FontRenderingEmSize = fontRenderingEmSize;
+            GlyphTypeface = new FakeGlyphTypeface();
+        }
+
+        public ushort[] GlyphIndices { get; }
+
+        public double[] AdvanceWidths { get; }
+
+        public FakePoint BaselineOrigin { get; }
+
+        public double FontRenderingEmSize { get; }
+
+        public FakeGlyphTypeface GlyphTypeface { get; }
+    }
+
+    private sealed class FakeGlyphTypeface
+    {
+        public string[] FamilyNames { get; } = ["Arial"];
+    }
+
     private sealed class FakeImageDrawing
     {
         public FakeImageDrawing(object? imageSource, FakeRect rect)
@@ -1177,6 +1217,8 @@ public sealed class WpfCompositionDrawingContextTests
 
         public List<(MediaImageSource ImageSource, WpfReplayRect Rectangle)> NativeImages { get; } = new();
 
+        public List<(MediaBrush? ForegroundBrush, object GlyphRunResource)> NativeGlyphRuns { get; } = new();
+
         public void DrawNativeLine(MediaPen? pen, WpfReplayPoint point0, WpfReplayPoint point1)
         {
             Operations.Add("DrawNativeLine");
@@ -1215,6 +1257,7 @@ public sealed class WpfCompositionDrawingContextTests
         public void DrawNativeGlyphRun(MediaBrush? foregroundBrush, object glyphRunResource)
         {
             Operations.Add("DrawNativeGlyphRun");
+            NativeGlyphRuns.Add((foregroundBrush, glyphRunResource));
         }
 
         public void PushNativeOpacityMask(MediaBrush? opacityMask, WpfReplayRect bounds)

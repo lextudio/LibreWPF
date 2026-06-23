@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Automation;
@@ -150,6 +151,10 @@ public partial class MainWindow : Window
 
     internal string? LastExplicitExplorerTreeHeader { get; private set; }
 
+    internal int MessageBoxShownCount { get; private set; }
+
+    internal MessageBoxResult LastMessageBoxResult { get; private set; } = MessageBoxResult.None;
+
     public MainWindow()
     {
         var viewModel = new MainViewModel();
@@ -186,6 +191,20 @@ public partial class MainWindow : Window
         }
 
         dialog.ShowDialog();
+    }
+
+    private void OnMessageBoxButtonClick(object sender, RoutedEventArgs e)
+    {
+        MessageBoxShownCount++;
+        LastMessageBoxResult = MessageBox.Show(
+            this,
+            "Portable MessageBox from the ProGPU WPF MVP app.",
+            "ProGPU WPF MVP",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Information,
+            MessageBoxResult.OK,
+            MessageBoxOptions.None);
+        MessageBoxStatusText.Text = $"MessageBox result: {LastMessageBoxResult}";
     }
 
     private void OnDocumentLinkRequestNavigate(object sender, RequestNavigateEventArgs e)
@@ -1047,6 +1066,12 @@ internal static class MvpSelfTest
         var requeryCommandButton = Require<Button>(
             window.FindName("RequeryCommandButton"),
             "requery command Button");
+        var messageBoxButton = Require<Button>(
+            window.FindName("MvpMessageBoxButton"),
+            "MessageBox Button");
+        var messageBoxStatusText = Require<TextBlock>(
+            window.FindName("MessageBoxStatusText"),
+            "MessageBox status TextBlock");
         var mvpTabControl = Require<TabControl>(
             window.FindName("MvpTabControl"),
             "MVP TabControl");
@@ -1435,6 +1460,7 @@ internal static class MvpSelfTest
         AssertEqual(1, window.CommandBindings.Count, "window command binding count");
         AssertEqual(MainWindow.RefreshStatusCommand, window.CommandBindings[0].Command, "window routed command binding");
         AssertEqual(1, window.InputBindings.Count, "window input binding count");
+        ValidateMessageBox(window, messageBoxButton, messageBoxStatusText);
         var refreshKeyBinding = Require<KeyBinding>(window.InputBindings[0], "refresh KeyBinding");
         AssertEqual(Key.R, refreshKeyBinding.Key, "refresh key binding key");
         AssertEqual(ModifierKeys.Control, refreshKeyBinding.Modifiers, "refresh key binding modifiers");
@@ -3858,6 +3884,107 @@ internal static class MvpSelfTest
         DrainDispatcher(window);
         AssertEqual(1, beginInvokeCount, "dispatcher BeginInvoke execution count");
         AssertEqual(DispatcherOperationStatus.Completed, operation.Status, "dispatcher BeginInvoke status");
+    }
+
+    private static void ValidateMessageBox(MainWindow window, Button button, TextBlock statusText)
+    {
+        AssertEqual("Show MessageBox", button.Content, "MessageBox button content");
+        AssertEqual("MessageBox idle", statusText.Text, "MessageBox initial status");
+
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        Type serviceType = typeof(MessageBox).Assembly.GetType(
+                "System.Windows.PortableMessageBoxService",
+                throwOnError: false)
+            ?? throw new TypeLoadException("System.Windows.PortableMessageBoxService");
+        var isEnabledProperty = serviceType.GetProperty(
+                "IsEnabled",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(serviceType.FullName, "IsEnabled");
+        AssertEqual(
+            true,
+            (bool)(isEnabledProperty.GetValue(null) ?? false),
+            "MVP portable MessageBox service enabled");
+
+        int requestCount = 0;
+        object? requestOwner = null;
+        string? requestText = null;
+        string? requestCaption = null;
+        string? requestButton = null;
+        string? requestIcon = null;
+        string? requestDefaultResult = null;
+        string? requestOptions = null;
+        string? requestFallbackResult = null;
+        IDisposable? registration = RegisterDeterministicMessageBox(
+            serviceType,
+            request =>
+            {
+                requestCount++;
+                requestOwner = ReadPortableRequestValue(request, "Owner");
+                requestText = ReadPortableRequestString(request, "MessageBoxText");
+                requestCaption = ReadPortableRequestString(request, "Caption");
+                requestButton = ReadPortableRequestString(request, "Button");
+                requestIcon = ReadPortableRequestString(request, "Icon");
+                requestDefaultResult = ReadPortableRequestString(request, "DefaultResult");
+                requestOptions = ReadPortableRequestString(request, "Options");
+                requestFallbackResult = ReadPortableRequestString(request, "FallbackResult");
+                return requestFallbackResult;
+            });
+        try
+        {
+            button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, button));
+            DrainDispatcher(window);
+
+            AssertEqual(1, window.MessageBoxShownCount, "MVP MessageBox shown count");
+            AssertEqual(MessageBoxResult.OK, window.LastMessageBoxResult, "MVP MessageBox result");
+            AssertEqual("MessageBox result: OK", statusText.Text, "MVP MessageBox status text");
+            AssertEqual(1, requestCount, "MVP MessageBox request count");
+            AssertEqual(window, requestOwner, "MVP MessageBox request owner");
+            AssertEqual("Portable MessageBox from the ProGPU WPF MVP app.", requestText, "MVP MessageBox request text");
+            AssertEqual("ProGPU WPF MVP", requestCaption, "MVP MessageBox request caption");
+            AssertEqual("OKCancel", requestButton, "MVP MessageBox request button");
+            AssertEqual("Asterisk", requestIcon, "MVP MessageBox request icon");
+            AssertEqual("OK", requestDefaultResult, "MVP MessageBox request default result");
+            AssertEqual("None", requestOptions, "MVP MessageBox request options");
+            AssertEqual("OK", requestFallbackResult, "MVP MessageBox request fallback result");
+        }
+        finally
+        {
+            registration?.Dispose();
+        }
+    }
+
+    private static IDisposable? RegisterDeterministicMessageBox(
+        Type serviceType,
+        Func<object, object> show)
+    {
+        var registerMethod = serviceType.GetMethod(
+                "Register",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: new[] { typeof(Func<object, object>) },
+                modifiers: null)
+            ?? throw new MissingMethodException(serviceType.FullName, "Register");
+
+        return registerMethod.Invoke(null, new object[] { show }) as IDisposable;
+    }
+
+    private static string ReadPortableRequestString(object request, string propertyName)
+    {
+        return ReadPortableRequestValue(request, propertyName)?.ToString() ?? string.Empty;
+    }
+
+    private static object? ReadPortableRequestValue(object request, string propertyName)
+    {
+        var property = request.GetType().GetProperty(
+                propertyName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(request.GetType().FullName, propertyName);
+
+        return property.GetValue(request);
     }
 
     private static void ValidateSecondaryWindow(MainWindow window, MenuItem aboutMenuItem)

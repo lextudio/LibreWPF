@@ -415,6 +415,16 @@
                             Command="{Binding RequeryCommand}"
                             CommandParameter="mvp requery command payload"
                             Content="Run requery command" />
+                        <Button
+                            x:Name="MvpMessageBoxButton"
+                            Margin="0,8,0,0"
+                            Click="OnMessageBoxButtonClick"
+                            Content="Show MessageBox" />
+                        <TextBlock
+                            x:Name="MessageBoxStatusText"
+                            Margin="0,6,0,0"
+                            Text="MessageBox idle"
+                            TextWrapping="Wrap" />
                         <local:SummaryPanel
                             x:Name="SummaryPanel"
                             Margin="0,18,0,0"

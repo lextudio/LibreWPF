@@ -4164,6 +4164,7 @@ internal static class MvpSelfTest
         ValidateDispatcherSynchronizationContext(window);
         ValidateDispatcherAsyncContinuation(window);
         ValidateDispatcherInvokeAsync(window);
+        ValidateDispatcherUnhandledException(window);
     }
 
     private static void ValidateDispatcherTimer(Window window)
@@ -4277,6 +4278,47 @@ internal static class MvpSelfTest
             TimeSpan.FromSeconds(1),
             "dispatcher InvokeAsync action operation");
         AssertEqual(DispatcherOperationStatus.Completed, actionOperation.Status, "dispatcher InvokeAsync action status");
+    }
+
+    private static void ValidateDispatcherUnhandledException(Window window)
+    {
+        var application = Application.Current
+            ?? throw new InvalidOperationException("Expected current application for dispatcher unhandled exception validation.");
+        int exceptionCount = 0;
+        object? eventSender = null;
+        string? exceptionMessage = null;
+        bool initialHandledState = true;
+        DispatcherUnhandledExceptionEventHandler handler = (sender, e) =>
+        {
+            exceptionCount++;
+            eventSender = sender;
+            exceptionMessage = e.Exception.Message;
+            initialHandledState = e.Handled;
+            e.Handled = true;
+        };
+
+        application.DispatcherUnhandledException += handler;
+        try
+        {
+            window.Dispatcher.BeginInvoke(
+                DispatcherPriority.Background,
+                new Action(() => throw new InvalidOperationException("MVP handled dispatcher exception")));
+            PumpDispatcherUntil(
+                window,
+                () => exceptionCount > 0,
+                TimeSpan.FromSeconds(1),
+                "dispatcher unhandled exception event");
+        }
+        finally
+        {
+            application.DispatcherUnhandledException -= handler;
+        }
+
+        AssertEqual(1, exceptionCount, "dispatcher unhandled exception count");
+        AssertEqual(window.Dispatcher, eventSender, "dispatcher unhandled exception sender");
+        AssertEqual("MVP handled dispatcher exception", exceptionMessage, "dispatcher unhandled exception message");
+        AssertEqual(false, initialHandledState, "dispatcher unhandled exception initial handled state");
+        AssertEqual(application, Application.Current, "dispatcher unhandled exception application remains current");
     }
 
     private static void ValidateMessageBox(MainWindow window, Button button, TextBlock statusText)

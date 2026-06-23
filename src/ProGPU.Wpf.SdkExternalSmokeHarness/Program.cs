@@ -4277,6 +4277,7 @@ internal static class Program
                     ValidateDispatcherSynchronizationContextAfterRun(window);
                     ValidateAsyncContinuationAfterRun(window);
                     ValidateDispatcherInvokeAsyncAfterRun(window);
+                    ValidateDispatcherUnhandledExceptionAfterRun(app, window);
                     ValidateDispatcherTimerAfterRun(window);
                     ValidateLoadedStoryboardAfterRun(window);
                     ValidatePropertyTriggerActionsAfterRun(window);
@@ -4380,6 +4381,45 @@ internal static class Program
                         "invoke async dispatcher 1",
                         invokeText.Text,
                         "external SDK dispatcher InvokeAsync bound text");
+                }
+
+                private static void ValidateDispatcherUnhandledExceptionAfterRun(App app, MainWindow window)
+                {
+                    int exceptionCount = 0;
+                    object? eventSender = null;
+                    string? exceptionMessage = null;
+                    bool initialHandledState = true;
+                    DispatcherUnhandledExceptionEventHandler handler = (sender, e) =>
+                    {
+                        exceptionCount++;
+                        eventSender = sender;
+                        exceptionMessage = e.Exception.Message;
+                        initialHandledState = e.Handled;
+                        e.Handled = true;
+                    };
+
+                    app.DispatcherUnhandledException += handler;
+                    try
+                    {
+                        window.Dispatcher.BeginInvoke(
+                            DispatcherPriority.Background,
+                            new Action(() => throw new InvalidOperationException("external SDK handled dispatcher exception")));
+                        PumpDispatcherUntil(
+                            () => exceptionCount > 0,
+                            TimeSpan.FromSeconds(1),
+                            "external SDK dispatcher unhandled exception");
+                    }
+                    finally
+                    {
+                        app.DispatcherUnhandledException -= handler;
+                    }
+
+                    AssertEqual(1, exceptionCount, "external SDK dispatcher unhandled exception count");
+                    AssertEqual(window.Dispatcher, eventSender, "external SDK dispatcher unhandled exception sender");
+                    AssertEqual("external SDK handled dispatcher exception", exceptionMessage, "external SDK dispatcher unhandled exception message");
+                    AssertEqual(false, initialHandledState, "external SDK dispatcher unhandled exception initial handled state");
+                    AssertEqual(app, Application.Current, "external SDK dispatcher unhandled exception current application");
+                    AssertEqual(true, window.IsVisible, "external SDK dispatcher unhandled exception main window remains visible");
                 }
 
                 private static void ValidateDispatcherTimerAfterRun(MainWindow window)

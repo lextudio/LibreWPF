@@ -12,6 +12,7 @@ using System.Security.Cryptography;
 internal static class Program
 {
     private const string PackageVersion = "11.0.0-dev";
+    private const string SmokeTargetFramework = "net11.0-windows";
     private const string SmokeAssemblyName = "ProGPU.Wpf.SdkSwitchSmoke";
     private const string LibraryAssemblyName = "ProGPU.Wpf.SdkSwitchLibrary";
     private const string AppTypeName = "ProGPU.Wpf.SdkSwitchSmoke.App";
@@ -113,7 +114,7 @@ internal static class Program
             "bin",
             SmokeAssemblyName,
             "Debug",
-            "net11.0");
+            SmokeTargetFramework);
         string smokeAssemblyPath = Path.Combine(appOutputRoot, SmokeAssemblyName + ".dll");
         string releasePackagedWpfRoot = Path.Combine(
             repoRoot,

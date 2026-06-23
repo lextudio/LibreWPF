@@ -6043,6 +6043,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("pack_project \"packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj\" \"ProGPU.Wpf.Sdk\"", sdkCiScript, StringComparison.Ordinal);
 
         Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", mvpProject, StringComparison.Ordinal);
+        Assert.Contains("<TargetFramework>net11.0-windows</TargetFramework>", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<UseWPF>true</UseWPF>", mvpProject, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_VALIDATE", mvpAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MvpSelfTest.Validate", mvpAppCodeBehind, StringComparison.Ordinal);
@@ -6139,7 +6140,7 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", smokeProject, StringComparison.Ordinal);
         Assert.Contains("<OutputType>WinExe</OutputType>", smokeProject, StringComparison.Ordinal);
-        Assert.Contains("<TargetFramework>net11.0</TargetFramework>", smokeProject, StringComparison.Ordinal);
+        Assert.Contains("<TargetFramework>net11.0-windows</TargetFramework>", smokeProject, StringComparison.Ordinal);
         Assert.Contains("<UseWPF>true</UseWPF>", smokeProject, StringComparison.Ordinal);
         Assert.Contains(@"<ProjectReference Include=""..\ProGPU.Wpf.SdkSwitchLibrary\ProGPU.Wpf.SdkSwitchLibrary.csproj"" />", smokeProject, StringComparison.Ordinal);
         Assert.DoesNotContain("EnableDefaultItems", smokeProject, StringComparison.Ordinal);
@@ -6175,7 +6176,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("ProGpuWpfManagedReferenceRoot", smokeDirectoryBuildProps, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuReferenceRoot", smokeDirectoryBuildProps, StringComparison.Ordinal);
         Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", libraryProject, StringComparison.Ordinal);
-        Assert.Contains("<TargetFramework>net11.0</TargetFramework>", libraryProject, StringComparison.Ordinal);
+        Assert.Contains("<TargetFramework>net11.0-windows</TargetFramework>", libraryProject, StringComparison.Ordinal);
         Assert.Contains("<UseWPF>true</UseWPF>", libraryProject, StringComparison.Ordinal);
         Assert.DoesNotContain("OutputType", libraryProject, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuWpf", libraryProject, StringComparison.Ordinal);
@@ -6897,6 +6898,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<Project Sdk=\"Microsoft.NET.Sdk\">", runtimeHarnessProject, StringComparison.Ordinal);
         Assert.Contains("<OutputType>Exe</OutputType>", runtimeHarnessProject, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>net11.0</TargetFramework>", runtimeHarnessProject, StringComparison.Ordinal);
+        Assert.Contains("private const string SmokeTargetFramework = \"net11.0-windows\";", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>", runtimeHarnessProject, StringComparison.Ordinal);
         Assert.DoesNotContain("Microsoft.NET.Sdk.WindowsDesktop", runtimeHarnessProject, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGPU.Wpf.Sdk", runtimeHarnessProject, StringComparison.Ordinal);
@@ -6969,6 +6971,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalSdkLibrary", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<OutputType>WinExe</OutputType>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("private const string ExternalAppTargetFramework = \"net11.0-windows\";", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<UseWPF>true</UseWPF>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Resource Include=\"Assets/ExternalResource.txt\" />", externalSdkHarnessProgram, StringComparison.Ordinal);

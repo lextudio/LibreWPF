@@ -15,6 +15,7 @@ using System.Security.Cryptography;
 internal static class Program
 {
     private const string SdkVersion = "11.0.0-dev";
+    private const string ExternalAppTargetFramework = "net11.0-windows";
     private const string AppAssemblyName = "ExternalSdkApp";
     private const string LibraryAssemblyName = "ExternalSdkLibrary";
     private const string LocalizationAssemblyName = "ExternalLocalizationApp";
@@ -128,7 +129,7 @@ internal static class Program
 
             ValidateExternalProjectShape(workRoot);
             ValidateExternalLocalizationDirectives(workRoot);
-            string outputRoot = Path.Combine(workRoot, AppAssemblyName, "bin", "Debug", "net11.0");
+            string outputRoot = Path.Combine(workRoot, AppAssemblyName, "bin", "Debug", ExternalAppTargetFramework);
             ValidateExternalOutput(outputRoot, packageFeed);
             RunProcess(
                 dotnetPath,
@@ -417,7 +418,7 @@ internal static class Program
             $"""
             <Project Sdk="ProGPU.Wpf.Sdk/{SdkVersion}">
               <PropertyGroup>
-                <TargetFramework>net11.0</TargetFramework>
+                <TargetFramework>{ExternalAppTargetFramework}</TargetFramework>
                 <UseWPF>true</UseWPF>
               </PropertyGroup>
             </Project>
@@ -551,7 +552,7 @@ internal static class Program
             <Project Sdk="ProGPU.Wpf.Sdk/{SdkVersion}">
               <PropertyGroup>
                 <OutputType>WinExe</OutputType>
-                <TargetFramework>net11.0</TargetFramework>
+                <TargetFramework>{ExternalAppTargetFramework}</TargetFramework>
                 <UseWPF>true</UseWPF>
               </PropertyGroup>
 
@@ -11520,7 +11521,7 @@ internal static class Program
             $"""
             <Project Sdk="ProGPU.Wpf.Sdk/{SdkVersion}">
               <PropertyGroup>
-                <TargetFramework>net11.0</TargetFramework>
+                <TargetFramework>{ExternalAppTargetFramework}</TargetFramework>
                 <UseWPF>true</UseWPF>
                 <LocalizationDirectivesToLocFile>All</LocalizationDirectivesToLocFile>
               </PropertyGroup>
@@ -11555,14 +11556,17 @@ internal static class Program
 
         AssertContains(appProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external app SDK");
         AssertContains(appProject, "<OutputType>WinExe</OutputType>", "external app output type");
+        AssertContains(appProject, $"<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", "external app Windows target framework");
         AssertContains(appProject, "<UseWPF>true</UseWPF>", "external app WPF property");
         AssertContains(appProject, $"<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", "external app project reference");
         AssertContains(appProject, "<Resource Include=\"Assets/ExternalResource.txt\" />", "external app WPF resource item");
         AssertContains(appProject, "<Resource Include=\"Assets/ExternalImage.png\" />", "external app WPF image resource item");
         AssertContains(appProject, "<SplashScreen Include=\"Assets/ExternalSplash.png\" />", "external app WPF splash item");
         AssertContains(libraryProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external library SDK");
+        AssertContains(libraryProject, $"<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", "external library Windows target framework");
         AssertContains(libraryProject, "<UseWPF>true</UseWPF>", "external library WPF property");
         AssertContains(localizationProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external localization SDK");
+        AssertContains(localizationProject, $"<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", "external localization Windows target framework");
         AssertContains(localizationProject, "<UseWPF>true</UseWPF>", "external localization WPF property");
         AssertContains(localizationProject, "<LocalizationDirectivesToLocFile>All</LocalizationDirectivesToLocFile>", "external localization directive output");
         RequireFile(Path.Combine(workRoot, LibraryAssemblyName, "Properties", "AssemblyInfo.cs"), "external SDK library ThemeInfo source");

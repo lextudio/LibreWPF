@@ -1892,6 +1892,7 @@
 - Added MVP app-defined `MarkupExtension` coverage. `MainWindow.xaml` now consumes `MvpTextExtension` through normal compact markup-extension syntax, and the package-mode self-test validates the supplied text from SDK-built BAML. This keeps the XAML compiler/extensibility path in reused managed WPF instead of requiring ProGPU-specific app code.
 - Added MVP app-defined `TypeConverter` coverage. `MvpHeaderTextBlock` now exposes a custom typed dependency property whose value is assigned from a string attribute in compiled XAML, and the package-mode self-test validates the converted typed value plus local value source from SDK-built BAML. This keeps custom app type conversion in WPF's managed XAML/compiler/runtime path.
 - Added MVP runtime namescope mutation coverage. The package-mode self-test now registers a runtime object against the SDK-built `Window` namescope, resolves it through `FindName`, unregisters it, and registers a replacement object. This keeps runtime name registration and lookup in WPF's managed namescope manager for animation/template/app code.
+- Added MVP `Label.Target` access-key metadata coverage. The Input tab now compiles a label with `_First focus target` content and an element-name target binding to the focus-scope text box, and the package-mode self-test validates the resolved target from SDK-built BAML. This brings the runnable MVP sample closer to the external access-key gate while keeping mnemonic metadata in WPF.
 
 ## Open Porting Items
 

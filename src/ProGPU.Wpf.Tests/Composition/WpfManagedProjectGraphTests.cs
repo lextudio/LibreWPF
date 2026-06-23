@@ -6254,6 +6254,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("KeyboardNavigation.TabNavigation=\"Cycle\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("KeyboardNavigation.ControlTabNavigation=\"Cycle\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("KeyboardNavigation.DirectionalNavigation=\"Contained\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"KeyboardNavigationAccessLabel\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Content=\"_First focus target\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Target=\"{Binding ElementName=KeyboardNavigationFirstBox}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"KeyboardNavigationFirstBox\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"KeyboardNavigationSecondButton\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"KeyboardNavigationThirdBox\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6485,6 +6488,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("KeyboardNavigation.GetTabNavigation(panel)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("KeyboardNavigation.GetControlTabNavigation(panel)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("KeyboardNavigation.GetDirectionalNavigation(panel)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("keyboard navigation access Label target", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("FocusManager.SetFocusedElement(panel, secondButton)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("restored keyboard navigation logical focus", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLayoutControls", mvpMainWindowCodeBehind, StringComparison.Ordinal);

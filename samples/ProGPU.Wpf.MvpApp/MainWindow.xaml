@@ -731,6 +731,10 @@
                                 Margin="0,0,0,8"
                                 FontWeight="SemiBold"
                                 Text="Keyboard navigation" />
+                            <Label
+                                x:Name="KeyboardNavigationAccessLabel"
+                                Content="_First focus target"
+                                Target="{Binding ElementName=KeyboardNavigationFirstBox}" />
                             <TextBox
                                 x:Name="KeyboardNavigationFirstBox"
                                 TabIndex="0"

@@ -831,6 +831,9 @@ internal static class MvpSelfTest
         var keyboardNavigationPanel = Require<StackPanel>(
             window.FindName("KeyboardNavigationPanel"),
             "keyboard navigation StackPanel");
+        var keyboardNavigationAccessLabel = Require<Label>(
+            window.FindName("KeyboardNavigationAccessLabel"),
+            "keyboard navigation access Label");
         var keyboardNavigationFirstBox = Require<TextBox>(
             window.FindName("KeyboardNavigationFirstBox"),
             "first keyboard navigation TextBox");
@@ -1185,6 +1188,7 @@ internal static class MvpSelfTest
             inputCalendar,
             inputDatePicker,
             keyboardNavigationPanel,
+            keyboardNavigationAccessLabel,
             keyboardNavigationFirstBox,
             keyboardNavigationSecondButton,
             keyboardNavigationThirdBox);
@@ -1947,6 +1951,7 @@ internal static class MvpSelfTest
         WpfCalendar calendar,
         DatePicker datePicker,
         StackPanel keyboardNavigationPanel,
+        Label keyboardNavigationAccessLabel,
         TextBox keyboardNavigationFirstBox,
         Button keyboardNavigationSecondButton,
         TextBox keyboardNavigationThirdBox)
@@ -2041,6 +2046,7 @@ internal static class MvpSelfTest
         ValidateKeyboardNavigation(
             window,
             keyboardNavigationPanel,
+            keyboardNavigationAccessLabel,
             keyboardNavigationFirstBox,
             keyboardNavigationSecondButton,
             keyboardNavigationThirdBox);
@@ -2049,6 +2055,7 @@ internal static class MvpSelfTest
     private static void ValidateKeyboardNavigation(
         Window window,
         StackPanel panel,
+        Label accessLabel,
         TextBox firstBox,
         Button secondButton,
         TextBox thirdBox)
@@ -2066,6 +2073,8 @@ internal static class MvpSelfTest
         AssertEqual(0, firstBox.TabIndex, "first keyboard navigation TabIndex");
         AssertEqual(1, secondButton.TabIndex, "second keyboard navigation TabIndex");
         AssertEqual(2, thirdBox.TabIndex, "third keyboard navigation TabIndex");
+        AssertEqual("_First focus target", accessLabel.Content, "keyboard navigation access Label content");
+        AssertEqual(firstBox, accessLabel.Target, "keyboard navigation access Label target");
         AssertEqual("First focus target", firstBox.Text, "first keyboard navigation text");
         AssertEqual("Second focus target", secondButton.Content, "second keyboard navigation content");
         AssertEqual("Third focus target", thirdBox.Text, "third keyboard navigation text");

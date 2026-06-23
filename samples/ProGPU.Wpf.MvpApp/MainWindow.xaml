@@ -141,6 +141,11 @@
                         x:Name="ResetMenuItem"
                         Command="{Binding ResetCommand}"
                         Header="_Reset" />
+                    <Separator />
+                    <MenuItem
+                        x:Name="AboutMenuItem"
+                        Click="OnAboutMenuItemClick"
+                        Header="_About" />
                 </MenuItem>
                 <MenuItem
                     x:Name="ViewMenuItem"

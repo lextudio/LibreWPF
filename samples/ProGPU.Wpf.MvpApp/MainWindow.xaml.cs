@@ -71,6 +71,17 @@ public partial class MainWindow : Window
         NavigationFrame.Navigate(new Uri("DetailsPage.xaml", UriKind.Relative));
     }
 
+    private void OnAboutMenuItemClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new AboutWindow();
+        if (IsVisible)
+        {
+            dialog.Owner = this;
+        }
+
+        dialog.ShowDialog();
+    }
+
     private void OnItemsViewSourceFilter(object sender, FilterEventArgs e)
     {
         e.Accepted = DataContext is not MainViewModel { ShowActiveOnly: true }
@@ -589,6 +600,7 @@ internal static class MvpSelfTest
         var viewMenuItem = Require<MenuItem>(window.FindName("ViewMenuItem"), "view MenuItem");
         var addMenuItem = Require<MenuItem>(window.FindName("AddMenuItem"), "add MenuItem");
         var resetMenuItem = Require<MenuItem>(window.FindName("ResetMenuItem"), "reset MenuItem");
+        var aboutMenuItem = Require<MenuItem>(window.FindName("AboutMenuItem"), "about MenuItem");
         var refreshMenuItem = Require<MenuItem>(window.FindName("RefreshMenuItem"), "refresh MenuItem");
         var actionsEnabledMenuItem = Require<MenuItem>(
             window.FindName("ActionsEnabledMenuItem"),
@@ -799,11 +811,12 @@ internal static class MvpSelfTest
         Require<Slider>(window.FindName("ProgressSlider"), "progress Slider");
         Require<ComboBox>(window.FindName("CategoryCombo"), "category ComboBox");
         AssertEqual(2, mainMenu.Items.Count, "main menu item count");
-        AssertEqual(3, fileMenuItem.Items.Count, "file menu item count");
+        AssertEqual(5, fileMenuItem.Items.Count, "file menu item count");
         AssertEqual(3, viewMenuItem.Items.Count, "view menu item count");
         AssertEqual(viewModel.AddItemCommand, addMenuItem.Command, "add menu command binding");
         AssertEqual("Ctrl+N", addMenuItem.InputGestureText, "add menu input gesture text");
         AssertEqual(viewModel.ResetCommand, resetMenuItem.Command, "reset menu command binding");
+        AssertEqual("_About", aboutMenuItem.Header, "about menu item header");
         AssertEqual(MainWindow.RefreshStatusCommand, refreshMenuItem.Command, "refresh menu routed command");
         AssertEqual("Ctrl+R", refreshMenuItem.InputGestureText, "refresh menu input gesture text");
         AssertEqual(1, window.CommandBindings.Count, "window command binding count");
@@ -917,6 +930,7 @@ internal static class MvpSelfTest
             packResourceText);
         ValidateItemsContextMenu(window, viewModel, itemsList);
         ValidateNavigation(window, navigationFrame, detailsNavigationButton);
+        ValidateSecondaryWindow(window, aboutMenuItem);
         ValidateEditor(window, editorPasswordBox, editorRichTextBox);
 
         AssertEqual(true, MainWindow.RefreshStatusCommand.CanExecute(null, window), "refresh command initial CanExecute state");
@@ -1863,6 +1877,38 @@ internal static class MvpSelfTest
         AssertEqual(3, detailsList.Items.Count, "details page list item count");
         AssertEqual(new Uri("DetailsPage.xaml", UriKind.Relative), frame.Source, "navigation frame source");
         AssertEqual(true, frame.CanGoBack, "navigation frame back stack state");
+    }
+
+    private static void ValidateSecondaryWindow(MainWindow window, MenuItem aboutMenuItem)
+    {
+        AssertEqual("_About", aboutMenuItem.Header, "secondary window menu header");
+
+        var dialog = new AboutWindow();
+        AssertEqual(null, dialog.Owner, "secondary window initial owner");
+        AssertEqual("About ProGPU WPF MVP", dialog.Title, "secondary window title");
+        AssertEqual(SizeToContent.Height, dialog.SizeToContent, "secondary window SizeToContent");
+        AssertEqual(ResizeMode.NoResize, dialog.ResizeMode, "secondary window resize mode");
+        AssertEqual(WindowStartupLocation.CenterOwner, dialog.WindowStartupLocation, "secondary window startup location");
+
+        var titleText = Require<TextBlock>(
+            dialog.FindName("AboutTitleText"),
+            "secondary window title TextBlock");
+        var bodyText = Require<TextBlock>(
+            dialog.FindName("AboutBodyText"),
+            "secondary window body TextBlock");
+        var closeButton = Require<Button>(
+            dialog.FindName("AboutCloseButton"),
+            "secondary window close Button");
+
+        AssertEqual("ProGPU WPF MVP", titleText.Text, "secondary window title text");
+        AssertEqual(
+            "Standard secondary WPF Window compiled through the ProGPU SDK.",
+            bodyText.Text,
+            "secondary window body text");
+        AssertEqual(TextWrapping.Wrap, bodyText.TextWrapping, "secondary window body wrapping");
+        AssertEqual("OK", closeButton.Content, "secondary window close button content");
+        AssertEqual(true, closeButton.IsDefault, "secondary window close button default state");
+        AssertEqual(true, closeButton.IsCancel, "secondary window close button cancel state");
     }
 
     private static void ValidateEditor(MainWindow window, PasswordBox passwordBox, RichTextBox richTextBox)

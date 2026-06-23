@@ -5900,6 +5900,14 @@ public sealed class WpfManagedProjectGraphTests
             "samples",
             "ProGPU.Wpf.MvpApp",
             "MainWindow.xaml.cs");
+        var mvpAboutWindowXamlPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.MvpApp",
+            "AboutWindow.xaml");
+        var mvpAboutWindowCodeBehindPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.MvpApp",
+            "AboutWindow.xaml.cs");
         var mvpSummaryPanelXamlPath = FindRepoPath(
             "samples",
             "ProGPU.Wpf.MvpApp",
@@ -5991,6 +5999,8 @@ public sealed class WpfManagedProjectGraphTests
         var mvpAppCodeBehind = File.ReadAllText(mvpAppCodeBehindPath);
         var mvpMainWindowXaml = File.ReadAllText(mvpMainWindowXamlPath);
         var mvpMainWindowCodeBehind = File.ReadAllText(mvpMainWindowCodeBehindPath);
+        var mvpAboutWindowXaml = File.ReadAllText(mvpAboutWindowXamlPath);
+        var mvpAboutWindowCodeBehind = File.ReadAllText(mvpAboutWindowCodeBehindPath);
         var mvpSummaryPanelXaml = File.ReadAllText(mvpSummaryPanelXamlPath);
         var mvpSummaryPanelCodeBehind = File.ReadAllText(mvpSummaryPanelCodeBehindPath);
         var mvpThemeXaml = File.ReadAllText(mvpThemeXamlPath);
@@ -6110,6 +6120,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Modifiers=\"Control\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{Binding AddItemCommand}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("InputGestureText=\"Ctrl+N\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"AboutMenuItem\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Click=\"OnAboutMenuItemClick\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("IsCheckable=\"True\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"RefreshMenuItem\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<ListBox.ContextMenu>", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6390,7 +6402,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("app merged theme ResourceDictionary", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("app Button implicit style target type", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("NavigationFrame.Navigate(new Uri(\"DetailsPage.xaml\", UriKind.Relative))", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("OnAboutMenuItemClick", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("var dialog = new AboutWindow();", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("dialog.Owner = this;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateNavigation(window, navigationFrame, detailsNavigationButton)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateSecondaryWindow(window, aboutMenuItem)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("secondary window initial owner", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateEditor(window, editorPasswordBox, editorRichTextBox)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("editor PasswordBox secure password length", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("new TextRange(document.ContentStart, document.ContentEnd).Text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
@@ -6400,6 +6417,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetColumnBindingPath", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GetTemplateItemsSourcePath", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"IsActive\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("x:Class=\"ProGPU.Wpf.MvpApp.AboutWindow\"", mvpAboutWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("WindowStartupLocation=\"CenterOwner\"", mvpAboutWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SizeToContent=\"Height\"", mvpAboutWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ResizeMode=\"NoResize\"", mvpAboutWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"AboutTitleText\"", mvpAboutWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"AboutCloseButton\"", mvpAboutWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("IsCancel=\"True\"", mvpAboutWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("IsDefault=\"True\"", mvpAboutWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("partial class AboutWindow : Window", mvpAboutWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("x:Class=\"ProGPU.Wpf.MvpApp.SummaryPanel\"", mvpSummaryPanelXaml, StringComparison.Ordinal);
         Assert.Contains("SummaryNameText", mvpSummaryPanelXaml, StringComparison.Ordinal);
         Assert.Contains("SelectedItem.Name", mvpSummaryPanelXaml, StringComparison.Ordinal);

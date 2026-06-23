@@ -43,6 +43,14 @@ public partial class MainWindow : Window
 
     internal string? LastDataObjectCustomText { get; private set; }
 
+    internal int ClipboardRoundTripCount { get; private set; }
+
+    internal string? LastClipboardText { get; private set; }
+
+    internal bool LastClipboardContainsText { get; private set; }
+
+    internal bool LastClipboardIsCurrent { get; private set; }
+
     internal int SelectorSelectionChangedCount { get; private set; }
 
     internal int MultiSelectorSelectionChangedCount { get; private set; }
@@ -383,6 +391,23 @@ public partial class MainWindow : Window
         LastDataObjectCustomText = dataObject.GetData("ProGPU.Wpf.MvpApp.CustomText")?.ToString();
         DataObjectRoundTripCount++;
         DataObjectStatusText.Text = $"{LastDataObjectText} | {LastDataObjectCustomText}";
+        e.Handled = true;
+    }
+
+    private void OnClipboardRoundTripClick(object sender, RoutedEventArgs e)
+    {
+        var payload = DataObjectPayloadTextBox.Text + " clipboard";
+        Clipboard.Clear();
+        Clipboard.SetText(payload);
+
+        LastClipboardContainsText = Clipboard.ContainsText();
+        LastClipboardText = Clipboard.GetText();
+        IDataObject? currentDataObject = Clipboard.GetDataObject();
+        LastClipboardIsCurrent = currentDataObject != null && Clipboard.IsCurrent(currentDataObject);
+        Clipboard.Flush();
+
+        ClipboardRoundTripCount++;
+        DataObjectStatusText.Text = $"Clipboard: {LastClipboardText}";
         e.Handled = true;
     }
 
@@ -1681,6 +1706,9 @@ internal static class MvpSelfTest
         var dataObjectRoundTripButton = Require<Button>(
             window.FindName("DataObjectRoundTripButton"),
             "DataObject round-trip Button");
+        var clipboardRoundTripButton = Require<Button>(
+            window.FindName("ClipboardRoundTripButton"),
+            "Clipboard round-trip Button");
         var selectAllPayloadButton = Require<Button>(
             window.FindName("SelectAllPayloadButton"),
             "SelectAll payload Button");
@@ -1959,6 +1987,7 @@ internal static class MvpSelfTest
             editorRichTextBox,
             dataObjectPayloadTextBox,
             dataObjectRoundTripButton,
+            clipboardRoundTripButton,
             selectAllPayloadButton,
             dataObjectStatusText);
         ValidateDocument(window, documentViewer, documentPageViewer, documentReader);
@@ -4974,6 +5003,7 @@ internal static class MvpSelfTest
         RichTextBox richTextBox,
         TextBox dataObjectPayloadTextBox,
         Button dataObjectRoundTripButton,
+        Button clipboardRoundTripButton,
         Button selectAllPayloadButton,
         TextBlock dataObjectStatusText)
     {
@@ -5033,6 +5063,15 @@ internal static class MvpSelfTest
         AssertEqual("mvp data object", window.LastDataObjectText, "DataObject unicode text");
         AssertEqual("custom:mvp data object", window.LastDataObjectCustomText, "DataObject custom text");
         AssertEqual("mvp data object | custom:mvp data object", dataObjectStatusText.Text, "DataObject status text");
+
+        clipboardRoundTripButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, clipboardRoundTripButton));
+        DrainDispatcher(window);
+        AssertEqual(1, window.ClipboardRoundTripCount, "Clipboard round-trip count");
+        AssertEqual(true, window.LastClipboardContainsText, "Clipboard contains text");
+        AssertEqual("mvp data object clipboard", window.LastClipboardText, "Clipboard text");
+        AssertEqual(true, window.LastClipboardIsCurrent, "Clipboard current data object");
+        AssertEqual("Clipboard: mvp data object clipboard", dataObjectStatusText.Text, "Clipboard status text");
+        Clipboard.Clear();
     }
 
     private static void ValidateDocument(

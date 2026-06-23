@@ -1786,6 +1786,11 @@
                             Click="OnDataObjectRoundTripClick"
                             Content="Round-trip DataObject" />
                         <Button
+                            x:Name="ClipboardRoundTripButton"
+                            Margin="0,6,0,0"
+                            Click="OnClipboardRoundTripClick"
+                            Content="Round-trip Clipboard" />
+                        <Button
                             x:Name="SelectAllPayloadButton"
                             Margin="0,6,0,0"
                             Command="ApplicationCommands.SelectAll"
@@ -1826,7 +1831,7 @@
                             <TextBlock
                                 Margin="0,8,0,0"
                                 TextWrapping="Wrap"
-                                Text="This tab uses WPF PasswordBox, RichTextBox, FlowDocument, TextRange, EditingCommands, and DataObject through SDK-built BAML." />
+                                Text="This tab uses WPF PasswordBox, RichTextBox, FlowDocument, TextRange, EditingCommands, DataObject, and Clipboard through SDK-built BAML." />
                         </StackPanel>
                     </Border>
                 </Grid>

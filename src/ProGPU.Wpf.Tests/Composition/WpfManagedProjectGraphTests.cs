@@ -6881,6 +6881,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("input Popup initial open state", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PlacementMode.Bottom", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnDataObjectRoundTripClick", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("OnClipboardRoundTripClick", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public static class MvpCompositeItemsProvider", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("window.FindResource(\"MvpCompositeCollection\")", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("CompositeCollection collection-change item count", mvpMainWindowCodeBehind, StringComparison.Ordinal);
@@ -6888,6 +6889,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("dataObject.SetText(payload)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DataFormats.UnicodeText", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DataObjectRoundTripCount", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Clipboard.SetText(payload)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Clipboard.ContainsText()", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Clipboard.GetText()", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Clipboard.GetDataObject()", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Clipboard.IsCurrent(currentDataObject)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Clipboard.Flush()", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ClipboardRoundTripButton", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ApplicationCommands.SelectAll.Execute(null, dataObjectPayloadTextBox)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DataObject payload SelectAll selection length", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("dataObjectPayloadTextBox", mvpMainWindowCodeBehind, StringComparison.Ordinal);

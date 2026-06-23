@@ -101,6 +101,44 @@ public partial class MainWindow : Window
 
     internal double LastInputBubbledThumbDragDeltaVerticalChange { get; private set; }
 
+    internal int MvpPreviewDragEnterCount { get; private set; }
+
+    internal int MvpDragEnterCount { get; private set; }
+
+    internal int MvpPreviewDragOverCount { get; private set; }
+
+    internal int MvpDragOverCount { get; private set; }
+
+    internal int MvpPreviewDropCount { get; private set; }
+
+    internal int MvpDropCount { get; private set; }
+
+    internal string? LastMvpPreviewDragEnterEventName { get; private set; }
+
+    internal string? LastMvpDragEnterEventName { get; private set; }
+
+    internal string? LastMvpPreviewDragOverEventName { get; private set; }
+
+    internal string? LastMvpDragOverEventName { get; private set; }
+
+    internal string? LastMvpPreviewDropEventName { get; private set; }
+
+    internal string? LastMvpDropEventName { get; private set; }
+
+    internal string? LastMvpDropText { get; private set; }
+
+    internal int LastMvpDropFileCount { get; private set; }
+
+    internal string? LastMvpDropFirstFile { get; private set; }
+
+    internal string? LastMvpDropAllowedEffects { get; private set; }
+
+    internal string? LastMvpDropEffects { get; private set; }
+
+    internal double LastMvpDropX { get; private set; }
+
+    internal double LastMvpDropY { get; private set; }
+
     internal int InputDateSelectionChangedCount { get; private set; }
 
     internal string? LastDateSelectionSenderName { get; private set; }
@@ -383,6 +421,63 @@ public partial class MainWindow : Window
         LastInputBubbledThumbDragDeltaRoutedEventName = e.RoutedEvent?.Name;
         LastInputBubbledThumbDragDeltaHorizontalChange = e.HorizontalChange;
         LastInputBubbledThumbDragDeltaVerticalChange = e.VerticalChange;
+    }
+
+    private void OnMvpDropTargetPreviewDragEnter(object sender, DragEventArgs e)
+    {
+        MvpPreviewDragEnterCount++;
+        LastMvpPreviewDragEnterEventName = e.RoutedEvent?.Name;
+        LastMvpDropAllowedEffects = e.AllowedEffects.ToString();
+    }
+
+    private void OnMvpDropTargetDragEnter(object sender, DragEventArgs e)
+    {
+        MvpDragEnterCount++;
+        LastMvpDragEnterEventName = e.RoutedEvent?.Name;
+        LastMvpDropAllowedEffects = e.AllowedEffects.ToString();
+        e.Effects = DragDropEffects.Move;
+    }
+
+    private void OnMvpDropTargetPreviewDragOver(object sender, DragEventArgs e)
+    {
+        MvpPreviewDragOverCount++;
+        LastMvpPreviewDragOverEventName = e.RoutedEvent?.Name;
+        LastMvpDropAllowedEffects = e.AllowedEffects.ToString();
+    }
+
+    private void OnMvpDropTargetDragOver(object sender, DragEventArgs e)
+    {
+        MvpDragOverCount++;
+        LastMvpDragOverEventName = e.RoutedEvent?.Name;
+        LastMvpDropAllowedEffects = e.AllowedEffects.ToString();
+        e.Effects = DragDropEffects.Move;
+    }
+
+    private void OnMvpDropTargetPreviewDrop(object sender, DragEventArgs e)
+    {
+        MvpPreviewDropCount++;
+        LastMvpPreviewDropEventName = e.RoutedEvent?.Name;
+        LastMvpDropAllowedEffects = e.AllowedEffects.ToString();
+    }
+
+    private void OnMvpDropTargetDrop(object sender, DragEventArgs e)
+    {
+        MvpDropCount++;
+        LastMvpDropEventName = e.RoutedEvent?.Name;
+        LastMvpDropText = e.Data.GetDataPresent(DataFormats.UnicodeText)
+            ? e.Data.GetData(DataFormats.UnicodeText) as string
+            : e.Data.GetData(DataFormats.Text) as string;
+        var files = e.Data.GetData(DataFormats.FileDrop) as string[];
+        LastMvpDropFileCount = files?.Length ?? 0;
+        LastMvpDropFirstFile = files is { Length: > 0 } ? files[0] : null;
+        LastMvpDropAllowedEffects = e.AllowedEffects.ToString();
+        var position = e.GetPosition(MvpDropTarget);
+        LastMvpDropX = position.X;
+        LastMvpDropY = position.Y;
+        e.Effects = DragDropEffects.Move;
+        LastMvpDropEffects = e.Effects.ToString();
+        MvpDropTargetText.Text = $"{LastMvpDropText} ({LastMvpDropFileCount})";
+        e.Handled = true;
     }
 
     private void OnInputDateSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1199,6 +1294,12 @@ internal static class MvpSelfTest
         var inputDragStatusText = Require<TextBlock>(
             window.FindName("InputDragStatusText"),
             "input drag status TextBlock");
+        var mvpDropTarget = Require<Border>(
+            window.FindName("MvpDropTarget"),
+            "MVP drop target Border");
+        var mvpDropTargetText = Require<TextBlock>(
+            window.FindName("MvpDropTargetText"),
+            "MVP drop target TextBlock");
         var inputCalendar = Require<WpfCalendar>(
             window.FindName("InputCalendar"),
             "input Calendar");
@@ -1671,6 +1772,8 @@ internal static class MvpSelfTest
             inputThumbPanel,
             inputDragThumb,
             inputDragStatusText,
+            mvpDropTarget,
+            mvpDropTargetText,
             inputCalendar,
             inputDatePicker,
             keyboardNavigationPanel,
@@ -2845,6 +2948,8 @@ internal static class MvpSelfTest
         StackPanel inputThumbPanel,
         Thumb inputDragThumb,
         TextBlock inputDragStatusText,
+        Border mvpDropTarget,
+        TextBlock mvpDropTargetText,
         WpfCalendar calendar,
         DatePicker datePicker,
         StackPanel keyboardNavigationPanel,
@@ -2911,6 +3016,7 @@ internal static class MvpSelfTest
         AssertEqual(initialRepeatClicks + 1, window.InputRepeatButtonClickCount, "RepeatButton click count");
 
         ValidateThumbDragManager(window, inputThumbPanel, inputDragThumb, inputDragStatusText);
+        ValidateDragDropManager(window, mvpDropTarget, mvpDropTargetText);
 
         var expectedInitialDate = new DateTime(2026, 6, 23);
         AssertEqual(CalendarSelectionMode.SingleDate, calendar.SelectionMode, "Calendar selection mode");
@@ -3013,6 +3119,94 @@ internal static class MvpSelfTest
         AssertEqual(10.0, window.LastInputThumbDragCompletedVerticalChange, "input Thumb DragCompleted vertical change");
         AssertEqual(true, window.LastInputThumbDragCompletedCanceled, "input Thumb DragCompleted canceled state");
         AssertEqual(true, ReferenceEquals(inputThumbPanel, inputDragThumb.Parent), "input Thumb logical parent");
+    }
+
+    private static void ValidateDragDropManager(MainWindow window, Border dropTarget, TextBlock dropTargetText)
+    {
+        AssertEqual(true, dropTarget.AllowDrop, "MVP drop target AllowDrop");
+        AssertEqual("Drop target idle", dropTargetText.Text, "MVP drop target initial text");
+        AssertEqual(0, window.MvpPreviewDragEnterCount, "MVP initial PreviewDragEnter count");
+        AssertEqual(0, window.MvpDragEnterCount, "MVP initial DragEnter count");
+        AssertEqual(0, window.MvpPreviewDragOverCount, "MVP initial PreviewDragOver count");
+        AssertEqual(0, window.MvpDragOverCount, "MVP initial DragOver count");
+        AssertEqual(0, window.MvpPreviewDropCount, "MVP initial PreviewDrop count");
+        AssertEqual(0, window.MvpDropCount, "MVP initial Drop count");
+
+        var dataObject = new DataObject();
+        dataObject.SetData(DataFormats.UnicodeText, "mvp drag text");
+        dataObject.SetData(DataFormats.FileDrop, new[] { "/tmp/progpu-wpf-mvp-drop.txt" });
+        var allowedEffects = DragDropEffects.Copy | DragDropEffects.Move;
+        var point = new Point(12.0, 18.0);
+
+        RaiseDragEvent(dropTarget, DragDrop.PreviewDragEnterEvent, dataObject, point, allowedEffects);
+        RaiseDragEvent(dropTarget, DragDrop.DragEnterEvent, dataObject, point, allowedEffects);
+        RaiseDragEvent(dropTarget, DragDrop.PreviewDragOverEvent, dataObject, point, allowedEffects);
+        RaiseDragEvent(dropTarget, DragDrop.DragOverEvent, dataObject, point, allowedEffects);
+        RaiseDragEvent(dropTarget, DragDrop.PreviewDropEvent, dataObject, point, allowedEffects);
+        RaiseDragEvent(dropTarget, DragDrop.DropEvent, dataObject, point, allowedEffects);
+        DrainDispatcher(window);
+
+        AssertEqual(1, window.MvpPreviewDragEnterCount, "MVP PreviewDragEnter count");
+        AssertEqual(1, window.MvpDragEnterCount, "MVP DragEnter count");
+        AssertEqual(1, window.MvpPreviewDragOverCount, "MVP PreviewDragOver count");
+        AssertEqual(1, window.MvpDragOverCount, "MVP DragOver count");
+        AssertEqual(1, window.MvpPreviewDropCount, "MVP PreviewDrop count");
+        AssertEqual(1, window.MvpDropCount, "MVP Drop count");
+        AssertEqual("PreviewDragEnter", window.LastMvpPreviewDragEnterEventName, "MVP PreviewDragEnter event");
+        AssertEqual("DragEnter", window.LastMvpDragEnterEventName, "MVP DragEnter event");
+        AssertEqual("PreviewDragOver", window.LastMvpPreviewDragOverEventName, "MVP PreviewDragOver event");
+        AssertEqual("DragOver", window.LastMvpDragOverEventName, "MVP DragOver event");
+        AssertEqual("PreviewDrop", window.LastMvpPreviewDropEventName, "MVP PreviewDrop event");
+        AssertEqual("Drop", window.LastMvpDropEventName, "MVP Drop event");
+        AssertEqual("mvp drag text", window.LastMvpDropText, "MVP dropped UnicodeText");
+        AssertEqual(1, window.LastMvpDropFileCount, "MVP dropped file count");
+        AssertEqual("/tmp/progpu-wpf-mvp-drop.txt", window.LastMvpDropFirstFile, "MVP dropped first file");
+        AssertEqual(allowedEffects.ToString(), window.LastMvpDropAllowedEffects, "MVP drop allowed effects");
+        AssertEqual(DragDropEffects.Move.ToString(), window.LastMvpDropEffects, "MVP drop selected effect");
+        AssertEqual(12.0, window.LastMvpDropX, "MVP drop X position");
+        AssertEqual(18.0, window.LastMvpDropY, "MVP drop Y position");
+        AssertEqual("mvp drag text (1)", dropTargetText.Text, "MVP drop target updated text");
+    }
+
+    private static void RaiseDragEvent(
+        UIElement target,
+        RoutedEvent routedEvent,
+        DataObject dataObject,
+        Point point,
+        DragDropEffects allowedEffects)
+    {
+        var args = CreateDragEventArgs(dataObject, target, point, allowedEffects);
+        args.RoutedEvent = routedEvent;
+        target.RaiseEvent(args);
+    }
+
+    private static DragEventArgs CreateDragEventArgs(
+        DataObject dataObject,
+        DependencyObject target,
+        Point point,
+        DragDropEffects allowedEffects)
+    {
+        var constructor = typeof(DragEventArgs).GetConstructor(
+            BindingFlags.Instance | BindingFlags.NonPublic,
+            binder: null,
+            [
+                typeof(System.Windows.IDataObject),
+                typeof(DragDropKeyStates),
+                typeof(DragDropEffects),
+                typeof(DependencyObject),
+                typeof(Point)
+            ],
+            modifiers: null)
+            ?? throw new InvalidOperationException("Expected WPF DragEventArgs internal constructor.");
+
+        return (DragEventArgs)constructor.Invoke(
+            [
+                dataObject,
+                DragDropKeyStates.LeftMouseButton,
+                allowedEffects,
+                target,
+                point
+            ]);
     }
 
     private static void ValidateKeyboardNavigation(

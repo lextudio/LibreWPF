@@ -811,6 +811,25 @@
                                 Margin="0,6,0,0"
                                 Text="Drag idle" />
                         </StackPanel>
+                        <Border
+                            x:Name="MvpDropTarget"
+                            Margin="0,14,0,0"
+                            MinHeight="42"
+                            Padding="8"
+                            AllowDrop="True"
+                            Background="#FFFFFF"
+                            BorderBrush="#94A3B8"
+                            BorderThickness="1"
+                            DragEnter="OnMvpDropTargetDragEnter"
+                            DragOver="OnMvpDropTargetDragOver"
+                            Drop="OnMvpDropTargetDrop"
+                            PreviewDragEnter="OnMvpDropTargetPreviewDragEnter"
+                            PreviewDragOver="OnMvpDropTargetPreviewDragOver"
+                            PreviewDrop="OnMvpDropTargetPreviewDrop">
+                            <TextBlock
+                                x:Name="MvpDropTargetText"
+                                Text="Drop target idle" />
+                        </Border>
                         <StackPanel
                             x:Name="KeyboardNavigationPanel"
                             Margin="0,16,0,0"

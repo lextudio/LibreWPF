@@ -969,6 +969,10 @@
                             Margin="0,12,0,0"
                             Foreground="{DynamicResource MvpStartupBrush}"
                             Text="{DynamicResource MvpStartupText}" />
+                        <local:MvpThemedControl
+                            x:Name="MvpThemedControl"
+                            Margin="0,12,0,0"
+                            Text="Generic theme default style" />
                         <StackPanel
                             Margin="0,12,0,0"
                             Orientation="Horizontal">

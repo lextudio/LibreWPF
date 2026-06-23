@@ -5928,6 +5928,20 @@ public sealed class WpfManagedProjectGraphTests
             "samples",
             "ProGPU.Wpf.MvpApp",
             "MvpDependencyPropertySamples.cs");
+        var mvpThemedControlPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.MvpApp",
+            "MvpThemedControl.cs");
+        var mvpGenericThemeXamlPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.MvpApp",
+            "Themes",
+            "Generic.xaml");
+        var mvpAssemblyInfoPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.MvpApp",
+            "Properties",
+            "AssemblyInfo.cs");
         var mvpThemeXamlPath = FindRepoPath(
             "samples",
             "ProGPU.Wpf.MvpApp",
@@ -6021,6 +6035,9 @@ public sealed class WpfManagedProjectGraphTests
         var mvpSummaryPanelXaml = File.ReadAllText(mvpSummaryPanelXamlPath);
         var mvpSummaryPanelCodeBehind = File.ReadAllText(mvpSummaryPanelCodeBehindPath);
         var mvpDependencyPropertySamples = File.ReadAllText(mvpDependencyPropertySamplesPath);
+        var mvpThemedControl = File.ReadAllText(mvpThemedControlPath);
+        var mvpGenericThemeXaml = File.ReadAllText(mvpGenericThemeXamlPath);
+        var mvpAssemblyInfo = File.ReadAllText(mvpAssemblyInfoPath);
         var mvpThemeXaml = File.ReadAllText(mvpThemeXamlPath);
         var mvpComponentThemeXaml = File.ReadAllText(mvpComponentThemeXamlPath);
         var mvpOverviewPageXaml = File.ReadAllText(mvpOverviewPageXamlPath);
@@ -6165,6 +6182,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Filter=\"OnItemsViewSourceFilter\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<CollectionViewSource.SortDescriptions>", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<PropertyGroupDescription PropertyName=\"Category\" />", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MvpThemedControl\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"Generic theme default style\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("[assembly: ThemeInfo(ResourceDictionaryLocation.None, ResourceDictionaryLocation.SourceAssembly)]", mvpAssemblyInfo, StringComparison.Ordinal);
+        Assert.Contains("public sealed class MvpThemedControl : Control", mvpThemedControl, StringComparison.Ordinal);
+        Assert.Contains("DependencyProperty TextProperty", mvpThemedControl, StringComparison.Ordinal);
+        Assert.Contains("DefaultStyleKeyProperty.OverrideMetadata", mvpThemedControl, StringComparison.Ordinal);
+        Assert.Contains("new FrameworkPropertyMetadata(typeof(MvpThemedControl))", mvpThemedControl, StringComparison.Ordinal);
+        Assert.Contains("TargetType=\"{x:Type local:MvpThemedControl}\"", mvpGenericThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("ComponentResourceKey TypeInTargetAssembly={x:Type local:MvpThemedControl}, ResourceId=MvpThemeBorderBrush", mvpGenericThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ThemeRoot\"", mvpGenericThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ThemeText\"", mvpGenericThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{TemplateBinding Text}\"", mvpGenericThemeXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{x:Static local:MainWindow.RefreshStatusCommand}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Key=\"R\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Modifiers=\"Control\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6526,6 +6555,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("dynamic resource Border restored background color", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Application.GetResourceStream(resourceUri)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Localization.GetAttributes(localizedResourceText)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MvpThemedControl themedControl", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("themedControl.ApplyTemplate()", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MVP themed control template binding", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MVP themed control component resource color", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MvpResourceFactory", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("CreateSummary", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("window.FindResource(\"MvpObjectDataProvider\")", mvpMainWindowCodeBehind, StringComparison.Ordinal);

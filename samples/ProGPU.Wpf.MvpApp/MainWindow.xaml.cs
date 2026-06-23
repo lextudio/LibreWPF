@@ -921,6 +921,9 @@ internal static class MvpSelfTest
         var startupResourceText = Require<TextBlock>(
             window.FindName("StartupResourceText"),
             "startup resource TextBlock");
+        var mvpThemedControl = Require<MvpThemedControl>(
+            window.FindName("MvpThemedControl"),
+            "MVP themed control");
         var drawingImageControl = Require<Image>(
             window.FindName("MvpDrawingImageControl"),
             "MVP DrawingImage Image");
@@ -1227,6 +1230,7 @@ internal static class MvpSelfTest
             packResourceText,
             componentPackResourceText,
             startupResourceText,
+            mvpThemedControl,
             drawingImageControl,
             drawingImageBrushBorder,
             resourceDynamicBorder,
@@ -1690,6 +1694,7 @@ internal static class MvpSelfTest
         TextBlock packResourceText,
         TextBlock componentPackResourceText,
         TextBlock startupResourceText,
+        MvpThemedControl themedControl,
         Image drawingImageControl,
         Border drawingImageBrushBorder,
         Border dynamicResourceBorder,
@@ -1794,6 +1799,33 @@ internal static class MvpSelfTest
             AssertEqual(Color.FromRgb(0x45, 0x5A, 0x64), startupBrush.Color, "startup application brush color");
             AssertEqual(startupBrush.Color, startupForeground.Color, "startup DynamicResource foreground color");
         }
+
+        AssertEqual("Generic theme default style", themedControl.Text, "MVP themed control text");
+        themedControl.ApplyTemplate();
+        var themedTemplate = Require<ControlTemplate>(
+            themedControl.Template,
+            "MVP themed control default template");
+        var themedText = Require<TextBlock>(
+            themedTemplate.FindName("ThemeText", themedControl),
+            "MVP themed control template text");
+        var themedRoot = Require<Border>(
+            themedTemplate.FindName("ThemeRoot", themedControl),
+            "MVP themed control template root");
+        AssertEqual("Generic theme default style", themedText.Text, "MVP themed control template binding");
+        var themedForeground = Require<SolidColorBrush>(
+            themedText.Foreground,
+            "MVP themed control template foreground");
+        AssertEqual(Color.FromRgb(0x31, 0x2E, 0x81), themedForeground.Color, "MVP themed control foreground color");
+        var themedBackground = Require<SolidColorBrush>(
+            themedRoot.Background,
+            "MVP themed control template background");
+        AssertEqual(Color.FromRgb(0xEE, 0xF2, 0xFF), themedBackground.Color, "MVP themed control background color");
+        var themedBorderBrush = Require<SolidColorBrush>(
+            themedRoot.BorderBrush,
+            "MVP themed control template border brush");
+        AssertEqual(Color.FromRgb(0x4F, 0x46, 0xE5), themedBorderBrush.Color, "MVP themed control component resource color");
+        AssertEqual(new Thickness(1), themedRoot.BorderThickness, "MVP themed control border thickness");
+        AssertEqual(new Thickness(8, 5, 8, 5), themedRoot.Padding, "MVP themed control padding");
 
         var drawingImage = Require<DrawingImage>(
             window.FindResource("MvpDrawingImage"),

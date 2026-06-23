@@ -6216,6 +6216,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SelectionChanged=\"OnSelectorSelectionChanged\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MultiSelectItemsList\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SelectionMode=\"Multiple\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ScrollViewer.CanContentScroll=\"True\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("VirtualizingPanel.IsVirtualizing=\"True\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("VirtualizingPanel.VirtualizationMode=\"Recycling\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<VirtualizingStackPanel Orientation=\"Vertical\" />", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SelectionChanged=\"OnMultiSelectorSelectionChanged\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SelectorExpander\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Expanded=\"OnSelectorExpanderExpanded\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6468,6 +6472,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal int SelectorExpanderCollapsedCount", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnSelectorSelectionChanged", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnMultiSelectorSelectionChanged", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ScrollViewer.GetCanContentScroll(multiSelectItemsList)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("VirtualizingPanel.GetIsVirtualizing(multiSelectItemsList)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("VirtualizingPanel.GetVirtualizationMode(multiSelectItemsList)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("multi-select ListBox virtualizing items panel", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnSelectorExpanderExpanded", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnSelectorExpanderCollapsed", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateSelectorControls", mvpMainWindowCodeBehind, StringComparison.Ordinal);

@@ -1620,6 +1620,16 @@ internal static class MvpSelfTest
         AssertEqual(viewModel.Items, multiSelectItemsList.ItemsSource, "multi-select ListBox ItemsSource");
         AssertEqual("Name", multiSelectItemsList.DisplayMemberPath, "multi-select ListBox display path");
         AssertEqual(SelectionMode.Multiple, multiSelectItemsList.SelectionMode, "multi-select ListBox mode");
+        AssertEqual(true, ScrollViewer.GetCanContentScroll(multiSelectItemsList), "multi-select ListBox logical scrolling");
+        AssertEqual(true, VirtualizingPanel.GetIsVirtualizing(multiSelectItemsList), "multi-select ListBox virtualization enabled");
+        AssertEqual(
+            VirtualizationMode.Recycling,
+            VirtualizingPanel.GetVirtualizationMode(multiSelectItemsList),
+            "multi-select ListBox virtualization mode");
+        var virtualizingPanel = Require<VirtualizingStackPanel>(
+            multiSelectItemsList.ItemsPanel.LoadContent(),
+            "multi-select ListBox virtualizing items panel");
+        AssertEqual(Orientation.Vertical, virtualizingPanel.Orientation, "multi-select ListBox virtualizing panel orientation");
         int initialMultiEvents = window.MultiSelectorSelectionChangedCount;
         multiSelectItemsList.SelectedItems.Add(viewModel.Items[0]);
         multiSelectItemsList.SelectedItems.Add(viewModel.Items[1]);

@@ -591,8 +591,17 @@
                                 Margin="0,14,0,0"
                                 DisplayMemberPath="Name"
                                 ItemsSource="{Binding Items}"
+                                ScrollViewer.CanContentScroll="True"
                                 SelectionChanged="OnMultiSelectorSelectionChanged"
-                                SelectionMode="Multiple" />
+                                SelectionMode="Multiple"
+                                VirtualizingPanel.IsVirtualizing="True"
+                                VirtualizingPanel.VirtualizationMode="Recycling">
+                                <ListBox.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <VirtualizingStackPanel Orientation="Vertical" />
+                                    </ItemsPanelTemplate>
+                                </ListBox.ItemsPanel>
+                            </ListBox>
                         </Grid>
                     </GroupBox>
 

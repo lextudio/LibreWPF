@@ -6047,6 +6047,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<UseWPF>true</UseWPF>", mvpProject, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_VALIDATE", mvpAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MvpSelfTest.Validate", mvpAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MainMenu\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{Binding AddItemCommand}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("InputGestureText=\"Ctrl+N\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("IsCheckable=\"True\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("TextBox", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ListBox", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DataGrid", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6059,6 +6063,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("INotifyPropertyChanged", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ICommand", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ObservableCollection<MvpNode>", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("addMenuItem.Command.Execute(addMenuItem.CommandParameter)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("actions menu unchecked view model state", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GetColumnBindingPath", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GetTemplateItemsSourcePath", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"IsActive\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);

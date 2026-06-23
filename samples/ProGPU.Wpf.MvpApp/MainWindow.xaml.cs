@@ -212,6 +212,13 @@ internal static class MvpSelfTest
 
         var viewModel = window.DataContext as MainViewModel
             ?? throw new InvalidOperationException("Expected MVP DataContext.");
+        var mainMenu = Require<Menu>(window.FindName("MainMenu"), "main Menu");
+        var fileMenuItem = Require<MenuItem>(window.FindName("FileMenuItem"), "file MenuItem");
+        var addMenuItem = Require<MenuItem>(window.FindName("AddMenuItem"), "add MenuItem");
+        var resetMenuItem = Require<MenuItem>(window.FindName("ResetMenuItem"), "reset MenuItem");
+        var actionsEnabledMenuItem = Require<MenuItem>(
+            window.FindName("ActionsEnabledMenuItem"),
+            "actions enabled MenuItem");
         Require<TextBox>(window.FindName("NameTextBox"), "name TextBox");
         Require<ListBox>(window.FindName("ItemsList"), "items ListBox");
         var itemsDataGrid = Require<DataGrid>(window.FindName("ItemsDataGrid"), "items DataGrid");
@@ -219,6 +226,13 @@ internal static class MvpSelfTest
         Require<CheckBox>(window.FindName("EnabledCheckBox"), "enabled CheckBox");
         Require<Slider>(window.FindName("ProgressSlider"), "progress Slider");
         Require<ComboBox>(window.FindName("CategoryCombo"), "category ComboBox");
+        AssertEqual(2, mainMenu.Items.Count, "main menu item count");
+        AssertEqual(3, fileMenuItem.Items.Count, "file menu item count");
+        AssertEqual(viewModel.AddItemCommand, addMenuItem.Command, "add menu command binding");
+        AssertEqual("Ctrl+N", addMenuItem.InputGestureText, "add menu input gesture text");
+        AssertEqual(viewModel.ResetCommand, resetMenuItem.Command, "reset menu command binding");
+        AssertEqual(true, actionsEnabledMenuItem.IsCheckable, "actions menu checkable state");
+        AssertEqual(true, actionsEnabledMenuItem.IsChecked, "actions menu initial checked state");
         AssertEqual(viewModel.Items, itemsDataGrid.ItemsSource, "DataGrid items source");
         AssertEqual(3, itemsDataGrid.Columns.Count, "DataGrid column count");
         AssertEqual("Name", GetColumnBindingPath(itemsDataGrid.Columns[0]), "DataGrid name column binding");
@@ -235,12 +249,16 @@ internal static class MvpSelfTest
         int initialCount = viewModel.Items.Count;
         viewModel.NewItemName = "Validated";
         viewModel.SelectedCategory = "Input";
-        viewModel.AddItemCommand.Execute(null);
+        addMenuItem.Command.Execute(addMenuItem.CommandParameter);
 
         AssertEqual(initialCount + 1, viewModel.Items.Count, "added item count");
         AssertEqual("Validated", viewModel.SelectedItem?.Name, "selected item name");
         AssertEqual("Input", viewModel.SelectedItem?.Category, "selected item category");
         AssertEqual(true, viewModel.SelectedItem?.IsActive ?? false, "selected item active state");
+        actionsEnabledMenuItem.IsChecked = false;
+        AssertEqual(false, viewModel.ActionsEnabled, "actions menu unchecked view model state");
+        actionsEnabledMenuItem.IsChecked = true;
+        AssertEqual(true, viewModel.ActionsEnabled, "actions menu checked view model state");
 
         viewModel.Progress = 72.0;
         AssertEqual("Validated selected, progress 72%", viewModel.StatusText, "status text");

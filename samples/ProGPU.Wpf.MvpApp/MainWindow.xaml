@@ -40,6 +40,33 @@
         </Grid.RowDefinitions>
 
         <StackPanel>
+            <Menu
+                x:Name="MainMenu"
+                Margin="0,0,0,10">
+                <MenuItem
+                    x:Name="FileMenuItem"
+                    Header="_File">
+                    <MenuItem
+                        x:Name="AddMenuItem"
+                        Command="{Binding AddItemCommand}"
+                        Header="_Add item"
+                        InputGestureText="Ctrl+N" />
+                    <Separator />
+                    <MenuItem
+                        x:Name="ResetMenuItem"
+                        Command="{Binding ResetCommand}"
+                        Header="_Reset" />
+                </MenuItem>
+                <MenuItem
+                    x:Name="ViewMenuItem"
+                    Header="_View">
+                    <MenuItem
+                        x:Name="ActionsEnabledMenuItem"
+                        Header="_Enable actions"
+                        IsCheckable="True"
+                        IsChecked="{Binding ActionsEnabled}" />
+                </MenuItem>
+            </Menu>
             <TextBlock
                 FontSize="22"
                 FontWeight="SemiBold"

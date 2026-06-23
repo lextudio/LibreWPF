@@ -13,6 +13,9 @@ namespace ProGPU.Wpf.MvpApp;
 
 public partial class MainWindow : Window
 {
+    public static readonly RoutedUICommand RefreshStatusCommand =
+        new("Refresh status", nameof(RefreshStatusCommand), typeof(MainWindow));
+
     public MainWindow()
     {
         DataContext = new MainViewModel();
@@ -28,6 +31,22 @@ public partial class MainWindow : Window
     {
         NavigationFrame.Navigate(new Uri("DetailsPage.xaml", UriKind.Relative));
     }
+
+    private void OnRefreshStatusCommandCanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+        e.CanExecute = DataContext is MainViewModel { ActionsEnabled: true };
+        e.Handled = true;
+    }
+
+    private void OnRefreshStatusCommandExecuted(object sender, ExecutedRoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel viewModel)
+        {
+            viewModel.RefreshCommandStatus();
+        }
+
+        e.Handled = true;
+    }
 }
 
 public sealed class MainViewModel : INotifyPropertyChanged
@@ -37,6 +56,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _selectedCategory = "Framework";
     private bool _actionsEnabled = true;
     private double _progress = 35.0;
+    private int _refreshCount;
 
     public MainViewModel()
     {
@@ -128,6 +148,27 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ? $"Progress {Progress:0}%"
         : $"{SelectedItem.Name} selected, progress {Progress:0}%";
 
+    public int RefreshCount
+    {
+        get => _refreshCount;
+        private set
+        {
+            if (SetField(ref _refreshCount, value))
+            {
+                OnPropertyChanged(nameof(CommandStatusText));
+            }
+        }
+    }
+
+    public string CommandStatusText => RefreshCount == 0
+        ? "Commands idle"
+        : $"Refresh command {RefreshCount}";
+
+    public void RefreshCommandStatus()
+    {
+        RefreshCount++;
+    }
+
     private void AddItem()
     {
         string name = string.IsNullOrWhiteSpace(NewItemName)
@@ -149,6 +190,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         NewItemName = "Gamma";
         Progress = 35.0;
         ActionsEnabled = true;
+        RefreshCount = 0;
     }
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
@@ -239,11 +281,16 @@ internal static class MvpSelfTest
         AssertEqual(typeof(Button), buttonStyle.TargetType, "app Button implicit style target type");
         var mainMenu = Require<Menu>(window.FindName("MainMenu"), "main Menu");
         var fileMenuItem = Require<MenuItem>(window.FindName("FileMenuItem"), "file MenuItem");
+        var viewMenuItem = Require<MenuItem>(window.FindName("ViewMenuItem"), "view MenuItem");
         var addMenuItem = Require<MenuItem>(window.FindName("AddMenuItem"), "add MenuItem");
         var resetMenuItem = Require<MenuItem>(window.FindName("ResetMenuItem"), "reset MenuItem");
+        var refreshMenuItem = Require<MenuItem>(window.FindName("RefreshMenuItem"), "refresh MenuItem");
         var actionsEnabledMenuItem = Require<MenuItem>(
             window.FindName("ActionsEnabledMenuItem"),
             "actions enabled MenuItem");
+        var commandStatusText = Require<TextBlock>(
+            window.FindName("CommandStatusText"),
+            "command status TextBlock");
         Require<TextBox>(window.FindName("NameTextBox"), "name TextBox");
         Require<ListBox>(window.FindName("ItemsList"), "items ListBox");
         var itemsDataGrid = Require<DataGrid>(window.FindName("ItemsDataGrid"), "items DataGrid");
@@ -267,9 +314,19 @@ internal static class MvpSelfTest
         Require<ComboBox>(window.FindName("CategoryCombo"), "category ComboBox");
         AssertEqual(2, mainMenu.Items.Count, "main menu item count");
         AssertEqual(3, fileMenuItem.Items.Count, "file menu item count");
+        AssertEqual(3, viewMenuItem.Items.Count, "view menu item count");
         AssertEqual(viewModel.AddItemCommand, addMenuItem.Command, "add menu command binding");
         AssertEqual("Ctrl+N", addMenuItem.InputGestureText, "add menu input gesture text");
         AssertEqual(viewModel.ResetCommand, resetMenuItem.Command, "reset menu command binding");
+        AssertEqual(MainWindow.RefreshStatusCommand, refreshMenuItem.Command, "refresh menu routed command");
+        AssertEqual("Ctrl+R", refreshMenuItem.InputGestureText, "refresh menu input gesture text");
+        AssertEqual(1, window.CommandBindings.Count, "window command binding count");
+        AssertEqual(MainWindow.RefreshStatusCommand, window.CommandBindings[0].Command, "window routed command binding");
+        AssertEqual(1, window.InputBindings.Count, "window input binding count");
+        var refreshKeyBinding = Require<KeyBinding>(window.InputBindings[0], "refresh KeyBinding");
+        AssertEqual(Key.R, refreshKeyBinding.Key, "refresh key binding key");
+        AssertEqual(ModifierKeys.Control, refreshKeyBinding.Modifiers, "refresh key binding modifiers");
+        AssertEqual(MainWindow.RefreshStatusCommand, refreshKeyBinding.Command, "refresh key binding command");
         AssertEqual(true, actionsEnabledMenuItem.IsCheckable, "actions menu checkable state");
         AssertEqual(true, actionsEnabledMenuItem.IsChecked, "actions menu initial checked state");
         AssertEqual(viewModel.Items, itemsDataGrid.ItemsSource, "DataGrid items source");
@@ -285,10 +342,17 @@ internal static class MvpSelfTest
             "node hierarchical data template");
         AssertEqual("Children", GetTemplateItemsSourcePath(nodeTemplate), "TreeView hierarchical template ItemsSource path");
         DrainDispatcher(window);
+        AssertEqual("Commands idle", commandStatusText.Text, "initial command status text");
         AssertEqual("Name: Alpha", summaryNameText.Text, "summary initial name text");
         AssertEqual("Category: Framework", summaryCategoryText.Text, "summary initial category text");
         AssertEqual("Progress: 35%", summaryProgressText.Text, "summary initial progress text");
         ValidateNavigation(window, navigationFrame, detailsNavigationButton);
+
+        AssertEqual(true, MainWindow.RefreshStatusCommand.CanExecute(null, window), "refresh command initial CanExecute state");
+        MainWindow.RefreshStatusCommand.Execute(null, window);
+        DrainDispatcher(window);
+        AssertEqual(1, viewModel.RefreshCount, "refresh command execution count");
+        AssertEqual("Refresh command 1", commandStatusText.Text, "refreshed command status text");
 
         int initialCount = viewModel.Items.Count;
         viewModel.NewItemName = "Validated";
@@ -301,8 +365,10 @@ internal static class MvpSelfTest
         AssertEqual(true, viewModel.SelectedItem?.IsActive ?? false, "selected item active state");
         actionsEnabledMenuItem.IsChecked = false;
         AssertEqual(false, viewModel.ActionsEnabled, "actions menu unchecked view model state");
+        AssertEqual(false, MainWindow.RefreshStatusCommand.CanExecute(null, window), "refresh command disabled CanExecute state");
         actionsEnabledMenuItem.IsChecked = true;
         AssertEqual(true, viewModel.ActionsEnabled, "actions menu checked view model state");
+        AssertEqual(true, MainWindow.RefreshStatusCommand.CanExecute(null, window), "refresh command reenabled CanExecute state");
 
         viewModel.Progress = 72.0;
         DrainDispatcher(window);

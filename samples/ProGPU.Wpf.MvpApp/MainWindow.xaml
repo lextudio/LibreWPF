@@ -9,6 +9,18 @@
     Height="560"
     MinWidth="560"
     MinHeight="420">
+    <Window.CommandBindings>
+        <CommandBinding
+            Command="{x:Static local:MainWindow.RefreshStatusCommand}"
+            CanExecute="OnRefreshStatusCommandCanExecute"
+            Executed="OnRefreshStatusCommandExecuted" />
+    </Window.CommandBindings>
+    <Window.InputBindings>
+        <KeyBinding
+            Key="R"
+            Modifiers="Control"
+            Command="{x:Static local:MainWindow.RefreshStatusCommand}" />
+    </Window.InputBindings>
     <Window.Resources>
         <HierarchicalDataTemplate
             x:Key="MvpNodeTemplate"
@@ -58,6 +70,12 @@
                         Header="_Enable actions"
                         IsCheckable="True"
                         IsChecked="{Binding ActionsEnabled}" />
+                    <Separator />
+                    <MenuItem
+                        x:Name="RefreshMenuItem"
+                        Command="{x:Static local:MainWindow.RefreshStatusCommand}"
+                        Header="_Refresh status"
+                        InputGestureText="Ctrl+R" />
                 </MenuItem>
             </Menu>
             <TextBlock
@@ -275,6 +293,12 @@
         <StatusBar Grid.Row="2" Margin="0,14,0,0">
             <StatusBarItem>
                 <TextBlock Text="{Binding StatusText}" />
+            </StatusBarItem>
+            <Separator />
+            <StatusBarItem>
+                <TextBlock
+                    x:Name="CommandStatusText"
+                    Text="{Binding CommandStatusText}" />
             </StatusBarItem>
         </StatusBar>
     </Grid>

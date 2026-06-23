@@ -15,6 +15,7 @@ using System.Security.Cryptography;
 internal static class Program
 {
     private const string OriginalWpfSdk = "Microsoft.NET.Sdk";
+    private const string OriginalWindowsDesktopWpfSdk = "Microsoft.NET.Sdk.WindowsDesktop";
     private const string SdkVersion = "11.0.0-dev";
     private const string ExternalAppTargetFramework = "net11.0-windows";
     private const string AppAssemblyName = "ExternalSdkApp";
@@ -553,7 +554,7 @@ internal static class Program
             appProjectPath,
             SwitchWpfSdkOnly(
                 $"""
-            <Project Sdk="{OriginalWpfSdk}">
+            <Project Sdk="{OriginalWindowsDesktopWpfSdk}">
               <PropertyGroup>
                 <OutputType>WinExe</OutputType>
                 <TargetFramework>{ExternalAppTargetFramework}</TargetFramework>
@@ -568,6 +569,7 @@ internal static class Program
               </ItemGroup>
             </Project>
             """,
+                OriginalWindowsDesktopWpfSdk,
                 "external SDK app"));
 
         WriteFile(
@@ -11563,6 +11565,7 @@ internal static class Program
 
         AssertContains(appProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external app SDK");
         AssertDoesNotContain(appProject, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external app original SDK");
+        AssertDoesNotContain(appProject, $"<Project Sdk=\"{OriginalWindowsDesktopWpfSdk}\">", "external app original WindowsDesktop SDK");
         AssertContains(appProject, "<OutputType>WinExe</OutputType>", "external app output type");
         AssertContains(appProject, $"<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", "external app Windows target framework");
         AssertContains(appProject, "<UseWPF>true</UseWPF>", "external app WPF property");
@@ -11609,7 +11612,12 @@ internal static class Program
 
     private static string SwitchWpfSdkOnly(string normalWpfProject, string description)
     {
-        string originalSdk = $"<Project Sdk=\"{OriginalWpfSdk}\">";
+        return SwitchWpfSdkOnly(normalWpfProject, OriginalWpfSdk, description);
+    }
+
+    private static string SwitchWpfSdkOnly(string normalWpfProject, string originalSdkName, string description)
+    {
+        string originalSdk = $"<Project Sdk=\"{originalSdkName}\">";
         string proGpuSdk = $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">";
 
         AssertContains(normalWpfProject, originalSdk, $"{description} original WPF SDK");

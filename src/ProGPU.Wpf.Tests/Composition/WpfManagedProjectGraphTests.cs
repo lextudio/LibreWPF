@@ -6968,10 +6968,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Path.GetTempPath()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Wpf.SdkExternalSmoke", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("private const string OriginalWpfSdk = \"Microsoft.NET.Sdk\";", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("private const string OriginalWindowsDesktopWpfSdk = \"Microsoft.NET.Sdk.WindowsDesktop\";", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalSdkApp", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalSdkLibrary", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Project Sdk=\"{OriginalWpfSdk}\">", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<Project Sdk=\"{OriginalWindowsDesktopWpfSdk}\">", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OriginalWindowsDesktopWpfSdk,\n                \"external SDK app\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SwitchWpfSdkOnly", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("return SwitchWpfSdkOnly(normalWpfProject, OriginalWpfSdk, description);", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("string originalSdk = $\"<Project Sdk=\\\"{originalSdkName}\\\">\";", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("string proGpuSdk = $\"<Project Sdk=\\\"ProGPU.Wpf.Sdk/{SdkVersion}\\\">\";", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("changed more than its root SDK during ProGPU SDK switching", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<OutputType>WinExe</OutputType>", externalSdkHarnessProgram, StringComparison.Ordinal);

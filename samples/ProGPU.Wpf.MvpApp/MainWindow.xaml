@@ -93,6 +93,26 @@
             <sys:String>Array alpha</sys:String>
             <sys:String>Array beta</sys:String>
         </x:Array>
+        <DrawingImage x:Key="MvpDrawingImage">
+            <DrawingImage.Drawing>
+                <DrawingGroup>
+                    <GeometryDrawing Brush="#2F80ED">
+                        <GeometryDrawing.Geometry>
+                            <RectangleGeometry Rect="0,0,32,32" />
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                    <GeometryDrawing Brush="White">
+                        <GeometryDrawing.Geometry>
+                            <PathGeometry Figures="M 8,18 L 14,24 L 25,9 L 28,12 L 14,28 L 5,20 Z" />
+                        </GeometryDrawing.Geometry>
+                    </GeometryDrawing>
+                </DrawingGroup>
+            </DrawingImage.Drawing>
+        </DrawingImage>
+        <ImageBrush
+            x:Key="MvpDrawingImageBrush"
+            ImageSource="{StaticResource MvpDrawingImage}"
+            Stretch="Uniform" />
         <ControlTemplate x:Key="MvpValidationErrorTemplate">
             <StackPanel>
                 <AdornedElementPlaceholder x:Name="MvpValidationErrorPlaceholder" />
@@ -914,6 +934,22 @@
                             x:Name="PackResourceText"
                             Margin="0,12,0,0"
                             Text="Pack resource loaded from Assets/MvpResource.txt" />
+                        <StackPanel
+                            Margin="0,12,0,0"
+                            Orientation="Horizontal">
+                            <Image
+                                x:Name="MvpDrawingImageControl"
+                                Width="36"
+                                Height="36"
+                                Source="{StaticResource MvpDrawingImage}"
+                                Stretch="Uniform" />
+                            <Border
+                                x:Name="MvpDrawingImageBrushBorder"
+                                Width="36"
+                                Height="36"
+                                Margin="10,0,0,0"
+                                Background="{StaticResource MvpDrawingImageBrush}" />
+                        </StackPanel>
                     </StackPanel>
 
                     <Border

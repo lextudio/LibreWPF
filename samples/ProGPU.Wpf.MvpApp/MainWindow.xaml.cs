@@ -871,6 +871,12 @@ internal static class MvpSelfTest
         var packResourceText = Require<TextBlock>(
             window.FindName("PackResourceText"),
             "pack resource TextBlock");
+        var drawingImageControl = Require<Image>(
+            window.FindName("MvpDrawingImageControl"),
+            "MVP DrawingImage Image");
+        var drawingImageBrushBorder = Require<Border>(
+            window.FindName("MvpDrawingImageBrushBorder"),
+            "MVP DrawingImageBrush Border");
         var resourceDynamicBorder = Require<Border>(
             window.FindName("ResourceDynamicBorder"),
             "resource DynamicResource Border");
@@ -1144,6 +1150,8 @@ internal static class MvpSelfTest
             resourceArrayItemsControl,
             nullIntrinsicText,
             packResourceText,
+            drawingImageControl,
+            drawingImageBrushBorder,
             resourceDynamicBorder);
         ValidateItemsContextMenu(window, viewModel, itemsList);
         ValidateNavigation(window, navigationFrame, detailsNavigationButton);
@@ -1538,6 +1546,8 @@ internal static class MvpSelfTest
         ItemsControl arrayItemsControl,
         TextBlock nullIntrinsicText,
         TextBlock packResourceText,
+        Image drawingImageControl,
+        Border drawingImageBrushBorder,
         Border dynamicResourceBorder)
     {
         var componentKey = new ComponentResourceKey(typeof(MainWindow), "MvpComponentAccentBrush");
@@ -1602,6 +1612,38 @@ internal static class MvpSelfTest
         AssertEqual("Null intrinsic target", nullIntrinsicText.Text, "x:Null TextBlock text");
 
         AssertEqual("Pack resource loaded from Assets/MvpResource.txt", packResourceText.Text, "pack resource TextBlock text");
+        var drawingImage = Require<DrawingImage>(
+            window.FindResource("MvpDrawingImage"),
+            "MVP DrawingImage resource");
+        var drawingGroup = Require<DrawingGroup>(
+            drawingImage.Drawing,
+            "MVP DrawingImage DrawingGroup");
+        AssertEqual(2, drawingGroup.Children.Count, "MVP DrawingImage child count");
+        var backgroundDrawing = Require<GeometryDrawing>(
+            drawingGroup.Children[0],
+            "MVP DrawingImage background drawing");
+        var backgroundBrush = Require<SolidColorBrush>(
+            backgroundDrawing.Brush,
+            "MVP DrawingImage background brush");
+        AssertEqual(Color.FromRgb(0x2F, 0x80, 0xED), backgroundBrush.Color, "MVP DrawingImage background color");
+        Require<RectangleGeometry>(
+            backgroundDrawing.Geometry,
+            "MVP DrawingImage background geometry");
+        var glyphDrawing = Require<GeometryDrawing>(
+            drawingGroup.Children[1],
+            "MVP DrawingImage glyph drawing");
+        Require<PathGeometry>(
+            glyphDrawing.Geometry,
+            "MVP DrawingImage glyph geometry");
+        AssertEqual(drawingImage, drawingImageControl.Source, "MVP Image source");
+        AssertEqual(Stretch.Uniform, drawingImageControl.Stretch, "MVP Image stretch");
+        var drawingImageBrush = Require<ImageBrush>(
+            window.FindResource("MvpDrawingImageBrush"),
+            "MVP DrawingImageBrush resource");
+        AssertEqual(drawingImage, drawingImageBrush.ImageSource, "MVP DrawingImageBrush source");
+        AssertEqual(Stretch.Uniform, drawingImageBrush.Stretch, "MVP DrawingImageBrush stretch");
+        AssertEqual(drawingImageBrush, drawingImageBrushBorder.Background, "MVP DrawingImageBrush Border background");
+
         var initialDynamicBrush = Require<SolidColorBrush>(
             dynamicResourceBorder.Background,
             "dynamic resource Border initial background");

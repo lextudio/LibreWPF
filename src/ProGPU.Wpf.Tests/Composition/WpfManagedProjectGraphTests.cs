@@ -6270,6 +6270,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"NullIntrinsicText\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Tag=\"{x:Null}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"PackResourceText\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<DrawingImage x:Key=\"MvpDrawingImage\">", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<GeometryDrawing Brush=\"#2F80ED\">", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<RectangleGeometry Rect=\"0,0,32,32\" />", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<PathGeometry Figures=\"M 8,18 L 14,24 L 25,9 L 28,12 L 14,28 L 5,20 Z\" />", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"MvpDrawingImageBrush\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ImageSource=\"{StaticResource MvpDrawingImage}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MvpDrawingImageControl\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Source=\"{StaticResource MvpDrawingImage}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MvpDrawingImageBrushBorder\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Background=\"{StaticResource MvpDrawingImageBrush}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ResourceDynamicBorder\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DynamicResource invalidation", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SelectedItemContent\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6479,6 +6489,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Storyboard.GetTargetProperty(animation).Path", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("animation.Duration.TimeSpan", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateItemsContextMenu", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MVP DrawingImage resource", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MVP DrawingImage background color", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MVP DrawingImageBrush Border background", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("context menu DataContext path", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("context refresh command target ancestor", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("context add command item count", mvpMainWindowCodeBehind, StringComparison.Ordinal);

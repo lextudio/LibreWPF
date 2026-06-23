@@ -71,25 +71,60 @@
                         </Grid>
                     </Border>
 
-                    <ListBox
-                        x:Name="ItemsList"
-                        Grid.Row="1"
-                        ItemsSource="{Binding Items}"
-                        SelectedItem="{Binding SelectedItem}">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock
-                                        MinWidth="120"
-                                        FontWeight="SemiBold"
-                                        Text="{Binding Name}" />
-                                    <TextBlock
-                                        Foreground="#5B6472"
-                                        Text="{Binding Category, StringFormat=Category: {0}}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                    <Grid Grid.Row="1">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <ListBox
+                            x:Name="ItemsList"
+                            ItemsSource="{Binding Items}"
+                            SelectedItem="{Binding SelectedItem}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock
+                                            MinWidth="120"
+                                            FontWeight="SemiBold"
+                                            Text="{Binding Name}" />
+                                        <TextBlock
+                                            Foreground="#5B6472"
+                                            Text="{Binding Category, StringFormat=Category: {0}}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <TextBlock
+                            Grid.Row="1"
+                            Margin="0,12,0,6"
+                            FontWeight="SemiBold"
+                            Text="Tabular view" />
+
+                        <DataGrid
+                            x:Name="ItemsDataGrid"
+                            Grid.Row="2"
+                            AutoGenerateColumns="False"
+                            CanUserAddRows="False"
+                            HeadersVisibility="Column"
+                            IsReadOnly="True"
+                            ItemsSource="{Binding Items}"
+                            SelectedItem="{Binding SelectedItem}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn
+                                    Binding="{Binding Name}"
+                                    Header="Name" />
+                                <DataGridTextColumn
+                                    Binding="{Binding Category}"
+                                    Header="Category" />
+                                <DataGridCheckBoxColumn
+                                    Binding="{Binding IsActive}"
+                                    Header="Active" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
 
                     <StackPanel
                         Grid.Row="1"

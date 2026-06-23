@@ -6049,10 +6049,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("MvpSelfTest.Validate", mvpAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("TextBox", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ListBox", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DataGrid", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DataGridTextColumn", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DataGridCheckBoxColumn", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("FlowDocumentScrollViewer", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("StatusBar", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("INotifyPropertyChanged", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ICommand", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("GetColumnBindingPath", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"IsActive\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal static class MvpSelfTest", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("dotnet", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("run --project \"${mvp_project}\"", mvpRunScript, StringComparison.Ordinal);

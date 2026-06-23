@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 
 namespace ProGPU.Wpf.MvpApp;
@@ -29,8 +30,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         Items =
         [
-            new MvpItem("Alpha", "Framework"),
-            new MvpItem("Beta", "Rendering")
+            new MvpItem("Alpha", "Framework", true),
+            new MvpItem("Beta", "Rendering", false)
         ];
         Categories = ["Framework", "Rendering", "Input"];
         _selectedItem = Items[0];
@@ -105,7 +106,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         string name = string.IsNullOrWhiteSpace(NewItemName)
             ? $"Item {Items.Count + 1}"
             : NewItemName.Trim();
-        var item = new MvpItem(name, SelectedCategory);
+        var item = new MvpItem(name, SelectedCategory, true);
         Items.Add(item);
         SelectedItem = item;
         NewItemName = string.Empty;
@@ -114,8 +115,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private void Reset()
     {
         Items.Clear();
-        Items.Add(new MvpItem("Alpha", "Framework"));
-        Items.Add(new MvpItem("Beta", "Rendering"));
+        Items.Add(new MvpItem("Alpha", "Framework", true));
+        Items.Add(new MvpItem("Beta", "Rendering", false));
         SelectedItem = Items[0];
         SelectedCategory = Categories[0];
         NewItemName = "Gamma";
@@ -141,7 +142,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
 }
 
-public sealed record MvpItem(string Name, string Category);
+public sealed record MvpItem(string Name, string Category, bool IsActive);
 
 public sealed class RelayCommand : ICommand
 {
@@ -182,9 +183,15 @@ internal static class MvpSelfTest
             ?? throw new InvalidOperationException("Expected MVP DataContext.");
         Require<TextBox>(window.FindName("NameTextBox"), "name TextBox");
         Require<ListBox>(window.FindName("ItemsList"), "items ListBox");
+        var itemsDataGrid = Require<DataGrid>(window.FindName("ItemsDataGrid"), "items DataGrid");
         Require<CheckBox>(window.FindName("EnabledCheckBox"), "enabled CheckBox");
         Require<Slider>(window.FindName("ProgressSlider"), "progress Slider");
         Require<ComboBox>(window.FindName("CategoryCombo"), "category ComboBox");
+        AssertEqual(viewModel.Items, itemsDataGrid.ItemsSource, "DataGrid items source");
+        AssertEqual(3, itemsDataGrid.Columns.Count, "DataGrid column count");
+        AssertEqual("Name", GetColumnBindingPath(itemsDataGrid.Columns[0]), "DataGrid name column binding");
+        AssertEqual("Category", GetColumnBindingPath(itemsDataGrid.Columns[1]), "DataGrid category column binding");
+        AssertEqual("IsActive", GetColumnBindingPath(itemsDataGrid.Columns[2]), "DataGrid active column binding");
 
         int initialCount = viewModel.Items.Count;
         viewModel.NewItemName = "Validated";
@@ -194,9 +201,17 @@ internal static class MvpSelfTest
         AssertEqual(initialCount + 1, viewModel.Items.Count, "added item count");
         AssertEqual("Validated", viewModel.SelectedItem?.Name, "selected item name");
         AssertEqual("Input", viewModel.SelectedItem?.Category, "selected item category");
+        AssertEqual(true, viewModel.SelectedItem?.IsActive ?? false, "selected item active state");
 
         viewModel.Progress = 72.0;
         AssertEqual("Validated selected, progress 72%", viewModel.StatusText, "status text");
+    }
+
+    private static string GetColumnBindingPath(DataGridColumn column)
+    {
+        return column is DataGridBoundColumn { Binding: Binding binding }
+            ? binding.Path.Path
+            : throw new InvalidOperationException($"Expected {column.Header} column to have a Binding.");
     }
 
     private static T Require<T>(object? value, string description)

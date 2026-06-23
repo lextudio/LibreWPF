@@ -85,3 +85,58 @@ public class MvpHeaderTextBlock : TextBlock
         set => SetValue(HeaderTextProperty, value);
     }
 }
+
+public delegate void MvpRoutedEventHandler(object sender, MvpRoutedEventArgs e);
+
+public sealed class MvpRoutedEventArgs : RoutedEventArgs
+{
+    public MvpRoutedEventArgs(RoutedEvent routedEvent, object source, string payload)
+        : base(routedEvent, source)
+    {
+        Payload = payload;
+    }
+
+    public string Payload { get; }
+}
+
+public sealed class MvpRoutedEventButton : Button
+{
+    public static readonly RoutedEvent MvpActivatedEvent =
+        EventManager.RegisterRoutedEvent(
+            nameof(MvpActivated),
+            RoutingStrategy.Bubble,
+            typeof(MvpRoutedEventHandler),
+            typeof(MvpRoutedEventButton));
+
+    static MvpRoutedEventButton()
+    {
+        EventManager.RegisterClassHandler(
+            typeof(MvpRoutedEventButton),
+            MvpActivatedEvent,
+            new MvpRoutedEventHandler(OnMvpActivatedClassHandler),
+            handledEventsToo: true);
+    }
+
+    public int ClassHandlerCount { get; private set; }
+
+    public event MvpRoutedEventHandler MvpActivated
+    {
+        add => AddHandler(MvpActivatedEvent, value);
+        remove => RemoveHandler(MvpActivatedEvent, value);
+    }
+
+    public MvpRoutedEventArgs RaiseMvpActivated(string payload)
+    {
+        var args = new MvpRoutedEventArgs(MvpActivatedEvent, this, payload);
+        RaiseEvent(args);
+        return args;
+    }
+
+    private static void OnMvpActivatedClassHandler(object sender, MvpRoutedEventArgs e)
+    {
+        if (sender is MvpRoutedEventButton button)
+        {
+            button.ClassHandlerCount++;
+        }
+    }
+}

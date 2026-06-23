@@ -49,11 +49,30 @@ public partial class MainWindow : Window
 
     internal string? LastDateSelectionSenderName { get; private set; }
 
+    internal int MvpRoutedEventSourceCount { get; private set; }
+
+    internal int MvpRoutedEventScopeCount { get; private set; }
+
+    internal int MvpRoutedEventHandledTooCount { get; private set; }
+
+    internal string? LastMvpRoutedEventSenderName { get; private set; }
+
+    internal string? LastMvpRoutedEventOriginalSourceName { get; private set; }
+
+    internal string? LastMvpRoutedEventPayload { get; private set; }
+
+    internal string? LastMvpRoutedEventName { get; private set; }
+
     public MainWindow()
     {
         var viewModel = new MainViewModel();
         DataContext = viewModel;
         InitializeComponent();
+
+        MvpRoutedEventScope.AddHandler(
+            MvpRoutedEventButton.MvpActivatedEvent,
+            new MvpRoutedEventHandler(OnMvpRoutedEventScopeHandledToo),
+            handledEventsToo: true);
 
         if (FindResource("ItemsViewSource") is CollectionViewSource itemsViewSource)
         {
@@ -187,6 +206,40 @@ public partial class MainWindow : Window
     {
         InputDateSelectionChangedCount++;
         LastDateSelectionSenderName = (sender as FrameworkElement)?.Name;
+    }
+
+    private void OnMvpRoutedEventSource(object sender, MvpRoutedEventArgs e)
+    {
+        MvpRoutedEventSourceCount++;
+        LastMvpRoutedEventName = e.RoutedEvent?.Name;
+        LastMvpRoutedEventPayload = e.Payload;
+        LastMvpRoutedEventSenderName = GetElementName(sender);
+        LastMvpRoutedEventOriginalSourceName = GetElementName(e.OriginalSource);
+    }
+
+    private void OnMvpRoutedEventScope(object sender, MvpRoutedEventArgs e)
+    {
+        MvpRoutedEventScopeCount++;
+        LastMvpRoutedEventName = e.RoutedEvent?.Name;
+        LastMvpRoutedEventPayload = e.Payload;
+        LastMvpRoutedEventSenderName = GetElementName(sender);
+        LastMvpRoutedEventOriginalSourceName = GetElementName(e.OriginalSource);
+        MvpRoutedEventStatusText.Text = $"Handled {e.Payload}";
+        e.Handled = true;
+    }
+
+    private void OnMvpRoutedEventScopeHandledToo(object sender, MvpRoutedEventArgs e)
+    {
+        MvpRoutedEventHandledTooCount++;
+        LastMvpRoutedEventName = e.RoutedEvent?.Name;
+        LastMvpRoutedEventPayload = e.Payload;
+        LastMvpRoutedEventSenderName = GetElementName(sender);
+        LastMvpRoutedEventOriginalSourceName = GetElementName(e.OriginalSource);
+    }
+
+    private static string? GetElementName(object? value)
+    {
+        return value is FrameworkElement element ? element.Name : null;
     }
 }
 
@@ -831,6 +884,15 @@ internal static class MvpSelfTest
         var dependencyPropertyManagerText = Require<MvpHeaderTextBlock>(
             window.FindName("DependencyPropertyManagerText"),
             "dependency property manager TextBlock");
+        var mvpRoutedEventScope = Require<StackPanel>(
+            window.FindName("MvpRoutedEventScope"),
+            "MVP routed-event scope StackPanel");
+        var mvpRoutedEventButton = Require<MvpRoutedEventButton>(
+            window.FindName("MvpRoutedEventButton"),
+            "MVP routed-event Button");
+        var mvpRoutedEventStatusText = Require<TextBlock>(
+            window.FindName("MvpRoutedEventStatusText"),
+            "MVP routed-event status TextBlock");
         var summaryHeaderText = Require<TextBlock>(
             summaryPanel.FindName("SummaryHeaderText"),
             "summary header text");
@@ -945,6 +1007,7 @@ internal static class MvpSelfTest
         AssertEqual("Alpha selected, progress 35%", dependencyPropertyManagerText.HeaderText, "AddOwner initial header property");
         AssertEqual(FontWeights.SemiBold, dependencyPropertyManagerText.FontWeight, "metadata override FontWeight value");
         AssertEqual(Brushes.DarkSlateBlue, dependencyPropertyManagerText.Foreground, "metadata override Foreground value");
+        ValidateMvpRoutedEvent(window, mvpRoutedEventScope, mvpRoutedEventButton, mvpRoutedEventStatusText);
         AssertEqual("StatusText", GetBindingPath(summaryPanel, SummaryPanel.HeaderTextProperty), "summary header binding path");
         AssertEqual("Alpha selected, progress 35%", summaryPanel.HeaderText, "summary initial header property");
         AssertEqual("Alpha selected, progress 35%", summaryHeaderText.Text, "summary initial header text");
@@ -2059,6 +2122,37 @@ internal static class MvpSelfTest
 
         AssertEqual(1.0, loadedText.Opacity, "loaded storyboard initial opacity");
         AssertEqual(1.0, clickButton.Opacity, "click storyboard initial opacity");
+    }
+
+    private static void ValidateMvpRoutedEvent(
+        MainWindow window,
+        StackPanel scope,
+        MvpRoutedEventButton button,
+        TextBlock statusText)
+    {
+        AssertEqual(RoutingStrategy.Bubble, MvpRoutedEventButton.MvpActivatedEvent.RoutingStrategy, "MVP routed event strategy");
+        AssertEqual(nameof(MvpRoutedEventButton.MvpActivated), MvpRoutedEventButton.MvpActivatedEvent.Name, "MVP routed event name");
+        AssertEqual(typeof(MvpRoutedEventHandler), MvpRoutedEventButton.MvpActivatedEvent.HandlerType, "MVP routed event handler type");
+        AssertEqual(typeof(MvpRoutedEventButton), MvpRoutedEventButton.MvpActivatedEvent.OwnerType, "MVP routed event owner type");
+        AssertEqual("Routed event idle", statusText.Text, "MVP routed event initial status");
+        AssertEqual(0, button.ClassHandlerCount, "MVP routed event initial class-handler count");
+        AssertEqual(0, window.MvpRoutedEventSourceCount, "MVP routed event initial source count");
+        AssertEqual(0, window.MvpRoutedEventScopeCount, "MVP routed event initial scope count");
+        AssertEqual(0, window.MvpRoutedEventHandledTooCount, "MVP routed event initial handled-too count");
+
+        var args = button.RaiseMvpActivated("mvp routed payload");
+        DrainDispatcher(window);
+
+        AssertEqual(true, args.Handled, "MVP routed event handled flag");
+        AssertEqual(1, button.ClassHandlerCount, "MVP routed event class-handler count");
+        AssertEqual(1, window.MvpRoutedEventSourceCount, "MVP routed event source handler count");
+        AssertEqual(1, window.MvpRoutedEventScopeCount, "MVP routed event scope handler count");
+        AssertEqual(1, window.MvpRoutedEventHandledTooCount, "MVP routed event handled-too handler count");
+        AssertEqual("MvpActivated", window.LastMvpRoutedEventName, "MVP routed event last name");
+        AssertEqual("mvp routed payload", window.LastMvpRoutedEventPayload, "MVP routed event payload");
+        AssertEqual(scope.Name, window.LastMvpRoutedEventSenderName, "MVP routed event sender name");
+        AssertEqual(button.Name, window.LastMvpRoutedEventOriginalSourceName, "MVP routed event original source name");
+        AssertEqual("Handled mvp routed payload", statusText.Text, "MVP routed event status text");
     }
 
     private static void ValidateStoryboardAction(

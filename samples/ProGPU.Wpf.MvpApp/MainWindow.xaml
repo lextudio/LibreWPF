@@ -350,6 +350,19 @@
                             local:MvpStateProperties.Importance="128"
                             HeaderText="{Binding StatusText}"
                             Text="{Binding RelativeSource={RelativeSource Self}, Path=(local:MvpStateProperties.SectionName)}" />
+                        <StackPanel
+                            x:Name="MvpRoutedEventScope"
+                            Margin="0,10,0,0"
+                            local:MvpRoutedEventButton.MvpActivated="OnMvpRoutedEventScope">
+                            <local:MvpRoutedEventButton
+                                x:Name="MvpRoutedEventButton"
+                                Content="Raise routed event"
+                                MvpActivated="OnMvpRoutedEventSource" />
+                            <TextBlock
+                                x:Name="MvpRoutedEventStatusText"
+                                Margin="0,6,0,0"
+                                Text="Routed event idle" />
+                        </StackPanel>
                         <TextBlock
                             Margin="0,18,0,4"
                             FontWeight="SemiBold"

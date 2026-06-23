@@ -632,6 +632,8 @@ internal static class MvpSelfTest
             ?? throw new InvalidOperationException("Expected MVP DataContext.");
         var application = Application.Current
             ?? throw new InvalidOperationException("Expected current Application.");
+        AssertEqual(ShutdownMode.OnMainWindowClose, application.ShutdownMode, "Application ShutdownMode");
+        ValidateApplicationRunState(application, window, expectLoadedStoryboardApplied);
         var themeResources = Require<ResourceDictionary>(
             application.Resources.MergedDictionaries.Count > 0
                 ? application.Resources.MergedDictionaries[0]
@@ -1203,6 +1205,30 @@ internal static class MvpSelfTest
         AssertEqual("Category: Input", summaryCategoryText.Text, "summary updated category text");
         AssertEqual("Progress: 72%", summaryProgressText.Text, "summary updated progress text");
         AssertEqual("Validated / Input / 72%", selectedItemSummaryText.Text, "updated selected summary text");
+    }
+
+    private static void ValidateApplicationRunState(
+        Application application,
+        MainWindow window,
+        bool expectStartupUriWindow)
+    {
+        if (!expectStartupUriWindow)
+        {
+            return;
+        }
+
+        AssertEqual(window, application.MainWindow, "Application MainWindow");
+        int openWindowCount = 0;
+        bool containsMainWindow = false;
+        foreach (Window candidate in application.Windows)
+        {
+            openWindowCount++;
+            containsMainWindow |= ReferenceEquals(candidate, window);
+        }
+
+        AssertEqual(1, openWindowCount, "Application Windows count after StartupUri activation");
+        AssertEqual(true, containsMainWindow, "Application Windows contains StartupUri MainWindow");
+        AssertEqual(true, window.IsVisible, "StartupUri MainWindow visible");
     }
 
     private static void ValidateCollectionView(

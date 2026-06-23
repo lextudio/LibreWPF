@@ -6124,6 +6124,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Key=\"MvpComponentPackTextStyle\"", mvpComponentThemeXaml, StringComparison.Ordinal);
         Assert.Contains("Startup=\"OnAppStartup\"", mvpAppXaml, StringComparison.Ordinal);
         Assert.Contains("Exit=\"OnAppExit\"", mvpAppXaml, StringComparison.Ordinal);
+        Assert.Contains("ShutdownMode=\"OnMainWindowClose\"", mvpAppXaml, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_VALIDATE", mvpAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_RUN_VALIDATE", mvpAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DispatcherPriority.ApplicationIdle", mvpAppCodeBehind, StringComparison.Ordinal);
@@ -6404,6 +6405,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("MvpItemSummaryConverter : IMultiValueConverter", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MvpItemTemplateSelector : DataTemplateSelector", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Application Startup event count", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Application ShutdownMode", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Application Windows contains StartupUri MainWindow", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("StartupUri MainWindow visible", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("component pack TextBlock text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("component pack TextBlock foreground color", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("startup DynamicResource text", mvpMainWindowCodeBehind, StringComparison.Ordinal);

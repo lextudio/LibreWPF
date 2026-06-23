@@ -562,10 +562,14 @@ internal static class Program
                 <AssemblyName>{AppOutputAssemblyName}</AssemblyName>
                 <OutputType>WinExe</OutputType>
                 <TargetFramework>{ExternalAppTargetFramework}</TargetFramework>
+                <EnableDefaultItems>false</EnableDefaultItems>
                 <UseWPF>true</UseWPF>
               </PropertyGroup>
 
               <ItemGroup>
+                <Compile Include="**/*.cs" />
+                <ApplicationDefinition Include="App.xaml" />
+                <Page Include="**/*.xaml" Exclude="App.xaml" />
                 <ProjectReference Include="../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj" />
                 <Resource Include="Assets/ExternalResource.txt" />
                 <Resource Include="Assets/ExternalImage.png" />
@@ -11573,7 +11577,11 @@ internal static class Program
         AssertContains(appProject, $"<AssemblyName>{AppOutputAssemblyName}</AssemblyName>", "external app custom assembly name");
         AssertContains(appProject, "<OutputType>WinExe</OutputType>", "external app output type");
         AssertContains(appProject, $"<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", "external app Windows target framework");
+        AssertContains(appProject, "<EnableDefaultItems>false</EnableDefaultItems>", "external app explicit item mode");
         AssertContains(appProject, "<UseWPF>true</UseWPF>", "external app WPF property");
+        AssertContains(appProject, "<Compile Include=\"**/*.cs\" />", "external app explicit compile items");
+        AssertContains(appProject, "<ApplicationDefinition Include=\"App.xaml\" />", "external app explicit application definition item");
+        AssertContains(appProject, "<Page Include=\"**/*.xaml\" Exclude=\"App.xaml\" />", "external app explicit page items");
         AssertContains(appProject, $"<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", "external app project reference");
         AssertContains(appProject, "<Resource Include=\"Assets/ExternalResource.txt\" />", "external app WPF resource item");
         AssertContains(appProject, "<Resource Include=\"Assets/ExternalImage.png\" />", "external app WPF image resource item");

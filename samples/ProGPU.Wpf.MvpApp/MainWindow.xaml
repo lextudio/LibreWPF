@@ -1796,6 +1796,21 @@
                             Command="ApplicationCommands.SelectAll"
                             CommandTarget="{Binding ElementName=DataObjectPayloadTextBox}"
                             Content="Select all payload" />
+                        <StackPanel
+                            Margin="0,6,0,0"
+                            Orientation="Horizontal">
+                            <Button
+                                x:Name="CopyRichTextButton"
+                                Command="ApplicationCommands.Copy"
+                                CommandTarget="{Binding ElementName=EditorRichTextBox}"
+                                Content="Copy rich text" />
+                            <Button
+                                x:Name="PasteRichTextButton"
+                                Margin="6,0,0,0"
+                                Command="ApplicationCommands.Paste"
+                                CommandTarget="{Binding ElementName=EditorRichTextBox}"
+                                Content="Paste rich text" />
+                        </StackPanel>
                         <TextBlock
                             x:Name="DataObjectStatusText"
                             Margin="0,8,0,0"

@@ -1712,6 +1712,12 @@ internal static class MvpSelfTest
         var selectAllPayloadButton = Require<Button>(
             window.FindName("SelectAllPayloadButton"),
             "SelectAll payload Button");
+        var copyRichTextButton = Require<Button>(
+            window.FindName("CopyRichTextButton"),
+            "copy rich text Button");
+        var pasteRichTextButton = Require<Button>(
+            window.FindName("PasteRichTextButton"),
+            "paste rich text Button");
         var dataObjectStatusText = Require<TextBlock>(
             window.FindName("DataObjectStatusText"),
             "DataObject status TextBlock");
@@ -1989,6 +1995,8 @@ internal static class MvpSelfTest
             dataObjectRoundTripButton,
             clipboardRoundTripButton,
             selectAllPayloadButton,
+            copyRichTextButton,
+            pasteRichTextButton,
             dataObjectStatusText);
         ValidateDocument(window, documentViewer, documentPageViewer, documentReader);
 
@@ -5005,6 +5013,8 @@ internal static class MvpSelfTest
         Button dataObjectRoundTripButton,
         Button clipboardRoundTripButton,
         Button selectAllPayloadButton,
+        Button copyRichTextButton,
+        Button pasteRichTextButton,
         TextBlock dataObjectStatusText)
     {
         AssertEqual(16, passwordBox.MaxLength, "editor PasswordBox max length");
@@ -5013,6 +5023,10 @@ internal static class MvpSelfTest
         AssertEqual("data object payload", dataObjectPayloadTextBox.Text, "DataObject initial payload");
         AssertEqual(ApplicationCommands.SelectAll, selectAllPayloadButton.Command, "DataObject payload SelectAll command");
         AssertEqual(dataObjectPayloadTextBox, selectAllPayloadButton.CommandTarget, "DataObject payload SelectAll target");
+        AssertEqual(ApplicationCommands.Copy, copyRichTextButton.Command, "RichTextBox Copy command");
+        AssertEqual(richTextBox, copyRichTextButton.CommandTarget, "RichTextBox Copy command target");
+        AssertEqual(ApplicationCommands.Paste, pasteRichTextButton.Command, "RichTextBox Paste command");
+        AssertEqual(richTextBox, pasteRichTextButton.CommandTarget, "RichTextBox Paste command target");
         AssertEqual("DataObject idle", dataObjectStatusText.Text, "DataObject initial status");
 
         passwordBox.Password = "mvp-secret";
@@ -5051,6 +5065,22 @@ internal static class MvpSelfTest
             FontWeights.Normal,
             richTextBox.Selection.GetPropertyValue(TextElement.FontWeightProperty),
             "editor RichTextBox ToggleBold restored weight");
+
+        AssertEqual(true, ApplicationCommands.Copy.CanExecute(null, richTextBox), "editor RichTextBox Copy CanExecute");
+        ApplicationCommands.Copy.Execute(null, richTextBox);
+        DrainDispatcher(window);
+        AssertEqual(true, Clipboard.ContainsText(), "editor RichTextBox Copy clipboard text state");
+        AssertContains("Editable plain text", Clipboard.GetText(), "editor RichTextBox copied clipboard text");
+
+        var pastePosition = paragraph.ContentEnd.GetInsertionPosition(LogicalDirection.Backward) ?? paragraph.ContentEnd;
+        richTextBox.Selection.Select(pastePosition, pastePosition);
+        Clipboard.SetText(" pasted clipboard text");
+        AssertEqual(true, ApplicationCommands.Paste.CanExecute(null, richTextBox), "editor RichTextBox Paste CanExecute");
+        ApplicationCommands.Paste.Execute(null, richTextBox);
+        DrainDispatcher(window);
+        documentText = new TextRange(document.ContentStart, document.ContentEnd).Text;
+        AssertContains("pasted clipboard text", documentText, "editor RichTextBox pasted clipboard text");
+        Clipboard.Clear();
 
         dataObjectPayloadTextBox.Text = "mvp data object";
         dataObjectPayloadTextBox.Select(3, 4);

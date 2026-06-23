@@ -1172,6 +1172,14 @@
                             x:Name="StyleTriggerText"
                             Margin="0,14,0,0"
                             Style="{StaticResource MvpTriggerTextBlockStyle}" />
+                        <TextBlock
+                            x:Name="MultiTriggerText"
+                            Margin="0,8,0,0"
+                            Style="{StaticResource MvpMultiTriggerTextBlockStyle}" />
+                        <TextBlock
+                            x:Name="MultiDataTriggerText"
+                            Margin="0,8,0,0"
+                            Style="{StaticResource MvpMultiDataTriggerTextBlockStyle}" />
                         <Button
                             x:Name="EventSetterStyleButton"
                             Margin="0,12,8,0"

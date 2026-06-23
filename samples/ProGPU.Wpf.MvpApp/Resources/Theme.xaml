@@ -152,4 +152,40 @@
             </DataTrigger>
         </Style.Triggers>
     </Style>
+
+    <Style
+        x:Key="MvpMultiTriggerTextBlockStyle"
+        BasedOn="{StaticResource {x:Type TextBlock}}"
+        TargetType="{x:Type TextBlock}">
+        <Setter Property="Foreground" Value="#5B6472" />
+        <Setter Property="Text" Value="multi trigger inactive" />
+        <Style.Triggers>
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="Tag" Value="Ready" />
+                    <Condition Property="IsEnabled" Value="True" />
+                </MultiTrigger.Conditions>
+                <Setter Property="Foreground" Value="#236B46" />
+                <Setter Property="Text" Value="multi trigger active" />
+            </MultiTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style
+        x:Key="MvpMultiDataTriggerTextBlockStyle"
+        BasedOn="{StaticResource {x:Type TextBlock}}"
+        TargetType="{x:Type TextBlock}">
+        <Setter Property="Foreground" Value="#5B6472" />
+        <Setter Property="Text" Value="multi data trigger inactive" />
+        <Style.Triggers>
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding ActionsEnabled}" Value="False" />
+                    <Condition Binding="{Binding SelectedCategory}" Value="Input" />
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Foreground" Value="#B42318" />
+                <Setter Property="Text" Value="multi data trigger active" />
+            </MultiDataTrigger>
+        </Style.Triggers>
+    </Style>
 </ResourceDictionary>

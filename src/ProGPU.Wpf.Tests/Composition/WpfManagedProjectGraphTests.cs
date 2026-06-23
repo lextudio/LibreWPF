@@ -6368,6 +6368,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Style=\"{StaticResource MvpBasedOnButtonStyle}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"StyleTriggerText\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style=\"{StaticResource MvpTriggerTextBlockStyle}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MultiTriggerText\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Style=\"{StaticResource MvpMultiTriggerTextBlockStyle}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MultiDataTriggerText\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Style=\"{StaticResource MvpMultiDataTriggerTextBlockStyle}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"MvpEventSetterButtonStyle\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<EventSetter Event=\"Click\" Handler=\"OnMvpStyleEventSetterClick\" />", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"EventSetterStyleButton\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6674,6 +6678,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("style trigger BasedOn TextBlock style", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("property style Trigger active text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("data style Trigger disabled text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MultiTrigger style trigger", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MultiDataTrigger style trigger", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MultiTrigger active text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MultiDataTrigger active text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Button Click EventSetter", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("EventSetter handled flag", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("NavigationFrame.Navigate(new Uri(\"DetailsPage.xaml\", UriKind.Relative))", mvpMainWindowCodeBehind, StringComparison.Ordinal);
@@ -6790,6 +6798,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("BasedOn=\"{StaticResource {x:Type TextBlock}}\"", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("<Trigger Property=\"Tag\" Value=\"Active\">", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("<DataTrigger Binding=\"{Binding ActionsEnabled}\" Value=\"False\">", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"MvpMultiTriggerTextBlockStyle\"", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("<MultiTrigger>", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("<Condition Property=\"Tag\" Value=\"Ready\" />", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("<Condition Property=\"IsEnabled\" Value=\"True\" />", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"MvpMultiDataTriggerTextBlockStyle\"", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("<MultiDataTrigger>", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("<Condition Binding=\"{Binding ActionsEnabled}\" Value=\"False\" />", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("<Condition Binding=\"{Binding SelectedCategory}\" Value=\"Input\" />", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"MvpTemplateButtonStyle\"", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("<ControlTemplate TargetType=\"{x:Type Button}\">", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("TemplateBorder", mvpThemeXaml, StringComparison.Ordinal);

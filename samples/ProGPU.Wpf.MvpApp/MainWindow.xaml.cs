@@ -713,6 +713,8 @@ internal static class MvpSelfTest
         AssertEqual(true, themeResources.Contains("MvpBasedOnButtonStyle"), "app theme BasedOn Button style key");
         AssertEqual(true, themeResources.Contains("MvpTemplateButtonStyle"), "app theme template Button style key");
         AssertEqual(true, themeResources.Contains("MvpTriggerTextBlockStyle"), "app theme trigger TextBlock style key");
+        AssertEqual(true, themeResources.Contains("MvpMultiTriggerTextBlockStyle"), "app theme MultiTrigger TextBlock style key");
+        AssertEqual(true, themeResources.Contains("MvpMultiDataTriggerTextBlockStyle"), "app theme MultiDataTrigger TextBlock style key");
         var panelBrush = Require<SolidColorBrush>(window.FindResource("MvpPanelBrush"), "MVP panel brush");
         var buttonStyle = Require<Style>(application.TryFindResource(typeof(Button)), "app Button style");
         var implicitItemTemplate = Require<DataTemplate>(
@@ -727,6 +729,12 @@ internal static class MvpSelfTest
         var triggerTextBlockStyle = Require<Style>(
             application.TryFindResource("MvpTriggerTextBlockStyle"),
             "trigger TextBlock style");
+        var multiTriggerTextBlockStyle = Require<Style>(
+            application.TryFindResource("MvpMultiTriggerTextBlockStyle"),
+            "MultiTrigger TextBlock style");
+        var multiDataTriggerTextBlockStyle = Require<Style>(
+            application.TryFindResource("MvpMultiDataTriggerTextBlockStyle"),
+            "MultiDataTrigger TextBlock style");
         var eventSetterButtonStyle = Require<Style>(
             window.FindResource("MvpEventSetterButtonStyle"),
             "EventSetter Button style");
@@ -757,6 +765,8 @@ internal static class MvpSelfTest
         AssertEqual(buttonStyle, basedOnButtonStyle.BasedOn, "BasedOn Button style base style");
         AssertEqual(typeof(Button), templateButtonStyle.TargetType, "template Button style target type");
         AssertEqual(typeof(TextBlock), triggerTextBlockStyle.TargetType, "trigger TextBlock style target type");
+        AssertEqual(typeof(TextBlock), multiTriggerTextBlockStyle.TargetType, "MultiTrigger TextBlock style target type");
+        AssertEqual(typeof(TextBlock), multiDataTriggerTextBlockStyle.TargetType, "MultiDataTrigger TextBlock style target type");
         AssertEqual(typeof(Button), eventSetterButtonStyle.TargetType, "EventSetter Button style target type");
         AssertEqual(typeof(MvpItem), implicitItemTemplate.DataType, "implicit item template data type");
         AssertEqual(typeof(MvpItem), selectedItemTemplate.DataType, "selected item template data type");
@@ -984,6 +994,12 @@ internal static class MvpSelfTest
         var styleTriggerText = Require<TextBlock>(
             window.FindName("StyleTriggerText"),
             "style trigger TextBlock");
+        var multiTriggerText = Require<TextBlock>(
+            window.FindName("MultiTriggerText"),
+            "MultiTrigger TextBlock");
+        var multiDataTriggerText = Require<TextBlock>(
+            window.FindName("MultiDataTriggerText"),
+            "MultiDataTrigger TextBlock");
         var eventSetterStyleButton = Require<Button>(
             window.FindName("EventSetterStyleButton"),
             "EventSetter style Button");
@@ -1125,6 +1141,10 @@ internal static class MvpSelfTest
             viewModel,
             styleTriggerText,
             triggerTextBlockStyle,
+            multiTriggerText,
+            multiTriggerTextBlockStyle,
+            multiDataTriggerText,
+            multiDataTriggerTextBlockStyle,
             eventSetterStyleButton,
             eventSetterButtonStyle,
             eventSetterStatusText);
@@ -2391,6 +2411,10 @@ internal static class MvpSelfTest
         MainViewModel viewModel,
         TextBlock triggerText,
         Style triggerStyle,
+        TextBlock multiTriggerText,
+        Style multiTriggerStyle,
+        TextBlock multiDataTriggerText,
+        Style multiDataTriggerStyle,
         Button eventSetterButton,
         Style eventSetterStyle,
         TextBlock eventSetterStatus)
@@ -2415,12 +2439,38 @@ internal static class MvpSelfTest
         AssertEqual("ActionsEnabled", GetBindingPath(dataTrigger.Binding), "data style Trigger binding path");
         AssertEqual("False", dataTrigger.Value?.ToString(), "data style Trigger value");
 
+        AssertEqual(multiTriggerStyle, multiTriggerText.Style, "MultiTrigger TextBlock style");
+        AssertEqual(2, multiTriggerStyle.Setters.Count, "MultiTrigger style setter count");
+        AssertEqual(1, multiTriggerStyle.Triggers.Count, "MultiTrigger style trigger count");
+        var multiTrigger = Require<MultiTrigger>(
+            multiTriggerStyle.Triggers[0],
+            "MultiTrigger style trigger");
+        AssertEqual(2, multiTrigger.Conditions.Count, "MultiTrigger condition count");
+        AssertEqual(FrameworkElement.TagProperty, multiTrigger.Conditions[0].Property, "MultiTrigger first property");
+        AssertEqual("Ready", multiTrigger.Conditions[0].Value, "MultiTrigger first value");
+        AssertEqual(UIElement.IsEnabledProperty, multiTrigger.Conditions[1].Property, "MultiTrigger second property");
+        AssertEqual("True", multiTrigger.Conditions[1].Value?.ToString(), "MultiTrigger second value");
+
+        AssertEqual(multiDataTriggerStyle, multiDataTriggerText.Style, "MultiDataTrigger TextBlock style");
+        AssertEqual(2, multiDataTriggerStyle.Setters.Count, "MultiDataTrigger style setter count");
+        AssertEqual(1, multiDataTriggerStyle.Triggers.Count, "MultiDataTrigger style trigger count");
+        var multiDataTrigger = Require<MultiDataTrigger>(
+            multiDataTriggerStyle.Triggers[0],
+            "MultiDataTrigger style trigger");
+        AssertEqual(2, multiDataTrigger.Conditions.Count, "MultiDataTrigger condition count");
+        AssertEqual("ActionsEnabled", GetBindingPath(multiDataTrigger.Conditions[0].Binding), "MultiDataTrigger first binding");
+        AssertEqual("False", multiDataTrigger.Conditions[0].Value?.ToString(), "MultiDataTrigger first value");
+        AssertEqual("SelectedCategory", GetBindingPath(multiDataTrigger.Conditions[1].Binding), "MultiDataTrigger second binding");
+        AssertEqual("Input", multiDataTrigger.Conditions[1].Value, "MultiDataTrigger second value");
+
         DrainDispatcher(window);
         AssertEqual("style trigger inactive", triggerText.Text, "style trigger initial text");
         AssertEqual(
             Color.FromRgb(0x5B, 0x64, 0x72),
             Require<SolidColorBrush>(triggerText.Foreground, "style trigger initial foreground").Color,
             "style trigger initial foreground");
+        AssertEqual("multi trigger inactive", multiTriggerText.Text, "MultiTrigger initial text");
+        AssertEqual("multi data trigger inactive", multiDataTriggerText.Text, "MultiDataTrigger initial text");
 
         triggerText.Tag = "Active";
         DrainDispatcher(window);
@@ -2429,6 +2479,22 @@ internal static class MvpSelfTest
             Color.FromRgb(0x24, 0x6B, 0xFE),
             Require<SolidColorBrush>(triggerText.Foreground, "property style Trigger foreground").Color,
             "property style Trigger foreground");
+
+        multiTriggerText.Tag = "Ready";
+        DrainDispatcher(window);
+        AssertEqual("multi trigger active", multiTriggerText.Text, "MultiTrigger active text");
+        AssertEqual(
+            Color.FromRgb(0x23, 0x6B, 0x46),
+            Require<SolidColorBrush>(multiTriggerText.Foreground, "MultiTrigger active foreground").Color,
+            "MultiTrigger active foreground");
+
+        multiTriggerText.IsEnabled = false;
+        DrainDispatcher(window);
+        AssertEqual("multi trigger inactive", multiTriggerText.Text, "MultiTrigger disabled condition text");
+        multiTriggerText.IsEnabled = true;
+        multiTriggerText.Tag = null;
+        DrainDispatcher(window);
+        AssertEqual("multi trigger inactive", multiTriggerText.Text, "MultiTrigger restored text");
 
         viewModel.ActionsEnabled = false;
         DrainDispatcher(window);
@@ -2441,6 +2507,20 @@ internal static class MvpSelfTest
         viewModel.ActionsEnabled = true;
         DrainDispatcher(window);
         AssertEqual("property trigger active", triggerText.Text, "restored property style Trigger text");
+
+        viewModel.SelectedCategory = "Input";
+        viewModel.ActionsEnabled = false;
+        DrainDispatcher(window);
+        AssertEqual("multi data trigger active", multiDataTriggerText.Text, "MultiDataTrigger active text");
+        AssertEqual(
+            Color.FromRgb(0xB4, 0x23, 0x18),
+            Require<SolidColorBrush>(multiDataTriggerText.Foreground, "MultiDataTrigger active foreground").Color,
+            "MultiDataTrigger active foreground");
+
+        viewModel.ActionsEnabled = true;
+        viewModel.SelectedCategory = "Framework";
+        DrainDispatcher(window);
+        AssertEqual("multi data trigger inactive", multiDataTriggerText.Text, "MultiDataTrigger restored text");
         triggerText.Tag = null;
         DrainDispatcher(window);
         AssertEqual("style trigger inactive", triggerText.Text, "restored style trigger inactive text");

@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
     xmlns:local="clr-namespace:ProGPU.Wpf.MvpApp"
+    xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework"
     x:Name="RootWindow"
     Title="ProGPU WPF MVP"
     Width="760"
@@ -587,8 +588,28 @@
                             Margin="0,0,0,8"
                             FontWeight="SemiBold"
                             Text="Choice controls" />
+                        <Button
+                            x:Name="PopupOwnerButton"
+                            Content="Popup owner" />
+                        <primitives:Popup
+                            x:Name="InputPopup"
+                            AllowsTransparency="True"
+                            Placement="Bottom"
+                            PlacementTarget="{Binding ElementName=PopupOwnerButton}"
+                            StaysOpen="False">
+                            <Border
+                                Padding="10"
+                                Background="{DynamicResource MvpPanelBrush}"
+                                BorderBrush="#B7C2D0"
+                                BorderThickness="1">
+                                <TextBlock
+                                    x:Name="InputPopupText"
+                                    Text="Popup content" />
+                            </Border>
+                        </primitives:Popup>
                         <ToggleButton
                             x:Name="InputToggleButton"
+                            Margin="0,12,0,0"
                             Checked="OnInputToggleChecked"
                             Content="Enable actions"
                             IsChecked="{Binding ActionsEnabled, Mode=TwoWay}"

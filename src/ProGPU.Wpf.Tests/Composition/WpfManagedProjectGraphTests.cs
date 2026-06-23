@@ -6179,6 +6179,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"ToolBarRefreshToolTip\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Placement=\"Bottom\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ToolBarToggleButton\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("xmlns:primitives=\"clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"PopupOwnerButton\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("primitives:Popup", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"InputPopup\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("PlacementTarget=\"{Binding ElementName=PopupOwnerButton}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("StaysOpen=\"False\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"InputPopupText\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"InputToggleButton\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"FrameworkRadioButton\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("GroupName=\"MvpCategory\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6415,6 +6422,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateNavigation(window, navigationFrame, detailsNavigationButton)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateSecondaryWindow(window, aboutMenuItem)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("secondary window initial owner", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("input Popup placement target", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("input Popup initial open state", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PlacementMode.Bottom", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateEditor(window, editorPasswordBox, editorRichTextBox)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("editor PasswordBox secure password length", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("new TextRange(document.ContentStart, document.ContentEnd).Text", mvpMainWindowCodeBehind, StringComparison.Ordinal);

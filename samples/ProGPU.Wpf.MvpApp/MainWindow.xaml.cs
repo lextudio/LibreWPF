@@ -671,6 +671,12 @@ internal static class MvpSelfTest
         var toolBarToggleButton = Require<ToggleButton>(
             window.FindName("ToolBarToggleButton"),
             "toolbar ToggleButton");
+        var popupOwnerButton = Require<Button>(
+            window.FindName("PopupOwnerButton"),
+            "popup owner Button");
+        var inputPopup = Require<Popup>(
+            window.FindName("InputPopup"),
+            "input Popup");
         var inputToggleButton = Require<ToggleButton>(
             window.FindName("InputToggleButton"),
             "input ToggleButton");
@@ -914,6 +920,8 @@ internal static class MvpSelfTest
             toolBarRefreshButton,
             toolBarSeparator,
             toolBarToggleButton,
+            popupOwnerButton,
+            inputPopup,
             inputToggleButton,
             frameworkRadioButton,
             renderingRadioButton,
@@ -1433,6 +1441,8 @@ internal static class MvpSelfTest
         Button refreshButton,
         Separator toolBarSeparator,
         ToggleButton toolBarToggle,
+        Button popupOwnerButton,
+        Popup inputPopup,
         ToggleButton inputToggle,
         RadioButton frameworkRadio,
         RadioButton renderingRadio,
@@ -1453,6 +1463,15 @@ internal static class MvpSelfTest
         var toolTipText = Require<TextBlock>(toolTip.Content, "toolbar refresh ToolTip text");
         AssertEqual(PlacementMode.Bottom, toolTip.Placement, "toolbar refresh ToolTip placement");
         AssertEqual("Refresh status command", toolTipText.Text, "toolbar refresh ToolTip text");
+
+        AssertEqual(popupOwnerButton, inputPopup.PlacementTarget, "input Popup placement target");
+        AssertEqual(PlacementMode.Bottom, inputPopup.Placement, "input Popup placement");
+        AssertEqual(false, inputPopup.StaysOpen, "input Popup StaysOpen");
+        AssertEqual(true, inputPopup.AllowsTransparency, "input Popup AllowsTransparency");
+        AssertEqual(false, inputPopup.IsOpen, "input Popup initial open state");
+        var popupBorder = Require<Border>(inputPopup.Child, "input Popup Border");
+        var popupText = Require<TextBlock>(popupBorder.Child, "input Popup TextBlock");
+        AssertEqual("Popup content", popupText.Text, "input Popup text");
 
         ValidateToggleBinding(window, viewModel, toolBarToggle, "toolbar ToggleButton");
         ValidateToggleBinding(window, viewModel, inputToggle, "input ToggleButton");

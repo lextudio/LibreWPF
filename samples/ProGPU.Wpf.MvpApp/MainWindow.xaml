@@ -252,7 +252,11 @@
                 Text="A no-source-change SDK app using regular WPF XAML, bindings, commands, controls, and documents." />
         </StackPanel>
 
-        <TabControl Grid.Row="1">
+        <TabControl
+            x:Name="MvpTabControl"
+            Grid.Row="1"
+            SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
+            SelectionChanged="OnMvpTabSelectionChanged">
             <TabItem Header="Controls">
                 <Grid Margin="0,14,0,0">
                     <Grid.ColumnDefinitions>

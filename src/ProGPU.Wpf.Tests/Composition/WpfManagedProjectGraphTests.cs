@@ -6207,6 +6207,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Command=\"{Binding RequeryCommand}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CommandParameter=\"mvp requery command payload\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("InputGestureText=\"Ctrl+N\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MvpTabControl\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SelectedIndex=\"{Binding SelectedTabIndex, Mode=TwoWay}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SelectionChanged=\"OnMvpTabSelectionChanged\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"AboutMenuItem\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"OnAboutMenuItemClick\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("IsCheckable=\"True\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6476,6 +6479,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public sealed class MvpRequeryCommand : ICommand", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("CommandManager.RequerySuggested += value", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("CommandManager.InvalidateRequerySuggested()", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("internal int MvpTabSelectionChangedCount", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnMvpTabSelectionChanged", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int SelectedTabIndex", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateMvpTabControl(", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnItemsViewSourceFilter", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnActiveOnlyFilterChanged", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RefreshItemsView", mvpMainWindowCodeBehind, StringComparison.Ordinal);

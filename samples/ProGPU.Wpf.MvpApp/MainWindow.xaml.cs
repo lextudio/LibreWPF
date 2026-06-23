@@ -79,6 +79,10 @@ public partial class MainWindow : Window
 
     internal string? LastDocumentLinkRequestNavigateRoutedEventName { get; private set; }
 
+    internal int MvpTabSelectionChangedCount { get; private set; }
+
+    internal string? LastMvpTabHeader { get; private set; }
+
     public MainWindow()
     {
         var viewModel = new MainViewModel();
@@ -188,6 +192,19 @@ public partial class MainWindow : Window
         SelectorSelectionChangedCount++;
     }
 
+    private void OnMvpTabSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!ReferenceEquals(sender, e.OriginalSource))
+        {
+            return;
+        }
+
+        MvpTabSelectionChangedCount++;
+        LastMvpTabHeader = sender is TabControl { SelectedItem: TabItem { Header: object header } }
+            ? header.ToString()
+            : null;
+    }
+
     private void OnMultiSelectorSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         MultiSelectorSelectionChangedCount++;
@@ -293,6 +310,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _bindingGroupLastName = "group: Lovelace";
     private string _bindingGroupStatus = "Group ready";
     private DateTime? _selectedDate = new(2026, 6, 23);
+    private int _selectedTabIndex;
     private string? _nullDisplayText;
 
     public MainViewModel()
@@ -414,6 +432,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
         set => SetField(ref _nullDisplayText, value);
     }
 
+    public int SelectedTabIndex
+    {
+        get => _selectedTabIndex;
+        set => SetField(ref _selectedTabIndex, value);
+    }
+
     public double Progress
     {
         get => _progress;
@@ -479,6 +503,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         BindingGroupLastName = "group: Lovelace";
         BindingGroupStatus = "Group ready";
         SelectedDate = new DateTime(2026, 6, 23);
+        SelectedTabIndex = 0;
         NullDisplayText = null;
     }
 
@@ -809,6 +834,9 @@ internal static class MvpSelfTest
         var requeryCommandButton = Require<Button>(
             window.FindName("RequeryCommandButton"),
             "requery command Button");
+        var mvpTabControl = Require<TabControl>(
+            window.FindName("MvpTabControl"),
+            "MVP TabControl");
         Require<TextBox>(window.FindName("NameTextBox"), "name TextBox");
         var itemsList = Require<ListBox>(window.FindName("ItemsList"), "items ListBox");
         var itemsDataGrid = Require<DataGrid>(window.FindName("ItemsDataGrid"), "items DataGrid");
@@ -1138,6 +1166,7 @@ internal static class MvpSelfTest
         AssertEqual(Key.R, refreshKeyBinding.Key, "refresh key binding key");
         AssertEqual(ModifierKeys.Control, refreshKeyBinding.Modifiers, "refresh key binding modifiers");
         AssertEqual(MainWindow.RefreshStatusCommand, refreshKeyBinding.Command, "refresh key binding command");
+        ValidateMvpTabControl(window, viewModel, mvpTabControl);
         AssertEqual(true, actionsEnabledMenuItem.IsCheckable, "actions menu checkable state");
         AssertEqual(true, actionsEnabledMenuItem.IsChecked, "actions menu initial checked state");
         AssertEqual(viewModel.Items, itemsDataGrid.ItemsSource, "DataGrid items source");
@@ -1553,6 +1582,50 @@ internal static class MvpSelfTest
         actionsItem.IsChecked = true;
         DrainDispatcher(window);
         AssertEqual(true, viewModel.ActionsEnabled, "context actions checked view model state");
+    }
+
+    private static void ValidateMvpTabControl(
+        MainWindow window,
+        MainViewModel viewModel,
+        TabControl tabControl)
+    {
+        AssertEqual(viewModel.SelectedTabIndex, tabControl.SelectedIndex, "MVP TabControl selected index");
+        AssertEqual(15, tabControl.Items.Count, "MVP TabControl item count");
+
+        var controlsTab = Require<TabItem>(tabControl.Items[0], "MVP controls TabItem");
+        var documentTab = Require<TabItem>(tabControl.Items[14], "MVP document TabItem");
+        AssertEqual("Controls", controlsTab.Header, "MVP first tab header");
+        AssertEqual("Document", documentTab.Header, "MVP last tab header");
+
+        int initialSelectionEvents = window.MvpTabSelectionChangedCount;
+        tabControl.SelectedIndex = 1;
+        DrainDispatcher(window);
+        AssertEqual(1, viewModel.SelectedTabIndex, "MVP TabControl selected index source update");
+        AssertEqual("Views", window.LastMvpTabHeader, "MVP TabControl selected header after control update");
+        AssertGreaterThan(
+            initialSelectionEvents,
+            window.MvpTabSelectionChangedCount,
+            "MVP TabControl control selection event count");
+
+        int afterControlUpdateEvents = window.MvpTabSelectionChangedCount;
+        viewModel.SelectedTabIndex = 2;
+        DrainDispatcher(window);
+        AssertEqual(2, tabControl.SelectedIndex, "MVP TabControl selected index target update");
+        AssertEqual("Bindings", window.LastMvpTabHeader, "MVP TabControl selected header after source update");
+        AssertGreaterThan(
+            afterControlUpdateEvents,
+            window.MvpTabSelectionChangedCount,
+            "MVP TabControl source selection event count");
+
+        int afterSourceUpdateEvents = window.MvpTabSelectionChangedCount;
+        viewModel.SelectedTabIndex = 0;
+        DrainDispatcher(window);
+        AssertEqual(0, tabControl.SelectedIndex, "MVP TabControl restored selected index");
+        AssertEqual("Controls", window.LastMvpTabHeader, "MVP TabControl restored selected header");
+        AssertGreaterThan(
+            afterSourceUpdateEvents,
+            window.MvpTabSelectionChangedCount,
+            "MVP TabControl restored selection event count");
     }
 
     private static void ValidateRequeryCommand(Window window, MainViewModel viewModel, Button button)

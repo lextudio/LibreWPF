@@ -15,6 +15,7 @@ using System.Windows.Input;
 using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
 using System.Windows.Navigation;
 using System.Windows.Threading;
 using WpfCalendar = System.Windows.Controls.Calendar;
@@ -963,6 +964,12 @@ internal static class MvpSelfTest
         var clickStoryboardButton = Require<Button>(
             window.FindName("ClickStoryboardButton"),
             "click storyboard Button");
+        var dropShadowEffectBorder = Require<Border>(
+            window.FindName("MvpDropShadowEffectBorder"),
+            "MVP DropShadowEffect Border");
+        var blurEffectBorder = Require<Border>(
+            window.FindName("MvpBlurEffectBorder"),
+            "MVP BlurEffect Border");
         var summaryPanel = Require<SummaryPanel>(window.FindName("SummaryPanel"), "summary Panel");
         var dependencyPropertyManagerText = Require<MvpHeaderTextBlock>(
             window.FindName("DependencyPropertyManagerText"),
@@ -1069,6 +1076,7 @@ internal static class MvpSelfTest
             bindingGroupFirstEchoText,
             bindingGroupLastEchoText);
         ValidateStoryboards(window, loadedStoryboardText, clickStoryboardButton, expectLoadedStoryboardApplied);
+        ValidateNativeEffects(dropShadowEffectBorder, blurEffectBorder);
         AssertEqual(viewModel.Nodes, nodesTreeView.ItemsSource, "TreeView items source");
         AssertEqual(2, viewModel.Nodes.Count, "TreeView root node count");
         AssertEqual("Startup", viewModel.Nodes[0].Children[0].Name, "TreeView first child node");
@@ -2482,6 +2490,26 @@ internal static class MvpSelfTest
                 ? "loaded storyboard applied opacity"
                 : "loaded storyboard initial opacity");
         AssertEqual(1.0, clickButton.Opacity, "click storyboard initial opacity");
+    }
+
+    private static void ValidateNativeEffects(Border dropShadowEffectBorder, Border blurEffectBorder)
+    {
+        var dropShadowEffect = Require<DropShadowEffect>(
+            dropShadowEffectBorder.Effect,
+            "MVP DropShadowEffect");
+        AssertEqual(9.0, dropShadowEffect.BlurRadius, "DropShadowEffect BlurRadius");
+        AssertEqual(Color.FromRgb(0x33, 0x41, 0x55), dropShadowEffect.Color, "DropShadowEffect Color");
+        AssertEqual(315.0, dropShadowEffect.Direction, "DropShadowEffect Direction");
+        AssertEqual(0.55, dropShadowEffect.Opacity, "DropShadowEffect Opacity");
+        AssertEqual(RenderingBias.Quality, dropShadowEffect.RenderingBias, "DropShadowEffect RenderingBias");
+        AssertEqual(4.0, dropShadowEffect.ShadowDepth, "DropShadowEffect ShadowDepth");
+
+        var blurEffect = Require<BlurEffect>(
+            blurEffectBorder.Effect,
+            "MVP BlurEffect");
+        AssertEqual(KernelType.Gaussian, blurEffect.KernelType, "BlurEffect KernelType");
+        AssertEqual(2.5, blurEffect.Radius, "BlurEffect Radius");
+        AssertEqual(RenderingBias.Quality, blurEffect.RenderingBias, "BlurEffect RenderingBias");
     }
 
     private static void ValidateMvpRoutedEvent(

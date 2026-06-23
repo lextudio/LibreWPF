@@ -1332,6 +1332,35 @@
                                 Margin="0,8,0,0"
                                 TextWrapping="Wrap"
                                 Text="This tab uses compiled EventTrigger and BeginStoryboard timelines loaded through the ProGPU WPF SDK." />
+                            <Border
+                                x:Name="MvpDropShadowEffectBorder"
+                                Margin="0,16,0,0"
+                                Padding="10"
+                                Background="#FFFFFF">
+                                <Border.Effect>
+                                    <DropShadowEffect
+                                        BlurRadius="9"
+                                        Color="#334155"
+                                        Direction="315"
+                                        Opacity="0.55"
+                                        RenderingBias="Quality"
+                                        ShadowDepth="4" />
+                                </Border.Effect>
+                                <TextBlock Text="DropShadowEffect" />
+                            </Border>
+                            <Border
+                                x:Name="MvpBlurEffectBorder"
+                                Margin="0,12,0,0"
+                                Padding="10"
+                                Background="#DBEAFE">
+                                <Border.Effect>
+                                    <BlurEffect
+                                        KernelType="Gaussian"
+                                        Radius="2.5"
+                                        RenderingBias="Quality" />
+                                </Border.Effect>
+                                <TextBlock Text="BlurEffect" />
+                            </Border>
                         </StackPanel>
                     </Border>
                 </Grid>

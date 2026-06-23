@@ -6369,6 +6369,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("EventTrigger RoutedEvent=\"Button.Click\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Storyboard.TargetName=\"ClickStoryboardButton\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("To=\"0.58\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MvpDropShadowEffectBorder\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<DropShadowEffect", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("BlurRadius=\"9\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ShadowDepth=\"4\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MvpBlurEffectBorder\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<BlurEffect", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Radius=\"2.5\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("local:SummaryPanel", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"NavigationFrame\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Source=\"OverviewPage.xaml\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6483,6 +6490,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Stretch.Uniform", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.IO;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Markup;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("using System.Windows.Media.Effects;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateNativeEffects(dropShadowEffectBorder, blurEffectBorder)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<DropShadowEffect>", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<BlurEffect>", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateResourceControls", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("new ComponentResourceKey(typeof(MainWindow), \"MvpComponentAccentBrush\")", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("applicationResources[\"MvpPanelBrush\"]", mvpMainWindowCodeBehind, StringComparison.Ordinal);

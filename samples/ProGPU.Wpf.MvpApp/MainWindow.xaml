@@ -23,6 +23,11 @@
             Key="R"
             Modifiers="Control"
             Command="{x:Static local:MainWindow.RefreshStatusCommand}" />
+        <MouseBinding
+            MouseAction="LeftDoubleClick"
+            Command="{x:Static local:MainWindow.RefreshStatusCommand}"
+            CommandParameter="mvp mouse binding payload"
+            CommandTarget="{Binding ElementName=RootWindow}" />
     </Window.InputBindings>
     <Window.Resources>
         <local:MvpActiveTextConverter x:Key="MvpActiveTextConverter" />

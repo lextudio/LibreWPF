@@ -1631,12 +1631,17 @@ internal static class MvpSelfTest
         AssertEqual("Ctrl+R", refreshMenuItem.InputGestureText, "refresh menu input gesture text");
         AssertEqual(1, window.CommandBindings.Count, "window command binding count");
         AssertEqual(MainWindow.RefreshStatusCommand, window.CommandBindings[0].Command, "window routed command binding");
-        AssertEqual(1, window.InputBindings.Count, "window input binding count");
+        AssertEqual(2, window.InputBindings.Count, "window input binding count");
         ValidateMessageBox(window, messageBoxButton, messageBoxStatusText);
         var refreshKeyBinding = Require<KeyBinding>(window.InputBindings[0], "refresh KeyBinding");
         AssertEqual(Key.R, refreshKeyBinding.Key, "refresh key binding key");
         AssertEqual(ModifierKeys.Control, refreshKeyBinding.Modifiers, "refresh key binding modifiers");
         AssertEqual(MainWindow.RefreshStatusCommand, refreshKeyBinding.Command, "refresh key binding command");
+        var refreshMouseBinding = Require<MouseBinding>(window.InputBindings[1], "refresh MouseBinding");
+        AssertEqual(MouseAction.LeftDoubleClick, refreshMouseBinding.MouseAction, "refresh mouse binding action");
+        AssertEqual(MainWindow.RefreshStatusCommand, refreshMouseBinding.Command, "refresh mouse binding command");
+        AssertEqual("mvp mouse binding payload", refreshMouseBinding.CommandParameter, "refresh mouse binding parameter");
+        AssertEqual(window, refreshMouseBinding.CommandTarget, "refresh mouse binding target");
         ValidateMvpTabControl(window, viewModel, mvpTabControl);
         AssertEqual(true, actionsEnabledMenuItem.IsCheckable, "actions menu checkable state");
         AssertEqual(true, actionsEnabledMenuItem.IsChecked, "actions menu initial checked state");
@@ -1878,6 +1883,10 @@ internal static class MvpSelfTest
         DrainDispatcher(window);
         AssertEqual(1, viewModel.RefreshCount, "refresh command execution count");
         AssertEqual("Refresh command 1", commandStatusText.Text, "refreshed command status text");
+        MainWindow.RefreshStatusCommand.Execute(refreshMouseBinding.CommandParameter, refreshMouseBinding.CommandTarget);
+        DrainDispatcher(window);
+        AssertEqual(2, viewModel.RefreshCount, "refresh mouse binding command execution count");
+        AssertEqual("Refresh command 2", commandStatusText.Text, "refresh mouse binding status text");
 
         int initialCount = viewModel.Items.Count;
         viewModel.NewItemName = "Validated";

@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -22,6 +23,14 @@ public partial class MainWindow : Window
         new("Refresh status", nameof(RefreshStatusCommand), typeof(MainWindow));
 
     internal int EditorPasswordChangedCount { get; private set; }
+
+    internal int SelectorSelectionChangedCount { get; private set; }
+
+    internal int MultiSelectorSelectionChangedCount { get; private set; }
+
+    internal int SelectorExpanderExpandedCount { get; private set; }
+
+    internal int SelectorExpanderCollapsedCount { get; private set; }
 
     public MainWindow()
     {
@@ -98,6 +107,26 @@ public partial class MainWindow : Window
     private void OnEditorPasswordChanged(object sender, RoutedEventArgs e)
     {
         EditorPasswordChangedCount++;
+    }
+
+    private void OnSelectorSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        SelectorSelectionChangedCount++;
+    }
+
+    private void OnMultiSelectorSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        MultiSelectorSelectionChangedCount++;
+    }
+
+    private void OnSelectorExpanderExpanded(object sender, RoutedEventArgs e)
+    {
+        SelectorExpanderExpandedCount++;
+    }
+
+    private void OnSelectorExpanderCollapsed(object sender, RoutedEventArgs e)
+    {
+        SelectorExpanderCollapsedCount++;
     }
 }
 
@@ -540,6 +569,24 @@ internal static class MvpSelfTest
         var relativeAncestorBindingText = Require<TextBlock>(
             window.FindName("RelativeAncestorBindingText"),
             "relative ancestor binding TextBlock");
+        var selectorGroupBox = Require<GroupBox>(
+            window.FindName("SelectorGroupBox"),
+            "selector GroupBox");
+        var selectedValueComboBox = Require<ComboBox>(
+            window.FindName("SelectedValueComboBox"),
+            "selected value ComboBox");
+        var multiSelectItemsList = Require<ListBox>(
+            window.FindName("MultiSelectItemsList"),
+            "multi-select ListBox");
+        var selectorExpander = Require<Expander>(
+            window.FindName("SelectorExpander"),
+            "selector Expander");
+        var selectorScrollViewer = Require<ScrollViewer>(
+            window.FindName("SelectorScrollViewer"),
+            "selector ScrollViewer");
+        var selectorScrollText = Require<TextBlock>(
+            window.FindName("SelectorScrollText"),
+            "selector scroll TextBlock");
         var selectedItemContent = Require<ContentControl>(
             window.FindName("SelectedItemContent"),
             "selected item ContentControl");
@@ -676,6 +723,15 @@ internal static class MvpSelfTest
             relativeSelfBindingText,
             relativeAncestorBorder,
             relativeAncestorBindingText);
+        ValidateSelectorControls(
+            window,
+            viewModel,
+            selectorGroupBox,
+            selectedValueComboBox,
+            multiSelectItemsList,
+            selectorExpander,
+            selectorScrollViewer,
+            selectorScrollText);
         ValidateItemsContextMenu(window, viewModel, itemsList);
         ValidateNavigation(window, navigationFrame, detailsNavigationButton);
         ValidateEditor(window, editorPasswordBox, editorRichTextBox);
@@ -959,6 +1015,97 @@ internal static class MvpSelfTest
         relativeAncestorBorder.Tag = "Updated ancestor binding text";
         DrainDispatcher(window);
         AssertEqual("Updated ancestor binding text", relativeAncestorText.Text, "updated ancestor binding text");
+    }
+
+    private static void ValidateSelectorControls(
+        MainWindow window,
+        MainViewModel viewModel,
+        GroupBox groupBox,
+        ComboBox selectedValueComboBox,
+        ListBox multiSelectItemsList,
+        Expander expander,
+        ScrollViewer scrollViewer,
+        TextBlock scrollText)
+    {
+        AssertEqual("Selector container", groupBox.Header, "selector GroupBox header");
+        Require<Grid>(groupBox.Content, "selector GroupBox content");
+
+        AssertEqual(viewModel.Items, selectedValueComboBox.ItemsSource, "selected-value ComboBox ItemsSource");
+        AssertEqual("Name", selectedValueComboBox.DisplayMemberPath, "selected-value ComboBox display path");
+        AssertEqual("Category", selectedValueComboBox.SelectedValuePath, "selected-value ComboBox value path");
+        var selectedValueBinding = Require<Binding>(
+            BindingOperations.GetBinding(selectedValueComboBox, Selector.SelectedValueProperty),
+            "selected-value ComboBox binding");
+        AssertEqual("SelectedCategory", selectedValueBinding.Path.Path, "selected-value ComboBox binding path");
+        AssertEqual(BindingMode.TwoWay, selectedValueBinding.Mode, "selected-value ComboBox binding mode");
+
+        DrainDispatcher(window);
+        AssertEqual("Framework", selectedValueComboBox.SelectedValue, "selected-value ComboBox initial value");
+        int initialSelectorEvents = window.SelectorSelectionChangedCount;
+        selectedValueComboBox.SelectedItem = viewModel.Items[1];
+        DrainDispatcher(window);
+        AssertEqual(viewModel.Items[1], selectedValueComboBox.SelectedItem, "selected-value ComboBox selected item");
+        AssertEqual("Rendering", selectedValueComboBox.SelectedValue, "selected-value ComboBox selected value");
+        AssertEqual("Rendering", viewModel.SelectedCategory, "selected-value ComboBox updated source");
+        AssertGreaterThan(
+            initialSelectorEvents,
+            window.SelectorSelectionChangedCount,
+            "selected-value ComboBox SelectionChanged count");
+
+        viewModel.SelectedCategory = "Framework";
+        UpdateBinding(selectedValueComboBox, Selector.SelectedValueProperty);
+        DrainDispatcher(window);
+        AssertEqual("Framework", selectedValueComboBox.SelectedValue, "selected-value ComboBox restored value");
+        AssertEqual(viewModel.Items[0], selectedValueComboBox.SelectedItem, "selected-value ComboBox restored item");
+
+        AssertEqual(viewModel.Items, multiSelectItemsList.ItemsSource, "multi-select ListBox ItemsSource");
+        AssertEqual("Name", multiSelectItemsList.DisplayMemberPath, "multi-select ListBox display path");
+        AssertEqual(SelectionMode.Multiple, multiSelectItemsList.SelectionMode, "multi-select ListBox mode");
+        int initialMultiEvents = window.MultiSelectorSelectionChangedCount;
+        multiSelectItemsList.SelectedItems.Add(viewModel.Items[0]);
+        multiSelectItemsList.SelectedItems.Add(viewModel.Items[1]);
+        DrainDispatcher(window);
+        AssertEqual(2, multiSelectItemsList.SelectedItems.Count, "multi-select ListBox selected count");
+        AssertEqual(true, multiSelectItemsList.SelectedItems.Contains(viewModel.Items[0]), "multi-select ListBox first item");
+        AssertEqual(true, multiSelectItemsList.SelectedItems.Contains(viewModel.Items[1]), "multi-select ListBox second item");
+        AssertGreaterThan(
+            initialMultiEvents,
+            window.MultiSelectorSelectionChangedCount,
+            "multi-select ListBox SelectionChanged add count");
+
+        int afterAddMultiEvents = window.MultiSelectorSelectionChangedCount;
+        multiSelectItemsList.SelectedItems.Remove(viewModel.Items[0]);
+        DrainDispatcher(window);
+        AssertEqual(1, multiSelectItemsList.SelectedItems.Count, "multi-select ListBox selected removal count");
+        AssertEqual(true, multiSelectItemsList.SelectedItems.Contains(viewModel.Items[1]), "multi-select ListBox retained item");
+        AssertGreaterThan(
+            afterAddMultiEvents,
+            window.MultiSelectorSelectionChangedCount,
+            "multi-select ListBox SelectionChanged remove count");
+
+        AssertEqual("Scrollable details", expander.Header, "selector Expander header");
+        AssertEqual(false, expander.IsExpanded, "selector Expander initial state");
+        AssertEqual(ScrollBarVisibility.Auto, scrollViewer.VerticalScrollBarVisibility, "selector ScrollViewer vertical visibility");
+        AssertEqual(ScrollBarVisibility.Disabled, scrollViewer.HorizontalScrollBarVisibility, "selector ScrollViewer horizontal visibility");
+        AssertContains("SelectedValuePath", scrollText.Text, "selector ScrollViewer text");
+
+        int initialExpandedEvents = window.SelectorExpanderExpandedCount;
+        expander.IsExpanded = true;
+        DrainDispatcher(window);
+        AssertEqual(true, expander.IsExpanded, "selector Expander expanded state");
+        AssertGreaterThan(
+            initialExpandedEvents,
+            window.SelectorExpanderExpandedCount,
+            "selector Expander expanded count");
+
+        int initialCollapsedEvents = window.SelectorExpanderCollapsedCount;
+        expander.IsExpanded = false;
+        DrainDispatcher(window);
+        AssertEqual(false, expander.IsExpanded, "selector Expander restored state");
+        AssertGreaterThan(
+            initialCollapsedEvents,
+            window.SelectorExpanderCollapsedCount,
+            "selector Expander collapsed count");
     }
 
     private static string GetColumnBindingPath(DataGridColumn column)
@@ -1391,6 +1538,15 @@ internal static class MvpSelfTest
         {
             throw new InvalidOperationException(
                 $"Expected {description} to be '{expected}', but found '{actual}'.");
+        }
+    }
+
+    private static void AssertGreaterThan(int minimumExclusive, int actual, string description)
+    {
+        if (actual <= minimumExclusive)
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to be greater than '{minimumExclusive}', but found '{actual}'.");
         }
     }
 

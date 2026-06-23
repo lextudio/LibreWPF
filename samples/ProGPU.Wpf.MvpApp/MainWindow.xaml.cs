@@ -797,6 +797,9 @@ internal static class MvpSelfTest
             summaryPanel.FindName("SummaryProgressText"),
             "summary progress text");
         var nodesTreeView = Require<TreeView>(window.FindName("NodesTreeView"), "nodes TreeView");
+        var explorerListView = Require<ListView>(
+            window.FindName("ExplorerListView"),
+            "explorer ListView");
         var navigationFrame = Require<Frame>(window.FindName("NavigationFrame"), "navigation Frame");
         var detailsNavigationButton = Require<Button>(
             window.FindName("DetailsNavigationButton"),
@@ -868,6 +871,17 @@ internal static class MvpSelfTest
             nodesTreeView.ItemTemplate,
             "node hierarchical data template");
         AssertEqual("Children", GetTemplateItemsSourcePath(nodeTemplate), "TreeView hierarchical template ItemsSource path");
+        var explorerGridView = Require<GridView>(explorerListView.View, "explorer GridView");
+        AssertEqual(viewModel.Items, explorerListView.ItemsSource, "explorer ListView ItemsSource");
+        AssertEqual(viewModel.SelectedItem, explorerListView.SelectedItem, "explorer ListView selected item");
+        AssertEqual(false, explorerGridView.AllowsColumnReorder, "explorer GridView column reorder state");
+        AssertEqual(3, explorerGridView.Columns.Count, "explorer GridView column count");
+        AssertEqual("Name", explorerGridView.Columns[0].Header, "explorer GridView name header");
+        AssertEqual("Name", GetGridViewColumnBindingPath(explorerGridView.Columns[0]), "explorer GridView name binding");
+        AssertEqual("Category", explorerGridView.Columns[1].Header, "explorer GridView category header");
+        AssertEqual("Category", GetGridViewColumnBindingPath(explorerGridView.Columns[1]), "explorer GridView category binding");
+        AssertEqual("Active", explorerGridView.Columns[2].Header, "explorer GridView active header");
+        AssertEqual("IsActive", GetGridViewColumnBindingPath(explorerGridView.Columns[2]), "explorer GridView active binding");
         DrainDispatcher(window);
         AssertEqual("Commands idle", commandStatusText.Text, "initial command status text");
         AssertEqual("Name: Alpha", summaryNameText.Text, "summary initial name text");
@@ -948,6 +962,8 @@ internal static class MvpSelfTest
         AssertEqual("Validated", viewModel.SelectedItem?.Name, "selected item name");
         AssertEqual("Input", viewModel.SelectedItem?.Category, "selected item category");
         AssertEqual(true, viewModel.SelectedItem?.IsActive ?? false, "selected item active state");
+        DrainDispatcher(window);
+        AssertEqual(viewModel.SelectedItem, explorerListView.SelectedItem, "explorer ListView updated selected item");
         actionsEnabledMenuItem.IsChecked = false;
         AssertEqual(false, viewModel.ActionsEnabled, "actions menu unchecked view model state");
         AssertEqual(false, MainWindow.RefreshStatusCommand.CanExecute(null, window), "refresh command disabled CanExecute state");
@@ -1536,6 +1552,13 @@ internal static class MvpSelfTest
         return column is DataGridBoundColumn { Binding: Binding binding }
             ? binding.Path.Path
             : throw new InvalidOperationException($"Expected {column.Header} column to have a Binding.");
+    }
+
+    private static string GetGridViewColumnBindingPath(GridViewColumn column)
+    {
+        return column.DisplayMemberBinding is Binding { Path: { } path }
+            ? path.Path
+            : throw new InvalidOperationException($"Expected {column.Header} column to have a display member Binding.");
     }
 
     private static string GetBindingPath(BindingBase binding)

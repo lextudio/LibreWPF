@@ -6283,6 +6283,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DataGridCheckBoxColumn", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("HierarchicalDataTemplate", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("TreeView", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExplorerListView\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<ListView.View>", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("GridView AllowsColumnReorder=\"False\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("GridViewColumn", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DisplayMemberBinding=\"{Binding Name}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DisplayMemberBinding=\"{Binding Category}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DisplayMemberBinding=\"{Binding IsActive}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("FlowDocumentScrollViewer", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("StatusBar", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("INotifyPropertyChanged", mvpMainWindowCodeBehind, StringComparison.Ordinal);
@@ -6415,6 +6422,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("editor RichTextBox ToggleBold applied weight", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("summary updated progress text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GetColumnBindingPath", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("GetGridViewColumnBindingPath", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("explorer ListView ItemsSource", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("explorer GridView name binding", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("explorer ListView updated selected item", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GetTemplateItemsSourcePath", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"IsActive\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("x:Class=\"ProGPU.Wpf.MvpApp.AboutWindow\"", mvpAboutWindowXaml, StringComparison.Ordinal);

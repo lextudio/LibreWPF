@@ -822,14 +822,49 @@
                         <ColumnDefinition Width="2*" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
 
                     <TreeView
                         x:Name="NodesTreeView"
                         ItemTemplate="{StaticResource MvpNodeTemplate}"
                         ItemsSource="{Binding Nodes}" />
 
+                    <TextBlock
+                        Grid.Row="1"
+                        Margin="0,12,0,8"
+                        FontWeight="SemiBold"
+                        Text="Grid view" />
+
+                    <ListView
+                        x:Name="ExplorerListView"
+                        Grid.Row="2"
+                        ItemsSource="{Binding Items}"
+                        SelectedItem="{Binding SelectedItem}">
+                        <ListView.View>
+                            <GridView AllowsColumnReorder="False">
+                                <GridViewColumn
+                                    Width="150"
+                                    DisplayMemberBinding="{Binding Name}"
+                                    Header="Name" />
+                                <GridViewColumn
+                                    Width="130"
+                                    DisplayMemberBinding="{Binding Category}"
+                                    Header="Category" />
+                                <GridViewColumn
+                                    Width="80"
+                                    DisplayMemberBinding="{Binding IsActive}"
+                                    Header="Active" />
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+
                     <Border
                         Grid.Column="1"
+                        Grid.RowSpan="3"
                         Margin="18,0,0,0"
                         Padding="12"
                         Background="{DynamicResource MvpPanelBrush}">
@@ -841,7 +876,7 @@
                             <TextBlock
                                 Margin="0,8,0,0"
                                 TextWrapping="Wrap"
-                                Text="TreeView and HierarchicalDataTemplate are loaded from normal WPF XAML through the ProGPU SDK." />
+                                Text="TreeView, HierarchicalDataTemplate, ListView, and GridView are loaded from normal WPF XAML through the ProGPU SDK." />
                         </StackPanel>
                     </Border>
                 </Grid>

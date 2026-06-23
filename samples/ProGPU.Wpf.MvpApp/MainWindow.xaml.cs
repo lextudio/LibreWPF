@@ -370,6 +370,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             new MvpItem("Beta", "Rendering", false)
         ];
         Categories = ["Framework", "Rendering", "Input"];
+        FormattedItems = ["Alpha", "Beta"];
         Nodes =
         [
             new MvpNode(
@@ -394,6 +395,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ObservableCollection<MvpItem> Items { get; }
 
     public ObservableCollection<string> Categories { get; }
+
+    public ObservableCollection<string> FormattedItems { get; }
 
     public ObservableCollection<MvpNode> Nodes { get; }
 
@@ -540,6 +543,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         Items.Clear();
         Items.Add(new MvpItem("Alpha", "Framework", true));
         Items.Add(new MvpItem("Beta", "Rendering", false));
+        FormattedItems.Clear();
+        FormattedItems.Add("Alpha");
+        FormattedItems.Add("Beta");
         SelectedItem = Items[0];
         SelectedCategory = Categories[0];
         NewItemName = "Gamma";
@@ -898,6 +904,9 @@ internal static class MvpSelfTest
         var groupedItemsList = Require<ListBox>(
             window.FindName("GroupedItemsList"),
             "grouped items ListBox");
+        var formattedItemsList = Require<ListBox>(
+            window.FindName("FormattedItemsList"),
+            "formatted items ListBox");
         var priorityBindingText = Require<TextBlock>(
             window.FindName("PriorityBindingText"),
             "priority binding TextBlock");
@@ -1239,6 +1248,7 @@ internal static class MvpSelfTest
         AssertEqual("Category", GetColumnBindingPath(itemsDataGrid.Columns[1]), "DataGrid category column binding");
         AssertEqual("IsActive", GetColumnBindingPath(itemsDataGrid.Columns[2]), "DataGrid active column binding");
         ValidateCollectionView(window, viewModel, groupedItemsList, activeOnlyCheckBox, activeTextConverter);
+        ValidateFormattedItemsList(window, viewModel, formattedItemsList);
         ValidateSelectedSummaryBinding(selectedItemSummaryText, itemSummaryConverter);
         AssertEqual(viewModel.SelectedItem, selectedItemContent.Content, "selected item content");
         AssertEqual(
@@ -1587,6 +1597,27 @@ internal static class MvpSelfTest
         AssertEqual(new Thickness(6, 3, 6, 3), root.Padding, "grouped ListBox GroupStyle header padding");
         AssertEqual(FontWeights.SemiBold, headerText.FontWeight, "grouped ListBox GroupStyle header weight");
         AssertEqual("Name", GetTextBindingPath(headerText), "grouped ListBox GroupStyle header binding path");
+    }
+
+    private static void ValidateFormattedItemsList(
+        Window window,
+        MainViewModel viewModel,
+        ListBox listBox)
+    {
+        AssertEqual(viewModel.FormattedItems, listBox.ItemsSource, "formatted ListBox ItemsSource");
+        AssertEqual(3, listBox.AlternationCount, "formatted ListBox AlternationCount");
+        AssertEqual("formatted {0}", listBox.ItemStringFormat, "formatted ListBox ItemStringFormat");
+        AssertEqual(2, listBox.Items.Count, "formatted ListBox initial item count");
+        AssertEqual("Alpha", listBox.Items[0], "formatted ListBox first item");
+
+        viewModel.FormattedItems.Add("Gamma");
+        DrainDispatcher(window);
+        AssertEqual(3, listBox.Items.Count, "formatted ListBox collection-change item count");
+        AssertEqual("Gamma", listBox.Items[2], "formatted ListBox collection-change item");
+
+        viewModel.FormattedItems.Remove("Gamma");
+        DrainDispatcher(window);
+        AssertEqual(2, listBox.Items.Count, "formatted ListBox restored item count");
     }
 
     private static void ValidateItemsContextMenu(Window window, MainViewModel viewModel, ListBox itemsList)

@@ -513,6 +513,15 @@
                                 Margin="0,8,0,0"
                                 TextWrapping="Wrap"
                                 Text="CollectionViewSource sorting, grouping, filtering, and group header templates are loaded from compiled WPF XAML." />
+                            <TextBlock
+                                Margin="0,14,0,6"
+                                FontWeight="SemiBold"
+                                Text="Formatted items" />
+                            <ListBox
+                                x:Name="FormattedItemsList"
+                                AlternationCount="3"
+                                ItemStringFormat="formatted {0}"
+                                ItemsSource="{Binding FormattedItems}" />
                         </StackPanel>
                     </Border>
                 </Grid>

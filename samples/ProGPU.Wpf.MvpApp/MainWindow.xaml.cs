@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
@@ -4159,6 +4160,7 @@ internal static class MvpSelfTest
         AssertEqual(DispatcherOperationStatus.Completed, operation.Status, "dispatcher BeginInvoke status");
 
         ValidateDispatcherTimer(window);
+        ValidateDispatcherSynchronizationContext(window);
     }
 
     private static void ValidateDispatcherTimer(Window window)
@@ -4180,6 +4182,45 @@ internal static class MvpSelfTest
         PumpDispatcherUntil(window, () => tickCount > 0, TimeSpan.FromSeconds(1), "dispatcher timer tick");
         AssertEqual(1, tickCount, "dispatcher timer tick count");
         AssertEqual(false, timer.IsEnabled, "dispatcher timer stopped IsEnabled state");
+    }
+
+    private static void ValidateDispatcherSynchronizationContext(Window window)
+    {
+        SynchronizationContext? capturedContext = null;
+        window.Dispatcher.Invoke(
+            () => capturedContext = SynchronizationContext.Current,
+            DispatcherPriority.Background);
+        AssertEqual(
+            typeof(DispatcherSynchronizationContext),
+            capturedContext?.GetType(),
+            "dispatcher synchronization context type");
+
+        var context = new DispatcherSynchronizationContext(window.Dispatcher, DispatcherPriority.Background);
+        var postedHasAccess = false;
+        context.Post(
+            _ => postedHasAccess = window.Dispatcher.CheckAccess(),
+            state: null);
+        DrainDispatcher(window);
+        AssertEqual(true, postedHasAccess, "dispatcher synchronization context Post access");
+
+        var sendHasAccess = false;
+        context.Send(
+            _ => sendHasAccess = window.Dispatcher.CheckAccess(),
+            state: null);
+        AssertEqual(true, sendHasAccess, "dispatcher synchronization context Send access");
+
+        var copy = context.CreateCopy();
+        AssertEqual(
+            typeof(DispatcherSynchronizationContext),
+            copy.GetType(),
+            "dispatcher synchronization context copy type");
+
+        var copyPostHasAccess = false;
+        copy.Post(
+            _ => copyPostHasAccess = window.Dispatcher.CheckAccess(),
+            state: null);
+        DrainDispatcher(window);
+        AssertEqual(true, copyPostHasAccess, "dispatcher synchronization context copy Post access");
     }
 
     private static void ValidateMessageBox(MainWindow window, Button button, TextBlock statusText)

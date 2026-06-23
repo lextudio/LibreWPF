@@ -4208,6 +4208,7 @@ internal static class Program
                         "external SDK startup resource text block");
                     AssertEqual("External SDK startup resource", startupResourceText.Text, "external SDK startup dynamic resource text");
                     AssertBrushColor(startupResourceText.Foreground, "#FF176283", "external SDK startup dynamic resource foreground");
+                    ValidateDispatcherSynchronizationContextAfterRun(window);
                     ValidateDispatcherTimerAfterRun(window);
                     ValidateLoadedStoryboardAfterRun(window);
                     ValidatePropertyTriggerActionsAfterRun(window);
@@ -4229,6 +4230,48 @@ internal static class Program
                     ValidateApplicationWindowLifetime(app, window);
 
                     App.MarkExternalRunValidated();
+                }
+
+                private static void ValidateDispatcherSynchronizationContextAfterRun(MainWindow window)
+                {
+                    var currentContext = SynchronizationContext.Current
+                        ?? throw new InvalidOperationException("Expected external SDK Application.Run dispatcher synchronization context.");
+                    AssertEqual(
+                        typeof(DispatcherSynchronizationContext),
+                        currentContext.GetType(),
+                        "external SDK dispatcher synchronization context type");
+
+                    var postedHasAccess = false;
+                    currentContext.Post(
+                        _ => postedHasAccess = window.Dispatcher.CheckAccess(),
+                        state: null);
+                    PumpDispatcherUntil(
+                        () => postedHasAccess,
+                        TimeSpan.FromSeconds(1),
+                        "external SDK dispatcher synchronization context Post");
+                    AssertEqual(true, postedHasAccess, "external SDK dispatcher synchronization context Post access");
+
+                    var sendHasAccess = false;
+                    currentContext.Send(
+                        _ => sendHasAccess = window.Dispatcher.CheckAccess(),
+                        state: null);
+                    AssertEqual(true, sendHasAccess, "external SDK dispatcher synchronization context Send access");
+
+                    var copy = currentContext.CreateCopy();
+                    AssertEqual(
+                        typeof(DispatcherSynchronizationContext),
+                        copy.GetType(),
+                        "external SDK dispatcher synchronization context copy type");
+
+                    var copyPostHasAccess = false;
+                    copy.Post(
+                        _ => copyPostHasAccess = window.Dispatcher.CheckAccess(),
+                        state: null);
+                    PumpDispatcherUntil(
+                        () => copyPostHasAccess,
+                        TimeSpan.FromSeconds(1),
+                        "external SDK dispatcher synchronization context copy Post");
+                    AssertEqual(true, copyPostHasAccess, "external SDK dispatcher synchronization context copy Post access");
                 }
 
                 private static void ValidateDispatcherTimerAfterRun(MainWindow window)

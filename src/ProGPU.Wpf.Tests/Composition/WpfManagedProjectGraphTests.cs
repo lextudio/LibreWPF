@@ -6426,6 +6426,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Application ShutdownMode", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Application Windows contains StartupUri MainWindow", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("StartupUri MainWindow visible", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateRuntimeNameScope(window)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("window.RegisterName(runtimeName, registeredButton)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("window.UnregisterName(runtimeName)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("runtime namescope replacement object", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateApplicationLoadComponent()", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Application.LoadComponent", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"/ProGPU.Wpf.MvpApp;component/OverviewPage.xaml\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);

@@ -669,6 +669,7 @@ internal static class MvpSelfTest
             ?? throw new InvalidOperationException("Expected current Application.");
         AssertEqual(ShutdownMode.OnMainWindowClose, application.ShutdownMode, "Application ShutdownMode");
         ValidateApplicationRunState(application, window, expectLoadedStoryboardApplied);
+        ValidateRuntimeNameScope(window);
         var themeResources = Require<ResourceDictionary>(
             application.Resources.MergedDictionaries.Count > 0
                 ? application.Resources.MergedDictionaries[0]
@@ -1289,6 +1290,31 @@ internal static class MvpSelfTest
         AssertEqual(1, openWindowCount, "Application Windows count after StartupUri activation");
         AssertEqual(true, containsMainWindow, "Application Windows contains StartupUri MainWindow");
         AssertEqual(true, window.IsVisible, "StartupUri MainWindow visible");
+    }
+
+    private static void ValidateRuntimeNameScope(Window window)
+    {
+        const string runtimeName = "MvpRuntimeRegisteredName";
+        var registeredButton = new Button { Content = "Runtime registered name" };
+        var replacementText = new TextBlock { Text = "Runtime replacement name" };
+
+        window.RegisterName(runtimeName, registeredButton);
+        try
+        {
+            AssertEqual(registeredButton, window.FindName(runtimeName), "runtime namescope registered object");
+            window.UnregisterName(runtimeName);
+            AssertEqual<object?>(null, window.FindName(runtimeName), "runtime namescope unregistered object");
+            window.RegisterName(runtimeName, replacementText);
+            AssertEqual(replacementText, window.FindName(runtimeName), "runtime namescope replacement object");
+        }
+        finally
+        {
+            if (ReferenceEquals(replacementText, window.FindName(runtimeName)) ||
+                ReferenceEquals(registeredButton, window.FindName(runtimeName)))
+            {
+                window.UnregisterName(runtimeName);
+            }
+        }
     }
 
     private static void ValidateCollectionView(

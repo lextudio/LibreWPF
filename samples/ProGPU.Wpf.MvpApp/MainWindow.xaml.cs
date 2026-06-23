@@ -546,6 +546,14 @@ public sealed class MvpBindingGroupValidationRule : ValidationRule
     }
 }
 
+public static class MvpResourceFactory
+{
+    public static string CreateSummary(string prefix, int value)
+    {
+        return $"{prefix}:{value}";
+    }
+}
+
 internal static class MvpSelfTest
 {
     public static void Validate(MainWindow window)
@@ -761,6 +769,18 @@ internal static class MvpSelfTest
         var resourceAccessText = Require<AccessText>(
             window.FindName("ResourceAccessText"),
             "resource AccessText");
+        var objectProviderText = Require<TextBlock>(
+            window.FindName("ObjectProviderText"),
+            "object data provider TextBlock");
+        var xmlProviderText = Require<TextBlock>(
+            window.FindName("XmlProviderText"),
+            "XML data provider TextBlock");
+        var resourceArrayItemsControl = Require<ItemsControl>(
+            window.FindName("ResourceArrayItemsControl"),
+            "resource array ItemsControl");
+        var nullIntrinsicText = Require<TextBlock>(
+            window.FindName("NullIntrinsicText"),
+            "null intrinsic TextBlock");
         var packResourceText = Require<TextBlock>(
             window.FindName("PackResourceText"),
             "pack resource TextBlock");
@@ -968,6 +988,10 @@ internal static class MvpSelfTest
             componentResourceText,
             localizedResourceText,
             resourceAccessText,
+            objectProviderText,
+            xmlProviderText,
+            resourceArrayItemsControl,
+            nullIntrinsicText,
             packResourceText,
             resourceDynamicBorder);
         ValidateItemsContextMenu(window, viewModel, itemsList);
@@ -1354,6 +1378,10 @@ internal static class MvpSelfTest
         TextBlock componentResourceText,
         TextBlock localizedResourceText,
         AccessText accessText,
+        TextBlock objectProviderText,
+        TextBlock xmlProviderText,
+        ItemsControl arrayItemsControl,
+        TextBlock nullIntrinsicText,
         TextBlock packResourceText,
         Border dynamicResourceBorder)
     {
@@ -1379,6 +1407,45 @@ internal static class MvpSelfTest
         AssertEqual("$Text (MVP localization comment)", Localization.GetComments(localizedResourceText), "localized TextBlock comments");
 
         AssertEqual("_Resource access key", accessText.Text, "AccessText text");
+        var objectProvider = Require<ObjectDataProvider>(
+            window.FindResource("MvpObjectDataProvider"),
+            "MVP ObjectDataProvider resource");
+        AssertEqual(false, objectProvider.IsAsynchronous, "ObjectDataProvider synchronous flag");
+        AssertEqual("CreateSummary", objectProvider.MethodName, "ObjectDataProvider method name");
+        AssertEqual(typeof(MvpResourceFactory), objectProvider.ObjectType, "ObjectDataProvider object type");
+        AssertEqual(2, objectProvider.MethodParameters.Count, "ObjectDataProvider method parameter count");
+        AssertEqual("mvp-provider", Require<string>(objectProvider.MethodParameters[0], "ObjectDataProvider first parameter"), "ObjectDataProvider first parameter");
+        AssertEqual(9, Require<int>(objectProvider.MethodParameters[1], "ObjectDataProvider second parameter"), "ObjectDataProvider second parameter");
+        DrainDispatcher(window);
+        AssertEqual("mvp-provider:9", objectProvider.Data, "ObjectDataProvider data");
+        AssertEqual("mvp-provider:9", objectProviderText.Text, "ObjectDataProvider bound text");
+        var objectProviderBinding = Require<Binding>(
+            BindingOperations.GetBinding(objectProviderText, TextBlock.TextProperty),
+            "ObjectDataProvider TextBlock binding");
+        AssertEqual(objectProvider, objectProviderBinding.Source, "ObjectDataProvider binding source");
+
+        var xmlProvider = Require<XmlDataProvider>(
+            window.FindResource("MvpXmlDataProvider"),
+            "MVP XmlDataProvider resource");
+        AssertEqual(false, xmlProvider.IsAsynchronous, "XmlDataProvider synchronous flag");
+        AssertEqual("/mvp/item", xmlProvider.XPath, "XmlDataProvider XPath");
+        DrainDispatcher(window);
+        AssertEqual("mvp-xml", xmlProviderText.Text, "XmlDataProvider bound text");
+        var xmlProviderBinding = Require<Binding>(
+            BindingOperations.GetBinding(xmlProviderText, TextBlock.TextProperty),
+            "XmlDataProvider TextBlock binding");
+        AssertEqual(xmlProvider, xmlProviderBinding.Source, "XmlDataProvider binding source");
+        AssertEqual("@name", xmlProviderBinding.XPath, "XmlDataProvider binding XPath");
+
+        var arrayItems = Require<string[]>(window.FindResource("MvpStringArray"), "MVP x:Array resource");
+        AssertEqual(2, arrayItems.Length, "x:Array resource length");
+        AssertEqual("Array alpha", arrayItems[0], "x:Array first item");
+        AssertEqual("Array beta", arrayItems[1], "x:Array second item");
+        AssertEqual(arrayItems, arrayItemsControl.ItemsSource, "x:Array ItemsControl source");
+        AssertEqual(2, arrayItemsControl.Items.Count, "x:Array ItemsControl count");
+        AssertEqual(null, nullIntrinsicText.Tag, "x:Null TextBlock tag");
+        AssertEqual("Null intrinsic target", nullIntrinsicText.Text, "x:Null TextBlock text");
+
         AssertEqual("Pack resource loaded from Assets/MvpResource.txt", packResourceText.Text, "pack resource TextBlock text");
         var initialDynamicBrush = Require<SolidColorBrush>(
             dynamicResourceBorder.Background,

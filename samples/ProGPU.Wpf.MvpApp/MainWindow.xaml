@@ -5,6 +5,7 @@
     xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
     xmlns:local="clr-namespace:ProGPU.Wpf.MvpApp"
     xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework"
+    xmlns:sys="clr-namespace:System;assembly=mscorlib"
     x:Name="RootWindow"
     Title="ProGPU WPF MVP"
     Width="760"
@@ -66,6 +67,32 @@
             x:Key="MvpItemTemplateSelector"
             ActiveTemplate="{StaticResource MvpActiveItemTemplate}"
             InactiveTemplate="{StaticResource MvpInactiveItemTemplate}" />
+        <ObjectDataProvider
+            x:Key="MvpObjectDataProvider"
+            IsAsynchronous="False"
+            MethodName="CreateSummary"
+            ObjectType="{x:Type local:MvpResourceFactory}">
+            <ObjectDataProvider.MethodParameters>
+                <sys:String>mvp-provider</sys:String>
+                <sys:Int32>9</sys:Int32>
+            </ObjectDataProvider.MethodParameters>
+        </ObjectDataProvider>
+        <XmlDataProvider
+            x:Key="MvpXmlDataProvider"
+            IsAsynchronous="False"
+            XPath="/mvp/item">
+            <x:XData>
+                <mvp xmlns="">
+                    <item name="mvp-xml" value="provider" />
+                </mvp>
+            </x:XData>
+        </XmlDataProvider>
+        <x:Array
+            x:Key="MvpStringArray"
+            Type="{x:Type sys:String}">
+            <sys:String>Array alpha</sys:String>
+            <sys:String>Array beta</sys:String>
+        </x:Array>
         <ControlTemplate x:Key="MvpValidationErrorTemplate">
             <StackPanel>
                 <AdornedElementPlaceholder x:Name="MvpValidationErrorPlaceholder" />
@@ -839,6 +866,23 @@
                             x:Name="ResourceAccessText"
                             Margin="0,12,0,0"
                             Text="_Resource access key" />
+                        <TextBlock
+                            x:Name="ObjectProviderText"
+                            Margin="0,12,0,0"
+                            Text="{Binding Source={StaticResource MvpObjectDataProvider}}" />
+                        <TextBlock
+                            x:Name="XmlProviderText"
+                            Margin="0,12,0,0"
+                            Text="{Binding Source={StaticResource MvpXmlDataProvider}, XPath=@name}" />
+                        <ItemsControl
+                            x:Name="ResourceArrayItemsControl"
+                            Margin="0,12,0,0"
+                            ItemsSource="{StaticResource MvpStringArray}" />
+                        <TextBlock
+                            x:Name="NullIntrinsicText"
+                            Margin="0,12,0,0"
+                            Tag="{x:Null}"
+                            Text="Null intrinsic target" />
                         <TextBlock
                             x:Name="PackResourceText"
                             Margin="0,12,0,0"

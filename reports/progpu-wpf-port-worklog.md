@@ -1906,6 +1906,7 @@
 - Added MVP item-presentation metadata coverage for `AlternationCount` and `ItemStringFormat`. The Views tab now binds a simple string `ListBox` to a view-model collection with `AlternationCount=3` and `ItemStringFormat="formatted {0}"`, and the package-mode self-test validates the BAML-loaded metadata plus collection-change propagation. This keeps another common list presentation path in managed WPF rather than duplicating item formatting in ProGPU.
 - Added MVP source-side validation coverage for `IDataErrorInfo` and `INotifyDataErrorInfo`. The Validation tab now binds explicit-update text boxes through normal WPF validation flags, and the package-mode self-test proves invalid values update the view model before reporting source-side errors, expose validation contents through `Validation.GetErrors(...)`, and clear once valid prefixes are restored.
 - Added MVP `DataObject` coverage in the Editing tab. The runnable SDK-only app now round-trips Unicode text and a custom format through a normal WPF `DataObject` from button-driven code-behind, while the package-mode self-test validates the managed data-transfer result without touching the global clipboard.
+- Added MVP system resource coverage for `SystemParameters`, `SystemColors`, and `SystemFonts`. The Resources tab now resolves primary-screen metrics, system font values, and system brush keys from SDK-built XAML, and the package-mode self-test compares the UI/resource results against WPF's public manager APIs instead of hardcoded platform values.
 
 ## Open Porting Items
 

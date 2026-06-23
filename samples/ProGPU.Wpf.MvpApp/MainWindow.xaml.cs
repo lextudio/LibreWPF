@@ -1147,6 +1147,18 @@ internal static class MvpSelfTest
         var startupResourceText = Require<TextBlock>(
             window.FindName("StartupResourceText"),
             "startup resource TextBlock");
+        var systemParameterText = Require<TextBlock>(
+            window.FindName("SystemParameterText"),
+            "SystemParameters TextBlock");
+        var systemFontText = Require<TextBlock>(
+            window.FindName("SystemFontText"),
+            "SystemFonts TextBlock");
+        var systemColorBorder = Require<Border>(
+            window.FindName("SystemColorBorder"),
+            "SystemColors Border");
+        var systemColorText = Require<TextBlock>(
+            window.FindName("SystemColorText"),
+            "SystemColors TextBlock");
         var mvpThemedControl = Require<MvpThemedControl>(
             window.FindName("MvpThemedControl"),
             "MVP themed control");
@@ -1526,6 +1538,10 @@ internal static class MvpSelfTest
             packResourceText,
             componentPackResourceText,
             startupResourceText,
+            systemParameterText,
+            systemFontText,
+            systemColorBorder,
+            systemColorText,
             mvpThemedControl,
             drawingImageControl,
             drawingImageBrushBorder,
@@ -2196,6 +2212,10 @@ internal static class MvpSelfTest
         TextBlock packResourceText,
         TextBlock componentPackResourceText,
         TextBlock startupResourceText,
+        TextBlock systemParameterText,
+        TextBlock systemFontText,
+        Border systemColorBorder,
+        TextBlock systemColorText,
         MvpThemedControl themedControl,
         Image drawingImageControl,
         Border drawingImageBrushBorder,
@@ -2301,6 +2321,52 @@ internal static class MvpSelfTest
             AssertEqual(Color.FromRgb(0x45, 0x5A, 0x64), startupBrush.Color, "startup application brush color");
             AssertEqual(startupBrush.Color, startupForeground.Color, "startup DynamicResource foreground color");
         }
+
+        AssertGreaterThan(
+            0,
+            (int)Math.Round(SystemParameters.PrimaryScreenWidth),
+            "SystemParameters primary screen width");
+        AssertContains(
+            SystemParameters.PrimaryScreenWidth.ToString(CultureInfo.CurrentCulture),
+            systemParameterText.Text,
+            "SystemParameters TextBlock text");
+        var primaryScreenWidthResource = Require<double>(
+            window.TryFindResource(SystemParameters.PrimaryScreenWidthKey),
+            "SystemParameters primary screen width resource");
+        AssertEqual(
+            SystemParameters.PrimaryScreenWidth,
+            primaryScreenWidthResource,
+            "SystemParameters primary screen width resource value");
+
+        AssertEqual("System font sample", systemFontText.Text, "SystemFonts TextBlock text");
+        AssertEqual(
+            SystemFonts.MessageFontFamily.Source,
+            systemFontText.FontFamily.Source,
+            "SystemFonts message font family");
+        AssertEqual(SystemFonts.MessageFontSize, systemFontText.FontSize, "SystemFonts message font size");
+
+        var systemWindowBrush = Require<SolidColorBrush>(
+            window.FindResource(SystemColors.WindowBrushKey),
+            "SystemColors WindowBrush resource");
+        var systemWindowTextBrush = Require<SolidColorBrush>(
+            window.FindResource(SystemColors.WindowTextBrushKey),
+            "SystemColors WindowTextBrush resource");
+        var systemBorderBrush = Require<SolidColorBrush>(
+            window.FindResource(SystemColors.ControlDarkBrushKey),
+            "SystemColors ControlDarkBrush resource");
+        var systemColorBackground = Require<SolidColorBrush>(
+            systemColorBorder.Background,
+            "SystemColors Border background");
+        var systemColorForeground = Require<SolidColorBrush>(
+            systemColorText.Foreground,
+            "SystemColors TextBlock foreground");
+        var systemColorBorderBrush = Require<SolidColorBrush>(
+            systemColorBorder.BorderBrush,
+            "SystemColors Border border brush");
+        AssertEqual(systemWindowBrush.Color, systemColorBackground.Color, "SystemColors Border background color");
+        AssertEqual(systemWindowTextBrush.Color, systemColorForeground.Color, "SystemColors TextBlock foreground color");
+        AssertEqual(systemBorderBrush.Color, systemColorBorderBrush.Color, "SystemColors Border brush color");
+        AssertEqual("System color sample", systemColorText.Text, "SystemColors TextBlock text");
 
         AssertEqual("Generic theme default style", themedControl.Text, "MVP themed control text");
         themedControl.ApplyTemplate();

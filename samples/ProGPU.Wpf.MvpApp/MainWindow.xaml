@@ -1006,6 +1006,28 @@
                             Margin="0,12,0,0"
                             Foreground="{DynamicResource MvpStartupBrush}"
                             Text="{DynamicResource MvpStartupText}" />
+                        <TextBlock
+                            x:Name="SystemParameterText"
+                            Margin="0,12,0,0"
+                            Text="{Binding Source={x:Static SystemParameters.PrimaryScreenWidth}, StringFormat=Primary screen width: {0}}" />
+                        <TextBlock
+                            x:Name="SystemFontText"
+                            Margin="0,12,0,0"
+                            FontFamily="{x:Static SystemFonts.MessageFontFamily}"
+                            FontSize="{x:Static SystemFonts.MessageFontSize}"
+                            Text="System font sample" />
+                        <Border
+                            x:Name="SystemColorBorder"
+                            Margin="0,12,0,0"
+                            Padding="6"
+                            Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"
+                            BorderBrush="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"
+                            BorderThickness="1">
+                            <TextBlock
+                                x:Name="SystemColorText"
+                                Foreground="{DynamicResource {x:Static SystemColors.WindowTextBrushKey}}"
+                                Text="System color sample" />
+                        </Border>
                         <local:MvpThemedControl
                             x:Name="MvpThemedControl"
                             Margin="0,12,0,0"
@@ -1042,7 +1064,7 @@
                             <TextBlock
                                 Margin="0,8,0,0"
                                 TextWrapping="Wrap"
-                                Text="This tab uses ComponentResourceKey, localization metadata, AccessText, DynamicResource invalidation, and a WPF Resource pack URI through SDK-built output." />
+                                Text="This tab uses ComponentResourceKey, localization metadata, AccessText, SystemParameters, SystemColors, SystemFonts, DynamicResource invalidation, and a WPF Resource pack URI through SDK-built output." />
                         </StackPanel>
                     </Border>
                 </Grid>

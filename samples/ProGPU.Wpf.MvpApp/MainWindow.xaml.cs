@@ -29,6 +29,12 @@ public partial class MainWindow : Window
 
     internal int EditorPasswordChangedCount { get; private set; }
 
+    internal int DataObjectRoundTripCount { get; private set; }
+
+    internal string? LastDataObjectText { get; private set; }
+
+    internal string? LastDataObjectCustomText { get; private set; }
+
     internal int SelectorSelectionChangedCount { get; private set; }
 
     internal int MultiSelectorSelectionChangedCount { get; private set; }
@@ -199,6 +205,20 @@ public partial class MainWindow : Window
     private void OnEditorPasswordChanged(object sender, RoutedEventArgs e)
     {
         EditorPasswordChangedCount++;
+    }
+
+    private void OnDataObjectRoundTripClick(object sender, RoutedEventArgs e)
+    {
+        var payload = DataObjectPayloadTextBox.Text;
+        var dataObject = new DataObject();
+        dataObject.SetText(payload);
+        dataObject.SetData("ProGPU.Wpf.MvpApp.CustomText", $"custom:{payload}");
+
+        LastDataObjectText = dataObject.GetData(DataFormats.UnicodeText)?.ToString();
+        LastDataObjectCustomText = dataObject.GetData("ProGPU.Wpf.MvpApp.CustomText")?.ToString();
+        DataObjectRoundTripCount++;
+        DataObjectStatusText.Text = $"{LastDataObjectText} | {LastDataObjectCustomText}";
+        e.Handled = true;
     }
 
     private void OnSelectorSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1275,6 +1295,15 @@ internal static class MvpSelfTest
         var editorRichTextBox = Require<RichTextBox>(
             window.FindName("EditorRichTextBox"),
             "editor RichTextBox");
+        var dataObjectPayloadTextBox = Require<TextBox>(
+            window.FindName("DataObjectPayloadTextBox"),
+            "DataObject payload TextBox");
+        var dataObjectRoundTripButton = Require<Button>(
+            window.FindName("DataObjectRoundTripButton"),
+            "DataObject round-trip Button");
+        var dataObjectStatusText = Require<TextBlock>(
+            window.FindName("DataObjectStatusText"),
+            "DataObject status TextBlock");
         var documentViewer = Require<FlowDocumentScrollViewer>(
             window.FindName("DocumentViewer"),
             "document FlowDocumentScrollViewer");
@@ -1508,7 +1537,13 @@ internal static class MvpSelfTest
         ValidateDispatcherOperations(window);
         ValidateNavigation(window, navigationFrame, detailsNavigationButton);
         ValidateSecondaryWindow(window, aboutMenuItem);
-        ValidateEditor(window, editorPasswordBox, editorRichTextBox);
+        ValidateEditor(
+            window,
+            editorPasswordBox,
+            editorRichTextBox,
+            dataObjectPayloadTextBox,
+            dataObjectRoundTripButton,
+            dataObjectStatusText);
         ValidateDocument(window, documentViewer, documentPageViewer, documentReader);
 
         AssertEqual(true, MainWindow.RefreshStatusCommand.CanExecute(null, window), "refresh command initial CanExecute state");
@@ -3515,11 +3550,19 @@ internal static class MvpSelfTest
         AssertEqual(true, closeButton.IsCancel, "secondary window close button cancel state");
     }
 
-    private static void ValidateEditor(MainWindow window, PasswordBox passwordBox, RichTextBox richTextBox)
+    private static void ValidateEditor(
+        MainWindow window,
+        PasswordBox passwordBox,
+        RichTextBox richTextBox,
+        TextBox dataObjectPayloadTextBox,
+        Button dataObjectRoundTripButton,
+        TextBlock dataObjectStatusText)
     {
         AssertEqual(16, passwordBox.MaxLength, "editor PasswordBox max length");
         AssertEqual('*', passwordBox.PasswordChar, "editor PasswordBox password char");
         AssertEqual(0, window.EditorPasswordChangedCount, "editor PasswordBox initial changed count");
+        AssertEqual("data object payload", dataObjectPayloadTextBox.Text, "DataObject initial payload");
+        AssertEqual("DataObject idle", dataObjectStatusText.Text, "DataObject initial status");
 
         passwordBox.Password = "mvp-secret";
         DrainDispatcher(window);
@@ -3557,6 +3600,14 @@ internal static class MvpSelfTest
             FontWeights.Normal,
             richTextBox.Selection.GetPropertyValue(TextElement.FontWeightProperty),
             "editor RichTextBox ToggleBold restored weight");
+
+        dataObjectPayloadTextBox.Text = "mvp data object";
+        dataObjectRoundTripButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, dataObjectRoundTripButton));
+        DrainDispatcher(window);
+        AssertEqual(1, window.DataObjectRoundTripCount, "DataObject round-trip count");
+        AssertEqual("mvp data object", window.LastDataObjectText, "DataObject unicode text");
+        AssertEqual("custom:mvp data object", window.LastDataObjectCustomText, "DataObject custom text");
+        AssertEqual("mvp data object | custom:mvp data object", dataObjectStatusText.Text, "DataObject status text");
     }
 
     private static void ValidateDocument(

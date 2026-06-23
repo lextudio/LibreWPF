@@ -3488,13 +3488,31 @@ internal static class MvpSelfTest
         AssertEqual("InputCalendar", window.LastDateSelectionSenderName, "Calendar selection sender");
         AssertGreaterThan(afterDatePickerEvents, window.InputDateSelectionChangedCount, "Calendar selection event count");
 
-        ValidateKeyboardNavigation(
-            window,
-            keyboardNavigationPanel,
-            keyboardNavigationAccessLabel,
-            keyboardNavigationFirstBox,
-            keyboardNavigationSecondButton,
-            keyboardNavigationThirdBox);
+        var mvpTabControl = Require<TabControl>(
+            window.FindName("MvpTabControl"),
+            "MVP TabControl for input validation");
+        int previousTabIndex = mvpTabControl.SelectedIndex;
+        var inputTab = Require<TabItem>(mvpTabControl.Items[4], "MVP input TabItem");
+        AssertEqual("Input", inputTab.Header, "MVP input TabItem header");
+
+        try
+        {
+            mvpTabControl.SelectedIndex = 4;
+            DrainDispatcher(window);
+            keyboardNavigationPanel.UpdateLayout();
+            ValidateKeyboardNavigation(
+                window,
+                keyboardNavigationPanel,
+                keyboardNavigationAccessLabel,
+                keyboardNavigationFirstBox,
+                keyboardNavigationSecondButton,
+                keyboardNavigationThirdBox);
+        }
+        finally
+        {
+            mvpTabControl.SelectedIndex = previousTabIndex;
+            DrainDispatcher(window);
+        }
     }
 
     private static void ValidateThumbDragManager(
@@ -3688,6 +3706,42 @@ internal static class MvpSelfTest
         FocusManager.SetFocusedElement(panel, firstBox);
         DrainDispatcher(window);
         AssertEqual(firstBox, FocusManager.GetFocusedElement(panel), "restored keyboard navigation logical focus");
+
+        var presentationSource = PresentationSource.FromVisual(window);
+        if (presentationSource is null)
+        {
+            return;
+        }
+
+        AssertEqual(
+            true,
+            AccessKeyManager.IsKeyRegistered(presentationSource, "F"),
+            "keyboard navigation access key registered");
+        Keyboard.ClearFocus();
+        AssertEqual(
+            false,
+            ReferenceEquals(firstBox, Keyboard.FocusedElement),
+            "keyboard navigation focus cleared before access key");
+        AssertEqual(
+            false,
+            AccessKeyManager.ProcessKey(presentationSource, "F", false),
+            "keyboard navigation access key processed");
+        AssertEqual(firstBox, Keyboard.FocusedElement, "keyboard navigation access key focused target");
+        AssertEqual(
+            firstBox,
+            FocusManager.GetFocusedElement(panel),
+            "keyboard navigation access key logical focus");
+
+        AssertEqual(firstBox, Keyboard.Focus(firstBox), "keyboard navigation initial keyboard focus");
+        AssertEqual(true, firstBox.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next)), "keyboard navigation next move");
+        AssertEqual(secondButton, Keyboard.FocusedElement, "keyboard navigation focused second target");
+        AssertEqual(true, secondButton.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next)), "keyboard navigation second next move");
+        AssertEqual(thirdBox, Keyboard.FocusedElement, "keyboard navigation focused third target");
+        AssertEqual(true, thirdBox.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next)), "keyboard navigation cycle next move");
+        AssertEqual(firstBox, Keyboard.FocusedElement, "keyboard navigation cycled first target");
+        AssertEqual(true, firstBox.MoveFocus(new TraversalRequest(FocusNavigationDirection.Previous)), "keyboard navigation previous move");
+        AssertEqual(thirdBox, Keyboard.FocusedElement, "keyboard navigation cycled previous target");
+        Keyboard.ClearFocus();
     }
 
     private static void ValidateToggleBinding(

@@ -6712,6 +6712,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("keyboard navigation access Label target", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("FocusManager.SetFocusedElement(panel, secondButton)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("restored keyboard navigation logical focus", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PresentationSource.FromVisual(window)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AccessKeyManager.IsKeyRegistered(presentationSource, \"F\")", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AccessKeyManager.ProcessKey(presentationSource, \"F\", false)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Keyboard.Focus(firstBox)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MoveFocus(new TraversalRequest(FocusNavigationDirection.Next))", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MoveFocus(new TraversalRequest(FocusNavigationDirection.Previous))", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLayoutControls", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DockPanel.GetDock(dockTop)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("WrapPanel item width", mvpMainWindowCodeBehind, StringComparison.Ordinal);

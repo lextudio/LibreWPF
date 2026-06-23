@@ -6992,6 +6992,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<Compile Include=\"**/*.cs\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ApplicationDefinition Include=\"App.xaml\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Page Include=\"**/*.xaml\" Exclude=\"App.xaml\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<Compile Include=\"ExternalPanel.xaml.cs\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<Compile Include=\"ExternalThemedControl.cs\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<Compile Include=\"Properties/AssemblyInfo.cs\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<Page Include=\"ExternalPanel.xaml\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<Page Include=\"Themes/Generic.xaml\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external library explicit item mode", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<UseWPF>true</UseWPF>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AppOutputAssemblyName + \".dll\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("assembly=ExternalSdkControls", externalSdkHarnessProgram, StringComparison.Ordinal);

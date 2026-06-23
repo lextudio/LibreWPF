@@ -425,8 +425,17 @@ internal static class Program
               <PropertyGroup>
                 <AssemblyName>{LibraryOutputAssemblyName}</AssemblyName>
                 <TargetFrameworks>{ExternalAppTargetFramework}</TargetFrameworks>
+                <EnableDefaultItems>false</EnableDefaultItems>
                 <UseWPF>true</UseWPF>
               </PropertyGroup>
+
+              <ItemGroup>
+                <Compile Include="ExternalPanel.xaml.cs" />
+                <Compile Include="ExternalThemedControl.cs" />
+                <Compile Include="Properties/AssemblyInfo.cs" />
+                <Page Include="ExternalPanel.xaml" />
+                <Page Include="Themes/Generic.xaml" />
+              </ItemGroup>
             </Project>
             """,
                 "external SDK library"));
@@ -11590,7 +11599,13 @@ internal static class Program
         AssertDoesNotContain(libraryProject, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external library original SDK");
         AssertContains(libraryProject, $"<AssemblyName>{LibraryOutputAssemblyName}</AssemblyName>", "external library custom assembly name");
         AssertContains(libraryProject, $"<TargetFrameworks>{ExternalAppTargetFramework}</TargetFrameworks>", "external library Windows target frameworks");
+        AssertContains(libraryProject, "<EnableDefaultItems>false</EnableDefaultItems>", "external library explicit item mode");
         AssertContains(libraryProject, "<UseWPF>true</UseWPF>", "external library WPF property");
+        AssertContains(libraryProject, "<Compile Include=\"ExternalPanel.xaml.cs\" />", "external library explicit panel code item");
+        AssertContains(libraryProject, "<Compile Include=\"ExternalThemedControl.cs\" />", "external library explicit themed control code item");
+        AssertContains(libraryProject, "<Compile Include=\"Properties/AssemblyInfo.cs\" />", "external library explicit ThemeInfo code item");
+        AssertContains(libraryProject, "<Page Include=\"ExternalPanel.xaml\" />", "external library explicit user-control page item");
+        AssertContains(libraryProject, "<Page Include=\"Themes/Generic.xaml\" />", "external library explicit generic theme page item");
         AssertContains(localizationProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external localization SDK");
         AssertDoesNotContain(localizationProject, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external localization original SDK");
         AssertContains(localizationProject, $"<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", "external localization Windows target framework");

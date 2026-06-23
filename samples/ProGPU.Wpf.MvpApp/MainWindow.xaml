@@ -935,6 +935,11 @@
                             Margin="0,12,0,0"
                             Text="Pack resource loaded from Assets/MvpResource.txt" />
                         <TextBlock
+                            x:Name="ComponentPackResourceText"
+                            Margin="0,12,0,0"
+                            Style="{StaticResource MvpComponentPackTextStyle}"
+                            Text="{StaticResource MvpComponentPackText}" />
+                        <TextBlock
                             x:Name="StartupResourceText"
                             Margin="0,12,0,0"
                             Foreground="{DynamicResource MvpStartupBrush}"

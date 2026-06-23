@@ -871,6 +871,9 @@ internal static class MvpSelfTest
         var packResourceText = Require<TextBlock>(
             window.FindName("PackResourceText"),
             "pack resource TextBlock");
+        var componentPackResourceText = Require<TextBlock>(
+            window.FindName("ComponentPackResourceText"),
+            "component pack resource TextBlock");
         var startupResourceText = Require<TextBlock>(
             window.FindName("StartupResourceText"),
             "startup resource TextBlock");
@@ -1153,6 +1156,7 @@ internal static class MvpSelfTest
             resourceArrayItemsControl,
             nullIntrinsicText,
             packResourceText,
+            componentPackResourceText,
             startupResourceText,
             drawingImageControl,
             drawingImageBrushBorder,
@@ -1551,6 +1555,7 @@ internal static class MvpSelfTest
         ItemsControl arrayItemsControl,
         TextBlock nullIntrinsicText,
         TextBlock packResourceText,
+        TextBlock componentPackResourceText,
         TextBlock startupResourceText,
         Image drawingImageControl,
         Border drawingImageBrushBorder,
@@ -1621,6 +1626,21 @@ internal static class MvpSelfTest
         AssertEqual("Pack resource loaded from Assets/MvpResource.txt", packResourceText.Text, "pack resource TextBlock text");
         var applicationResources = Application.Current?.Resources
             ?? throw new InvalidOperationException("Expected application resources.");
+        var componentPackText = Require<string>(
+            applicationResources["MvpComponentPackText"],
+            "component pack text resource");
+        AssertEqual("Component pack dictionary ready", componentPackText, "component pack text resource");
+        AssertEqual(componentPackText, componentPackResourceText.Text, "component pack TextBlock text");
+        var componentPackBrush = Require<SolidColorBrush>(
+            applicationResources["MvpComponentPackBrush"],
+            "component pack brush resource");
+        AssertEqual(Color.FromRgb(0x6B, 0x4E, 0x23), componentPackBrush.Color, "component pack brush color");
+        var componentPackForeground = Require<SolidColorBrush>(
+            componentPackResourceText.Foreground,
+            "component pack TextBlock foreground");
+        AssertEqual(componentPackBrush.Color, componentPackForeground.Color, "component pack TextBlock foreground color");
+        AssertEqual(FontWeights.SemiBold, componentPackResourceText.FontWeight, "component pack TextBlock FontWeight");
+
         if (expectStartupResources)
         {
             AssertEqual(1, App.StartupEventCount, "Application Startup event count");

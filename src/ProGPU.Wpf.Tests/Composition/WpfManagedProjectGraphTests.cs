@@ -6224,6 +6224,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Localization.Comments=\"$Text (MVP localization comment)\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ResourceAccessText\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"PackResourceText\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ResourceDynamicBorder\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DynamicResource invalidation", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SelectedItemContent\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ContentTemplate=\"{StaticResource SelectedItemTemplate}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SelectorItemsList\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6350,6 +6352,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("using System.Windows.Markup;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateResourceControls", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("new ComponentResourceKey(typeof(MainWindow), \"MvpComponentAccentBrush\")", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("applicationResources[\"MvpPanelBrush\"]", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("dynamic resource Border updated background color", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("dynamic resource Border restored background color", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Application.GetResourceStream(resourceUri)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Localization.GetAttributes(localizedResourceText)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MVP pack resource loaded through Application.GetResourceStream.", mvpMainWindowCodeBehind, StringComparison.Ordinal);

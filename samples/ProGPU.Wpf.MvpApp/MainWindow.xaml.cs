@@ -752,6 +752,9 @@ internal static class MvpSelfTest
         var packResourceText = Require<TextBlock>(
             window.FindName("PackResourceText"),
             "pack resource TextBlock");
+        var resourceDynamicBorder = Require<Border>(
+            window.FindName("ResourceDynamicBorder"),
+            "resource DynamicResource Border");
         var selectedItemContent = Require<ContentControl>(
             window.FindName("SelectedItemContent"),
             "selected item ContentControl");
@@ -949,7 +952,8 @@ internal static class MvpSelfTest
             componentResourceText,
             localizedResourceText,
             resourceAccessText,
-            packResourceText);
+            packResourceText,
+            resourceDynamicBorder);
         ValidateItemsContextMenu(window, viewModel, itemsList);
         ValidateNavigation(window, navigationFrame, detailsNavigationButton);
         ValidateSecondaryWindow(window, aboutMenuItem);
@@ -1334,7 +1338,8 @@ internal static class MvpSelfTest
         TextBlock componentResourceText,
         TextBlock localizedResourceText,
         AccessText accessText,
-        TextBlock packResourceText)
+        TextBlock packResourceText,
+        Border dynamicResourceBorder)
     {
         var componentKey = new ComponentResourceKey(typeof(MainWindow), "MvpComponentAccentBrush");
         var appBrush = Require<SolidColorBrush>(
@@ -1359,6 +1364,26 @@ internal static class MvpSelfTest
 
         AssertEqual("_Resource access key", accessText.Text, "AccessText text");
         AssertEqual("Pack resource loaded from Assets/MvpResource.txt", packResourceText.Text, "pack resource TextBlock text");
+        var initialDynamicBrush = Require<SolidColorBrush>(
+            dynamicResourceBorder.Background,
+            "dynamic resource Border initial background");
+        AssertEqual(Color.FromRgb(0xF4, 0xF7, 0xFB), initialDynamicBrush.Color, "dynamic resource Border initial background color");
+
+        var applicationResources = Application.Current?.Resources
+            ?? throw new InvalidOperationException("Expected application resources.");
+        applicationResources["MvpPanelBrush"] = new SolidColorBrush(Color.FromRgb(0xFF, 0xF2, 0xCC));
+        DrainDispatcher(window);
+        var updatedDynamicBrush = Require<SolidColorBrush>(
+            dynamicResourceBorder.Background,
+            "dynamic resource Border updated background");
+        AssertEqual(Color.FromRgb(0xFF, 0xF2, 0xCC), updatedDynamicBrush.Color, "dynamic resource Border updated background color");
+
+        applicationResources.Remove("MvpPanelBrush");
+        DrainDispatcher(window);
+        var restoredDynamicBrush = Require<SolidColorBrush>(
+            dynamicResourceBorder.Background,
+            "dynamic resource Border restored background");
+        AssertEqual(Color.FromRgb(0xF4, 0xF7, 0xFB), restoredDynamicBrush.Color, "dynamic resource Border restored background color");
 
         var resourceUri = new Uri("pack://application:,,,/Assets/MvpResource.txt", UriKind.Absolute);
         var resourceInfo = Application.GetResourceStream(resourceUri)

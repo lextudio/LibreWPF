@@ -1070,6 +1070,11 @@
                             x:Name="TemplateButton"
                             Content="Templated action"
                             Style="{StaticResource MvpTemplateButtonStyle}" />
+                        <Button
+                            x:Name="BasedOnStyleButton"
+                            Margin="0,12,8,0"
+                            Content="BasedOn style"
+                            Style="{StaticResource MvpBasedOnButtonStyle}" />
                     </StackPanel>
 
                     <Border

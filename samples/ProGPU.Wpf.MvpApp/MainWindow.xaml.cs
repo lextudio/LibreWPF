@@ -625,9 +625,13 @@ internal static class MvpSelfTest
         AssertEqual(true, themeResources.Contains("MvpPanelBrush"), "app theme panel brush key");
         AssertEqual(true, themeResources.Contains(typeof(Button)), "app theme implicit Button style key");
         AssertEqual(true, themeResources.Contains("SelectedItemTemplate"), "app theme selected item template key");
+        AssertEqual(true, themeResources.Contains("MvpBasedOnButtonStyle"), "app theme BasedOn Button style key");
         AssertEqual(true, themeResources.Contains("MvpTemplateButtonStyle"), "app theme template Button style key");
         var panelBrush = Require<SolidColorBrush>(window.FindResource("MvpPanelBrush"), "MVP panel brush");
         var buttonStyle = Require<Style>(application.TryFindResource(typeof(Button)), "app Button style");
+        var basedOnButtonStyle = Require<Style>(
+            application.TryFindResource("MvpBasedOnButtonStyle"),
+            "BasedOn Button style");
         var templateButtonStyle = Require<Style>(
             application.TryFindResource("MvpTemplateButtonStyle"),
             "template Button style");
@@ -654,6 +658,8 @@ internal static class MvpSelfTest
             "selected item DataTemplate");
         AssertEqual(Color.FromRgb(0xF4, 0xF7, 0xFB), panelBrush.Color, "MVP panel brush color");
         AssertEqual(typeof(Button), buttonStyle.TargetType, "app Button implicit style target type");
+        AssertEqual(typeof(Button), basedOnButtonStyle.TargetType, "BasedOn Button style target type");
+        AssertEqual(buttonStyle, basedOnButtonStyle.BasedOn, "BasedOn Button style base style");
         AssertEqual(typeof(Button), templateButtonStyle.TargetType, "template Button style target type");
         AssertEqual(typeof(MvpItem), selectedItemTemplate.DataType, "selected item template data type");
         var mainMenu = Require<Menu>(window.FindName("MainMenu"), "main Menu");
@@ -847,6 +853,9 @@ internal static class MvpSelfTest
             window.FindName("SelectorItemsList"),
             "selector items ListBox");
         var templateButton = Require<Button>(window.FindName("TemplateButton"), "template Button");
+        var basedOnStyleButton = Require<Button>(
+            window.FindName("BasedOnStyleButton"),
+            "BasedOn style Button");
         var validationTextBox = Require<TextBox>(
             window.FindName("ValidationTextBox"),
             "validation TextBox");
@@ -960,6 +969,7 @@ internal static class MvpSelfTest
             inactiveItemTemplate,
             itemTemplateSelector,
             selectorItemContainerStyle);
+        ValidateBasedOnButton(basedOnStyleButton, basedOnButtonStyle);
         ValidateTemplateButton(window, templateButton, templateButtonStyle);
         ValidateValidation(window, viewModel, validationTextBox, validationEchoText);
         ValidateBindingGroup(
@@ -1919,6 +1929,21 @@ internal static class MvpSelfTest
         AssertEqual("True", trigger.Value?.ToString(), "selector item container trigger value");
         AssertEqual(FrameworkElement.TagProperty, triggerSetter.Property, "selector item container trigger property");
         AssertEqual("ActiveContainer", triggerSetter.Value, "selector item container trigger value");
+    }
+
+    private static void ValidateBasedOnButton(Button button, Style style)
+    {
+        AssertEqual(style, button.Style, "BasedOn Button style");
+        AssertEqual("BasedOn style", button.Content, "BasedOn Button content");
+        AssertEqual(3, style.Setters.Count, "BasedOn Button derived setter count");
+        AssertEqual("BasedOnStyle", button.Tag, "BasedOn Button derived Tag setter");
+        AssertEqual(104.0, button.MinWidth, "BasedOn Button inherited MinWidth setter");
+        AssertEqual(new Thickness(10, 5, 10, 5), button.Padding, "BasedOn Button inherited Padding setter");
+
+        var background = Require<SolidColorBrush>(button.Background, "BasedOn Button background");
+        var foreground = Require<SolidColorBrush>(button.Foreground, "BasedOn Button foreground");
+        AssertEqual(Color.FromRgb(0x24, 0x6B, 0xFE), background.Color, "BasedOn Button derived background color");
+        AssertEqual(Colors.White, foreground.Color, "BasedOn Button derived foreground color");
     }
 
     private static void ValidateTemplateButton(Window window, Button button, Style style)

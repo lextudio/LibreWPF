@@ -6267,6 +6267,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<WrapPanel />", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"TemplateButton\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style=\"{StaticResource MvpTemplateButtonStyle}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"BasedOnStyleButton\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Style=\"{StaticResource MvpBasedOnButtonStyle}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("VisualStateManager states", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"MvpValidationErrorTemplate\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("AdornedElementPlaceholder", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6470,6 +6472,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("actions menu unchecked view model state", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("app merged theme ResourceDictionary", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("app Button implicit style target type", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("app theme BasedOn Button style key", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("BasedOn Button style base style", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateBasedOnButton(basedOnStyleButton, basedOnButtonStyle)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("BasedOn Button inherited MinWidth setter", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("BasedOn Button derived background color", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("NavigationFrame.Navigate(new Uri(\"DetailsPage.xaml\", UriKind.Relative))", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnAboutMenuItemClick", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("var dialog = new AboutWindow();", mvpMainWindowCodeBehind, StringComparison.Ordinal);
@@ -6565,6 +6572,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Key=\"SelectedItemTemplate\"", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("DataType=\"{x:Type local:MvpItem}\"", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("TemplateNameText", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"MvpBasedOnButtonStyle\"", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("BasedOn=\"{StaticResource {x:Type Button}}\"", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"MvpTemplateButtonStyle\"", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("<ControlTemplate TargetType=\"{x:Type Button}\">", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("TemplateBorder", mvpThemeXaml, StringComparison.Ordinal);

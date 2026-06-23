@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -298,6 +299,38 @@ public sealed class RelayCommand : ICommand
     }
 }
 
+public sealed class MvpActiveTextConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        return value is bool active && active ? "Active" : "Inactive";
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotSupportedException();
+    }
+}
+
+public sealed class MvpItemSummaryConverter : IMultiValueConverter
+{
+    public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+    {
+        string name = values.Length > 0 && values[0] is string itemName ? itemName : "None";
+        string category = values.Length > 1 && values[1] is string itemCategory ? itemCategory : "Uncategorized";
+        double progress = values.Length > 2 && values[2] is double itemProgress ? itemProgress : 0.0;
+
+        return string.Create(
+            culture,
+            $"{name} / {category} / {progress:0}%");
+    }
+
+    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+    {
+        throw new NotSupportedException();
+    }
+}
+
 internal static class MvpSelfTest
 {
     public static void Validate(MainWindow window)
@@ -322,6 +355,12 @@ internal static class MvpSelfTest
         var templateButtonStyle = Require<Style>(
             application.TryFindResource("MvpTemplateButtonStyle"),
             "template Button style");
+        var activeTextConverter = Require<MvpActiveTextConverter>(
+            window.FindResource("MvpActiveTextConverter"),
+            "active text converter");
+        var itemSummaryConverter = Require<MvpItemSummaryConverter>(
+            window.FindResource("MvpItemSummaryConverter"),
+            "item summary converter");
         var selectedItemTemplate = Require<DataTemplate>(
             application.TryFindResource("SelectedItemTemplate"),
             "selected item DataTemplate");
@@ -344,6 +383,9 @@ internal static class MvpSelfTest
         Require<TextBox>(window.FindName("NameTextBox"), "name TextBox");
         Require<ListBox>(window.FindName("ItemsList"), "items ListBox");
         var itemsDataGrid = Require<DataGrid>(window.FindName("ItemsDataGrid"), "items DataGrid");
+        var selectedItemSummaryText = Require<TextBlock>(
+            window.FindName("SelectedItemSummaryText"),
+            "selected item summary TextBlock");
         var activeOnlyCheckBox = Require<CheckBox>(
             window.FindName("ActiveOnlyCheckBox"),
             "active-only CheckBox");
@@ -394,7 +436,8 @@ internal static class MvpSelfTest
         AssertEqual("Name", GetColumnBindingPath(itemsDataGrid.Columns[0]), "DataGrid name column binding");
         AssertEqual("Category", GetColumnBindingPath(itemsDataGrid.Columns[1]), "DataGrid category column binding");
         AssertEqual("IsActive", GetColumnBindingPath(itemsDataGrid.Columns[2]), "DataGrid active column binding");
-        ValidateCollectionView(window, viewModel, groupedItemsList, activeOnlyCheckBox);
+        ValidateCollectionView(window, viewModel, groupedItemsList, activeOnlyCheckBox, activeTextConverter);
+        ValidateSelectedSummaryBinding(selectedItemSummaryText, itemSummaryConverter);
         AssertEqual(viewModel.SelectedItem, selectedItemContent.Content, "selected item content");
         AssertEqual(
             selectedItemTemplate,
@@ -414,6 +457,7 @@ internal static class MvpSelfTest
         AssertEqual("Name: Alpha", summaryNameText.Text, "summary initial name text");
         AssertEqual("Category: Framework", summaryCategoryText.Text, "summary initial category text");
         AssertEqual("Progress: 35%", summaryProgressText.Text, "summary initial progress text");
+        AssertEqual("Alpha / Framework / 35%", selectedItemSummaryText.Text, "initial selected summary text");
         ValidateNavigation(window, navigationFrame, detailsNavigationButton);
 
         AssertEqual(true, MainWindow.RefreshStatusCommand.CanExecute(null, window), "refresh command initial CanExecute state");
@@ -444,13 +488,15 @@ internal static class MvpSelfTest
         AssertEqual("Name: Validated", summaryNameText.Text, "summary updated name text");
         AssertEqual("Category: Input", summaryCategoryText.Text, "summary updated category text");
         AssertEqual("Progress: 72%", summaryProgressText.Text, "summary updated progress text");
+        AssertEqual("Validated / Input / 72%", selectedItemSummaryText.Text, "updated selected summary text");
     }
 
     private static void ValidateCollectionView(
         Window window,
         MainViewModel viewModel,
         ListBox groupedItemsList,
-        CheckBox activeOnlyCheckBox)
+        CheckBox activeOnlyCheckBox,
+        MvpActiveTextConverter activeTextConverter)
     {
         var itemsViewSource = Require<CollectionViewSource>(
             window.FindResource("ItemsViewSource"),
@@ -468,6 +514,7 @@ internal static class MvpSelfTest
         AssertEqual(false, activeOnlyCheckBox.IsChecked == true, "active-only initial check state");
         AssertEqual(false, viewModel.ShowActiveOnly, "active-only initial view model state");
         AssertEqual(itemsViewSource.View, groupedItemsList.ItemsSource, "grouped ListBox ItemsSource view");
+        ValidateGroupedItemTemplate(groupedItemsList.ItemTemplate, activeTextConverter);
 
         var initialItems = CopyItems(itemsViewSource.View);
         AssertEqual(2, initialItems.Count, "initial collection view item count");
@@ -493,6 +540,37 @@ internal static class MvpSelfTest
         AssertEqual(2, restoredItems.Count, "restored collection view item count");
     }
 
+    private static void ValidateGroupedItemTemplate(DataTemplate template, MvpActiveTextConverter converter)
+    {
+        var root = Require<FrameworkElement>(
+            template.LoadContent(),
+            "grouped item template root");
+        var activeText = Require<TextBlock>(
+            root.FindName("GroupedItemActiveText"),
+            "grouped item active TextBlock");
+        var binding = Require<Binding>(
+            BindingOperations.GetBinding(activeText, TextBlock.TextProperty),
+            "grouped item active binding");
+
+        AssertEqual("IsActive", binding.Path.Path, "grouped item active binding path");
+        AssertEqual(converter, binding.Converter, "grouped item active converter");
+        AssertEqual("Active", converter.Convert(true, typeof(string), null!, CultureInfo.InvariantCulture), "active converter true text");
+        AssertEqual("Inactive", converter.Convert(false, typeof(string), null!, CultureInfo.InvariantCulture), "active converter false text");
+    }
+
+    private static void ValidateSelectedSummaryBinding(TextBlock textBlock, MvpItemSummaryConverter converter)
+    {
+        var binding = Require<MultiBinding>(
+            BindingOperations.GetMultiBinding(textBlock, TextBlock.TextProperty),
+            "selected summary MultiBinding");
+
+        AssertEqual(converter, binding.Converter, "selected summary converter");
+        AssertEqual(3, binding.Bindings.Count, "selected summary binding count");
+        AssertEqual("SelectedItem.Name", GetBindingPath(binding.Bindings[0]), "selected summary name path");
+        AssertEqual("SelectedItem.Category", GetBindingPath(binding.Bindings[1]), "selected summary category path");
+        AssertEqual("Progress", GetBindingPath(binding.Bindings[2]), "selected summary progress path");
+    }
+
     private static List<MvpItem> CopyItems(IEnumerable source)
     {
         var items = new List<MvpItem>();
@@ -509,6 +587,13 @@ internal static class MvpSelfTest
         return column is DataGridBoundColumn { Binding: Binding binding }
             ? binding.Path.Path
             : throw new InvalidOperationException($"Expected {column.Header} column to have a Binding.");
+    }
+
+    private static string GetBindingPath(BindingBase binding)
+    {
+        return binding is Binding { Path: { } path }
+            ? path.Path
+            : throw new InvalidOperationException("Expected a standard Binding with a path.");
     }
 
     private static void ValidateSelectedItemTemplate(DataTemplate template)

@@ -23,6 +23,8 @@
             Command="{x:Static local:MainWindow.RefreshStatusCommand}" />
     </Window.InputBindings>
     <Window.Resources>
+        <local:MvpActiveTextConverter x:Key="MvpActiveTextConverter" />
+        <local:MvpItemSummaryConverter x:Key="MvpItemSummaryConverter" />
         <CollectionViewSource
             x:Key="ItemsViewSource"
             Filter="OnItemsViewSourceFilter">
@@ -224,6 +226,21 @@
                         <local:SummaryPanel
                             x:Name="SummaryPanel"
                             Margin="0,18,0,0" />
+                        <TextBlock
+                            Margin="0,18,0,4"
+                            FontWeight="SemiBold"
+                            Text="Selected summary" />
+                        <TextBlock
+                            x:Name="SelectedItemSummaryText"
+                            TextWrapping="Wrap">
+                            <TextBlock.Text>
+                                <MultiBinding Converter="{StaticResource MvpItemSummaryConverter}">
+                                    <Binding Path="SelectedItem.Name" />
+                                    <Binding Path="SelectedItem.Category" />
+                                    <Binding Path="Progress" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
                     </StackPanel>
                 </Grid>
             </TabItem>
@@ -274,8 +291,9 @@
                                         MinWidth="120"
                                         Text="{Binding Name}" />
                                     <TextBlock
+                                        x:Name="GroupedItemActiveText"
                                         Foreground="#5B6472"
-                                        Text="{Binding IsActive, StringFormat=Active: {0}}" />
+                                        Text="{Binding IsActive, Converter={StaticResource MvpActiveTextConverter}}" />
                                 </StackPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>

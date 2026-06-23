@@ -6094,6 +6094,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("xmlns:componentModel=\"clr-namespace:System.ComponentModel;assembly=WindowsBase\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<Window.CommandBindings>", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<Window.InputBindings>", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("MvpActiveTextConverter", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("MvpItemSummaryConverter", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"ItemsViewSource\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Filter=\"OnItemsViewSourceFilter\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<CollectionViewSource.SortDescriptions>", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6106,11 +6108,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("IsCheckable=\"True\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"RefreshMenuItem\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"CommandStatusText\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"SelectedItemSummaryText\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<MultiBinding Converter=\"{StaticResource MvpItemSummaryConverter}\">", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<Binding Path=\"SelectedItem.Name\" />", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ActiveOnlyCheckBox\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Checked=\"OnActiveOnlyFilterChanged\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Unchecked=\"OnActiveOnlyFilterChanged\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"GroupedItemsList\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{Binding Source={StaticResource ItemsViewSource}}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"GroupedItemActiveText\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Converter={StaticResource MvpActiveTextConverter}", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SelectedItemContent\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ContentTemplate=\"{StaticResource SelectedItemTemplate}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"TemplateButton\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6135,6 +6142,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("OnActiveOnlyFilterChanged", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RefreshItemsView", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ShowActiveOnly", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MvpActiveTextConverter : IValueConverter", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MvpItemSummaryConverter : IMultiValueConverter", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnRefreshStatusCommandCanExecute", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnRefreshStatusCommandExecuted", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("CommandStatusText", mvpMainWindowCodeBehind, StringComparison.Ordinal);
@@ -6142,6 +6151,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CollectionViewSource source", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("items PropertyGroupDescription", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("active-only checked view model state", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateSelectedSummaryBinding", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("selected summary MultiBinding", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("updated selected summary text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateSelectedItemTemplate", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateTemplateButton", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GetTextBindingPath", mvpMainWindowCodeBehind, StringComparison.Ordinal);

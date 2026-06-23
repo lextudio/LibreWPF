@@ -526,7 +526,9 @@ internal static class Program
         Assembly proGpuVector = loadContext.LoadFromAssemblyName(new AssemblyName("ProGPU.Vector"));
         Assembly silkNetMaths = loadContext.LoadFromAssemblyName(new AssemblyName("Silk.NET.Maths"));
         Assembly silkNetWebGpu = loadContext.LoadFromAssemblyName(new AssemblyName("Silk.NET.WebGPU"));
+        Assembly windowsBase = loadContext.LoadFromAssemblyName(new AssemblyName("WindowsBase"));
         Assembly presentationCore = loadContext.LoadFromAssemblyName(new AssemblyName("PresentationCore"));
+        Assembly presentationFramework = loadContext.LoadFromAssemblyName(new AssemblyName("PresentationFramework"));
         RegisterSdkNativeResolver(silkNetWebGpu, inputs.AppOutputRoot);
         RegisterSdkNativeResolver(proGpuBackend, inputs.AppOutputRoot);
 
@@ -593,7 +595,6 @@ internal static class Program
             ?? throw new MissingMethodException(portablePresentationSourceType.FullName, "SetClientSize");
         AssertEqual(typeof(void), setPortableClientSize.ReturnType, "SDK portable presentation source client-size return type");
 
-        Assembly presentationFramework = loadContext.LoadFromAssemblyName(new AssemblyName("PresentationFramework"));
         Type portableActivationType = GetRequiredType(presentationFramework, "System.Windows.PortableWindowActivationService");
         MethodInfo setPortablePosition = portableActivationType.GetMethod(
             "SetPosition",
@@ -712,8 +713,9 @@ internal static class Program
             inputs.AppOutputRoot,
             proGpuWpf,
             proGpuBackend,
-            proGpuScene,
-            proGpuVector,
+            presentationCore,
+            presentationFramework,
+            windowsBase,
             silkNetWebGpu,
             "SDK");
         AssertPackagedLegacyRenderOverloadFillsPhysicalTarget(
@@ -870,19 +872,19 @@ internal static class Program
         string nativeAssetRoot,
         Assembly proGpuWpf,
         Assembly proGpuBackend,
-        Assembly proGpuScene,
-        Assembly proGpuVector,
+        Assembly presentationCore,
+        Assembly presentationFramework,
+        Assembly windowsBase,
         Assembly silkNetWebGpu,
         string descriptionPrefix)
     {
         Type compositionTargetType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfCompositionTarget");
+        Type retainedSinkType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.Composition.ProGpuRetainedCompositionCommandSink");
         Type gpuTextureType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTexture");
         Type gpuTextureAlphaModeType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTextureAlphaMode");
-        Type drawingVisualType = GetRequiredType(proGpuScene, "ProGPU.Scene.DrawingVisual");
-        Type rectType = GetRequiredType(proGpuScene, "ProGPU.Scene.Rect");
-        Type solidColorBrushType = GetRequiredType(proGpuVector, "ProGPU.Vector.SolidColorBrush");
         Type textureFormatType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureFormat");
         Type textureUsageType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureUsage");
+        object wpfVisual = CreateRedWpfVisual(presentationCore, presentationFramework, windowsBase);
 
         PreloadNativeAsset(nativeAssetRoot, "wgpu", $"{descriptionPrefix} WebGPU native runtime");
         using IDisposable currentDirectory = PushCurrentDirectory(nativeAssetRoot);
@@ -906,7 +908,7 @@ internal static class Program
 
         try
         {
-            _ = Invoke(
+            object frame = Invoke(
                 target,
                 "BeginDrawingFrame",
                 840u,
@@ -916,12 +918,19 @@ internal static class Program
                 840u,
                 2.0,
                 2.0);
-            object redBrush = Create(solidColorBrushType, 0xF02020FFu);
-            object rectangle = Create(rectType, 0f, 0f, 420f, 840f);
-            object drawingVisual = Create(drawingVisualType);
-            object drawingContext = GetProperty(drawingVisual, "Context");
-            InvokeVoid(drawingContext, "DrawRectangle", redBrush, null, rectangle);
-            InvokeVoid(GetProperty(target, "RetainedWpfVisualRoot"), "AddChild", drawingVisual);
+            object sink = Create(
+                retainedSinkType,
+                frame,
+                GetProperty(target, "Context"),
+                GetProperty(target, "Viewport3DTextureCache"));
+            try
+            {
+                Invoke(target, "ReplayVisualSubtree", wpfVisual, sink, null, null);
+            }
+            finally
+            {
+                (sink as IDisposable)?.Dispose();
+            }
 
             MethodInfo render = FindMethodByParameterNames(
                 compositionTargetType,
@@ -956,6 +965,27 @@ internal static class Program
             (texture as IDisposable)?.Dispose();
             (target as IDisposable)?.Dispose();
         }
+    }
+
+    private static object CreateRedWpfVisual(
+        Assembly presentationCore,
+        Assembly presentationFramework,
+        Assembly windowsBase)
+    {
+        Type borderType = GetRequiredType(presentationFramework, "System.Windows.Controls.Border");
+        Type colorType = GetRequiredType(presentationCore, "System.Windows.Media.Color");
+        Type solidColorBrushType = GetRequiredType(presentationCore, "System.Windows.Media.SolidColorBrush");
+        Type rectType = GetRequiredType(windowsBase, "System.Windows.Rect");
+        Type sizeType = GetRequiredType(windowsBase, "System.Windows.Size");
+        object red = InvokeStatic(colorType, "FromRgb", (byte)0xFF, (byte)0x00, (byte)0x00);
+        object border = Create(borderType);
+        SetProperty(border, "Width", 420.0);
+        SetProperty(border, "Height", 840.0);
+        SetProperty(border, "Background", Create(solidColorBrushType, red));
+        InvokeVoid(border, "Measure", Create(sizeType, 420.0, 840.0));
+        InvokeVoid(border, "Arrange", Create(rectType, 0.0, 0.0, 420.0, 840.0));
+        InvokeVoid(border, "UpdateLayout");
+        return border;
     }
 
     private static void AssertPackagedLegacyRenderOverloadFillsPhysicalTarget(

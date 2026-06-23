@@ -6233,6 +6233,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<WrapPanel />", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"TemplateButton\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style=\"{StaticResource MvpTemplateButtonStyle}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("VisualStateManager states", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"MvpValidationErrorTemplate\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("AdornedElementPlaceholder", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ValidationTextBox\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6438,6 +6439,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("explorer ListView updated selected item", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GetTemplateItemsSourcePath", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"IsActive\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("VisualStateManager.GetVisualStateGroups(border)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Storyboard.GetTargetName(pressedAnimation)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("template Button Pressed animation target opacity", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("template Button Pressed animation duration", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("x:Class=\"ProGPU.Wpf.MvpApp.AboutWindow\"", mvpAboutWindowXaml, StringComparison.Ordinal);
         Assert.Contains("WindowStartupLocation=\"CenterOwner\"", mvpAboutWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SizeToContent=\"Height\"", mvpAboutWindowXaml, StringComparison.Ordinal);
@@ -6461,6 +6466,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Key=\"MvpTemplateButtonStyle\"", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("<ControlTemplate TargetType=\"{x:Type Button}\">", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("TemplateBorder", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("<VisualStateManager.VisualStateGroups>", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("<VisualStateGroup x:Name=\"CommonStates\">", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("<VisualState x:Name=\"Pressed\">", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("Storyboard.TargetName=\"TemplateContentPresenter\"", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("To=\"0.72\"", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("<ControlTemplate.Triggers>", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("<Style TargetType=\"{x:Type Button}\">", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("<Style TargetType=\"{x:Type TextBlock}\">", mvpThemeXaml, StringComparison.Ordinal);

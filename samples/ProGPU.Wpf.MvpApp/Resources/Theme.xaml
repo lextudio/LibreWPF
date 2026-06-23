@@ -61,6 +61,28 @@
                         BorderBrush="#1749AB"
                         BorderThickness="1"
                         CornerRadius="3">
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup x:Name="CommonStates">
+                                <VisualState x:Name="Normal">
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="TemplateContentPresenter"
+                                            Storyboard.TargetProperty="Opacity"
+                                            To="1.0"
+                                            Duration="0:0:0" />
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="Pressed">
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="TemplateContentPresenter"
+                                            Storyboard.TargetProperty="Opacity"
+                                            To="0.72"
+                                            Duration="0:0:0" />
+                                    </Storyboard>
+                                </VisualState>
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
                         <ContentPresenter
                             x:Name="TemplateContentPresenter"
                             HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"

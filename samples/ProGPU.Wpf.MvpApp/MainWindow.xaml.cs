@@ -1688,6 +1688,37 @@ internal static class MvpSelfTest
         AssertEqual(button.Background, border.Background, "template Button background TemplateBinding");
         AssertEqual("Templated action", contentPresenter.Content, "template Button content TemplateBinding");
         AssertEqual(1.0, border.Opacity, "template Button enabled opacity");
+        AssertEqual(1.0, contentPresenter.Opacity, "template Button Normal visual state opacity");
+
+        var visualStateGroups = VisualStateManager.GetVisualStateGroups(border);
+        AssertEqual(1, visualStateGroups.Count, "template Button VisualStateGroup count");
+        var commonStates = Require<VisualStateGroup>(
+            visualStateGroups[0],
+            "template Button CommonStates group");
+        AssertEqual("CommonStates", commonStates.Name, "template Button VisualStateGroup name");
+        AssertEqual(2, commonStates.States.Count, "template Button VisualState count");
+        var normalState = Require<VisualState>(
+            commonStates.States[0],
+            "template Button Normal VisualState");
+        var pressedState = Require<VisualState>(
+            commonStates.States[1],
+            "template Button Pressed VisualState");
+        AssertEqual("Normal", normalState.Name, "template Button Normal VisualState name");
+        AssertEqual("Pressed", pressedState.Name, "template Button Pressed VisualState name");
+        AssertEqual(1, pressedState.Storyboard?.Children.Count ?? 0, "template Button Pressed storyboard child count");
+        var pressedAnimation = Require<DoubleAnimation>(
+            pressedState.Storyboard?.Children[0],
+            "template Button Pressed DoubleAnimation");
+        AssertEqual(
+            "TemplateContentPresenter",
+            Storyboard.GetTargetName(pressedAnimation),
+            "template Button Pressed animation target");
+        AssertEqual(
+            "Opacity",
+            Storyboard.GetTargetProperty(pressedAnimation).Path,
+            "template Button Pressed animation property");
+        AssertEqual(0.72, pressedAnimation.To, "template Button Pressed animation target opacity");
+        AssertEqual(TimeSpan.Zero, pressedAnimation.Duration.TimeSpan, "template Button Pressed animation duration");
 
         button.IsEnabled = false;
         DrainDispatcher(window);

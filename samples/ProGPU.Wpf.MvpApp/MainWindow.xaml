@@ -992,7 +992,7 @@
                             <TextBlock
                                 Margin="0,8,0,0"
                                 TextWrapping="Wrap"
-                                Text="The button is styled through a compiled ControlTemplate, TemplateBinding, named parts, and a property trigger." />
+                                Text="The button is styled through a compiled ControlTemplate, TemplateBinding, named parts, VisualStateManager states, and a property trigger." />
                         </StackPanel>
                     </Border>
                 </Grid>

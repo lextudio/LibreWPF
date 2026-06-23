@@ -4157,6 +4157,29 @@ internal static class MvpSelfTest
         DrainDispatcher(window);
         AssertEqual(1, beginInvokeCount, "dispatcher BeginInvoke execution count");
         AssertEqual(DispatcherOperationStatus.Completed, operation.Status, "dispatcher BeginInvoke status");
+
+        ValidateDispatcherTimer(window);
+    }
+
+    private static void ValidateDispatcherTimer(Window window)
+    {
+        int tickCount = 0;
+        var timer = new DispatcherTimer(DispatcherPriority.Background, window.Dispatcher)
+        {
+            Interval = TimeSpan.FromMilliseconds(1)
+        };
+        timer.Tick += (_, _) =>
+        {
+            tickCount++;
+            timer.Stop();
+        };
+
+        AssertEqual(false, timer.IsEnabled, "dispatcher timer initial IsEnabled state");
+        timer.Start();
+        AssertEqual(true, timer.IsEnabled, "dispatcher timer started IsEnabled state");
+        PumpDispatcherUntil(window, () => tickCount > 0, TimeSpan.FromSeconds(1), "dispatcher timer tick");
+        AssertEqual(1, tickCount, "dispatcher timer tick count");
+        AssertEqual(false, timer.IsEnabled, "dispatcher timer stopped IsEnabled state");
     }
 
     private static void ValidateMessageBox(MainWindow window, Button button, TextBlock statusText)
@@ -4535,6 +4558,33 @@ internal static class MvpSelfTest
         dispatcherObject.Dispatcher.Invoke(
             static () => { },
             DispatcherPriority.ApplicationIdle);
+    }
+
+    private static void PumpDispatcherUntil(
+        DispatcherObject dispatcherObject,
+        Func<bool> condition,
+        TimeSpan timeout,
+        string description)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (!condition())
+        {
+            dispatcherObject.Dispatcher.Invoke(
+                static () => { },
+                DispatcherPriority.Background);
+
+            if (condition())
+            {
+                return;
+            }
+
+            if (DateTime.UtcNow >= deadline)
+            {
+                throw new InvalidOperationException($"Timed out waiting for {description}.");
+            }
+
+            System.Threading.Thread.Sleep(1);
+        }
     }
 
     private static void UpdateBinding(DependencyObject target, DependencyProperty property)

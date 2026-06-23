@@ -331,6 +331,20 @@ public sealed class MvpItemSummaryConverter : IMultiValueConverter
     }
 }
 
+public sealed class MvpItemTemplateSelector : DataTemplateSelector
+{
+    public DataTemplate? ActiveTemplate { get; set; }
+
+    public DataTemplate? InactiveTemplate { get; set; }
+
+    public override DataTemplate? SelectTemplate(object item, DependencyObject container)
+    {
+        return item is MvpItem { IsActive: true }
+            ? ActiveTemplate
+            : InactiveTemplate;
+    }
+}
+
 internal static class MvpSelfTest
 {
     public static void Validate(MainWindow window)
@@ -361,6 +375,18 @@ internal static class MvpSelfTest
         var itemSummaryConverter = Require<MvpItemSummaryConverter>(
             window.FindResource("MvpItemSummaryConverter"),
             "item summary converter");
+        var activeItemTemplate = Require<DataTemplate>(
+            window.FindResource("MvpActiveItemTemplate"),
+            "active selector item DataTemplate");
+        var inactiveItemTemplate = Require<DataTemplate>(
+            window.FindResource("MvpInactiveItemTemplate"),
+            "inactive selector item DataTemplate");
+        var itemTemplateSelector = Require<MvpItemTemplateSelector>(
+            window.FindResource("MvpItemTemplateSelector"),
+            "item template selector");
+        var selectorItemContainerStyle = Require<Style>(
+            window.FindResource("MvpSelectorItemContainerStyle"),
+            "selector item container style");
         var selectedItemTemplate = Require<DataTemplate>(
             application.TryFindResource("SelectedItemTemplate"),
             "selected item DataTemplate");
@@ -395,6 +421,9 @@ internal static class MvpSelfTest
         var selectedItemContent = Require<ContentControl>(
             window.FindName("SelectedItemContent"),
             "selected item ContentControl");
+        var selectorItemsList = Require<ListBox>(
+            window.FindName("SelectorItemsList"),
+            "selector items ListBox");
         var templateButton = Require<Button>(window.FindName("TemplateButton"), "template Button");
         var summaryPanel = Require<SummaryPanel>(window.FindName("SummaryPanel"), "summary Panel");
         var summaryNameText = Require<TextBlock>(
@@ -444,6 +473,13 @@ internal static class MvpSelfTest
             selectedItemContent.ContentTemplate,
             "selected item content template");
         ValidateSelectedItemTemplate(selectedItemTemplate);
+        ValidateTemplateSelector(
+            viewModel,
+            selectorItemsList,
+            activeItemTemplate,
+            inactiveItemTemplate,
+            itemTemplateSelector,
+            selectorItemContainerStyle);
         ValidateTemplateButton(window, templateButton, templateButtonStyle);
         AssertEqual(viewModel.Nodes, nodesTreeView.ItemsSource, "TreeView items source");
         AssertEqual(2, viewModel.Nodes.Count, "TreeView root node count");
@@ -614,6 +650,68 @@ internal static class MvpSelfTest
         AssertEqual("Name", GetTextBindingPath(nameText), "selected item template name binding path");
         AssertEqual("Category", GetTextBindingPath(categoryText), "selected item template category binding path");
         AssertEqual("IsActive", GetTextBindingPath(activeText), "selected item template active binding path");
+    }
+
+    private static void ValidateTemplateSelector(
+        MainViewModel viewModel,
+        ListBox selectorItemsList,
+        DataTemplate activeTemplate,
+        DataTemplate inactiveTemplate,
+        MvpItemTemplateSelector selector,
+        Style containerStyle)
+    {
+        AssertEqual(viewModel.Items, selectorItemsList.ItemsSource, "selector ListBox items source");
+        AssertEqual(selector, selectorItemsList.ItemTemplateSelector, "selector ListBox template selector");
+        AssertEqual(containerStyle, selectorItemsList.ItemContainerStyle, "selector ListBox item container style");
+        AssertEqual(typeof(ListBoxItem), containerStyle.TargetType, "selector item container style target type");
+        AssertEqual(activeTemplate, selector.ActiveTemplate, "active selector template");
+        AssertEqual(inactiveTemplate, selector.InactiveTemplate, "inactive selector template");
+        AssertEqual(activeTemplate, selector.SelectTemplate(viewModel.Items[0], selectorItemsList), "active selector result");
+        AssertEqual(inactiveTemplate, selector.SelectTemplate(viewModel.Items[1], selectorItemsList), "inactive selector result");
+        Require<WrapPanel>(
+            selectorItemsList.ItemsPanel.LoadContent(),
+            "selector ListBox ItemsPanel root");
+
+        ValidateSelectorTemplate(
+            activeTemplate,
+            "SelectorActiveNameText",
+            "active selector template binding path");
+        ValidateSelectorTemplate(
+            inactiveTemplate,
+            "SelectorInactiveNameText",
+            "inactive selector template binding path");
+        ValidateSelectorItemContainerStyle(containerStyle);
+    }
+
+    private static void ValidateSelectorTemplate(
+        DataTemplate template,
+        string name,
+        string description)
+    {
+        var root = Require<FrameworkElement>(
+            template.LoadContent(),
+            description);
+        var textBlock = Require<TextBlock>(
+            root.FindName(name),
+            description);
+
+        AssertEqual("Name", GetTextBindingPath(textBlock), description);
+    }
+
+    private static void ValidateSelectorItemContainerStyle(Style style)
+    {
+        AssertEqual(2, style.Setters.Count, "selector item container setter count");
+        var trigger = Require<DataTrigger>(
+            style.Triggers[0],
+            "selector item container DataTrigger");
+        var triggerSetter = Require<Setter>(
+            trigger.Setters[0],
+            "selector item container trigger setter");
+
+        AssertEqual("IsActive", GetBindingPath(trigger.Binding), "selector item container trigger binding");
+        AssertEqual("True", trigger.Value?.ToString(), "selector item container trigger value");
+        AssertEqual(FrameworkElement.TagProperty, triggerSetter.Property, "selector item container trigger property");
+        AssertEqual("ActiveContainer", triggerSetter.Value, "selector item container trigger value");
     }
 
     private static void ValidateTemplateButton(Window window, Button button, Style style)

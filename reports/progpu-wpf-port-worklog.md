@@ -1921,6 +1921,7 @@
 - Added MVP `DispatcherTimer` coverage. The SDK-built sample now validates a real background-priority `DispatcherTimer` tick through the WPF dispatcher pump, including `IsEnabled` transitions and single-tick stop behavior, so timer-driven simple WPF app logic stays in reused managed WPF while the ProGPU/Silk.NET host owns native activation and rendering.
 - Extended the external no-source-change SDK smoke app with app-owned `Loaded` plus `DispatcherTimer` behavior. The generated external WPF app now starts a normal background-priority `DispatcherTimer`, updates a bound property through `INotifyPropertyChanged`, and the `Application.Run()` smoke validates the tick and bound text from SDK-switched app code with no ProGPU-specific calls.
 - Added MVP and external SDK `DispatcherSynchronizationContext` coverage. The SDK-built MVP app now validates captured WPF dispatcher synchronization-context identity plus `Post`, `Send`, and `CreateCopy()` dispatch through the reused WindowsBase dispatcher; the generated external SDK app validates the same behavior during real `Application.Run()`, covering common `async`/continuation app logic without ProGPU-specific code.
+- Added MVP and external SDK async-continuation coverage. The MVP self-test now starts an `await Task.Yield()` continuation from a dispatcher operation and verifies it resumes with dispatcher access, while the generated external SDK app starts an async continuation from `Loaded`, updates a bound property, and validates the result during real `Application.Run()`.
 
 ## Open Porting Items
 

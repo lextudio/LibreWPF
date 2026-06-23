@@ -8,6 +8,7 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
@@ -4161,6 +4162,7 @@ internal static class MvpSelfTest
 
         ValidateDispatcherTimer(window);
         ValidateDispatcherSynchronizationContext(window);
+        ValidateDispatcherAsyncContinuation(window);
     }
 
     private static void ValidateDispatcherTimer(Window window)
@@ -4221,6 +4223,31 @@ internal static class MvpSelfTest
             state: null);
         DrainDispatcher(window);
         AssertEqual(true, copyPostHasAccess, "dispatcher synchronization context copy Post access");
+    }
+
+    private static void ValidateDispatcherAsyncContinuation(Window window)
+    {
+        Task? continuationTask = null;
+        var continuationHasAccess = false;
+        window.Dispatcher.Invoke(
+            () => continuationTask = CaptureDispatcherContinuationAsync(
+                window,
+                hasAccess => continuationHasAccess = hasAccess),
+            DispatcherPriority.Background);
+
+        PumpDispatcherUntil(
+            window,
+            () => continuationTask?.IsCompleted == true,
+            TimeSpan.FromSeconds(1),
+            "dispatcher async continuation");
+        continuationTask?.GetAwaiter().GetResult();
+        AssertEqual(true, continuationHasAccess, "dispatcher async continuation access");
+    }
+
+    private static async Task CaptureDispatcherContinuationAsync(Window window, Action<bool> complete)
+    {
+        await Task.Yield();
+        complete(window.Dispatcher.CheckAccess());
     }
 
     private static void ValidateMessageBox(MainWindow window, Button button, TextBlock statusText)

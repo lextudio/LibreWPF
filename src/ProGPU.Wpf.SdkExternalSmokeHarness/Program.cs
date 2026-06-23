@@ -1207,6 +1207,9 @@ internal static class Program
                         x:Name="ExternalDispatcherTimerText"
                         Text="{Binding ExternalDispatcherTimerStatus}" />
                     <TextBlock
+                        x:Name="ExternalAsyncContinuationText"
+                        Text="{Binding ExternalAsyncContinuationStatus}" />
+                    <TextBlock
                         x:Name="ExternalLocalizedText"
                         x:Uid="ExternalLocalizedText"
                         Localization.Attributes="$Content (Readable Modifiable Text)"
@@ -2334,6 +2337,7 @@ internal static class Program
             using System.Windows.Navigation;
             using System.Windows.Shell;
             using System.Windows.Threading;
+            using System.Threading.Tasks;
             using ExternalSdkLibrary;
             using Microsoft.Win32;
 
@@ -2515,6 +2519,21 @@ internal static class Program
                     }
                 }
 
+                private string _externalAsyncContinuationStatus = "async waiting";
+
+                public string ExternalAsyncContinuationStatus
+                {
+                    get => _externalAsyncContinuationStatus;
+                    private set
+                    {
+                        if (_externalAsyncContinuationStatus != value)
+                        {
+                            _externalAsyncContinuationStatus = value;
+                            OnPropertyChanged(nameof(ExternalAsyncContinuationStatus));
+                        }
+                    }
+                }
+
                 public bool IsExternalDataTriggerActive
                 {
                     get => _isExternalDataTriggerActive;
@@ -2585,6 +2604,8 @@ internal static class Program
                 public int ExternalSelectionChangedCount { get; private set; }
 
                 public int ExternalDispatcherTimerTickCount { get; private set; }
+
+                public int ExternalAsyncContinuationCount { get; private set; }
 
                 public string? LastExternalSelectionSourceName { get; private set; }
 
@@ -3370,6 +3391,7 @@ internal static class Program
                     };
                     _externalDispatcherTimer.Tick += OnExternalDispatcherTimerTick;
                     _externalDispatcherTimer.Start();
+                    _ = RunExternalAsyncContinuationAsync();
                 }
 
                 private void OnExternalDispatcherTimerTick(object? sender, EventArgs e)
@@ -3377,6 +3399,15 @@ internal static class Program
                     _externalDispatcherTimer?.Stop();
                     ExternalDispatcherTimerTickCount++;
                     ExternalDispatcherTimerStatus = $"timer tick {ExternalDispatcherTimerTickCount}";
+                }
+
+                private async Task RunExternalAsyncContinuationAsync()
+                {
+                    await Task.Yield();
+                    ExternalAsyncContinuationCount++;
+                    ExternalAsyncContinuationStatus = Dispatcher.CheckAccess()
+                        ? $"async dispatcher continuation {ExternalAsyncContinuationCount}"
+                        : "async continuation left dispatcher";
                 }
 
                 private void OnExternalLoadedStoryboardTextLoaded(object sender, RoutedEventArgs e)
@@ -4209,6 +4240,7 @@ internal static class Program
                     AssertEqual("External SDK startup resource", startupResourceText.Text, "external SDK startup dynamic resource text");
                     AssertBrushColor(startupResourceText.Foreground, "#FF176283", "external SDK startup dynamic resource foreground");
                     ValidateDispatcherSynchronizationContextAfterRun(window);
+                    ValidateAsyncContinuationAfterRun(window);
                     ValidateDispatcherTimerAfterRun(window);
                     ValidateLoadedStoryboardAfterRun(window);
                     ValidatePropertyTriggerActionsAfterRun(window);
@@ -4272,6 +4304,26 @@ internal static class Program
                         TimeSpan.FromSeconds(1),
                         "external SDK dispatcher synchronization context copy Post");
                     AssertEqual(true, copyPostHasAccess, "external SDK dispatcher synchronization context copy Post access");
+                }
+
+                private static void ValidateAsyncContinuationAfterRun(MainWindow window)
+                {
+                    var asyncText = RequireType<TextBlock>(
+                        window.FindName("ExternalAsyncContinuationText"),
+                        "external SDK async continuation text");
+                    PumpDispatcherUntil(
+                        () => window.ExternalAsyncContinuationCount > 0,
+                        TimeSpan.FromSeconds(1),
+                        "external SDK dispatcher async continuation");
+                    AssertEqual(1, window.ExternalAsyncContinuationCount, "external SDK dispatcher async continuation count");
+                    AssertEqual(
+                        "async dispatcher continuation 1",
+                        window.ExternalAsyncContinuationStatus,
+                        "external SDK dispatcher async continuation status");
+                    AssertEqual(
+                        "async dispatcher continuation 1",
+                        asyncText.Text,
+                        "external SDK dispatcher async continuation bound text");
                 }
 
                 private static void ValidateDispatcherTimerAfterRun(MainWindow window)

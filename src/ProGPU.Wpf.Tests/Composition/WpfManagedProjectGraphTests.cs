@@ -6697,7 +6697,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryReplayTileBrushGeometry(brush, pen, geometry)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("WpfReflectionDrawingReplay.TryReplayTileBrushFill(", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("_sink is IWpfNativePrimitiveCommandSink nativeSink", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("nativeSink.DrawNativeLine(mediaPen, replayPoint0, replayPoint1)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("nativeSink.DrawNativeRectangle(mediaBrush, mediaPen, replayRectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("nativeSink.DrawNativeRoundedRectangle(mediaBrush, mediaPen, replayRectangle, mediaRadiusX, mediaRadiusY)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("nativeSink.DrawNativeEllipse(mediaBrush, mediaPen, replayCenter, mediaRadiusX, mediaRadiusY)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("nativeSink.DrawNativeImage(mediaImageSource, replayRectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("private static bool TryReadReplayPoint(object? pointValue, out WpfReplayPoint point)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("private static bool TryReadReplayRect(object? rectValue, out WpfReplayRect rectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("if (mediaBrush != null)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("_sink is IWpfNativeTransformCommandSink nativeTransformSink", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);

@@ -51,6 +51,36 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
             return;
         }
 
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            DrawNativeLine(pen, point0, point1, mediaPen, nativeSink);
+            return;
+        }
+
+        DrawLineTypedFallback(pen, point0, point1, mediaPen);
+    }
+
+    private void DrawNativeLine(
+        object? pen,
+        object? point0,
+        object? point1,
+        MediaPen mediaPen,
+        IWpfNativePrimitiveCommandSink nativeSink)
+    {
+        if (!TryReadReplayPoint(point0, out var replayPoint0) || !TryReadReplayPoint(point1, out var replayPoint1))
+        {
+            CountUnsupported();
+            return;
+        }
+
+        RegisterRetainedDependencies(pen);
+        nativeSink.DrawNativeLine(mediaPen, replayPoint0, replayPoint1);
+        CountApplied();
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private void DrawLineTypedFallback(object? pen, object? point0, object? point1, MediaPen mediaPen)
+    {
         if (!TryReadPoint(point0, out var mediaPoint0) || !TryReadPoint(point1, out var mediaPoint1))
         {
             CountUnsupported();
@@ -200,6 +230,48 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
             return;
         }
 
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            DrawNativeRoundedRectangle(brush, pen, rectangle, radiusX, radiusY, mediaBrush, mediaPen, nativeSink);
+            return;
+        }
+
+        DrawRoundedRectangleTypedFallback(brush, pen, rectangle, radiusX, radiusY, mediaBrush, mediaPen);
+    }
+
+    private void DrawNativeRoundedRectangle(
+        object? brush,
+        object? pen,
+        object? rectangle,
+        object? radiusX,
+        object? radiusY,
+        MediaBrush? mediaBrush,
+        MediaPen? mediaPen,
+        IWpfNativePrimitiveCommandSink nativeSink)
+    {
+        if (!TryReadReplayRect(rectangle, out var replayRectangle)
+            || !TryReadDouble(radiusX, out var mediaRadiusX)
+            || !TryReadDouble(radiusY, out var mediaRadiusY))
+        {
+            CountUnsupported();
+            return;
+        }
+
+        RegisterRetainedDependencies(brush, pen);
+        nativeSink.DrawNativeRoundedRectangle(mediaBrush, mediaPen, replayRectangle, mediaRadiusX, mediaRadiusY);
+        CountApplied();
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private void DrawRoundedRectangleTypedFallback(
+        object? brush,
+        object? pen,
+        object? rectangle,
+        object? radiusX,
+        object? radiusY,
+        MediaBrush? mediaBrush,
+        MediaPen? mediaPen)
+    {
         if (!TryReadRect(rectangle, out var mediaRectangle)
             || !TryReadDouble(radiusX, out var mediaRadiusX)
             || !TryReadDouble(radiusY, out var mediaRadiusY))
@@ -238,6 +310,48 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
             return;
         }
 
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            DrawNativeEllipse(brush, pen, center, radiusX, radiusY, mediaBrush, mediaPen, nativeSink);
+            return;
+        }
+
+        DrawEllipseTypedFallback(brush, pen, center, radiusX, radiusY, mediaBrush, mediaPen);
+    }
+
+    private void DrawNativeEllipse(
+        object? brush,
+        object? pen,
+        object? center,
+        object? radiusX,
+        object? radiusY,
+        MediaBrush? mediaBrush,
+        MediaPen? mediaPen,
+        IWpfNativePrimitiveCommandSink nativeSink)
+    {
+        if (!TryReadReplayPoint(center, out var replayCenter)
+            || !TryReadDouble(radiusX, out var mediaRadiusX)
+            || !TryReadDouble(radiusY, out var mediaRadiusY))
+        {
+            CountUnsupported();
+            return;
+        }
+
+        RegisterRetainedDependencies(brush, pen);
+        nativeSink.DrawNativeEllipse(mediaBrush, mediaPen, replayCenter, mediaRadiusX, mediaRadiusY);
+        CountApplied();
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private void DrawEllipseTypedFallback(
+        object? brush,
+        object? pen,
+        object? center,
+        object? radiusX,
+        object? radiusY,
+        MediaBrush? mediaBrush,
+        MediaPen? mediaPen)
+    {
         if (!TryReadPoint(center, out var mediaCenter)
             || !TryReadDouble(radiusX, out var mediaRadiusX)
             || !TryReadDouble(radiusY, out var mediaRadiusY))
@@ -333,6 +447,35 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
             return;
         }
 
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            DrawNativeImage(imageSource, rectangle, mediaImageSource, nativeSink);
+            return;
+        }
+
+        DrawImageTypedFallback(imageSource, rectangle, mediaImageSource);
+    }
+
+    private void DrawNativeImage(
+        object? imageSource,
+        object? rectangle,
+        MediaImageSource mediaImageSource,
+        IWpfNativePrimitiveCommandSink nativeSink)
+    {
+        if (!TryReadReplayRect(rectangle, out var replayRectangle))
+        {
+            CountUnsupported();
+            return;
+        }
+
+        RegisterRetainedDependencies(imageSource);
+        nativeSink.DrawNativeImage(mediaImageSource, replayRectangle);
+        CountApplied();
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private void DrawImageTypedFallback(object? imageSource, object? rectangle, MediaImageSource mediaImageSource)
+    {
         if (!TryReadRect(rectangle, out var mediaRectangle))
         {
             CountUnsupported();
@@ -682,6 +825,26 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
             && TryReadDoubleProperty(pointValue, "Y", out var y))
         {
             point = new Point(x, y);
+            return true;
+        }
+
+        point = default;
+        return false;
+    }
+
+    private static bool TryReadReplayPoint(object? pointValue, out WpfReplayPoint point)
+    {
+        if (pointValue is WpfReplayPoint replayPoint)
+        {
+            point = replayPoint;
+            return true;
+        }
+
+        if (pointValue != null
+            && TryReadDoubleProperty(pointValue, "X", out var x)
+            && TryReadDoubleProperty(pointValue, "Y", out var y))
+        {
+            point = new WpfReplayPoint(x, y);
             return true;
         }
 

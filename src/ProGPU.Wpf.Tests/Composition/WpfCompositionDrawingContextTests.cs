@@ -99,13 +99,33 @@ public sealed class WpfCompositionDrawingContextTests
         var sink = new NativeRecordingSink();
         using var context = new WpfObjectRenderDataDrawingContext(sink);
         var pen = new MediaPen(Brushes.Black, 2);
+        var image = new FakeImageSource();
 
+        context.DrawLine(pen, new FakePoint(1, 2), new FakePoint(3, 4));
         context.DrawRectangle(Brushes.Red, pen, new FakeRect(5, 6, 7, 8));
+        context.DrawRoundedRectangle(Brushes.Green, pen, new FakeRect(9, 10, 11, 12), 2, 3);
+        context.DrawEllipse(Brushes.Blue, null, new FakePoint(13, 14), 15, 16);
+        context.DrawImage(image, new FakeRect(17, 18, 19, 20));
 
-        Assert.Equal(new[] { "DrawNativeRectangle" }, sink.Operations);
+        Assert.Equal(new[]
+        {
+            "DrawNativeLine",
+            "DrawNativeRectangle",
+            "DrawNativeRoundedRectangle",
+            "DrawNativeEllipse",
+            "DrawNativeImage"
+        }, sink.Operations);
         Assert.Empty(sink.Rectangles);
+        Assert.Empty(sink.Lines);
+        Assert.Empty(sink.RoundedRectangles);
+        Assert.Empty(sink.Ellipses);
+        Assert.Empty(sink.Images);
+        Assert.Equal((pen, new WpfReplayPoint(1, 2), new WpfReplayPoint(3, 4)), sink.NativeLines.Single());
         Assert.Equal((Brushes.Red, pen, new WpfReplayRect(5, 6, 7, 8)), sink.NativeRectangles.Single());
-        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+        Assert.Equal((Brushes.Green, pen, new WpfReplayRect(9, 10, 11, 12), 2d, 3d), sink.NativeRoundedRectangles.Single());
+        Assert.Equal((Brushes.Blue, null, new WpfReplayPoint(13, 14), 15d, 16d), sink.NativeEllipses.Single());
+        Assert.Equal((image, new WpfReplayRect(17, 18, 19, 20)), sink.NativeImages.Single());
+        Assert.Equal(new WpfCompositionDrawingContextResult(5, 5, 0), context.Result);
     }
 
     [Fact]
@@ -1147,11 +1167,20 @@ public sealed class WpfCompositionDrawingContextTests
 
     private sealed class NativeRecordingSink : RecordingSink, IWpfNativePrimitiveCommandSink
     {
+        public List<(MediaPen? Pen, WpfReplayPoint Point0, WpfReplayPoint Point1)> NativeLines { get; } = new();
+
         public List<(MediaBrush? Brush, MediaPen? Pen, WpfReplayRect Rectangle)> NativeRectangles { get; } = new();
+
+        public List<(MediaBrush? Brush, MediaPen? Pen, WpfReplayRect Rectangle, double RadiusX, double RadiusY)> NativeRoundedRectangles { get; } = new();
+
+        public List<(MediaBrush? Brush, MediaPen? Pen, WpfReplayPoint Center, double RadiusX, double RadiusY)> NativeEllipses { get; } = new();
+
+        public List<(MediaImageSource ImageSource, WpfReplayRect Rectangle)> NativeImages { get; } = new();
 
         public void DrawNativeLine(MediaPen? pen, WpfReplayPoint point0, WpfReplayPoint point1)
         {
             Operations.Add("DrawNativeLine");
+            NativeLines.Add((pen, point0, point1));
         }
 
         public void DrawNativeRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle)
@@ -1163,16 +1192,19 @@ public sealed class WpfCompositionDrawingContextTests
         public void DrawNativeRoundedRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle, double radiusX, double radiusY)
         {
             Operations.Add("DrawNativeRoundedRectangle");
+            NativeRoundedRectangles.Add((brush, pen, rectangle, radiusX, radiusY));
         }
 
         public void DrawNativeEllipse(MediaBrush? brush, MediaPen? pen, WpfReplayPoint center, double radiusX, double radiusY)
         {
             Operations.Add("DrawNativeEllipse");
+            NativeEllipses.Add((brush, pen, center, radiusX, radiusY));
         }
 
         public void DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle)
         {
             Operations.Add("DrawNativeImage");
+            NativeImages.Add((imageSource, rectangle));
         }
 
         public void DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle, WpfReplayRect sourceRectangle)

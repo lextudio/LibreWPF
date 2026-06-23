@@ -63,6 +63,12 @@ public partial class MainWindow : Window
 
     internal string? LastMvpRoutedEventName { get; private set; }
 
+    internal int MvpStyleEventSetterClickCount { get; private set; }
+
+    internal string? LastMvpStyleEventSetterSenderName { get; private set; }
+
+    internal string? LastMvpStyleEventSetterRoutedEventName { get; private set; }
+
     public MainWindow()
     {
         var viewModel = new MainViewModel();
@@ -235,6 +241,15 @@ public partial class MainWindow : Window
         LastMvpRoutedEventPayload = e.Payload;
         LastMvpRoutedEventSenderName = GetElementName(sender);
         LastMvpRoutedEventOriginalSourceName = GetElementName(e.OriginalSource);
+    }
+
+    private void OnMvpStyleEventSetterClick(object sender, RoutedEventArgs e)
+    {
+        MvpStyleEventSetterClickCount++;
+        LastMvpStyleEventSetterSenderName = GetElementName(sender);
+        LastMvpStyleEventSetterRoutedEventName = e.RoutedEvent?.Name;
+        EventSetterStatusText.Text = "EventSetter clicked";
+        e.Handled = true;
     }
 
     private static string? GetElementName(object? value)
@@ -627,6 +642,7 @@ internal static class MvpSelfTest
         AssertEqual(true, themeResources.Contains("SelectedItemTemplate"), "app theme selected item template key");
         AssertEqual(true, themeResources.Contains("MvpBasedOnButtonStyle"), "app theme BasedOn Button style key");
         AssertEqual(true, themeResources.Contains("MvpTemplateButtonStyle"), "app theme template Button style key");
+        AssertEqual(true, themeResources.Contains("MvpTriggerTextBlockStyle"), "app theme trigger TextBlock style key");
         var panelBrush = Require<SolidColorBrush>(window.FindResource("MvpPanelBrush"), "MVP panel brush");
         var buttonStyle = Require<Style>(application.TryFindResource(typeof(Button)), "app Button style");
         var basedOnButtonStyle = Require<Style>(
@@ -635,6 +651,12 @@ internal static class MvpSelfTest
         var templateButtonStyle = Require<Style>(
             application.TryFindResource("MvpTemplateButtonStyle"),
             "template Button style");
+        var triggerTextBlockStyle = Require<Style>(
+            application.TryFindResource("MvpTriggerTextBlockStyle"),
+            "trigger TextBlock style");
+        var eventSetterButtonStyle = Require<Style>(
+            window.FindResource("MvpEventSetterButtonStyle"),
+            "EventSetter Button style");
         var activeTextConverter = Require<MvpActiveTextConverter>(
             window.FindResource("MvpActiveTextConverter"),
             "active text converter");
@@ -661,6 +683,8 @@ internal static class MvpSelfTest
         AssertEqual(typeof(Button), basedOnButtonStyle.TargetType, "BasedOn Button style target type");
         AssertEqual(buttonStyle, basedOnButtonStyle.BasedOn, "BasedOn Button style base style");
         AssertEqual(typeof(Button), templateButtonStyle.TargetType, "template Button style target type");
+        AssertEqual(typeof(TextBlock), triggerTextBlockStyle.TargetType, "trigger TextBlock style target type");
+        AssertEqual(typeof(Button), eventSetterButtonStyle.TargetType, "EventSetter Button style target type");
         AssertEqual(typeof(MvpItem), selectedItemTemplate.DataType, "selected item template data type");
         var mainMenu = Require<Menu>(window.FindName("MainMenu"), "main Menu");
         var fileMenuItem = Require<MenuItem>(window.FindName("FileMenuItem"), "file MenuItem");
@@ -856,6 +880,15 @@ internal static class MvpSelfTest
         var basedOnStyleButton = Require<Button>(
             window.FindName("BasedOnStyleButton"),
             "BasedOn style Button");
+        var styleTriggerText = Require<TextBlock>(
+            window.FindName("StyleTriggerText"),
+            "style trigger TextBlock");
+        var eventSetterStyleButton = Require<Button>(
+            window.FindName("EventSetterStyleButton"),
+            "EventSetter style Button");
+        var eventSetterStatusText = Require<TextBlock>(
+            window.FindName("EventSetterStatusText"),
+            "EventSetter status TextBlock");
         var validationTextBox = Require<TextBox>(
             window.FindName("ValidationTextBox"),
             "validation TextBox");
@@ -970,6 +1003,14 @@ internal static class MvpSelfTest
             itemTemplateSelector,
             selectorItemContainerStyle);
         ValidateBasedOnButton(basedOnStyleButton, basedOnButtonStyle);
+        ValidateStyleTriggersAndEventSetter(
+            window,
+            viewModel,
+            styleTriggerText,
+            triggerTextBlockStyle,
+            eventSetterStyleButton,
+            eventSetterButtonStyle,
+            eventSetterStatusText);
         ValidateTemplateButton(window, templateButton, templateButtonStyle);
         ValidateValidation(window, viewModel, validationTextBox, validationEchoText);
         ValidateBindingGroup(
@@ -1944,6 +1985,86 @@ internal static class MvpSelfTest
         var foreground = Require<SolidColorBrush>(button.Foreground, "BasedOn Button foreground");
         AssertEqual(Color.FromRgb(0x24, 0x6B, 0xFE), background.Color, "BasedOn Button derived background color");
         AssertEqual(Colors.White, foreground.Color, "BasedOn Button derived foreground color");
+    }
+
+    private static void ValidateStyleTriggersAndEventSetter(
+        MainWindow window,
+        MainViewModel viewModel,
+        TextBlock triggerText,
+        Style triggerStyle,
+        Button eventSetterButton,
+        Style eventSetterStyle,
+        TextBlock eventSetterStatus)
+    {
+        AssertEqual(triggerStyle, triggerText.Style, "style trigger TextBlock style");
+        AssertEqual(2, triggerStyle.Setters.Count, "style trigger setter count");
+        AssertEqual(2, triggerStyle.Triggers.Count, "style trigger count");
+        var baseTextStyle = Require<Style>(
+            Application.Current?.TryFindResource(typeof(TextBlock)),
+            "implicit TextBlock style");
+        AssertEqual(baseTextStyle, triggerStyle.BasedOn, "style trigger BasedOn TextBlock style");
+
+        var propertyTrigger = Require<Trigger>(
+            triggerStyle.Triggers[0],
+            "property style Trigger");
+        AssertEqual(FrameworkElement.TagProperty, propertyTrigger.Property, "property style Trigger property");
+        AssertEqual("Active", propertyTrigger.Value, "property style Trigger value");
+
+        var dataTrigger = Require<DataTrigger>(
+            triggerStyle.Triggers[1],
+            "data style Trigger");
+        AssertEqual("ActionsEnabled", GetBindingPath(dataTrigger.Binding), "data style Trigger binding path");
+        AssertEqual("False", dataTrigger.Value?.ToString(), "data style Trigger value");
+
+        DrainDispatcher(window);
+        AssertEqual("style trigger inactive", triggerText.Text, "style trigger initial text");
+        AssertEqual(
+            Color.FromRgb(0x5B, 0x64, 0x72),
+            Require<SolidColorBrush>(triggerText.Foreground, "style trigger initial foreground").Color,
+            "style trigger initial foreground");
+
+        triggerText.Tag = "Active";
+        DrainDispatcher(window);
+        AssertEqual("property trigger active", triggerText.Text, "property style Trigger active text");
+        AssertEqual(
+            Color.FromRgb(0x24, 0x6B, 0xFE),
+            Require<SolidColorBrush>(triggerText.Foreground, "property style Trigger foreground").Color,
+            "property style Trigger foreground");
+
+        viewModel.ActionsEnabled = false;
+        DrainDispatcher(window);
+        AssertEqual("data trigger disabled", triggerText.Text, "data style Trigger disabled text");
+        AssertEqual(
+            Color.FromRgb(0xB4, 0x23, 0x18),
+            Require<SolidColorBrush>(triggerText.Foreground, "data style Trigger foreground").Color,
+            "data style Trigger foreground");
+
+        viewModel.ActionsEnabled = true;
+        DrainDispatcher(window);
+        AssertEqual("property trigger active", triggerText.Text, "restored property style Trigger text");
+        triggerText.Tag = null;
+        DrainDispatcher(window);
+        AssertEqual("style trigger inactive", triggerText.Text, "restored style trigger inactive text");
+
+        AssertEqual(eventSetterStyle, eventSetterButton.Style, "EventSetter Button style");
+        AssertEqual("EventSetter action", eventSetterButton.Content, "EventSetter Button content");
+        AssertEqual("EventSetterStyle", eventSetterButton.Tag, "EventSetter Button setter Tag");
+        AssertEqual(2, eventSetterStyle.Setters.Count, "EventSetter style setter count");
+        var eventSetter = Require<EventSetter>(
+            eventSetterStyle.Setters[1],
+            "Button Click EventSetter");
+        AssertEqual(ButtonBase.ClickEvent, eventSetter.Event, "EventSetter routed event");
+        AssertEqual("EventSetter idle", eventSetterStatus.Text, "EventSetter initial status");
+        AssertEqual(0, window.MvpStyleEventSetterClickCount, "EventSetter initial click count");
+
+        var clickArgs = new RoutedEventArgs(ButtonBase.ClickEvent, eventSetterButton);
+        eventSetterButton.RaiseEvent(clickArgs);
+        DrainDispatcher(window);
+        AssertEqual(true, clickArgs.Handled, "EventSetter handled flag");
+        AssertEqual(1, window.MvpStyleEventSetterClickCount, "EventSetter click count");
+        AssertEqual("EventSetterStyleButton", window.LastMvpStyleEventSetterSenderName, "EventSetter sender name");
+        AssertEqual("Click", window.LastMvpStyleEventSetterRoutedEventName, "EventSetter routed event name");
+        AssertEqual("EventSetter clicked", eventSetterStatus.Text, "EventSetter updated status");
     }
 
     private static void ValidateTemplateButton(Window window, Button button, Style style)

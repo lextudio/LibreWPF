@@ -938,6 +938,10 @@
                             Tag="{x:Null}"
                             Text="Null intrinsic target" />
                         <TextBlock
+                            x:Name="MarkupExtensionText"
+                            Margin="0,12,0,0"
+                            Text="{local:MvpText Prefix=Markup, Value=Extension}" />
+                        <TextBlock
                             x:Name="PackResourceText"
                             Margin="0,12,0,0"
                             Text="Pack resource loaded from Assets/MvpResource.txt" />

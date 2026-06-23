@@ -643,6 +643,20 @@ public static class MvpResourceFactory
     }
 }
 
+public sealed class MvpTextExtension : MarkupExtension
+{
+    public string Prefix { get; set; } = string.Empty;
+
+    public string Value { get; set; } = string.Empty;
+
+    public override object ProvideValue(IServiceProvider serviceProvider)
+    {
+        return string.IsNullOrEmpty(Prefix)
+            ? Value
+            : $"{Prefix} {Value}";
+    }
+}
+
 internal static class MvpSelfTest
 {
     public static void Validate(MainWindow window, bool expectLoadedStoryboardApplied = false)
@@ -891,6 +905,9 @@ internal static class MvpSelfTest
         var nullIntrinsicText = Require<TextBlock>(
             window.FindName("NullIntrinsicText"),
             "null intrinsic TextBlock");
+        var markupExtensionText = Require<TextBlock>(
+            window.FindName("MarkupExtensionText"),
+            "MarkupExtension TextBlock");
         var packResourceText = Require<TextBlock>(
             window.FindName("PackResourceText"),
             "pack resource TextBlock");
@@ -1188,6 +1205,7 @@ internal static class MvpSelfTest
             xmlProviderText,
             resourceArrayItemsControl,
             nullIntrinsicText,
+            markupExtensionText,
             packResourceText,
             componentPackResourceText,
             startupResourceText,
@@ -1615,6 +1633,7 @@ internal static class MvpSelfTest
         TextBlock xmlProviderText,
         ItemsControl arrayItemsControl,
         TextBlock nullIntrinsicText,
+        TextBlock markupExtensionText,
         TextBlock packResourceText,
         TextBlock componentPackResourceText,
         TextBlock startupResourceText,
@@ -1683,6 +1702,7 @@ internal static class MvpSelfTest
         AssertEqual(2, arrayItemsControl.Items.Count, "x:Array ItemsControl count");
         AssertEqual(null, nullIntrinsicText.Tag, "x:Null TextBlock tag");
         AssertEqual("Null intrinsic target", nullIntrinsicText.Text, "x:Null TextBlock text");
+        AssertEqual("Markup Extension", markupExtensionText.Text, "MarkupExtension TextBlock text");
 
         AssertEqual("Pack resource loaded from Assets/MvpResource.txt", packResourceText.Text, "pack resource TextBlock text");
         var applicationResources = Application.Current?.Resources

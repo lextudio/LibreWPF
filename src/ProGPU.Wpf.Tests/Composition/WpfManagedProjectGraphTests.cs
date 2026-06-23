@@ -6290,6 +6290,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ItemsSource=\"{StaticResource MvpStringArray}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"NullIntrinsicText\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Tag=\"{x:Null}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MarkupExtensionText\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{local:MvpText Prefix=Markup, Value=Extension}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"PackResourceText\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ComponentPackResourceText\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style=\"{StaticResource MvpComponentPackTextStyle}\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6511,6 +6513,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("window.FindResource(\"MvpStringArray\")", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("x:Array ItemsControl source", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("x:Null TextBlock tag", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class MvpTextExtension : MarkupExtension", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public override object ProvideValue(IServiceProvider serviceProvider)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MarkupExtension TextBlock text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MVP pack resource loaded through Application.GetResourceStream.", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Documents;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal int EditorPasswordChangedCount", mvpMainWindowCodeBehind, StringComparison.Ordinal);

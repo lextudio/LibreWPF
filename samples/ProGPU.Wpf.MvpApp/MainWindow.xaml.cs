@@ -276,13 +276,18 @@ internal static class MvpSelfTest
         AssertEqual(true, themeResources.Contains("MvpPanelBrush"), "app theme panel brush key");
         AssertEqual(true, themeResources.Contains(typeof(Button)), "app theme implicit Button style key");
         AssertEqual(true, themeResources.Contains("SelectedItemTemplate"), "app theme selected item template key");
+        AssertEqual(true, themeResources.Contains("MvpTemplateButtonStyle"), "app theme template Button style key");
         var panelBrush = Require<SolidColorBrush>(window.FindResource("MvpPanelBrush"), "MVP panel brush");
         var buttonStyle = Require<Style>(application.TryFindResource(typeof(Button)), "app Button style");
+        var templateButtonStyle = Require<Style>(
+            application.TryFindResource("MvpTemplateButtonStyle"),
+            "template Button style");
         var selectedItemTemplate = Require<DataTemplate>(
             application.TryFindResource("SelectedItemTemplate"),
             "selected item DataTemplate");
         AssertEqual(Color.FromRgb(0xF4, 0xF7, 0xFB), panelBrush.Color, "MVP panel brush color");
         AssertEqual(typeof(Button), buttonStyle.TargetType, "app Button implicit style target type");
+        AssertEqual(typeof(Button), templateButtonStyle.TargetType, "template Button style target type");
         AssertEqual(typeof(MvpItem), selectedItemTemplate.DataType, "selected item template data type");
         var mainMenu = Require<Menu>(window.FindName("MainMenu"), "main Menu");
         var fileMenuItem = Require<MenuItem>(window.FindName("FileMenuItem"), "file MenuItem");
@@ -302,6 +307,7 @@ internal static class MvpSelfTest
         var selectedItemContent = Require<ContentControl>(
             window.FindName("SelectedItemContent"),
             "selected item ContentControl");
+        var templateButton = Require<Button>(window.FindName("TemplateButton"), "template Button");
         var summaryPanel = Require<SummaryPanel>(window.FindName("SummaryPanel"), "summary Panel");
         var summaryNameText = Require<TextBlock>(
             summaryPanel.FindName("SummaryNameText"),
@@ -348,6 +354,7 @@ internal static class MvpSelfTest
             selectedItemContent.ContentTemplate,
             "selected item content template");
         ValidateSelectedItemTemplate(selectedItemTemplate);
+        ValidateTemplateButton(window, templateButton, templateButtonStyle);
         AssertEqual(viewModel.Nodes, nodesTreeView.ItemsSource, "TreeView items source");
         AssertEqual(2, viewModel.Nodes.Count, "TreeView root node count");
         AssertEqual("Startup", viewModel.Nodes[0].Children[0].Name, "TreeView first child node");
@@ -417,6 +424,34 @@ internal static class MvpSelfTest
         AssertEqual("Name", GetTextBindingPath(nameText), "selected item template name binding path");
         AssertEqual("Category", GetTextBindingPath(categoryText), "selected item template category binding path");
         AssertEqual("IsActive", GetTextBindingPath(activeText), "selected item template active binding path");
+    }
+
+    private static void ValidateTemplateButton(Window window, Button button, Style style)
+    {
+        AssertEqual(style, button.Style, "template Button style");
+        AssertEqual("Templated action", button.Content, "template Button content");
+
+        button.ApplyTemplate();
+        DrainDispatcher(window);
+        var template = Require<ControlTemplate>(button.Template, "template Button ControlTemplate");
+        var border = Require<Border>(
+            template.FindName("TemplateBorder", button),
+            "template Button border part");
+        var contentPresenter = Require<ContentPresenter>(
+            template.FindName("TemplateContentPresenter", button),
+            "template Button content presenter part");
+
+        AssertEqual(typeof(Button), template.TargetType, "template Button target type");
+        AssertEqual(button.Background, border.Background, "template Button background TemplateBinding");
+        AssertEqual("Templated action", contentPresenter.Content, "template Button content TemplateBinding");
+        AssertEqual(1.0, border.Opacity, "template Button enabled opacity");
+
+        button.IsEnabled = false;
+        DrainDispatcher(window);
+        AssertEqual(0.45, border.Opacity, "template Button disabled trigger opacity");
+        button.IsEnabled = true;
+        DrainDispatcher(window);
+        AssertEqual(1.0, border.Opacity, "template Button restored opacity");
     }
 
     private static string GetTextBindingPath(TextBlock textBlock)

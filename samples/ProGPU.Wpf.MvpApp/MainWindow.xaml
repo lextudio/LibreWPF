@@ -274,6 +274,43 @@
                 </Grid>
             </TabItem>
 
+            <TabItem Header="Themes">
+                <Grid Margin="0,14,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel>
+                        <TextBlock
+                            Margin="0,0,0,8"
+                            FontWeight="SemiBold"
+                            Text="ControlTemplate style" />
+                        <Button
+                            x:Name="TemplateButton"
+                            Content="Templated action"
+                            Style="{StaticResource MvpTemplateButtonStyle}" />
+                    </StackPanel>
+
+                    <Border
+                        Grid.Column="1"
+                        Margin="18,0,0,0"
+                        Padding="12"
+                        Background="{DynamicResource MvpPanelBrush}">
+                        <StackPanel>
+                            <TextBlock
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Text="Theme template" />
+                            <TextBlock
+                                Margin="0,8,0,0"
+                                TextWrapping="Wrap"
+                                Text="The button is styled through a compiled ControlTemplate, TemplateBinding, named parts, and a property trigger." />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+
             <TabItem Header="Navigation">
                 <Grid Margin="0,14,0,0">
                     <Grid.ColumnDefinitions>

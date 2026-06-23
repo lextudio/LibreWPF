@@ -6103,6 +6103,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"CommandStatusText\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SelectedItemContent\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ContentTemplate=\"{StaticResource SelectedItemTemplate}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"TemplateButton\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Style=\"{StaticResource MvpTemplateButtonStyle}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("local:SummaryPanel", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"NavigationFrame\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Source=\"OverviewPage.xaml\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6123,6 +6125,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("OnRefreshStatusCommandExecuted", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("CommandStatusText", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateSelectedItemTemplate", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateTemplateButton", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GetTextBindingPath", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ObservableCollection<MvpNode>", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("addMenuItem.Command.Execute(addMenuItem.CommandParameter)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
@@ -6147,6 +6150,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Key=\"SelectedItemTemplate\"", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("DataType=\"{x:Type local:MvpItem}\"", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("TemplateNameText", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"MvpTemplateButtonStyle\"", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("<ControlTemplate TargetType=\"{x:Type Button}\">", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("TemplateBorder", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("<ControlTemplate.Triggers>", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("<Style TargetType=\"{x:Type Button}\">", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("<Style TargetType=\"{x:Type TextBlock}\">", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("x:Class=\"ProGPU.Wpf.MvpApp.OverviewPage\"", mvpOverviewPageXaml, StringComparison.Ordinal);

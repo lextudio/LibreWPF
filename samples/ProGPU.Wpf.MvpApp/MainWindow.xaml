@@ -435,6 +435,16 @@
                             Margin="0,6,0,0"
                             Text="MessageBox idle"
                             TextWrapping="Wrap" />
+                        <Button
+                            x:Name="MvpFileDialogButton"
+                            Margin="0,8,0,0"
+                            Click="OnFileDialogButtonClick"
+                            Content="Run file dialogs" />
+                        <TextBlock
+                            x:Name="FileDialogStatusText"
+                            Margin="0,6,0,0"
+                            Text="File dialogs idle"
+                            TextWrapping="Wrap" />
                         <local:SummaryPanel
                             x:Name="SummaryPanel"
                             Margin="0,18,0,0"

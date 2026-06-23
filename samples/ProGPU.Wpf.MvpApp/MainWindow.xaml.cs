@@ -25,6 +25,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
 using System.Windows.Navigation;
 using System.Windows.Threading;
+using Microsoft.Win32;
 using WpfCalendar = System.Windows.Controls.Calendar;
 
 namespace ProGPU.Wpf.MvpApp;
@@ -196,6 +197,26 @@ public partial class MainWindow : Window
 
     internal MessageBoxResult LastMessageBoxResult { get; private set; } = MessageBoxResult.None;
 
+    internal int FileDialogShownCount { get; private set; }
+
+    internal bool? LastOpenFileDialogResult { get; private set; }
+
+    internal bool? LastSaveFileDialogResult { get; private set; }
+
+    internal bool? LastFolderDialogResult { get; private set; }
+
+    internal string LastOpenFileDialogFileName { get; private set; } = string.Empty;
+
+    internal string LastOpenFileDialogSafeFileName { get; private set; } = string.Empty;
+
+    internal string LastSaveFileDialogFileName { get; private set; } = string.Empty;
+
+    internal string LastSaveFileDialogSafeFileName { get; private set; } = string.Empty;
+
+    internal string LastFolderDialogFolderName { get; private set; } = string.Empty;
+
+    internal string LastFolderDialogSafeFolderName { get; private set; } = string.Empty;
+
     public MainWindow()
     {
         var viewModel = new MainViewModel();
@@ -246,6 +267,43 @@ public partial class MainWindow : Window
             MessageBoxResult.OK,
             MessageBoxOptions.None);
         MessageBoxStatusText.Text = $"MessageBox result: {LastMessageBoxResult}";
+    }
+
+    private void OnFileDialogButtonClick(object sender, RoutedEventArgs e)
+    {
+        FileDialogShownCount++;
+
+        var openDialog = new OpenFileDialog
+        {
+            Title = "Open MVP file",
+            Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*"
+        };
+        LastOpenFileDialogResult = openDialog.ShowDialog();
+        LastOpenFileDialogFileName = LastOpenFileDialogResult == true ? openDialog.FileName : string.Empty;
+        LastOpenFileDialogSafeFileName = LastOpenFileDialogResult == true ? openDialog.SafeFileName : string.Empty;
+
+        var saveDialog = new SaveFileDialog
+        {
+            Title = "Save MVP file",
+            DefaultExt = "txt",
+            FileName = "saved",
+            Filter = "Text files (*.txt)|*.txt",
+            OverwritePrompt = false
+        };
+        LastSaveFileDialogResult = saveDialog.ShowDialog(this);
+        LastSaveFileDialogFileName = LastSaveFileDialogResult == true ? saveDialog.FileName : string.Empty;
+        LastSaveFileDialogSafeFileName = LastSaveFileDialogResult == true ? saveDialog.SafeFileName : string.Empty;
+
+        var folderDialog = new OpenFolderDialog
+        {
+            Title = "Select MVP folder"
+        };
+        LastFolderDialogResult = folderDialog.ShowDialog(this);
+        LastFolderDialogFolderName = LastFolderDialogResult == true ? folderDialog.FolderName : string.Empty;
+        LastFolderDialogSafeFolderName = LastFolderDialogResult == true ? folderDialog.SafeFolderName : string.Empty;
+
+        FileDialogStatusText.Text =
+            $"File dialogs: {LastOpenFileDialogSafeFileName} | {LastSaveFileDialogSafeFileName} | {LastFolderDialogSafeFolderName}";
     }
 
     private void OnDocumentLinkRequestNavigate(object sender, RequestNavigateEventArgs e)
@@ -1211,6 +1269,12 @@ internal static class MvpSelfTest
         var messageBoxStatusText = Require<TextBlock>(
             window.FindName("MessageBoxStatusText"),
             "MessageBox status TextBlock");
+        var fileDialogButton = Require<Button>(
+            window.FindName("MvpFileDialogButton"),
+            "file dialog Button");
+        var fileDialogStatusText = Require<TextBlock>(
+            window.FindName("FileDialogStatusText"),
+            "file dialog status TextBlock");
         var mvpTabControl = Require<TabControl>(
             window.FindName("MvpTabControl"),
             "MVP TabControl");
@@ -1648,6 +1712,7 @@ internal static class MvpSelfTest
         AssertEqual(MainWindow.RefreshStatusCommand, window.CommandBindings[0].Command, "window routed command binding");
         AssertEqual(2, window.InputBindings.Count, "window input binding count");
         ValidateMessageBox(window, messageBoxButton, messageBoxStatusText);
+        ValidateFileDialogs(window, fileDialogButton, fileDialogStatusText);
         var refreshKeyBinding = Require<KeyBinding>(window.InputBindings[0], "refresh KeyBinding");
         AssertEqual(Key.R, refreshKeyBinding.Key, "refresh key binding key");
         AssertEqual(ModifierKeys.Control, refreshKeyBinding.Modifiers, "refresh key binding modifiers");
@@ -4625,6 +4690,119 @@ internal static class MvpSelfTest
                 BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
                 binder: null,
                 types: new[] { typeof(Func<object, object>) },
+                modifiers: null)
+            ?? throw new MissingMethodException(serviceType.FullName, "Register");
+
+        return registerMethod.Invoke(null, new object[] { show }) as IDisposable;
+    }
+
+    private static void ValidateFileDialogs(MainWindow window, Button button, TextBlock statusText)
+    {
+        AssertEqual("Run file dialogs", button.Content, "file dialog button content");
+        AssertEqual("File dialogs idle", statusText.Text, "file dialog initial status");
+
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        Type serviceType = typeof(OpenFileDialog).Assembly.GetType(
+                "Microsoft.Win32.PortableFileDialogService",
+                throwOnError: false)
+            ?? throw new TypeLoadException("Microsoft.Win32.PortableFileDialogService");
+        var isEnabledProperty = serviceType.GetProperty(
+                "IsEnabled",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(serviceType.FullName, "IsEnabled");
+        AssertEqual(
+            true,
+            (bool)(isEnabledProperty.GetValue(null) ?? false),
+            "MVP portable file dialog service enabled");
+
+        string tempDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "progpu-wpf-mvp-file-dialog-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDirectory);
+        string openPath = Path.Combine(tempDirectory, "open.txt");
+        string savePathWithoutExtension = Path.Combine(tempDirectory, "saved");
+        string savePath = savePathWithoutExtension + ".txt";
+        File.WriteAllText(openPath, "MVP file dialog payload");
+
+        int requestCount = 0;
+        var seenKinds = new List<string>();
+        var seenTitles = new List<string>();
+        var seenFilters = new List<string>();
+        var seenDefaultExtensions = new List<string>();
+        var seenSuggestedItemNames = new List<string>();
+        IDisposable? registration = RegisterDeterministicFileDialog(
+            serviceType,
+            request =>
+            {
+                string kind = ReadPortableRequestString(request, "Kind");
+                seenKinds.Add(kind);
+                seenTitles.Add(ReadPortableRequestString(request, "Title"));
+                seenFilters.Add(ReadPortableRequestString(request, "Filter"));
+                seenDefaultExtensions.Add(ReadPortableRequestString(request, "DefaultExtension"));
+                seenSuggestedItemNames.Add(ReadPortableRequestString(request, "SuggestedItemName"));
+                requestCount++;
+
+                return kind switch
+                {
+                    "SaveFile" => savePathWithoutExtension,
+                    "PickFolder" => tempDirectory,
+                    _ => openPath
+                };
+            });
+
+        try
+        {
+            button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, button));
+            DrainDispatcher(window);
+
+            AssertEqual(1, window.FileDialogShownCount, "MVP file dialog shown count");
+            AssertEqual(true, window.LastOpenFileDialogResult, "MVP OpenFileDialog result");
+            AssertEqual(openPath, window.LastOpenFileDialogFileName, "MVP OpenFileDialog FileName");
+            AssertEqual("open.txt", window.LastOpenFileDialogSafeFileName, "MVP OpenFileDialog SafeFileName");
+            AssertEqual(true, window.LastSaveFileDialogResult, "MVP SaveFileDialog result");
+            AssertEqual(savePath, window.LastSaveFileDialogFileName, "MVP SaveFileDialog FileName");
+            AssertEqual("saved.txt", window.LastSaveFileDialogSafeFileName, "MVP SaveFileDialog SafeFileName");
+            AssertEqual(true, window.LastFolderDialogResult, "MVP OpenFolderDialog result");
+            AssertEqual(tempDirectory, window.LastFolderDialogFolderName, "MVP OpenFolderDialog FolderName");
+            AssertEqual(Path.GetFileName(tempDirectory), window.LastFolderDialogSafeFolderName, "MVP OpenFolderDialog SafeFolderName");
+            AssertEqual(
+                $"File dialogs: open.txt | saved.txt | {Path.GetFileName(tempDirectory)}",
+                statusText.Text,
+                "MVP file dialog status text");
+
+            AssertEqual(3, requestCount, "MVP file dialog request count");
+            AssertEqual("OpenFile", seenKinds[0], "MVP file dialog open request kind");
+            AssertEqual("SaveFile", seenKinds[1], "MVP file dialog save request kind");
+            AssertEqual("PickFolder", seenKinds[2], "MVP file dialog folder request kind");
+            AssertEqual("Open MVP file", seenTitles[0], "MVP file dialog open title");
+            AssertEqual("Save MVP file", seenTitles[1], "MVP file dialog save title");
+            AssertEqual("Select MVP folder", seenTitles[2], "MVP file dialog folder title");
+            AssertEqual("Text files (*.txt)|*.txt|All files (*.*)|*.*", seenFilters[0], "MVP file dialog open filter");
+            AssertEqual("Text files (*.txt)|*.txt", seenFilters[1], "MVP file dialog save filter");
+            AssertEqual(string.Empty, seenFilters[2], "MVP file dialog folder filter");
+            AssertEqual("txt", seenDefaultExtensions[1], "MVP file dialog save default extension");
+            AssertEqual("saved", seenSuggestedItemNames[1], "MVP file dialog save suggested item");
+        }
+        finally
+        {
+            registration?.Dispose();
+            Directory.Delete(tempDirectory, recursive: true);
+        }
+    }
+
+    private static IDisposable? RegisterDeterministicFileDialog(
+        Type serviceType,
+        Func<object, string> show)
+    {
+        var registerMethod = serviceType.GetMethod(
+                "Register",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: new[] { typeof(Func<object, string>) },
                 modifiers: null)
             ?? throw new MissingMethodException(serviceType.FullName, "Register");
 

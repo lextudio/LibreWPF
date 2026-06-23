@@ -27,6 +27,7 @@ internal static class Program
         "PresentationFramework",
         "PresentationUI",
         "ReachFramework",
+        "System.Printing",
         "UIAutomationTypes",
         "UIAutomationProvider",
         "System.Windows.Input.Manipulations",
@@ -84,6 +85,7 @@ internal static class Program
         new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework", "net11.0", "WPF"),
         new("Microsoft.DotNet.Wpf.GitHub", "PresentationUI", "net11.0", "WPF"),
         new("Microsoft.DotNet.Wpf.GitHub", "ReachFramework", "net11.0", "WPF"),
+        new("Microsoft.DotNet.Wpf.GitHub", "System.Printing", "net11.0", "WPF"),
         new("Microsoft.DotNet.Wpf.GitHub", "UIAutomationTypes", "net11.0", "WPF"),
         new("Microsoft.DotNet.Wpf.GitHub", "UIAutomationProvider", "net11.0", "WPF"),
         new("Microsoft.DotNet.Wpf.GitHub", "System.Windows.Input.Manipulations", "net11.0", "Ecma"),
@@ -3877,6 +3879,7 @@ internal static class Program
                     ValidateLauncher();
                     ValidateMessageBox(window);
                     ValidateFileDialogs(window);
+                    ValidatePrintDialog();
                     ValidateClipboard();
                     ValidateFreezableResources();
                     ValidateManagedFrameworkCollections();
@@ -5285,6 +5288,43 @@ internal static class Program
                         registration?.Dispose();
                         Directory.Delete(tempDirectory, recursive: true);
                     }
+                }
+
+                private static void ValidatePrintDialog()
+                {
+                    if (OperatingSystem.IsWindows())
+                    {
+                        return;
+                    }
+
+                    var printDialog = new PrintDialog
+                    {
+                        UserPageRangeEnabled = true,
+                        SelectedPagesEnabled = true,
+                        CurrentPageEnabled = true,
+                        PageRangeSelection = PageRangeSelection.UserPages,
+                        PageRange = new PageRange(7, 3),
+                        MinPage = 2,
+                        MaxPage = 10
+                    };
+
+                    AssertEqual(true, printDialog.UserPageRangeEnabled, "external SDK PrintDialog user page range enabled");
+                    AssertEqual(true, printDialog.SelectedPagesEnabled, "external SDK PrintDialog selected pages enabled");
+                    AssertEqual(true, printDialog.CurrentPageEnabled, "external SDK PrintDialog current page enabled");
+                    AssertEqual(PageRangeSelection.UserPages, printDialog.PageRangeSelection, "external SDK PrintDialog page range selection");
+                    AssertEqual(3, printDialog.PageRange.PageFrom, "external SDK PrintDialog normalized page range start");
+                    AssertEqual(7, printDialog.PageRange.PageTo, "external SDK PrintDialog normalized page range end");
+                    AssertEqual(2u, printDialog.MinPage, "external SDK PrintDialog minimum page");
+                    AssertEqual(10u, printDialog.MaxPage, "external SDK PrintDialog maximum page");
+                    AssertEqual<object>(null, printDialog.PrintQueue, "external SDK PrintDialog portable print queue");
+                    if (printDialog.PrintTicket is null)
+                    {
+                        throw new InvalidOperationException("Expected external SDK PrintDialog portable print ticket.");
+                    }
+
+                    AssertClose(816.0, printDialog.PrintableAreaWidth, "external SDK PrintDialog portable printable width");
+                    AssertClose(1056.0, printDialog.PrintableAreaHeight, "external SDK PrintDialog portable printable height");
+                    AssertEqual(false, printDialog.ShowDialog().GetValueOrDefault(true), "external SDK PrintDialog portable dialog result");
                 }
 
                 private static string ReadPortableRequestString(object request, string propertyName)

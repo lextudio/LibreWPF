@@ -57,6 +57,7 @@
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationFramework.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\PresentationUI.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\ReachFramework.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\System.Printing.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\UIAutomationTypes.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\UIAutomationProvider.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\lib\$(TargetFramework)\System.Windows.Input.Manipulations.dll" />
@@ -76,6 +77,7 @@
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationFramework.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\PresentationUI.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\ReachFramework.dll" />
+      <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\System.Printing.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\UIAutomationTypes.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\UIAutomationProvider.dll" />
       <_RequiredManagedWpfTransportPayload Include="$(_ManagedWpfTransportRoot)\ref\$(TargetFramework)\System.Windows.Input.Manipulations.dll" />
@@ -93,6 +95,43 @@
     <Error
         Condition="!Exists('%(_RequiredManagedWpfTransportPayload.Identity)')"
         Text="The WPF transport package is missing required payload '%(_RequiredManagedWpfTransportPayload.Identity)'. Build the managed WPF assemblies for $(Configuration)|$(TargetFramework) before packing $(PackageName)." />
+  </Target>
+
+  <Target Name="AddManagedWpfTransportSystemPrintingPayload"
+          BeforeTargets="CreateContentFolder"
+          Condition="'$(IsPackable)' == 'true' And '$(CreateArchNeutralPackage)' == 'true' And '$(IncludeAssembliesInArchNeutralPackage)' == 'true' And $(PackageName.Contains('Microsoft.DotNet.Wpf.GitHub'))">
+    <PropertyGroup>
+      <_ManagedWpfTransportLibRoot>$(ArtifactsPackagingDir)$(NormalizedPackageName)\lib\$(TargetFramework)</_ManagedWpfTransportLibRoot>
+      <_ManagedWpfTransportRefRoot>$(ArtifactsPackagingDir)$(NormalizedPackageName)\ref\$(TargetFramework)</_ManagedWpfTransportRefRoot>
+      <_SystemPrintingRuntimeRoot>$(ArtifactsDir)bin\System.Printing-PresentationFramework-api-cycle\$(Configuration)\$(TargetFramework)</_SystemPrintingRuntimeRoot>
+      <_SystemPrintingRefRoot>$(ArtifactsReferenceAssemblyDir)System.Printing\$(Configuration)\$(TargetFramework)</_SystemPrintingRefRoot>
+    </PropertyGroup>
+
+    <Error
+        Condition="!Exists('$(_SystemPrintingRuntimeRoot)\System.Printing.dll')"
+        Text="The portable WPF transport package requires '$(_SystemPrintingRuntimeRoot)\System.Printing.dll'. Build System.Printing-PresentationFramework-api-cycle before packing $(PackageName)." />
+    <Error
+        Condition="!Exists('$(_SystemPrintingRefRoot)\System.Printing.dll')"
+        Text="The portable WPF transport package requires '$(_SystemPrintingRefRoot)\System.Printing.dll'. Build System.Printing-ref before packing $(PackageName)." />
+
+    <ItemGroup>
+      <_ManagedWpfTransportSystemPrintingRuntimePayload Include="$(_SystemPrintingRuntimeRoot)\System.Printing.dll" />
+      <_ManagedWpfTransportSystemPrintingRuntimePayload Include="$(_SystemPrintingRuntimeRoot)\System.Printing.pdb"
+                                                        Condition="Exists('$(_SystemPrintingRuntimeRoot)\System.Printing.pdb')" />
+      <_ManagedWpfTransportSystemPrintingRefPayload Include="$(_SystemPrintingRefRoot)\System.Printing.dll" />
+      <_ManagedWpfTransportSystemPrintingRefPayload Include="$(_SystemPrintingRefRoot)\System.Printing.xml"
+                                                    Condition="Exists('$(_SystemPrintingRefRoot)\System.Printing.xml')" />
+    </ItemGroup>
+
+    <MakeDir Directories="$(_ManagedWpfTransportLibRoot);$(_ManagedWpfTransportRefRoot)" />
+    <Copy
+        SourceFiles="@(_ManagedWpfTransportSystemPrintingRuntimePayload)"
+        DestinationFolder="$(_ManagedWpfTransportLibRoot)"
+        SkipUnchangedFiles="true" />
+    <Copy
+        SourceFiles="@(_ManagedWpfTransportSystemPrintingRefPayload)"
+        DestinationFolder="$(_ManagedWpfTransportRefRoot)"
+        SkipUnchangedFiles="true" />
   </Target>
 
   <Target Name="AddManagedWpfTransportPrivateWinFormsPayload"

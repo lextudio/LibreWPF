@@ -130,6 +130,7 @@
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)PresentationFramework.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)PresentationUI.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)ReachFramework.dll" />
+      <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)System.Printing.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)UIAutomationTypes.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)UIAutomationProvider.dll" />
       <_ProGpuWpfSdkMutablePackageOutput Include="$(TargetDir)System.Windows.Input.Manipulations.dll" />

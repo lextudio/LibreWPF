@@ -5142,6 +5142,37 @@ internal static class MvpSelfTest
         ApplicationCommands.Paste.Execute(null, dataObjectPayloadTextBox);
         DrainDispatcher(window);
         AssertEqual("alpha beta gamma", dataObjectPayloadTextBox.Text, "TextBox payload paste result");
+
+        AssertEqual(true, dataObjectPayloadTextBox.ApplyTemplate(), "TextBox payload template application");
+        AssertEqual(
+            true,
+            dataObjectPayloadTextBox.Template?.FindName("PART_ContentHost", dataObjectPayloadTextBox) is ScrollViewer,
+            "TextBox payload content host");
+
+        dataObjectPayloadTextBox.Text = "undo seed";
+        dataObjectPayloadTextBox.Select(dataObjectPayloadTextBox.Text.Length, 0);
+        dataObjectPayloadTextBox.BeginChange();
+        try
+        {
+            dataObjectPayloadTextBox.SelectedText = " unit";
+        }
+        finally
+        {
+            dataObjectPayloadTextBox.EndChange();
+        }
+
+        DrainDispatcher(window);
+        AssertEqual("undo seed unit", dataObjectPayloadTextBox.Text, "TextBox payload undo seed edit");
+        AssertEqual(true, dataObjectPayloadTextBox.CanUndo, "TextBox payload CanUndo state");
+        AssertEqual(true, ApplicationCommands.Undo.CanExecute(null, dataObjectPayloadTextBox), "TextBox payload Undo CanExecute");
+        ApplicationCommands.Undo.Execute(null, dataObjectPayloadTextBox);
+        DrainDispatcher(window);
+        AssertEqual("undo seed", dataObjectPayloadTextBox.Text, "TextBox payload undo result");
+        AssertEqual(true, dataObjectPayloadTextBox.CanRedo, "TextBox payload CanRedo state");
+        AssertEqual(true, ApplicationCommands.Redo.CanExecute(null, dataObjectPayloadTextBox), "TextBox payload Redo CanExecute");
+        ApplicationCommands.Redo.Execute(null, dataObjectPayloadTextBox);
+        DrainDispatcher(window);
+        AssertEqual("undo seed unit", dataObjectPayloadTextBox.Text, "TextBox payload redo result");
         Clipboard.Clear();
 
         dataObjectPayloadTextBox.Text = "mvp data object";

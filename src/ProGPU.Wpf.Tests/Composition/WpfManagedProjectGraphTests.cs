@@ -6920,9 +6920,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PastePayloadButton", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("UndoPayloadButton", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("RedoPayloadButton", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("dataObjectPayloadTextBox.ApplyTemplate()", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PART_ContentHost", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ApplicationCommands.Cut.Execute(null, dataObjectPayloadTextBox)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("AssertEqual(ApplicationCommands.Undo, undoPayloadButton.Command", mvpMainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("AssertEqual(ApplicationCommands.Redo, redoPayloadButton.Command", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("dataObjectPayloadTextBox.BeginChange()", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ApplicationCommands.Undo.Execute(null, dataObjectPayloadTextBox)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ApplicationCommands.Redo.Execute(null, dataObjectPayloadTextBox)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("TextBox payload paste result", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("if (dataObject == null)", textEditorCopyPaste, StringComparison.Ordinal);
         Assert.Contains("return string.Empty;", textEditorCopyPaste, StringComparison.Ordinal);

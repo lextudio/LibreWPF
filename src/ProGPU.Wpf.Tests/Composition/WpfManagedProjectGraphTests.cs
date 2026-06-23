@@ -6418,6 +6418,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Application.LoadComponent", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"/ProGPU.Wpf.MvpApp;component/OverviewPage.xaml\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Application.LoadComponent overview title text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLooseXamlReaderWriter()", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("XamlReader.Parse(looseXaml)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("XamlWriter.Save(root)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("loose XamlWriter round-trip Button content", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("component pack TextBlock text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("component pack TextBlock foreground color", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("startup DynamicResource text", mvpMainWindowCodeBehind, StringComparison.Ordinal);

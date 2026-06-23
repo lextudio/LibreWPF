@@ -1189,6 +1189,7 @@ internal static class MvpSelfTest
             expectLoadedStoryboardApplied);
         ValidateItemsContextMenu(window, viewModel, itemsList);
         ValidateApplicationLoadComponent();
+        ValidateLooseXamlReaderWriter();
         ValidateNavigation(window, navigationFrame, detailsNavigationButton);
         ValidateSecondaryWindow(window, aboutMenuItem);
         ValidateEditor(window, editorPasswordBox, editorRichTextBox);
@@ -2577,6 +2578,56 @@ internal static class MvpSelfTest
             overviewPage.FindName("OverviewTitle"),
             "Application.LoadComponent overview title");
         AssertEqual("SDK overview page", overviewTitle.Text, "Application.LoadComponent overview title text");
+    }
+
+    private static void ValidateLooseXamlReaderWriter()
+    {
+        const string looseXaml = """
+            <StackPanel
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                x:Name="LooseXamlRoot"
+                Orientation="Horizontal"
+                Tag="loose-xaml">
+                <TextBlock
+                    x:Name="LooseXamlText"
+                    Text="Loose XAML text" />
+                <Button
+                    x:Name="LooseXamlButton"
+                    MinWidth="96"
+                    Content="Loose action" />
+            </StackPanel>
+            """;
+
+        var root = Require<StackPanel>(XamlReader.Parse(looseXaml), "loose XamlReader StackPanel");
+        AssertEqual("LooseXamlRoot", root.Name, "loose XamlReader root name");
+        AssertEqual(Orientation.Horizontal, root.Orientation, "loose XamlReader root orientation");
+        AssertEqual("loose-xaml", root.Tag, "loose XamlReader root tag");
+        AssertEqual(2, root.Children.Count, "loose XamlReader child count");
+
+        var text = Require<TextBlock>(root.Children[0], "loose XamlReader TextBlock");
+        var button = Require<Button>(root.Children[1], "loose XamlReader Button");
+        AssertEqual("LooseXamlText", text.Name, "loose XamlReader TextBlock name");
+        AssertEqual("Loose XAML text", text.Text, "loose XamlReader TextBlock text");
+        AssertEqual("LooseXamlButton", button.Name, "loose XamlReader Button name");
+        AssertEqual("Loose action", button.Content, "loose XamlReader Button content");
+        AssertEqual(96.0, button.MinWidth, "loose XamlReader Button MinWidth");
+
+        string serialized = XamlWriter.Save(root);
+        AssertContains("LooseXamlRoot", serialized, "loose XamlWriter serialized root name");
+        AssertContains("LooseXamlButton", serialized, "loose XamlWriter serialized Button name");
+
+        var roundTripped = Require<StackPanel>(
+            XamlReader.Parse(serialized),
+            "loose XamlWriter round-trip StackPanel");
+        AssertEqual("LooseXamlRoot", roundTripped.Name, "loose XamlWriter round-trip root name");
+        AssertEqual(Orientation.Horizontal, roundTripped.Orientation, "loose XamlWriter round-trip orientation");
+        AssertEqual(2, roundTripped.Children.Count, "loose XamlWriter round-trip child count");
+        var roundTrippedButton = Require<Button>(
+            roundTripped.Children[1],
+            "loose XamlWriter round-trip Button");
+        AssertEqual("Loose action", roundTrippedButton.Content, "loose XamlWriter round-trip Button content");
+        AssertEqual(96.0, roundTrippedButton.MinWidth, "loose XamlWriter round-trip Button MinWidth");
     }
 
     private static void ValidateSecondaryWindow(MainWindow window, MenuItem aboutMenuItem)

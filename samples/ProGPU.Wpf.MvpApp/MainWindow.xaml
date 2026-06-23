@@ -213,6 +213,27 @@
                             x:Name="ItemsList"
                             ItemsSource="{Binding Items}"
                             SelectedItem="{Binding SelectedItem}">
+                            <ListBox.ContextMenu>
+                                <ContextMenu
+                                    x:Name="ItemsContextMenu"
+                                    DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                    <MenuItem
+                                        x:Name="ContextAddMenuItem"
+                                        Command="{Binding AddItemCommand}"
+                                        Header="_Add item" />
+                                    <MenuItem
+                                        x:Name="ContextRefreshMenuItem"
+                                        Command="{x:Static local:MainWindow.RefreshStatusCommand}"
+                                        CommandTarget="{Binding PlacementTarget, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                        Header="_Refresh status" />
+                                    <Separator />
+                                    <MenuItem
+                                        x:Name="ContextActionsEnabledMenuItem"
+                                        Header="_Enable actions"
+                                        IsCheckable="True"
+                                        IsChecked="{Binding ActionsEnabled}" />
+                                </ContextMenu>
+                            </ListBox.ContextMenu>
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal">

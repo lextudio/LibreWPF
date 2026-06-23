@@ -495,7 +495,7 @@ internal static class MvpSelfTest
             window.FindName("CommandStatusText"),
             "command status TextBlock");
         Require<TextBox>(window.FindName("NameTextBox"), "name TextBox");
-        Require<ListBox>(window.FindName("ItemsList"), "items ListBox");
+        var itemsList = Require<ListBox>(window.FindName("ItemsList"), "items ListBox");
         var itemsDataGrid = Require<DataGrid>(window.FindName("ItemsDataGrid"), "items DataGrid");
         var selectedItemSummaryText = Require<TextBlock>(
             window.FindName("SelectedItemSummaryText"),
@@ -627,6 +627,7 @@ internal static class MvpSelfTest
         AssertEqual("Category: Framework", summaryCategoryText.Text, "summary initial category text");
         AssertEqual("Progress: 35%", summaryProgressText.Text, "summary initial progress text");
         AssertEqual("Alpha / Framework / 35%", selectedItemSummaryText.Text, "initial selected summary text");
+        ValidateItemsContextMenu(window, viewModel, itemsList);
         ValidateNavigation(window, navigationFrame, detailsNavigationButton);
 
         AssertEqual(true, MainWindow.RefreshStatusCommand.CanExecute(null, window), "refresh command initial CanExecute state");
@@ -707,6 +708,93 @@ internal static class MvpSelfTest
         var restoredItems = CopyItems(itemsViewSource.View);
         AssertEqual(false, viewModel.ShowActiveOnly, "active-only restored view model state");
         AssertEqual(2, restoredItems.Count, "restored collection view item count");
+    }
+
+    private static void ValidateItemsContextMenu(Window window, MainViewModel viewModel, ListBox itemsList)
+    {
+        var contextMenu = Require<ContextMenu>(itemsList.ContextMenu, "items ContextMenu");
+        AssertEqual("ItemsContextMenu", contextMenu.Name, "items ContextMenu name");
+        AssertEqual(4, contextMenu.Items.Count, "items ContextMenu item count");
+
+        var addItem = Require<MenuItem>(contextMenu.Items[0], "context add MenuItem");
+        var refreshItem = Require<MenuItem>(contextMenu.Items[1], "context refresh MenuItem");
+        Require<Separator>(contextMenu.Items[2], "context menu separator");
+        var actionsItem = Require<MenuItem>(contextMenu.Items[3], "context actions MenuItem");
+
+        AssertEqual("ContextAddMenuItem", addItem.Name, "context add MenuItem name");
+        AssertEqual("_Add item", addItem.Header, "context add MenuItem header");
+        AssertEqual("ContextRefreshMenuItem", refreshItem.Name, "context refresh MenuItem name");
+        AssertEqual("_Refresh status", refreshItem.Header, "context refresh MenuItem header");
+        AssertEqual(MainWindow.RefreshStatusCommand, refreshItem.Command, "context refresh routed command");
+        AssertEqual("ContextActionsEnabledMenuItem", actionsItem.Name, "context actions MenuItem name");
+        AssertEqual(true, actionsItem.IsCheckable, "context actions checkable state");
+
+        var contextDataContextBinding = Require<Binding>(
+            BindingOperations.GetBinding(contextMenu, FrameworkElement.DataContextProperty),
+            "context menu DataContext binding");
+        var contextDataContextSource = Require<RelativeSource>(
+            contextDataContextBinding.RelativeSource,
+            "context menu DataContext RelativeSource");
+        AssertEqual("PlacementTarget.DataContext", contextDataContextBinding.Path.Path, "context menu DataContext path");
+        AssertEqual(RelativeSourceMode.Self, contextDataContextSource.Mode, "context menu DataContext source");
+
+        var addCommandBinding = Require<Binding>(
+            BindingOperations.GetBinding(addItem, MenuItem.CommandProperty),
+            "context add command binding");
+        AssertEqual("AddItemCommand", addCommandBinding.Path.Path, "context add command path");
+
+        var refreshTargetBinding = Require<Binding>(
+            BindingOperations.GetBinding(refreshItem, MenuItem.CommandTargetProperty),
+            "context refresh command target binding");
+        var refreshTargetSource = Require<RelativeSource>(
+            refreshTargetBinding.RelativeSource,
+            "context refresh command target RelativeSource");
+        AssertEqual("PlacementTarget", refreshTargetBinding.Path.Path, "context refresh command target path");
+        AssertEqual(
+            RelativeSourceMode.FindAncestor,
+            refreshTargetSource.Mode,
+            "context refresh command target source");
+        AssertEqual(
+            typeof(ContextMenu),
+            refreshTargetSource.AncestorType,
+            "context refresh command target ancestor");
+
+        var actionsCheckedBinding = Require<Binding>(
+            BindingOperations.GetBinding(actionsItem, MenuItem.IsCheckedProperty),
+            "context actions checked binding");
+        AssertEqual("ActionsEnabled", actionsCheckedBinding.Path.Path, "context actions checked path");
+
+        contextMenu.PlacementTarget = itemsList;
+        UpdateBinding(contextMenu, FrameworkElement.DataContextProperty);
+        UpdateBinding(addItem, MenuItem.CommandProperty);
+        UpdateBinding(refreshItem, MenuItem.CommandTargetProperty);
+        UpdateBinding(actionsItem, MenuItem.IsCheckedProperty);
+        DrainDispatcher(window);
+
+        AssertEqual(viewModel, contextMenu.DataContext, "context menu inherited DataContext");
+        AssertEqual(viewModel.AddItemCommand, addItem.Command, "context add command resolved command");
+        AssertEqual(itemsList, refreshItem.CommandTarget, "context refresh command target");
+        AssertEqual(true, actionsItem.IsChecked, "context actions initial checked state");
+        AssertEqual(
+            true,
+            MainWindow.RefreshStatusCommand.CanExecute(null, refreshItem.CommandTarget),
+            "context refresh command target CanExecute state");
+
+        int initialCount = viewModel.Items.Count;
+        viewModel.NewItemName = "Context added";
+        viewModel.SelectedCategory = "Input";
+        addItem.Command.Execute(addItem.CommandParameter);
+        DrainDispatcher(window);
+        AssertEqual(initialCount + 1, viewModel.Items.Count, "context add command item count");
+        AssertEqual("Context added", viewModel.SelectedItem?.Name, "context add selected item name");
+        AssertEqual("Input", viewModel.SelectedItem?.Category, "context add selected item category");
+
+        actionsItem.IsChecked = false;
+        DrainDispatcher(window);
+        AssertEqual(false, viewModel.ActionsEnabled, "context actions unchecked view model state");
+        actionsItem.IsChecked = true;
+        DrainDispatcher(window);
+        AssertEqual(true, viewModel.ActionsEnabled, "context actions checked view model state");
     }
 
     private static void ValidateGroupedItemTemplate(DataTemplate template, MvpActiveTextConverter converter)
@@ -1091,6 +1179,11 @@ internal static class MvpSelfTest
         dispatcherObject.Dispatcher.Invoke(
             static () => { },
             DispatcherPriority.ApplicationIdle);
+    }
+
+    private static void UpdateBinding(DependencyObject target, DependencyProperty property)
+    {
+        BindingOperations.GetBindingExpression(target, property)?.UpdateTarget();
     }
 
     private static T Require<T>(object? value, string description)

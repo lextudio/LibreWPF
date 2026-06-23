@@ -6111,6 +6111,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("InputGestureText=\"Ctrl+N\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("IsCheckable=\"True\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"RefreshMenuItem\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<ListBox.ContextMenu>", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ItemsContextMenu\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DataContext=\"{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ContextAddMenuItem\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{Binding AddItemCommand}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ContextRefreshMenuItem\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CommandTarget=\"{Binding PlacementTarget, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ContextActionsEnabledMenuItem\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("IsChecked=\"{Binding ActionsEnabled}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"CommandStatusText\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SelectedItemSummaryText\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<MultiBinding Converter=\"{StaticResource MvpItemSummaryConverter}\">", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6229,6 +6238,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Storyboard.GetTargetName(animation)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Storyboard.GetTargetProperty(animation).Path", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("animation.Duration.TimeSpan", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateItemsContextMenu", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("context menu DataContext path", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("context refresh command target ancestor", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("context add command item count", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("UpdateBinding(contextMenu, FrameworkElement.DataContextProperty)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GetTextBindingPath", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GetTextBoxBindingPath", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ObservableCollection<MvpNode>", mvpMainWindowCodeBehind, StringComparison.Ordinal);

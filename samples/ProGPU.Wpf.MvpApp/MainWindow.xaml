@@ -637,6 +637,33 @@
                             Content="Repeat action"
                             Delay="180"
                             Interval="70" />
+                        <StackPanel
+                            x:Name="KeyboardNavigationPanel"
+                            Margin="0,16,0,0"
+                            FocusManager.FocusedElement="{Binding ElementName=KeyboardNavigationFirstBox}"
+                            FocusManager.IsFocusScope="True"
+                            KeyboardNavigation.ControlTabNavigation="Cycle"
+                            KeyboardNavigation.DirectionalNavigation="Contained"
+                            KeyboardNavigation.TabNavigation="Cycle">
+                            <TextBlock
+                                Margin="0,0,0,8"
+                                FontWeight="SemiBold"
+                                Text="Keyboard navigation" />
+                            <TextBox
+                                x:Name="KeyboardNavigationFirstBox"
+                                TabIndex="0"
+                                Text="First focus target" />
+                            <Button
+                                x:Name="KeyboardNavigationSecondButton"
+                                Margin="0,8,0,0"
+                                Content="Second focus target"
+                                TabIndex="1" />
+                            <TextBox
+                                x:Name="KeyboardNavigationThirdBox"
+                                Margin="0,8,0,0"
+                                TabIndex="2"
+                                Text="Third focus target" />
+                        </StackPanel>
                     </StackPanel>
 
                     <StackPanel

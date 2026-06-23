@@ -695,6 +695,18 @@ internal static class MvpSelfTest
         var inputDatePicker = Require<DatePicker>(
             window.FindName("InputDatePicker"),
             "input DatePicker");
+        var keyboardNavigationPanel = Require<StackPanel>(
+            window.FindName("KeyboardNavigationPanel"),
+            "keyboard navigation StackPanel");
+        var keyboardNavigationFirstBox = Require<TextBox>(
+            window.FindName("KeyboardNavigationFirstBox"),
+            "first keyboard navigation TextBox");
+        var keyboardNavigationSecondButton = Require<Button>(
+            window.FindName("KeyboardNavigationSecondButton"),
+            "second keyboard navigation Button");
+        var keyboardNavigationThirdBox = Require<TextBox>(
+            window.FindName("KeyboardNavigationThirdBox"),
+            "third keyboard navigation TextBox");
         var mvpDockPanel = Require<DockPanel>(
             window.FindName("MvpDockPanel"),
             "MVP DockPanel");
@@ -930,7 +942,11 @@ internal static class MvpSelfTest
             renderingRadioButton,
             inputRepeatButton,
             inputCalendar,
-            inputDatePicker);
+            inputDatePicker,
+            keyboardNavigationPanel,
+            keyboardNavigationFirstBox,
+            keyboardNavigationSecondButton,
+            keyboardNavigationThirdBox);
         ValidateLayoutControls(
             mvpDockPanel,
             dockTopBand,
@@ -1473,7 +1489,11 @@ internal static class MvpSelfTest
         RadioButton renderingRadio,
         RepeatButton repeatButton,
         WpfCalendar calendar,
-        DatePicker datePicker)
+        DatePicker datePicker,
+        StackPanel keyboardNavigationPanel,
+        TextBox keyboardNavigationFirstBox,
+        Button keyboardNavigationSecondButton,
+        TextBox keyboardNavigationThirdBox)
     {
         AssertEqual(1, toolBarTray.ToolBars.Count, "MVP ToolBarTray toolbar count");
         AssertEqual(toolBar, toolBarTray.ToolBars[0], "MVP ToolBarTray toolbar reference");
@@ -1561,6 +1581,51 @@ internal static class MvpSelfTest
         AssertEqual(new DateTime(2026, 6, 25), calendar.SelectedDates[0], "Calendar selected date collection item");
         AssertEqual("InputCalendar", window.LastDateSelectionSenderName, "Calendar selection sender");
         AssertGreaterThan(afterDatePickerEvents, window.InputDateSelectionChangedCount, "Calendar selection event count");
+
+        ValidateKeyboardNavigation(
+            window,
+            keyboardNavigationPanel,
+            keyboardNavigationFirstBox,
+            keyboardNavigationSecondButton,
+            keyboardNavigationThirdBox);
+    }
+
+    private static void ValidateKeyboardNavigation(
+        Window window,
+        StackPanel panel,
+        TextBox firstBox,
+        Button secondButton,
+        TextBox thirdBox)
+    {
+        AssertEqual(true, FocusManager.GetIsFocusScope(panel), "keyboard navigation focus-scope flag");
+        AssertEqual(KeyboardNavigationMode.Cycle, KeyboardNavigation.GetTabNavigation(panel), "keyboard navigation tab mode");
+        AssertEqual(
+            KeyboardNavigationMode.Cycle,
+            KeyboardNavigation.GetControlTabNavigation(panel),
+            "keyboard navigation control-tab mode");
+        AssertEqual(
+            KeyboardNavigationMode.Contained,
+            KeyboardNavigation.GetDirectionalNavigation(panel),
+            "keyboard navigation directional mode");
+        AssertEqual(0, firstBox.TabIndex, "first keyboard navigation TabIndex");
+        AssertEqual(1, secondButton.TabIndex, "second keyboard navigation TabIndex");
+        AssertEqual(2, thirdBox.TabIndex, "third keyboard navigation TabIndex");
+        AssertEqual("First focus target", firstBox.Text, "first keyboard navigation text");
+        AssertEqual("Second focus target", secondButton.Content, "second keyboard navigation content");
+        AssertEqual("Third focus target", thirdBox.Text, "third keyboard navigation text");
+        AssertEqual(firstBox, FocusManager.GetFocusedElement(panel), "initial keyboard navigation logical focus");
+
+        FocusManager.SetFocusedElement(panel, secondButton);
+        DrainDispatcher(window);
+        AssertEqual(secondButton, FocusManager.GetFocusedElement(panel), "updated keyboard navigation logical focus");
+
+        FocusManager.SetFocusedElement(panel, thirdBox);
+        DrainDispatcher(window);
+        AssertEqual(thirdBox, FocusManager.GetFocusedElement(panel), "third keyboard navigation logical focus");
+
+        FocusManager.SetFocusedElement(panel, firstBox);
+        DrainDispatcher(window);
+        AssertEqual(firstBox, FocusManager.GetFocusedElement(panel), "restored keyboard navigation logical focus");
     }
 
     private static void ValidateToggleBinding(

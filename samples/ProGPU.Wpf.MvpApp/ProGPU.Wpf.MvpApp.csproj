@@ -6,5 +6,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Assets/MvpResource.txt" />
+    <Content Include="Assets/MvpContent.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Assets/MvpContent.txt</TargetPath>
+    </Content>
   </ItemGroup>
 </Project>

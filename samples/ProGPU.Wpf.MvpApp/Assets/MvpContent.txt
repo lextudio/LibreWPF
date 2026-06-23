@@ -1,0 +1,1 @@
+MVP copied content loaded through Application.GetContentStream and GetRemoteStream.

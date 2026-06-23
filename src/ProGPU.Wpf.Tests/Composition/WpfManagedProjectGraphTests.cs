@@ -6154,6 +6154,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<TargetFramework>net11.0-windows</TargetFramework>", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<UseWPF>true</UseWPF>", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<Resource Include=\"Assets/MvpResource.txt\" />", mvpProject, StringComparison.Ordinal);
+        Assert.Contains("<Content Include=\"Assets/MvpContent.txt\">", mvpProject, StringComparison.Ordinal);
+        Assert.Contains("<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>", mvpProject, StringComparison.Ordinal);
+        Assert.Contains("<TargetPath>Assets/MvpContent.txt</TargetPath>", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<ResourceDictionary Source=\"Resources/Theme.xaml\" />", mvpAppXaml, StringComparison.Ordinal);
         Assert.Contains("<ResourceDictionary Source=\"/ProGPU.Wpf.MvpApp;component/Resources/ComponentTheme.xaml\" />", mvpAppXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"MvpComponentPackText\"", mvpComponentThemeXaml, StringComparison.Ordinal);
@@ -6659,6 +6662,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("dynamic resource Border updated background color", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("dynamic resource Border restored background color", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Application.GetResourceStream(resourceUri)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Application.GetContentStream(uri)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Application.GetRemoteStream(uri)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("pack://application:,,,/Assets/MvpContent.txt", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("pack://siteoforigin:,,,/Assets/MvpContent.txt", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Localization.GetAttributes(localizedResourceText)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SystemParameters.PrimaryScreenWidth", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SystemParameters.PrimaryScreenWidthKey", mvpMainWindowCodeBehind, StringComparison.Ordinal);
@@ -6685,6 +6692,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public override object ProvideValue(IServiceProvider serviceProvider)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MarkupExtension TextBlock text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MVP pack resource loaded through Application.GetResourceStream.", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MVP copied content loaded through Application.GetContentStream and GetRemoteStream.", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Documents;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("FlowDocumentPageViewer documentPageViewer", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("FlowDocumentReader documentReader", mvpMainWindowCodeBehind, StringComparison.Ordinal);

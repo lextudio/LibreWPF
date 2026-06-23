@@ -2891,6 +2891,32 @@ internal static class MvpSelfTest
             "MVP pack resource loaded through Application.GetResourceStream.",
             reader.ReadToEnd().Trim(),
             "pack resource stream text");
+
+        var relativeContentText = ReadContentStreamText(new Uri("Assets/MvpContent.txt", UriKind.Relative));
+        var absoluteContentText = ReadContentStreamText(new Uri("pack://application:,,,/Assets/MvpContent.txt", UriKind.Absolute));
+        var relativeRemoteText = ReadRemoteStreamText(new Uri("Assets/MvpContent.txt", UriKind.Relative));
+        var absoluteRemoteText = ReadRemoteStreamText(new Uri("pack://siteoforigin:,,,/Assets/MvpContent.txt", UriKind.Absolute));
+        const string expectedContentText = "MVP copied content loaded through Application.GetContentStream and GetRemoteStream.";
+        AssertEqual(expectedContentText, relativeContentText, "relative content stream text");
+        AssertEqual(expectedContentText, absoluteContentText, "absolute content stream text");
+        AssertEqual(expectedContentText, relativeRemoteText, "relative remote stream text");
+        AssertEqual(expectedContentText, absoluteRemoteText, "absolute remote stream text");
+    }
+
+    private static string ReadContentStreamText(Uri uri)
+    {
+        var contentInfo = Application.GetContentStream(uri)
+            ?? throw new InvalidOperationException($"Expected MVP content stream for '{uri}'.");
+        using var reader = new StreamReader(contentInfo.Stream);
+        return reader.ReadToEnd().Trim();
+    }
+
+    private static string ReadRemoteStreamText(Uri uri)
+    {
+        var remoteInfo = Application.GetRemoteStream(uri)
+            ?? throw new InvalidOperationException($"Expected MVP remote stream for '{uri}'.");
+        using var reader = new StreamReader(remoteInfo.Stream);
+        return reader.ReadToEnd().Trim();
     }
 
     private static void ValidateFreezableResources(Window window)

@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using MediaBrush = System.Windows.Media.Brush;
@@ -72,6 +73,64 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
         ThrowIfClosed();
         MediaBrush? mediaBrush = WpfReflectionResourceResolver.AdaptBrush(brush);
         MediaPen? mediaPen = WpfReflectionResourceResolver.AdaptPen(pen);
+        if (_sink is IWpfNativePrimitiveCommandSink nativeSink)
+        {
+            DrawNativeRectangle(brush, pen, rectangle, mediaBrush, mediaPen, nativeSink);
+            return;
+        }
+
+        DrawRectangleTypedFallback(brush, pen, rectangle, mediaBrush, mediaPen);
+    }
+
+    private void DrawNativeRectangle(
+        object? brush,
+        object? pen,
+        object? rectangle,
+        MediaBrush? mediaBrush,
+        MediaPen? mediaPen,
+        IWpfNativePrimitiveCommandSink nativeSink)
+    {
+        if (!TryReadReplayRect(rectangle, out var replayRectangle))
+        {
+            CountUnsupported();
+            return;
+        }
+
+        if (mediaBrush != null)
+        {
+            RegisterRetainedDependencies(brush, pen);
+            nativeSink.DrawNativeRectangle(mediaBrush, mediaPen, replayRectangle);
+            CountApplied();
+            return;
+        }
+
+        if (mediaPen != null)
+        {
+            RegisterRetainedDependencies(brush, pen);
+            nativeSink.DrawNativeRectangle(null, mediaPen, replayRectangle);
+            if (brush != null && WpfReflectionDrawingReplay.IsTileBrush(brush))
+            {
+                CountPartiallyApplied();
+            }
+            else
+            {
+                CountApplied();
+            }
+
+            return;
+        }
+
+        CountUnsupportedIfPresent(brush, pen);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private void DrawRectangleTypedFallback(
+        object? brush,
+        object? pen,
+        object? rectangle,
+        MediaBrush? mediaBrush,
+        MediaPen? mediaPen)
+    {
         if (!TryReadRect(rectangle, out var mediaRectangle))
         {
             CountUnsupported();
@@ -645,6 +704,28 @@ public sealed class WpfObjectRenderDataDrawingContext : IDisposable
             && TryReadDoubleProperty(rectValue, "Height", out var height))
         {
             rectangle = new Rect(x, y, width, height);
+            return true;
+        }
+
+        rectangle = default;
+        return false;
+    }
+
+    private static bool TryReadReplayRect(object? rectValue, out WpfReplayRect rectangle)
+    {
+        if (rectValue is WpfReplayRect replayRect)
+        {
+            rectangle = replayRect;
+            return true;
+        }
+
+        if (rectValue != null
+            && TryReadDoubleProperty(rectValue, "X", out var x)
+            && TryReadDoubleProperty(rectValue, "Y", out var y)
+            && TryReadDoubleProperty(rectValue, "Width", out var width)
+            && TryReadDoubleProperty(rectValue, "Height", out var height))
+        {
+            rectangle = new WpfReplayRect(x, y, width, height);
             return true;
         }
 

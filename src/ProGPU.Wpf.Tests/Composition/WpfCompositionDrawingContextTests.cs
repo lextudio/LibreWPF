@@ -94,6 +94,21 @@ public sealed class WpfCompositionDrawingContextTests
     }
 
     [Fact]
+    public void ObjectRenderDataDrawingContextUsesNativeRectangleWhenAvailable()
+    {
+        var sink = new NativeRecordingSink();
+        using var context = new WpfObjectRenderDataDrawingContext(sink);
+        var pen = new MediaPen(Brushes.Black, 2);
+
+        context.DrawRectangle(Brushes.Red, pen, new FakeRect(5, 6, 7, 8));
+
+        Assert.Equal(new[] { "DrawNativeRectangle" }, sink.Operations);
+        Assert.Empty(sink.Rectangles);
+        Assert.Equal((Brushes.Red, pen, new WpfReplayRect(5, 6, 7, 8)), sink.NativeRectangles.Single());
+        Assert.Equal(new WpfCompositionDrawingContextResult(1, 1, 0), context.Result);
+    }
+
+    [Fact]
     public void ObjectRenderDataDrawingContextUsesImageSourceAdapter()
     {
         var sink = new RecordingSink();
@@ -947,7 +962,7 @@ public sealed class WpfCompositionDrawingContextTests
         public double this[int index] => _values[index];
     }
 
-    private sealed class RecordingSink :
+    private class RecordingSink :
         IWpfCompositionCommandSink,
         IWpfVisualEffectCommandSink,
         IWpfRetainedVisualBranchSink,
@@ -1127,6 +1142,52 @@ public sealed class WpfCompositionDrawingContextTests
 
         public void Dispose()
         {
+        }
+    }
+
+    private sealed class NativeRecordingSink : RecordingSink, IWpfNativePrimitiveCommandSink
+    {
+        public List<(MediaBrush? Brush, MediaPen? Pen, WpfReplayRect Rectangle)> NativeRectangles { get; } = new();
+
+        public void DrawNativeLine(MediaPen? pen, WpfReplayPoint point0, WpfReplayPoint point1)
+        {
+            Operations.Add("DrawNativeLine");
+        }
+
+        public void DrawNativeRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle)
+        {
+            Operations.Add("DrawNativeRectangle");
+            NativeRectangles.Add((brush, pen, rectangle));
+        }
+
+        public void DrawNativeRoundedRectangle(MediaBrush? brush, MediaPen? pen, WpfReplayRect rectangle, double radiusX, double radiusY)
+        {
+            Operations.Add("DrawNativeRoundedRectangle");
+        }
+
+        public void DrawNativeEllipse(MediaBrush? brush, MediaPen? pen, WpfReplayPoint center, double radiusX, double radiusY)
+        {
+            Operations.Add("DrawNativeEllipse");
+        }
+
+        public void DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle)
+        {
+            Operations.Add("DrawNativeImage");
+        }
+
+        public void DrawNativeImage(MediaImageSource imageSource, WpfReplayRect rectangle, WpfReplayRect sourceRectangle)
+        {
+            Operations.Add("DrawNativeImageSourceRect");
+        }
+
+        public void DrawNativeGlyphRun(MediaBrush? foregroundBrush, object glyphRunResource)
+        {
+            Operations.Add("DrawNativeGlyphRun");
+        }
+
+        public void PushNativeOpacityMask(MediaBrush? opacityMask, WpfReplayRect bounds)
+        {
+            Operations.Add("PushNativeOpacityMask");
         }
     }
 }

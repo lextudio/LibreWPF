@@ -11802,6 +11802,14 @@ internal static class Program
                 windowsBase,
                 silkNetWebGpu,
                 "external SDK");
+            AssertPackagedObjectRenderDataRectangleFillsPhysicalTarget(
+                outputRoot,
+                proGpuWpf,
+                proGpuBackend,
+                presentationCore,
+                windowsBase,
+                silkNetWebGpu,
+                "external SDK");
         }
         finally
         {
@@ -12046,6 +12054,116 @@ internal static class Program
             (texture as IDisposable)?.Dispose();
             (target as IDisposable)?.Dispose();
         }
+    }
+
+    private static void AssertPackagedObjectRenderDataRectangleFillsPhysicalTarget(
+        string nativeAssetRoot,
+        Assembly proGpuWpf,
+        Assembly proGpuBackend,
+        Assembly presentationCore,
+        Assembly windowsBase,
+        Assembly silkNetWebGpu,
+        string descriptionPrefix)
+    {
+        Type compositionTargetType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfCompositionTarget");
+        Type gpuTextureType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTexture");
+        Type gpuTextureAlphaModeType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTextureAlphaMode");
+        Type textureFormatType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureFormat");
+        Type textureUsageType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureUsage");
+        Type solidColorBrushType = GetRequiredType(presentationCore, "System.Windows.Media.SolidColorBrush");
+        Type colorType = GetRequiredType(presentationCore, "System.Windows.Media.Color");
+        Type rectType = GetRequiredType(windowsBase, "System.Windows.Rect");
+        object red = InvokeStatic(colorType, "FromRgb", (byte)0xFF, (byte)0x00, (byte)0x00);
+        object redBrush = Create(solidColorBrushType, red);
+        object rectangle = Create(rectType, 0.0, 0.0, 420.0, 840.0);
+
+        PreloadNativeAsset(nativeAssetRoot, "wgpu", $"{descriptionPrefix} WebGPU native runtime");
+        using IDisposable currentDirectory = PushCurrentDirectory(nativeAssetRoot);
+        object rgba8Unorm = Enum.Parse(textureFormatType, "Rgba8Unorm");
+        object renderTargetUsage = CombineEnumFlags(
+            textureUsageType,
+            Enum.Parse(textureUsageType, "RenderAttachment"),
+            Enum.Parse(textureUsageType, "CopySrc"));
+        object straightAlphaMode = Enum.Parse(gpuTextureAlphaModeType, "Straight");
+        object target = InvokeStatic(compositionTargetType, "CreateHeadless", rgba8Unorm);
+        object texture = Create(
+            gpuTextureType,
+            GetProperty(target, "Context"),
+            840u,
+            1680u,
+            rgba8Unorm,
+            renderTargetUsage,
+            $"{descriptionPrefix} packaged object render-data HiDPI framebuffer target",
+            1u,
+            straightAlphaMode);
+
+        try
+        {
+            object frame = Invoke(
+                target,
+                "BeginDrawingFrame",
+                840u,
+                1680u,
+                true,
+                420u,
+                840u,
+                2.0,
+                2.0);
+            object drawingContext = Invoke(frame, "OpenObjectRenderDataSinkContext", new object(), null);
+            try
+            {
+                InvokeObjectDrawRectangle(drawingContext, redBrush, null, rectangle);
+            }
+            finally
+            {
+                (drawingContext as IDisposable)?.Dispose();
+            }
+
+            MethodInfo render = FindMethodByParameterNames(
+                compositionTargetType,
+                "Render",
+                ["logicalWidth", "logicalHeight", "pixelWidth", "pixelHeight", "dpiScale", "targetView"]);
+            InvokeMethod(
+                render,
+                target,
+                420u,
+                840u,
+                840u,
+                1680u,
+                2f,
+                GetProperty(texture, "ViewPtr"));
+
+            byte[] pixels = (byte[])Invoke(texture, "ReadPixels");
+            AssertRgbaPixelIsRed(
+                pixels,
+                width: 840,
+                x: 20,
+                y: 20,
+                $"{descriptionPrefix} packaged object render-data WPF HiDPI upper-left pixel");
+            AssertRgbaPixelIsRed(
+                pixels,
+                width: 840,
+                x: 780,
+                y: 1560,
+                $"{descriptionPrefix} packaged object render-data WPF HiDPI lower-right pixel");
+        }
+        finally
+        {
+            (texture as IDisposable)?.Dispose();
+            (target as IDisposable)?.Dispose();
+        }
+    }
+
+    private static void InvokeObjectDrawRectangle(object drawingContext, object? brush, object? pen, object rectangle)
+    {
+        MethodInfo drawRectangle = drawingContext.GetType().GetMethod(
+            "DrawRectangle",
+            BindingFlags.Instance | BindingFlags.Public,
+            binder: null,
+            [typeof(object), typeof(object), typeof(object)],
+            modifiers: null)
+            ?? throw new MissingMethodException(drawingContext.GetType().FullName, "DrawRectangle(object, object, object)");
+        InvokeMethod(drawRectangle, drawingContext, brush, pen, rectangle);
     }
 
     private static object CreateRedWpfVisual(

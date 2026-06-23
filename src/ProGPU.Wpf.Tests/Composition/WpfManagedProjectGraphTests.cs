@@ -6696,6 +6696,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryReplayTileBrushRectangle(brush, pen, rectangle)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("TryReplayTileBrushGeometry(brush, pen, geometry)", wpfCompositionDrawingContext, StringComparison.Ordinal);
         Assert.Contains("WpfReflectionDrawingReplay.TryReplayTileBrushFill(", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("_sink is IWpfNativePrimitiveCommandSink nativeSink", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("nativeSink.DrawNativeRectangle(mediaBrush, mediaPen, replayRectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
+        Assert.Contains("private static bool TryReadReplayRect(object? rectValue, out WpfReplayRect rectangle)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("if (mediaBrush != null)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("_sink is IWpfNativeTransformCommandSink nativeTransformSink", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
         Assert.Contains("WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out var nativeTransform)", wpfObjectRenderDataDrawingContext, StringComparison.Ordinal);
@@ -6707,6 +6710,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GeneratedDrawingContextFallsBackToGenericMediaBrushWhenTileReplayUnsupported", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextFallsBackToGenericMediaBrushWhenTileReplayUnsupported", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("ObjectRenderDataDrawingContextPushesReflectedTransformsThroughNativeSink", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
+        Assert.Contains("ObjectRenderDataDrawingContextUsesNativeRectangleWhenAvailable", wpfCompositionDrawingContextTests, StringComparison.Ordinal);
         Assert.Contains("DecodePushTransformFallsBackToLocalMatrixTransformWhenForeignAssemblyShadowsType", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("\"System.Windows.Media.MatrixTransform\"", wpfReflectionResourceResolverTests, StringComparison.Ordinal);
         Assert.Contains("$([MSBuild]::IsOSPlatform('Windows'))", wpfTransportTargets, StringComparison.Ordinal);
@@ -8047,10 +8051,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RenderPassEncoderSetViewport", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(proGpuWpf, proGpuScene, \"external SDK\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPackagedHighDpiRetainedWpfPixelsFillPhysicalTarget(", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertPackagedObjectRenderDataRectangleFillsPhysicalTarget(", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPackagedRetinaStartupResizeKeepsLogicalSurface(", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("packaged Retina startup logical host width", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("packaged retained WPF HiDPI upper-left pixel", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("packaged retained WPF HiDPI lower-right pixel", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("packaged object render-data WPF HiDPI lower-right pixel", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("InvokeObjectDrawRectangle(drawingContext, redBrush, null, rectangle)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PushCurrentDirectory(nativeAssetRoot)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(proGpuScene, \"ProGPU.Scene.DrawingVisual\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(proGpuWpf, \"System.Windows.Media.ProGPU.Composition.ProGpuRetainedCompositionCommandSink\")", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -8091,12 +8098,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RenderPassEncoderSetViewport", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(proGpuWpf, proGpuScene, \"SDK\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPackagedHighDpiRetainedWpfPixelsFillPhysicalTarget(", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertPackagedObjectRenderDataRectangleFillsPhysicalTarget(", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPackagedLegacyRenderOverloadFillsPhysicalTarget(", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPackagedRetinaStartupResizeKeepsLogicalSurface(", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("packaged Retina startup logical host width", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("packaged retained WPF HiDPI upper-left pixel", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("packaged retained WPF HiDPI lower-right pixel", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("packaged object render-data WPF HiDPI lower-right pixel", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("packaged legacy WPF HiDPI lower-right pixel", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("InvokeObjectDrawRectangle(drawingContext, redBrush, null, rectangle)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PushCurrentDirectory(nativeAssetRoot)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(proGpuScene, \"ProGPU.Scene.DrawingVisual\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(proGpuVector, \"ProGPU.Vector.SolidColorBrush\")", runtimeHarnessProgram, StringComparison.Ordinal);

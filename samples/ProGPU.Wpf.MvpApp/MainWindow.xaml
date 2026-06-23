@@ -539,6 +539,46 @@
                             Margin="0,14,0,0"
                             Text="{Binding ValidationText, StringFormat=Current: {0}}"
                             TextWrapping="Wrap" />
+                        <Separator Margin="0,18,0,14" />
+                        <TextBlock
+                            Margin="0,0,0,8"
+                            FontWeight="SemiBold"
+                            Text="Grouped commit validation" />
+                        <StackPanel x:Name="BindingGroupPanel">
+                            <StackPanel.BindingGroup>
+                                <BindingGroup Name="MvpBindingGroup">
+                                    <BindingGroup.ValidationRules>
+                                        <local:MvpBindingGroupValidationRule
+                                            FirstProperty="BindingGroupFirstName"
+                                            RequiredPrefix="group:"
+                                            SecondProperty="BindingGroupLastName" />
+                                    </BindingGroup.ValidationRules>
+                                </BindingGroup>
+                            </StackPanel.BindingGroup>
+                            <TextBox
+                                x:Name="BindingGroupFirstBox"
+                                Text="{Binding BindingGroupFirstName, UpdateSourceTrigger=Explicit}" />
+                            <TextBox
+                                x:Name="BindingGroupLastBox"
+                                Margin="0,8,0,0"
+                                Text="{Binding BindingGroupLastName, UpdateSourceTrigger=Explicit}" />
+                            <Button
+                                x:Name="BindingGroupCommitButton"
+                                Margin="0,10,0,0"
+                                Click="OnBindingGroupCommitClick"
+                                Content="Commit grouped edit" />
+                            <TextBlock
+                                x:Name="BindingGroupStatusText"
+                                Margin="0,10,0,0"
+                                Text="{Binding BindingGroupStatus}" />
+                            <TextBlock
+                                x:Name="BindingGroupFirstEchoText"
+                                Margin="0,10,0,0"
+                                Text="{Binding BindingGroupFirstName, StringFormat=First: {0}}" />
+                            <TextBlock
+                                x:Name="BindingGroupLastEchoText"
+                                Text="{Binding BindingGroupLastName, StringFormat=Last: {0}}" />
+                        </StackPanel>
                     </StackPanel>
 
                     <Border

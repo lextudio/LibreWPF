@@ -80,6 +80,16 @@ public partial class MainWindow : Window
 
         e.Handled = true;
     }
+
+    private void OnBindingGroupCommitClick(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel viewModel)
+        {
+            viewModel.BindingGroupStatus = BindingGroupPanel.BindingGroup?.CommitEdit() == true
+                ? "Group committed"
+                : "Group has validation errors";
+        }
+    }
 }
 
 public sealed class MainViewModel : INotifyPropertyChanged
@@ -92,6 +102,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private double _progress = 35.0;
     private int _refreshCount;
     private string _validationText = "valid: ready";
+    private string _bindingGroupFirstName = "group: Ada";
+    private string _bindingGroupLastName = "group: Lovelace";
+    private string _bindingGroupStatus = "Group ready";
 
     public MainViewModel()
     {
@@ -179,6 +192,24 @@ public sealed class MainViewModel : INotifyPropertyChanged
         set => SetField(ref _validationText, value);
     }
 
+    public string BindingGroupFirstName
+    {
+        get => _bindingGroupFirstName;
+        set => SetField(ref _bindingGroupFirstName, value);
+    }
+
+    public string BindingGroupLastName
+    {
+        get => _bindingGroupLastName;
+        set => SetField(ref _bindingGroupLastName, value);
+    }
+
+    public string BindingGroupStatus
+    {
+        get => _bindingGroupStatus;
+        set => SetField(ref _bindingGroupStatus, value);
+    }
+
     public double Progress
     {
         get => _progress;
@@ -240,6 +271,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ShowActiveOnly = false;
         RefreshCount = 0;
         ValidationText = "valid: ready";
+        BindingGroupFirstName = "group: Ada";
+        BindingGroupLastName = "group: Lovelace";
+        BindingGroupStatus = "Group ready";
     }
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
@@ -363,6 +397,41 @@ public sealed class MvpNonEmptyValidationRule : ValidationRule
     }
 }
 
+public sealed class MvpBindingGroupValidationRule : ValidationRule
+{
+    public string FirstProperty { get; set; } = string.Empty;
+
+    public string SecondProperty { get; set; } = string.Empty;
+
+    public string RequiredPrefix { get; set; } = string.Empty;
+
+    public override ValidationResult Validate(object value, CultureInfo cultureInfo)
+    {
+        if (value is not BindingGroup bindingGroup)
+        {
+            return new ValidationResult(false, "Expected a BindingGroup value.");
+        }
+
+        foreach (object item in bindingGroup.Items)
+        {
+            if (!HasRequiredPrefix(bindingGroup, item, FirstProperty) ||
+                !HasRequiredPrefix(bindingGroup, item, SecondProperty))
+            {
+                return new ValidationResult(false, $"Grouped values must start with '{RequiredPrefix}'.");
+            }
+        }
+
+        return ValidationResult.ValidResult;
+    }
+
+    private bool HasRequiredPrefix(BindingGroup bindingGroup, object item, string propertyName)
+    {
+        object value = bindingGroup.GetValue(item, propertyName);
+        string text = value?.ToString() ?? string.Empty;
+        return text.StartsWith(RequiredPrefix, StringComparison.Ordinal);
+    }
+}
+
 internal static class MvpSelfTest
 {
     public static void Validate(MainWindow window)
@@ -449,6 +518,27 @@ internal static class MvpSelfTest
         var validationEchoText = Require<TextBlock>(
             window.FindName("ValidationEchoText"),
             "validation echo TextBlock");
+        var bindingGroupPanel = Require<StackPanel>(
+            window.FindName("BindingGroupPanel"),
+            "BindingGroup panel");
+        var bindingGroupFirstBox = Require<TextBox>(
+            window.FindName("BindingGroupFirstBox"),
+            "BindingGroup first TextBox");
+        var bindingGroupLastBox = Require<TextBox>(
+            window.FindName("BindingGroupLastBox"),
+            "BindingGroup last TextBox");
+        var bindingGroupCommitButton = Require<Button>(
+            window.FindName("BindingGroupCommitButton"),
+            "BindingGroup commit Button");
+        var bindingGroupStatusText = Require<TextBlock>(
+            window.FindName("BindingGroupStatusText"),
+            "BindingGroup status TextBlock");
+        var bindingGroupFirstEchoText = Require<TextBlock>(
+            window.FindName("BindingGroupFirstEchoText"),
+            "BindingGroup first echo TextBlock");
+        var bindingGroupLastEchoText = Require<TextBlock>(
+            window.FindName("BindingGroupLastEchoText"),
+            "BindingGroup last echo TextBlock");
         var summaryPanel = Require<SummaryPanel>(window.FindName("SummaryPanel"), "summary Panel");
         var summaryNameText = Require<TextBlock>(
             summaryPanel.FindName("SummaryNameText"),
@@ -506,6 +596,16 @@ internal static class MvpSelfTest
             selectorItemContainerStyle);
         ValidateTemplateButton(window, templateButton, templateButtonStyle);
         ValidateValidation(window, viewModel, validationTextBox, validationEchoText);
+        ValidateBindingGroup(
+            window,
+            viewModel,
+            bindingGroupPanel,
+            bindingGroupFirstBox,
+            bindingGroupLastBox,
+            bindingGroupCommitButton,
+            bindingGroupStatusText,
+            bindingGroupFirstEchoText,
+            bindingGroupLastEchoText);
         AssertEqual(viewModel.Nodes, nodesTreeView.ItemsSource, "TreeView items source");
         AssertEqual(2, viewModel.Nodes.Count, "TreeView root node count");
         AssertEqual("Startup", viewModel.Nodes[0].Children[0].Name, "TreeView first child node");
@@ -820,10 +920,78 @@ internal static class MvpSelfTest
         AssertEqual("Current: valid: updated", echoText.Text, "updated validation echo text");
     }
 
+    private static void ValidateBindingGroup(
+        Window window,
+        MainViewModel viewModel,
+        StackPanel panel,
+        TextBox firstBox,
+        TextBox lastBox,
+        Button commitButton,
+        TextBlock statusText,
+        TextBlock firstEchoText,
+        TextBlock lastEchoText)
+    {
+        var bindingGroup = Require<BindingGroup>(panel.BindingGroup, "MVP BindingGroup");
+        AssertEqual("MvpBindingGroup", bindingGroup.Name, "BindingGroup name");
+        AssertEqual(1, bindingGroup.Items.Count, "BindingGroup item count");
+        AssertEqual(viewModel, bindingGroup.Items[0], "BindingGroup source item");
+        AssertEqual(1, bindingGroup.ValidationRules.Count, "BindingGroup validation rule count");
+        var rule = Require<MvpBindingGroupValidationRule>(
+            bindingGroup.ValidationRules[0],
+            "MVP BindingGroup validation rule");
+
+        AssertEqual("BindingGroupFirstName", rule.FirstProperty, "BindingGroup first property");
+        AssertEqual("BindingGroupLastName", rule.SecondProperty, "BindingGroup last property");
+        AssertEqual("group:", rule.RequiredPrefix, "BindingGroup required prefix");
+        AssertEqual("BindingGroupFirstName", GetTextBoxBindingPath(firstBox), "BindingGroup first binding path");
+        AssertEqual("BindingGroupLastName", GetTextBoxBindingPath(lastBox), "BindingGroup last binding path");
+
+        DrainDispatcher(window);
+        AssertEqual("group: Ada", firstBox.Text, "BindingGroup first initial text");
+        AssertEqual("group: Lovelace", lastBox.Text, "BindingGroup last initial text");
+        AssertEqual("group: Ada", viewModel.BindingGroupFirstName, "BindingGroup first initial source");
+        AssertEqual("group: Lovelace", viewModel.BindingGroupLastName, "BindingGroup last initial source");
+        AssertEqual("Group ready", statusText.Text, "BindingGroup initial status text");
+        AssertEqual("First: group: Ada", firstEchoText.Text, "BindingGroup first initial echo");
+        AssertEqual("Last: group: Lovelace", lastEchoText.Text, "BindingGroup last initial echo");
+        AssertEqual(false, Validation.GetHasError(panel), "BindingGroup initial error state");
+        AssertEqual(true, bindingGroup.ValidateWithoutUpdate(), "BindingGroup initial validation");
+
+        firstBox.Text = "Ada";
+        commitButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, commitButton));
+        DrainDispatcher(window);
+        AssertEqual("group: Ada", viewModel.BindingGroupFirstName, "BindingGroup rejected first source");
+        AssertEqual("group: Lovelace", viewModel.BindingGroupLastName, "BindingGroup rejected last source");
+        AssertEqual(true, Validation.GetHasError(panel), "BindingGroup rejected error state");
+        AssertEqual(1, Validation.GetErrors(panel).Count, "BindingGroup rejected error count");
+        AssertEqual(
+            "Grouped values must start with 'group:'.",
+            Validation.GetErrors(panel)[0].ErrorContent,
+            "BindingGroup rejected error content");
+        AssertEqual("Group has validation errors", statusText.Text, "BindingGroup rejected status");
+
+        firstBox.Text = "group: Grace";
+        lastBox.Text = "group: Hopper";
+        commitButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent, commitButton));
+        DrainDispatcher(window);
+        AssertEqual("group: Grace", viewModel.BindingGroupFirstName, "BindingGroup accepted first source");
+        AssertEqual("group: Hopper", viewModel.BindingGroupLastName, "BindingGroup accepted last source");
+        AssertEqual(false, Validation.GetHasError(panel), "BindingGroup accepted error state");
+        AssertEqual("Group committed", statusText.Text, "BindingGroup accepted status");
+        AssertEqual("First: group: Grace", firstEchoText.Text, "BindingGroup first accepted echo");
+        AssertEqual("Last: group: Hopper", lastEchoText.Text, "BindingGroup last accepted echo");
+    }
+
     private static string GetTextBindingPath(TextBlock textBlock)
     {
         return BindingOperations.GetBinding(textBlock, TextBlock.TextProperty)?.Path.Path
             ?? throw new InvalidOperationException($"Expected {textBlock.Name} text to have a Binding.");
+    }
+
+    private static string GetTextBoxBindingPath(TextBox textBox)
+    {
+        return BindingOperations.GetBinding(textBox, TextBox.TextProperty)?.Path.Path
+            ?? throw new InvalidOperationException($"Expected {textBox.Name} text to have a Binding.");
     }
 
     private static string GetTemplateItemsSourcePath(HierarchicalDataTemplate template)

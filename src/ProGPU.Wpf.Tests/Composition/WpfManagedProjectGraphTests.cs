@@ -6432,6 +6432,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<BlurEffect", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Radius=\"2.5\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("local:SummaryPanel", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExplicitExplorerTreeView\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExplicitExplorerAlpha\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Expanded=\"OnExplicitExplorerTreeExpanded\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Collapsed=\"OnExplicitExplorerTreeCollapsed\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Selected=\"OnExplicitExplorerTreeSelected\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Unselected=\"OnExplicitExplorerTreeUnselected\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExplicitExplorerBeta\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"NavigationFrame\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Source=\"OverviewPage.xaml\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"OnDetailsNavigationClick\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6494,6 +6501,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateItemContainerStyleSelector(", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("styleSelectorItemsList.ItemContainerStyleSelector", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Application Startup event count", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ExplicitExplorerTreeExpandedCount", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnExplicitExplorerTreeExpanded", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnExplicitExplorerTreeCollapsed", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnExplicitExplorerTreeSelected", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnExplicitExplorerTreeUnselected", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateExplicitExplorerTree(", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Application ShutdownMode", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Application Windows contains StartupUri MainWindow", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("StartupUri MainWindow visible", mvpMainWindowCodeBehind, StringComparison.Ordinal);

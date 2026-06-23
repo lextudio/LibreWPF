@@ -1100,6 +1100,35 @@
                                 Margin="0,8,0,0"
                                 TextWrapping="Wrap"
                                 Text="TreeView, HierarchicalDataTemplate, ListView, and GridView are loaded from normal WPF XAML through the ProGPU SDK." />
+                            <TextBlock
+                                Margin="0,14,0,6"
+                                FontWeight="SemiBold"
+                                Text="Explicit tree events" />
+                            <TreeView
+                                x:Name="ExplicitExplorerTreeView"
+                                MinHeight="92">
+                                <TreeViewItem
+                                    x:Name="ExplicitExplorerAlpha"
+                                    Collapsed="OnExplicitExplorerTreeCollapsed"
+                                    Expanded="OnExplicitExplorerTreeExpanded"
+                                    Header="Alpha branch"
+                                    Selected="OnExplicitExplorerTreeSelected"
+                                    Unselected="OnExplicitExplorerTreeUnselected">
+                                    <TreeViewItem
+                                        x:Name="ExplicitExplorerAlphaChild"
+                                        Header="Alpha child" />
+                                </TreeViewItem>
+                                <TreeViewItem
+                                    x:Name="ExplicitExplorerBeta"
+                                    Header="Beta branch"
+                                    Selected="OnExplicitExplorerTreeSelected"
+                                    Unselected="OnExplicitExplorerTreeUnselected" />
+                            </TreeView>
+                            <TextBlock
+                                x:Name="ExplicitExplorerTreeStatusText"
+                                Margin="0,6,0,0"
+                                Text="Tree idle"
+                                TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
                 </Grid>

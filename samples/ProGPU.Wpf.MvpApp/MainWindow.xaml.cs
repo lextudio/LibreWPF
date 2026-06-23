@@ -83,6 +83,20 @@ public partial class MainWindow : Window
 
     internal string? LastMvpTabHeader { get; private set; }
 
+    internal int ExplicitExplorerTreeExpandedCount { get; private set; }
+
+    internal int ExplicitExplorerTreeCollapsedCount { get; private set; }
+
+    internal int ExplicitExplorerTreeSelectedCount { get; private set; }
+
+    internal int ExplicitExplorerTreeUnselectedCount { get; private set; }
+
+    internal string? LastExplicitExplorerTreeSenderName { get; private set; }
+
+    internal string? LastExplicitExplorerTreeRoutedEventName { get; private set; }
+
+    internal string? LastExplicitExplorerTreeHeader { get; private set; }
+
     public MainWindow()
     {
         var viewModel = new MainViewModel();
@@ -250,6 +264,41 @@ public partial class MainWindow : Window
     {
         InputDateSelectionChangedCount++;
         LastDateSelectionSenderName = (sender as FrameworkElement)?.Name;
+    }
+
+    private void OnExplicitExplorerTreeExpanded(object sender, RoutedEventArgs e)
+    {
+        ExplicitExplorerTreeExpandedCount++;
+        RecordExplicitExplorerTreeEvent(sender, e);
+    }
+
+    private void OnExplicitExplorerTreeCollapsed(object sender, RoutedEventArgs e)
+    {
+        ExplicitExplorerTreeCollapsedCount++;
+        RecordExplicitExplorerTreeEvent(sender, e);
+    }
+
+    private void OnExplicitExplorerTreeSelected(object sender, RoutedEventArgs e)
+    {
+        ExplicitExplorerTreeSelectedCount++;
+        RecordExplicitExplorerTreeEvent(sender, e);
+    }
+
+    private void OnExplicitExplorerTreeUnselected(object sender, RoutedEventArgs e)
+    {
+        ExplicitExplorerTreeUnselectedCount++;
+        RecordExplicitExplorerTreeEvent(sender, e);
+    }
+
+    private void RecordExplicitExplorerTreeEvent(object sender, RoutedEventArgs e)
+    {
+        LastExplicitExplorerTreeSenderName = GetElementName(sender);
+        LastExplicitExplorerTreeRoutedEventName = e.RoutedEvent?.Name;
+        LastExplicitExplorerTreeHeader = sender is TreeViewItem { Header: object header }
+            ? header.ToString()
+            : null;
+        ExplicitExplorerTreeStatusText.Text =
+            $"{LastExplicitExplorerTreeRoutedEventName}: {LastExplicitExplorerTreeHeader}";
     }
 
     private void OnMvpRoutedEventSource(object sender, MvpRoutedEventArgs e)
@@ -1125,6 +1174,21 @@ internal static class MvpSelfTest
             summaryPanel.FindName("SummaryProgressText"),
             "summary progress text");
         var nodesTreeView = Require<TreeView>(window.FindName("NodesTreeView"), "nodes TreeView");
+        var explicitExplorerTreeView = Require<TreeView>(
+            window.FindName("ExplicitExplorerTreeView"),
+            "explicit explorer TreeView");
+        var explicitExplorerAlpha = Require<TreeViewItem>(
+            window.FindName("ExplicitExplorerAlpha"),
+            "explicit explorer alpha TreeViewItem");
+        var explicitExplorerAlphaChild = Require<TreeViewItem>(
+            window.FindName("ExplicitExplorerAlphaChild"),
+            "explicit explorer alpha child TreeViewItem");
+        var explicitExplorerBeta = Require<TreeViewItem>(
+            window.FindName("ExplicitExplorerBeta"),
+            "explicit explorer beta TreeViewItem");
+        var explicitExplorerTreeStatusText = Require<TextBlock>(
+            window.FindName("ExplicitExplorerTreeStatusText"),
+            "explicit explorer tree status TextBlock");
         var explorerListView = Require<ListView>(
             window.FindName("ExplorerListView"),
             "explorer ListView");
@@ -1230,6 +1294,13 @@ internal static class MvpSelfTest
             nodesTreeView.ItemTemplate,
             "node hierarchical data template");
         AssertEqual("Children", GetTemplateItemsSourcePath(nodeTemplate), "TreeView hierarchical template ItemsSource path");
+        ValidateExplicitExplorerTree(
+            window,
+            explicitExplorerTreeView,
+            explicitExplorerAlpha,
+            explicitExplorerAlphaChild,
+            explicitExplorerBeta,
+            explicitExplorerTreeStatusText);
         var explorerGridView = Require<GridView>(explorerListView.View, "explorer GridView");
         AssertEqual(viewModel.Items, explorerListView.ItemsSource, "explorer ListView ItemsSource");
         AssertEqual(viewModel.SelectedItem, explorerListView.SelectedItem, "explorer ListView selected item");
@@ -1626,6 +1697,81 @@ internal static class MvpSelfTest
             afterSourceUpdateEvents,
             window.MvpTabSelectionChangedCount,
             "MVP TabControl restored selection event count");
+    }
+
+    private static void ValidateExplicitExplorerTree(
+        MainWindow window,
+        TreeView treeView,
+        TreeViewItem alphaItem,
+        TreeViewItem alphaChildItem,
+        TreeViewItem betaItem,
+        TextBlock statusText)
+    {
+        AssertEqual(2, treeView.Items.Count, "explicit explorer TreeView item count");
+        AssertEqual(alphaItem, treeView.Items[0], "explicit explorer alpha item owner");
+        AssertEqual(betaItem, treeView.Items[1], "explicit explorer beta item owner");
+        AssertEqual("Alpha branch", alphaItem.Header, "explicit explorer alpha header");
+        AssertEqual("Alpha child", alphaChildItem.Header, "explicit explorer alpha child header");
+        AssertEqual("Beta branch", betaItem.Header, "explicit explorer beta header");
+        AssertEqual(1, alphaItem.Items.Count, "explicit explorer alpha child count");
+        AssertEqual(alphaChildItem, alphaItem.Items[0], "explicit explorer alpha child owner");
+        AssertEqual("Tree idle", statusText.Text, "explicit explorer initial status");
+
+        int initialExpandedEvents = window.ExplicitExplorerTreeExpandedCount;
+        alphaItem.IsExpanded = true;
+        DrainDispatcher(window);
+        AssertEqual(true, alphaItem.IsExpanded, "explicit explorer alpha expanded state");
+        AssertEqual("ExplicitExplorerAlpha", window.LastExplicitExplorerTreeSenderName, "explicit explorer expanded sender");
+        AssertEqual("Expanded", window.LastExplicitExplorerTreeRoutedEventName, "explicit explorer expanded event name");
+        AssertEqual("Expanded: Alpha branch", statusText.Text, "explicit explorer expanded status");
+        AssertGreaterThan(
+            initialExpandedEvents,
+            window.ExplicitExplorerTreeExpandedCount,
+            "explicit explorer expanded event count");
+
+        int initialCollapsedEvents = window.ExplicitExplorerTreeCollapsedCount;
+        alphaItem.IsExpanded = false;
+        DrainDispatcher(window);
+        AssertEqual(false, alphaItem.IsExpanded, "explicit explorer alpha collapsed state");
+        AssertEqual("ExplicitExplorerAlpha", window.LastExplicitExplorerTreeSenderName, "explicit explorer collapsed sender");
+        AssertEqual("Collapsed", window.LastExplicitExplorerTreeRoutedEventName, "explicit explorer collapsed event name");
+        AssertEqual("Collapsed: Alpha branch", statusText.Text, "explicit explorer collapsed status");
+        AssertGreaterThan(
+            initialCollapsedEvents,
+            window.ExplicitExplorerTreeCollapsedCount,
+            "explicit explorer collapsed event count");
+
+        int initialSelectedEvents = window.ExplicitExplorerTreeSelectedCount;
+        alphaItem.IsSelected = true;
+        DrainDispatcher(window);
+        AssertEqual(true, alphaItem.IsSelected, "explicit explorer alpha selected state");
+        AssertEqual(alphaItem, treeView.SelectedItem, "explicit explorer selected alpha item");
+        AssertEqual("ExplicitExplorerAlpha", window.LastExplicitExplorerTreeSenderName, "explicit explorer alpha selected sender");
+        AssertEqual("Selected", window.LastExplicitExplorerTreeRoutedEventName, "explicit explorer selected event name");
+        AssertEqual("Selected: Alpha branch", statusText.Text, "explicit explorer selected status");
+        AssertGreaterThan(
+            initialSelectedEvents,
+            window.ExplicitExplorerTreeSelectedCount,
+            "explicit explorer selected event count");
+
+        int selectedAfterAlpha = window.ExplicitExplorerTreeSelectedCount;
+        int initialUnselectedEvents = window.ExplicitExplorerTreeUnselectedCount;
+        betaItem.IsSelected = true;
+        DrainDispatcher(window);
+        AssertEqual(false, alphaItem.IsSelected, "explicit explorer alpha unselected state");
+        AssertEqual(true, betaItem.IsSelected, "explicit explorer beta selected state");
+        AssertEqual(betaItem, treeView.SelectedItem, "explicit explorer selected beta item");
+        AssertEqual("ExplicitExplorerBeta", window.LastExplicitExplorerTreeSenderName, "explicit explorer beta selected sender");
+        AssertEqual("Selected", window.LastExplicitExplorerTreeRoutedEventName, "explicit explorer beta selected event name");
+        AssertEqual("Selected: Beta branch", statusText.Text, "explicit explorer beta selected status");
+        AssertGreaterThan(
+            selectedAfterAlpha,
+            window.ExplicitExplorerTreeSelectedCount,
+            "explicit explorer beta selected event count");
+        AssertGreaterThan(
+            initialUnselectedEvents,
+            window.ExplicitExplorerTreeUnselectedCount,
+            "explicit explorer alpha unselected event count");
     }
 
     private static void ValidateRequeryCommand(Window window, MainViewModel viewModel, Button button)

@@ -5,7 +5,7 @@ This is the first runnable no-source-change MVP app for the custom ProGPU WPF SD
 - `Project Sdk="ProGPU.Wpf.Sdk/11.0.0-dev"`
 - `TargetFramework=net11.0-windows`, matching the normal WPF project shape
 - normal `App.xaml` / `MainWindow.xaml`
-- WPF bindings, commands, item templates, list/table controls, and a basic `FlowDocument`
+- WPF bindings, commands, item templates, list/table/tree controls, and a basic `FlowDocument`
 - no app-side ProGPU APIs
 
 Run from the repository root:

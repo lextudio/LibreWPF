@@ -34,6 +34,19 @@ public sealed class MainViewModel : INotifyPropertyChanged
             new MvpItem("Beta", "Rendering", false)
         ];
         Categories = ["Framework", "Rendering", "Input"];
+        Nodes =
+        [
+            new MvpNode(
+                "Application",
+                "WPF",
+                new MvpNode("Startup", "Lifecycle"),
+                new MvpNode("Resources", "XAML")),
+            new MvpNode(
+                "Platform",
+                "ProGPU",
+                new MvpNode("Window", "Silk.NET"),
+                new MvpNode("Rendering", "WebGPU"))
+        ];
         _selectedItem = Items[0];
         AddItemCommand = new RelayCommand(AddItem, () => ActionsEnabled);
         ResetCommand = new RelayCommand(Reset);
@@ -44,6 +57,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public ObservableCollection<MvpItem> Items { get; }
 
     public ObservableCollection<string> Categories { get; }
+
+    public ObservableCollection<MvpNode> Nodes { get; }
 
     public ICommand AddItemCommand { get; }
 
@@ -144,6 +159,22 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
 public sealed record MvpItem(string Name, string Category, bool IsActive);
 
+public sealed class MvpNode
+{
+    public MvpNode(string name, string kind, params MvpNode[] children)
+    {
+        Name = name;
+        Kind = kind;
+        Children = new ObservableCollection<MvpNode>(children);
+    }
+
+    public string Name { get; }
+
+    public string Kind { get; }
+
+    public ObservableCollection<MvpNode> Children { get; }
+}
+
 public sealed class RelayCommand : ICommand
 {
     private readonly Action _execute;
@@ -184,6 +215,7 @@ internal static class MvpSelfTest
         Require<TextBox>(window.FindName("NameTextBox"), "name TextBox");
         Require<ListBox>(window.FindName("ItemsList"), "items ListBox");
         var itemsDataGrid = Require<DataGrid>(window.FindName("ItemsDataGrid"), "items DataGrid");
+        var nodesTreeView = Require<TreeView>(window.FindName("NodesTreeView"), "nodes TreeView");
         Require<CheckBox>(window.FindName("EnabledCheckBox"), "enabled CheckBox");
         Require<Slider>(window.FindName("ProgressSlider"), "progress Slider");
         Require<ComboBox>(window.FindName("CategoryCombo"), "category ComboBox");
@@ -192,6 +224,13 @@ internal static class MvpSelfTest
         AssertEqual("Name", GetColumnBindingPath(itemsDataGrid.Columns[0]), "DataGrid name column binding");
         AssertEqual("Category", GetColumnBindingPath(itemsDataGrid.Columns[1]), "DataGrid category column binding");
         AssertEqual("IsActive", GetColumnBindingPath(itemsDataGrid.Columns[2]), "DataGrid active column binding");
+        AssertEqual(viewModel.Nodes, nodesTreeView.ItemsSource, "TreeView items source");
+        AssertEqual(2, viewModel.Nodes.Count, "TreeView root node count");
+        AssertEqual("Startup", viewModel.Nodes[0].Children[0].Name, "TreeView first child node");
+        var nodeTemplate = Require<HierarchicalDataTemplate>(
+            nodesTreeView.ItemTemplate,
+            "node hierarchical data template");
+        AssertEqual("Children", GetTemplateItemsSourcePath(nodeTemplate), "TreeView hierarchical template ItemsSource path");
 
         int initialCount = viewModel.Items.Count;
         viewModel.NewItemName = "Validated";
@@ -212,6 +251,13 @@ internal static class MvpSelfTest
         return column is DataGridBoundColumn { Binding: Binding binding }
             ? binding.Path.Path
             : throw new InvalidOperationException($"Expected {column.Header} column to have a Binding.");
+    }
+
+    private static string GetTemplateItemsSourcePath(HierarchicalDataTemplate template)
+    {
+        return template.ItemsSource is Binding binding
+            ? binding.Path.Path
+            : throw new InvalidOperationException("Expected hierarchical data template to bind ItemsSource.");
     }
 
     private static T Require<T>(object? value, string description)

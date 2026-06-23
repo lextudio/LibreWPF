@@ -53,6 +53,50 @@ public partial class MainWindow : Window
 
     internal int InputRepeatButtonClickCount { get; private set; }
 
+    internal int InputThumbDragStartedCount { get; private set; }
+
+    internal int InputThumbDragDeltaCount { get; private set; }
+
+    internal int InputThumbDragCompletedCount { get; private set; }
+
+    internal int InputBubbledThumbDragDeltaCount { get; private set; }
+
+    internal string? LastInputThumbDragStartedSenderName { get; private set; }
+
+    internal string? LastInputThumbDragDeltaSenderName { get; private set; }
+
+    internal string? LastInputThumbDragCompletedSenderName { get; private set; }
+
+    internal string? LastInputBubbledThumbDragDeltaSenderName { get; private set; }
+
+    internal string? LastInputBubbledThumbDragDeltaOriginalSourceName { get; private set; }
+
+    internal string? LastInputThumbDragStartedRoutedEventName { get; private set; }
+
+    internal string? LastInputThumbDragDeltaRoutedEventName { get; private set; }
+
+    internal string? LastInputThumbDragCompletedRoutedEventName { get; private set; }
+
+    internal string? LastInputBubbledThumbDragDeltaRoutedEventName { get; private set; }
+
+    internal double LastInputThumbDragStartedHorizontalOffset { get; private set; }
+
+    internal double LastInputThumbDragStartedVerticalOffset { get; private set; }
+
+    internal double LastInputThumbDragDeltaHorizontalChange { get; private set; }
+
+    internal double LastInputThumbDragDeltaVerticalChange { get; private set; }
+
+    internal double LastInputThumbDragCompletedHorizontalChange { get; private set; }
+
+    internal double LastInputThumbDragCompletedVerticalChange { get; private set; }
+
+    internal bool LastInputThumbDragCompletedCanceled { get; private set; }
+
+    internal double LastInputBubbledThumbDragDeltaHorizontalChange { get; private set; }
+
+    internal double LastInputBubbledThumbDragDeltaVerticalChange { get; private set; }
+
     internal int InputDateSelectionChangedCount { get; private set; }
 
     internal string? LastDateSelectionSenderName { get; private set; }
@@ -278,6 +322,45 @@ public partial class MainWindow : Window
     private void OnInputRepeatButtonClick(object sender, RoutedEventArgs e)
     {
         InputRepeatButtonClickCount++;
+    }
+
+    private void OnInputThumbDragStarted(object sender, DragStartedEventArgs e)
+    {
+        InputThumbDragStartedCount++;
+        LastInputThumbDragStartedSenderName = GetElementName(sender);
+        LastInputThumbDragStartedRoutedEventName = e.RoutedEvent?.Name;
+        LastInputThumbDragStartedHorizontalOffset = e.HorizontalOffset;
+        LastInputThumbDragStartedVerticalOffset = e.VerticalOffset;
+    }
+
+    private void OnInputThumbDragDelta(object sender, DragDeltaEventArgs e)
+    {
+        InputThumbDragDeltaCount++;
+        LastInputThumbDragDeltaSenderName = GetElementName(sender);
+        LastInputThumbDragDeltaRoutedEventName = e.RoutedEvent?.Name;
+        LastInputThumbDragDeltaHorizontalChange = e.HorizontalChange;
+        LastInputThumbDragDeltaVerticalChange = e.VerticalChange;
+        InputDragStatusText.Text = $"Dragged {e.HorizontalChange}, {e.VerticalChange}";
+    }
+
+    private void OnInputThumbDragCompleted(object sender, DragCompletedEventArgs e)
+    {
+        InputThumbDragCompletedCount++;
+        LastInputThumbDragCompletedSenderName = GetElementName(sender);
+        LastInputThumbDragCompletedRoutedEventName = e.RoutedEvent?.Name;
+        LastInputThumbDragCompletedHorizontalChange = e.HorizontalChange;
+        LastInputThumbDragCompletedVerticalChange = e.VerticalChange;
+        LastInputThumbDragCompletedCanceled = e.Canceled;
+    }
+
+    private void OnInputBubbledThumbDragDelta(object sender, DragDeltaEventArgs e)
+    {
+        InputBubbledThumbDragDeltaCount++;
+        LastInputBubbledThumbDragDeltaSenderName = GetElementName(sender);
+        LastInputBubbledThumbDragDeltaOriginalSourceName = GetElementName(e.OriginalSource);
+        LastInputBubbledThumbDragDeltaRoutedEventName = e.RoutedEvent?.Name;
+        LastInputBubbledThumbDragDeltaHorizontalChange = e.HorizontalChange;
+        LastInputBubbledThumbDragDeltaVerticalChange = e.VerticalChange;
     }
 
     private void OnInputDateSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1048,6 +1131,15 @@ internal static class MvpSelfTest
         var inputRepeatButton = Require<RepeatButton>(
             window.FindName("InputRepeatButton"),
             "input RepeatButton");
+        var inputThumbPanel = Require<StackPanel>(
+            window.FindName("InputThumbPanel"),
+            "input Thumb panel");
+        var inputDragThumb = Require<Thumb>(
+            window.FindName("InputDragThumb"),
+            "input drag Thumb");
+        var inputDragStatusText = Require<TextBlock>(
+            window.FindName("InputDragStatusText"),
+            "input drag status TextBlock");
         var inputCalendar = Require<WpfCalendar>(
             window.FindName("InputCalendar"),
             "input Calendar");
@@ -1502,6 +1594,9 @@ internal static class MvpSelfTest
             frameworkRadioButton,
             renderingRadioButton,
             inputRepeatButton,
+            inputThumbPanel,
+            inputDragThumb,
+            inputDragStatusText,
             inputCalendar,
             inputDatePicker,
             keyboardNavigationPanel,
@@ -2564,6 +2659,9 @@ internal static class MvpSelfTest
         RadioButton frameworkRadio,
         RadioButton renderingRadio,
         RepeatButton repeatButton,
+        StackPanel inputThumbPanel,
+        Thumb inputDragThumb,
+        TextBlock inputDragStatusText,
         WpfCalendar calendar,
         DatePicker datePicker,
         StackPanel keyboardNavigationPanel,
@@ -2629,6 +2727,8 @@ internal static class MvpSelfTest
         DrainDispatcher(window);
         AssertEqual(initialRepeatClicks + 1, window.InputRepeatButtonClickCount, "RepeatButton click count");
 
+        ValidateThumbDragManager(window, inputThumbPanel, inputDragThumb, inputDragStatusText);
+
         var expectedInitialDate = new DateTime(2026, 6, 23);
         AssertEqual(CalendarSelectionMode.SingleDate, calendar.SelectionMode, "Calendar selection mode");
         AssertEqual(expectedInitialDate, calendar.SelectedDate, "Calendar initial selected date");
@@ -2666,6 +2766,70 @@ internal static class MvpSelfTest
             keyboardNavigationFirstBox,
             keyboardNavigationSecondButton,
             keyboardNavigationThirdBox);
+    }
+
+    private static void ValidateThumbDragManager(
+        MainWindow window,
+        StackPanel inputThumbPanel,
+        Thumb inputDragThumb,
+        TextBlock inputDragStatusText)
+    {
+        AssertEqual(32.0, inputDragThumb.Width, "input Thumb width");
+        AssertEqual(20.0, inputDragThumb.Height, "input Thumb height");
+        AssertEqual("mvp drag thumb", inputDragThumb.Tag, "input Thumb tag");
+        AssertEqual(false, inputDragThumb.Focusable, "input Thumb focusable metadata");
+        AssertEqual(false, inputDragThumb.IsDragging, "input Thumb initial dragging state");
+        AssertEqual("Drag idle", inputDragStatusText.Text, "input Thumb initial status");
+        AssertEqual(0, window.InputThumbDragStartedCount, "input Thumb initial DragStarted count");
+        AssertEqual(0, window.InputThumbDragDeltaCount, "input Thumb initial DragDelta count");
+        AssertEqual(0, window.InputThumbDragCompletedCount, "input Thumb initial DragCompleted count");
+        AssertEqual(0, window.InputBubbledThumbDragDeltaCount, "input Thumb initial bubbled DragDelta count");
+
+        var started = new DragStartedEventArgs(1.5, 2.5)
+        {
+            RoutedEvent = Thumb.DragStartedEvent
+        };
+        var delta = new DragDeltaEventArgs(4.0, 6.0)
+        {
+            RoutedEvent = Thumb.DragDeltaEvent
+        };
+        var completed = new DragCompletedEventArgs(8.0, 10.0, true)
+        {
+            RoutedEvent = Thumb.DragCompletedEvent
+        };
+
+        inputDragThumb.RaiseEvent(started);
+        inputDragThumb.RaiseEvent(delta);
+        inputDragThumb.RaiseEvent(completed);
+        DrainDispatcher(window);
+
+        AssertEqual(1, window.InputThumbDragStartedCount, "input Thumb DragStarted handler count");
+        AssertEqual("InputDragThumb", window.LastInputThumbDragStartedSenderName, "input Thumb DragStarted sender");
+        AssertEqual("DragStarted", window.LastInputThumbDragStartedRoutedEventName, "input Thumb DragStarted routed event");
+        AssertEqual(1.5, window.LastInputThumbDragStartedHorizontalOffset, "input Thumb DragStarted horizontal offset");
+        AssertEqual(2.5, window.LastInputThumbDragStartedVerticalOffset, "input Thumb DragStarted vertical offset");
+
+        AssertEqual(1, window.InputThumbDragDeltaCount, "input Thumb DragDelta handler count");
+        AssertEqual("InputDragThumb", window.LastInputThumbDragDeltaSenderName, "input Thumb DragDelta sender");
+        AssertEqual("DragDelta", window.LastInputThumbDragDeltaRoutedEventName, "input Thumb DragDelta routed event");
+        AssertEqual(4.0, window.LastInputThumbDragDeltaHorizontalChange, "input Thumb DragDelta horizontal change");
+        AssertEqual(6.0, window.LastInputThumbDragDeltaVerticalChange, "input Thumb DragDelta vertical change");
+        AssertEqual("Dragged 4, 6", inputDragStatusText.Text, "input Thumb drag status text");
+
+        AssertEqual(1, window.InputBubbledThumbDragDeltaCount, "input Thumb bubbled DragDelta handler count");
+        AssertEqual("InputThumbPanel", window.LastInputBubbledThumbDragDeltaSenderName, "input Thumb bubbled sender");
+        AssertEqual("InputDragThumb", window.LastInputBubbledThumbDragDeltaOriginalSourceName, "input Thumb bubbled original source");
+        AssertEqual("DragDelta", window.LastInputBubbledThumbDragDeltaRoutedEventName, "input Thumb bubbled routed event");
+        AssertEqual(4.0, window.LastInputBubbledThumbDragDeltaHorizontalChange, "input Thumb bubbled horizontal change");
+        AssertEqual(6.0, window.LastInputBubbledThumbDragDeltaVerticalChange, "input Thumb bubbled vertical change");
+
+        AssertEqual(1, window.InputThumbDragCompletedCount, "input Thumb DragCompleted handler count");
+        AssertEqual("InputDragThumb", window.LastInputThumbDragCompletedSenderName, "input Thumb DragCompleted sender");
+        AssertEqual("DragCompleted", window.LastInputThumbDragCompletedRoutedEventName, "input Thumb DragCompleted routed event");
+        AssertEqual(8.0, window.LastInputThumbDragCompletedHorizontalChange, "input Thumb DragCompleted horizontal change");
+        AssertEqual(10.0, window.LastInputThumbDragCompletedVerticalChange, "input Thumb DragCompleted vertical change");
+        AssertEqual(true, window.LastInputThumbDragCompletedCanceled, "input Thumb DragCompleted canceled state");
+        AssertEqual(true, ReferenceEquals(inputThumbPanel, inputDragThumb.Parent), "input Thumb logical parent");
     }
 
     private static void ValidateKeyboardNavigation(

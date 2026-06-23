@@ -766,6 +766,28 @@
                             Delay="180"
                             Interval="70" />
                         <StackPanel
+                            x:Name="InputThumbPanel"
+                            Margin="0,14,0,0"
+                            primitives:Thumb.DragDelta="OnInputBubbledThumbDragDelta">
+                            <TextBlock
+                                Margin="0,0,0,6"
+                                FontWeight="SemiBold"
+                                Text="Thumb drag manager" />
+                            <primitives:Thumb
+                                x:Name="InputDragThumb"
+                                Width="32"
+                                Height="20"
+                                HorizontalAlignment="Left"
+                                DragStarted="OnInputThumbDragStarted"
+                                DragDelta="OnInputThumbDragDelta"
+                                DragCompleted="OnInputThumbDragCompleted"
+                                Tag="mvp drag thumb" />
+                            <TextBlock
+                                x:Name="InputDragStatusText"
+                                Margin="0,6,0,0"
+                                Text="Drag idle" />
+                        </StackPanel>
+                        <StackPanel
                             x:Name="KeyboardNavigationPanel"
                             Margin="0,16,0,0"
                             FocusManager.FocusedElement="{Binding ElementName=KeyboardNavigationFirstBox}"

@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -18,8 +20,14 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
-        DataContext = new MainViewModel();
+        var viewModel = new MainViewModel();
+        DataContext = viewModel;
         InitializeComponent();
+
+        if (FindResource("ItemsViewSource") is CollectionViewSource itemsViewSource)
+        {
+            itemsViewSource.Source = viewModel.Items;
+        }
     }
 
     private void OnOverviewNavigationClick(object sender, RoutedEventArgs e)
@@ -30,6 +38,30 @@ public partial class MainWindow : Window
     private void OnDetailsNavigationClick(object sender, RoutedEventArgs e)
     {
         NavigationFrame.Navigate(new Uri("DetailsPage.xaml", UriKind.Relative));
+    }
+
+    private void OnItemsViewSourceFilter(object sender, FilterEventArgs e)
+    {
+        e.Accepted = DataContext is not MainViewModel { ShowActiveOnly: true }
+            || e.Item is MvpItem { IsActive: true };
+    }
+
+    private void OnActiveOnlyFilterChanged(object sender, RoutedEventArgs e)
+    {
+        if (sender is CheckBox checkBox && DataContext is MainViewModel viewModel)
+        {
+            viewModel.ShowActiveOnly = checkBox.IsChecked == true;
+        }
+
+        RefreshItemsView();
+    }
+
+    private void RefreshItemsView()
+    {
+        if (FindResource("ItemsViewSource") is CollectionViewSource itemsViewSource)
+        {
+            itemsViewSource.View?.Refresh();
+        }
     }
 
     private void OnRefreshStatusCommandCanExecute(object sender, CanExecuteRoutedEventArgs e)
@@ -55,6 +87,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private MvpItem? _selectedItem;
     private string _selectedCategory = "Framework";
     private bool _actionsEnabled = true;
+    private bool _showActiveOnly;
     private double _progress = 35.0;
     private int _refreshCount;
 
@@ -132,6 +165,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    public bool ShowActiveOnly
+    {
+        get => _showActiveOnly;
+        set => SetField(ref _showActiveOnly, value);
+    }
+
     public double Progress
     {
         get => _progress;
@@ -190,6 +229,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         NewItemName = "Gamma";
         Progress = 35.0;
         ActionsEnabled = true;
+        ShowActiveOnly = false;
         RefreshCount = 0;
     }
 
@@ -304,6 +344,12 @@ internal static class MvpSelfTest
         Require<TextBox>(window.FindName("NameTextBox"), "name TextBox");
         Require<ListBox>(window.FindName("ItemsList"), "items ListBox");
         var itemsDataGrid = Require<DataGrid>(window.FindName("ItemsDataGrid"), "items DataGrid");
+        var activeOnlyCheckBox = Require<CheckBox>(
+            window.FindName("ActiveOnlyCheckBox"),
+            "active-only CheckBox");
+        var groupedItemsList = Require<ListBox>(
+            window.FindName("GroupedItemsList"),
+            "grouped items ListBox");
         var selectedItemContent = Require<ContentControl>(
             window.FindName("SelectedItemContent"),
             "selected item ContentControl");
@@ -348,6 +394,7 @@ internal static class MvpSelfTest
         AssertEqual("Name", GetColumnBindingPath(itemsDataGrid.Columns[0]), "DataGrid name column binding");
         AssertEqual("Category", GetColumnBindingPath(itemsDataGrid.Columns[1]), "DataGrid category column binding");
         AssertEqual("IsActive", GetColumnBindingPath(itemsDataGrid.Columns[2]), "DataGrid active column binding");
+        ValidateCollectionView(window, viewModel, groupedItemsList, activeOnlyCheckBox);
         AssertEqual(viewModel.SelectedItem, selectedItemContent.Content, "selected item content");
         AssertEqual(
             selectedItemTemplate,
@@ -397,6 +444,64 @@ internal static class MvpSelfTest
         AssertEqual("Name: Validated", summaryNameText.Text, "summary updated name text");
         AssertEqual("Category: Input", summaryCategoryText.Text, "summary updated category text");
         AssertEqual("Progress: 72%", summaryProgressText.Text, "summary updated progress text");
+    }
+
+    private static void ValidateCollectionView(
+        Window window,
+        MainViewModel viewModel,
+        ListBox groupedItemsList,
+        CheckBox activeOnlyCheckBox)
+    {
+        var itemsViewSource = Require<CollectionViewSource>(
+            window.FindResource("ItemsViewSource"),
+            "items CollectionViewSource");
+        AssertEqual(viewModel.Items, itemsViewSource.Source, "CollectionViewSource source");
+        AssertEqual(2, itemsViewSource.SortDescriptions.Count, "CollectionViewSource sort count");
+        AssertEqual("Category", itemsViewSource.SortDescriptions[0].PropertyName, "first sort property");
+        AssertEqual(ListSortDirection.Ascending, itemsViewSource.SortDescriptions[0].Direction, "first sort direction");
+        AssertEqual("Name", itemsViewSource.SortDescriptions[1].PropertyName, "second sort property");
+        AssertEqual(1, itemsViewSource.GroupDescriptions.Count, "CollectionViewSource group count");
+        var groupDescription = Require<PropertyGroupDescription>(
+            itemsViewSource.GroupDescriptions[0],
+            "items PropertyGroupDescription");
+        AssertEqual("Category", groupDescription.PropertyName, "items group property");
+        AssertEqual(false, activeOnlyCheckBox.IsChecked == true, "active-only initial check state");
+        AssertEqual(false, viewModel.ShowActiveOnly, "active-only initial view model state");
+        AssertEqual(itemsViewSource.View, groupedItemsList.ItemsSource, "grouped ListBox ItemsSource view");
+
+        var initialItems = CopyItems(itemsViewSource.View);
+        AssertEqual(2, initialItems.Count, "initial collection view item count");
+        AssertEqual("Alpha", initialItems[0].Name, "initial collection view first item");
+        AssertEqual("Beta", initialItems[1].Name, "initial collection view second item");
+        AssertEqual(2, itemsViewSource.View.Groups?.Count ?? -1, "initial collection view group count");
+        var firstGroup = Require<CollectionViewGroup>(
+            itemsViewSource.View.Groups?[0],
+            "first collection view group");
+        AssertEqual("Framework", firstGroup.Name, "first collection view group name");
+
+        activeOnlyCheckBox.IsChecked = true;
+        DrainDispatcher(window);
+        var filteredItems = CopyItems(itemsViewSource.View);
+        AssertEqual(true, viewModel.ShowActiveOnly, "active-only checked view model state");
+        AssertEqual(1, filteredItems.Count, "filtered collection view item count");
+        AssertEqual("Alpha", filteredItems[0].Name, "filtered collection view first item");
+
+        activeOnlyCheckBox.IsChecked = false;
+        DrainDispatcher(window);
+        var restoredItems = CopyItems(itemsViewSource.View);
+        AssertEqual(false, viewModel.ShowActiveOnly, "active-only restored view model state");
+        AssertEqual(2, restoredItems.Count, "restored collection view item count");
+    }
+
+    private static List<MvpItem> CopyItems(IEnumerable source)
+    {
+        var items = new List<MvpItem>();
+        foreach (object? item in source)
+        {
+            items.Add(Require<MvpItem>(item, "collection view item"));
+        }
+
+        return items;
     }
 
     private static string GetColumnBindingPath(DataGridColumn column)

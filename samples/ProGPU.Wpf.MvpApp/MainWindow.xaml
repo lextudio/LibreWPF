@@ -2,6 +2,7 @@
     x:Class="ProGPU.Wpf.MvpApp.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
     xmlns:local="clr-namespace:ProGPU.Wpf.MvpApp"
     x:Name="RootWindow"
     Title="ProGPU WPF MVP"
@@ -22,6 +23,21 @@
             Command="{x:Static local:MainWindow.RefreshStatusCommand}" />
     </Window.InputBindings>
     <Window.Resources>
+        <CollectionViewSource
+            x:Key="ItemsViewSource"
+            Filter="OnItemsViewSourceFilter">
+            <CollectionViewSource.SortDescriptions>
+                <componentModel:SortDescription
+                    Direction="Ascending"
+                    PropertyName="Category" />
+                <componentModel:SortDescription
+                    Direction="Ascending"
+                    PropertyName="Name" />
+            </CollectionViewSource.SortDescriptions>
+            <CollectionViewSource.GroupDescriptions>
+                <PropertyGroupDescription PropertyName="Category" />
+            </CollectionViewSource.GroupDescriptions>
+        </CollectionViewSource>
         <HierarchicalDataTemplate
             x:Key="MvpNodeTemplate"
             ItemsSource="{Binding Children}">
@@ -209,6 +225,79 @@
                             x:Name="SummaryPanel"
                             Margin="0,18,0,0" />
                     </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Views">
+                <Grid Margin="0,14,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <CheckBox
+                        x:Name="ActiveOnlyCheckBox"
+                        Margin="0,0,0,12"
+                        Checked="OnActiveOnlyFilterChanged"
+                        Content="Show active items only"
+                        IsChecked="{Binding ShowActiveOnly}"
+                        Unchecked="OnActiveOnlyFilterChanged" />
+
+                    <ListBox
+                        x:Name="GroupedItemsList"
+                        Grid.Row="1"
+                        ItemsSource="{Binding Source={StaticResource ItemsViewSource}}">
+                        <ListBox.GroupStyle>
+                            <GroupStyle>
+                                <GroupStyle.HeaderTemplate>
+                                    <DataTemplate>
+                                        <Border
+                                            Margin="0,8,0,4"
+                                            Padding="6,3"
+                                            Background="{DynamicResource MvpPanelBrush}">
+                                            <TextBlock
+                                                FontWeight="SemiBold"
+                                                Text="{Binding Name}" />
+                                        </Border>
+                                    </DataTemplate>
+                                </GroupStyle.HeaderTemplate>
+                            </GroupStyle>
+                        </ListBox.GroupStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock
+                                        MinWidth="120"
+                                        Text="{Binding Name}" />
+                                    <TextBlock
+                                        Foreground="#5B6472"
+                                        Text="{Binding IsActive, StringFormat=Active: {0}}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Border
+                        Grid.Column="1"
+                        Grid.RowSpan="2"
+                        Margin="18,0,0,0"
+                        Padding="12"
+                        Background="{DynamicResource MvpPanelBrush}">
+                        <StackPanel>
+                            <TextBlock
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Text="Collection view" />
+                            <TextBlock
+                                Margin="0,8,0,0"
+                                TextWrapping="Wrap"
+                                Text="CollectionViewSource sorting, grouping, filtering, and group header templates are loaded from compiled WPF XAML." />
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </TabItem>
 

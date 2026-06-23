@@ -233,6 +233,16 @@ internal static class MvpSelfTest
         Require<TextBox>(window.FindName("NameTextBox"), "name TextBox");
         Require<ListBox>(window.FindName("ItemsList"), "items ListBox");
         var itemsDataGrid = Require<DataGrid>(window.FindName("ItemsDataGrid"), "items DataGrid");
+        var summaryPanel = Require<SummaryPanel>(window.FindName("SummaryPanel"), "summary Panel");
+        var summaryNameText = Require<TextBlock>(
+            summaryPanel.FindName("SummaryNameText"),
+            "summary name text");
+        var summaryCategoryText = Require<TextBlock>(
+            summaryPanel.FindName("SummaryCategoryText"),
+            "summary category text");
+        var summaryProgressText = Require<TextBlock>(
+            summaryPanel.FindName("SummaryProgressText"),
+            "summary progress text");
         var nodesTreeView = Require<TreeView>(window.FindName("NodesTreeView"), "nodes TreeView");
         var navigationFrame = Require<Frame>(window.FindName("NavigationFrame"), "navigation Frame");
         var detailsNavigationButton = Require<Button>(
@@ -260,6 +270,10 @@ internal static class MvpSelfTest
             nodesTreeView.ItemTemplate,
             "node hierarchical data template");
         AssertEqual("Children", GetTemplateItemsSourcePath(nodeTemplate), "TreeView hierarchical template ItemsSource path");
+        DrainDispatcher(window);
+        AssertEqual("Name: Alpha", summaryNameText.Text, "summary initial name text");
+        AssertEqual("Category: Framework", summaryCategoryText.Text, "summary initial category text");
+        AssertEqual("Progress: 35%", summaryProgressText.Text, "summary initial progress text");
         ValidateNavigation(window, navigationFrame, detailsNavigationButton);
 
         int initialCount = viewModel.Items.Count;
@@ -277,7 +291,11 @@ internal static class MvpSelfTest
         AssertEqual(true, viewModel.ActionsEnabled, "actions menu checked view model state");
 
         viewModel.Progress = 72.0;
+        DrainDispatcher(window);
         AssertEqual("Validated selected, progress 72%", viewModel.StatusText, "status text");
+        AssertEqual("Name: Validated", summaryNameText.Text, "summary updated name text");
+        AssertEqual("Category: Input", summaryCategoryText.Text, "summary updated category text");
+        AssertEqual("Progress: 72%", summaryProgressText.Text, "summary updated progress text");
     }
 
     private static string GetColumnBindingPath(DataGridColumn column)

@@ -8406,9 +8406,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateApplicationResources(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePackResources()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Application.GetResourceStream(resourceUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Application.GetContentStream(contentUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Application.GetRemoteStream(remoteUri)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("pack://application:,,,/Assets/ExternalResource.txt", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("pack://application:,,,/Assets/ExternalContent.txt", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("pack://siteoforigin:,,,/Assets/ExternalContent.txt", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK relative Resource stream text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK absolute pack Resource stream text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK relative Content stream text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK absolute pack Content stream text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK relative Remote stream text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK absolute pack Remote stream text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new ComponentResourceKey(typeof(MainWindow), \"ExternalComponentAccentBrush\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ComponentResourceKey application brush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ComponentResourceKey window lookup", externalSdkHarnessProgram, StringComparison.Ordinal);

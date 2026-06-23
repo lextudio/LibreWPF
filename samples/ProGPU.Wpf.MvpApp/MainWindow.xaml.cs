@@ -1745,6 +1745,7 @@ internal static class MvpSelfTest
         AssertEqual(drawingImage, drawingImageBrush.ImageSource, "MVP DrawingImageBrush source");
         AssertEqual(Stretch.Uniform, drawingImageBrush.Stretch, "MVP DrawingImageBrush stretch");
         AssertEqual(drawingImageBrush, drawingImageBrushBorder.Background, "MVP DrawingImageBrush Border background");
+        ValidateFreezableResources(window);
 
         var initialDynamicBrush = Require<SolidColorBrush>(
             dynamicResourceBorder.Background,
@@ -1773,6 +1774,36 @@ internal static class MvpSelfTest
             "MVP pack resource loaded through Application.GetResourceStream.",
             reader.ReadToEnd().Trim(),
             "pack resource stream text");
+    }
+
+    private static void ValidateFreezableResources(Window window)
+    {
+        var firstSharedFalseBrush = Require<SolidColorBrush>(
+            window.FindResource("MvpSharedFalseBrush"),
+            "x:Shared=false first brush");
+        var secondSharedFalseBrush = Require<SolidColorBrush>(
+            window.FindResource("MvpSharedFalseBrush"),
+            "x:Shared=false second brush");
+        AssertEqual(false, ReferenceEquals(firstSharedFalseBrush, secondSharedFalseBrush), "x:Shared=false brush instance identity");
+        AssertEqual(Color.FromRgb(0x8B, 0x5C, 0xF6), firstSharedFalseBrush.Color, "x:Shared=false first brush color");
+        AssertEqual(Color.FromRgb(0x8B, 0x5C, 0xF6), secondSharedFalseBrush.Color, "x:Shared=false second brush color");
+
+        var freezableBrush = Require<SolidColorBrush>(
+            window.FindResource("MvpFreezableBrush"),
+            "MVP Freezable brush");
+        AssertEqual(true, freezableBrush.CanFreeze, "Freezable brush CanFreeze");
+        freezableBrush.Freeze();
+        AssertEqual(true, freezableBrush.IsFrozen, "Freezable brush frozen state");
+        var mutableClone = Require<SolidColorBrush>(
+            freezableBrush.Clone(),
+            "Freezable brush clone");
+        AssertEqual(false, mutableClone.IsFrozen, "Freezable brush clone mutable state");
+        mutableClone.Opacity = 0.5;
+        AssertEqual(0.5, mutableClone.Opacity, "Freezable brush clone opacity");
+        var currentValueClone = Require<SolidColorBrush>(
+            mutableClone.CloneCurrentValue(),
+            "Freezable brush current-value clone");
+        AssertEqual(0.5, currentValueClone.Opacity, "Freezable brush current-value clone opacity");
     }
 
     private static void ValidateLayoutControls(

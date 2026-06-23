@@ -113,6 +113,13 @@
             x:Key="MvpDrawingImageBrush"
             ImageSource="{StaticResource MvpDrawingImage}"
             Stretch="Uniform" />
+        <SolidColorBrush
+            x:Key="MvpSharedFalseBrush"
+            x:Shared="False"
+            Color="#8B5CF6" />
+        <SolidColorBrush
+            x:Key="MvpFreezableBrush"
+            Color="#0F766E" />
         <ControlTemplate x:Key="MvpValidationErrorTemplate">
             <StackPanel>
                 <AdornedElementPlaceholder x:Name="MvpValidationErrorPlaceholder" />

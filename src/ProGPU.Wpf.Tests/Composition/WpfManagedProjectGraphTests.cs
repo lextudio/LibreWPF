@@ -6303,6 +6303,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<PathGeometry Figures=\"M 8,18 L 14,24 L 25,9 L 28,12 L 14,28 L 5,20 Z\" />", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"MvpDrawingImageBrush\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ImageSource=\"{StaticResource MvpDrawingImage}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"MvpSharedFalseBrush\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Shared=\"False\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"MvpFreezableBrush\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MvpDrawingImageControl\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Source=\"{StaticResource MvpDrawingImage}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MvpDrawingImageBrushBorder\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6548,6 +6551,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("MVP DrawingImage resource", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MVP DrawingImage background color", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MVP DrawingImageBrush Border background", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateFreezableResources(window)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("x:Shared=false brush instance identity", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("freezableBrush.Freeze()", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Freezable brush current-value clone opacity", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("context menu DataContext path", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("context refresh command target ancestor", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("context add command item count", mvpMainWindowCodeBehind, StringComparison.Ordinal);

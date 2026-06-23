@@ -6410,6 +6410,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DisplayMemberBinding=\"{Binding Category}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DisplayMemberBinding=\"{Binding IsActive}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"DocumentViewer\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("VerticalScrollBarVisibility=\"Auto\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"DocumentPageViewer\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Zoom=\"125\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ColumnWidth=\"360\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("MarkerStyle=\"Square\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"DocumentReader\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ViewingMode=\"Scroll\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Hyperlink", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("NavigateUri=\"https://github.com/wieslawsoltes/ProGPU\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("RequestNavigate=\"OnDocumentLinkRequestNavigate\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6452,7 +6459,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("using System.Windows.Navigation;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal int DocumentLinkRequestNavigateCount", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnDocumentLinkRequestNavigate(object sender, RequestNavigateEventArgs e)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("ValidateDocument(window, documentViewer)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateDocument(window, documentViewer, documentPageViewer, documentReader)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("document Hyperlink RequestNavigate count", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Controls.Primitives;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal int SelectorSelectionChangedCount", mvpMainWindowCodeBehind, StringComparison.Ordinal);
@@ -6526,6 +6533,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("MarkupExtension TextBlock text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MVP pack resource loaded through Application.GetResourceStream.", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Documents;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("FlowDocumentPageViewer documentPageViewer", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("FlowDocumentReader documentReader", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("document FlowDocumentPageViewer list marker style", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("document FlowDocumentReader viewing mode", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal int EditorPasswordChangedCount", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnEditorPasswordChanged", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnRefreshStatusCommandCanExecute", mvpMainWindowCodeBehind, StringComparison.Ordinal);

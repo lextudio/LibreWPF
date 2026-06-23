@@ -1460,27 +1460,71 @@
             </TabItem>
 
             <TabItem Header="Document">
-                <FlowDocumentScrollViewer
-                    x:Name="DocumentViewer"
-                    Margin="0,14,0,0">
-                    <FlowDocument PagePadding="12">
-                        <Paragraph FontSize="18" FontWeight="SemiBold">
-                            Managed WPF document content
-                        </Paragraph>
-                        <Paragraph>
-                            This document is compiled as normal WPF XAML through the ProGPU SDK. It is intentionally simple
-                            so it can be used as a fast manual smoke app while rendering, input, layout, and packaging mature.
-                            <Hyperlink
-                                NavigateUri="https://github.com/wieslawsoltes/ProGPU"
-                                RequestNavigate="OnDocumentLinkRequestNavigate">ProGPU renderer</Hyperlink>
-                        </Paragraph>
-                        <List>
-                            <ListItem><Paragraph>Application and window lifecycle</Paragraph></ListItem>
-                            <ListItem><Paragraph>Bindings, commands, and item templates</Paragraph></ListItem>
-                            <ListItem><Paragraph>Basic document object graph reuse</Paragraph></ListItem>
-                        </List>
-                    </FlowDocument>
-                </FlowDocumentScrollViewer>
+                <Grid Margin="0,14,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <FlowDocumentScrollViewer
+                        x:Name="DocumentViewer"
+                        Grid.RowSpan="2"
+                        VerticalScrollBarVisibility="Auto">
+                        <FlowDocument PagePadding="12">
+                            <Paragraph FontSize="18" FontWeight="SemiBold">
+                                Managed WPF document content
+                            </Paragraph>
+                            <Paragraph>
+                                This document is compiled as normal WPF XAML through the ProGPU SDK. It is intentionally simple
+                                so it can be used as a fast manual smoke app while rendering, input, layout, and packaging mature.
+                                <Hyperlink
+                                    NavigateUri="https://github.com/wieslawsoltes/ProGPU"
+                                    RequestNavigate="OnDocumentLinkRequestNavigate">ProGPU renderer</Hyperlink>
+                            </Paragraph>
+                            <List>
+                                <ListItem><Paragraph>Application and window lifecycle</Paragraph></ListItem>
+                                <ListItem><Paragraph>Bindings, commands, and item templates</Paragraph></ListItem>
+                                <ListItem><Paragraph>Basic document object graph reuse</Paragraph></ListItem>
+                            </List>
+                        </FlowDocument>
+                    </FlowDocumentScrollViewer>
+
+                    <FlowDocumentPageViewer
+                        x:Name="DocumentPageViewer"
+                        Grid.Column="1"
+                        Margin="16,0,0,8"
+                        MaxZoom="250"
+                        MinZoom="50"
+                        Zoom="125">
+                        <FlowDocument
+                            ColumnWidth="360"
+                            PagePadding="5">
+                            <Paragraph FontWeight="SemiBold">
+                                Page viewer document
+                            </Paragraph>
+                            <List MarkerStyle="Square">
+                                <ListItem><Paragraph>MVP page viewer item</Paragraph></ListItem>
+                            </List>
+                        </FlowDocument>
+                    </FlowDocumentPageViewer>
+
+                    <FlowDocumentReader
+                        x:Name="DocumentReader"
+                        Grid.Row="1"
+                        Grid.Column="1"
+                        Margin="16,8,0,0"
+                        ViewingMode="Scroll">
+                        <FlowDocument PagePadding="3">
+                            <Paragraph>
+                                MVP reader document
+                            </Paragraph>
+                        </FlowDocument>
+                    </FlowDocumentReader>
+                </Grid>
             </TabItem>
         </TabControl>
 

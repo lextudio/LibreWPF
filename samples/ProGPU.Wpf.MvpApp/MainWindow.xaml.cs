@@ -1033,6 +1033,12 @@ internal static class MvpSelfTest
         var documentViewer = Require<FlowDocumentScrollViewer>(
             window.FindName("DocumentViewer"),
             "document FlowDocumentScrollViewer");
+        var documentPageViewer = Require<FlowDocumentPageViewer>(
+            window.FindName("DocumentPageViewer"),
+            "document FlowDocumentPageViewer");
+        var documentReader = Require<FlowDocumentReader>(
+            window.FindName("DocumentReader"),
+            "document FlowDocumentReader");
         Require<CheckBox>(window.FindName("EnabledCheckBox"), "enabled CheckBox");
         Require<Slider>(window.FindName("ProgressSlider"), "progress Slider");
         Require<ComboBox>(window.FindName("CategoryCombo"), "category ComboBox");
@@ -1232,7 +1238,7 @@ internal static class MvpSelfTest
         ValidateNavigation(window, navigationFrame, detailsNavigationButton);
         ValidateSecondaryWindow(window, aboutMenuItem);
         ValidateEditor(window, editorPasswordBox, editorRichTextBox);
-        ValidateDocument(window, documentViewer);
+        ValidateDocument(window, documentViewer, documentPageViewer, documentReader);
 
         AssertEqual(true, MainWindow.RefreshStatusCommand.CanExecute(null, window), "refresh command initial CanExecute state");
         MainWindow.RefreshStatusCommand.Execute(null, window);
@@ -2845,8 +2851,13 @@ internal static class MvpSelfTest
             "editor RichTextBox ToggleBold restored weight");
     }
 
-    private static void ValidateDocument(MainWindow window, FlowDocumentScrollViewer documentViewer)
+    private static void ValidateDocument(
+        MainWindow window,
+        FlowDocumentScrollViewer documentViewer,
+        FlowDocumentPageViewer documentPageViewer,
+        FlowDocumentReader documentReader)
     {
+        AssertEqual(ScrollBarVisibility.Auto, documentViewer.VerticalScrollBarVisibility, "document FlowDocumentScrollViewer vertical visibility");
         var document = Require<FlowDocument>(documentViewer.Document, "document FlowDocument");
         AssertEqual(new Thickness(12), document.PagePadding, "document FlowDocument page padding");
         AssertEqual(3, document.Blocks.Count, "document FlowDocument block count");
@@ -2878,6 +2889,32 @@ internal static class MvpSelfTest
             "RequestNavigate",
             window.LastDocumentLinkRequestNavigateRoutedEventName,
             "document Hyperlink RequestNavigate routed event");
+
+        AssertEqual(125.0, documentPageViewer.Zoom, "document FlowDocumentPageViewer zoom");
+        AssertEqual(50.0, documentPageViewer.MinZoom, "document FlowDocumentPageViewer min zoom");
+        AssertEqual(250.0, documentPageViewer.MaxZoom, "document FlowDocumentPageViewer max zoom");
+        var pageViewerDocument = Require<FlowDocument>(
+            documentPageViewer.Document,
+            "document FlowDocumentPageViewer FlowDocument");
+        AssertEqual(new Thickness(5), pageViewerDocument.PagePadding, "document FlowDocumentPageViewer page padding");
+        AssertEqual(360.0, pageViewerDocument.ColumnWidth, "document FlowDocumentPageViewer column width");
+        AssertEqual(2, pageViewerDocument.Blocks.Count, "document FlowDocumentPageViewer block count");
+        var pageViewerList = Require<System.Windows.Documents.List>(
+            pageViewerDocument.Blocks.LastBlock,
+            "document FlowDocumentPageViewer List");
+        AssertEqual(TextMarkerStyle.Square, pageViewerList.MarkerStyle, "document FlowDocumentPageViewer list marker style");
+        var pageViewerText = new TextRange(pageViewerDocument.ContentStart, pageViewerDocument.ContentEnd).Text;
+        AssertContains("Page viewer document", pageViewerText, "document FlowDocumentPageViewer title text");
+        AssertContains("MVP page viewer item", pageViewerText, "document FlowDocumentPageViewer list text");
+
+        AssertEqual(FlowDocumentReaderViewingMode.Scroll, documentReader.ViewingMode, "document FlowDocumentReader viewing mode");
+        var readerDocument = Require<FlowDocument>(
+            documentReader.Document,
+            "document FlowDocumentReader FlowDocument");
+        AssertEqual(new Thickness(3), readerDocument.PagePadding, "document FlowDocumentReader page padding");
+        AssertEqual(1, readerDocument.Blocks.Count, "document FlowDocumentReader block count");
+        var readerText = new TextRange(readerDocument.ContentStart, readerDocument.ContentEnd).Text;
+        AssertContains("MVP reader document", readerText, "document FlowDocumentReader text");
     }
 
     private static void DrainDispatcher(DispatcherObject dispatcherObject)

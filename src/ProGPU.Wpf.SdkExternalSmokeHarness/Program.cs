@@ -858,6 +858,7 @@ internal static class Program
                 Top="52"
                 Topmost="True"
                 ResizeMode="NoResize"
+                Loaded="OnExternalWindowLoaded"
                 Closing="OnExternalWindowClosing"
                 Closed="OnExternalWindowClosed"
                 AllowDrop="True"
@@ -1202,6 +1203,9 @@ internal static class Program
                     <TextBlock
                         x:Name="TitleText"
                         Text="External SDK app" />
+                    <TextBlock
+                        x:Name="ExternalDispatcherTimerText"
+                        Text="{Binding ExternalDispatcherTimerStatus}" />
                     <TextBlock
                         x:Name="ExternalLocalizedText"
                         x:Uid="ExternalLocalizedText"
@@ -2496,6 +2500,21 @@ internal static class Program
 
                 public string BindingGroupLastName { get; set; } = "group: Lovelace";
 
+                private string _externalDispatcherTimerStatus = "timer waiting";
+
+                public string ExternalDispatcherTimerStatus
+                {
+                    get => _externalDispatcherTimerStatus;
+                    private set
+                    {
+                        if (_externalDispatcherTimerStatus != value)
+                        {
+                            _externalDispatcherTimerStatus = value;
+                            OnPropertyChanged(nameof(ExternalDispatcherTimerStatus));
+                        }
+                    }
+                }
+
                 public bool IsExternalDataTriggerActive
                 {
                     get => _isExternalDataTriggerActive;
@@ -2564,6 +2583,8 @@ internal static class Program
                 public event PropertyChangedEventHandler? PropertyChanged;
 
                 public int ExternalSelectionChangedCount { get; private set; }
+
+                public int ExternalDispatcherTimerTickCount { get; private set; }
 
                 public string? LastExternalSelectionSourceName { get; private set; }
 
@@ -3336,6 +3357,28 @@ internal static class Program
                     e.Handled = true;
                 }
 
+                private void OnExternalWindowLoaded(object sender, RoutedEventArgs e)
+                {
+                    if (_externalDispatcherTimer is not null)
+                    {
+                        return;
+                    }
+
+                    _externalDispatcherTimer = new DispatcherTimer(DispatcherPriority.Background, Dispatcher)
+                    {
+                        Interval = TimeSpan.FromMilliseconds(1)
+                    };
+                    _externalDispatcherTimer.Tick += OnExternalDispatcherTimerTick;
+                    _externalDispatcherTimer.Start();
+                }
+
+                private void OnExternalDispatcherTimerTick(object? sender, EventArgs e)
+                {
+                    _externalDispatcherTimer?.Stop();
+                    ExternalDispatcherTimerTickCount++;
+                    ExternalDispatcherTimerStatus = $"timer tick {ExternalDispatcherTimerTickCount}";
+                }
+
                 private void OnExternalLoadedStoryboardTextLoaded(object sender, RoutedEventArgs e)
                 {
                     ExternalLoadedStoryboardTextLoadedCount++;
@@ -3374,6 +3417,8 @@ internal static class Program
                 private bool _isExternalMultiDataTriggerActionReady;
 
                 private bool _isExternalMultiDataTriggerActionArmed;
+
+                private DispatcherTimer? _externalDispatcherTimer;
             }
 
             public sealed class ExternalItem : INotifyPropertyChanged
@@ -4163,6 +4208,7 @@ internal static class Program
                         "external SDK startup resource text block");
                     AssertEqual("External SDK startup resource", startupResourceText.Text, "external SDK startup dynamic resource text");
                     AssertBrushColor(startupResourceText.Foreground, "#FF176283", "external SDK startup dynamic resource foreground");
+                    ValidateDispatcherTimerAfterRun(window);
                     ValidateLoadedStoryboardAfterRun(window);
                     ValidatePropertyTriggerActionsAfterRun(window);
                     ValidateMultiTriggerActionsAfterRun(window);
@@ -4183,6 +4229,20 @@ internal static class Program
                     ValidateApplicationWindowLifetime(app, window);
 
                     App.MarkExternalRunValidated();
+                }
+
+                private static void ValidateDispatcherTimerAfterRun(MainWindow window)
+                {
+                    var timerText = RequireType<TextBlock>(
+                        window.FindName("ExternalDispatcherTimerText"),
+                        "external SDK dispatcher timer text");
+                    PumpDispatcherUntil(
+                        () => window.ExternalDispatcherTimerTickCount > 0,
+                        TimeSpan.FromSeconds(1),
+                        "external SDK dispatcher timer tick");
+                    AssertEqual(1, window.ExternalDispatcherTimerTickCount, "external SDK dispatcher timer tick count");
+                    AssertEqual("timer tick 1", window.ExternalDispatcherTimerStatus, "external SDK dispatcher timer status");
+                    AssertEqual("timer tick 1", timerText.Text, "external SDK dispatcher timer bound text");
                 }
 
                 private static void ValidatePopupOpeningAfterRun(MainWindow window)
@@ -11366,6 +11426,27 @@ internal static class Program
                     if (!markerReached && markerOperation.Status == DispatcherOperationStatus.Pending)
                     {
                         markerOperation.Abort();
+                    }
+                }
+
+                private static void PumpDispatcherUntil(Func<bool> condition, TimeSpan timeout, string description)
+                {
+                    var deadline = DateTime.UtcNow + timeout;
+                    while (!condition())
+                    {
+                        DrainDispatcher();
+
+                        if (condition())
+                        {
+                            return;
+                        }
+
+                        if (DateTime.UtcNow >= deadline)
+                        {
+                            throw new InvalidOperationException($"Timed out waiting for {description}.");
+                        }
+
+                        Thread.Sleep(1);
                     }
                 }
 

@@ -952,17 +952,66 @@
                         <Button Content="Three" />
                     </WrapPanel>
 
-                    <UniformGrid
-                        x:Name="MvpUniformGrid"
+                    <StackPanel
                         Grid.Row="2"
-                        Margin="0,14,0,0"
-                        Columns="3"
-                        FirstColumn="1"
-                        Rows="2">
-                        <TextBlock Text="Alpha" />
-                        <TextBlock Text="Beta" />
-                        <TextBlock Text="Gamma" />
-                    </UniformGrid>
+                        Margin="0,14,0,0">
+                        <UniformGrid
+                            x:Name="MvpUniformGrid"
+                            Columns="3"
+                            FirstColumn="1"
+                            Rows="2">
+                            <TextBlock Text="Alpha" />
+                            <TextBlock Text="Beta" />
+                            <TextBlock Text="Gamma" />
+                        </UniformGrid>
+
+                        <Canvas
+                            x:Name="MvpShapeCanvas"
+                            Width="260"
+                            Height="132"
+                            Margin="0,14,0,0"
+                            HorizontalAlignment="Left"
+                            Background="#F8FAFC">
+                            <Rectangle
+                                x:Name="MvpShapeRectangle"
+                                Width="72"
+                                Height="44"
+                                Canvas.Left="12"
+                                Canvas.Top="12"
+                                Fill="#2F80ED"
+                                RadiusX="6"
+                                RadiusY="6"
+                                Stroke="#1455A3"
+                                StrokeThickness="2" />
+                            <Ellipse
+                                x:Name="MvpShapeEllipse"
+                                Width="54"
+                                Height="54"
+                                Canvas.Left="104"
+                                Canvas.Top="16"
+                                Fill="#E7F5EE"
+                                Stroke="#236B46"
+                                StrokeThickness="3" />
+                            <Line
+                                x:Name="MvpShapeLine"
+                                Stroke="#A855F7"
+                                StrokeEndLineCap="Round"
+                                StrokeStartLineCap="Round"
+                                StrokeThickness="4"
+                                X1="16"
+                                X2="154"
+                                Y1="98"
+                                Y2="76" />
+                            <Path
+                                x:Name="MvpShapePath"
+                                Canvas.Left="178"
+                                Canvas.Top="20"
+                                Data="M 0,40 L 24,0 L 48,40 Z"
+                                Fill="#FFB020"
+                                Stroke="#7C4A00"
+                                StrokeThickness="2" />
+                        </Canvas>
+                    </StackPanel>
 
                     <Grid
                         x:Name="MvpGridSplitterGrid"

@@ -6358,6 +6358,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ItemWidth=\"90\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MvpUniformGrid\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("FirstColumn=\"1\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MvpShapeCanvas\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MvpShapeRectangle\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("RadiusX=\"6\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MvpShapeEllipse\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MvpShapeLine\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("StrokeStartLineCap=\"Round\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"MvpShapePath\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Data=\"M 0,40 L 24,0 L 48,40 Z\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MvpGridSplitterGrid\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MvpGridSplitter\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ResizeBehavior=\"PreviousAndNext\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6664,6 +6672,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GridResizeBehavior.PreviousAndNext", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("splitterLeftColumn.Width = new GridLength(150.0)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Stretch.Uniform", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<System.Windows.Shapes.Rectangle>", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Canvas.GetLeft(shapeRectangle)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PenLineCap.Round", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("shapePath.Data.Bounds", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"shape Path data bounds\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.IO;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Markup;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Media.Effects;", mvpMainWindowCodeBehind, StringComparison.Ordinal);

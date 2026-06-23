@@ -1355,6 +1355,21 @@ internal static class MvpSelfTest
         var mvpUniformGrid = Require<UniformGrid>(
             window.FindName("MvpUniformGrid"),
             "MVP UniformGrid");
+        var mvpShapeCanvas = Require<Canvas>(
+            window.FindName("MvpShapeCanvas"),
+            "MVP shape Canvas");
+        var mvpShapeRectangle = Require<System.Windows.Shapes.Rectangle>(
+            window.FindName("MvpShapeRectangle"),
+            "MVP shape Rectangle");
+        var mvpShapeEllipse = Require<System.Windows.Shapes.Ellipse>(
+            window.FindName("MvpShapeEllipse"),
+            "MVP shape Ellipse");
+        var mvpShapeLine = Require<System.Windows.Shapes.Line>(
+            window.FindName("MvpShapeLine"),
+            "MVP shape Line");
+        var mvpShapePath = Require<System.Windows.Shapes.Path>(
+            window.FindName("MvpShapePath"),
+            "MVP shape Path");
         var mvpGridSplitterGrid = Require<Grid>(
             window.FindName("MvpGridSplitterGrid"),
             "MVP GridSplitter grid");
@@ -1826,6 +1841,11 @@ internal static class MvpSelfTest
             dockFillText,
             mvpWrapPanel,
             mvpUniformGrid,
+            mvpShapeCanvas,
+            mvpShapeRectangle,
+            mvpShapeEllipse,
+            mvpShapeLine,
+            mvpShapePath,
             mvpGridSplitterGrid,
             splitterLeftColumn,
             splitterRightColumn,
@@ -2974,6 +2994,11 @@ internal static class MvpSelfTest
         TextBlock dockFillText,
         WrapPanel wrapPanel,
         UniformGrid uniformGrid,
+        Canvas shapeCanvas,
+        System.Windows.Shapes.Rectangle shapeRectangle,
+        System.Windows.Shapes.Ellipse shapeEllipse,
+        System.Windows.Shapes.Line shapeLine,
+        System.Windows.Shapes.Path shapePath,
         Grid splitterGrid,
         ColumnDefinition splitterLeftColumn,
         ColumnDefinition splitterRightColumn,
@@ -3003,6 +3028,45 @@ internal static class MvpSelfTest
         AssertEqual(3, uniformGrid.Children.Count, "UniformGrid child count");
         var secondUniformText = Require<TextBlock>(uniformGrid.Children[1], "second UniformGrid TextBlock");
         AssertEqual("Beta", secondUniformText.Text, "UniformGrid second child text");
+
+        AssertEqual(260.0, shapeCanvas.Width, "shape Canvas width");
+        AssertEqual(132.0, shapeCanvas.Height, "shape Canvas height");
+        AssertEqual(4, shapeCanvas.Children.Count, "shape Canvas child count");
+        AssertEqual(12.0, Canvas.GetLeft(shapeRectangle), "shape Rectangle Canvas.Left");
+        AssertEqual(12.0, Canvas.GetTop(shapeRectangle), "shape Rectangle Canvas.Top");
+        AssertEqual(72.0, shapeRectangle.Width, "shape Rectangle width");
+        AssertEqual(44.0, shapeRectangle.Height, "shape Rectangle height");
+        AssertEqual(6.0, shapeRectangle.RadiusX, "shape Rectangle RadiusX");
+        AssertEqual(6.0, shapeRectangle.RadiusY, "shape Rectangle RadiusY");
+        AssertEqual(2.0, shapeRectangle.StrokeThickness, "shape Rectangle stroke thickness");
+        AssertEqual(
+            Color.FromRgb(0x2F, 0x80, 0xED),
+            Require<SolidColorBrush>(shapeRectangle.Fill, "shape Rectangle fill").Color,
+            "shape Rectangle fill color");
+        AssertEqual(
+            Color.FromRgb(0x14, 0x55, 0xA3),
+            Require<SolidColorBrush>(shapeRectangle.Stroke, "shape Rectangle stroke").Color,
+            "shape Rectangle stroke color");
+        AssertEqual(104.0, Canvas.GetLeft(shapeEllipse), "shape Ellipse Canvas.Left");
+        AssertEqual(16.0, Canvas.GetTop(shapeEllipse), "shape Ellipse Canvas.Top");
+        AssertEqual(54.0, shapeEllipse.Width, "shape Ellipse width");
+        AssertEqual(54.0, shapeEllipse.Height, "shape Ellipse height");
+        AssertEqual(3.0, shapeEllipse.StrokeThickness, "shape Ellipse stroke thickness");
+        AssertEqual(
+            Color.FromRgb(0xE7, 0xF5, 0xEE),
+            Require<SolidColorBrush>(shapeEllipse.Fill, "shape Ellipse fill").Color,
+            "shape Ellipse fill color");
+        AssertEqual(16.0, shapeLine.X1, "shape Line X1");
+        AssertEqual(98.0, shapeLine.Y1, "shape Line Y1");
+        AssertEqual(154.0, shapeLine.X2, "shape Line X2");
+        AssertEqual(76.0, shapeLine.Y2, "shape Line Y2");
+        AssertEqual(4.0, shapeLine.StrokeThickness, "shape Line stroke thickness");
+        AssertEqual(PenLineCap.Round, shapeLine.StrokeStartLineCap, "shape Line start cap");
+        AssertEqual(PenLineCap.Round, shapeLine.StrokeEndLineCap, "shape Line end cap");
+        AssertEqual(178.0, Canvas.GetLeft(shapePath), "shape Path Canvas.Left");
+        AssertEqual(20.0, Canvas.GetTop(shapePath), "shape Path Canvas.Top");
+        AssertEqual(2.0, shapePath.StrokeThickness, "shape Path stroke thickness");
+        AssertEqual(new Rect(0.0, 0.0, 48.0, 40.0), shapePath.Data.Bounds, "shape Path data bounds");
 
         AssertEqual(3, splitterGrid.ColumnDefinitions.Count, "GridSplitter grid column count");
         AssertEqual(splitterLeftColumn, splitterGrid.ColumnDefinitions[0], "GridSplitter left column reference");

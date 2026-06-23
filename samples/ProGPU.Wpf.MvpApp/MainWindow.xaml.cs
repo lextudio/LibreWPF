@@ -15,6 +15,7 @@ using System.Windows.Input;
 using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Navigation;
 using System.Windows.Threading;
 using WpfCalendar = System.Windows.Controls.Calendar;
 
@@ -69,6 +70,14 @@ public partial class MainWindow : Window
 
     internal string? LastMvpStyleEventSetterRoutedEventName { get; private set; }
 
+    internal int DocumentLinkRequestNavigateCount { get; private set; }
+
+    internal string? LastDocumentLinkRequestNavigateText { get; private set; }
+
+    internal string? LastDocumentLinkRequestNavigateUri { get; private set; }
+
+    internal string? LastDocumentLinkRequestNavigateRoutedEventName { get; private set; }
+
     public MainWindow()
     {
         var viewModel = new MainViewModel();
@@ -105,6 +114,17 @@ public partial class MainWindow : Window
         }
 
         dialog.ShowDialog();
+    }
+
+    private void OnDocumentLinkRequestNavigate(object sender, RequestNavigateEventArgs e)
+    {
+        DocumentLinkRequestNavigateCount++;
+        LastDocumentLinkRequestNavigateText = sender is Hyperlink link
+            ? new TextRange(link.ContentStart, link.ContentEnd).Text.Trim()
+            : sender.GetType().Name;
+        LastDocumentLinkRequestNavigateUri = e.Uri?.ToString();
+        LastDocumentLinkRequestNavigateRoutedEventName = e.RoutedEvent?.Name;
+        e.Handled = true;
     }
 
     private void OnItemsViewSourceFilter(object sender, FilterEventArgs e)
@@ -982,6 +1002,9 @@ internal static class MvpSelfTest
         var editorRichTextBox = Require<RichTextBox>(
             window.FindName("EditorRichTextBox"),
             "editor RichTextBox");
+        var documentViewer = Require<FlowDocumentScrollViewer>(
+            window.FindName("DocumentViewer"),
+            "document FlowDocumentScrollViewer");
         Require<CheckBox>(window.FindName("EnabledCheckBox"), "enabled CheckBox");
         Require<Slider>(window.FindName("ProgressSlider"), "progress Slider");
         Require<ComboBox>(window.FindName("CategoryCombo"), "category ComboBox");
@@ -1168,6 +1191,7 @@ internal static class MvpSelfTest
         ValidateNavigation(window, navigationFrame, detailsNavigationButton);
         ValidateSecondaryWindow(window, aboutMenuItem);
         ValidateEditor(window, editorPasswordBox, editorRichTextBox);
+        ValidateDocument(window, documentViewer);
 
         AssertEqual(true, MainWindow.RefreshStatusCommand.CanExecute(null, window), "refresh command initial CanExecute state");
         MainWindow.RefreshStatusCommand.Execute(null, window);
@@ -2617,6 +2641,41 @@ internal static class MvpSelfTest
             "editor RichTextBox ToggleBold restored weight");
     }
 
+    private static void ValidateDocument(MainWindow window, FlowDocumentScrollViewer documentViewer)
+    {
+        var document = Require<FlowDocument>(documentViewer.Document, "document FlowDocument");
+        AssertEqual(new Thickness(12), document.PagePadding, "document FlowDocument page padding");
+        AssertEqual(3, document.Blocks.Count, "document FlowDocument block count");
+
+        var bodyParagraph = Require<Paragraph>(
+            document.Blocks.FirstBlock?.NextBlock,
+            "document body Paragraph");
+        var hyperlink = FindDirectHyperlink(bodyParagraph, "document Hyperlink");
+        AssertEqual(
+            new Uri("https://github.com/wieslawsoltes/ProGPU", UriKind.Absolute),
+            hyperlink.NavigateUri,
+            "document Hyperlink NavigateUri");
+
+        var documentText = new TextRange(document.ContentStart, document.ContentEnd).Text;
+        AssertContains("Managed WPF document content", documentText, "document FlowDocument title text");
+        AssertContains("ProGPU renderer", documentText, "document FlowDocument hyperlink text");
+        AssertContains("Application and window lifecycle", documentText, "document FlowDocument list text");
+
+        int initialNavigateCount = window.DocumentLinkRequestNavigateCount;
+        hyperlink.RaiseEvent(new RequestNavigateEventArgs(hyperlink.NavigateUri, string.Empty));
+        DrainDispatcher(window);
+        AssertEqual(initialNavigateCount + 1, window.DocumentLinkRequestNavigateCount, "document Hyperlink RequestNavigate count");
+        AssertEqual("ProGPU renderer", window.LastDocumentLinkRequestNavigateText, "document Hyperlink RequestNavigate text");
+        AssertEqual(
+            "https://github.com/wieslawsoltes/ProGPU",
+            window.LastDocumentLinkRequestNavigateUri,
+            "document Hyperlink RequestNavigate URI");
+        AssertEqual(
+            "RequestNavigate",
+            window.LastDocumentLinkRequestNavigateRoutedEventName,
+            "document Hyperlink RequestNavigate routed event");
+    }
+
     private static void DrainDispatcher(DispatcherObject dispatcherObject)
     {
         dispatcherObject.Dispatcher.Invoke(
@@ -2654,6 +2713,19 @@ internal static class MvpSelfTest
             if (inline is Bold bold)
             {
                 return bold;
+            }
+        }
+
+        throw new InvalidOperationException($"Expected {description}.");
+    }
+
+    private static Hyperlink FindDirectHyperlink(Paragraph paragraph, string description)
+    {
+        foreach (Inline inline in paragraph.Inlines)
+        {
+            if (inline is Hyperlink hyperlink)
+            {
+                return hyperlink;
             }
         }
 

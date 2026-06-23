@@ -1415,7 +1415,9 @@
             </TabItem>
 
             <TabItem Header="Document">
-                <FlowDocumentScrollViewer Margin="0,14,0,0">
+                <FlowDocumentScrollViewer
+                    x:Name="DocumentViewer"
+                    Margin="0,14,0,0">
                     <FlowDocument PagePadding="12">
                         <Paragraph FontSize="18" FontWeight="SemiBold">
                             Managed WPF document content
@@ -1423,6 +1425,9 @@
                         <Paragraph>
                             This document is compiled as normal WPF XAML through the ProGPU SDK. It is intentionally simple
                             so it can be used as a fast manual smoke app while rendering, input, layout, and packaging mature.
+                            <Hyperlink
+                                NavigateUri="https://github.com/wieslawsoltes/ProGPU"
+                                RequestNavigate="OnDocumentLinkRequestNavigate">ProGPU renderer</Hyperlink>
                         </Paragraph>
                         <List>
                             <ListItem><Paragraph>Application and window lifecycle</Paragraph></ListItem>

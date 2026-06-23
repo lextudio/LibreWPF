@@ -6392,6 +6392,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DisplayMemberBinding=\"{Binding Name}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DisplayMemberBinding=\"{Binding Category}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DisplayMemberBinding=\"{Binding IsActive}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"DocumentViewer\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Hyperlink", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("NavigateUri=\"https://github.com/wieslawsoltes/ProGPU\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("RequestNavigate=\"OnDocumentLinkRequestNavigate\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("FlowDocumentScrollViewer", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("StatusBar", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("INotifyPropertyChanged", mvpMainWindowCodeBehind, StringComparison.Ordinal);
@@ -6412,6 +6416,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("component pack TextBlock foreground color", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("startup DynamicResource text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("startup DynamicResource foreground color", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("using System.Windows.Navigation;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("internal int DocumentLinkRequestNavigateCount", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnDocumentLinkRequestNavigate(object sender, RequestNavigateEventArgs e)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateDocument(window, documentViewer)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("document Hyperlink RequestNavigate count", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Controls.Primitives;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal int SelectorSelectionChangedCount", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal int MultiSelectorSelectionChangedCount", mvpMainWindowCodeBehind, StringComparison.Ordinal);

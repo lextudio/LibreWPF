@@ -3890,6 +3890,72 @@ internal static class MvpSelfTest
         AssertEqual("OK", closeButton.Content, "secondary window close button content");
         AssertEqual(true, closeButton.IsDefault, "secondary window close button default state");
         AssertEqual(true, closeButton.IsCancel, "secondary window close button cancel state");
+
+        if (!window.IsVisible || Application.Current is not { } application)
+        {
+            return;
+        }
+
+        dialog.Owner = window;
+        int closingCount = 0;
+        int closedCount = 0;
+        bool closingCancelBefore = true;
+        bool closingCancelAfter = true;
+        dialog.Closing += (_, e) =>
+        {
+            closingCount++;
+            closingCancelBefore = e.Cancel;
+            closingCancelAfter = e.Cancel;
+        };
+        dialog.Closed += (_, _) => closedCount++;
+
+        int initialWindowCount = CountApplicationWindows(application);
+        AssertEqual(true, ApplicationContainsWindow(application, dialog), "Application Windows contains constructed secondary window");
+        dialog.Show();
+        DrainDispatcher(window);
+
+        AssertEqual(true, dialog.IsVisible, "secondary window visibility after show");
+        AssertEqual(window, dialog.Owner, "secondary window owner after show");
+        AssertEqual(1, window.OwnedWindows.Count, "main window owned window count after secondary show");
+        AssertEqual(dialog, window.OwnedWindows[0], "main window owned window entry after secondary show");
+        AssertEqual(initialWindowCount, CountApplicationWindows(application), "Application Windows count after secondary show");
+        AssertEqual(true, ApplicationContainsWindow(application, dialog), "Application Windows contains secondary window");
+
+        dialog.Close();
+        DrainDispatcher(window);
+
+        AssertEqual(1, closingCount, "secondary window Closing count");
+        AssertEqual(1, closedCount, "secondary window Closed count");
+        AssertEqual(false, closingCancelBefore, "secondary window Closing initial cancel state");
+        AssertEqual(false, closingCancelAfter, "secondary window Closing final cancel state");
+        AssertEqual(false, dialog.IsVisible, "secondary window visibility after close");
+        AssertEqual(0, window.OwnedWindows.Count, "main window owned window count after secondary close");
+        AssertEqual(initialWindowCount - 1, CountApplicationWindows(application), "Application Windows count after secondary close");
+        AssertEqual(false, ApplicationContainsWindow(application, dialog), "Application Windows excludes secondary window after close");
+    }
+
+    private static int CountApplicationWindows(Application application)
+    {
+        int count = 0;
+        foreach (Window _ in application.Windows)
+        {
+            count++;
+        }
+
+        return count;
+    }
+
+    private static bool ApplicationContainsWindow(Application application, Window window)
+    {
+        foreach (Window candidate in application.Windows)
+        {
+            if (ReferenceEquals(candidate, window))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void ValidateEditor(

@@ -19,6 +19,7 @@ internal static class Program
     private const string SdkVersion = "11.0.0-dev";
     private const string ExternalAppTargetFramework = "net11.0-windows";
     private const string AppAssemblyName = "ExternalSdkApp";
+    private const string AppOutputAssemblyName = "ExternalSdkShell";
     private const string LibraryAssemblyName = "ExternalSdkLibrary";
     private const string LibraryOutputAssemblyName = "ExternalSdkControls";
     private const string LocalizationAssemblyName = "ExternalLocalizationApp";
@@ -141,7 +142,7 @@ internal static class Program
                 {
                     ["PROGPU_WPF_EXTERNAL_VALIDATE"] = "1"
                 },
-                Path.Combine(outputRoot, AppAssemblyName + ".dll"));
+                Path.Combine(outputRoot, AppOutputAssemblyName + ".dll"));
             string applicationRunOutput = RunProcess(
                 dotnetPath,
                 outputRoot,
@@ -149,7 +150,7 @@ internal static class Program
                 {
                     ["PROGPU_WPF_EXTERNAL_RUN_VALIDATE"] = "1"
                 },
-                Path.Combine(outputRoot, AppAssemblyName + ".dll"));
+                Path.Combine(outputRoot, AppOutputAssemblyName + ".dll"));
             AssertContains(
                 applicationRunOutput,
                 "External SDK Application.Run validation succeeded.",
@@ -558,6 +559,7 @@ internal static class Program
                 $"""
             <Project Sdk="{OriginalWindowsDesktopWpfSdk}">
               <PropertyGroup>
+                <AssemblyName>{AppOutputAssemblyName}</AssemblyName>
                 <OutputType>WinExe</OutputType>
                 <TargetFramework>{ExternalAppTargetFramework}</TargetFramework>
                 <UseWPF>true</UseWPF>
@@ -4809,7 +4811,7 @@ internal static class Program
                 private static void ValidateApplicationLoadComponent()
                 {
                     var loadedView = RequireType<ExternalLoadComponentView>(
-                        Application.LoadComponent(new Uri("/ExternalSdkApp;component/ExternalLoadComponentView.xaml", UriKind.Relative)),
+                        Application.LoadComponent(new Uri("/ExternalSdkShell;component/ExternalLoadComponentView.xaml", UriKind.Relative)),
                         "external SDK Application.LoadComponent user control");
                     var loadedText = RequireType<TextBlock>(
                         loadedView.FindName("ExternalLoadComponentText"),
@@ -11568,6 +11570,7 @@ internal static class Program
         AssertContains(appProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external app SDK");
         AssertDoesNotContain(appProject, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external app original SDK");
         AssertDoesNotContain(appProject, $"<Project Sdk=\"{OriginalWindowsDesktopWpfSdk}\">", "external app original WindowsDesktop SDK");
+        AssertContains(appProject, $"<AssemblyName>{AppOutputAssemblyName}</AssemblyName>", "external app custom assembly name");
         AssertContains(appProject, "<OutputType>WinExe</OutputType>", "external app output type");
         AssertContains(appProject, $"<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", "external app Windows target framework");
         AssertContains(appProject, "<UseWPF>true</UseWPF>", "external app WPF property");
@@ -11667,7 +11670,7 @@ internal static class Program
 
     private static void ValidateExternalOutput(string outputRoot, string packageFeed)
     {
-        RequireFile(Path.Combine(outputRoot, AppAssemblyName + ".dll"), "external SDK app assembly");
+        RequireFile(Path.Combine(outputRoot, AppOutputAssemblyName + ".dll"), "external SDK app assembly");
         RequireFile(Path.Combine(outputRoot, LibraryOutputAssemblyName + ".dll"), "external SDK library assembly");
 
         foreach (string assemblyName in s_requiredWpfRuntimeAssemblies
@@ -11693,7 +11696,7 @@ internal static class Program
         RequireAnyFile(outputRoot, GetNativeAssetCandidates("wgpu"), "external SDK output native WebGPU runtime asset");
         RequireAnyFile(outputRoot, GetNativeAssetCandidates("glfw"), "external SDK output native GLFW runtime asset");
 
-        string depsJson = File.ReadAllText(Path.Combine(outputRoot, AppAssemblyName + ".deps.json"));
+        string depsJson = File.ReadAllText(Path.Combine(outputRoot, AppOutputAssemblyName + ".deps.json"));
         AssertContains(depsJson, "Microsoft.DotNet.Wpf.GitHub", "external SDK WPF transport package dependency");
         AssertContains(depsJson, "ProGPU.Wpf", "external SDK ProGPU WPF package dependency");
         AssertContains(depsJson, "ProGPU.Compute", "external SDK ProGPU compute package dependency");

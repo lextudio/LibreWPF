@@ -6970,6 +6970,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private const string OriginalWpfSdk = \"Microsoft.NET.Sdk\";", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("private const string OriginalWindowsDesktopWpfSdk = \"Microsoft.NET.Sdk.WindowsDesktop\";", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalSdkApp", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AppOutputAssemblyName = \"ExternalSdkShell\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalSdkLibrary", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("LibraryOutputAssemblyName = \"ExternalSdkControls\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Project Sdk=\"{OriginalWpfSdk}\">", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6983,10 +6984,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<OutputType>WinExe</OutputType>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("private const string ExternalAppTargetFramework = \"net11.0-windows\";", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<AssemblyName>{AppOutputAssemblyName}</AssemblyName>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<AssemblyName>{LibraryOutputAssemblyName}</AssemblyName>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<TargetFrameworks>{ExternalAppTargetFramework}</TargetFrameworks>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external library Windows target frameworks", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<UseWPF>true</UseWPF>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AppOutputAssemblyName + \".dll\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("assembly=ExternalSdkControls", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("LibraryOutputAssemblyName + \".dll\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7105,7 +7108,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Path.Combine(appRoot, \"ExternalLoadComponentView.xaml\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("public partial class ExternalLoadComponentView : UserControl", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateApplicationLoadComponent()", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("Application.LoadComponent(new Uri(\"/ExternalSdkApp;component/ExternalLoadComponentView.xaml\", UriKind.Relative))", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Application.LoadComponent(new Uri(\"/ExternalSdkShell;component/ExternalLoadComponentView.xaml\", UriKind.Relative))", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalLoadComponentText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Application.LoadComponent static resource text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalLoadComponentPanel", externalSdkHarnessProgram, StringComparison.Ordinal);

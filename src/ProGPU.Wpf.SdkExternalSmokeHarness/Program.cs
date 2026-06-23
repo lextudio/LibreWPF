@@ -12394,7 +12394,7 @@ internal static class Program
                 "Silk.NET.WebGPU.WebGPU",
                 "RenderPassEncoderSetViewport",
                 "external SDK ProGPU compositor physical render target viewport");
-            AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(proGpuWpf, proGpuScene, "external SDK");
+            AssertRetainedWpfLayerUsesLogicalBoundsAndIdentityScale(proGpuWpf, proGpuScene, "external SDK");
             AssertPackagedHighDpiRetainedWpfPixelsFillPhysicalTarget(
                 outputRoot,
                 proGpuWpf,
@@ -12527,7 +12527,7 @@ internal static class Program
         }
     }
 
-    private static void AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(
+    private static void AssertRetainedWpfLayerUsesLogicalBoundsAndIdentityScale(
         Assembly proGpuWpf,
         Assembly proGpuScene,
         string descriptionPrefix)
@@ -12563,7 +12563,7 @@ internal static class Program
         AssertEqual(new Vector2(420f, 840f), GetProperty(sceneRoot, "Size"), $"{descriptionPrefix} ProGPU scene root logical size");
         AssertEqual(new Vector2(420f, 840f), GetProperty(retainedRoot, "Size"), $"{descriptionPrefix} ProGPU retained WPF layer logical size");
         AssertEqual(new Vector2(420f, 840f), GetProperty(flatRoot, "Size"), $"{descriptionPrefix} ProGPU flat WPF layer logical size");
-        AssertEqual(new Vector3(2f, 2f, 1f), GetProperty(retainedRoot, "Scale"), $"{descriptionPrefix} ProGPU retained WPF layer scale");
+        AssertEqual(Vector3.One, GetProperty(retainedRoot, "Scale"), $"{descriptionPrefix} ProGPU retained WPF layer identity scale");
         AssertEqual(Vector2.Zero, GetProperty(retainedRoot, "RenderTransformOrigin"), $"{descriptionPrefix} ProGPU retained WPF layer transform origin");
     }
 

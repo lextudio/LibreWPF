@@ -9166,7 +9166,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK ProGPU compositor render pass viewport application", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK ProGPU compositor physical render target viewport", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RenderPassEncoderSetViewport", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(proGpuWpf, proGpuScene, \"external SDK\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertRetainedWpfLayerUsesLogicalBoundsAndIdentityScale(proGpuWpf, proGpuScene, \"external SDK\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPackagedHighDpiRetainedWpfPixelsFillPhysicalTarget(", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPackagedObjectRenderDataRectangleFillsPhysicalTarget(", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPackagedRetinaStartupResizeKeepsLogicalSurface(", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -9184,7 +9184,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CreateRedWpfVisual(presentationCore, presentationFramework, windowsBase)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Invoke(target, \"ReplayVisualSubtree\", wpfVisual, sink, null, null)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU retained WPF layer logical size", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("ProGPU retained WPF layer scale", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGPU retained WPF layer identity scale", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPropertyGetterReferencesField", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertMethodCallsMethod", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertMethodCallsSpecificMethod", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -9213,7 +9213,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SDK ProGPU compositor render pass viewport application", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU compositor physical render target viewport", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RenderPassEncoderSetViewport", runtimeHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("AssertRetainedWpfLayerUsesLogicalBoundsAndDpiScale(proGpuWpf, proGpuScene, \"SDK\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertRetainedWpfLayerUsesLogicalBoundsAndIdentityScale(proGpuWpf, proGpuScene, \"SDK\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPackagedHighDpiRetainedWpfPixelsFillPhysicalTarget(", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPackagedObjectRenderDataRectangleFillsPhysicalTarget(", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPackagedLegacyRenderOverloadFillsPhysicalTarget(", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -9235,7 +9235,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Invoke(target, \"ReplayVisualSubtree\", wpfVisual, sink, null, null)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetProperty(GetProperty(target, \"RootVisual\"), \"Context\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU retained WPF layer logical size", runtimeHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("ProGPU retained WPF layer scale", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGPU retained WPF layer identity scale", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertPropertyGetterReferencesField", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertMethodCallsMethod", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertMethodCallsSpecificMethod", runtimeHarnessProgram, StringComparison.Ordinal);

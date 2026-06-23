@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -20,6 +21,8 @@ public partial class MainWindow : Window
         typeof(MainWindow));
 
     private const string LiveValidationEnvironmentVariable = "PROGPU_WPF_SDK_SWITCH_LIVE_VALIDATE";
+    private const int LiveValidationMaxAttempts = 120;
+    private static readonly TimeSpan LiveValidationRetryDelay = TimeSpan.FromMilliseconds(16);
 
     public MainWindow()
     {
@@ -111,18 +114,37 @@ public partial class MainWindow : Window
 
     public object? LastSmokeRoutedEventSource { get; private set; }
 
+    private int _liveRenderSurfaceValidationAttempts;
+
     private void OnSdkSwitchSmokeWindowLoaded(object sender, RoutedEventArgs e)
     {
-        Dispatcher.BeginInvoke(
-            DispatcherPriority.ApplicationIdle,
-            new Action(ValidateLiveRenderSurfaceGeometry));
+        if (Environment.GetEnvironmentVariable(LiveValidationEnvironmentVariable) == "1" &&
+            TryGetPortableActivationHost(out object? host) &&
+            host != null)
+        {
+            var expectedLogicalWidth = ToExpectedLogicalDimension(Width, RenderSize.Width);
+            var expectedLogicalHeight = ToExpectedLogicalDimension(Height, RenderSize.Height);
+            _ = ValidateRequiredLiveRenderSurfaceGeometryAsync(
+                host,
+                expectedLogicalWidth,
+                expectedLogicalHeight);
+            return;
+        }
+
+        ScheduleLiveRenderSurfaceValidation();
     }
 
     private void ValidateLiveRenderSurfaceGeometry()
     {
         bool requireLiveValidation = Environment.GetEnvironmentVariable(LiveValidationEnvironmentVariable) == "1";
+        _liveRenderSurfaceValidationAttempts++;
         if (!TryGetPortableActivationHost(out object? host))
         {
+            if (TryScheduleLiveRenderSurfaceValidationRetry())
+            {
+                return;
+            }
+
             if (requireLiveValidation)
             {
                 throw new InvalidOperationException("Expected the SDK-switch smoke app to have a live ProGPU host.");
@@ -133,14 +155,91 @@ public partial class MainWindow : Window
 
         object liveHost = host
             ?? throw new InvalidOperationException("Expected the SDK-switch smoke app to have a live ProGPU host.");
+        if (GetRequiredProperty(liveHost, "HasPresentedFrame") is bool hasPresentedFrame &&
+            !hasPresentedFrame)
+        {
+            if (TryScheduleLiveRenderSurfaceValidationRetry())
+            {
+                return;
+            }
+
+            if (requireLiveValidation)
+            {
+                throw new InvalidOperationException("Expected the SDK-switch smoke app to present a ProGPU frame before live geometry validation.");
+            }
+
+            return;
+        }
+
+        var expectedLogicalWidth = ToExpectedLogicalDimension(Width, RenderSize.Width);
+        var expectedLogicalHeight = ToExpectedLogicalDimension(Height, RenderSize.Height);
+        string status = ValidateLiveRenderSurfaceGeometryCore(
+            liveHost,
+            expectedLogicalWidth,
+            expectedLogicalHeight);
+        LiveRenderSurfaceValidationCount++;
+        LiveRenderSurfaceValidationStatus = status;
+        if (requireLiveValidation)
+        {
+            Console.WriteLine($"ProGPU WPF SDK switch live geometry validation succeeded: {LiveRenderSurfaceValidationStatus}.");
+            Environment.Exit(0);
+        }
+    }
+
+    private async Task ValidateRequiredLiveRenderSurfaceGeometryAsync(
+        object liveHost,
+        uint expectedLogicalWidth,
+        uint expectedLogicalHeight)
+    {
+        int presentedSampleCount = 0;
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            await Task.Delay(LiveValidationRetryDelay).ConfigureAwait(false);
+            if (GetRequiredProperty(liveHost, "HasPresentedFrame") is not bool hasPresentedFrame ||
+                !hasPresentedFrame)
+            {
+                continue;
+            }
+
+            presentedSampleCount++;
+            if (presentedSampleCount < 5)
+            {
+                continue;
+            }
+
+            try
+            {
+                string status = ValidateLiveRenderSurfaceGeometryCore(
+                    liveHost,
+                    expectedLogicalWidth,
+                    expectedLogicalHeight);
+                LiveRenderSurfaceValidationCount++;
+                LiveRenderSurfaceValidationStatus = status;
+                Console.WriteLine($"ProGPU WPF SDK switch live geometry validation succeeded: {status}.");
+                Environment.Exit(0);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or MissingMemberException or MissingMethodException)
+            {
+                Console.Error.WriteLine(ex.Message);
+                Environment.Exit(1);
+            }
+        }
+
+        Console.Error.WriteLine("Expected the SDK-switch smoke app to present a stable ProGPU frame before live geometry validation.");
+        Environment.Exit(1);
+    }
+
+    private static string ValidateLiveRenderSurfaceGeometryCore(
+        object liveHost,
+        uint expectedLogicalWidth,
+        uint expectedLogicalHeight)
+    {
         object geometry = InvokeRequired(liveHost, "ResolveCurrentRenderSurfaceGeometry");
         var logicalWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "LogicalWidth"));
         var logicalHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "LogicalHeight"));
         var pixelWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "PixelWidth"));
         var pixelHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "PixelHeight"));
         var dpiScale = Convert.ToDouble(GetRequiredProperty(geometry, "DpiScale"), CultureInfo.InvariantCulture);
-        var expectedLogicalWidth = ToExpectedLogicalDimension(Width, RenderSize.Width);
-        var expectedLogicalHeight = ToExpectedLogicalDimension(Height, RenderSize.Height);
 
         AssertClose(logicalWidth, expectedLogicalWidth, "live ProGPU WPF logical width");
         AssertClose(logicalHeight, expectedLogicalHeight, "live ProGPU WPF logical height");
@@ -157,13 +256,39 @@ public partial class MainWindow : Window
                 $"Expected live ProGPU WPF high-DPI pixels to exceed logical size, but got logical {logicalWidth}x{logicalHeight}, pixels {pixelWidth}x{pixelHeight}, DPI {dpiScale}.");
         }
 
-        LiveRenderSurfaceValidationCount++;
-        LiveRenderSurfaceValidationStatus = $"logical {logicalWidth}x{logicalHeight}, pixels {pixelWidth}x{pixelHeight}, dpi {dpiScale:0.###}";
-        if (requireLiveValidation)
+        if (TryGetLiveFramebufferSize(liveHost, out var framebufferWidth, out var framebufferHeight))
         {
-            Console.WriteLine($"ProGPU WPF SDK switch live geometry validation succeeded: {LiveRenderSurfaceValidationStatus}.");
-            Application.Current.Shutdown();
+            AssertClose(pixelWidth, framebufferWidth, "live ProGPU WPF physical framebuffer width");
+            AssertClose(pixelHeight, framebufferHeight, "live ProGPU WPF physical framebuffer height");
+            if ((framebufferWidth > logicalWidth || framebufferHeight > logicalHeight) &&
+                dpiScale <= 1.01)
+            {
+                throw new InvalidOperationException(
+                    $"Expected live ProGPU WPF DPI to track the physical framebuffer, but got logical {logicalWidth}x{logicalHeight}, framebuffer {framebufferWidth}x{framebufferHeight}, DPI {dpiScale}.");
+            }
         }
+
+        return $"logical {logicalWidth}x{logicalHeight}, pixels {pixelWidth}x{pixelHeight}, dpi {dpiScale:0.###}";
+    }
+
+    private void ScheduleLiveRenderSurfaceValidation()
+    {
+        Dispatcher.BeginInvoke(
+            DispatcherPriority.ApplicationIdle,
+            new Action(ValidateLiveRenderSurfaceGeometry));
+    }
+
+    private bool TryScheduleLiveRenderSurfaceValidationRetry()
+    {
+        if (_liveRenderSurfaceValidationAttempts >= LiveValidationMaxAttempts)
+        {
+            return false;
+        }
+
+        _ = Task.Delay(LiveValidationRetryDelay).ContinueWith(
+            _ => ScheduleLiveRenderSurfaceValidation(),
+            TaskScheduler.Default);
+        return true;
     }
 
     private bool TryGetPortableActivationHost(out object? host)
@@ -185,6 +310,30 @@ public partial class MainWindow : Window
         return host != null;
     }
 
+    private static bool TryGetLiveFramebufferSize(object liveHost, out uint width, out uint height)
+    {
+        width = 0;
+        height = 0;
+        object? silkWindow = TryGetProperty(liveHost, "SilkWindow");
+        if (silkWindow == null)
+        {
+            return false;
+        }
+
+        object? framebufferSize = TryGetProperty(silkWindow, "FramebufferSize");
+        return framebufferSize != null &&
+            TryReadPositiveUintProperty(framebufferSize, "X", out width) &&
+            TryReadPositiveUintProperty(framebufferSize, "Y", out height);
+    }
+
+    private static object? TryGetProperty(object target, string propertyName)
+    {
+        return target.GetType().GetProperty(
+                propertyName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?.GetValue(target);
+    }
+
     private static object InvokeRequired(object target, string methodName)
     {
         MethodInfo method = target.GetType().GetMethod(
@@ -203,6 +352,35 @@ public partial class MainWindow : Window
             ?? throw new MissingMemberException(target.GetType().FullName, propertyName);
         return property.GetValue(target)
             ?? throw new InvalidOperationException($"Expected {target.GetType().FullName}.{propertyName} to return a value.");
+    }
+
+    private static bool TryReadPositiveUintProperty(object target, string propertyName, out uint value)
+    {
+        value = 0;
+        object? rawValue = TryGetProperty(target, propertyName);
+        try
+        {
+            int dimension = Convert.ToInt32(rawValue, CultureInfo.InvariantCulture);
+            if (dimension <= 0)
+            {
+                return false;
+            }
+
+            value = (uint)dimension;
+            return true;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+        catch (InvalidCastException)
+        {
+            return false;
+        }
+        catch (OverflowException)
+        {
+            return false;
+        }
     }
 
     private static uint ToExpectedLogicalDimension(double declaredDimension, double renderDimension)

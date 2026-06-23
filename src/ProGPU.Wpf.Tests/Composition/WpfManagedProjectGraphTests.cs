@@ -805,7 +805,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("return IsPortableWindowActive ? new Size(0, 0) : GetHwndNonClientAreaSizeInMeasureUnits()", window, StringComparison.Ordinal);
         Assert.Contains("return new Size(ToNonNegativeFiniteSize(width), ToNonNegativeFiniteSize(height))", window, StringComparison.Ordinal);
         Assert.Contains("frameworkAvailableSize = GetPortableMeasureSizeInMeasureUnits(frameworkAvailableSize);", window, StringComparison.Ordinal);
-        Assert.Contains("arrangeBounds = GetPortableArrangeSizeInMeasureUnits(DesiredSize, arrangeBounds);", window, StringComparison.Ordinal);
+        Assert.Contains("Size portableFallbackSize = SizeToContent == SizeToContent.Manual", window, StringComparison.Ordinal);
+        Assert.Contains("? GetWindowSizeInMeasureUnits()", window, StringComparison.Ordinal);
+        Assert.Contains(": arrangeBounds;", window, StringComparison.Ordinal);
+        Assert.Contains("arrangeBounds = GetPortableArrangeSizeInMeasureUnits(DesiredSize, portableFallbackSize);", window, StringComparison.Ordinal);
         Assert.Contains("private Size GetPortableMeasureSizeInMeasureUnits(Size windowSize)", window, StringComparison.Ordinal);
         Assert.Contains("? Double.PositiveInfinity", window, StringComparison.Ordinal);
         Assert.Contains("private Size GetPortableArrangeSizeInMeasureUnits(Size measuredSize, Size fallbackSize)", window, StringComparison.Ordinal);
@@ -5912,6 +5915,10 @@ public sealed class WpfManagedProjectGraphTests
             "samples",
             "ProGPU.Wpf.MvpApp",
             "ProGPU.Wpf.MvpApp.csproj");
+        var mvpAppConfigPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.MvpApp",
+            "App.config");
         var mvpAppXamlPath = FindRepoPath(
             "samples",
             "ProGPU.Wpf.MvpApp",
@@ -6046,6 +6053,7 @@ public sealed class WpfManagedProjectGraphTests
         var sdkCiScript = File.ReadAllText(sdkCiScriptPath);
         var sdkCiWorkflow = File.ReadAllText(sdkCiWorkflowPath);
         var mvpProject = File.ReadAllText(mvpProjectPath);
+        var mvpAppConfig = File.ReadAllText(mvpAppConfigPath);
         var mvpAppXaml = File.ReadAllText(mvpAppXamlPath);
         var mvpAppCodeBehind = File.ReadAllText(mvpAppCodeBehindPath);
         var mvpMainWindowXaml = File.ReadAllText(mvpMainWindowXamlPath);
@@ -6157,6 +6165,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<Content Include=\"Assets/MvpContent.txt\">", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<TargetPath>Assets/MvpContent.txt</TargetPath>", mvpProject, StringComparison.Ordinal);
+        Assert.Contains("<add key=\"MvpAppSetting\" value=\"MVP app config value\" />", mvpAppConfig, StringComparison.Ordinal);
+        Assert.Contains("<add key=\"MvpNumericSetting\" value=\"73\" />", mvpAppConfig, StringComparison.Ordinal);
         Assert.Contains("<ResourceDictionary Source=\"Resources/Theme.xaml\" />", mvpAppXaml, StringComparison.Ordinal);
         Assert.Contains("<ResourceDictionary Source=\"/ProGPU.Wpf.MvpApp;component/Resources/ComponentTheme.xaml\" />", mvpAppXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"MvpComponentPackText\"", mvpComponentThemeXaml, StringComparison.Ordinal);
@@ -6657,6 +6667,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Require<DropShadowEffect>", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<BlurEffect>", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateResourceControls", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("using System.Configuration;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateAppConfiguration()", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ConfigurationManager.AppSettings[\"MvpAppSetting\"]", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ConfigurationManager.AppSettings[\"MvpNumericSetting\"]", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("new ComponentResourceKey(typeof(MainWindow), \"MvpComponentAccentBrush\")", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("applicationResources[\"MvpPanelBrush\"]", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("dynamic resource Border updated background color", mvpMainWindowCodeBehind, StringComparison.Ordinal);
@@ -7569,6 +7583,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"ThemeText\"", smokeGenericThemeXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{TemplateBinding Text}\"", smokeGenericThemeXaml, StringComparison.Ordinal);
         Assert.Contains("DataContext = new SmokeViewModel();", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_SDK_SWITCH_LIVE_VALIDATE", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private const int LiveValidationMaxAttempts = 120;", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateRequiredLiveRenderSurfaceGeometryAsync(", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("GetRequiredProperty(liveHost, \"HasPresentedFrame\")", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("TryGetLiveFramebufferSize(liveHost, out var framebufferWidth, out var framebufferHeight)", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"live ProGPU WPF physical framebuffer width\"", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Console.WriteLine($\"ProGPU WPF SDK switch live geometry validation succeeded:", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Environment.Exit(0);", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public static RoutedUICommand SmokeCommand", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnActionButtonClick", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ClickStatus.Text = \"clicked\";", smokeMainWindowCodeBehind, StringComparison.Ordinal);

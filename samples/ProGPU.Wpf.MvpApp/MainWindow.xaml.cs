@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Configuration;
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
@@ -1109,6 +1110,7 @@ internal static class MvpSelfTest
             ?? throw new InvalidOperationException("Expected current Application.");
         AssertEqual(ShutdownMode.OnMainWindowClose, application.ShutdownMode, "Application ShutdownMode");
         ValidateApplicationRunState(application, window, expectLoadedStoryboardApplied);
+        ValidateAppConfiguration();
         ValidateRuntimeNameScope(window);
         var themeResources = Require<ResourceDictionary>(
             application.Resources.MergedDictionaries.Count > 0
@@ -1939,6 +1941,12 @@ internal static class MvpSelfTest
         AssertEqual(1, openWindowCount, "Application Windows count after StartupUri activation");
         AssertEqual(true, containsMainWindow, "Application Windows contains StartupUri MainWindow");
         AssertEqual(true, window.IsVisible, "StartupUri MainWindow visible");
+    }
+
+    private static void ValidateAppConfiguration()
+    {
+        AssertEqual("MVP app config value", ConfigurationManager.AppSettings["MvpAppSetting"], "ConfigurationManager app setting");
+        AssertEqual("73", ConfigurationManager.AppSettings["MvpNumericSetting"], "ConfigurationManager numeric app setting");
     }
 
     private static void ValidateRuntimeNameScope(Window window)

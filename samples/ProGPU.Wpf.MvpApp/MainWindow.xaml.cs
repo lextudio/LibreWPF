@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace ProGPU.Wpf.MvpApp;
@@ -223,6 +224,19 @@ internal static class MvpSelfTest
 
         var viewModel = window.DataContext as MainViewModel
             ?? throw new InvalidOperationException("Expected MVP DataContext.");
+        var application = Application.Current
+            ?? throw new InvalidOperationException("Expected current Application.");
+        var themeResources = Require<ResourceDictionary>(
+            application.Resources.MergedDictionaries.Count > 0
+                ? application.Resources.MergedDictionaries[0]
+                : null,
+            "app merged theme ResourceDictionary");
+        AssertEqual(true, themeResources.Contains("MvpPanelBrush"), "app theme panel brush key");
+        AssertEqual(true, themeResources.Contains(typeof(Button)), "app theme implicit Button style key");
+        var panelBrush = Require<SolidColorBrush>(window.FindResource("MvpPanelBrush"), "MVP panel brush");
+        var buttonStyle = Require<Style>(application.TryFindResource(typeof(Button)), "app Button style");
+        AssertEqual(Color.FromRgb(0xF4, 0xF7, 0xFB), panelBrush.Color, "MVP panel brush color");
+        AssertEqual(typeof(Button), buttonStyle.TargetType, "app Button implicit style target type");
         var mainMenu = Require<Menu>(window.FindName("MainMenu"), "main Menu");
         var fileMenuItem = Require<MenuItem>(window.FindName("FileMenuItem"), "file MenuItem");
         var addMenuItem = Require<MenuItem>(window.FindName("AddMenuItem"), "add MenuItem");

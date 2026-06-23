@@ -5884,6 +5884,10 @@ public sealed class WpfManagedProjectGraphTests
             "samples",
             "ProGPU.Wpf.MvpApp",
             "ProGPU.Wpf.MvpApp.csproj");
+        var mvpAppXamlPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.MvpApp",
+            "App.xaml");
         var mvpAppCodeBehindPath = FindRepoPath(
             "samples",
             "ProGPU.Wpf.MvpApp",
@@ -5904,6 +5908,11 @@ public sealed class WpfManagedProjectGraphTests
             "samples",
             "ProGPU.Wpf.MvpApp",
             "SummaryPanel.xaml.cs");
+        var mvpThemeXamlPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.MvpApp",
+            "Resources",
+            "Theme.xaml");
         var mvpOverviewPageXamlPath = FindRepoPath(
             "samples",
             "ProGPU.Wpf.MvpApp",
@@ -5978,11 +5987,13 @@ public sealed class WpfManagedProjectGraphTests
         var sdkCiScript = File.ReadAllText(sdkCiScriptPath);
         var sdkCiWorkflow = File.ReadAllText(sdkCiWorkflowPath);
         var mvpProject = File.ReadAllText(mvpProjectPath);
+        var mvpAppXaml = File.ReadAllText(mvpAppXamlPath);
         var mvpAppCodeBehind = File.ReadAllText(mvpAppCodeBehindPath);
         var mvpMainWindowXaml = File.ReadAllText(mvpMainWindowXamlPath);
         var mvpMainWindowCodeBehind = File.ReadAllText(mvpMainWindowCodeBehindPath);
         var mvpSummaryPanelXaml = File.ReadAllText(mvpSummaryPanelXamlPath);
         var mvpSummaryPanelCodeBehind = File.ReadAllText(mvpSummaryPanelCodeBehindPath);
+        var mvpThemeXaml = File.ReadAllText(mvpThemeXamlPath);
         var mvpOverviewPageXaml = File.ReadAllText(mvpOverviewPageXamlPath);
         var mvpOverviewPageCodeBehind = File.ReadAllText(mvpOverviewPageCodeBehindPath);
         var mvpDetailsPageXaml = File.ReadAllText(mvpDetailsPageXamlPath);
@@ -6075,6 +6086,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>net11.0-windows</TargetFramework>", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<UseWPF>true</UseWPF>", mvpProject, StringComparison.Ordinal);
+        Assert.Contains("<ResourceDictionary Source=\"Resources/Theme.xaml\" />", mvpAppXaml, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_VALIDATE", mvpAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MvpSelfTest.Validate", mvpAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MainMenu\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6100,6 +6112,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ObservableCollection<MvpNode>", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("addMenuItem.Command.Execute(addMenuItem.CommandParameter)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("actions menu unchecked view model state", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("app merged theme ResourceDictionary", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("app Button implicit style target type", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("NavigationFrame.Navigate(new Uri(\"DetailsPage.xaml\", UriKind.Relative))", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateNavigation(window, navigationFrame, detailsNavigationButton)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("summary updated progress text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
@@ -6111,6 +6125,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SelectedItem.Name", mvpSummaryPanelXaml, StringComparison.Ordinal);
         Assert.Contains("Progress, StringFormat=Progress: {0:0}%", mvpSummaryPanelXaml, StringComparison.Ordinal);
         Assert.Contains("partial class SummaryPanel : UserControl", mvpSummaryPanelCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SolidColorBrush x:Key=\"MvpPanelBrush\"", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("<Style TargetType=\"{x:Type Button}\">", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("<Style TargetType=\"{x:Type TextBlock}\">", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("x:Class=\"ProGPU.Wpf.MvpApp.OverviewPage\"", mvpOverviewPageXaml, StringComparison.Ordinal);
         Assert.Contains("OverviewTitle", mvpOverviewPageXaml, StringComparison.Ordinal);
         Assert.Contains("partial class OverviewPage : Page", mvpOverviewPageCodeBehind, StringComparison.Ordinal);

@@ -10,14 +10,6 @@
     MinWidth="560"
     MinHeight="420">
     <Window.Resources>
-        <Style TargetType="{x:Type Button}">
-            <Setter Property="MinWidth" Value="104" />
-            <Setter Property="Padding" Value="10,5" />
-            <Setter Property="Margin" Value="0,0,8,0" />
-        </Style>
-        <Style TargetType="{x:Type TextBlock}">
-            <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
         <HierarchicalDataTemplate
             x:Key="MvpNodeTemplate"
             ItemsSource="{Binding Children}">

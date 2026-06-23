@@ -776,9 +776,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("mm.maxHeight = MinHeight > MaxHeight ? MinHeight : MaxHeight", window, StringComparison.Ordinal);
         Assert.Contains("return IsPortableWindowActive ? new Size(0, 0) : GetHwndNonClientAreaSizeInMeasureUnits()", window, StringComparison.Ordinal);
         Assert.Contains("return new Size(ToNonNegativeFiniteSize(width), ToNonNegativeFiniteSize(height))", window, StringComparison.Ordinal);
+        Assert.Contains("frameworkAvailableSize = GetPortableMeasureSizeInMeasureUnits(frameworkAvailableSize);", window, StringComparison.Ordinal);
+        Assert.Contains("arrangeBounds = GetPortableArrangeSizeInMeasureUnits(DesiredSize, arrangeBounds);", window, StringComparison.Ordinal);
         Assert.Contains("private Size GetPortableMeasureSizeInMeasureUnits(Size windowSize)", window, StringComparison.Ordinal);
         Assert.Contains("? Double.PositiveInfinity", window, StringComparison.Ordinal);
         Assert.Contains("private Size GetPortableArrangeSizeInMeasureUnits(Size measuredSize, Size fallbackSize)", window, StringComparison.Ordinal);
+        Assert.Contains("private void UpdatePortableSizeToContentFromLayout(Size fallbackSize)", window, StringComparison.Ordinal);
+        Assert.Contains("_updatingPortableSizeToContent", window, StringComparison.Ordinal);
+        Assert.Contains("_refreshingPortableRootVisualState", window, StringComparison.Ordinal);
+        Assert.Contains("UpdatePortableSizeToContentFromLayout(arrangeBounds);", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.SetClientSize(_portableWindowActivation, arrangeSize.Width, arrangeSize.Height)", window, StringComparison.Ordinal);
         Assert.Contains("if (IsPortableWindowActive)", window, StringComparison.Ordinal);
         Assert.Contains("RefreshPortableRootVisualState();", window, StringComparison.Ordinal);
@@ -5874,6 +5880,25 @@ public sealed class WpfManagedProjectGraphTests
             ".github",
             "workflows",
             "progpu-wpf-sdk.yml");
+        var mvpProjectPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.MvpApp",
+            "ProGPU.Wpf.MvpApp.csproj");
+        var mvpAppCodeBehindPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.MvpApp",
+            "App.xaml.cs");
+        var mvpMainWindowXamlPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.MvpApp",
+            "MainWindow.xaml");
+        var mvpMainWindowCodeBehindPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.MvpApp",
+            "MainWindow.xaml.cs");
+        var mvpRunScriptPath = FindRepoPath(
+            "eng",
+            "run-progpu-wpf-mvp.sh");
 
         var sdkProject = XDocument.Load(sdkProjectPath);
         var sdkProps = File.ReadAllText(sdkPropsPath);
@@ -5928,6 +5953,11 @@ public sealed class WpfManagedProjectGraphTests
         var spellerInteropBase = File.ReadAllText(spellerInteropBasePath);
         var sdkCiScript = File.ReadAllText(sdkCiScriptPath);
         var sdkCiWorkflow = File.ReadAllText(sdkCiWorkflowPath);
+        var mvpProject = File.ReadAllText(mvpProjectPath);
+        var mvpAppCodeBehind = File.ReadAllText(mvpAppCodeBehindPath);
+        var mvpMainWindowXaml = File.ReadAllText(mvpMainWindowXamlPath);
+        var mvpMainWindowCodeBehind = File.ReadAllText(mvpMainWindowCodeBehindPath);
+        var mvpRunScript = File.ReadAllText(mvpRunScriptPath);
         string[] wpfThemeAssemblies =
         [
             "PresentationFramework.Aero",
@@ -6002,12 +6032,29 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("src/ProGPU.Wpf.SdkSwitchRuntimeHarness/ProGPU.Wpf.SdkSwitchRuntimeHarness.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/ProGPU.Wpf.SdkExternalSmokeHarness/ProGPU.Wpf.SdkExternalSmokeHarness.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("artifacts/nuget/ProGPU.Wpf.SdkSwitchSmoke", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("artifacts/nuget/ProGPU.Wpf.MvpApp", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_MVP_VALIDATE=1", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfSdkProvidesSwitchOnlyPackagingSurface", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("dev_package_version=\"${PROGPU_WPF_DEV_PACKAGE_VERSION:-11.0.0-dev}\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("\"${package_output}/${package_id}.${dev_package_version}.nupkg\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj\" \"ProGPU.Scene\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"src/ProGPU.Wpf/ProGPU.Wpf.csproj\" \"ProGPU.Wpf\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj\" \"ProGPU.Wpf.Sdk\"", sdkCiScript, StringComparison.Ordinal);
+
+        Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", mvpProject, StringComparison.Ordinal);
+        Assert.Contains("<UseWPF>true</UseWPF>", mvpProject, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_MVP_VALIDATE", mvpAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MvpSelfTest.Validate", mvpAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("TextBox", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ListBox", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("FlowDocumentScrollViewer", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("StatusBar", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("INotifyPropertyChanged", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ICommand", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("internal static class MvpSelfTest", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("dotnet", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("run --project \"${mvp_project}\"", mvpRunScript, StringComparison.Ordinal);
 
         Assert.Contains("<_ProGpuWpfProjectUseWPF>$(UseWPF)</_ProGpuWpfProjectUseWPF>", sdkTargets, StringComparison.Ordinal);
         Assert.Contains("<UseWPF Condition=\"'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'\">false</UseWPF>", sdkTargets, StringComparison.Ordinal);
@@ -6977,6 +7024,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK application exit count before main close", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("External SDK size-to-content window", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SizeToContent = SizeToContent.WidthAndHeight", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("sizeToContentContent.Width = 156.0", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK live size-to-content portable host width", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetPortableHostDouble(sizeToContentWindow, \"Width\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK size-to-content portable host height", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("External SDK owned window", externalSdkHarnessProgram, StringComparison.Ordinal);

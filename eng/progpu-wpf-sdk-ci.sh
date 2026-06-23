@@ -38,14 +38,17 @@ clean_sdk_smoke_outputs() {
     "ProGPU.Wpf.SdkSwitchLibrary" \
     "ProGPU.Wpf.SdkSwitchSmoke" \
     "ProGPU.Wpf.SdkSwitchRuntimeHarness" \
-    "ProGPU.Wpf.SdkExternalSmokeHarness"
+    "ProGPU.Wpf.SdkExternalSmokeHarness" \
+    "ProGPU.Wpf.MvpApp"
   do
     rm -rf \
       "${repo_root}/artifacts/bin/${project}" \
       "${repo_root}/artifacts/obj/${project}"
   done
 
-  rm -rf "${repo_root}/artifacts/nuget/ProGPU.Wpf.SdkSwitchSmoke"
+  rm -rf \
+    "${repo_root}/artifacts/nuget/ProGPU.Wpf.SdkSwitchSmoke" \
+    "${repo_root}/artifacts/nuget/ProGPU.Wpf.MvpApp"
 }
 
 echo "Packing ProGPU packages for ProGPU.Wpf.Sdk feed..."
@@ -92,6 +95,12 @@ run_dotnet run --project "${repo_root}/src/ProGPU.Wpf.SdkSwitchRuntimeHarness/Pr
 
 echo "Running external no-source-change SDK smoke..."
 run_dotnet run --project "${repo_root}/src/ProGPU.Wpf.SdkExternalSmokeHarness/ProGPU.Wpf.SdkExternalSmokeHarness.csproj" -v:minimal
+
+echo "Building MVP SDK app..."
+run_dotnet build "${repo_root}/samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj" -v:minimal
+
+echo "Running MVP SDK app validation..."
+PROGPU_WPF_MVP_VALIDATE=1 run_dotnet run --project "${repo_root}/samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj" -v:minimal
 
 echo "Building focused WPF graph tests..."
 run_dotnet build "${repo_root}/src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj" -v:minimal

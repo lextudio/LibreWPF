@@ -4263,16 +4263,17 @@ internal static class Program
                     AssertEqual(true, ApplicationContainsWindow(app, window), "external SDK application windows keeps main window after secondary close");
                     AssertEqual(0, App.ExternalExitEventCount, "external SDK application exit count before main close");
 
+                    var sizeToContentContent = new Border
+                    {
+                        Width = 132.0,
+                        Height = 74.0,
+                        Child = new TextBlock { Text = "External sized content" }
+                    };
                     var sizeToContentWindow = new Window
                     {
                         Title = "External SDK size-to-content window",
                         SizeToContent = SizeToContent.WidthAndHeight,
-                        Content = new Border
-                        {
-                            Width = 132.0,
-                            Height = 74.0,
-                            Child = new TextBlock { Text = "External sized content" }
-                        }
+                        Content = sizeToContentContent
                     };
                     int sizeToContentClosingCount = 0;
                     int sizeToContentClosedCount = 0;
@@ -4293,6 +4294,17 @@ internal static class Program
                     AssertClose(74.0, sizeToContentWindow.ActualHeight, "external SDK size-to-content window ActualHeight");
                     AssertClose(132.0, GetPortableHostDouble(sizeToContentWindow, "Width"), "external SDK size-to-content portable host width");
                     AssertClose(74.0, GetPortableHostDouble(sizeToContentWindow, "Height"), "external SDK size-to-content portable host height");
+
+                    sizeToContentContent.Width = 156.0;
+                    sizeToContentContent.Height = 82.0;
+                    sizeToContentContent.InvalidateMeasure();
+                    DrainDispatcher();
+                    sizeToContentWindow.UpdateLayout();
+
+                    AssertClose(156.0, sizeToContentWindow.ActualWidth, "external SDK live size-to-content window ActualWidth");
+                    AssertClose(82.0, sizeToContentWindow.ActualHeight, "external SDK live size-to-content window ActualHeight");
+                    AssertClose(156.0, GetPortableHostDouble(sizeToContentWindow, "Width"), "external SDK live size-to-content portable host width");
+                    AssertClose(82.0, GetPortableHostDouble(sizeToContentWindow, "Height"), "external SDK live size-to-content portable host height");
 
                     sizeToContentWindow.Close();
                     DrainDispatcher();

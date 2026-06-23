@@ -1843,6 +1843,10 @@ namespace System.Windows
             // to be the available hwnd size which should be atleast as big as the desired size.
 
             Size frameworkAvailableSize = new Size(availableSize.Width, availableSize.Height);
+            if (IsPortableWindowActive)
+            {
+                frameworkAvailableSize = GetPortableMeasureSizeInMeasureUnits(frameworkAvailableSize);
+            }
 
             WindowMinMax mm = GetWindowMinMax();
 
@@ -1878,6 +1882,10 @@ namespace System.Windows
 
             arrangeBounds.Width  = Math.Max(mm.minWidth,  Math.Min(arrangeBounds.Width, mm.maxWidth));
             arrangeBounds.Height = Math.Max(mm.minHeight, Math.Min(arrangeBounds.Height, mm.maxHeight));
+            if (IsPortableWindowActive)
+            {
+                arrangeBounds = GetPortableArrangeSizeInMeasureUnits(DesiredSize, arrangeBounds);
+            }
 
             // Three primary cases
             //      1) hwnd does not exist  -- don't do anything
@@ -1928,8 +1936,9 @@ namespace System.Windows
                     {
                         InternalSetLayoutTransform(child, new MatrixTransform(-1.0, 0.0, 0.0, 1.0, childArrangeBounds.Width, 0.0));
                     }
-}
+                }
             }
+            UpdatePortableSizeToContentFromLayout(arrangeBounds);
             return arrangeBounds;
         }
 
@@ -7142,6 +7151,35 @@ namespace System.Windows
             return new Size(width, height);
         }
 
+        private void UpdatePortableSizeToContentFromLayout(Size fallbackSize)
+        {
+            if (!IsPortableWindowActive ||
+                SizeToContent == SizeToContent.Manual ||
+                _updatingPortableSizeToContent ||
+                _refreshingPortableRootVisualState)
+            {
+                return;
+            }
+
+            Size currentSize = GetWindowSizeInMeasureUnits();
+            Size arrangeSize = GetPortableArrangeSizeInMeasureUnits(DesiredSize, fallbackSize);
+            if (DoubleUtil.AreClose(currentSize.Width, arrangeSize.Width) &&
+                DoubleUtil.AreClose(currentSize.Height, arrangeSize.Height))
+            {
+                return;
+            }
+
+            _updatingPortableSizeToContent = true;
+            try
+            {
+                PortableWindowActivationService.SetClientSize(_portableWindowActivation, arrangeSize.Width, arrangeSize.Height);
+            }
+            finally
+            {
+                _updatingPortableSizeToContent = false;
+            }
+        }
+
         private static double ToNonNegativeFiniteSize(double value)
         {
             return double.IsNaN(value) || double.IsInfinity(value)
@@ -7160,17 +7198,25 @@ namespace System.Windows
             RefreshPortableInheritedVisibility();
             InvalidateMeasure();
             InvalidateArrange();
-            Size windowSize = GetWindowSizeInMeasureUnits();
-            Size measureSize = GetPortableMeasureSizeInMeasureUnits(windowSize);
-            if (!DoubleUtil.IsZero(measureSize.Width) || !DoubleUtil.IsZero(measureSize.Height))
+            _refreshingPortableRootVisualState = true;
+            try
             {
-                Measure(measureSize);
-                Size arrangeSize = GetPortableArrangeSizeInMeasureUnits(DesiredSize, windowSize);
-                Arrange(new Rect(arrangeSize));
-                if (SizeToContent != SizeToContent.Manual)
+                Size windowSize = GetWindowSizeInMeasureUnits();
+                Size measureSize = GetPortableMeasureSizeInMeasureUnits(windowSize);
+                if (!DoubleUtil.IsZero(measureSize.Width) || !DoubleUtil.IsZero(measureSize.Height))
                 {
-                    PortableWindowActivationService.SetClientSize(_portableWindowActivation, arrangeSize.Width, arrangeSize.Height);
+                    Measure(measureSize);
+                    Size arrangeSize = GetPortableArrangeSizeInMeasureUnits(DesiredSize, windowSize);
+                    Arrange(new Rect(arrangeSize));
+                    if (SizeToContent != SizeToContent.Manual)
+                    {
+                        PortableWindowActivationService.SetClientSize(_portableWindowActivation, arrangeSize.Width, arrangeSize.Height);
+                    }
                 }
+            }
+            finally
+            {
+                _refreshingPortableRootVisualState = false;
             }
 
             UpdateLayout();
@@ -7556,6 +7602,8 @@ namespace System.Windows
         private SourceWindowHelper  _swh;                               // object that will hold the window
         private object              _portableWindowActivation;          // object that will hold the non-Windows window
         private Window              _ownerWindow;                       // owner window
+        private bool                _refreshingPortableRootVisualState;
+        private bool                _updatingPortableSizeToContent;
         private bool _reloadFluentDictionary = false;
         private bool _resourcesInitialized = false;
 

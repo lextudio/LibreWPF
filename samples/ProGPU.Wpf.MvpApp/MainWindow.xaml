@@ -280,6 +280,9 @@
                             </Grid.ColumnDefinitions>
                             <TextBox
                                 x:Name="NameTextBox"
+                                AutomationProperties.AutomationId="MvpNameTextBoxAutomation"
+                                AutomationProperties.HelpText="Enter the next MVP item name"
+                                AutomationProperties.Name="MVP item name"
                                 VerticalContentAlignment="Center"
                                 Text="{Binding NewItemName, UpdateSourceTrigger=PropertyChanged}" />
                             <Button
@@ -374,13 +377,21 @@
                         <CheckBox
                             x:Name="EnabledCheckBox"
                             Margin="0,0,0,12"
+                            AutomationProperties.AutomationId="MvpActionsEnabledAutomation"
+                            AutomationProperties.HelpText="Toggles whether MVP commands can execute"
+                            AutomationProperties.Name="MVP actions enabled"
                             Content="Enable actions"
                             IsChecked="{Binding ActionsEnabled}" />
                         <TextBlock Text="Progress" />
                         <Slider
                             x:Name="ProgressSlider"
+                            AutomationProperties.AutomationId="MvpProgressSliderAutomation"
+                            AutomationProperties.HelpText="Adjusts MVP progress"
+                            AutomationProperties.Name="MVP progress"
+                            LargeChange="10"
                             Minimum="0"
                             Maximum="100"
+                            SmallChange="2"
                             Value="{Binding Progress}" />
                         <ProgressBar
                             Height="16"
@@ -398,6 +409,9 @@
                         <Button
                             x:Name="RequeryCommandButton"
                             Margin="0,8,0,0"
+                            AutomationProperties.AutomationId="MvpRequeryCommandAutomation"
+                            AutomationProperties.HelpText="Runs the requery command"
+                            AutomationProperties.Name="MVP requery command"
                             Command="{Binding RequeryCommand}"
                             CommandParameter="mvp requery command payload"
                             Content="Run requery command" />

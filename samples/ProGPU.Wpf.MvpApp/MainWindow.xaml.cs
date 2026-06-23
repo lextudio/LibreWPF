@@ -7,6 +7,9 @@ using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Automation;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
@@ -1047,7 +1050,7 @@ internal static class MvpSelfTest
         var mvpTabControl = Require<TabControl>(
             window.FindName("MvpTabControl"),
             "MVP TabControl");
-        Require<TextBox>(window.FindName("NameTextBox"), "name TextBox");
+        var nameTextBox = Require<TextBox>(window.FindName("NameTextBox"), "name TextBox");
         var itemsList = Require<ListBox>(window.FindName("ItemsList"), "items ListBox");
         var itemsDataGrid = Require<DataGrid>(window.FindName("ItemsDataGrid"), "items DataGrid");
         var selectedItemSummaryText = Require<TextBlock>(
@@ -1417,8 +1420,8 @@ internal static class MvpSelfTest
         var documentReader = Require<FlowDocumentReader>(
             window.FindName("DocumentReader"),
             "document FlowDocumentReader");
-        Require<CheckBox>(window.FindName("EnabledCheckBox"), "enabled CheckBox");
-        Require<Slider>(window.FindName("ProgressSlider"), "progress Slider");
+        var enabledCheckBox = Require<CheckBox>(window.FindName("EnabledCheckBox"), "enabled CheckBox");
+        var progressSlider = Require<Slider>(window.FindName("ProgressSlider"), "progress Slider");
         Require<ComboBox>(window.FindName("CategoryCombo"), "category ComboBox");
         AssertEqual(2, mainMenu.Items.Count, "main menu item count");
         AssertEqual(5, fileMenuItem.Items.Count, "file menu item count");
@@ -1694,6 +1697,13 @@ internal static class MvpSelfTest
         AssertEqual("Category: Input", summaryCategoryText.Text, "summary updated category text");
         AssertEqual("Progress: 72%", summaryProgressText.Text, "summary updated progress text");
         AssertEqual("Validated / Input / 72%", selectedItemSummaryText.Text, "updated selected summary text");
+        ValidateAutomationMetadataAndPeers(
+            window,
+            viewModel,
+            nameTextBox,
+            requeryCommandButton,
+            enabledCheckBox,
+            progressSlider);
     }
 
     private static void ValidateApplicationRunState(
@@ -2078,6 +2088,108 @@ internal static class MvpSelfTest
         {
             command.CanExecuteChanged -= handler;
         }
+    }
+
+    private static void ValidateAutomationMetadataAndPeers(
+        MainWindow window,
+        MainViewModel viewModel,
+        TextBox nameTextBox,
+        Button requeryCommandButton,
+        CheckBox enabledCheckBox,
+        Slider progressSlider)
+    {
+        AssertEqual("MvpNameTextBoxAutomation", AutomationProperties.GetAutomationId(nameTextBox), "MVP automation TextBox id");
+        AssertEqual("MVP item name", AutomationProperties.GetName(nameTextBox), "MVP automation TextBox name");
+        AssertEqual("Enter the next MVP item name", AutomationProperties.GetHelpText(nameTextBox), "MVP automation TextBox help");
+
+        var namePeer = Require<TextBoxAutomationPeer>(
+            UIElementAutomationPeer.CreatePeerForElement(nameTextBox),
+            "MVP TextBox automation peer");
+        AssertEqual("MvpNameTextBoxAutomation", namePeer.GetAutomationId(), "MVP TextBox peer id");
+        AssertEqual("MVP item name", namePeer.GetName(), "MVP TextBox peer name");
+        AssertEqual("Enter the next MVP item name", namePeer.GetHelpText(), "MVP TextBox peer help");
+
+        var valueProvider = Require<IValueProvider>(
+            namePeer.GetPattern(PatternInterface.Value),
+            "MVP TextBox value provider");
+        AssertEqual(false, valueProvider.IsReadOnly, "MVP TextBox value provider read-only state");
+        valueProvider.SetValue("Automation item");
+        DrainDispatcher(window);
+        AssertEqual("Automation item", nameTextBox.Text, "MVP TextBox automation value");
+        UpdateSource(nameTextBox, TextBox.TextProperty);
+        AssertEqual("Automation item", viewModel.NewItemName, "MVP TextBox automation source update");
+
+        AssertEqual(
+            "MvpRequeryCommandAutomation",
+            AutomationProperties.GetAutomationId(requeryCommandButton),
+            "MVP automation Button id");
+        AssertEqual("MVP requery command", AutomationProperties.GetName(requeryCommandButton), "MVP automation Button name");
+        AssertEqual("Runs the requery command", AutomationProperties.GetHelpText(requeryCommandButton), "MVP automation Button help");
+
+        var buttonPeer = Require<ButtonAutomationPeer>(
+            UIElementAutomationPeer.CreatePeerForElement(requeryCommandButton),
+            "MVP Button automation peer");
+        var invokeProvider = Require<IInvokeProvider>(
+            buttonPeer.GetPattern(PatternInterface.Invoke),
+            "MVP Button invoke provider");
+        var command = viewModel.RequeryCommand;
+        var buttonExecuteBaseline = command.ExecuteCount;
+        invokeProvider.Invoke();
+        DrainDispatcher(window);
+        AssertEqual(buttonExecuteBaseline + 1, command.ExecuteCount, "MVP Button automation invoke command count");
+        AssertEqual("mvp requery command payload", command.LastParameter, "MVP Button automation invoke parameter");
+
+        AssertEqual(
+            "MvpActionsEnabledAutomation",
+            AutomationProperties.GetAutomationId(enabledCheckBox),
+            "MVP automation CheckBox id");
+        AssertEqual("MVP actions enabled", AutomationProperties.GetName(enabledCheckBox), "MVP automation CheckBox name");
+        AssertEqual(
+            "Toggles whether MVP commands can execute",
+            AutomationProperties.GetHelpText(enabledCheckBox),
+            "MVP automation CheckBox help");
+
+        var checkBoxPeer = Require<CheckBoxAutomationPeer>(
+            UIElementAutomationPeer.CreatePeerForElement(enabledCheckBox),
+            "MVP CheckBox automation peer");
+        var toggleProvider = Require<IToggleProvider>(
+            checkBoxPeer.GetPattern(PatternInterface.Toggle),
+            "MVP CheckBox toggle provider");
+        AssertEqual(ToggleState.On, toggleProvider.ToggleState, "MVP CheckBox automation initial state");
+        toggleProvider.Toggle();
+        DrainDispatcher(window);
+        AssertEqual(ToggleState.Off, toggleProvider.ToggleState, "MVP CheckBox automation off state");
+        AssertEqual(false, enabledCheckBox.IsChecked == true, "MVP CheckBox automation unchecked state");
+        AssertEqual(false, viewModel.ActionsEnabled, "MVP CheckBox automation unchecked source state");
+        toggleProvider.Toggle();
+        DrainDispatcher(window);
+        AssertEqual(ToggleState.On, toggleProvider.ToggleState, "MVP CheckBox automation restored state");
+        AssertEqual(true, enabledCheckBox.IsChecked == true, "MVP CheckBox automation checked state");
+        AssertEqual(true, viewModel.ActionsEnabled, "MVP CheckBox automation restored source state");
+
+        AssertEqual(
+            "MvpProgressSliderAutomation",
+            AutomationProperties.GetAutomationId(progressSlider),
+            "MVP automation Slider id");
+        AssertEqual("MVP progress", AutomationProperties.GetName(progressSlider), "MVP automation Slider name");
+        AssertEqual("Adjusts MVP progress", AutomationProperties.GetHelpText(progressSlider), "MVP automation Slider help");
+
+        var sliderPeer = Require<SliderAutomationPeer>(
+            UIElementAutomationPeer.CreatePeerForElement(progressSlider),
+            "MVP Slider automation peer");
+        var rangeProvider = Require<IRangeValueProvider>(
+            sliderPeer.GetPattern(PatternInterface.RangeValue),
+            "MVP Slider range provider");
+        AssertEqual(false, rangeProvider.IsReadOnly, "MVP Slider range read-only state");
+        AssertEqual(0.0, rangeProvider.Minimum, "MVP Slider range minimum");
+        AssertEqual(100.0, rangeProvider.Maximum, "MVP Slider range maximum");
+        AssertEqual(2.0, rangeProvider.SmallChange, "MVP Slider range small change");
+        AssertEqual(10.0, rangeProvider.LargeChange, "MVP Slider range large change");
+        rangeProvider.SetValue(55.0);
+        DrainDispatcher(window);
+        AssertEqual(55.0, rangeProvider.Value, "MVP Slider range value");
+        AssertEqual(55.0, progressSlider.Value, "MVP Slider automation value");
+        AssertEqual(55.0, viewModel.Progress, "MVP Slider automation source value");
     }
 
     private static void ValidateGroupedItemTemplate(DataTemplate template, MvpActiveTextConverter converter)

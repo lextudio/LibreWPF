@@ -1909,6 +1909,7 @@
 - Added MVP `DataObject` coverage in the Editing tab. The runnable SDK-only app now round-trips Unicode text and a custom format through a normal WPF `DataObject` from button-driven code-behind, while the package-mode self-test validates the managed data-transfer result without touching the global clipboard.
 - Added MVP system resource coverage for `SystemParameters`, `SystemColors`, and `SystemFonts`. The Resources tab now resolves primary-screen metrics, system font values, and system brush keys from SDK-built XAML, and the package-mode self-test compares the UI/resource results against WPF's public manager APIs instead of hardcoded platform values.
 - Added MVP `Thumb` drag manager coverage. The Input tab now compiles a normal `Thumb` with `DragStarted`, `DragDelta`, and `DragCompleted` handlers plus a bubbled parent `Thumb.DragDelta` handler; the package-mode self-test raises those routed events and validates sender/original-source metadata, drag offsets/deltas, canceled state, and status updates from SDK-built BAML.
+- Added MVP automation metadata and peer/provider coverage. The runnable SDK-only app now uses normal `AutomationProperties` on common controls, and the package-mode self-test validates `TextBoxAutomationPeer` value updates, `ButtonAutomationPeer` invoke execution, `CheckBoxAutomationPeer` toggle state, and `SliderAutomationPeer` range values through WPF's managed automation peers.
 
 ## Open Porting Items
 

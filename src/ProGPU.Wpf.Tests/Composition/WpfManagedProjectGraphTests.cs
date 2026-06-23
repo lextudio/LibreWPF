@@ -7880,6 +7880,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalThemeBorderBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_EXTERNAL_VALIDATE", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_EXTERNAL_RUN_VALIDATE", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"external-startup-alpha\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"external startup beta\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalStartupArguments = e.Args", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK application startup first argument", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK application startup second argument", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("External SDK Application.Run validation succeeded.", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertContains(locText, \"ExternalLocalizationRoot\",", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertContains(locText, \"ExternalLocalizationText\",", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -150,7 +150,9 @@ internal static class Program
                 {
                     ["PROGPU_WPF_EXTERNAL_RUN_VALIDATE"] = "1"
                 },
-                Path.Combine(outputRoot, AppOutputAssemblyName + ".dll"));
+                Path.Combine(outputRoot, AppOutputAssemblyName + ".dll"),
+                "external-startup-alpha",
+                "external startup beta");
             AssertContains(
                 applicationRunOutput,
                 "External SDK Application.Run validation succeeded.",
@@ -3968,6 +3970,8 @@ internal static class Program
 
                 public static int ExternalStartupArgumentCount { get; private set; }
 
+                public static string[] ExternalStartupArguments { get; private set; } = [];
+
                 public static int ExternalExitEventCount { get; private set; }
 
                 public static int ExternalExitCode { get; private set; }
@@ -4013,6 +4017,7 @@ internal static class Program
                 {
                     ExternalStartupEventCount++;
                     ExternalStartupArgumentCount = e.Args.Length;
+                    ExternalStartupArguments = e.Args;
                     Resources["ExternalStartupText"] = "External SDK startup resource";
                     Resources["ExternalStartupBrush"] = new SolidColorBrush(Color.FromRgb(0x17, 0x62, 0x83));
                 }
@@ -4219,7 +4224,9 @@ internal static class Program
                         Application.Current,
                         "external SDK current application");
                     AssertEqual(1, App.ExternalStartupEventCount, "external SDK application startup event count");
-                    AssertEqual(0, App.ExternalStartupArgumentCount, "external SDK application startup argument count");
+                    AssertEqual(2, App.ExternalStartupArgumentCount, "external SDK application startup argument count");
+                    AssertEqual("external-startup-alpha", App.ExternalStartupArguments[0], "external SDK application startup first argument");
+                    AssertEqual("external startup beta", App.ExternalStartupArguments[1], "external SDK application startup second argument");
                     AssertEqual(ShutdownMode.OnLastWindowClose, app.ShutdownMode, "external SDK application shutdown mode");
 
                     var window = RequireType<MainWindow>(

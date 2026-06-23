@@ -6086,6 +6086,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>net11.0-windows</TargetFramework>", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<UseWPF>true</UseWPF>", mvpProject, StringComparison.Ordinal);
+        Assert.Contains("<Resource Include=\"Assets/MvpResource.txt\" />", mvpProject, StringComparison.Ordinal);
         Assert.Contains("<ResourceDictionary Source=\"Resources/Theme.xaml\" />", mvpAppXaml, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_VALIDATE", mvpAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MvpSelfTest.Validate", mvpAppCodeBehind, StringComparison.Ordinal);
@@ -6195,6 +6196,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("KeyboardIncrement=\"12\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MvpViewbox\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Stretch=\"Uniform\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<TabItem Header=\"Resources\">", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ComponentResourceText\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ResourceId=MvpComponentAccentBrush", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"LocalizedResourceText\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Uid=\"MvpLocalizedResourceText\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Localization.Attributes=\"$Text (Readable Modifiable Text)\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Localization.Comments=\"$Text (MVP localization comment)\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ResourceAccessText\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"PackResourceText\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SelectedItemContent\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ContentTemplate=\"{StaticResource SelectedItemTemplate}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"SelectorItemsList\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6309,6 +6319,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GridResizeBehavior.PreviousAndNext", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("splitterLeftColumn.Width = new GridLength(150.0)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Stretch.Uniform", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("using System.IO;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("using System.Windows.Markup;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateResourceControls", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("new ComponentResourceKey(typeof(MainWindow), \"MvpComponentAccentBrush\")", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Application.GetResourceStream(resourceUri)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Localization.GetAttributes(localizedResourceText)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MVP pack resource loaded through Application.GetResourceStream.", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Documents;", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal int EditorPasswordChangedCount", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnEditorPasswordChanged", mvpMainWindowCodeBehind, StringComparison.Ordinal);
@@ -6390,6 +6407,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("partial class SummaryPanel : UserControl", mvpSummaryPanelCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SolidColorBrush x:Key=\"MvpPanelBrush\"", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:local=\"clr-namespace:ProGPU.Wpf.MvpApp\"", mvpThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("ComponentResourceKey TypeInTargetAssembly={x:Type local:MainWindow}, ResourceId=MvpComponentAccentBrush", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"SelectedItemTemplate\"", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("DataType=\"{x:Type local:MvpItem}\"", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("TemplateNameText", mvpThemeXaml, StringComparison.Ordinal);

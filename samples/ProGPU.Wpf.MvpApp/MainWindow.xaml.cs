@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -11,6 +12,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
@@ -720,6 +722,18 @@ internal static class MvpSelfTest
         var viewboxText = Require<TextBlock>(
             window.FindName("ViewboxText"),
             "viewbox TextBlock");
+        var componentResourceText = Require<TextBlock>(
+            window.FindName("ComponentResourceText"),
+            "component resource TextBlock");
+        var localizedResourceText = Require<TextBlock>(
+            window.FindName("LocalizedResourceText"),
+            "localized resource TextBlock");
+        var resourceAccessText = Require<AccessText>(
+            window.FindName("ResourceAccessText"),
+            "resource AccessText");
+        var packResourceText = Require<TextBlock>(
+            window.FindName("PackResourceText"),
+            "pack resource TextBlock");
         var selectedItemContent = Require<ContentControl>(
             window.FindName("SelectedItemContent"),
             "selected item ContentControl");
@@ -895,6 +909,12 @@ internal static class MvpSelfTest
             splitterRightPane,
             mvpViewbox,
             viewboxText);
+        ValidateResourceControls(
+            window,
+            componentResourceText,
+            localizedResourceText,
+            resourceAccessText,
+            packResourceText);
         ValidateItemsContextMenu(window, viewModel, itemsList);
         ValidateNavigation(window, navigationFrame, detailsNavigationButton);
         ValidateEditor(window, editorPasswordBox, editorRichTextBox);
@@ -1269,6 +1289,47 @@ internal static class MvpSelfTest
             initialCollapsedEvents,
             window.SelectorExpanderCollapsedCount,
             "selector Expander collapsed count");
+    }
+
+    private static void ValidateResourceControls(
+        Window window,
+        TextBlock componentResourceText,
+        TextBlock localizedResourceText,
+        AccessText accessText,
+        TextBlock packResourceText)
+    {
+        var componentKey = new ComponentResourceKey(typeof(MainWindow), "MvpComponentAccentBrush");
+        var appBrush = Require<SolidColorBrush>(
+            Application.Current?.TryFindResource(componentKey),
+            "ComponentResourceKey application brush");
+        var windowBrush = Require<SolidColorBrush>(
+            window.FindResource(componentKey),
+            "ComponentResourceKey window brush");
+        var textBrush = Require<SolidColorBrush>(
+            componentResourceText.Foreground,
+            "ComponentResourceKey TextBlock foreground");
+
+        AssertEqual(Color.FromRgb(0x23, 0x6B, 0x46), appBrush.Color, "ComponentResourceKey application brush color");
+        AssertEqual(appBrush.Color, windowBrush.Color, "ComponentResourceKey window brush color");
+        AssertEqual(appBrush.Color, textBrush.Color, "ComponentResourceKey TextBlock foreground color");
+        AssertEqual("Component resource brush", componentResourceText.Text, "ComponentResourceKey TextBlock text");
+
+        AssertEqual("MvpLocalizedResourceText", localizedResourceText.Uid, "localized TextBlock Uid");
+        AssertEqual("Localized resource metadata", localizedResourceText.Text, "localized TextBlock text");
+        AssertEqual("$Text (Readable Modifiable Text)", Localization.GetAttributes(localizedResourceText), "localized TextBlock attributes");
+        AssertEqual("$Text (MVP localization comment)", Localization.GetComments(localizedResourceText), "localized TextBlock comments");
+
+        AssertEqual("_Resource access key", accessText.Text, "AccessText text");
+        AssertEqual("Pack resource loaded from Assets/MvpResource.txt", packResourceText.Text, "pack resource TextBlock text");
+
+        var resourceUri = new Uri("pack://application:,,,/Assets/MvpResource.txt", UriKind.Absolute);
+        var resourceInfo = Application.GetResourceStream(resourceUri)
+            ?? throw new InvalidOperationException("Expected MVP pack resource stream.");
+        using var reader = new StreamReader(resourceInfo.Stream);
+        AssertEqual(
+            "MVP pack resource loaded through Application.GetResourceStream.",
+            reader.ReadToEnd().Trim(),
+            "pack resource stream text");
     }
 
     private static void ValidateLayoutControls(

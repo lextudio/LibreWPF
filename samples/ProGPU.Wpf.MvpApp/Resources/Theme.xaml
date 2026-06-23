@@ -4,6 +4,9 @@
     xmlns:local="clr-namespace:ProGPU.Wpf.MvpApp">
     <SolidColorBrush x:Key="MvpAccentBrush" Color="#246BFE" />
     <SolidColorBrush x:Key="MvpPanelBrush" Color="#F4F7FB" />
+    <SolidColorBrush
+        x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type local:MainWindow}, ResourceId=MvpComponentAccentBrush}"
+        Color="#236B46" />
 
     <DataTemplate
         x:Key="SelectedItemTemplate"

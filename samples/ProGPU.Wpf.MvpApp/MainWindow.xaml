@@ -762,6 +762,55 @@
                 </Grid>
             </TabItem>
 
+            <TabItem Header="Resources">
+                <Grid Margin="0,14,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel>
+                        <TextBlock
+                            x:Name="ComponentResourceText"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource {ComponentResourceKey TypeInTargetAssembly={x:Type local:MainWindow}, ResourceId=MvpComponentAccentBrush}}"
+                            Text="Component resource brush" />
+                        <TextBlock
+                            x:Name="LocalizedResourceText"
+                            x:Uid="MvpLocalizedResourceText"
+                            Margin="0,12,0,0"
+                            Localization.Attributes="$Text (Readable Modifiable Text)"
+                            Localization.Comments="$Text (MVP localization comment)"
+                            Text="Localized resource metadata" />
+                        <AccessText
+                            x:Name="ResourceAccessText"
+                            Margin="0,12,0,0"
+                            Text="_Resource access key" />
+                        <TextBlock
+                            x:Name="PackResourceText"
+                            Margin="0,12,0,0"
+                            Text="Pack resource loaded from Assets/MvpResource.txt" />
+                    </StackPanel>
+
+                    <Border
+                        Grid.Column="1"
+                        Margin="18,0,0,0"
+                        Padding="12"
+                        Background="{DynamicResource MvpPanelBrush}">
+                        <StackPanel>
+                            <TextBlock
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Text="Resources" />
+                            <TextBlock
+                                Margin="0,8,0,0"
+                                TextWrapping="Wrap"
+                                Text="This tab uses ComponentResourceKey, localization metadata, AccessText, and a WPF Resource pack URI through SDK-built output." />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+
             <TabItem Header="Explorer">
                 <Grid Margin="0,14,0,0">
                     <Grid.ColumnDefinitions>

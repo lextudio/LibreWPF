@@ -557,6 +557,7 @@ internal static class Program
                 <ProjectReference Include="../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj" />
                 <Resource Include="Assets/ExternalResource.txt" />
                 <Resource Include="Assets/ExternalImage.png" />
+                <Resource Include="Assets/ExternalSplash.png" />
               </ItemGroup>
             </Project>
             """);
@@ -566,6 +567,9 @@ internal static class Program
             "External SDK pack resource text");
         File.WriteAllBytes(
             Path.Combine(appRoot, "Assets", "ExternalImage.png"),
+            Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAE0lEQVR4nGP4z8DwHwwZGP6DAQBJyAn3FGMynQAAAABJRU5ErkJggg=="));
+        File.WriteAllBytes(
+            Path.Combine(appRoot, "Assets", "ExternalSplash.png"),
             Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAE0lEQVR4nGP4z8DwHwwZGP6DAQBJyAn3FGMynQAAAABJRU5ErkJggg=="));
 
         WriteFile(
@@ -3866,6 +3870,7 @@ internal static class Program
                     ValidateRuntimeNameScope(window);
                     ValidateApplicationLoadComponent();
                     ValidatePackResources();
+                    ValidateSplashScreen();
                     ValidateSystemParameters(window);
                     ValidateWindowChrome(window);
                     ValidateSystemCommands(window);
@@ -4728,6 +4733,15 @@ internal static class Program
                         "External SDK pack resource text",
                         ReadPackResourceText(new Uri("pack://application:,,,/Assets/ExternalResource.txt", UriKind.Absolute)),
                         "external SDK absolute pack Resource stream text");
+                }
+
+                private static void ValidateSplashScreen()
+                {
+                    var splashScreen = new SplashScreen(Assembly.GetExecutingAssembly(), "Assets/ExternalSplash.png");
+                    splashScreen.Show(autoClose: false, topMost: true);
+                    splashScreen.Show(autoClose: false);
+                    splashScreen.Close(TimeSpan.Zero);
+                    splashScreen.Close(TimeSpan.FromMilliseconds(1));
                 }
 
                 private static string ReadPackResourceText(Uri resourceUri)
@@ -11391,6 +11405,7 @@ internal static class Program
         AssertContains(appProject, $"<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", "external app project reference");
         AssertContains(appProject, "<Resource Include=\"Assets/ExternalResource.txt\" />", "external app WPF resource item");
         AssertContains(appProject, "<Resource Include=\"Assets/ExternalImage.png\" />", "external app WPF image resource item");
+        AssertContains(appProject, "<Resource Include=\"Assets/ExternalSplash.png\" />", "external app WPF splash resource item");
         AssertContains(libraryProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external library SDK");
         AssertContains(libraryProject, "<UseWPF>true</UseWPF>", "external library WPF property");
         AssertContains(localizationProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external localization SDK");
@@ -11401,6 +11416,7 @@ internal static class Program
         RequireFile(Path.Combine(workRoot, LocalizationAssemblyName, "LocalizedView.xaml"), "external SDK localization XAML source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "Assets", "ExternalResource.txt"), "external SDK app WPF resource source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "Assets", "ExternalImage.png"), "external SDK app WPF image resource source");
+        RequireFile(Path.Combine(workRoot, AppAssemblyName, "Assets", "ExternalSplash.png"), "external SDK app WPF splash source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalResources.xaml"), "external SDK app merged resource dictionary source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalPage.xaml"), "external SDK app compiled page source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalSecondPage.xaml"), "external SDK app second compiled page source");

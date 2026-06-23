@@ -5916,6 +5916,10 @@ public sealed class WpfManagedProjectGraphTests
             "samples",
             "ProGPU.Wpf.MvpApp",
             "SummaryPanel.xaml.cs");
+        var mvpDependencyPropertySamplesPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.MvpApp",
+            "MvpDependencyPropertySamples.cs");
         var mvpThemeXamlPath = FindRepoPath(
             "samples",
             "ProGPU.Wpf.MvpApp",
@@ -6003,6 +6007,7 @@ public sealed class WpfManagedProjectGraphTests
         var mvpAboutWindowCodeBehind = File.ReadAllText(mvpAboutWindowCodeBehindPath);
         var mvpSummaryPanelXaml = File.ReadAllText(mvpSummaryPanelXamlPath);
         var mvpSummaryPanelCodeBehind = File.ReadAllText(mvpSummaryPanelCodeBehindPath);
+        var mvpDependencyPropertySamples = File.ReadAllText(mvpDependencyPropertySamplesPath);
         var mvpThemeXaml = File.ReadAllText(mvpThemeXamlPath);
         var mvpOverviewPageXaml = File.ReadAllText(mvpOverviewPageXamlPath);
         var mvpOverviewPageCodeBehind = File.ReadAllText(mvpOverviewPageCodeBehindPath);
@@ -6513,6 +6518,24 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsRender", mvpSummaryPanelCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string HeaderText", mvpSummaryPanelCodeBehind, StringComparison.Ordinal);
         Assert.Contains("partial class SummaryPanel : UserControl", mvpSummaryPanelCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("local:MvpStateProperties.SectionName=\"Overview tools\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"DependencyPropertyManagerText\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("local:MvpStateProperties.Importance=\"128\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("HeaderText=\"{Binding StatusText}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Path=(local:MvpStateProperties.SectionName)", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("RegisterAttached", mvpDependencyPropertySamples, StringComparison.Ordinal);
+        Assert.Contains("FrameworkPropertyMetadataOptions.Inherits", mvpDependencyPropertySamples, StringComparison.Ordinal);
+        Assert.Contains("CoerceImportance", mvpDependencyPropertySamples, StringComparison.Ordinal);
+        Assert.Contains("Math.Clamp((double)baseValue, 0d, 100d)", mvpDependencyPropertySamples, StringComparison.Ordinal);
+        Assert.Contains("SummaryPanel.HeaderTextProperty.AddOwner", mvpDependencyPropertySamples, StringComparison.Ordinal);
+        Assert.Contains("FontWeightProperty.OverrideMetadata", mvpDependencyPropertySamples, StringComparison.Ordinal);
+        Assert.Contains("ForegroundProperty.OverrideMetadata", mvpDependencyPropertySamples, StringComparison.Ordinal);
+        Assert.Contains("MvpStateProperties.GetSectionName(dependencyPropertyManagerText)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DependencyPropertyHelper.GetValueSource", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("BaseValueSource.Inherited", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MvpStateProperties.GetImportance(dependencyPropertyManagerText)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MvpHeaderTextBlock.HeaderTextProperty", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AddOwner updated header property", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SolidColorBrush x:Key=\"MvpPanelBrush\"", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:local=\"clr-namespace:ProGPU.Wpf.MvpApp\"", mvpThemeXaml, StringComparison.Ordinal);
         Assert.Contains("ComponentResourceKey TypeInTargetAssembly={x:Type local:MainWindow}, ResourceId=MvpComponentAccentBrush", mvpThemeXaml, StringComparison.Ordinal);

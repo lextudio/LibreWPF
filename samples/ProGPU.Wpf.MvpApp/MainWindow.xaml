@@ -314,7 +314,8 @@
                     <StackPanel
                         Grid.Row="1"
                         Grid.Column="1"
-                        Margin="18,0,0,0">
+                        Margin="18,0,0,0"
+                        local:MvpStateProperties.SectionName="Overview tools">
                         <CheckBox
                             x:Name="EnabledCheckBox"
                             Margin="0,0,0,12"
@@ -343,6 +344,12 @@
                             x:Name="SummaryPanel"
                             Margin="0,18,0,0"
                             HeaderText="{Binding StatusText}" />
+                        <local:MvpHeaderTextBlock
+                            x:Name="DependencyPropertyManagerText"
+                            Margin="0,8,0,0"
+                            local:MvpStateProperties.Importance="128"
+                            HeaderText="{Binding StatusText}"
+                            Text="{Binding RelativeSource={RelativeSource Self}, Path=(local:MvpStateProperties.SectionName)}" />
                         <TextBlock
                             Margin="0,18,0,4"
                             FontWeight="SemiBold"

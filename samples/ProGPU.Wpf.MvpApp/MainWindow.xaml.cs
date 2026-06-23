@@ -828,6 +828,9 @@ internal static class MvpSelfTest
             window.FindName("ClickStoryboardButton"),
             "click storyboard Button");
         var summaryPanel = Require<SummaryPanel>(window.FindName("SummaryPanel"), "summary Panel");
+        var dependencyPropertyManagerText = Require<MvpHeaderTextBlock>(
+            window.FindName("DependencyPropertyManagerText"),
+            "dependency property manager TextBlock");
         var summaryHeaderText = Require<TextBlock>(
             summaryPanel.FindName("SummaryHeaderText"),
             "summary header text");
@@ -928,6 +931,20 @@ internal static class MvpSelfTest
         AssertEqual("IsActive", GetGridViewColumnBindingPath(explorerGridView.Columns[2]), "explorer GridView active binding");
         DrainDispatcher(window);
         AssertEqual("Commands idle", commandStatusText.Text, "initial command status text");
+        AssertEqual("Overview tools", MvpStateProperties.GetSectionName(dependencyPropertyManagerText), "inherited attached section value");
+        AssertEqual(
+            BaseValueSource.Inherited,
+            DependencyPropertyHelper.GetValueSource(
+                dependencyPropertyManagerText,
+                MvpStateProperties.SectionNameProperty).BaseValueSource,
+            "inherited attached section value source");
+        AssertEqual("Overview tools", dependencyPropertyManagerText.Text, "inherited attached section text");
+        AssertEqual(100d, MvpStateProperties.GetImportance(dependencyPropertyManagerText), "coerced attached importance value");
+        AssertGreaterThan(0, MvpStateProperties.ImportanceChangedCount, "attached importance changed callback count");
+        AssertEqual("StatusText", GetBindingPath(dependencyPropertyManagerText, MvpHeaderTextBlock.HeaderTextProperty), "AddOwner header binding path");
+        AssertEqual("Alpha selected, progress 35%", dependencyPropertyManagerText.HeaderText, "AddOwner initial header property");
+        AssertEqual(FontWeights.SemiBold, dependencyPropertyManagerText.FontWeight, "metadata override FontWeight value");
+        AssertEqual(Brushes.DarkSlateBlue, dependencyPropertyManagerText.Foreground, "metadata override Foreground value");
         AssertEqual("StatusText", GetBindingPath(summaryPanel, SummaryPanel.HeaderTextProperty), "summary header binding path");
         AssertEqual("Alpha selected, progress 35%", summaryPanel.HeaderText, "summary initial header property");
         AssertEqual("Alpha selected, progress 35%", summaryHeaderText.Text, "summary initial header text");
@@ -1038,6 +1055,7 @@ internal static class MvpSelfTest
         viewModel.Progress = 72.0;
         DrainDispatcher(window);
         AssertEqual("Validated selected, progress 72%", viewModel.StatusText, "status text");
+        AssertEqual("Validated selected, progress 72%", dependencyPropertyManagerText.HeaderText, "AddOwner updated header property");
         AssertEqual("Validated selected, progress 72%", summaryPanel.HeaderText, "summary updated header property");
         AssertEqual("Validated selected, progress 72%", summaryHeaderText.Text, "summary updated header text");
         AssertEqual("Validated", priorityBindingText.Text, "updated priority binding selected item text");

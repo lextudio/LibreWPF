@@ -1456,6 +1456,12 @@ internal static class MvpSelfTest
         var eventSetterStatusText = Require<TextBlock>(
             window.FindName("EventSetterStatusText"),
             "EventSetter status TextBlock");
+        var localThemeScope = Require<StackPanel>(
+            window.FindName("LocalThemeScope"),
+            "local theme scope StackPanel");
+        var localThemeText = Require<TextBlock>(
+            window.FindName("LocalThemeText"),
+            "local theme TextBlock");
         var validationTextBox = Require<TextBox>(
             window.FindName("ValidationTextBox"),
             "validation TextBox");
@@ -1661,6 +1667,7 @@ internal static class MvpSelfTest
             eventSetterStyleButton,
             eventSetterButtonStyle,
             eventSetterStatusText);
+        ValidateLocalThemeResources(window, localThemeScope, localThemeText);
         ValidateTemplateButton(window, templateButton, templateButtonStyle);
         ValidateValidation(window, viewModel, validationTextBox, validationEchoText);
         ValidateDataErrorValidation(window, viewModel, dataErrorTextBox, dataErrorEchoText);
@@ -3625,6 +3632,42 @@ internal static class MvpSelfTest
         AssertEqual("EventSetterStyleButton", window.LastMvpStyleEventSetterSenderName, "EventSetter sender name");
         AssertEqual("Click", window.LastMvpStyleEventSetterRoutedEventName, "EventSetter routed event name");
         AssertEqual("EventSetter clicked", eventSetterStatus.Text, "EventSetter updated status");
+    }
+
+    private static void ValidateLocalThemeResources(
+        Window window,
+        StackPanel scope,
+        TextBlock textBlock)
+    {
+        var appTextStyle = Require<Style>(
+            Application.Current?.TryFindResource(typeof(TextBlock)),
+            "application implicit TextBlock style");
+        var localTextStyle = Require<Style>(
+            scope.TryFindResource(typeof(TextBlock)),
+            "local implicit TextBlock style");
+        AssertEqual(appTextStyle, localTextStyle.BasedOn, "local implicit TextBlock BasedOn style");
+        AssertEqual(localTextStyle, textBlock.Style, "local implicit TextBlock applied style");
+        AssertEqual("Local implicit style", textBlock.Text, "local implicit TextBlock text");
+        AssertEqual("LocalThemeScopeText", textBlock.Tag, "local implicit TextBlock Tag setter");
+
+        var initialBrush = Require<SolidColorBrush>(
+            textBlock.Foreground,
+            "local implicit TextBlock initial foreground");
+        AssertEqual(Color.FromRgb(0x7C, 0x2D, 0x12), initialBrush.Color, "local implicit TextBlock initial foreground color");
+
+        scope.Resources["LocalThemeBrush"] = new SolidColorBrush(Color.FromRgb(0x0F, 0x76, 0x6E));
+        DrainDispatcher(window);
+        var updatedBrush = Require<SolidColorBrush>(
+            textBlock.Foreground,
+            "local implicit TextBlock updated foreground");
+        AssertEqual(Color.FromRgb(0x0F, 0x76, 0x6E), updatedBrush.Color, "local implicit TextBlock updated foreground color");
+
+        scope.Resources["LocalThemeBrush"] = new SolidColorBrush(Color.FromRgb(0x7C, 0x2D, 0x12));
+        DrainDispatcher(window);
+        var restoredBrush = Require<SolidColorBrush>(
+            textBlock.Foreground,
+            "local implicit TextBlock restored foreground");
+        AssertEqual(Color.FromRgb(0x7C, 0x2D, 0x12), restoredBrush.Color, "local implicit TextBlock restored foreground color");
     }
 
     private static void ValidateTemplateButton(Window window, Button button, Style style)

@@ -6423,6 +6423,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"EventSetterStyleButton\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Style=\"{StaticResource MvpEventSetterButtonStyle}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"EventSetterStatusText\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"LocalThemeScope\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"LocalThemeBrush\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<Setter Property=\"Foreground\" Value=\"{DynamicResource LocalThemeBrush}\" />", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"LocalThemeText\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("VisualStateManager states", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"MvpValidationErrorTemplate\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("AdornedElementPlaceholder", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6782,6 +6786,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("MvpStyleEventSetterClickCount", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnMvpStyleEventSetterClick", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateStyleTriggersAndEventSetter", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLocalThemeResources(window, localThemeScope, localThemeText)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("scope.TryFindResource(typeof(TextBlock))", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("scope.Resources[\"LocalThemeBrush\"] = new SolidColorBrush", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("style trigger BasedOn TextBlock style", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("property style Trigger active text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("data style Trigger disabled text", mvpMainWindowCodeBehind, StringComparison.Ordinal);

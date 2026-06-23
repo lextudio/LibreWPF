@@ -1043,6 +1043,15 @@ public static class MvpResourceFactory
     }
 }
 
+public static class MvpCompositeItemsProvider
+{
+    public static ObservableCollection<string> Items { get; } =
+    [
+        "Composite alpha",
+        "Composite beta"
+    ];
+}
+
 public sealed class MvpTextExtension : MarkupExtension
 {
     public string Prefix { get; set; } = string.Empty;
@@ -1386,6 +1395,9 @@ internal static class MvpSelfTest
         var resourceArrayItemsControl = Require<ItemsControl>(
             window.FindName("ResourceArrayItemsControl"),
             "resource array ItemsControl");
+        var resourceCompositeItemsControl = Require<ItemsControl>(
+            window.FindName("ResourceCompositeItemsControl"),
+            "resource composite ItemsControl");
         var nullIntrinsicText = Require<TextBlock>(
             window.FindName("NullIntrinsicText"),
             "null intrinsic TextBlock");
@@ -1823,6 +1835,7 @@ internal static class MvpSelfTest
             objectProviderText,
             xmlProviderText,
             resourceArrayItemsControl,
+            resourceCompositeItemsControl,
             nullIntrinsicText,
             markupExtensionText,
             packResourceText,
@@ -2612,6 +2625,7 @@ internal static class MvpSelfTest
         TextBlock objectProviderText,
         TextBlock xmlProviderText,
         ItemsControl arrayItemsControl,
+        ItemsControl compositeItemsControl,
         TextBlock nullIntrinsicText,
         TextBlock markupExtensionText,
         TextBlock packResourceText,
@@ -2685,6 +2699,23 @@ internal static class MvpSelfTest
         AssertEqual("Array beta", arrayItems[1], "x:Array second item");
         AssertEqual(arrayItems, arrayItemsControl.ItemsSource, "x:Array ItemsControl source");
         AssertEqual(2, arrayItemsControl.Items.Count, "x:Array ItemsControl count");
+
+        var compositeCollection = Require<CompositeCollection>(
+            window.FindResource("MvpCompositeCollection"),
+            "MVP CompositeCollection resource");
+        AssertEqual(compositeCollection, compositeItemsControl.ItemsSource, "CompositeCollection ItemsControl source");
+        AssertEqual(3, compositeCollection.Count, "CompositeCollection declared item count");
+        AssertEqual("Composite static", compositeItemsControl.Items[0], "CompositeCollection first flattened item");
+        AssertEqual("Composite alpha", compositeItemsControl.Items[1], "CompositeCollection first container item");
+        AssertEqual("Composite beta", compositeItemsControl.Items[2], "CompositeCollection second container item");
+        AssertEqual("Composite final", compositeItemsControl.Items[3], "CompositeCollection final flattened item");
+        MvpCompositeItemsProvider.Items.Add("Composite gamma");
+        DrainDispatcher(window);
+        AssertEqual(5, compositeItemsControl.Items.Count, "CompositeCollection collection-change item count");
+        AssertEqual("Composite gamma", compositeItemsControl.Items[3], "CompositeCollection appended container item");
+        MvpCompositeItemsProvider.Items.Remove("Composite gamma");
+        DrainDispatcher(window);
+        AssertEqual(4, compositeItemsControl.Items.Count, "CompositeCollection restored item count");
         AssertEqual(null, nullIntrinsicText.Tag, "x:Null TextBlock tag");
         AssertEqual("Null intrinsic target", nullIntrinsicText.Text, "x:Null TextBlock text");
         AssertEqual("Markup Extension", markupExtensionText.Text, "MarkupExtension TextBlock text");

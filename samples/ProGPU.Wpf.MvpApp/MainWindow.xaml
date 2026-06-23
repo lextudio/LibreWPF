@@ -93,6 +93,11 @@
             <sys:String>Array alpha</sys:String>
             <sys:String>Array beta</sys:String>
         </x:Array>
+        <CompositeCollection x:Key="MvpCompositeCollection">
+            <sys:String>Composite static</sys:String>
+            <CollectionContainer Collection="{x:Static local:MvpCompositeItemsProvider.Items}" />
+            <sys:String>Composite final</sys:String>
+        </CompositeCollection>
         <DrawingImage x:Key="MvpDrawingImage">
             <DrawingImage.Drawing>
                 <DrawingGroup>
@@ -1048,6 +1053,10 @@
                             x:Name="ResourceArrayItemsControl"
                             Margin="0,12,0,0"
                             ItemsSource="{StaticResource MvpStringArray}" />
+                        <ItemsControl
+                            x:Name="ResourceCompositeItemsControl"
+                            Margin="0,12,0,0"
+                            ItemsSource="{StaticResource MvpCompositeCollection}" />
                         <TextBlock
                             x:Name="NullIntrinsicText"
                             Margin="0,12,0,0"

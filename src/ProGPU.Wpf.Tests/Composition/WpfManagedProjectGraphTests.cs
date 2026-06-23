@@ -6361,6 +6361,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Text=\"{Binding Source={StaticResource MvpXmlDataProvider}, XPath=@name}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ResourceArrayItemsControl\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemsSource=\"{StaticResource MvpStringArray}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"MvpCompositeCollection\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CollectionContainer Collection=\"{x:Static local:MvpCompositeItemsProvider.Items}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ResourceCompositeItemsControl\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{StaticResource MvpCompositeCollection}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"NullIntrinsicText\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Tag=\"{x:Null}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MarkupExtensionText\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6816,6 +6820,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("input Popup initial open state", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PlacementMode.Bottom", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnDataObjectRoundTripClick", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public static class MvpCompositeItemsProvider", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("window.FindResource(\"MvpCompositeCollection\")", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("CompositeCollection collection-change item count", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("new DataObject()", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("dataObject.SetText(payload)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DataFormats.UnicodeText", mvpMainWindowCodeBehind, StringComparison.Ordinal);

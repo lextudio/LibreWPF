@@ -6178,6 +6178,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Key=\"MvpStringArray\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Type=\"{x:Type sys:String}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"MvpSelectorItemContainerStyle\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"MvpActiveItemContainerStyle\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"MvpInactiveItemContainerStyle\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("MvpItemContainerStyleSelector", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ActiveStyle=\"{StaticResource MvpActiveItemContainerStyle}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("InactiveStyle=\"{StaticResource MvpInactiveItemContainerStyle}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Key=\"ItemsViewSource\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Filter=\"OnItemsViewSourceFilter\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<CollectionViewSource.SortDescriptions>", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6360,6 +6365,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"SelectorItemsList\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemTemplateSelector=\"{StaticResource MvpItemTemplateSelector}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemContainerStyle=\"{StaticResource MvpSelectorItemContainerStyle}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"StyleSelectorItemsList\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemContainerStyleSelector=\"{StaticResource MvpItemContainerStyleSelector}\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<ItemsPanelTemplate>", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<WrapPanel />", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"TemplateButton\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6476,6 +6483,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("MvpActiveTextConverter : IValueConverter", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MvpItemSummaryConverter : IMultiValueConverter", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MvpItemTemplateSelector : DataTemplateSelector", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MvpItemContainerStyleSelector : StyleSelector", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateItemContainerStyleSelector(", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("styleSelectorItemsList.ItemContainerStyleSelector", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Application Startup event count", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Application ShutdownMode", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Application Windows contains StartupUri MainWindow", mvpMainWindowCodeBehind, StringComparison.Ordinal);

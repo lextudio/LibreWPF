@@ -143,6 +143,24 @@
             </Style.Triggers>
         </Style>
         <Style
+            x:Key="MvpActiveItemContainerStyle"
+            TargetType="{x:Type ListBoxItem}">
+            <Setter Property="Tag" Value="ActiveStyleContainer" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+        <Style
+            x:Key="MvpInactiveItemContainerStyle"
+            TargetType="{x:Type ListBoxItem}">
+            <Setter Property="Tag" Value="InactiveStyleContainer" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+        <local:MvpItemContainerStyleSelector
+            x:Key="MvpItemContainerStyleSelector"
+            ActiveStyle="{StaticResource MvpActiveItemContainerStyle}"
+            InactiveStyle="{StaticResource MvpInactiveItemContainerStyle}" />
+        <Style
             x:Key="MvpEventSetterButtonStyle"
             TargetType="{x:Type Button}">
             <Setter Property="Tag" Value="EventSetterStyle" />
@@ -1096,6 +1114,8 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
                         <ContentControl
@@ -1126,6 +1146,19 @@
                                 </ItemsPanelTemplate>
                             </ListBox.ItemsPanel>
                         </ListBox>
+
+                        <TextBlock
+                            Grid.Row="4"
+                            Margin="0,14,0,8"
+                            FontWeight="SemiBold"
+                            Text="Container style selector list" />
+
+                        <ListBox
+                            x:Name="StyleSelectorItemsList"
+                            Grid.Row="5"
+                            DisplayMemberPath="Name"
+                            ItemContainerStyleSelector="{StaticResource MvpItemContainerStyleSelector}"
+                            ItemsSource="{Binding Items}" />
                     </Grid>
 
                     <Border

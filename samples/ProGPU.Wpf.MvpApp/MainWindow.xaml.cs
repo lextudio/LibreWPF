@@ -622,6 +622,20 @@ public sealed class MvpItemTemplateSelector : DataTemplateSelector
     }
 }
 
+public sealed class MvpItemContainerStyleSelector : StyleSelector
+{
+    public Style? ActiveStyle { get; set; }
+
+    public Style? InactiveStyle { get; set; }
+
+    public override Style? SelectStyle(object item, DependencyObject container)
+    {
+        return item is MvpItem { IsActive: true }
+            ? ActiveStyle
+            : InactiveStyle;
+    }
+}
+
 public sealed class MvpNonEmptyValidationRule : ValidationRule
 {
     public override ValidationResult Validate(object value, CultureInfo cultureInfo)
@@ -756,6 +770,15 @@ internal static class MvpSelfTest
         var selectorItemContainerStyle = Require<Style>(
             window.FindResource("MvpSelectorItemContainerStyle"),
             "selector item container style");
+        var activeItemContainerStyle = Require<Style>(
+            window.FindResource("MvpActiveItemContainerStyle"),
+            "active item container style");
+        var inactiveItemContainerStyle = Require<Style>(
+            window.FindResource("MvpInactiveItemContainerStyle"),
+            "inactive item container style");
+        var itemContainerStyleSelector = Require<MvpItemContainerStyleSelector>(
+            window.FindResource("MvpItemContainerStyleSelector"),
+            "item container style selector");
         var selectedItemTemplate = Require<DataTemplate>(
             application.TryFindResource("SelectedItemTemplate"),
             "selected item DataTemplate");
@@ -987,6 +1010,9 @@ internal static class MvpSelfTest
         var selectorItemsList = Require<ListBox>(
             window.FindName("SelectorItemsList"),
             "selector items ListBox");
+        var styleSelectorItemsList = Require<ListBox>(
+            window.FindName("StyleSelectorItemsList"),
+            "style selector items ListBox");
         var templateButton = Require<Button>(window.FindName("TemplateButton"), "template Button");
         var basedOnStyleButton = Require<Button>(
             window.FindName("BasedOnStyleButton"),
@@ -1135,6 +1161,12 @@ internal static class MvpSelfTest
             inactiveItemTemplate,
             itemTemplateSelector,
             selectorItemContainerStyle);
+        ValidateItemContainerStyleSelector(
+            viewModel,
+            styleSelectorItemsList,
+            activeItemContainerStyle,
+            inactiveItemContainerStyle,
+            itemContainerStyleSelector);
         ValidateBasedOnButton(basedOnStyleButton, basedOnButtonStyle);
         ValidateStyleTriggersAndEventSetter(
             window,
@@ -2360,6 +2392,29 @@ internal static class MvpSelfTest
         ValidateSelectorItemContainerStyle(containerStyle);
     }
 
+    private static void ValidateItemContainerStyleSelector(
+        MainViewModel viewModel,
+        ListBox styleSelectorItemsList,
+        Style activeStyle,
+        Style inactiveStyle,
+        MvpItemContainerStyleSelector selector)
+    {
+        AssertEqual(viewModel.Items, styleSelectorItemsList.ItemsSource, "style selector ListBox items source");
+        AssertEqual("Name", styleSelectorItemsList.DisplayMemberPath, "style selector ListBox DisplayMemberPath");
+        AssertEqual(
+            selector,
+            styleSelectorItemsList.ItemContainerStyleSelector,
+            "style selector ListBox ItemContainerStyleSelector");
+        AssertEqual(activeStyle, selector.ActiveStyle, "active item container selector style");
+        AssertEqual(inactiveStyle, selector.InactiveStyle, "inactive item container selector style");
+        AssertEqual(activeStyle, selector.SelectStyle(viewModel.Items[0], styleSelectorItemsList), "active item container selector result");
+        AssertEqual(inactiveStyle, selector.SelectStyle(viewModel.Items[1], styleSelectorItemsList), "inactive item container selector result");
+        AssertEqual(inactiveStyle, selector.SelectStyle(new object(), styleSelectorItemsList), "fallback item container selector result");
+
+        ValidateSelectedItemContainerStyle(activeStyle, "active", "ActiveStyleContainer");
+        ValidateSelectedItemContainerStyle(inactiveStyle, "inactive", "InactiveStyleContainer");
+    }
+
     private static void ValidateSelectorTemplate(
         DataTemplate template,
         string name,
@@ -2373,6 +2428,32 @@ internal static class MvpSelfTest
             description);
 
         AssertEqual("Name", GetTextBindingPath(textBlock), description);
+    }
+
+    private static void ValidateSelectedItemContainerStyle(
+        Style style,
+        string description,
+        string expectedTag)
+    {
+        AssertEqual(typeof(ListBoxItem), style.TargetType, $"{description} item container style target type");
+        AssertEqual(3, style.Setters.Count, $"{description} item container setter count");
+
+        var tagSetter = Require<Setter>(
+            style.Setters[0],
+            $"{description} item container Tag setter");
+        var marginSetter = Require<Setter>(
+            style.Setters[1],
+            $"{description} item container Margin setter");
+        var alignmentSetter = Require<Setter>(
+            style.Setters[2],
+            $"{description} item container HorizontalContentAlignment setter");
+
+        AssertEqual(FrameworkElement.TagProperty, tagSetter.Property, $"{description} item container Tag property");
+        AssertEqual(expectedTag, tagSetter.Value, $"{description} item container Tag value");
+        AssertEqual(FrameworkElement.MarginProperty, marginSetter.Property, $"{description} item container Margin property");
+        AssertEqual(new Thickness(0, 0, 0, 4), marginSetter.Value, $"{description} item container Margin value");
+        AssertEqual(Control.HorizontalContentAlignmentProperty, alignmentSetter.Property, $"{description} item container alignment property");
+        AssertEqual(HorizontalAlignment.Stretch, alignmentSetter.Value, $"{description} item container alignment value");
     }
 
     private static void ValidateSelectorItemContainerStyle(Style style)

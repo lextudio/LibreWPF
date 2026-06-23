@@ -6992,6 +6992,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<Compile Include=\"**/*.cs\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ApplicationDefinition Include=\"App.xaml\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Page Include=\"**/*.xaml\" Exclude=\"App.xaml\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<None Include=\"App.config\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Compile Include=\"ExternalPanel.xaml.cs\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Compile Include=\"ExternalThemedControl.cs\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Compile Include=\"Properties/AssemblyInfo.cs\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -7012,6 +7013,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Path.Combine(appRoot, \"Assets\", \"ExternalImage.png\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Path.Combine(appRoot, \"Assets\", \"ExternalContent.txt\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK copied content output", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Path.Combine(appRoot, \"App.config\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ConfigurationManager.AppSettings[\"ExternalSdkAppSetting\"]", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AppOutputAssemblyName + \".dll.config\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ThemeInfo(ResourceDictionaryLocation.None, ResourceDictionaryLocation.SourceAssembly)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalThemedControl : Control", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultStyleKeyProperty.OverrideMetadata", externalSdkHarnessProgram, StringComparison.Ordinal);

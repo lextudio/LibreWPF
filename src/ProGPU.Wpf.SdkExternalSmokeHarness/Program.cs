@@ -579,6 +579,7 @@ internal static class Program
                 <Compile Include="**/*.cs" />
                 <ApplicationDefinition Include="App.xaml" />
                 <Page Include="**/*.xaml" Exclude="App.xaml" />
+                <None Include="App.config" />
                 <ProjectReference Include="../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj" />
                 <Resource Include="Assets/ExternalResource.txt" />
                 <Resource Include="Assets/ExternalImage.png" />
@@ -605,6 +606,17 @@ internal static class Program
         WriteFile(
             Path.Combine(appRoot, "Assets", "ExternalContent.txt"),
             "External SDK copied content text");
+        WriteFile(
+            Path.Combine(appRoot, "App.config"),
+            """
+            <?xml version="1.0" encoding="utf-8" ?>
+            <configuration>
+              <appSettings>
+                <add key="ExternalSdkAppSetting" value="External SDK app config value" />
+                <add key="ExternalSdkNumericSetting" value="42" />
+              </appSettings>
+            </configuration>
+            """);
 
         WriteFile(
             Path.Combine(appRoot, "App.xaml"),
@@ -2289,6 +2301,7 @@ internal static class Program
             using System.Collections.ObjectModel;
             using System.Collections.Specialized;
             using System.Collections.Generic;
+            using System.Configuration;
             using System.ComponentModel;
             using System.Globalization;
             using System.IO;
@@ -3922,6 +3935,7 @@ internal static class Program
                     ValidateRuntimeNameScope(window);
                     ValidateApplicationLoadComponent();
                     ValidatePackResources();
+                    ValidateAppConfiguration();
                     ValidateSplashScreen();
                     ValidateSystemParameters(window);
                     ValidateWindowChrome(window);
@@ -4858,6 +4872,18 @@ internal static class Program
                         "External SDK pack resource text",
                         ReadPackResourceText(new Uri("pack://application:,,,/Assets/ExternalResource.txt", UriKind.Absolute)),
                         "external SDK absolute pack Resource stream text");
+                }
+
+                private static void ValidateAppConfiguration()
+                {
+                    AssertEqual(
+                        "External SDK app config value",
+                        ConfigurationManager.AppSettings["ExternalSdkAppSetting"],
+                        "external SDK ConfigurationManager app setting");
+                    AssertEqual(
+                        "42",
+                        ConfigurationManager.AppSettings["ExternalSdkNumericSetting"],
+                        "external SDK ConfigurationManager numeric app setting");
                 }
 
                 private static void ValidateSplashScreen()
@@ -11598,6 +11624,7 @@ internal static class Program
         AssertContains(appProject, "<Compile Include=\"**/*.cs\" />", "external app explicit compile items");
         AssertContains(appProject, "<ApplicationDefinition Include=\"App.xaml\" />", "external app explicit application definition item");
         AssertContains(appProject, "<Page Include=\"**/*.xaml\" Exclude=\"App.xaml\" />", "external app explicit page items");
+        AssertContains(appProject, "<None Include=\"App.config\" />", "external app explicit app config item");
         AssertContains(appProject, $"<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", "external app project reference");
         AssertContains(appProject, "<Resource Include=\"Assets/ExternalResource.txt\" />", "external app WPF resource item");
         AssertContains(appProject, "<Resource Include=\"Assets/ExternalImage.png\" />", "external app WPF image resource item");
@@ -11628,6 +11655,7 @@ internal static class Program
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "Assets", "ExternalImage.png"), "external SDK app WPF image resource source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "Assets", "ExternalSplash.png"), "external SDK app WPF splash source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "Assets", "ExternalContent.txt"), "external SDK app copied content source");
+        RequireFile(Path.Combine(workRoot, AppAssemblyName, "App.config"), "external SDK app config source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalResources.xaml"), "external SDK app merged resource dictionary source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalPage.xaml"), "external SDK app compiled page source");
         RequireFile(Path.Combine(workRoot, AppAssemblyName, "ExternalSecondPage.xaml"), "external SDK app second compiled page source");
@@ -11712,6 +11740,12 @@ internal static class Program
             "External SDK copied content text",
             File.ReadAllText(copiedContentPath),
             "external SDK copied content output text");
+        string appConfigPath = Path.Combine(outputRoot, AppOutputAssemblyName + ".dll.config");
+        RequireFile(appConfigPath, "external SDK app config output");
+        string appConfig = File.ReadAllText(appConfigPath);
+        AssertContains(appConfig, "<appSettings>", "external SDK app config output appSettings section");
+        AssertContains(appConfig, "ExternalSdkAppSetting", "external SDK app config output setting key");
+        AssertContains(appConfig, "External SDK app config value", "external SDK app config output setting value");
 
         foreach (string assemblyName in s_requiredWpfRuntimeAssemblies
                      .Concat(s_requiredProGpuRuntimeAssemblies)

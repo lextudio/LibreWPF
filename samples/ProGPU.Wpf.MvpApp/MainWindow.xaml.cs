@@ -114,6 +114,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _bindingGroupFirstName = "group: Ada";
     private string _bindingGroupLastName = "group: Lovelace";
     private string _bindingGroupStatus = "Group ready";
+    private string? _nullDisplayText;
 
     public MainViewModel()
     {
@@ -219,6 +220,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
         set => SetField(ref _bindingGroupStatus, value);
     }
 
+    public string? NullDisplayText
+    {
+        get => _nullDisplayText;
+        set => SetField(ref _nullDisplayText, value);
+    }
+
     public double Progress
     {
         get => _progress;
@@ -283,6 +290,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         BindingGroupFirstName = "group: Ada";
         BindingGroupLastName = "group: Lovelace";
         BindingGroupStatus = "Group ready";
+        NullDisplayText = null;
     }
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
@@ -514,6 +522,24 @@ internal static class MvpSelfTest
         var groupedItemsList = Require<ListBox>(
             window.FindName("GroupedItemsList"),
             "grouped items ListBox");
+        var priorityBindingText = Require<TextBlock>(
+            window.FindName("PriorityBindingText"),
+            "priority binding TextBlock");
+        var fallbackBindingText = Require<TextBlock>(
+            window.FindName("FallbackBindingText"),
+            "fallback binding TextBlock");
+        var targetNullBindingText = Require<TextBlock>(
+            window.FindName("TargetNullBindingText"),
+            "target-null binding TextBlock");
+        var relativeSelfBindingText = Require<TextBlock>(
+            window.FindName("RelativeSelfBindingText"),
+            "relative self binding TextBlock");
+        var relativeAncestorBorder = Require<Border>(
+            window.FindName("RelativeAncestorBorder"),
+            "relative ancestor Border");
+        var relativeAncestorBindingText = Require<TextBlock>(
+            window.FindName("RelativeAncestorBindingText"),
+            "relative ancestor binding TextBlock");
         var selectedItemContent = Require<ContentControl>(
             window.FindName("SelectedItemContent"),
             "selected item ContentControl");
@@ -641,6 +667,15 @@ internal static class MvpSelfTest
         AssertEqual("Category: Framework", summaryCategoryText.Text, "summary initial category text");
         AssertEqual("Progress: 35%", summaryProgressText.Text, "summary initial progress text");
         AssertEqual("Alpha / Framework / 35%", selectedItemSummaryText.Text, "initial selected summary text");
+        ValidateBindingFallbacks(
+            window,
+            viewModel,
+            priorityBindingText,
+            fallbackBindingText,
+            targetNullBindingText,
+            relativeSelfBindingText,
+            relativeAncestorBorder,
+            relativeAncestorBindingText);
         ValidateItemsContextMenu(window, viewModel, itemsList);
         ValidateNavigation(window, navigationFrame, detailsNavigationButton);
         ValidateEditor(window, editorPasswordBox, editorRichTextBox);
@@ -670,6 +705,7 @@ internal static class MvpSelfTest
         viewModel.Progress = 72.0;
         DrainDispatcher(window);
         AssertEqual("Validated selected, progress 72%", viewModel.StatusText, "status text");
+        AssertEqual("Validated", priorityBindingText.Text, "updated priority binding selected item text");
         AssertEqual("Name: Validated", summaryNameText.Text, "summary updated name text");
         AssertEqual("Category: Input", summaryCategoryText.Text, "summary updated category text");
         AssertEqual("Progress: 72%", summaryProgressText.Text, "summary updated progress text");
@@ -852,6 +888,77 @@ internal static class MvpSelfTest
         }
 
         return items;
+    }
+
+    private static void ValidateBindingFallbacks(
+        Window window,
+        MainViewModel viewModel,
+        TextBlock priorityText,
+        TextBlock fallbackText,
+        TextBlock targetNullText,
+        TextBlock relativeSelfText,
+        Border relativeAncestorBorder,
+        TextBlock relativeAncestorText)
+    {
+        var priorityBinding = Require<PriorityBinding>(
+            BindingOperations.GetPriorityBinding(priorityText, TextBlock.TextProperty),
+            "MVP PriorityBinding");
+        AssertEqual("Priority fallback", priorityBinding.FallbackValue, "PriorityBinding fallback value");
+        AssertEqual(2, priorityBinding.Bindings.Count, "PriorityBinding child binding count");
+        AssertEqual("MissingPriorityText", GetBindingPath(priorityBinding.Bindings[0]), "PriorityBinding missing child path");
+        AssertEqual("SelectedItem.Name", GetBindingPath(priorityBinding.Bindings[1]), "PriorityBinding selected child path");
+        Require<PriorityBindingExpression>(
+            BindingOperations.GetPriorityBindingExpression(priorityText, TextBlock.TextProperty),
+            "MVP PriorityBinding expression");
+
+        var fallbackBinding = Require<Binding>(
+            BindingOperations.GetBinding(fallbackText, TextBlock.TextProperty),
+            "fallback TextBlock binding");
+        AssertEqual("MissingFallbackText", fallbackBinding.Path.Path, "fallback binding path");
+        AssertEqual("Fallback binding text", fallbackBinding.FallbackValue, "fallback binding value");
+
+        var targetNullBinding = Require<Binding>(
+            BindingOperations.GetBinding(targetNullText, TextBlock.TextProperty),
+            "target-null TextBlock binding");
+        AssertEqual("NullDisplayText", targetNullBinding.Path.Path, "target-null binding path");
+        AssertEqual("Target null text", targetNullBinding.TargetNullValue, "target-null binding value");
+
+        var selfBinding = Require<Binding>(
+            BindingOperations.GetBinding(relativeSelfText, TextBlock.TextProperty),
+            "relative self binding");
+        var selfSource = Require<RelativeSource>(
+            selfBinding.RelativeSource,
+            "relative self binding source");
+        AssertEqual(RelativeSourceMode.Self, selfSource.Mode, "relative self binding mode");
+        AssertEqual("Tag", selfBinding.Path.Path, "relative self binding path");
+
+        var ancestorBinding = Require<Binding>(
+            BindingOperations.GetBinding(relativeAncestorText, TextBlock.TextProperty),
+            "relative ancestor binding");
+        var ancestorSource = Require<RelativeSource>(
+            ancestorBinding.RelativeSource,
+            "relative ancestor binding source");
+        AssertEqual(RelativeSourceMode.FindAncestor, ancestorSource.Mode, "relative ancestor binding mode");
+        AssertEqual(typeof(Border), ancestorSource.AncestorType, "relative ancestor binding type");
+        AssertEqual("Tag", ancestorBinding.Path.Path, "relative ancestor binding path");
+
+        DrainDispatcher(window);
+        AssertEqual("Alpha", priorityText.Text, "initial priority binding text");
+        AssertEqual("Fallback binding text", fallbackText.Text, "fallback binding text");
+        AssertEqual("Target null text", targetNullText.Text, "target-null binding text");
+        AssertEqual("Self binding text", relativeSelfText.Text, "relative self binding text");
+        AssertEqual("Ancestor binding text", relativeAncestorText.Text, "relative ancestor binding text");
+
+        viewModel.NullDisplayText = "Non-null binding text";
+        DrainDispatcher(window);
+        AssertEqual("Non-null binding text", targetNullText.Text, "non-null target binding text");
+        viewModel.NullDisplayText = null;
+        DrainDispatcher(window);
+        AssertEqual("Target null text", targetNullText.Text, "restored target-null binding text");
+
+        relativeAncestorBorder.Tag = "Updated ancestor binding text";
+        DrainDispatcher(window);
+        AssertEqual("Updated ancestor binding text", relativeAncestorText.Text, "updated ancestor binding text");
     }
 
     private static string GetColumnBindingPath(DataGridColumn column)

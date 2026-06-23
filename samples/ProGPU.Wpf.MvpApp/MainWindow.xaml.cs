@@ -345,7 +345,7 @@ public partial class MainWindow : Window
     }
 }
 
-public sealed class MainViewModel : INotifyPropertyChanged
+public sealed class MainViewModel : INotifyPropertyChanged, IDataErrorInfo, INotifyDataErrorInfo
 {
     private string _newItemName = "Gamma";
     private MvpItem? _selectedItem;
@@ -355,6 +355,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private double _progress = 35.0;
     private int _refreshCount;
     private string _validationText = "valid: ready";
+    private string _dataErrorText = "data: ready";
+    private string _notifyDataErrorText = "notify: ready";
     private string _bindingGroupFirstName = "group: Ada";
     private string _bindingGroupLastName = "group: Lovelace";
     private string _bindingGroupStatus = "Group ready";
@@ -391,6 +393,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    public event EventHandler<DataErrorsChangedEventArgs>? ErrorsChanged;
 
     public ObservableCollection<MvpItem> Items { get; }
 
@@ -452,6 +456,24 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         get => _validationText;
         set => SetField(ref _validationText, value);
+    }
+
+    public string DataErrorText
+    {
+        get => _dataErrorText;
+        set => SetField(ref _dataErrorText, value);
+    }
+
+    public string NotifyDataErrorText
+    {
+        get => _notifyDataErrorText;
+        set
+        {
+            if (SetField(ref _notifyDataErrorText, value))
+            {
+                ErrorsChanged?.Invoke(this, new DataErrorsChangedEventArgs(nameof(NotifyDataErrorText)));
+            }
+        }
     }
 
     public string BindingGroupFirstName
@@ -522,6 +544,34 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ? "Commands idle"
         : $"Refresh command {RefreshCount}";
 
+    public string Error => string.Empty;
+
+    public string this[string columnName] => columnName == nameof(DataErrorText) && !DataErrorText.StartsWith("data:", StringComparison.Ordinal)
+        ? "Data value must start with data:"
+        : string.Empty;
+
+    public bool HasErrors
+    {
+        get
+        {
+            foreach (object _ in GetErrors(null))
+            {
+                return true;
+            }
+
+            return false;
+        }
+    }
+
+    public IEnumerable GetErrors(string? propertyName)
+    {
+        if ((propertyName is null || propertyName == nameof(NotifyDataErrorText)) &&
+            !NotifyDataErrorText.StartsWith("notify:", StringComparison.Ordinal))
+        {
+            yield return "Notify value must start with notify:";
+        }
+    }
+
     public void RefreshCommandStatus()
     {
         RefreshCount++;
@@ -554,6 +604,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ShowActiveOnly = false;
         RefreshCount = 0;
         ValidationText = "valid: ready";
+        DataErrorText = "data: ready";
+        NotifyDataErrorText = "notify: ready";
         BindingGroupFirstName = "group: Ada";
         BindingGroupLastName = "group: Lovelace";
         BindingGroupStatus = "Group ready";
@@ -1124,6 +1176,18 @@ internal static class MvpSelfTest
         var validationEchoText = Require<TextBlock>(
             window.FindName("ValidationEchoText"),
             "validation echo TextBlock");
+        var dataErrorTextBox = Require<TextBox>(
+            window.FindName("DataErrorTextBox"),
+            "IDataErrorInfo TextBox");
+        var dataErrorEchoText = Require<TextBlock>(
+            window.FindName("DataErrorEchoText"),
+            "IDataErrorInfo echo TextBlock");
+        var notifyDataErrorTextBox = Require<TextBox>(
+            window.FindName("NotifyDataErrorTextBox"),
+            "INotifyDataErrorInfo TextBox");
+        var notifyDataErrorEchoText = Require<TextBlock>(
+            window.FindName("NotifyDataErrorEchoText"),
+            "INotifyDataErrorInfo echo TextBlock");
         var bindingGroupPanel = Require<StackPanel>(
             window.FindName("BindingGroupPanel"),
             "BindingGroup panel");
@@ -1285,6 +1349,12 @@ internal static class MvpSelfTest
             eventSetterStatusText);
         ValidateTemplateButton(window, templateButton, templateButtonStyle);
         ValidateValidation(window, viewModel, validationTextBox, validationEchoText);
+        ValidateDataErrorValidation(window, viewModel, dataErrorTextBox, dataErrorEchoText);
+        ValidateNotifyDataErrorValidation(
+            window,
+            viewModel,
+            notifyDataErrorTextBox,
+            notifyDataErrorEchoText);
         ValidateBindingGroup(
             window,
             viewModel,
@@ -3010,6 +3080,96 @@ internal static class MvpSelfTest
         AssertEqual("Current: valid: updated", echoText.Text, "updated validation echo text");
     }
 
+    private static void ValidateDataErrorValidation(
+        Window window,
+        MainViewModel viewModel,
+        TextBox textBox,
+        TextBlock echoText)
+    {
+        var binding = Require<Binding>(
+            BindingOperations.GetBinding(textBox, TextBox.TextProperty),
+            "IDataErrorInfo TextBox binding");
+
+        AssertEqual("DataErrorText", binding.Path.Path, "IDataErrorInfo binding path");
+        AssertEqual(BindingMode.TwoWay, binding.Mode, "IDataErrorInfo binding mode");
+        AssertEqual(UpdateSourceTrigger.Explicit, binding.UpdateSourceTrigger, "IDataErrorInfo update trigger");
+        AssertEqual(true, binding.NotifyOnValidationError, "IDataErrorInfo notification flag");
+        AssertEqual(true, binding.ValidatesOnDataErrors, "IDataErrorInfo validation flag");
+
+        DrainDispatcher(window);
+        AssertEqual("data: ready", textBox.Text, "initial IDataErrorInfo TextBox text");
+        AssertEqual("Data: data: ready", echoText.Text, "initial IDataErrorInfo echo text");
+
+        var bindingExpression = Require<BindingExpression>(
+            BindingOperations.GetBindingExpression(textBox, TextBox.TextProperty),
+            "IDataErrorInfo TextBox binding expression");
+        textBox.Text = "broken";
+        bindingExpression.UpdateSource();
+        DrainDispatcher(window);
+        AssertEqual("broken", viewModel.DataErrorText, "invalid IDataErrorInfo source update");
+        AssertEqual(true, Validation.GetHasError(textBox), "invalid IDataErrorInfo error flag");
+        AssertEqual(
+            "Data value must start with data:",
+            GetSingleValidationErrorContent(textBox, "invalid IDataErrorInfo error"),
+            "invalid IDataErrorInfo error content");
+        AssertEqual("Data: broken", echoText.Text, "invalid IDataErrorInfo echo text");
+
+        textBox.Text = "data: updated";
+        bindingExpression.UpdateSource();
+        DrainDispatcher(window);
+        AssertEqual(false, Validation.GetHasError(textBox), "valid IDataErrorInfo clears error flag");
+        AssertEqual("data: updated", viewModel.DataErrorText, "valid IDataErrorInfo updates source");
+        AssertEqual("Data: data: updated", echoText.Text, "updated IDataErrorInfo echo text");
+    }
+
+    private static void ValidateNotifyDataErrorValidation(
+        Window window,
+        MainViewModel viewModel,
+        TextBox textBox,
+        TextBlock echoText)
+    {
+        var binding = Require<Binding>(
+            BindingOperations.GetBinding(textBox, TextBox.TextProperty),
+            "INotifyDataErrorInfo TextBox binding");
+
+        AssertEqual("NotifyDataErrorText", binding.Path.Path, "INotifyDataErrorInfo binding path");
+        AssertEqual(BindingMode.TwoWay, binding.Mode, "INotifyDataErrorInfo binding mode");
+        AssertEqual(UpdateSourceTrigger.Explicit, binding.UpdateSourceTrigger, "INotifyDataErrorInfo update trigger");
+        AssertEqual(true, binding.NotifyOnValidationError, "INotifyDataErrorInfo notification flag");
+        AssertEqual(true, binding.ValidatesOnNotifyDataErrors, "INotifyDataErrorInfo validation flag");
+
+        DrainDispatcher(window);
+        AssertEqual("notify: ready", textBox.Text, "initial INotifyDataErrorInfo TextBox text");
+        AssertEqual("Notify: notify: ready", echoText.Text, "initial INotifyDataErrorInfo echo text");
+        AssertEqual(false, viewModel.HasErrors, "initial INotifyDataErrorInfo source error state");
+
+        var bindingExpression = Require<BindingExpression>(
+            BindingOperations.GetBindingExpression(textBox, TextBox.TextProperty),
+            "INotifyDataErrorInfo TextBox binding expression");
+        textBox.Text = "broken";
+        bindingExpression.UpdateSource();
+        DrainDispatcher(window);
+        AssertEqual("broken", viewModel.NotifyDataErrorText, "invalid INotifyDataErrorInfo source update");
+        AssertEqual(true, viewModel.HasErrors, "invalid INotifyDataErrorInfo source error state");
+        AssertEqual(true, Validation.GetHasError(textBox), "invalid INotifyDataErrorInfo error flag");
+        AssertEqual(
+            "Notify value must start with notify:",
+            GetSingleValidationErrorContent(textBox, "invalid INotifyDataErrorInfo error"),
+            "invalid INotifyDataErrorInfo error content");
+        AssertEqual("Notify: broken", echoText.Text, "invalid INotifyDataErrorInfo echo text");
+
+        textBox.Text = "notify: updated";
+        bindingExpression.UpdateSource();
+        DrainDispatcher(window);
+        AssertEqual(false, viewModel.HasErrors, "valid INotifyDataErrorInfo source error state");
+        AssertEqual(false, Validation.GetHasError(textBox), "valid INotifyDataErrorInfo clears error flag");
+        AssertEqual(
+            "notify: updated",
+            viewModel.NotifyDataErrorText,
+            "valid INotifyDataErrorInfo updates source");
+        AssertEqual("Notify: notify: updated", echoText.Text, "updated INotifyDataErrorInfo echo text");
+    }
+
     private static void ValidateBindingGroup(
         Window window,
         MainViewModel viewModel,
@@ -3480,6 +3640,13 @@ internal static class MvpSelfTest
     private static void UpdateSource(DependencyObject target, DependencyProperty property)
     {
         BindingOperations.GetBindingExpression(target, property)?.UpdateSource();
+    }
+
+    private static string GetSingleValidationErrorContent(DependencyObject target, string description)
+    {
+        var errors = Validation.GetErrors(target);
+        AssertEqual(1, errors.Count, $"{description} count");
+        return errors[0].ErrorContent?.ToString() ?? string.Empty;
     }
 
     private static Run FindDirectRun(Paragraph paragraph, string text, string description)

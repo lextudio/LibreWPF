@@ -1317,6 +1317,42 @@
                             Margin="0,14,0,0"
                             Text="{Binding ValidationText, StringFormat=Current: {0}}"
                             TextWrapping="Wrap" />
+                        <TextBlock
+                            Margin="0,16,0,8"
+                            FontWeight="SemiBold"
+                            Text="Source-side validation" />
+                        <TextBox x:Name="DataErrorTextBox">
+                            <TextBox.Text>
+                                <Binding
+                                    Mode="TwoWay"
+                                    NotifyOnValidationError="True"
+                                    Path="DataErrorText"
+                                    UpdateSourceTrigger="Explicit"
+                                    ValidatesOnDataErrors="True" />
+                            </TextBox.Text>
+                        </TextBox>
+                        <TextBlock
+                            x:Name="DataErrorEchoText"
+                            Margin="0,8,0,0"
+                            Text="{Binding DataErrorText, StringFormat=Data: {0}}"
+                            TextWrapping="Wrap" />
+                        <TextBox
+                            x:Name="NotifyDataErrorTextBox"
+                            Margin="0,12,0,0">
+                            <TextBox.Text>
+                                <Binding
+                                    Mode="TwoWay"
+                                    NotifyOnValidationError="True"
+                                    Path="NotifyDataErrorText"
+                                    UpdateSourceTrigger="Explicit"
+                                    ValidatesOnNotifyDataErrors="True" />
+                            </TextBox.Text>
+                        </TextBox>
+                        <TextBlock
+                            x:Name="NotifyDataErrorEchoText"
+                            Margin="0,8,0,0"
+                            Text="{Binding NotifyDataErrorText, StringFormat=Notify: {0}}"
+                            TextWrapping="Wrap" />
                         <Separator Margin="0,18,0,14" />
                         <TextBlock
                             Margin="0,0,0,8"

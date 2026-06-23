@@ -5123,6 +5123,14 @@ internal static class Program
                         "External SDK pack resource text",
                         ReadPackResourceText(new Uri("pack://application:,,,/Assets/ExternalResource.txt", UriKind.Absolute)),
                         "external SDK absolute pack Resource stream text");
+                    AssertEqual(
+                        "External SDK copied content text",
+                        ReadPackContentText(new Uri("Assets/ExternalContent.txt", UriKind.Relative)),
+                        "external SDK relative Content stream text");
+                    AssertEqual(
+                        "External SDK copied content text",
+                        ReadPackContentText(new Uri("pack://application:,,,/Assets/ExternalContent.txt", UriKind.Absolute)),
+                        "external SDK absolute pack Content stream text");
                 }
 
                 private static void ValidateAppConfiguration()
@@ -5151,6 +5159,14 @@ internal static class Program
                     var resourceInfo = Application.GetResourceStream(resourceUri)
                         ?? throw new InvalidOperationException($"Expected external SDK resource stream for '{resourceUri}'.");
                     using var reader = new StreamReader(resourceInfo.Stream);
+                    return reader.ReadToEnd();
+                }
+
+                private static string ReadPackContentText(Uri contentUri)
+                {
+                    var contentInfo = Application.GetContentStream(contentUri)
+                        ?? throw new InvalidOperationException($"Expected external SDK content stream for '{contentUri}'.");
+                    using var reader = new StreamReader(contentInfo.Stream);
                     return reader.ReadToEnd();
                 }
 

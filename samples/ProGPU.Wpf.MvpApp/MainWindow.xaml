@@ -382,6 +382,7 @@
                             Margin="0,8,0,0"
                             local:MvpStateProperties.Importance="128"
                             HeaderText="{Binding StatusText}"
+                            TypedOffset="12.5,24.25"
                             Text="{Binding RelativeSource={RelativeSource Self}, Path=(local:MvpStateProperties.SectionName)}" />
                         <StackPanel
                             x:Name="MvpRoutedEventScope"

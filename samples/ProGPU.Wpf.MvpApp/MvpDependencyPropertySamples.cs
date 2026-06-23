@@ -1,4 +1,6 @@
 using System;
+using System.ComponentModel;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -69,6 +71,15 @@ public class MvpHeaderTextBlock : TextBlock
                 "Header text",
                 FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsRender));
 
+    public static readonly DependencyProperty TypedOffsetProperty =
+        DependencyProperty.Register(
+            nameof(TypedOffset),
+            typeof(MvpTypedOffset),
+            typeof(MvpHeaderTextBlock),
+            new FrameworkPropertyMetadata(
+                default(MvpTypedOffset),
+                FrameworkPropertyMetadataOptions.AffectsMeasure | FrameworkPropertyMetadataOptions.AffectsRender));
+
     static MvpHeaderTextBlock()
     {
         FontWeightProperty.OverrideMetadata(
@@ -83,6 +94,42 @@ public class MvpHeaderTextBlock : TextBlock
     {
         get => (string)GetValue(HeaderTextProperty);
         set => SetValue(HeaderTextProperty, value);
+    }
+
+    public MvpTypedOffset TypedOffset
+    {
+        get => (MvpTypedOffset)GetValue(TypedOffsetProperty);
+        set => SetValue(TypedOffsetProperty, value);
+    }
+}
+
+[TypeConverter(typeof(MvpTypedOffsetConverter))]
+public readonly record struct MvpTypedOffset(double X, double Y);
+
+public sealed class MvpTypedOffsetConverter : TypeConverter
+{
+    public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType)
+    {
+        return sourceType == typeof(string) || base.CanConvertFrom(context, sourceType);
+    }
+
+    public override object ConvertFrom(
+        ITypeDescriptorContext? context,
+        CultureInfo? culture,
+        object value)
+    {
+        if (value is string text)
+        {
+            string[] parts = text.Split(',', StringSplitOptions.TrimEntries);
+            if (parts.Length == 2 &&
+                double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double x) &&
+                double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double y))
+            {
+                return new MvpTypedOffset(x, y);
+            }
+        }
+
+        return base.ConvertFrom(context, culture, value)!;
     }
 }
 

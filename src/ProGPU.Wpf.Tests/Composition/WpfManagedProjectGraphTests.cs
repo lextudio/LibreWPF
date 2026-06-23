@@ -6659,6 +6659,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("x:Name=\"DependencyPropertyManagerText\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("local:MvpStateProperties.Importance=\"128\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("HeaderText=\"{Binding StatusText}\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("TypedOffset=\"12.5,24.25\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Path=(local:MvpStateProperties.SectionName)", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"MvpRoutedEventScope\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("local:MvpRoutedEventButton.MvpActivated=\"OnMvpRoutedEventScope\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6671,6 +6672,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CoerceImportance", mvpDependencyPropertySamples, StringComparison.Ordinal);
         Assert.Contains("Math.Clamp((double)baseValue, 0d, 100d)", mvpDependencyPropertySamples, StringComparison.Ordinal);
         Assert.Contains("SummaryPanel.HeaderTextProperty.AddOwner", mvpDependencyPropertySamples, StringComparison.Ordinal);
+        Assert.Contains("using System.ComponentModel;", mvpDependencyPropertySamples, StringComparison.Ordinal);
+        Assert.Contains("public static readonly DependencyProperty TypedOffsetProperty", mvpDependencyPropertySamples, StringComparison.Ordinal);
+        Assert.Contains("[TypeConverter(typeof(MvpTypedOffsetConverter))]", mvpDependencyPropertySamples, StringComparison.Ordinal);
+        Assert.Contains("public readonly record struct MvpTypedOffset(double X, double Y)", mvpDependencyPropertySamples, StringComparison.Ordinal);
+        Assert.Contains("public sealed class MvpTypedOffsetConverter : TypeConverter", mvpDependencyPropertySamples, StringComparison.Ordinal);
+        Assert.Contains("public override object ConvertFrom(", mvpDependencyPropertySamples, StringComparison.Ordinal);
         Assert.Contains("FontWeightProperty.OverrideMetadata", mvpDependencyPropertySamples, StringComparison.Ordinal);
         Assert.Contains("ForegroundProperty.OverrideMetadata", mvpDependencyPropertySamples, StringComparison.Ordinal);
         Assert.Contains("public delegate void MvpRoutedEventHandler(object sender, MvpRoutedEventArgs e)", mvpDependencyPropertySamples, StringComparison.Ordinal);
@@ -6688,6 +6695,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("BaseValueSource.Inherited", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MvpStateProperties.GetImportance(dependencyPropertyManagerText)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MvpHeaderTextBlock.HeaderTextProperty", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("new MvpTypedOffset(12.5, 24.25)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MvpHeaderTextBlock.TypedOffsetProperty", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("TypeConverter dependency property value source", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AddOwner updated header property", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MvpRoutedEventScope.AddHandler(", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnMvpRoutedEventSource", mvpMainWindowCodeBehind, StringComparison.Ordinal);

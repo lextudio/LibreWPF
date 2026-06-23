@@ -1128,6 +1128,13 @@ internal static class MvpSelfTest
         AssertEqual("Alpha selected, progress 35%", dependencyPropertyManagerText.HeaderText, "AddOwner initial header property");
         AssertEqual(FontWeights.SemiBold, dependencyPropertyManagerText.FontWeight, "metadata override FontWeight value");
         AssertEqual(Brushes.DarkSlateBlue, dependencyPropertyManagerText.Foreground, "metadata override Foreground value");
+        AssertEqual(new MvpTypedOffset(12.5, 24.25), dependencyPropertyManagerText.TypedOffset, "TypeConverter dependency property value");
+        AssertEqual(
+            BaseValueSource.Local,
+            DependencyPropertyHelper.GetValueSource(
+                dependencyPropertyManagerText,
+                MvpHeaderTextBlock.TypedOffsetProperty).BaseValueSource,
+            "TypeConverter dependency property value source");
         ValidateMvpRoutedEvent(window, mvpRoutedEventScope, mvpRoutedEventButton, mvpRoutedEventStatusText);
         AssertEqual("StatusText", GetBindingPath(summaryPanel, SummaryPanel.HeaderTextProperty), "summary header binding path");
         AssertEqual("Alpha selected, progress 35%", summaryPanel.HeaderText, "summary initial header property");

@@ -20,6 +20,7 @@ internal static class Program
     private const string ExternalAppTargetFramework = "net11.0-windows";
     private const string AppAssemblyName = "ExternalSdkApp";
     private const string LibraryAssemblyName = "ExternalSdkLibrary";
+    private const string LibraryOutputAssemblyName = "ExternalSdkControls";
     private const string LocalizationAssemblyName = "ExternalLocalizationApp";
 
     private static readonly string[] s_requiredWpfRuntimeAssemblies =
@@ -421,6 +422,7 @@ internal static class Program
                 $"""
             <Project Sdk="{OriginalWpfSdk}">
               <PropertyGroup>
+                <AssemblyName>{LibraryOutputAssemblyName}</AssemblyName>
                 <TargetFrameworks>{ExternalAppTargetFramework}</TargetFrameworks>
                 <UseWPF>true</UseWPF>
               </PropertyGroup>
@@ -809,7 +811,7 @@ internal static class Program
                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                 xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
                 xmlns:local="clr-namespace:ExternalSdkApp"
-                xmlns:library="clr-namespace:ExternalSdkLibrary;assembly=ExternalSdkLibrary"
+                xmlns:library="clr-namespace:ExternalSdkLibrary;assembly=ExternalSdkControls"
                 xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework"
                 xmlns:ribbon="clr-namespace:System.Windows.Controls.Ribbon;assembly=System.Windows.Controls.Ribbon"
                 xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
@@ -2160,7 +2162,7 @@ internal static class Program
                 x:Class="ExternalSdkApp.ExternalPage"
                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                xmlns:library="clr-namespace:ExternalSdkLibrary;assembly=ExternalSdkLibrary"
+                xmlns:library="clr-namespace:ExternalSdkLibrary;assembly=ExternalSdkControls"
                 Title="External Page">
                 <StackPanel>
                     <TextBlock
@@ -2228,7 +2230,7 @@ internal static class Program
                 x:Class="ExternalSdkApp.ExternalLoadComponentView"
                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                xmlns:library="clr-namespace:ExternalSdkLibrary;assembly=ExternalSdkLibrary">
+                xmlns:library="clr-namespace:ExternalSdkLibrary;assembly=ExternalSdkControls">
                 <StackPanel>
                     <TextBlock
                         x:Name="ExternalLoadComponentText"
@@ -11575,6 +11577,7 @@ internal static class Program
         AssertContains(appProject, "<SplashScreen Include=\"Assets/ExternalSplash.png\" />", "external app WPF splash item");
         AssertContains(libraryProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external library SDK");
         AssertDoesNotContain(libraryProject, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external library original SDK");
+        AssertContains(libraryProject, $"<AssemblyName>{LibraryOutputAssemblyName}</AssemblyName>", "external library custom assembly name");
         AssertContains(libraryProject, $"<TargetFrameworks>{ExternalAppTargetFramework}</TargetFrameworks>", "external library Windows target frameworks");
         AssertContains(libraryProject, "<UseWPF>true</UseWPF>", "external library WPF property");
         AssertContains(localizationProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external localization SDK");
@@ -11665,7 +11668,7 @@ internal static class Program
     private static void ValidateExternalOutput(string outputRoot, string packageFeed)
     {
         RequireFile(Path.Combine(outputRoot, AppAssemblyName + ".dll"), "external SDK app assembly");
-        RequireFile(Path.Combine(outputRoot, LibraryAssemblyName + ".dll"), "external SDK library assembly");
+        RequireFile(Path.Combine(outputRoot, LibraryOutputAssemblyName + ".dll"), "external SDK library assembly");
 
         foreach (string assemblyName in s_requiredWpfRuntimeAssemblies
                      .Concat(s_requiredProGpuRuntimeAssemblies)
@@ -11696,7 +11699,7 @@ internal static class Program
         AssertContains(depsJson, "ProGPU.Compute", "external SDK ProGPU compute package dependency");
         AssertContains(depsJson, "ProGPU.Transpiler", "external SDK ProGPU transpiler package dependency");
         AssertContains(depsJson, "StbImageSharp", "external SDK StbImageSharp package dependency");
-        AssertContains(depsJson, LibraryAssemblyName, "external SDK referenced library dependency");
+        AssertContains(depsJson, LibraryOutputAssemblyName, "external SDK referenced library dependency");
 
         ValidateProGpuHiDpiRenderSurface(outputRoot);
     }

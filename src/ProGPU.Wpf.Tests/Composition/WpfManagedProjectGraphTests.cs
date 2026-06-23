@@ -6971,6 +6971,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private const string OriginalWindowsDesktopWpfSdk = \"Microsoft.NET.Sdk.WindowsDesktop\";", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalSdkApp", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalSdkLibrary", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("LibraryOutputAssemblyName = \"ExternalSdkControls\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Project Sdk=\"{OriginalWpfSdk}\">", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Project Sdk=\"{OriginalWindowsDesktopWpfSdk}\">", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("OriginalWindowsDesktopWpfSdk,\n                \"external SDK app\"", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -6982,9 +6983,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<OutputType>WinExe</OutputType>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("private const string ExternalAppTargetFramework = \"net11.0-windows\";", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<AssemblyName>{LibraryOutputAssemblyName}</AssemblyName>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<TargetFrameworks>{ExternalAppTargetFramework}</TargetFrameworks>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external library Windows target frameworks", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<UseWPF>true</UseWPF>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("assembly=ExternalSdkControls", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("LibraryOutputAssemblyName + \".dll\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Resource Include=\"Assets/ExternalResource.txt\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Resource Include=\"Assets/ExternalImage.png\" />", externalSdkHarnessProgram, StringComparison.Ordinal);

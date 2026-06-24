@@ -5829,8 +5829,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<xcad:AeroTheme />", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:IntegerUpDown x:Name=\"PriorityEditor\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:PropertyGrid x:Name=\"DocumentPropertyGrid\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ActivateEditorButton", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("TogglePropertyPaneButton", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SerializeLayoutButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Require<DockingManager>(window, \"DockManager\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<PropertyGrid>(window, \"DocumentPropertyGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("XmlLayoutSerializer", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PropertyPane.Hide(false)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PropertyPane.Show()", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RoundTripLayout", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF Toolkit Application.Run validation succeeded.", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_TOOLKIT_RUN_VALIDATE", runScript, StringComparison.Ordinal);
     }

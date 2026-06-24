@@ -26,16 +26,37 @@
             Background="{StaticResource ToolkitAccentBrush}"
             Padding="12,8">
       <DockPanel LastChildFill="True">
+        <StackPanel DockPanel.Dock="Right"
+                    Orientation="Horizontal">
+          <Button x:Name="AddDocumentButton"
+                  MinWidth="104"
+                  Margin="0,0,6,0"
+                  Padding="10,4"
+                  Content="Add document"
+                  Click="AddDocumentButton_Click" />
+          <Button x:Name="ActivateEditorButton"
+                  MinWidth="104"
+                  Margin="0,0,6,0"
+                  Padding="10,4"
+                  Content="Activate editor"
+                  Click="ActivateEditorButton_Click" />
+          <Button x:Name="TogglePropertyPaneButton"
+                  MinWidth="112"
+                  Margin="0,0,6,0"
+                  Padding="10,4"
+                  Content="Toggle properties"
+                  Click="TogglePropertyPaneButton_Click" />
+          <Button x:Name="SerializeLayoutButton"
+                  MinWidth="96"
+                  Padding="10,4"
+                  Content="Save layout"
+                  Click="SerializeLayoutButton_Click" />
+        </StackPanel>
         <TextBlock Foreground="White"
                    FontSize="16"
                    FontWeight="SemiBold"
-                   Text="Extended WPF Toolkit and AvalonDock through ProGPU.Wpf.Sdk" />
-        <Button x:Name="AddDocumentButton"
-                DockPanel.Dock="Right"
-                MinWidth="112"
-                Padding="10,4"
-                Content="Add document"
-                Click="AddDocumentButton_Click" />
+                   Text="Extended WPF Toolkit and AvalonDock through ProGPU.Wpf.Sdk"
+                   TextTrimming="CharacterEllipsis" />
       </DockPanel>
     </Border>
 

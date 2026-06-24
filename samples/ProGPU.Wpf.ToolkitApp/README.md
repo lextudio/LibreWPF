@@ -7,7 +7,7 @@ This sample exercises the public Xceed `Extended.Wpf.Toolkit` package through th
 - `UseWPF=true`
 - one `PackageReference` to `Extended.Wpf.Toolkit`
 
-The XAML uses regular `http://schemas.xceed.com/wpf/xaml/toolkit` and `http://schemas.xceed.com/wpf/xaml/avalondock` namespaces. It validates `Xceed.Wpf.Toolkit` controls, `Xceed.Wpf.AvalonDock.DockingManager`, AvalonDock documents, anchorables, theme assembly loading, compiled BAML, bindings, and code-behind event hookup without app-side ProGPU APIs.
+The XAML uses regular `http://schemas.xceed.com/wpf/xaml/toolkit` and `http://schemas.xceed.com/wpf/xaml/avalondock` namespaces. It validates `Xceed.Wpf.Toolkit` controls, `Xceed.Wpf.AvalonDock.DockingManager`, AvalonDock documents, anchorables, theme assembly loading, compiled BAML, bindings, code-behind event hookup, document activation, anchorable hide/show state, and XML layout serialization/deserialization without app-side ProGPU APIs.
 
 Build and launch the SDK-produced apphost from the repository root:
 

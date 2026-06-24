@@ -1,13 +1,16 @@
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Threading;
 using Xceed.Wpf.AvalonDock;
 using Xceed.Wpf.AvalonDock.Layout;
+using Xceed.Wpf.AvalonDock.Layout.Serialization;
 using Xceed.Wpf.AvalonDock.Themes;
 using Xceed.Wpf.Toolkit;
 using Xceed.Wpf.Toolkit.PropertyGrid;
@@ -53,6 +56,65 @@ public partial class MainWindow : Window
         _viewModel.Status = $"Added {document.Title}";
     }
 
+    private void ActivateEditorButton_Click(object sender, RoutedEventArgs e)
+    {
+        EditorDocument.IsSelected = true;
+        EditorDocument.IsActive = true;
+        _viewModel.Status = "Editor document activated";
+        _viewModel.Activity.Add("Activated editor document");
+    }
+
+    private void TogglePropertyPaneButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (PropertyPane.IsHidden)
+        {
+            PropertyPane.Show();
+            _viewModel.Status = "Property pane shown";
+            _viewModel.Activity.Add("Shown property pane");
+        }
+        else
+        {
+            PropertyPane.Hide(false);
+            _viewModel.Status = "Property pane hidden";
+            _viewModel.Activity.Add("Hidden property pane");
+        }
+    }
+
+    private void SerializeLayoutButton_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.LastSerializedLayout = SerializeCurrentLayout();
+        _viewModel.Status = "AvalonDock layout serialized";
+        _viewModel.Activity.Add("Serialized AvalonDock layout");
+    }
+
+    internal string SerializeCurrentLayout()
+    {
+        using var stream = new MemoryStream();
+        var serializer = new XmlLayoutSerializer(DockManager);
+        serializer.Serialize(stream);
+        return Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    internal static DockingManager RoundTripLayout(string layoutXml)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(layoutXml);
+
+        var manager = new DockingManager();
+        var serializer = new XmlLayoutSerializer(manager);
+        serializer.LayoutSerializationCallback += (_, args) =>
+        {
+            args.Content ??= new TextBlock
+            {
+                Text = args.Model.ContentId,
+                Margin = new Thickness(8)
+            };
+        };
+
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(layoutXml));
+        serializer.Deserialize(stream);
+        return manager;
+    }
+
     internal ToolkitViewModel ViewModel => _viewModel;
 }
 
@@ -64,6 +126,7 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private DateTime? _dueDate = DateTime.Today.AddDays(7).AddHours(9);
     private bool _isBusy;
     private string _status = "Toolkit sample ready";
+    private string _lastSerializedLayout = string.Empty;
 
     public ToolkitViewModel()
     {
@@ -169,6 +232,19 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         }
     }
 
+    public string LastSerializedLayout
+    {
+        get => _lastSerializedLayout;
+        set
+        {
+            if (!string.Equals(_lastSerializedLayout, value, StringComparison.Ordinal))
+            {
+                _lastSerializedLayout = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
@@ -223,6 +299,9 @@ internal static class ToolkitSelfTest
         Require<CheckComboBox>(window, "CategoryPicker");
         Require<BusyIndicator>(window, "BusyIndicator");
         Require<PropertyGrid>(window, "DocumentPropertyGrid");
+        Require<Button>(window, "ActivateEditorButton");
+        Require<Button>(window, "TogglePropertyPaneButton");
+        Require<Button>(window, "SerializeLayoutButton");
 
         if (window.DockManager.Theme is not AeroTheme)
         {
@@ -277,6 +356,42 @@ internal static class ToolkitSelfTest
         if (!string.Equals(window.ViewModel.Status, "Added Generated 3", StringComparison.Ordinal))
         {
             throw new InvalidOperationException("Expected Add document command to update sample status.");
+        }
+
+        window.ActivateEditorButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+        if (!window.EditorDocument.IsSelected || !window.EditorDocument.IsActive)
+        {
+            throw new InvalidOperationException("Expected AvalonDock document activation to update selected/active document state.");
+        }
+
+        window.TogglePropertyPaneButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+        if (!window.PropertyPane.IsHidden || !window.DockLayoutRoot.Hidden.Contains(window.PropertyPane))
+        {
+            throw new InvalidOperationException("Expected AvalonDock property anchorable to hide into the layout hidden collection.");
+        }
+
+        window.TogglePropertyPaneButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+        if (window.PropertyPane.IsHidden)
+        {
+            throw new InvalidOperationException("Expected AvalonDock property anchorable to show from the hidden collection.");
+        }
+
+        window.SerializeLayoutButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+        if (!window.ViewModel.LastSerializedLayout.Contains("<LayoutRoot", StringComparison.Ordinal) ||
+            !window.ViewModel.LastSerializedLayout.Contains("ContentId=\"editor\"", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Expected AvalonDock layout serialization to include document content ids.");
+        }
+
+        var roundTripped = MainWindow.RoundTripLayout(window.ViewModel.LastSerializedLayout);
+        if (roundTripped.Layout.RootPanel is null ||
+            roundTripped.Layout.RootPanel.ChildrenCount != window.DockLayoutRoot.RootPanel.ChildrenCount)
+        {
+            throw new InvalidOperationException("Expected AvalonDock layout deserialization to restore the root panel shape.");
         }
 
         if (expectLoaded && !window.IsLoaded)

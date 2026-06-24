@@ -35,7 +35,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService
 
         void AttachMouse(SilkInput.IMouse mouse)
         {
-            if (!mouse.IsConnected || mouseSubscriptions.ContainsKey(mouse))
+            if (mouseSubscriptions.ContainsKey(mouse))
             {
                 return;
             }
@@ -112,7 +112,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService
 
         void AttachKeyboard(SilkInput.IKeyboard keyboard)
         {
-            if (!keyboard.IsConnected || keyboardSubscriptions.ContainsKey(keyboard))
+            if (keyboardSubscriptions.ContainsKey(keyboard))
             {
                 return;
             }
@@ -317,11 +317,6 @@ public sealed class SilkNetWpfInputService : IWpfInputService
 
         foreach (var keyboard in inputContext.Keyboards)
         {
-            if (!keyboard.IsConnected)
-            {
-                continue;
-            }
-
             if (IsKeyPressed(keyboard, SilkInput.Key.ShiftLeft) || IsKeyPressed(keyboard, SilkInput.Key.ShiftRight))
             {
                 modifiers |= WpfInputModifiers.Shift;

@@ -51,15 +51,23 @@ echo "Running SDK-switch smoke apphost live input probe..."
 )
 
 echo "Running Hello SDK apphost Application.Run self-test..."
-PROGPU_WPF_HELLO_RUN_VALIDATE=1 "${repo_root}/eng/run-progpu-wpf-hello.sh"
+PROGPU_WPF_HELLO_REBUILD_PACKAGES=0 \
+PROGPU_WPF_HELLO_RUN_VALIDATE=1 \
+  "${repo_root}/eng/run-progpu-wpf-hello.sh"
 
 echo "Running Hello SDK apphost live geometry probe..."
-PROGPU_WPF_HELLO_LIVE_VALIDATE=1 "${repo_root}/eng/run-progpu-wpf-hello.sh"
+PROGPU_WPF_HELLO_REBUILD_PACKAGES=0 \
+PROGPU_WPF_HELLO_LIVE_VALIDATE=1 \
+  "${repo_root}/eng/run-progpu-wpf-hello.sh"
 
 echo "Running MVP SDK apphost Application.Run self-test..."
-PROGPU_WPF_MVP_RUN_VALIDATE=1 "${repo_root}/eng/run-progpu-wpf-mvp.sh"
+PROGPU_WPF_MVP_REBUILD_PACKAGES=0 \
+PROGPU_WPF_MVP_RUN_VALIDATE=1 \
+  "${repo_root}/eng/run-progpu-wpf-mvp.sh"
 
 echo "Running MVP SDK apphost live geometry probe..."
-PROGPU_WPF_MVP_LIVE_VALIDATE=1 "${repo_root}/eng/run-progpu-wpf-mvp.sh"
+PROGPU_WPF_MVP_REBUILD_PACKAGES=0 \
+PROGPU_WPF_MVP_LIVE_VALIDATE=1 \
+  "${repo_root}/eng/run-progpu-wpf-mvp.sh"
 
 echo "ProGPU WPF MVP quickcheck succeeded."

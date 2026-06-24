@@ -205,6 +205,48 @@ public sealed class SilkNetWpfInputServiceTests
     }
 
     [Fact]
+    public void AttachSubscribesInitialDevicesEvenWhenConnectionFlagIsNotSet()
+    {
+        var mouse = new FakeMouse { Position = new Vector2(42, 24) };
+        var keyboard = new FakeKeyboard();
+        var context = new FakeInputContext();
+        context.AddInitialMouse(mouse, isConnected: false);
+        context.AddInitialKeyboard(keyboard, isConnected: false);
+        var service = new SilkNetWpfInputService();
+        var received = new List<WpfInputEventArgs>();
+        service.InputReceived += (_, e) => received.Add(e);
+
+        using var subscription = service.Attach(context);
+
+        keyboard.RaiseKeyDown(Key.ControlLeft, scanCode: 37);
+        keyboard.RaiseKeyDown(Key.R, scanCode: 15);
+        mouse.RaiseMouseDown(MouseButton.Left);
+
+        Assert.Collection(
+            received,
+            first =>
+            {
+                Assert.Equal(WpfInputEventKind.KeyDown, first.Kind);
+                Assert.Equal("LeftCtrl", first.Key);
+                Assert.Equal(WpfInputModifiers.Control, first.Modifiers);
+            },
+            second =>
+            {
+                Assert.Equal(WpfInputEventKind.KeyDown, second.Kind);
+                Assert.Equal("R", second.Key);
+                Assert.Equal(WpfInputModifiers.Control, second.Modifiers);
+            },
+            third =>
+            {
+                Assert.Equal(WpfInputEventKind.MouseDown, third.Kind);
+                Assert.Equal(WpfMouseButton.Left, third.Button);
+                Assert.Equal(42, third.X);
+                Assert.Equal(24, third.Y);
+                Assert.Equal(WpfInputModifiers.Control, third.Modifiers);
+            });
+    }
+
+    [Fact]
     public void AttachUsesCurrentMousePositionBeforeFirstMouseMove()
     {
         var mouse = new FakeMouse { Position = Vector2.Zero };
@@ -272,15 +314,15 @@ public sealed class SilkNetWpfInputServiceTests
 
         public bool IsDisposed { get; private set; }
 
-        public void AddInitialMouse(FakeMouse mouse)
+        public void AddInitialMouse(FakeMouse mouse, bool isConnected = true)
         {
-            mouse.IsConnected = true;
+            mouse.IsConnected = isConnected;
             _mice.Add(mouse);
         }
 
-        public void AddInitialKeyboard(FakeKeyboard keyboard)
+        public void AddInitialKeyboard(FakeKeyboard keyboard, bool isConnected = true)
         {
-            keyboard.IsConnected = true;
+            keyboard.IsConnected = isConnected;
             _keyboards.Add(keyboard);
         }
 

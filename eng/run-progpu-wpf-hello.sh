@@ -24,7 +24,9 @@ esac
 
 if [[ "${PROGPU_WPF_HELLO_REBUILD_PACKAGES:-0}" == "1" || ! -f "${sdk_package}" ]]; then
   echo "Building ProGPU WPF SDK packages before launching Hello app..."
-  "${repo_root}/eng/progpu-wpf-sdk-ci.sh"
+  PROGPU_WPF_HELLO_REBUILD_PACKAGES=0 \
+  PROGPU_WPF_MVP_REBUILD_PACKAGES=0 \
+    "${repo_root}/eng/progpu-wpf-sdk-ci.sh"
 fi
 
 rm -rf \
@@ -60,7 +62,11 @@ if [[ "${PROGPU_WPF_HELLO_LIVE_VALIDATE:-0}" == "1" ]]; then
   echo "Launching ProGPU WPF Hello apphost live geometry probe..."
   (
     cd "${hello_output}"
-    "./${apphost_name}" "${launch_args[@]}"
+    if (("${#launch_args[@]}" > 0)); then
+      "./${apphost_name}" "${launch_args[@]}"
+    else
+      "./${apphost_name}"
+    fi
   ) >"${live_log}" 2>&1 &
   apphost_pid="$!"
 
@@ -141,5 +147,9 @@ fi
 echo "Launching ProGPU WPF Hello apphost..."
 (
   cd "${hello_output}"
-  "./${apphost_name}" "${launch_args[@]}"
+  if (("${#launch_args[@]}" > 0)); then
+    "./${apphost_name}" "${launch_args[@]}"
+  else
+    "./${apphost_name}"
+  fi
 )

@@ -24,7 +24,9 @@ esac
 
 if [[ "${PROGPU_WPF_MVP_REBUILD_PACKAGES:-0}" == "1" || ! -f "${sdk_package}" ]]; then
   echo "Building ProGPU WPF SDK packages before launching MVP app..."
-  "${repo_root}/eng/progpu-wpf-sdk-ci.sh"
+  PROGPU_WPF_HELLO_REBUILD_PACKAGES=0 \
+  PROGPU_WPF_MVP_REBUILD_PACKAGES=0 \
+    "${repo_root}/eng/progpu-wpf-sdk-ci.sh"
 fi
 
 rm -rf \

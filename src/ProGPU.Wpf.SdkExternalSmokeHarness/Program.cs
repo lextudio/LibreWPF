@@ -11,6 +11,8 @@ using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using System.Security;
 using System.Security.Cryptography;
+using System.Text;
+using System.Threading;
 
 internal static class Program
 {
@@ -176,6 +178,18 @@ internal static class Program
                 applicationAppHostOutput,
                 "External SDK Application.Run validation succeeded.",
                 "external SDK apphost Application.Run validation output");
+            string applicationLiveGeometryOutput = RunAppHostLiveSwapChainProbe(
+                Path.Combine(outputRoot, GetAppHostFileName(AppOutputAssemblyName)),
+                outputRoot,
+                expectedLogicalWidth: 320,
+                expectedLogicalHeight: 200,
+                "external SDK apphost live geometry",
+                "external-startup-alpha",
+                "external startup beta");
+            AssertContains(
+                applicationLiveGeometryOutput,
+                "External SDK apphost live geometry validation succeeded:",
+                "external SDK apphost live geometry validation output");
             string defaultItemsRunOutput = RunProcess(
                 dotnetPath,
                 defaultItemsOutputRoot,
@@ -13288,6 +13302,167 @@ internal static class Program
         }
 
         return output;
+    }
+
+    private static string RunAppHostLiveSwapChainProbe(
+        string fileName,
+        string workingDirectory,
+        uint expectedLogicalWidth,
+        uint expectedLogicalHeight,
+        string description,
+        params string[] arguments)
+    {
+        var startInfo = new ProcessStartInfo(fileName)
+        {
+            WorkingDirectory = workingDirectory,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false
+        };
+        startInfo.Environment["DOTNET_ROLL_FORWARD"] = "Major";
+
+        foreach (string argument in arguments)
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
+
+        var output = new StringBuilder();
+        object outputGate = new();
+        using var process = new Process
+        {
+            StartInfo = startInfo,
+            EnableRaisingEvents = true
+        };
+        process.OutputDataReceived += (_, e) => AppendProcessOutput(output, outputGate, e.Data);
+        process.ErrorDataReceived += (_, e) => AppendProcessOutput(output, outputGate, e.Data);
+
+        if (!process.Start())
+        {
+            throw new InvalidOperationException($"Failed to start '{fileName}' for {description}.");
+        }
+
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+
+        try
+        {
+            var timeout = TimeSpan.FromSeconds(15);
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            while (stopwatch.Elapsed < timeout)
+            {
+                string snapshot;
+                lock (outputGate)
+                {
+                    snapshot = output.ToString();
+                }
+
+                if (TryReadSwapChainSize(snapshot, out uint pixelWidth, out uint pixelHeight))
+                {
+                    if (pixelWidth < expectedLogicalWidth || pixelHeight < expectedLogicalHeight)
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected {description} pixels to cover {expectedLogicalWidth}x{expectedLogicalHeight} logical content, but got {pixelWidth}x{pixelHeight}.{Environment.NewLine}{snapshot}");
+                    }
+
+                    StopLiveProbeProcess(process);
+                    return $"External SDK apphost live geometry validation succeeded: logical {expectedLogicalWidth}x{expectedLogicalHeight}, pixels {pixelWidth}x{pixelHeight}.";
+                }
+
+                if (process.HasExited)
+                {
+                    string exitOutput;
+                    lock (outputGate)
+                    {
+                        exitOutput = output.ToString();
+                    }
+
+                    throw new InvalidOperationException(
+                        $"Expected {description} to configure a ProGPU swapchain before exiting with code {process.ExitCode}.{Environment.NewLine}{exitOutput}");
+                }
+
+                Thread.Sleep(50);
+            }
+
+            string timedOutOutput;
+            lock (outputGate)
+            {
+                timedOutOutput = output.ToString();
+            }
+
+            throw new InvalidOperationException(
+                $"Timed out waiting for {description} to configure a ProGPU swapchain.{Environment.NewLine}{timedOutOutput}");
+        }
+        finally
+        {
+            StopLiveProbeProcess(process);
+        }
+    }
+
+    private static void AppendProcessOutput(StringBuilder output, object outputGate, string? data)
+    {
+        if (data == null)
+        {
+            return;
+        }
+
+        lock (outputGate)
+        {
+            output.AppendLine(data);
+        }
+    }
+
+    private static bool TryReadSwapChainSize(string output, out uint width, out uint height)
+    {
+        const string marker = "Configuring SwapChain:";
+        width = 0;
+        height = 0;
+
+        int markerIndex = output.LastIndexOf(marker, StringComparison.Ordinal);
+        if (markerIndex < 0)
+        {
+            return false;
+        }
+
+        int sizeStart = markerIndex + marker.Length;
+        while (sizeStart < output.Length && char.IsWhiteSpace(output[sizeStart]))
+        {
+            sizeStart++;
+        }
+
+        int xIndex = output.IndexOf('x', sizeStart);
+        if (xIndex < 0)
+        {
+            return false;
+        }
+
+        int sizeEnd = xIndex + 1;
+        while (sizeEnd < output.Length && char.IsDigit(output[sizeEnd]))
+        {
+            sizeEnd++;
+        }
+
+        return uint.TryParse(output.AsSpan(sizeStart, xIndex - sizeStart), NumberStyles.None, CultureInfo.InvariantCulture, out width) &&
+            uint.TryParse(output.AsSpan(xIndex + 1, sizeEnd - xIndex - 1), NumberStyles.None, CultureInfo.InvariantCulture, out height) &&
+            width > 0 &&
+            height > 0;
+    }
+
+    private static void StopLiveProbeProcess(Process process)
+    {
+        if (process.HasExited)
+        {
+            return;
+        }
+
+        try
+        {
+            process.Kill(entireProcessTree: true);
+        }
+        catch (InvalidOperationException)
+        {
+        }
+
+        process.WaitForExit(5000);
     }
 
     private static string[] GetNativeAssetCandidates(string assetName)

@@ -8058,6 +8058,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AppOutputAssemblyName + \".dll\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetAppHostFileName(AppOutputAssemblyName)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"external SDK apphost\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RunAppHostLiveSwapChainProbe(", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("expectedLogicalWidth: 320", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("expectedLogicalHeight: 200", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"external SDK apphost live geometry\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("assembly=ExternalSdkControls", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("LibraryOutputAssemblyName + \".dll\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -8092,6 +8096,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK application startup state property", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("External SDK Application.Run validation succeeded.", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK apphost Application.Run validation output", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("External SDK apphost live geometry validation succeeded:", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Configuring SwapChain:", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertContains(locText, \"ExternalLocalizationRoot\",", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertContains(locText, \"ExternalLocalizationText\",", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateSystemCommands(window)", externalSdkHarnessProgram, StringComparison.Ordinal);

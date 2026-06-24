@@ -12553,6 +12553,18 @@ internal static class Program
                                 Property="Padding"
                                 Value="3" />
                         </Style>
+                        <DataTemplate x:Key="DefaultItemsSelectedAlphaTemplate">
+                            <TextBlock
+                                x:Name="DefaultItemsSelectedAlphaTemplateText"
+                                Text="{Binding Name, StringFormat=Selected Alpha: {0}}" />
+                        </DataTemplate>
+                        <DataTemplate x:Key="DefaultItemsSelectedBetaTemplate">
+                            <TextBlock
+                                x:Name="DefaultItemsSelectedBetaTemplateText"
+                                Text="{Binding Name, StringFormat=Selected Beta: {0}}" />
+                        </DataTemplate>
+                        <local:DefaultItemsNameTemplateSelector
+                            x:Key="DefaultItemsNameTemplateSelector" />
                         <DataTemplate DataType="{x:Type local:DefaultItemsItem}">
                             <TextBlock
                                 x:Name="DefaultItemsImplicitTemplateText"
@@ -12696,6 +12708,10 @@ internal static class Program
                     <TextBlock
                         x:Name="DefaultItemsConvertedSelectionText"
                         Text="{Binding SelectedItem, Converter={StaticResource DefaultItemsItemNameConverter}}" />
+                    <ContentControl
+                        x:Name="DefaultItemsSelectedTemplateControl"
+                        Content="{Binding SelectedItem}"
+                        ContentTemplateSelector="{StaticResource DefaultItemsNameTemplateSelector}" />
                     <TextBlock x:Name="DefaultItemsMultiBindingText">
                         <TextBlock.Text>
                             <MultiBinding Converter="{StaticResource DefaultItemsStatusSelectionConverter}">
@@ -12823,6 +12839,31 @@ internal static class Program
                     var results = new object[targetTypes.Length];
                     Array.Fill(results, Binding.DoNothing);
                     return results;
+                }
+            }
+
+            public sealed class DefaultItemsNameTemplateSelector : DataTemplateSelector
+            {
+                public override DataTemplate SelectTemplate(object item, DependencyObject container)
+                {
+                    if (item is DefaultItemsItem selectedItem && container is FrameworkElement element)
+                    {
+                        string resourceKey = selectedItem.Name.Contains("beta", StringComparison.OrdinalIgnoreCase)
+                            ? "DefaultItemsSelectedBetaTemplate"
+                            : "DefaultItemsSelectedAlphaTemplate";
+                        return RequireType<DataTemplate>(
+                            element.FindResource(resourceKey),
+                            $"default-item template selector resource {resourceKey}");
+                    }
+
+                    return base.SelectTemplate(item, container);
+                }
+
+                private static T RequireType<T>(object value, string description)
+                {
+                    return value is T typed
+                        ? typed
+                        : throw new InvalidOperationException($"Expected {description} to be {typeof(T).FullName}.");
                 }
             }
 
@@ -13093,6 +13134,24 @@ internal static class Program
                         DefaultItemsConvertedSelectionText.Text == "Selected: Default item alpha",
                         "Expected default-item converter binding to read the selected item.");
                     Require(
+                        DefaultItemsSelectedTemplateControl.ContentTemplateSelector is DefaultItemsNameTemplateSelector,
+                        "Expected default-item DataTemplateSelector metadata.");
+                    DefaultItemsSelectedTemplateControl.ApplyTemplate();
+                    DefaultItemsSelectedTemplateControl.UpdateLayout();
+                    PumpDispatcherUntil(
+                        () => FindVisualDescendantByName<TextBlock>(
+                            DefaultItemsSelectedTemplateControl,
+                            "DefaultItemsSelectedAlphaTemplateText") is not null,
+                        "default-item DataTemplateSelector alpha visual tree");
+                    var selectedAlphaTemplateText = RequireType<TextBlock>(
+                        FindVisualDescendantByName<TextBlock>(
+                            DefaultItemsSelectedTemplateControl,
+                            "DefaultItemsSelectedAlphaTemplateText"),
+                        "default-item DataTemplateSelector alpha text");
+                    Require(
+                        selectedAlphaTemplateText.Text == "Selected Alpha: Default item alpha",
+                        "Expected default-item DataTemplateSelector alpha template binding.");
+                    Require(
                         DefaultItemsMultiBindingText.Text == "Composite: Default item binding ready / Default item alpha",
                         "Expected default-item MultiBinding converter to read status and selection.");
                     Require(
@@ -13202,6 +13261,20 @@ internal static class Program
                     Require(
                         DefaultItemsConvertedSelectionText.Text == "Selected: Default item beta",
                         "Expected default-item converter binding to observe view-model selection.");
+                    DefaultItemsSelectedTemplateControl.UpdateLayout();
+                    PumpDispatcherUntil(
+                        () => FindVisualDescendantByName<TextBlock>(
+                            DefaultItemsSelectedTemplateControl,
+                            "DefaultItemsSelectedBetaTemplateText") is not null,
+                        "default-item DataTemplateSelector beta visual tree");
+                    var selectedBetaTemplateText = RequireType<TextBlock>(
+                        FindVisualDescendantByName<TextBlock>(
+                            DefaultItemsSelectedTemplateControl,
+                            "DefaultItemsSelectedBetaTemplateText"),
+                        "default-item DataTemplateSelector beta text");
+                    Require(
+                        selectedBetaTemplateText.Text == "Selected Beta: Default item beta",
+                        "Expected default-item DataTemplateSelector beta template binding.");
                     Require(
                         DefaultItemsMultiBindingText.Text == "Composite: Default item text box source / Default item beta",
                         "Expected default-item MultiBinding converter to observe view-model selection.");

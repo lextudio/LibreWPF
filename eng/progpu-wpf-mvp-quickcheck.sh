@@ -10,10 +10,38 @@ fi
 export DOTNET_ROLL_FORWARD="${DOTNET_ROLL_FORWARD:-Major}"
 export DOTNET_ROLL_FORWARD_TO_PRERELEASE="${DOTNET_ROLL_FORWARD_TO_PRERELEASE:-1}"
 
+apphost_name() {
+  local assembly_name="$1"
+  case "$(uname -s 2>/dev/null || echo unknown)" in
+    MINGW*|MSYS*|CYGWIN*)
+      echo "${assembly_name}.exe"
+      ;;
+    *)
+      echo "${assembly_name}"
+      ;;
+  esac
+}
+
 echo "Running external no-source-change ProGPU WPF SDK smoke..."
 "${dotnet}" run \
   --project "${repo_root}/src/ProGPU.Wpf.SdkExternalSmokeHarness/ProGPU.Wpf.SdkExternalSmokeHarness.csproj" \
   -v:minimal
+
+echo "Building SDK-switch smoke app..."
+"${dotnet}" build "${repo_root}/src/ProGPU.Wpf.SdkSwitchSmoke/ProGPU.Wpf.SdkSwitchSmoke.csproj" -v:minimal
+
+sdk_switch_output="${repo_root}/artifacts/bin/ProGPU.Wpf.SdkSwitchSmoke/Debug/net11.0-windows"
+sdk_switch_apphost_name="$(apphost_name "ProGPU.Wpf.SdkSwitchSmoke")"
+if [[ ! -x "${sdk_switch_output}/${sdk_switch_apphost_name}" ]]; then
+  echo "Expected SDK-switch smoke apphost at ${sdk_switch_output}/${sdk_switch_apphost_name}" >&2
+  exit 1
+fi
+
+echo "Running SDK-switch smoke apphost live geometry probe..."
+(
+  cd "${sdk_switch_output}"
+  PROGPU_WPF_SDK_SWITCH_LIVE_VALIDATE=1 "./${sdk_switch_apphost_name}"
+)
 
 echo "Running Hello SDK apphost Application.Run self-test..."
 PROGPU_WPF_HELLO_RUN_VALIDATE=1 "${repo_root}/eng/run-progpu-wpf-hello.sh"

@@ -7153,6 +7153,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"./${apphost_name}\"", mvpRunScript, StringComparison.Ordinal);
         Assert.DoesNotContain("run --project \"${mvp_project}\"", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Wpf.SdkExternalSmokeHarness.csproj", mvpQuickCheckScript, StringComparison.Ordinal);
+        Assert.Contains("apphost_name()", mvpQuickCheckScript, StringComparison.Ordinal);
+        Assert.Contains("Building SDK-switch smoke app", mvpQuickCheckScript, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.SdkSwitchSmoke.csproj", mvpQuickCheckScript, StringComparison.Ordinal);
+        Assert.Contains("sdk_switch_output=\"${repo_root}/artifacts/bin/ProGPU.Wpf.SdkSwitchSmoke/Debug/net11.0-windows\"", mvpQuickCheckScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_SDK_SWITCH_LIVE_VALIDATE=1", mvpQuickCheckScript, StringComparison.Ordinal);
+        Assert.Contains("Running SDK-switch smoke apphost live geometry probe", mvpQuickCheckScript, StringComparison.Ordinal);
         Assert.Contains("Running Hello SDK apphost Application.Run self-test", mvpQuickCheckScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_HELLO_RUN_VALIDATE=1", mvpQuickCheckScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_HELLO_LIVE_VALIDATE=1", mvpQuickCheckScript, StringComparison.Ordinal);

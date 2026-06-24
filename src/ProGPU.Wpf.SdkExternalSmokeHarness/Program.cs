@@ -175,6 +175,17 @@ internal static class Program
                 defaultItemsRunOutput,
                 "External SDK default-item Application.Run validation succeeded.",
                 "external SDK default-item Application.Run validation output");
+            string defaultItemsAppHostOutput = RunProcess(
+                Path.Combine(defaultItemsOutputRoot, GetAppHostFileName(DefaultItemsAssemblyName)),
+                defaultItemsOutputRoot,
+                new Dictionary<string, string>
+                {
+                    ["PROGPU_WPF_EXTERNAL_DEFAULT_RUN_VALIDATE"] = "1"
+                });
+            AssertContains(
+                defaultItemsAppHostOutput,
+                "External SDK default-item Application.Run validation succeeded.",
+                "external SDK default-item apphost validation output");
 
             Console.WriteLine("ProGPU WPF external SDK smoke succeeded.");
             return 0;
@@ -12467,6 +12478,9 @@ internal static class Program
     private static void ValidateExternalDefaultItemsOutput(string outputRoot)
     {
         RequireFile(Path.Combine(outputRoot, DefaultItemsAssemblyName + ".dll"), "external SDK default-item app assembly");
+        RequireFile(
+            Path.Combine(outputRoot, GetAppHostFileName(DefaultItemsAssemblyName)),
+            "external SDK default-item apphost");
 
         foreach (string assemblyName in s_requiredWpfRuntimeAssemblies
                      .Concat(s_requiredProGpuRuntimeAssemblies)
@@ -12485,6 +12499,13 @@ internal static class Program
         AssertContains(depsJson, "ProGPU.Compute", "external SDK default-item ProGPU compute package dependency");
         AssertContains(depsJson, "ProGPU.Transpiler", "external SDK default-item ProGPU transpiler package dependency");
         AssertContains(depsJson, "StbImageSharp", "external SDK default-item StbImageSharp package dependency");
+    }
+
+    private static string GetAppHostFileName(string assemblyName)
+    {
+        return OperatingSystem.IsWindows()
+            ? assemblyName + ".exe"
+            : assemblyName;
     }
 
     private static void ValidateOutputAssemblyMatchesLocalPackage(

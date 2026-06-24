@@ -40,8 +40,8 @@ public sealed class SilkNetWpfInputService : IWpfInputService
                 return;
             }
 
-            Vector2 lastPosition = mouse.Position;
-            bool hasLastPosition = IsFinite(lastPosition);
+            Vector2 lastPosition = default;
+            bool hasLastPosition = false;
             Action<SilkInput.IMouse, Vector2> mouseMove = (_, position) =>
             {
                 lastPosition = position;

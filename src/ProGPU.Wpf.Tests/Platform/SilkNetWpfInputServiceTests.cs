@@ -205,6 +205,27 @@ public sealed class SilkNetWpfInputServiceTests
     }
 
     [Fact]
+    public void AttachUsesCurrentMousePositionBeforeFirstMouseMove()
+    {
+        var mouse = new FakeMouse { Position = Vector2.Zero };
+        var context = new FakeInputContext();
+        context.AddInitialMouse(mouse);
+        var service = new SilkNetWpfInputService();
+        var received = new List<WpfInputEventArgs>();
+        service.InputReceived += (_, e) => received.Add(e);
+
+        using var subscription = service.Attach(context);
+
+        mouse.Position = new Vector2(120, 84);
+        mouse.RaiseMouseDown(MouseButton.Left);
+
+        var input = Assert.Single(received);
+        Assert.Equal(WpfInputEventKind.MouseDown, input.Kind);
+        Assert.Equal(120, input.X);
+        Assert.Equal(84, input.Y);
+    }
+
+    [Fact]
     public void AttachStopsForwardingDisconnectedDevices()
     {
         var mouse = new FakeMouse();

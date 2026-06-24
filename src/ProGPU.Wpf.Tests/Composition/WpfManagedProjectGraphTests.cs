@@ -8148,6 +8148,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DefaultItemsPropertyTriggerStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Property=\"IsEnabled\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsPropertyTriggeredText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsBaseTextStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsBasedOnTextStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("BasedOn=\"{StaticResource DefaultItemsBaseTextStyle}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item BasedOn style base setter", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsTemplatedButtonStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ControlTemplate TargetType=\"{x:Type Button}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsTemplateButtonRoot", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -8182,6 +8186,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Window.CommandBindings", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Window.InputBindings", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsCommandButton", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsEventSetterButtonStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<EventSetter", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OnDefaultItemsEventSetterClick", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item EventSetter routed handler execution", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RoutedUICommand", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsCommandCanExecute", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item routed command execution", externalSdkHarnessProgram, StringComparison.Ordinal);

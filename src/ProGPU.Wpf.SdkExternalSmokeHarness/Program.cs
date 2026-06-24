@@ -12513,6 +12513,24 @@ internal static class Program
                             </Style.Triggers>
                         </Style>
                         <Style
+                            x:Key="DefaultItemsBaseTextStyle"
+                            TargetType="{x:Type TextBlock}">
+                            <Setter
+                                Property="Foreground"
+                                Value="#FF225577" />
+                            <Setter
+                                Property="Tag"
+                                Value="default-item BasedOn base setter" />
+                        </Style>
+                        <Style
+                            x:Key="DefaultItemsBasedOnTextStyle"
+                            TargetType="{x:Type TextBlock}"
+                            BasedOn="{StaticResource DefaultItemsBaseTextStyle}">
+                            <Setter
+                                Property="Text"
+                                Value="Default item based-on text" />
+                        </Style>
+                        <Style
                             x:Key="DefaultItemsTemplatedButtonStyle"
                             TargetType="{x:Type Button}">
                             <Setter
@@ -12552,6 +12570,13 @@ internal static class Program
                             <Setter
                                 Property="Padding"
                                 Value="3" />
+                        </Style>
+                        <Style
+                            x:Key="DefaultItemsEventSetterButtonStyle"
+                            TargetType="{x:Type Button}">
+                            <EventSetter
+                                Event="Click"
+                                Handler="OnDefaultItemsEventSetterClick" />
                         </Style>
                         <DataTemplate x:Key="DefaultItemsSelectedAlphaTemplate">
                             <TextBlock
@@ -12690,6 +12715,9 @@ internal static class Program
                         x:Name="DefaultItemsPropertyTriggeredText"
                         Style="{StaticResource DefaultItemsPropertyTriggerStyle}"
                         Text="Default item property trigger text" />
+                    <TextBlock
+                        x:Name="DefaultItemsBasedOnText"
+                        Style="{StaticResource DefaultItemsBasedOnTextStyle}" />
                     <Button
                         x:Name="DefaultItemsTemplatedButton"
                         Content="Default item templated button"
@@ -12725,6 +12753,10 @@ internal static class Program
                         Command="{x:Static local:MainWindow.DefaultItemsCommand}"
                         CommandParameter="button-command"
                         Content="Default item command" />
+                    <Button
+                        x:Name="DefaultItemsEventSetterButton"
+                        Content="Default item event setter"
+                        Style="{StaticResource DefaultItemsEventSetterButtonStyle}" />
                     <Button
                         x:Name="DefaultItemsButton"
                         Click="OnDefaultItemsButtonClick"
@@ -12890,6 +12922,8 @@ internal static class Program
                 public int ButtonClickCount { get; private set; }
 
                 public int CommandExecutionCount { get; private set; }
+
+                public int EventSetterClickCount { get; private set; }
 
                 public string LastCommandParameter { get; private set; } = string.Empty;
 
@@ -13107,6 +13141,21 @@ internal static class Program
                             "default-item property trigger inactive",
                             StringComparison.Ordinal),
                         "Expected default-item property Trigger to start inactive.");
+                    Require(
+                        DefaultItemsBasedOnText.Text == "Default item based-on text",
+                        "Expected default-item BasedOn style derived setter.");
+                    Require(
+                        string.Equals(
+                            DefaultItemsBasedOnText.Tag as string,
+                            "default-item BasedOn base setter",
+                            StringComparison.Ordinal),
+                        "Expected default-item BasedOn style base setter.");
+                    var basedOnForeground = RequireType<SolidColorBrush>(
+                        DefaultItemsBasedOnText.Foreground,
+                        "default-item BasedOn style foreground");
+                    Require(
+                        basedOnForeground.Color == Color.FromRgb(0x22, 0x55, 0x77),
+                        "Expected default-item BasedOn style inherited brush.");
                     DefaultItemsTemplatedButton.ApplyTemplate();
                     var templatedButtonRoot = RequireType<Border>(
                         DefaultItemsTemplatedButton.Template.FindName(
@@ -13384,6 +13433,14 @@ internal static class Program
                         LastCommandParameter == "button-command",
                         "Expected default-item routed command parameter.");
 
+                    DefaultItemsEventSetterButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Require(
+                        EventSetterClickCount == 1,
+                        "Expected default-item EventSetter routed handler execution.");
+                    Require(
+                        string.Equals(DefaultItemsEventSetterButton.Tag as string, "default-item event setter clicked", StringComparison.Ordinal),
+                        "Expected default-item EventSetter handler state.");
+
                     DefaultItemsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     Require(ButtonClickCount == 1, "Expected default-item compiled Click handler.");
                     Require(
@@ -13413,6 +13470,12 @@ internal static class Program
                 {
                     ButtonClickCount++;
                     DefaultItemsButton.Tag = "default-item clicked";
+                }
+
+                private void OnDefaultItemsEventSetterClick(object sender, RoutedEventArgs e)
+                {
+                    EventSetterClickCount++;
+                    DefaultItemsEventSetterButton.Tag = "default-item event setter clicked";
                 }
 
                 private static void DrainDispatcher()

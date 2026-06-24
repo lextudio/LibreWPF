@@ -12634,6 +12634,13 @@ internal static class Program
                                 Tag="default-item implicit template"
                                 Text="{Binding Name, StringFormat=Template: {0}}" />
                         </DataTemplate>
+                        <HierarchicalDataTemplate
+                            x:Key="DefaultItemsNodeTemplate"
+                            ItemsSource="{Binding Children}">
+                            <TextBlock
+                                x:Name="DefaultItemsNodeTemplateText"
+                                Text="{Binding Name, StringFormat=Node: {0}}" />
+                        </HierarchicalDataTemplate>
                     </ResourceDictionary>
                 </Window.Resources>
                 <Window.CommandBindings>
@@ -12821,6 +12828,10 @@ internal static class Program
                             </CompositeCollection>
                         </ListBox.ItemsSource>
                     </ListBox>
+                    <TreeView
+                        x:Name="DefaultItemsTreeView"
+                        ItemTemplate="{StaticResource DefaultItemsNodeTemplate}"
+                        ItemsSource="{Binding Nodes}" />
                     <ComboBox
                         x:Name="DefaultItemsComboBox"
                         DisplayMemberPath="Name"
@@ -12885,6 +12896,14 @@ internal static class Program
                 public string Kind { get; set; } = string.Empty;
             }
 
+            public sealed class DefaultItemsNode
+            {
+                public string Name { get; set; } = string.Empty;
+
+                public ObservableCollection<DefaultItemsNode> Children { get; } =
+                    new ObservableCollection<DefaultItemsNode>();
+            }
+
             public sealed class DefaultItemsProviderSource
             {
                 public string CreateText()
@@ -12923,6 +12942,19 @@ internal static class Program
                         {
                             Name = "Default item beta",
                             Kind = "Data",
+                        },
+                    };
+
+                public ObservableCollection<DefaultItemsNode> Nodes { get; } =
+                    new ObservableCollection<DefaultItemsNode>
+                    {
+                        new DefaultItemsNode
+                        {
+                            Name = "Default item root",
+                            Children =
+                            {
+                                new DefaultItemsNode { Name = "Default item child" },
+                            },
                         },
                     };
 
@@ -13627,6 +13659,52 @@ internal static class Program
                     Require(
                         ReferenceEquals(DefaultItemsCompositeListBox.Items[4], compositeInlineItem),
                         "Expected default-item CompositeCollection collection-change inline item.");
+                    var nodeTemplate = RequireType<HierarchicalDataTemplate>(
+                        FindResource("DefaultItemsNodeTemplate"),
+                        "default-item HierarchicalDataTemplate");
+                    var nodeItemsSource = RequireType<Binding>(
+                        nodeTemplate.ItemsSource,
+                        "default-item HierarchicalDataTemplate ItemsSource binding");
+                    Require(
+                        nodeItemsSource.Path.Path == "Children",
+                        "Expected default-item HierarchicalDataTemplate ItemsSource path.");
+                    var nodeTemplateRoot = RequireType<TextBlock>(
+                        nodeTemplate.LoadContent(),
+                        "default-item HierarchicalDataTemplate root");
+                    nodeTemplateRoot.DataContext = ViewModel.Nodes[0];
+                    DrainDispatcher();
+                    Require(
+                        nodeTemplateRoot.Text == "Node: Default item root",
+                        "Expected default-item HierarchicalDataTemplate binding text.");
+                    Require(
+                        ReferenceEquals(DefaultItemsTreeView.ItemTemplate, nodeTemplate),
+                        "Expected default-item TreeView item template.");
+                    Require(
+                        ReferenceEquals(DefaultItemsTreeView.ItemsSource, ViewModel.Nodes),
+                        "Expected default-item TreeView ItemsSource.");
+                    Require(
+                        DefaultItemsTreeView.Items.Count == 1,
+                        "Expected default-item TreeView root item count.");
+                    DefaultItemsTreeView.ApplyTemplate();
+                    DefaultItemsTreeView.UpdateLayout();
+                    PumpDispatcherUntil(
+                        () => DefaultItemsTreeView.ItemContainerGenerator.ContainerFromItem(ViewModel.Nodes[0]) is TreeViewItem,
+                        "default-item generated TreeView root container");
+                    var rootTreeItem = RequireType<TreeViewItem>(
+                        DefaultItemsTreeView.ItemContainerGenerator.ContainerFromItem(ViewModel.Nodes[0]),
+                        "default-item generated TreeView root container");
+                    Require(
+                        ReferenceEquals(rootTreeItem.Header, ViewModel.Nodes[0]),
+                        "Expected default-item TreeView root header.");
+                    rootTreeItem.IsExpanded = true;
+                    rootTreeItem.UpdateLayout();
+                    DrainDispatcher();
+                    Require(
+                        rootTreeItem.Items.Count == 1,
+                        "Expected default-item TreeView child item count.");
+                    Require(
+                        ReferenceEquals(rootTreeItem.Items[0], ViewModel.Nodes[0].Children[0]),
+                        "Expected default-item TreeView child item.");
                     Require(
                         DefaultItemsComboBox.Items.Count == 2,
                         "Expected default-item selector binding item count.");

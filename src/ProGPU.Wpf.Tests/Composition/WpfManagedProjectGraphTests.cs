@@ -8126,6 +8126,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DefaultItemsImplicitTemplateText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item implicit DataTemplate visual tree", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item implicit DataTemplate binding text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsNodeTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<HierarchicalDataTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding Children}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsTreeView", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsNode", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item HierarchicalDataTemplate binding text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item generated TreeView root container", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item TreeView child item", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsObjectDataProvider", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsProviderSource", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsObjectProviderText", externalSdkHarnessProgram, StringComparison.Ordinal);

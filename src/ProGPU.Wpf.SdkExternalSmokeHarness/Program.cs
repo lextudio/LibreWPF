@@ -12809,6 +12809,15 @@ internal static class Program
                     Require(
                         foreground.Color == Color.FromRgb(0x33, 0x55, 0x77),
                         "Expected default-item DynamicResource brush color.");
+                    Application.Current.Resources["DefaultItemsBrush"] =
+                        new SolidColorBrush(Color.FromRgb(0x88, 0x22, 0x11));
+                    DrainDispatcher();
+                    var updatedForeground = RequireType<SolidColorBrush>(
+                        DefaultItemsTitleText.Foreground,
+                        "default-item updated DynamicResource brush");
+                    Require(
+                        updatedForeground.Color == Color.FromRgb(0x88, 0x22, 0x11),
+                        "Expected default-item DynamicResource brush invalidation.");
                     Require(
                         DefaultItemsAppDictionaryText.Text == "Default item app dictionary text",
                         "Expected default-item app resource dictionary text.");
@@ -12818,6 +12827,15 @@ internal static class Program
                     Require(
                         appDictionaryForeground.Color == Color.FromRgb(0x44, 0x77, 0x99),
                         "Expected default-item app resource dictionary brush color.");
+                    Application.Current.Resources["DefaultItemsAppDictionaryBrush"] =
+                        new SolidColorBrush(Color.FromRgb(0x22, 0x88, 0x44));
+                    DrainDispatcher();
+                    var updatedAppDictionaryForeground = RequireType<SolidColorBrush>(
+                        DefaultItemsAppDictionaryText.Foreground,
+                        "default-item updated app resource dictionary brush");
+                    Require(
+                        updatedAppDictionaryForeground.Color == Color.FromRgb(0x22, 0x88, 0x44),
+                        "Expected default-item app DynamicResource brush invalidation.");
                     Require(
                         DefaultItemsLibraryResourceText.Text == "Default item library resource text",
                         "Expected default-item referenced library component resource text.");

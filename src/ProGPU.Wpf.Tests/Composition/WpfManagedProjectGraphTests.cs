@@ -8133,6 +8133,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<Binding.ValidationRules>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("UpdateSourceTrigger=PropertyChanged", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsFormattedStatusText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsFallbackStatusText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsTargetNullStatusText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FallbackValue=Default item fallback value", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("TargetNullValue=Default item target-null value", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item Binding TargetNullValue to clear", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsPriorityStatusText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<PriorityBinding>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item PriorityBinding fallback", externalSdkHarnessProgram, StringComparison.Ordinal);

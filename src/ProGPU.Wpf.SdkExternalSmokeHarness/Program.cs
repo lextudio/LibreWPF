@@ -12707,6 +12707,12 @@ internal static class Program
                     <TextBlock
                         x:Name="DefaultItemsFormattedStatusText"
                         Text="{Binding Status, StringFormat=Formatted: {0}}" />
+                    <TextBlock
+                        x:Name="DefaultItemsFallbackStatusText"
+                        Text="{Binding MissingFallbackStatus, FallbackValue=Default item fallback value}" />
+                    <TextBlock
+                        x:Name="DefaultItemsTargetNullStatusText"
+                        Text="{Binding OptionalStatus, TargetNullValue=Default item target-null value}" />
                     <TextBlock x:Name="DefaultItemsPriorityStatusText">
                         <TextBlock.Text>
                             <PriorityBinding>
@@ -12813,6 +12819,7 @@ internal static class Program
             public sealed class DefaultItemsViewModel : INotifyPropertyChanged
             {
                 private string _status = "Default item binding ready";
+                private string? _optionalStatus;
                 private DefaultItemsItem _selectedItem;
 
                 public event PropertyChangedEventHandler PropertyChanged = delegate { };
@@ -12855,6 +12862,21 @@ internal static class Program
                         }
 
                         _selectedItem = value;
+                        OnPropertyChanged();
+                    }
+                }
+
+                public string? OptionalStatus
+                {
+                    get => _optionalStatus;
+                    set
+                    {
+                        if (string.Equals(_optionalStatus, value, StringComparison.Ordinal))
+                        {
+                            return;
+                        }
+
+                        _optionalStatus = value;
                         OnPropertyChanged();
                     }
                 }
@@ -13154,6 +13176,12 @@ internal static class Program
                         DefaultItemsFormattedStatusText.Text == "Formatted: Default item binding ready",
                         "Expected default-item formatted binding to read the view-model status.");
                     Require(
+                        DefaultItemsFallbackStatusText.Text == "Default item fallback value",
+                        "Expected default-item Binding FallbackValue.");
+                    Require(
+                        DefaultItemsTargetNullStatusText.Text == "Default item target-null value",
+                        "Expected default-item Binding TargetNullValue.");
+                    Require(
                         DefaultItemsPriorityStatusText.Text == "Priority: Default item binding ready",
                         "Expected default-item PriorityBinding fallback to read the view-model status.");
                     Require(
@@ -13268,6 +13296,11 @@ internal static class Program
                     Require(
                         DefaultItemsPriorityStatusText.Text == "Priority: Default item binding updated",
                         "Expected default-item PriorityBinding fallback to observe INotifyPropertyChanged.");
+                    ViewModel.OptionalStatus = "Default item optional status";
+                    DrainDispatcher();
+                    Require(
+                        DefaultItemsTargetNullStatusText.Text == "Default item optional status",
+                        "Expected default-item Binding TargetNullValue to clear after source update.");
                     Require(
                         string.Equals(DefaultItemsTriggeredStatusText.Tag as string, "default-item trigger inactive", StringComparison.Ordinal),
                         "Expected default-item DataTrigger to remain inactive for non-matching status.");

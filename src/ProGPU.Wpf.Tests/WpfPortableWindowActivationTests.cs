@@ -394,6 +394,26 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void HostInputActivatesWindowBeforeForwardingInput()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeActivatablePortableInputWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        var args = new WpfInputEventArgs(WpfInputEventKind.KeyDown, key: "A", scanCode: 42);
+        RaiseHostInputEvent(host, args);
+
+        Assert.True(window.IsActive);
+        Assert.Equal(1, window.ActivatedCount);
+        Assert.Equal(1, window.InputCount);
+    }
+
+    [Fact]
     public void HostInputForwardsPayloadToPortableInputFallbackHandler()
     {
         using var host = new ProGpuWpfWindowHost();
@@ -733,6 +753,31 @@ public sealed class WpfPortableWindowActivationTests
         {
             InputCount++;
             LastInputArgs = e;
+        }
+    }
+
+    private sealed class FakeActivatablePortableInputWindow
+    {
+        public bool IsActive { get; private set; }
+
+        public int ActivatedCount { get; private set; }
+
+        public int InputCount { get; private set; }
+
+        internal void HandleActivate(bool isActive)
+        {
+            if (!isActive || IsActive)
+            {
+                return;
+            }
+
+            IsActive = true;
+            ActivatedCount++;
+        }
+
+        private void OnPortableInput(WpfInputEventArgs e)
+        {
+            InputCount++;
         }
     }
 

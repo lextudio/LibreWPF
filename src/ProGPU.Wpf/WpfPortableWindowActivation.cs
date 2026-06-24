@@ -750,6 +750,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return;
         }
 
+        TrySetWindowActivationState(Window, isActive: true);
         TryForwardInputToWindow(Window, e);
     }
 

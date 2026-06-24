@@ -548,6 +548,40 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void PointerInputCoordinateExceedsLogicalClientKeepsSilkLogicalRetinaCoordinates()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 760,
+            clientHeight: 560,
+            framebufferSize: new Vector2D<int>(1520, 1120),
+            monitorDpiScale: 2.0);
+        var input = new WpfInputEventArgs(
+            WpfInputEventKind.MouseDown,
+            x: 500,
+            y: 300,
+            button: WpfMouseButton.Left);
+
+        Assert.False(ProGpuWpfWindowHost.PointerInputCoordinateExceedsLogicalClient(input, geometry));
+    }
+
+    [Fact]
+    public void PointerInputCoordinateExceedsLogicalClientDetectsFramebufferCoordinates()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 760,
+            clientHeight: 560,
+            framebufferSize: new Vector2D<int>(1520, 1120),
+            monitorDpiScale: 2.0);
+        var input = new WpfInputEventArgs(
+            WpfInputEventKind.MouseDown,
+            x: 1000,
+            y: 700,
+            button: WpfMouseButton.Left);
+
+        Assert.True(ProGpuWpfWindowHost.PointerInputCoordinateExceedsLogicalClient(input, geometry));
+    }
+
+    [Fact]
     public void NormalizeInputEventForRenderSurfaceGeometryLeavesKeyboardInputUnchanged()
     {
         var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
@@ -1294,6 +1328,7 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Equal(2.0, source.DpiScaleY);
         Assert.Equal(1, source.ClientSizeChangeCount);
         Assert.Equal(1, source.DeviceScaleChangeCount);
+        Assert.Equal(new[] { "DeviceScale", "ClientSize" }, source.CallLog);
         Assert.Equal(2, scheduler.RequestCount);
         Assert.True(host.ForceFullWpfReplayForNextFrame);
     }
@@ -1533,6 +1568,8 @@ public sealed class ProGpuWpfWindowHostTests
 
         public int ClientSizeChangeCount { get; private set; }
 
+        public System.Collections.Generic.List<string> CallLog { get; } = new();
+
         public bool IsDisposed { get; private set; }
 
         internal void SetDeviceScale(double dpiScaleX, double dpiScaleY)
@@ -1540,6 +1577,7 @@ public sealed class ProGpuWpfWindowHostTests
             DpiScaleX = dpiScaleX;
             DpiScaleY = dpiScaleY;
             DeviceScaleChangeCount++;
+            CallLog.Add("DeviceScale");
             RenderRequested?.Invoke(this, EventArgs.Empty);
         }
 
@@ -1548,6 +1586,7 @@ public sealed class ProGpuWpfWindowHostTests
             ClientWidth = width;
             ClientHeight = height;
             ClientSizeChangeCount++;
+            CallLog.Add("ClientSize");
             RenderRequested?.Invoke(this, EventArgs.Empty);
         }
 

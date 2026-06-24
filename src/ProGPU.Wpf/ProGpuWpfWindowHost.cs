@@ -908,8 +908,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     internal bool SynchronizePortablePresentationSourceGeometry(RenderSurfaceGeometry geometry)
     {
         LastResolvedRenderSurfaceGeometry = geometry;
-        bool clientSizeChanged = UpdatePortablePresentationSourceClientSize(geometry.LogicalWidth, geometry.LogicalHeight);
         bool dpiScaleChanged = UpdatePortablePresentationSourceDpiScale(geometry.DpiScaleX, geometry.DpiScaleY);
+        bool clientSizeChanged = UpdatePortablePresentationSourceClientSize(geometry.LogicalWidth, geometry.LogicalHeight);
         return clientSizeChanged || dpiScaleChanged;
     }
 
@@ -1552,7 +1552,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return NormalizeInputEventForRenderSurfaceGeometry(
             input,
             geometry,
-            NativeInputCoordinatesLookPhysical(_window.Size, geometry));
+            NativeInputCoordinatesLookPhysical(_window.Size, geometry, input));
     }
 
     internal static WpfInputEventArgs NormalizeInputEventForRenderSurfaceGeometry(
@@ -1588,8 +1588,15 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private static bool NativeInputCoordinatesLookPhysical(
         Vector2D<int> nativeSize,
-        RenderSurfaceGeometry geometry)
+        RenderSurfaceGeometry geometry,
+        WpfInputEventArgs input)
     {
+        if (!IsPointerInput(input.Kind) ||
+            !PointerInputCoordinateExceedsLogicalClient(input, geometry))
+        {
+            return false;
+        }
+
         return NativeInputDimensionLooksPhysical(
                 nativeSize.X,
                 geometry.LogicalWidth,
@@ -1598,6 +1605,29 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 nativeSize.Y,
                 geometry.LogicalHeight,
                 ResolveGeometryViewportDimension(geometry.ViewportHeight, geometry.PixelHeight));
+    }
+
+    internal static bool PointerInputCoordinateExceedsLogicalClient(
+        WpfInputEventArgs input,
+        RenderSurfaceGeometry geometry)
+    {
+        if (!IsPointerInput(input.Kind))
+        {
+            return false;
+        }
+
+        return PointerCoordinateExceedsLogicalClient(input.X, geometry.LogicalWidth) ||
+            PointerCoordinateExceedsLogicalClient(input.Y, geometry.LogicalHeight);
+    }
+
+    private static bool PointerCoordinateExceedsLogicalClient(double coordinate, uint logicalDimension)
+    {
+        if (!double.IsFinite(coordinate) || coordinate < 0.0 || logicalDimension == 0u)
+        {
+            return false;
+        }
+
+        return coordinate > logicalDimension + 1.0;
     }
 
     private static bool NativeInputDimensionLooksPhysical(

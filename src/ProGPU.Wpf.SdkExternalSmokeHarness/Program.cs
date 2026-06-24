@@ -264,6 +264,7 @@ internal static class Program
 
         AssertContains(portableProps, "<InternalMarkupCompilation Condition=\"'$(ProGpuWpfUseWpfMarkup)' == 'true' And '$(InternalMarkupCompilation)' == ''\">true</InternalMarkupCompilation>", "SDK markup compiler default");
         AssertContains(portableProps, "<AlwaysCompileMarkupFilesInSeparateDomain Condition=\"'$(ProGpuWpfUseWpfMarkup)' == 'true' And '$(AlwaysCompileMarkupFilesInSeparateDomain)' == ''\">false</AlwaysCompileMarkupFilesInSeparateDomain>", "SDK markup compiler appdomain default");
+        AssertContains(portableProps, "<EnableDefaultResourceItems Condition=\"'$(EnableDefaultResourceItems)' == ''\">true</EnableDefaultResourceItems>", "SDK default resource item switch");
         AssertContains(portableProps, "<ApplicationDefinition Include=\"App.xaml\"", "SDK default app XAML item");
         AssertContains(portableProps, "<Page Include=\"**/*.xaml\"", "SDK default page XAML item");
         AssertContains(portableProps, "<PackageReference Include=\"Silk.NET.WebGPU.Native.WGPU\" Version=\"$(ProGpuWpfSilkNetVersion)\" />", "SDK native WebGPU package reference");
@@ -271,6 +272,9 @@ internal static class Program
         AssertContains(portableProps, "<PackageReference Include=\"StbImageSharp\" Version=\"$(ProGpuWpfStbImageSharpVersion)\" />", "SDK StbImageSharp package reference");
 
         AssertContains(portableTargets, "<FrameworkReference Remove=\"Microsoft.WindowsDesktop.App.WPF\" />", "SDK WindowsDesktop framework suppression");
+        AssertContains(portableTargets, "<_ProGpuWpfDefaultResourceItem Include=\"**/*.bmp;**/*.cur;**/*.gif;**/*.ico;**/*.jpg;**/*.jpeg;**/*.png;**/*.tif;**/*.tiff;**/*.wdp;**/*.webp\"", "SDK default image resource item");
+        AssertContains(portableTargets, "<Resource Include=\"@(_ProGpuWpfDefaultResourceItem)\" />", "SDK default image resource include");
+        AssertContains(portableTargets, "<None Remove=\"@(_ProGpuWpfDefaultResourceItem)\" />", "SDK default image resource None removal");
         AssertContains(portableTargets, "<PackageReference Include=\"$(ProGpuWpfManagedPackageId)\" Version=\"$(ProGpuWpfManagedPackageVersion)\" />", "SDK managed WPF transport package reference");
         AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.Wpf\" Version=\"$(ProGpuWpfPackageVersion)\" />", "SDK ProGPU WPF package reference");
         AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.Compute\" Version=\"$(ProGpuPackageVersion)\" />", "SDK ProGPU compute package reference");
@@ -12359,6 +12363,10 @@ internal static class Program
               </appSettings>
             </configuration>
             """);
+        Directory.CreateDirectory(Path.Combine(appRoot, "Assets"));
+        File.WriteAllBytes(
+            Path.Combine(appRoot, "Assets", "DefaultItemsImage.png"),
+            Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAE0lEQVR4nGP4z8DwHwwZGP6DAQBJyAn3FGMynQAAAABJRU5ErkJggg=="));
 
         WriteFile(
             Path.Combine(appRoot, "Resources", "DefaultItemsAppResources.xaml"),
@@ -12670,6 +12678,19 @@ internal static class Program
                         x:Name="DefaultItemsLibraryResourceText"
                         Foreground="{DynamicResource DefaultItemsLibraryResourceBrush}"
                         Text="{StaticResource DefaultItemsLibraryResourceText}" />
+                    <Image
+                        x:Name="DefaultItemsImage"
+                        Width="2"
+                        Height="2"
+                        Source="Assets/DefaultItemsImage.png" />
+                    <Rectangle
+                        x:Name="DefaultItemsImageBrushRectangle"
+                        Width="2"
+                        Height="2">
+                        <Rectangle.Fill>
+                            <ImageBrush ImageSource="pack://application:,,,/Assets/DefaultItemsImage.png" />
+                        </Rectangle.Fill>
+                    </Rectangle>
                     <Grid x:Name="DefaultItemsGrid">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -13105,6 +13126,7 @@ internal static class Program
             using System.Windows.Data;
             using System.Windows.Input;
             using System.Windows.Media;
+            using System.Windows.Media.Imaging;
             using System.Windows.Threading;
 
             namespace ExternalSdkDefaultItemsApp;
@@ -13444,6 +13466,35 @@ internal static class Program
                     Require(
                         libraryResourceForeground.Color == Color.FromRgb(0x76, 0x54, 0x32),
                         "Expected default-item referenced library component resource brush color.");
+                    var defaultItemsImageSource = RequireType<BitmapSource>(
+                        DefaultItemsImage.Source,
+                        "default-item XAML resource image source");
+                    Require(
+                        defaultItemsImageSource.PixelWidth == 2
+                            && defaultItemsImageSource.PixelHeight == 2
+                            && defaultItemsImageSource.Format == PixelFormats.Bgra32,
+                        "Expected default-item XAML resource image metadata.");
+                    byte[] imagePixels = new byte[16];
+                    defaultItemsImageSource.CopyPixels(imagePixels, 8, 0);
+                    Require(
+                        imagePixels[2] == 0xFF && imagePixels[15] == 0xFF,
+                        "Expected default-item XAML resource image pixels.");
+                    var imageBrush = RequireType<ImageBrush>(
+                        DefaultItemsImageBrushRectangle.Fill,
+                        "default-item ImageBrush fill");
+                    var imageBrushSource = RequireType<BitmapSource>(
+                        imageBrush.ImageSource,
+                        "default-item ImageBrush source");
+                    Require(
+                        imageBrushSource.PixelWidth == 2
+                            && imageBrushSource.PixelHeight == 2
+                            && imageBrushSource.Format == PixelFormats.Bgra32,
+                        "Expected default-item ImageBrush image metadata.");
+                    byte[] imageBrushPixels = new byte[16];
+                    imageBrushSource.CopyPixels(imageBrushPixels, 8, 0);
+                    Require(
+                        imageBrushPixels[5] == 0xFF && imageBrushPixels[15] == 0xFF,
+                        "Expected default-item ImageBrush image pixels.");
                     Require(
                         DefaultItemsGrid.RowDefinitions.Count == 2 && DefaultItemsGrid.ColumnDefinitions.Count == 2,
                         "Expected default-item Grid row and column definitions.");

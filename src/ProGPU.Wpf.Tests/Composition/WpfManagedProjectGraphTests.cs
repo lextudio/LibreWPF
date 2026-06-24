@@ -7136,6 +7136,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<DefaultXamlRuntime Condition=\"'$(DefaultXamlRuntime)' == ''\">Wpf</DefaultXamlRuntime>", portableProps, StringComparison.Ordinal);
         Assert.Contains("<InternalMarkupCompilation Condition=\"'$(ProGpuWpfUseWpfMarkup)' == 'true' And '$(InternalMarkupCompilation)' == ''\">true</InternalMarkupCompilation>", portableProps, StringComparison.Ordinal);
         Assert.Contains("<AlwaysCompileMarkupFilesInSeparateDomain Condition=\"'$(ProGpuWpfUseWpfMarkup)' == 'true' And '$(AlwaysCompileMarkupFilesInSeparateDomain)' == ''\">false</AlwaysCompileMarkupFilesInSeparateDomain>", portableProps, StringComparison.Ordinal);
+        Assert.Contains("<EnableDefaultResourceItems Condition=\"'$(EnableDefaultResourceItems)' == ''\">true</EnableDefaultResourceItems>", portableProps, StringComparison.Ordinal);
         Assert.Contains("<_ProGpuWpfManagedReferenceRoot Condition=\"'$(ProGpuWpfManagedReferenceRoot)' != ''\">$([MSBuild]::EnsureTrailingSlash('$(ProGpuWpfManagedReferenceRoot)'))</_ProGpuWpfManagedReferenceRoot>", portableProps, StringComparison.Ordinal);
         Assert.Contains("<_ProGpuReferenceRoot Condition=\"'$(ProGpuReferenceRoot)' != ''\">$([MSBuild]::EnsureTrailingSlash('$(ProGpuReferenceRoot)'))</_ProGpuReferenceRoot>", portableProps, StringComparison.Ordinal);
         Assert.Contains("<ApplicationDefinition Include=\"App.xaml\"", portableProps, StringComparison.Ordinal);
@@ -7158,6 +7159,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<Compile Include=\"$(MSBuildThisFileDirectory)ProGPU.Wpf.Sdk.PortableBootstrap.cs\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("Link=\"ProGPU.Wpf.Sdk.PortableBootstrap.cs\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("Visible=\"false\"", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<_ProGpuWpfDefaultResourceItem Include=\"**/*.bmp;**/*.cur;**/*.gif;**/*.ico;**/*.jpg;**/*.jpeg;**/*.png;**/*.tif;**/*.tiff;**/*.wdp;**/*.webp\"", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<Resource Include=\"@(_ProGpuWpfDefaultResourceItem)\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<None Remove=\"@(_ProGpuWpfDefaultResourceItem)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("_ProGpuWpfSdkRemoveWindowsDesktopPackageDownloads", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageDownload Remove=\"Microsoft.WindowsDesktop.App.Ref\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"$(ProGpuWpfManagedPackageId)\" Version=\"$(ProGpuWpfManagedPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
@@ -8212,6 +8216,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DefaultItemsScrollViewer", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CanContentScroll=\"False\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item ScrollViewer metadata and content", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Assets/DefaultItemsImage.png", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsImageBrushRectangle", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ImageBrush ImageSource=\"pack://application:,,,/Assets/DefaultItemsImage.png\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item XAML resource image pixels", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item ImageBrush image pixels", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsCheckBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("IsChecked=\"{Binding IsFormOptionEnabled, Mode=TwoWay}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item CheckBox two-way binding to update source", externalSdkHarnessProgram, StringComparison.Ordinal);

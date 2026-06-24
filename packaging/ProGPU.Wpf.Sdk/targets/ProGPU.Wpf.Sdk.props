@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <DefaultXamlRuntime Condition="'$(DefaultXamlRuntime)' == ''">Wpf</DefaultXamlRuntime>
+    <EnableDefaultResourceItems Condition="'$(EnableDefaultResourceItems)' == ''">true</EnableDefaultResourceItems>
     <InternalMarkupCompilation Condition="'$(ProGpuWpfUseWpfMarkup)' == 'true' And '$(InternalMarkupCompilation)' == ''">true</InternalMarkupCompilation>
     <AlwaysCompileMarkupFilesInSeparateDomain Condition="'$(ProGpuWpfUseWpfMarkup)' == 'true' And '$(AlwaysCompileMarkupFilesInSeparateDomain)' == ''">false</AlwaysCompileMarkupFilesInSeparateDomain>
     <ProGpuWpfEnableSdkDiagnostics Condition="'$(ProGpuWpfEnableSdkDiagnostics)' == ''">false</ProGpuWpfEnableSdkDiagnostics>

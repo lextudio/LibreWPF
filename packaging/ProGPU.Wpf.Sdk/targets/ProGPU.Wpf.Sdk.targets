@@ -14,6 +14,14 @@
              Visible="false" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(EnableDefaultItems)' == 'true' And '$(EnableDefaultResourceItems)' == 'true' And '$(ProGpuWpfUseWpfMarkup)' == 'true'">
+    <_ProGpuWpfDefaultResourceItem Include="**/*.bmp;**/*.cur;**/*.gif;**/*.ico;**/*.jpg;**/*.jpeg;**/*.png;**/*.tif;**/*.tiff;**/*.wdp;**/*.webp"
+                                   Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder);@(Resource);@(Content);@(ApplicationDefinition);@(Page)" />
+
+    <Resource Include="@(_ProGpuWpfDefaultResourceItem)" />
+    <None Remove="@(_ProGpuWpfDefaultResourceItem)" />
+  </ItemGroup>
+
   <Target Name="_ProGpuWpfSdkRemoveWindowsDesktopPackageDownloads"
           BeforeTargets="CollectPackageDownloads"
           Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'">

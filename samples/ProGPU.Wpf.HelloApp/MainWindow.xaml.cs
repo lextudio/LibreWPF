@@ -181,6 +181,9 @@ public partial class MainWindow : Window
                     RaiseHostInput(liveHost, "TextInput", character: character);
                     RaiseHostInput(liveHost, "KeyUp", key: key);
                 }
+
+                RaiseHostInput(liveHost, "KeyDown", key: "Back");
+                RaiseHostInput(liveHost, "KeyUp", key: "Back");
             },
             DispatcherPriority.Send);
         await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
@@ -189,8 +192,22 @@ public partial class MainWindow : Window
             liveHost,
             () =>
             {
-                AssertEqual("Live", Require<TextBox>("NameBox").Text, "Hello live TextBox text after host input");
-                AssertEqual("Live", ViewModel.Name, "Hello live view-model source after host input");
+                AssertEqual("Liv", Require<TextBox>("NameBox").Text, "Hello live TextBox text after host Back key");
+                AssertEqual("Liv", ViewModel.Name, "Hello live view-model source after host Back key");
+
+                RaiseHostInput(liveHost, "KeyDown", key: "E");
+                RaiseHostInput(liveHost, "TextInput", character: 'e');
+                RaiseHostInput(liveHost, "KeyUp", key: "E");
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                AssertEqual("Live", Require<TextBox>("NameBox").Text, "Hello live TextBox text after host text edit");
+                AssertEqual("Live", ViewModel.Name, "Hello live view-model source after host text edit");
 
                 Button button = Require<Button>("UpdateButton");
                 Point center = button.TranslatePoint(
@@ -211,7 +228,7 @@ public partial class MainWindow : Window
                 AssertEqual("Updated for Live", Require<TextBlock>("SubtitleText").Text, "Hello live bound status text");
                 AssertEqual("Ready for Live", Require<TextBlock>("FooterText").Text, "Hello live footer text");
                 AssertEqual(4, Require<ListBox>("ItemsList").Items.Count, "Hello live item count");
-                return "input TextBox focus, text binding, and button click updated";
+                return "input TextBox focus, Back key editing, text binding, and button click updated";
             },
             DispatcherPriority.Send);
     }

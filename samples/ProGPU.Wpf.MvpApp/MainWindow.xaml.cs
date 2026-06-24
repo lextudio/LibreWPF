@@ -945,7 +945,23 @@ public partial class MainWindow : Window
                     RaiseHostInput(liveHost, "TextInput", character: character);
                     RaiseHostInput(liveHost, "KeyUp", key: key);
                 }
+                RaiseHostInput(liveHost, "KeyDown", key: "Back");
+                RaiseHostInput(liveHost, "KeyUp", key: "Back");
                 Console.WriteLine("ProGPU WPF MVP live input validation text sent.");
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                var model = Require<MainViewModel>(viewModel, "MVP live input view model after host Back key");
+                AssertEqual("Liv", Require<TextBox>(textBox, "MVP live input TextBox").Text, "MVP live TextBox text after host Back key");
+                AssertEqual("Liv", model.NewItemName, "MVP live view-model source after host Back key");
+                RaiseHostInput(liveHost, "KeyDown", key: "E");
+                RaiseHostInput(liveHost, "TextInput", character: 'e');
+                RaiseHostInput(liveHost, "KeyUp", key: "E");
             },
             DispatcherPriority.Send);
         await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
@@ -976,7 +992,7 @@ public partial class MainWindow : Window
                     $"Refresh command {refreshCountBeforeCommand + 1}",
                     Require<TextBlock>(FindName("CommandStatusText"), "MVP live command status TextBlock").Text,
                     "MVP live routed KeyBinding command status");
-                return "input TextBox focus, text binding, and Ctrl+R routed command updated";
+                return "input TextBox focus, Back key editing, text binding, and Ctrl+R routed command updated";
             },
             DispatcherPriority.Send);
     }

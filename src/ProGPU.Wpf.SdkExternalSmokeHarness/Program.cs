@@ -12496,6 +12496,22 @@ internal static class Program
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
+                        <Style
+                            x:Key="DefaultItemsPropertyTriggerStyle"
+                            TargetType="{x:Type TextBlock}">
+                            <Setter
+                                Property="Tag"
+                                Value="default-item property trigger inactive" />
+                            <Style.Triggers>
+                                <Trigger
+                                    Property="IsEnabled"
+                                    Value="False">
+                                    <Setter
+                                        Property="Tag"
+                                        Value="default-item property trigger active" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
                         <DataTemplate DataType="{x:Type local:DefaultItemsItem}">
                             <TextBlock
                                 x:Name="DefaultItemsImplicitTemplateText"
@@ -12571,6 +12587,10 @@ internal static class Program
                         x:Name="DefaultItemsTriggeredStatusText"
                         Style="{StaticResource DefaultItemsStatusTriggerStyle}"
                         Text="{Binding Status}" />
+                    <TextBlock
+                        x:Name="DefaultItemsPropertyTriggeredText"
+                        Style="{StaticResource DefaultItemsPropertyTriggerStyle}"
+                        Text="Default item property trigger text" />
                     <ListBox
                         x:Name="DefaultItemsListBox"
                         DisplayMemberPath="Name"
@@ -12897,6 +12917,12 @@ internal static class Program
                         string.Equals(DefaultItemsTriggeredStatusText.Tag as string, "default-item trigger inactive", StringComparison.Ordinal),
                         "Expected default-item DataTrigger to start inactive.");
                     Require(
+                        string.Equals(
+                            DefaultItemsPropertyTriggeredText.Tag as string,
+                            "default-item property trigger inactive",
+                            StringComparison.Ordinal),
+                        "Expected default-item property Trigger to start inactive.");
+                    Require(
                         DefaultItemsConvertedSelectionText.Text == "Selected: Default item alpha",
                         "Expected default-item converter binding to read the selected item.");
                     Require(
@@ -13027,6 +13053,22 @@ internal static class Program
                     Require(
                         string.Equals(DefaultItemsTriggeredStatusText.Tag as string, "default-item trigger inactive", StringComparison.Ordinal),
                         "Expected default-item DataTrigger to exit after source change.");
+                    DefaultItemsPropertyTriggeredText.IsEnabled = false;
+                    DrainDispatcher();
+                    Require(
+                        string.Equals(
+                            DefaultItemsPropertyTriggeredText.Tag as string,
+                            "default-item property trigger active",
+                            StringComparison.Ordinal),
+                        "Expected default-item property Trigger to activate after property change.");
+                    DefaultItemsPropertyTriggeredText.IsEnabled = true;
+                    DrainDispatcher();
+                    Require(
+                        string.Equals(
+                            DefaultItemsPropertyTriggeredText.Tag as string,
+                            "default-item property trigger inactive",
+                            StringComparison.Ordinal),
+                        "Expected default-item property Trigger to exit after property reset.");
 
                     var commandBinding = RequireType<CommandBinding>(
                         CommandBindings[0],

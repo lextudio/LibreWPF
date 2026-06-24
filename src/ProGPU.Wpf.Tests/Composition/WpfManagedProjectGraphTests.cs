@@ -8204,6 +8204,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DisplayMemberBinding=\"{Binding Kind}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item GridView name column binding", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item ListView collection update", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsTabControl", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SelectedIndex=\"1\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<TabItem", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsDetailsTabText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item selected TabItem binding to observe INotifyPropertyChanged", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsExpander", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Expanded=\"OnDefaultItemsExpanderExpanded\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item Expander collapsed event", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsDataGrid", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AutoGenerateColumns=\"False\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<DataGridTextColumn", externalSdkHarnessProgram, StringComparison.Ordinal);

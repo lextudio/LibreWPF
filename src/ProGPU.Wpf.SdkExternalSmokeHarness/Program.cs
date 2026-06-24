@@ -12715,6 +12715,34 @@ internal static class Program
                         <TextBlock Text="Default item uniform one" />
                         <TextBlock Text="Default item uniform two" />
                     </UniformGrid>
+                    <TabControl
+                        x:Name="DefaultItemsTabControl"
+                        SelectedIndex="1">
+                        <TabItem
+                            x:Name="DefaultItemsOverviewTab"
+                            Header="Overview">
+                            <TextBlock
+                                x:Name="DefaultItemsOverviewTabText"
+                                Text="Default item overview tab" />
+                        </TabItem>
+                        <TabItem
+                            x:Name="DefaultItemsDetailsTab"
+                            Header="Details">
+                            <TextBlock
+                                x:Name="DefaultItemsDetailsTabText"
+                                Text="{Binding Status, StringFormat=Tab: {0}}" />
+                        </TabItem>
+                    </TabControl>
+                    <Expander
+                        x:Name="DefaultItemsExpander"
+                        Header="Default item expander"
+                        IsExpanded="False"
+                        Expanded="OnDefaultItemsExpanderExpanded"
+                        Collapsed="OnDefaultItemsExpanderCollapsed">
+                        <TextBlock
+                            x:Name="DefaultItemsExpanderText"
+                            Text="Default item expander content" />
+                    </Expander>
                     <local:DefaultItemsPanel
                         x:Name="DefaultItemsPanel"
                         Caption="Default item panel caption" />
@@ -13132,6 +13160,10 @@ internal static class Program
 
                 public int EventSetterClickCount { get; private set; }
 
+                public int ExpanderExpandedCount { get; private set; }
+
+                public int ExpanderCollapsedCount { get; private set; }
+
                 public string LastCommandParameter { get; private set; } = string.Empty;
 
                 public DefaultItemsViewModel ViewModel { get; } = new DefaultItemsViewModel();
@@ -13215,6 +13247,45 @@ internal static class Program
                     Require(
                         DefaultItemsUniformGrid.Rows == 1 && DefaultItemsUniformGrid.Columns == 2 && DefaultItemsUniformGrid.Children.Count == 2,
                         "Expected default-item UniformGrid metadata and children.");
+                    Require(
+                        DefaultItemsTabControl.SelectedIndex == 1 && ReferenceEquals(DefaultItemsTabControl.SelectedItem, DefaultItemsDetailsTab),
+                        "Expected default-item TabControl initial selection.");
+                    Require(
+                        Equals(DefaultItemsOverviewTab.Header, "Overview") && Equals(DefaultItemsDetailsTab.Header, "Details"),
+                        "Expected default-item TabItem headers.");
+                    DefaultItemsTabControl.UpdateLayout();
+                    DrainDispatcher();
+                    Require(
+                        DefaultItemsDetailsTabText.Text == "Tab: Default item binding ready",
+                        "Expected default-item selected TabItem binding text.");
+                    DefaultItemsTabControl.SelectedItem = DefaultItemsOverviewTab;
+                    DrainDispatcher();
+                    Require(
+                        DefaultItemsTabControl.SelectedIndex == 0 && ReferenceEquals(DefaultItemsTabControl.SelectedItem, DefaultItemsOverviewTab),
+                        "Expected default-item TabControl programmatic selection.");
+                    DefaultItemsTabControl.SelectedItem = DefaultItemsDetailsTab;
+                    DrainDispatcher();
+                    Require(
+                        DefaultItemsTabControl.SelectedIndex == 1 && ReferenceEquals(DefaultItemsTabControl.SelectedItem, DefaultItemsDetailsTab),
+                        "Expected default-item TabControl selection restore.");
+                    Require(
+                        !DefaultItemsExpander.IsExpanded && Equals(DefaultItemsExpander.Header, "Default item expander"),
+                        "Expected default-item Expander initial state.");
+                    int expanderExpandedBefore = ExpanderExpandedCount;
+                    int expanderCollapsedBefore = ExpanderCollapsedCount;
+                    DefaultItemsExpander.IsExpanded = true;
+                    DrainDispatcher();
+                    Require(
+                        DefaultItemsExpander.IsExpanded && ExpanderExpandedCount == expanderExpandedBefore + 1,
+                        "Expected default-item Expander expanded event.");
+                    Require(
+                        DefaultItemsExpanderText.Text == "Default item expander content",
+                        "Expected default-item Expander content text.");
+                    DefaultItemsExpander.IsExpanded = false;
+                    DrainDispatcher();
+                    Require(
+                        !DefaultItemsExpander.IsExpanded && ExpanderCollapsedCount == expanderCollapsedBefore + 1,
+                        "Expected default-item Expander collapsed event.");
                     Require(
                         ConfigurationManager.AppSettings["DefaultItemsSdkSetting"] == "Default item SDK app config value",
                         "Expected default-item app config setting.");
@@ -13499,6 +13570,9 @@ internal static class Program
                     Require(
                         DefaultItemsPriorityStatusText.Text == "Priority: Default item binding updated",
                         "Expected default-item PriorityBinding fallback to observe INotifyPropertyChanged.");
+                    Require(
+                        DefaultItemsDetailsTabText.Text == "Tab: Default item binding updated",
+                        "Expected default-item selected TabItem binding to observe INotifyPropertyChanged.");
                     ViewModel.OptionalStatus = "Default item optional status";
                     DrainDispatcher();
                     Require(
@@ -14037,6 +14111,16 @@ internal static class Program
                 {
                     EventSetterClickCount++;
                     DefaultItemsEventSetterButton.Tag = "default-item event setter clicked";
+                }
+
+                private void OnDefaultItemsExpanderExpanded(object sender, RoutedEventArgs e)
+                {
+                    ExpanderExpandedCount++;
+                }
+
+                private void OnDefaultItemsExpanderCollapsed(object sender, RoutedEventArgs e)
+                {
+                    ExpanderCollapsedCount++;
                 }
 
                 private static void DrainDispatcher()

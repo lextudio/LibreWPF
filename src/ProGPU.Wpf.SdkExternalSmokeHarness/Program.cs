@@ -12731,6 +12731,11 @@ internal static class Program
                             </Paragraph>
                         </FlowDocument>
                     </FlowDocumentScrollViewer>
+                    <TextBox
+                        x:Name="DefaultItemsSpellCheckTextBox"
+                        SpellCheck.IsEnabled="True"
+                        SpellCheck.SpellingReform="PreAndPostreform"
+                        Text="default item spellcheck text" />
                     <Grid x:Name="DefaultItemsGrid">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -13667,6 +13672,34 @@ internal static class Program
                     Require(
                         scrollDocumentText.Contains("Default item scroll document", StringComparison.Ordinal),
                         "Expected default-item FlowDocumentScrollViewer TextRange text.");
+                    Require(
+                        SpellCheck.GetIsEnabled(DefaultItemsSpellCheckTextBox)
+                            && DefaultItemsSpellCheckTextBox.SpellCheck.IsEnabled
+                            && DefaultItemsSpellCheckTextBox.SpellCheck.SpellingReform == SpellingReform.PreAndPostreform,
+                        "Expected default-item SpellCheck metadata.");
+                    var defaultItemsCustomDictionaries = SpellCheck.GetCustomDictionaries(DefaultItemsSpellCheckTextBox);
+                    Require(
+                        defaultItemsCustomDictionaries.Count == 0,
+                        "Expected default-item SpellCheck initial custom dictionary count.");
+                    defaultItemsCustomDictionaries.Add(new Uri("default-items-custom.lex", UriKind.Relative));
+                    Require(
+                        defaultItemsCustomDictionaries.Count == 1,
+                        "Expected default-item SpellCheck custom dictionary add.");
+                    defaultItemsCustomDictionaries.Add(new Uri("default-items-custom.lex", UriKind.Relative));
+                    Require(
+                        defaultItemsCustomDictionaries.Count == 1,
+                        "Expected default-item SpellCheck duplicate custom dictionary suppression.");
+                    Require(
+                        DefaultItemsSpellCheckTextBox.GetSpellingError(0) is null
+                            && DefaultItemsSpellCheckTextBox.GetSpellingErrorStart(0) == -1
+                            && DefaultItemsSpellCheckTextBox.GetSpellingErrorLength(0) == 0
+                            && DefaultItemsSpellCheckTextBox.GetNextSpellingErrorCharacterIndex(0, LogicalDirection.Forward) == -1,
+                        "Expected default-item SpellCheck no-op spelling error queries.");
+                    defaultItemsCustomDictionaries.Clear();
+                    SpellCheck.SetIsEnabled(DefaultItemsSpellCheckTextBox, false);
+                    Require(
+                        !DefaultItemsSpellCheckTextBox.SpellCheck.IsEnabled,
+                        "Expected default-item SpellCheck disabled metadata.");
                     Require(
                         DefaultItemsGrid.RowDefinitions.Count == 2 && DefaultItemsGrid.ColumnDefinitions.Count == 2,
                         "Expected default-item Grid row and column definitions.");

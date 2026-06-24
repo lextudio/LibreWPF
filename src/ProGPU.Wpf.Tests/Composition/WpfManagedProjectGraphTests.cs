@@ -8232,6 +8232,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DefaultItemsFlowDocumentScrollViewer", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item RichTextBox TextRange text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item FlowDocumentScrollViewer TextRange text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsSpellCheckTextBox", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SpellCheck.IsEnabled=\"True\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item SpellCheck metadata", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item SpellCheck custom dictionary add", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item SpellCheck no-op spelling error queries", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsCheckBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("IsChecked=\"{Binding IsFormOptionEnabled, Mode=TwoWay}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item CheckBox two-way binding to update source", externalSdkHarnessProgram, StringComparison.Ordinal);

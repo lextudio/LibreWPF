@@ -12117,6 +12117,40 @@ internal static class Program
             """);
 
         WriteFile(
+            Path.Combine(libraryRoot, "DefaultItemsLibraryPage.xaml"),
+            """
+            <Page
+                x:Class="ExternalSdkDefaultItemsLibrary.DefaultItemsLibraryPage"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                Title="Default item library page">
+                <Border Padding="2">
+                    <TextBlock
+                        x:Name="DefaultItemsLibraryPageText"
+                        Text="Default item library compiled page text" />
+                </Border>
+            </Page>
+            """);
+
+        WriteFile(
+            Path.Combine(libraryRoot, "DefaultItemsLibraryPage.xaml.cs"),
+            """
+            using System.Windows.Controls;
+
+            namespace ExternalSdkDefaultItemsLibrary;
+
+            public partial class DefaultItemsLibraryPage : Page
+            {
+                public DefaultItemsLibraryPage()
+                {
+                    InitializeComponent();
+                }
+
+                public string PageText => DefaultItemsLibraryPageText.Text;
+            }
+            """);
+
+        WriteFile(
             Path.Combine(libraryRoot, "DefaultItemsLibraryThemedControl.cs"),
             """
             using System.Windows;
@@ -12480,6 +12514,7 @@ internal static class Program
             """
             using System;
             using System.Configuration;
+            using ExternalSdkDefaultItemsLibrary;
             using System.Windows;
             using System.Windows.Controls;
             using System.Windows.Media;
@@ -12588,6 +12623,26 @@ internal static class Program
                     Require(
                         loadedPanel.CaptionText == "Default item loaded panel caption",
                         "Expected default-item Application.LoadComponent ElementName binding.");
+                    var loadedLibraryPanel = RequireType<DefaultItemsLibraryPanel>(
+                        Application.LoadComponent(
+                            new Uri(
+                                "/ExternalSdkDefaultItemsLibrary;component/DefaultItemsLibraryPanel.xaml",
+                                UriKind.Relative)),
+                        "default-item referenced library Application.LoadComponent panel");
+                    loadedLibraryPanel.Caption = "Default item loaded library panel caption";
+                    loadedLibraryPanel.UpdateLayout();
+                    Require(
+                        loadedLibraryPanel.CaptionText == "Default item loaded library panel caption",
+                        "Expected default-item referenced library Application.LoadComponent ElementName binding.");
+                    var loadedLibraryPage = RequireType<DefaultItemsLibraryPage>(
+                        Application.LoadComponent(
+                            new Uri(
+                                "/ExternalSdkDefaultItemsLibrary;component/DefaultItemsLibraryPage.xaml",
+                                UriKind.Relative)),
+                        "default-item referenced library Application.LoadComponent page");
+                    Require(
+                        loadedLibraryPage.PageText == "Default item library compiled page text",
+                        "Expected default-item referenced library compiled Page text.");
 
                     DefaultItemsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     Require(ButtonClickCount == 1, "Expected default-item compiled Click handler.");
@@ -12826,6 +12881,8 @@ internal static class Program
             "external SDK default-item library component resource dictionary brush");
         RequireFile(Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "DefaultItemsLibraryPanel.xaml"), "external SDK default-item library UserControl XAML source");
         RequireFile(Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "DefaultItemsLibraryPanel.xaml.cs"), "external SDK default-item library UserControl code source");
+        RequireFile(Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "DefaultItemsLibraryPage.xaml"), "external SDK default-item library Page XAML source");
+        RequireFile(Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "DefaultItemsLibraryPage.xaml.cs"), "external SDK default-item library Page code source");
         RequireFile(Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "Properties", "AssemblyInfo.cs"), "external SDK default-item library ThemeInfo source");
         RequireFile(Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "DefaultItemsLibraryThemedControl.cs"), "external SDK default-item library themed control source");
         RequireFile(Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "Themes", "Generic.xaml"), "external SDK default-item library Generic.xaml source");

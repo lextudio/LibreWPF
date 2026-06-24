@@ -8102,6 +8102,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ProjectReference Include=\"../{DefaultItemsLibraryAssemblyName}/{DefaultItemsLibraryAssemblyName}.csproj\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsLibraryPanel", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsLibraryPage", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsLibraryThemedControl", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsLibraryThemeText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsLibraryResources.xaml", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -8121,6 +8122,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Application.LoadComponent(", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("/ExternalSdkDefaultItemsApp;component/DefaultItemsPanel.xaml", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item Application.LoadComponent ElementName binding", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("/ExternalSdkDefaultItemsLibrary;component/DefaultItemsLibraryPanel.xaml", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("/ExternalSdkDefaultItemsLibrary;component/DefaultItemsLibraryPage.xaml", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item referenced library Application.LoadComponent ElementName binding", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item referenced library compiled Page text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external default-item app explicit app config item", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK default-item app config output", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Default item referenced library caption", externalSdkHarnessProgram, StringComparison.Ordinal);

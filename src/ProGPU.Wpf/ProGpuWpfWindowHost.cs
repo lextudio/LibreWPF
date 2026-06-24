@@ -1623,8 +1623,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
-        return NativeWindowSizeLooksPhysical(nativeSize, geometry) ||
-            PointerInputCoordinateExceedsLogicalClient(input, geometry);
+        return PointerInputCoordinateExceedsLogicalClient(input, geometry);
     }
 
     internal static bool NativeWindowSizeLooksPhysical(

@@ -642,7 +642,7 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
-    public void NativeInputCoordinatesLookPhysicalDetectsRetinaPhysicalNativeWindowInsideLogicalBounds()
+    public void NativeInputCoordinatesLookPhysicalKeepsSilkLogicalCoordinatesWhenNativeWindowLooksPhysical()
     {
         var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
             clientWidth: 760,
@@ -655,7 +655,7 @@ public sealed class ProGpuWpfWindowHostTests
             y: 180,
             button: WpfMouseButton.Left);
 
-        Assert.True(
+        Assert.False(
             ProGpuWpfWindowHost.NativeInputCoordinatesLookPhysical(
                 new Vector2D<int>(1520, 1120),
                 geometry,

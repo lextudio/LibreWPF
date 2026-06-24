@@ -51,6 +51,7 @@ clean_sdk_smoke_outputs() {
     "ProGPU.Wpf.SdkSwitchSmoke" \
     "ProGPU.Wpf.SdkSwitchRuntimeHarness" \
     "ProGPU.Wpf.SdkExternalSmokeHarness" \
+    "ProGPU.Wpf.HelloApp" \
     "ProGPU.Wpf.MvpApp"
   do
     rm -rf \
@@ -107,6 +108,22 @@ run_dotnet run --project "${repo_root}/src/ProGPU.Wpf.SdkSwitchRuntimeHarness/Pr
 
 echo "Running external no-source-change SDK smoke..."
 run_dotnet run --project "${repo_root}/src/ProGPU.Wpf.SdkExternalSmokeHarness/ProGPU.Wpf.SdkExternalSmokeHarness.csproj" -v:minimal
+
+echo "Building Hello SDK app..."
+run_dotnet build "${repo_root}/samples/ProGPU.Wpf.HelloApp/ProGPU.Wpf.HelloApp.csproj" -v:minimal
+
+hello_output="${repo_root}/artifacts/bin/ProGPU.Wpf.HelloApp/Debug/net11.0-windows"
+hello_apphost_name="$(apphost_name "ProGPU.Wpf.HelloApp")"
+if [[ ! -x "${hello_output}/${hello_apphost_name}" ]]; then
+  echo "Expected Hello SDK apphost at ${hello_output}/${hello_apphost_name}" >&2
+  exit 1
+fi
+
+echo "Running Hello SDK app apphost Application.Run validation..."
+(
+  cd "${hello_output}"
+  PROGPU_WPF_HELLO_RUN_VALIDATE=1 "./${hello_apphost_name}" "hello-alpha" "hello beta"
+)
 
 echo "Building MVP SDK app..."
 run_dotnet build "${repo_root}/samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj" -v:minimal

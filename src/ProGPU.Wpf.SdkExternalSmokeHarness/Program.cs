@@ -12465,6 +12465,7 @@ internal static class Program
                 xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
                 xmlns:library="clr-namespace:ExternalSdkDefaultItemsLibrary;assembly=ExternalSdkDefaultItemsLibrary"
                 xmlns:local="clr-namespace:ExternalSdkDefaultItemsApp"
+                xmlns:sys="clr-namespace:System;assembly=System.Runtime"
                 Title="External SDK Default Items"
                 Width="260"
                 Height="140"
@@ -12791,6 +12792,15 @@ internal static class Program
                         DisplayMemberPath="Name"
                         IsSynchronizedWithCurrentItem="True"
                         ItemsSource="{Binding Source={StaticResource DefaultItemsSortedItems}}" />
+                    <ListBox x:Name="DefaultItemsCompositeListBox">
+                        <ListBox.ItemsSource>
+                            <CompositeCollection>
+                                <sys:String>Default item composite header</sys:String>
+                                <CollectionContainer Collection="{x:Static local:DefaultItemsCompositeProvider.Items}" />
+                                <ListBoxItem Content="Default item composite inline container" />
+                            </CompositeCollection>
+                        </ListBox.ItemsSource>
+                    </ListBox>
                     <ComboBox
                         x:Name="DefaultItemsComboBox"
                         DisplayMemberPath="Name"
@@ -12859,6 +12869,16 @@ internal static class Program
                 {
                     return "Default item object provider text";
                 }
+            }
+
+            public static class DefaultItemsCompositeProvider
+            {
+                public static ObservableCollection<string> Items { get; } =
+                    new ObservableCollection<string>
+                    {
+                        "Default item composite alpha",
+                        "Default item composite beta",
+                    };
             }
 
             public sealed class DefaultItemsViewModel : INotifyPropertyChanged
@@ -13482,6 +13502,55 @@ internal static class Program
                     Require(
                         ReferenceEquals(DefaultItemsSortedListBox.SelectedItem, ViewModel.Items[1]),
                         "Expected default-item sorted ListBox selection to follow current item.");
+                    var compositeItems = RequireType<CompositeCollection>(
+                        DefaultItemsCompositeListBox.ItemsSource,
+                        "default-item CompositeCollection source");
+                    Require(
+                        compositeItems.Count == 3,
+                        "Expected default-item CompositeCollection source part count.");
+                    Require(
+                        Equals(compositeItems[0], "Default item composite header"),
+                        "Expected default-item CompositeCollection static item.");
+                    var compositeContainer = RequireType<CollectionContainer>(
+                        compositeItems[1],
+                        "default-item CompositeCollection container");
+                    Require(
+                        ReferenceEquals(compositeContainer.Collection, DefaultItemsCompositeProvider.Items),
+                        "Expected default-item CompositeCollection static source items.");
+                    var compositeInlineItem = RequireType<ListBoxItem>(
+                        compositeItems[2],
+                        "default-item CompositeCollection inline item");
+                    Require(
+                        Equals(compositeInlineItem.Content, "Default item composite inline container"),
+                        "Expected default-item CompositeCollection inline item content.");
+                    DefaultItemsCompositeListBox.UpdateLayout();
+                    DrainDispatcher();
+                    Require(
+                        DefaultItemsCompositeListBox.Items.Count == 4,
+                        "Expected default-item CompositeCollection initial flattened item count.");
+                    Require(
+                        Equals(DefaultItemsCompositeListBox.Items[0], "Default item composite header"),
+                        "Expected default-item CompositeCollection initial static item.");
+                    Require(
+                        Equals(DefaultItemsCompositeListBox.Items[1], DefaultItemsCompositeProvider.Items[0]),
+                        "Expected default-item CompositeCollection first source item.");
+                    Require(
+                        Equals(DefaultItemsCompositeListBox.Items[2], DefaultItemsCompositeProvider.Items[1]),
+                        "Expected default-item CompositeCollection second source item.");
+                    Require(
+                        ReferenceEquals(DefaultItemsCompositeListBox.Items[3], compositeInlineItem),
+                        "Expected default-item CompositeCollection initial inline item.");
+                    DefaultItemsCompositeProvider.Items.Add("Default item composite gamma");
+                    DrainDispatcher();
+                    Require(
+                        DefaultItemsCompositeListBox.Items.Count == 5,
+                        "Expected default-item CompositeCollection collection-change flattened item count.");
+                    Require(
+                        Equals(DefaultItemsCompositeListBox.Items[3], DefaultItemsCompositeProvider.Items[2]),
+                        "Expected default-item CompositeCollection collection-change appended source item.");
+                    Require(
+                        ReferenceEquals(DefaultItemsCompositeListBox.Items[4], compositeInlineItem),
+                        "Expected default-item CompositeCollection collection-change inline item.");
                     Require(
                         DefaultItemsComboBox.Items.Count == 2,
                         "Expected default-item selector binding item count.");

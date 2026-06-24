@@ -8190,6 +8190,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("default-item CollectionViewSource sorted order", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item CollectionViewSource current item from selection", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item sorted ListBox collection update", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsCompositeListBox", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<CompositeCollection>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CollectionContainer Collection=\"{x:Static local:DefaultItemsCompositeProvider.Items}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsCompositeProvider", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item CompositeCollection initial flattened item count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item CompositeCollection collection-change appended source item", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsListBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsComboBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SelectedItem=\"{Binding SelectedItem, Mode=TwoWay}\"", externalSdkHarnessProgram, StringComparison.Ordinal);

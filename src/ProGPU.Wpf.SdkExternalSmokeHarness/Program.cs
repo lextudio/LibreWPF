@@ -12484,6 +12484,19 @@ internal static class Program
                         </DataTemplate>
                     </ResourceDictionary>
                 </Window.Resources>
+                <Window.CommandBindings>
+                    <CommandBinding
+                        Command="{x:Static local:MainWindow.DefaultItemsCommand}"
+                        CanExecute="OnDefaultItemsCommandCanExecute"
+                        Executed="OnDefaultItemsCommandExecuted" />
+                </Window.CommandBindings>
+                <Window.InputBindings>
+                    <KeyBinding
+                        Command="{x:Static local:MainWindow.DefaultItemsCommand}"
+                        CommandParameter="input-binding"
+                        Key="B"
+                        Modifiers="Control" />
+                </Window.InputBindings>
                 <StackPanel>
                     <TextBlock
                         x:Name="DefaultItemsTitleText"
@@ -12521,6 +12534,11 @@ internal static class Program
                         DisplayMemberPath="Name"
                         ItemsSource="{Binding Items}" />
                     <Button
+                        x:Name="DefaultItemsCommandButton"
+                        Command="{x:Static local:MainWindow.DefaultItemsCommand}"
+                        CommandParameter="button-command"
+                        Content="Default item command" />
+                    <Button
                         x:Name="DefaultItemsButton"
                         Click="OnDefaultItemsButtonClick"
                         Content="Default item button" />
@@ -12539,6 +12557,7 @@ internal static class Program
             using ExternalSdkDefaultItemsLibrary;
             using System.Windows;
             using System.Windows.Controls;
+            using System.Windows.Input;
             using System.Windows.Media;
             using System.Windows.Threading;
 
@@ -12585,9 +12604,19 @@ internal static class Program
 
             public partial class MainWindow : Window
             {
+                public static RoutedUICommand DefaultItemsCommand { get; } =
+                    new RoutedUICommand(
+                        "Default Items Command",
+                        nameof(DefaultItemsCommand),
+                        typeof(MainWindow));
+
                 public int LoadedCount { get; private set; }
 
                 public int ButtonClickCount { get; private set; }
+
+                public int CommandExecutionCount { get; private set; }
+
+                public string LastCommandParameter { get; private set; } = string.Empty;
 
                 public DefaultItemsViewModel ViewModel { get; } = new DefaultItemsViewModel();
 
@@ -12754,6 +12783,41 @@ internal static class Program
                         appendedItem.Name == "Default item gamma",
                         "Expected default-item appended collection item name.");
 
+                    var commandBinding = RequireType<CommandBinding>(
+                        CommandBindings[0],
+                        "default-item command binding");
+                    Require(
+                        ReferenceEquals(commandBinding.Command, DefaultItemsCommand),
+                        "Expected default-item Window.CommandBindings command.");
+                    var keyBinding = RequireType<KeyBinding>(
+                        InputBindings[0],
+                        "default-item key binding");
+                    Require(
+                        ReferenceEquals(keyBinding.Command, DefaultItemsCommand),
+                        "Expected default-item KeyBinding command.");
+                    Require(
+                        string.Equals(keyBinding.CommandParameter as string, "input-binding", StringComparison.Ordinal),
+                        "Expected default-item KeyBinding command parameter.");
+                    Require(
+                        keyBinding.Key == Key.B && keyBinding.Modifiers == ModifierKeys.Control,
+                        "Expected default-item KeyBinding gesture.");
+                    Require(
+                        ReferenceEquals(DefaultItemsCommandButton.Command, DefaultItemsCommand),
+                        "Expected default-item command button command.");
+                    Require(
+                        string.Equals(DefaultItemsCommandButton.CommandParameter as string, "button-command", StringComparison.Ordinal),
+                        "Expected default-item command button parameter.");
+                    Require(
+                        DefaultItemsCommand.CanExecute("button-command", this),
+                        "Expected default-item routed command CanExecute.");
+                    DefaultItemsCommand.Execute(DefaultItemsCommandButton.CommandParameter, this);
+                    Require(
+                        CommandExecutionCount == 1,
+                        "Expected default-item routed command execution.");
+                    Require(
+                        LastCommandParameter == "button-command",
+                        "Expected default-item routed command parameter.");
+
                     DefaultItemsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     Require(ButtonClickCount == 1, "Expected default-item compiled Click handler.");
                     Require(
@@ -12764,6 +12828,19 @@ internal static class Program
                 private void OnDefaultItemsWindowLoaded(object sender, RoutedEventArgs e)
                 {
                     LoadedCount++;
+                }
+
+                private void OnDefaultItemsCommandCanExecute(object sender, CanExecuteRoutedEventArgs e)
+                {
+                    e.CanExecute = true;
+                    e.Handled = true;
+                }
+
+                private void OnDefaultItemsCommandExecuted(object sender, ExecutedRoutedEventArgs e)
+                {
+                    CommandExecutionCount++;
+                    LastCommandParameter = e.Parameter as string ?? string.Empty;
+                    e.Handled = true;
                 }
 
                 private void OnDefaultItemsButtonClick(object sender, RoutedEventArgs e)

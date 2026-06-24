@@ -8122,6 +8122,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ObservableCollection<DefaultItemsItem>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Default item binding updated", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item collection binding item count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Window.CommandBindings", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Window.InputBindings", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsCommandButton", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RoutedUICommand", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsCommandCanExecute", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item routed command execution", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsSdkSetting", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Default item SDK app config value", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsPage.xaml", externalSdkHarnessProgram, StringComparison.Ordinal);

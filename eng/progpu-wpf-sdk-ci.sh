@@ -134,11 +134,14 @@ fi
 echo "Running Hello SDK app apphost Application.Run validation..."
 (
   cd "${hello_output}"
-  PROGPU_WPF_HELLO_RUN_VALIDATE=1 "./${hello_apphost_name}" "hello-alpha" "hello beta"
+  PROGPU_WPF_HELLO_RUN_VALIDATE=1 \
+  PROGPU_WPF_HELLO_LIVE_VALIDATE=0 \
+    "./${hello_apphost_name}" "hello-alpha" "hello beta"
 )
 
 echo "Running Hello SDK app live geometry validation..."
 PROGPU_WPF_HELLO_REBUILD_PACKAGES=0 \
+PROGPU_WPF_HELLO_RUN_VALIDATE=0 \
 PROGPU_WPF_HELLO_LIVE_VALIDATE=1 \
   "${repo_root}/eng/run-progpu-wpf-hello.sh"
 
@@ -146,10 +149,16 @@ echo "Building MVP SDK app..."
 run_dotnet build "${repo_root}/samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj" -v:minimal
 
 echo "Running MVP SDK app validation..."
-PROGPU_WPF_MVP_VALIDATE=1 run_dotnet run --project "${repo_root}/samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj" -v:minimal
+PROGPU_WPF_MVP_VALIDATE=1 \
+PROGPU_WPF_MVP_RUN_VALIDATE=0 \
+PROGPU_WPF_MVP_LIVE_VALIDATE=0 \
+  run_dotnet run --project "${repo_root}/samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj" -v:minimal
 
 echo "Running MVP SDK app Application.Run validation..."
-PROGPU_WPF_MVP_RUN_VALIDATE=1 run_dotnet run --project "${repo_root}/samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj" -v:minimal
+PROGPU_WPF_MVP_VALIDATE=0 \
+PROGPU_WPF_MVP_RUN_VALIDATE=1 \
+PROGPU_WPF_MVP_LIVE_VALIDATE=0 \
+  run_dotnet run --project "${repo_root}/samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj" -v:minimal
 
 mvp_output="${repo_root}/artifacts/bin/ProGPU.Wpf.MvpApp/Debug/net11.0-windows"
 mvp_apphost_name="$(apphost_name "ProGPU.Wpf.MvpApp")"
@@ -161,11 +170,16 @@ fi
 echo "Running MVP SDK app apphost Application.Run validation..."
 (
   cd "${mvp_output}"
-  PROGPU_WPF_MVP_RUN_VALIDATE=1 "./${mvp_apphost_name}"
+  PROGPU_WPF_MVP_VALIDATE=0 \
+  PROGPU_WPF_MVP_RUN_VALIDATE=1 \
+  PROGPU_WPF_MVP_LIVE_VALIDATE=0 \
+    "./${mvp_apphost_name}"
 )
 
 echo "Running MVP SDK app live geometry validation..."
 PROGPU_WPF_MVP_REBUILD_PACKAGES=0 \
+PROGPU_WPF_MVP_VALIDATE=0 \
+PROGPU_WPF_MVP_RUN_VALIDATE=0 \
 PROGPU_WPF_MVP_LIVE_VALIDATE=1 \
   "${repo_root}/eng/run-progpu-wpf-mvp.sh"
 

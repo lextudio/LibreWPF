@@ -6273,10 +6273,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PROGPU_WPF_MVP_RUN_VALIDATE=1", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("Running MVP SDK app apphost Application.Run validation", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("mvp_apphost_name=\"$(apphost_name \"ProGPU.Wpf.MvpApp\")\"", sdkCiScript, StringComparison.Ordinal);
-        Assert.Contains("PROGPU_WPF_MVP_RUN_VALIDATE=1 \"./${mvp_apphost_name}\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("\"./${mvp_apphost_name}\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("Running MVP SDK app live geometry validation", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_REBUILD_PACKAGES=0", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_MVP_VALIDATE=0", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_MVP_RUN_VALIDATE=0", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_LIVE_VALIDATE=1", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_MVP_LIVE_VALIDATE=0", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_HELLO_RUN_VALIDATE=0", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_HELLO_LIVE_VALIDATE=0", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("\"${repo_root}/eng/run-progpu-wpf-mvp.sh\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfSdkProvidesSwitchOnlyPackagingSurface", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("dev_package_version=\"${PROGPU_WPF_DEV_PACKAGE_VERSION:-11.0.0-dev}\"", sdkCiScript, StringComparison.Ordinal);
@@ -7297,6 +7302,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("viewport_width != pixel_width", helloRunScript, StringComparison.Ordinal);
         Assert.Contains("Building ProGPU WPF SDK packages before quickcheck", mvpQuickCheckScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_REBUILD_PACKAGES=0", mvpQuickCheckScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_MVP_VALIDATE=0", mvpQuickCheckScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_MVP_RUN_VALIDATE=0", mvpQuickCheckScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_MVP_LIVE_VALIDATE=0", mvpQuickCheckScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_HELLO_RUN_VALIDATE=0", mvpQuickCheckScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_HELLO_LIVE_VALIDATE=0", mvpQuickCheckScript, StringComparison.Ordinal);
         Assert.Contains("\"${repo_root}/eng/progpu-wpf-sdk-ci.sh\"", mvpQuickCheckScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Wpf.SdkExternalSmokeHarness.csproj", mvpQuickCheckScript, StringComparison.Ordinal);
         Assert.Contains("apphost_name()", mvpQuickCheckScript, StringComparison.Ordinal);

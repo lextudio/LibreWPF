@@ -26,7 +26,14 @@ package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Rel
 sdk_package="${package_output}/ProGPU.Wpf.Sdk.11.0.0-dev.nupkg"
 if [[ "${PROGPU_WPF_MVP_REBUILD_PACKAGES:-0}" == "1" || ! -f "${sdk_package}" ]]; then
   echo "Building ProGPU WPF SDK packages before quickcheck..."
-  PROGPU_WPF_MVP_REBUILD_PACKAGES=0 "${repo_root}/eng/progpu-wpf-sdk-ci.sh"
+  PROGPU_WPF_HELLO_REBUILD_PACKAGES=0 \
+  PROGPU_WPF_HELLO_RUN_VALIDATE=0 \
+  PROGPU_WPF_HELLO_LIVE_VALIDATE=0 \
+  PROGPU_WPF_MVP_REBUILD_PACKAGES=0 \
+  PROGPU_WPF_MVP_VALIDATE=0 \
+  PROGPU_WPF_MVP_RUN_VALIDATE=0 \
+  PROGPU_WPF_MVP_LIVE_VALIDATE=0 \
+    "${repo_root}/eng/progpu-wpf-sdk-ci.sh"
 fi
 
 echo "Running external no-source-change ProGPU WPF SDK smoke..."
@@ -53,20 +60,26 @@ echo "Running SDK-switch smoke apphost live input probe..."
 echo "Running Hello SDK apphost Application.Run self-test..."
 PROGPU_WPF_HELLO_REBUILD_PACKAGES=0 \
 PROGPU_WPF_HELLO_RUN_VALIDATE=1 \
+PROGPU_WPF_HELLO_LIVE_VALIDATE=0 \
   "${repo_root}/eng/run-progpu-wpf-hello.sh"
 
 echo "Running Hello SDK apphost live geometry probe..."
 PROGPU_WPF_HELLO_REBUILD_PACKAGES=0 \
+PROGPU_WPF_HELLO_RUN_VALIDATE=0 \
 PROGPU_WPF_HELLO_LIVE_VALIDATE=1 \
   "${repo_root}/eng/run-progpu-wpf-hello.sh"
 
 echo "Running MVP SDK apphost Application.Run self-test..."
 PROGPU_WPF_MVP_REBUILD_PACKAGES=0 \
+PROGPU_WPF_MVP_VALIDATE=0 \
 PROGPU_WPF_MVP_RUN_VALIDATE=1 \
+PROGPU_WPF_MVP_LIVE_VALIDATE=0 \
   "${repo_root}/eng/run-progpu-wpf-mvp.sh"
 
 echo "Running MVP SDK apphost live geometry probe..."
 PROGPU_WPF_MVP_REBUILD_PACKAGES=0 \
+PROGPU_WPF_MVP_VALIDATE=0 \
+PROGPU_WPF_MVP_RUN_VALIDATE=0 \
 PROGPU_WPF_MVP_LIVE_VALIDATE=1 \
   "${repo_root}/eng/run-progpu-wpf-mvp.sh"
 

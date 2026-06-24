@@ -163,6 +163,19 @@ internal static class Program
                 applicationRunOutput,
                 "External SDK Application.Run validation succeeded.",
                 "external SDK Application.Run validation output");
+            string applicationAppHostOutput = RunProcess(
+                Path.Combine(outputRoot, GetAppHostFileName(AppOutputAssemblyName)),
+                outputRoot,
+                new Dictionary<string, string>
+                {
+                    ["PROGPU_WPF_EXTERNAL_RUN_VALIDATE"] = "1"
+                },
+                "external-startup-alpha",
+                "external startup beta");
+            AssertContains(
+                applicationAppHostOutput,
+                "External SDK Application.Run validation succeeded.",
+                "external SDK apphost Application.Run validation output");
             string defaultItemsRunOutput = RunProcess(
                 dotnetPath,
                 defaultItemsOutputRoot,
@@ -12427,6 +12440,9 @@ internal static class Program
     private static void ValidateExternalOutput(string outputRoot, string packageFeed)
     {
         RequireFile(Path.Combine(outputRoot, AppOutputAssemblyName + ".dll"), "external SDK app assembly");
+        RequireFile(
+            Path.Combine(outputRoot, GetAppHostFileName(AppOutputAssemblyName)),
+            "external SDK apphost");
         RequireFile(Path.Combine(outputRoot, LibraryOutputAssemblyName + ".dll"), "external SDK library assembly");
         string copiedContentPath = Path.Combine(outputRoot, "Assets", "ExternalContent.txt");
         RequireFile(copiedContentPath, "external SDK copied content output");

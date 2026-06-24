@@ -11,6 +11,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Xceed.Wpf.AvalonDock;
 using Xceed.Wpf.AvalonDock.Layout;
@@ -54,6 +55,7 @@ public partial class MainWindow : Window
             {
                 ContentId = $"generated-{index}",
                 Title = document.Title,
+                IconSource = TryFindResource("DocumentIcon") as ImageSource,
                 Content = new TextBox
                 {
                     Text = document.Body,
@@ -88,6 +90,20 @@ public partial class MainWindow : Window
             _viewModel.Status = "Property pane hidden";
             _viewModel.Activity.Add("Hidden property pane");
         }
+    }
+
+    private void ToggleActivityAutoHideButton_Click(object sender, RoutedEventArgs e)
+    {
+        ActivityPane.ToggleAutoHide();
+        _viewModel.Status = ActivityPane.IsAutoHidden ? "Activity pane auto-hidden" : "Activity pane docked";
+        _viewModel.Activity.Add(_viewModel.Status);
+    }
+
+    private void ToggleAgendaAutoHideButton_Click(object sender, RoutedEventArgs e)
+    {
+        AgendaPane.ToggleAutoHide();
+        _viewModel.Status = AgendaPane.IsAutoHidden ? "Agenda pane auto-hidden" : "Agenda pane docked";
+        _viewModel.Activity.Add(_viewModel.Status);
     }
 
     private void SerializeLayoutButton_Click(object sender, RoutedEventArgs e)
@@ -295,13 +311,42 @@ public partial class MainWindow : Window
             () => AssertEqual(false, PropertyPane.IsHidden, "Toolkit live property pane restored state"),
             DispatcherPriority.Send);
 
+        await ClickLiveControlAsync(liveHost, ToggleActivityAutoHideButton, "ToggleActivityAutoHideButton");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                AssertEqual(true, ActivityPane.IsAutoHidden, "Toolkit live activity pane auto-hide state");
+                if (DockLayoutRoot.RightSide.ChildrenCount == 0)
+                {
+                    throw new InvalidOperationException("Expected Toolkit live activity pane to move into the AvalonDock right auto-hide side.");
+                }
+            },
+            DispatcherPriority.Send);
+
+        await ClickLiveControlAsync(liveHost, ToggleAgendaAutoHideButton, "ToggleAgendaAutoHideButton");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                AssertEqual(false, AgendaPane.IsAutoHidden, "Toolkit live agenda pane docked state");
+                AssertEqual(true, AgendaPane.IsVisible, "Toolkit live agenda pane visible state");
+                if (AgendaPane.Parent is LayoutAnchorGroup)
+                {
+                    throw new InvalidOperationException("Expected Toolkit live agenda pane to leave the AvalonDock left auto-hide group.");
+                }
+            },
+            DispatcherPriority.Send);
+
         await ClickLiveControlAsync(liveHost, SerializeLayoutButton, "SerializeLayoutButton");
         return await InvokeWithLiveHostWakeAsync(
             liveHost,
             () =>
             {
                 if (!ViewModel.LastSerializedLayout.Contains("<LayoutRoot", StringComparison.Ordinal) ||
-                    !ViewModel.LastSerializedLayout.Contains("ContentId=\"editor\"", StringComparison.Ordinal))
+                    !ViewModel.LastSerializedLayout.Contains("ContentId=\"editor\"", StringComparison.Ordinal) ||
+                    !ViewModel.LastSerializedLayout.Contains("ContentId=\"activity\"", StringComparison.Ordinal) ||
+                    !ViewModel.LastSerializedLayout.Contains("ContentId=\"agenda\"", StringComparison.Ordinal))
                 {
                     throw new InvalidOperationException("Expected Toolkit live AvalonDock serialization to include document content ids.");
                 }
@@ -313,7 +358,7 @@ public partial class MainWindow : Window
                     throw new InvalidOperationException("Expected Toolkit live AvalonDock deserialization to restore root panel shape.");
                 }
 
-                return "host mouse/text input, binding update, AvalonDock document activation, anchorable hide/show, and layout serialization updated";
+                return "host mouse/text input, binding update, AvalonDock document activation, anchorable hide/show, auto-hide side groups, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -753,6 +798,8 @@ internal static class ToolkitSelfTest
         Require<PropertyGrid>(window, "DocumentPropertyGrid");
         Require<Button>(window, "ActivateEditorButton");
         Require<Button>(window, "TogglePropertyPaneButton");
+        Require<Button>(window, "ToggleActivityAutoHideButton");
+        Require<Button>(window, "ToggleAgendaAutoHideButton");
         Require<Button>(window, "SerializeLayoutButton");
 
         if (window.DockManager.Theme is not AeroTheme)
@@ -760,14 +807,33 @@ internal static class ToolkitSelfTest
             throw new InvalidOperationException("Expected AvalonDock AeroTheme from Extended.Wpf.Toolkit package.");
         }
 
+        if (window.DockManager.DocumentHeaderTemplate is null)
+        {
+            throw new InvalidOperationException("Expected AvalonDock document header template to be loaded from sample XAML.");
+        }
+
         if (window.DockLayoutRoot.RootPanel is null || window.DockLayoutRoot.RootPanel.ChildrenCount != 3)
         {
             throw new InvalidOperationException("Expected AvalonDock root panel with toolkit, document, and property panes.");
         }
 
+        if (!window.AgendaPane.IsAutoHidden ||
+            !window.ContactsPane.IsAutoHidden ||
+            window.DockLayoutRoot.LeftSide.ChildrenCount != 1)
+        {
+            throw new InvalidOperationException("Expected startup AvalonDock side anchorables to be auto-hidden on the left side.");
+        }
+
         if (window.DocumentPane.ChildrenCount != 2)
         {
             throw new InvalidOperationException($"Expected two startup AvalonDock documents, got {window.DocumentPane.ChildrenCount}.");
+        }
+
+        if (window.OverviewDocument.IconSource is null ||
+            window.EditorDocument.IconSource is null ||
+            window.ToolkitPane.IconSource is null)
+        {
+            throw new InvalidOperationException("Expected AvalonDock icon resources to bind into documents and anchorables.");
         }
 
         if (window.DocumentPropertyGrid.SelectedObject is ToolkitDocument selected)
@@ -831,10 +897,26 @@ internal static class ToolkitSelfTest
             throw new InvalidOperationException("Expected AvalonDock property anchorable to show from the hidden collection.");
         }
 
+        window.ToggleActivityAutoHideButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+        if (!window.ActivityPane.IsAutoHidden || window.DockLayoutRoot.RightSide.ChildrenCount == 0)
+        {
+            throw new InvalidOperationException("Expected AvalonDock activity anchorable to auto-hide into the right side.");
+        }
+
+        window.ToggleAgendaAutoHideButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+        if (window.AgendaPane.IsAutoHidden || window.AgendaPane.Parent is LayoutAnchorGroup)
+        {
+            throw new InvalidOperationException("Expected AvalonDock agenda anchorable to dock back from the left auto-hide side.");
+        }
+
         window.SerializeLayoutButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
 
         if (!window.ViewModel.LastSerializedLayout.Contains("<LayoutRoot", StringComparison.Ordinal) ||
-            !window.ViewModel.LastSerializedLayout.Contains("ContentId=\"editor\"", StringComparison.Ordinal))
+            !window.ViewModel.LastSerializedLayout.Contains("ContentId=\"editor\"", StringComparison.Ordinal) ||
+            !window.ViewModel.LastSerializedLayout.Contains("ContentId=\"activity\"", StringComparison.Ordinal) ||
+            !window.ViewModel.LastSerializedLayout.Contains("ContentId=\"agenda\"", StringComparison.Ordinal))
         {
             throw new InvalidOperationException("Expected AvalonDock layout serialization to include document content ids.");
         }

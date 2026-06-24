@@ -12056,6 +12056,10 @@ internal static class Program
                 <TargetFramework>{ExternalAppTargetFramework}</TargetFramework>
                 <UseWPF>true</UseWPF>
               </PropertyGroup>
+
+              <ItemGroup>
+                <ProjectReference Include="../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj" />
+              </ItemGroup>
             </Project>
             """,
                 OriginalWindowsDesktopWpfSdk,
@@ -12214,6 +12218,7 @@ internal static class Program
                 x:Class="ExternalSdkDefaultItemsApp.MainWindow"
                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:library="clr-namespace:ExternalSdkLibrary;assembly=ExternalSdkControls"
                 xmlns:local="clr-namespace:ExternalSdkDefaultItemsApp"
                 Title="External SDK Default Items"
                 Width="260"
@@ -12227,6 +12232,9 @@ internal static class Program
                     <local:DefaultItemsPanel
                         x:Name="DefaultItemsPanel"
                         Caption="Default item panel caption" />
+                    <library:ExternalPanel
+                        x:Name="DefaultItemsLibraryPanel"
+                        Caption="Default item referenced library caption" />
                     <Button
                         x:Name="DefaultItemsButton"
                         Click="OnDefaultItemsButtonClick"
@@ -12269,6 +12277,9 @@ internal static class Program
                     Require(
                         DefaultItemsPanel.CaptionText == "Default item panel caption",
                         "Expected default-item UserControl ElementName binding.");
+                    Require(
+                        DefaultItemsLibraryPanel.Caption == "Default item referenced library caption",
+                        "Expected default-item referenced library dependency property value.");
 
                     DefaultItemsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     Require(ButtonClickCount == 1, "Expected default-item compiled Click handler.");
@@ -12393,7 +12404,7 @@ internal static class Program
         AssertContains(project, $"<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", "external default-item app Windows target framework");
         AssertContains(project, "<UseWPF>true</UseWPF>", "external default-item app WPF property");
         AssertDoesNotContain(project, "<EnableDefaultItems>false</EnableDefaultItems>", "external default-item app default item opt-out");
-        AssertDoesNotContain(project, "<ItemGroup>", "external default-item app explicit items");
+        AssertContains(project, $"<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", "external default-item app project reference");
         AssertDoesNotContain(project, "<Compile Include=", "external default-item app explicit compile items");
         AssertDoesNotContain(project, "<ApplicationDefinition Include=", "external default-item app explicit application definition item");
         AssertDoesNotContain(project, "<Page Include=", "external default-item app explicit page item");
@@ -12521,6 +12532,7 @@ internal static class Program
         RequireFile(
             Path.Combine(outputRoot, GetAppHostFileName(DefaultItemsAssemblyName)),
             "external SDK default-item apphost");
+        RequireFile(Path.Combine(outputRoot, LibraryOutputAssemblyName + ".dll"), "external SDK default-item referenced library assembly");
 
         foreach (string assemblyName in s_requiredWpfRuntimeAssemblies
                      .Concat(s_requiredProGpuRuntimeAssemblies)
@@ -12539,6 +12551,7 @@ internal static class Program
         AssertContains(depsJson, "ProGPU.Compute", "external SDK default-item ProGPU compute package dependency");
         AssertContains(depsJson, "ProGPU.Transpiler", "external SDK default-item ProGPU transpiler package dependency");
         AssertContains(depsJson, "StbImageSharp", "external SDK default-item StbImageSharp package dependency");
+        AssertContains(depsJson, LibraryOutputAssemblyName, "external SDK default-item referenced library dependency");
     }
 
     private static string GetAppHostFileName(string assemblyName)

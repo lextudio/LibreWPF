@@ -8089,6 +8089,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("assembly=ExternalSdkControls", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("LibraryOutputAssemblyName + \".dll\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsLibraryPanel", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Default item referenced library caption", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK default-item referenced library assembly", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK default-item referenced library dependency", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Resource Include=\"Assets/ExternalResource.txt\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Resource Include=\"Assets/ExternalImage.png\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Content Include=\"Assets/ExternalContent.txt\">", externalSdkHarnessProgram, StringComparison.Ordinal);

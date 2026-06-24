@@ -12512,6 +12512,37 @@ internal static class Program
                                 </Trigger>
                             </Style.Triggers>
                         </Style>
+                        <Style
+                            x:Key="DefaultItemsTemplatedButtonStyle"
+                            TargetType="{x:Type Button}">
+                            <Setter
+                                Property="Background"
+                                Value="#FFE8F1FF" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="{x:Type Button}">
+                                        <Border
+                                            x:Name="DefaultItemsTemplateButtonRoot"
+                                            Background="{TemplateBinding Background}"
+                                            Tag="default-item template enabled">
+                                            <ContentPresenter
+                                                x:Name="DefaultItemsTemplateButtonContent"
+                                                Content="{TemplateBinding Content}" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger
+                                                Property="IsEnabled"
+                                                Value="False">
+                                                <Setter
+                                                    TargetName="DefaultItemsTemplateButtonRoot"
+                                                    Property="Tag"
+                                                    Value="default-item template disabled" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
                         <DataTemplate DataType="{x:Type local:DefaultItemsItem}">
                             <TextBlock
                                 x:Name="DefaultItemsImplicitTemplateText"
@@ -12591,6 +12622,10 @@ internal static class Program
                         x:Name="DefaultItemsPropertyTriggeredText"
                         Style="{StaticResource DefaultItemsPropertyTriggerStyle}"
                         Text="Default item property trigger text" />
+                    <Button
+                        x:Name="DefaultItemsTemplatedButton"
+                        Content="Default item templated button"
+                        Style="{StaticResource DefaultItemsTemplatedButtonStyle}" />
                     <ListBox
                         x:Name="DefaultItemsListBox"
                         DisplayMemberPath="Name"
@@ -12922,6 +12957,29 @@ internal static class Program
                             "default-item property trigger inactive",
                             StringComparison.Ordinal),
                         "Expected default-item property Trigger to start inactive.");
+                    DefaultItemsTemplatedButton.ApplyTemplate();
+                    var templatedButtonRoot = RequireType<Border>(
+                        DefaultItemsTemplatedButton.Template.FindName(
+                            "DefaultItemsTemplateButtonRoot",
+                            DefaultItemsTemplatedButton),
+                        "default-item ControlTemplate root");
+                    var templatedButtonContent = RequireType<ContentPresenter>(
+                        DefaultItemsTemplatedButton.Template.FindName(
+                            "DefaultItemsTemplateButtonContent",
+                            DefaultItemsTemplatedButton),
+                        "default-item ControlTemplate content presenter");
+                    var templatedButtonBackground = RequireType<SolidColorBrush>(
+                        templatedButtonRoot.Background,
+                        "default-item ControlTemplate TemplateBinding background");
+                    Require(
+                        templatedButtonBackground.Color == Color.FromRgb(0xE8, 0xF1, 0xFF),
+                        "Expected default-item ControlTemplate TemplateBinding background.");
+                    Require(
+                        string.Equals(templatedButtonContent.Content as string, "Default item templated button", StringComparison.Ordinal),
+                        "Expected default-item ControlTemplate TemplateBinding content.");
+                    Require(
+                        string.Equals(templatedButtonRoot.Tag as string, "default-item template enabled", StringComparison.Ordinal),
+                        "Expected default-item ControlTemplate trigger to start inactive.");
                     Require(
                         DefaultItemsConvertedSelectionText.Text == "Selected: Default item alpha",
                         "Expected default-item converter binding to read the selected item.");
@@ -13069,6 +13127,16 @@ internal static class Program
                             "default-item property trigger inactive",
                             StringComparison.Ordinal),
                         "Expected default-item property Trigger to exit after property reset.");
+                    DefaultItemsTemplatedButton.IsEnabled = false;
+                    DrainDispatcher();
+                    Require(
+                        string.Equals(templatedButtonRoot.Tag as string, "default-item template disabled", StringComparison.Ordinal),
+                        "Expected default-item ControlTemplate trigger to activate after property change.");
+                    DefaultItemsTemplatedButton.IsEnabled = true;
+                    DrainDispatcher();
+                    Require(
+                        string.Equals(templatedButtonRoot.Tag as string, "default-item template enabled", StringComparison.Ordinal),
+                        "Expected default-item ControlTemplate trigger to exit after property reset.");
 
                     var commandBinding = RequireType<CommandBinding>(
                         CommandBindings[0],

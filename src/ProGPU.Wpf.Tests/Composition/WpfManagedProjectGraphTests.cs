@@ -8109,6 +8109,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DefaultItemsLibraryResourceBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsSdkSetting", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Default item SDK app config value", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsPage.xaml", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Class=\"ExternalSdkDefaultItemsApp.DefaultItemsPage\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"DefaultItemsFrame\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Source=\"DefaultItemsPage.xaml\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Default item compiled page text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item compiled Page frame content", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external default-item app explicit app config item", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK default-item app config output", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Default item referenced library caption", externalSdkHarnessProgram, StringComparison.Ordinal);

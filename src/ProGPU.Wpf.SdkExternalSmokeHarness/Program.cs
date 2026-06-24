@@ -12369,6 +12369,40 @@ internal static class Program
             """);
 
         WriteFile(
+            Path.Combine(appRoot, "DefaultItemsPage.xaml"),
+            """
+            <Page
+                x:Class="ExternalSdkDefaultItemsApp.DefaultItemsPage"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                Title="Default item page">
+                <Border Padding="2">
+                    <TextBlock
+                        x:Name="DefaultItemsPageText"
+                        Text="Default item compiled page text" />
+                </Border>
+            </Page>
+            """);
+
+        WriteFile(
+            Path.Combine(appRoot, "DefaultItemsPage.xaml.cs"),
+            """
+            using System.Windows.Controls;
+
+            namespace ExternalSdkDefaultItemsApp;
+
+            public partial class DefaultItemsPage : Page
+            {
+                public DefaultItemsPage()
+                {
+                    InitializeComponent();
+                }
+
+                public string PageText => DefaultItemsPageText.Text;
+            }
+            """);
+
+        WriteFile(
             Path.Combine(appRoot, "MainWindow.xaml"),
             """
             <Window
@@ -12406,6 +12440,10 @@ internal static class Program
                     <library:DefaultItemsLibraryThemedControl
                         x:Name="DefaultItemsLibraryThemedControl"
                         Text="Default item library theme text" />
+                    <Frame
+                        x:Name="DefaultItemsFrame"
+                        Source="DefaultItemsPage.xaml"
+                        NavigationUIVisibility="Hidden" />
                     <Button
                         x:Name="DefaultItemsButton"
                         Click="OnDefaultItemsButtonClick"
@@ -12422,6 +12460,7 @@ internal static class Program
             using System.Windows;
             using System.Windows.Controls;
             using System.Windows.Media;
+            using System.Windows.Threading;
 
             namespace ExternalSdkDefaultItemsApp;
 
@@ -12493,6 +12532,19 @@ internal static class Program
                     Require(
                         themeForeground.Color == Color.FromRgb(0x12, 0x34, 0x56),
                         "Expected default-item referenced library theme foreground.");
+                    Require(
+                        DefaultItemsFrame.Source?.ToString().Contains("DefaultItemsPage.xaml", StringComparison.OrdinalIgnoreCase) == true,
+                        "Expected default-item Frame source.");
+                    DefaultItemsFrame.UpdateLayout();
+                    PumpDispatcherUntil(
+                        () => DefaultItemsFrame.Content is DefaultItemsPage,
+                        "default-item compiled Page frame content");
+                    var defaultItemsPage = RequireType<DefaultItemsPage>(
+                        DefaultItemsFrame.Content,
+                        "default-item compiled Page frame content");
+                    Require(
+                        defaultItemsPage.PageText == "Default item compiled page text",
+                        "Expected default-item compiled Page text.");
 
                     DefaultItemsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     Require(ButtonClickCount == 1, "Expected default-item compiled Click handler.");
@@ -12510,6 +12562,33 @@ internal static class Program
                 {
                     ButtonClickCount++;
                     DefaultItemsButton.Tag = "default-item clicked";
+                }
+
+                private static void DrainDispatcher()
+                {
+                    var frame = new DispatcherFrame();
+                    Dispatcher.CurrentDispatcher.BeginInvoke(
+                        DispatcherPriority.ApplicationIdle,
+                        new Action(() => frame.Continue = false));
+                    Dispatcher.PushFrame(frame);
+                }
+
+                private static void PumpDispatcherUntil(Func<bool> condition, string description)
+                {
+                    var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+                    while (!condition())
+                    {
+                        DrainDispatcher();
+                        if (condition())
+                        {
+                            return;
+                        }
+
+                        if (DateTime.UtcNow >= deadline)
+                        {
+                            throw new InvalidOperationException($"Timed out waiting for {description}.");
+                        }
+                    }
                 }
 
                 private static T RequireType<T>(object? value, string description)
@@ -12657,6 +12736,8 @@ internal static class Program
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "MainWindow.xaml.cs"), "external SDK default-item MainWindow.xaml.cs source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "DefaultItemsPanel.xaml"), "external SDK default-item UserControl XAML source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "DefaultItemsPanel.xaml.cs"), "external SDK default-item UserControl code source");
+        RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "DefaultItemsPage.xaml"), "external SDK default-item Page XAML source");
+        RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "DefaultItemsPage.xaml.cs"), "external SDK default-item Page code source");
         string defaultItemsLibraryAssemblyInfo = File.ReadAllText(
             Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "Properties", "AssemblyInfo.cs"));
         string defaultItemsLibraryThemedControl = File.ReadAllText(

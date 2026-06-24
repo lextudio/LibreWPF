@@ -8126,6 +8126,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DefaultItemsImplicitTemplateText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item implicit DataTemplate visual tree", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item implicit DataTemplate binding text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsObjectDataProvider", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsProviderSource", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsObjectProviderText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item ObjectDataProvider bound text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsXmlDataProvider", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<x:XData>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsXmlProviderText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item XmlDataProvider bound text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsBoundStatusText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsEditableStatusTextBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsValidatedStatusTextBox", externalSdkHarnessProgram, StringComparison.Ordinal);

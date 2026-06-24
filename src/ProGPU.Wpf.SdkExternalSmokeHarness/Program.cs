@@ -12476,6 +12476,21 @@ internal static class Program
                         <local:DefaultItemsItem
                             x:Key="DefaultItemsTemplateItem"
                             Name="Default item template data" />
+                        <ObjectDataProvider
+                            x:Key="DefaultItemsObjectDataProvider"
+                            IsAsynchronous="False"
+                            MethodName="CreateText"
+                            ObjectType="{x:Type local:DefaultItemsProviderSource}" />
+                        <XmlDataProvider
+                            x:Key="DefaultItemsXmlDataProvider"
+                            IsAsynchronous="False"
+                            XPath="/defaultItems/item">
+                            <x:XData>
+                                <defaultItems xmlns="">
+                                    <item name="Default item XML provider text" />
+                                </defaultItems>
+                            </x:XData>
+                        </XmlDataProvider>
                         <local:DefaultItemsItemNameConverter
                             x:Key="DefaultItemsItemNameConverter" />
                         <local:DefaultItemsStatusSelectionConverter
@@ -12687,6 +12702,12 @@ internal static class Program
                         x:Name="DefaultItemsImplicitTemplatePresenter"
                         Content="{StaticResource DefaultItemsTemplateItem}" />
                     <TextBlock
+                        x:Name="DefaultItemsObjectProviderText"
+                        Text="{Binding Source={StaticResource DefaultItemsObjectDataProvider}}" />
+                    <TextBlock
+                        x:Name="DefaultItemsXmlProviderText"
+                        Text="{Binding Source={StaticResource DefaultItemsXmlDataProvider}, XPath=@name}" />
+                    <TextBlock
                         x:Name="DefaultItemsBoundStatusText"
                         Text="{Binding Status}" />
                     <TextBox
@@ -12814,6 +12835,14 @@ internal static class Program
             public sealed class DefaultItemsItem
             {
                 public string Name { get; set; } = string.Empty;
+            }
+
+            public sealed class DefaultItemsProviderSource
+            {
+                public string CreateText()
+                {
+                    return "Default item object provider text";
+                }
             }
 
             public sealed class DefaultItemsViewModel : INotifyPropertyChanged
@@ -13156,6 +13185,45 @@ internal static class Program
                             "default-item implicit template",
                             StringComparison.Ordinal),
                         "Expected default-item implicit DataTemplate text tag.");
+                    var objectProvider = RequireType<ObjectDataProvider>(
+                        FindResource("DefaultItemsObjectDataProvider"),
+                        "default-item ObjectDataProvider resource");
+                    Require(!objectProvider.IsAsynchronous, "Expected default-item ObjectDataProvider synchronous mode.");
+                    Require(
+                        objectProvider.MethodName == "CreateText",
+                        "Expected default-item ObjectDataProvider method name.");
+                    Require(
+                        objectProvider.ObjectType == typeof(DefaultItemsProviderSource),
+                        "Expected default-item ObjectDataProvider object type.");
+                    Require(
+                        string.Equals(objectProvider.Data as string, "Default item object provider text", StringComparison.Ordinal),
+                        "Expected default-item ObjectDataProvider data.");
+                    Require(
+                        DefaultItemsObjectProviderText.Text == "Default item object provider text",
+                        "Expected default-item ObjectDataProvider bound text.");
+                    var objectProviderBinding = DefaultItemsObjectProviderText.GetBindingExpression(TextBlock.TextProperty)
+                        ?? throw new InvalidOperationException("Expected default-item ObjectDataProvider text binding.");
+                    Require(
+                        ReferenceEquals(objectProviderBinding.ParentBinding.Source, objectProvider),
+                        "Expected default-item ObjectDataProvider binding source.");
+                    var xmlProvider = RequireType<XmlDataProvider>(
+                        FindResource("DefaultItemsXmlDataProvider"),
+                        "default-item XmlDataProvider resource");
+                    Require(!xmlProvider.IsAsynchronous, "Expected default-item XmlDataProvider synchronous mode.");
+                    Require(
+                        xmlProvider.XPath == "/defaultItems/item",
+                        "Expected default-item XmlDataProvider XPath.");
+                    Require(
+                        DefaultItemsXmlProviderText.Text == "Default item XML provider text",
+                        "Expected default-item XmlDataProvider bound text.");
+                    var xmlProviderBinding = DefaultItemsXmlProviderText.GetBindingExpression(TextBlock.TextProperty)
+                        ?? throw new InvalidOperationException("Expected default-item XmlDataProvider text binding.");
+                    Require(
+                        ReferenceEquals(xmlProviderBinding.ParentBinding.Source, xmlProvider),
+                        "Expected default-item XmlDataProvider binding source.");
+                    Require(
+                        xmlProviderBinding.ParentBinding.XPath == "@name",
+                        "Expected default-item XmlDataProvider binding XPath.");
 
                     Require(
                         ReferenceEquals(DataContext, ViewModel),

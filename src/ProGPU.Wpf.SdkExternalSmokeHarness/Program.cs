@@ -23,6 +23,8 @@ internal static class Program
     private const string LibraryAssemblyName = "ExternalSdkLibrary";
     private const string LibraryOutputAssemblyName = "ExternalSdkControls";
     private const string LocalizationAssemblyName = "ExternalLocalizationApp";
+    private const string DefaultItemsAssemblyName = "ExternalSdkDefaultItemsApp";
+    private const string DefaultItemsOutputAssemblyName = "ExternalSdkDefaultItemsShell";
 
     private static readonly string[] s_requiredWpfRuntimeAssemblies =
     [
@@ -126,15 +128,20 @@ internal static class Program
             string workRoot = Path.Combine(Path.GetTempPath(), "ProGPU.Wpf.SdkExternalSmoke");
             string appProjectPath = PrepareExternalSdkApp(workRoot, packageFeed);
             string localizationProjectPath = PrepareExternalLocalizationProject(workRoot);
+            string defaultItemsProjectPath = PrepareExternalDefaultItemsApp(workRoot);
             string dotnetPath = Path.Combine(repoRoot, ".dotnet", "dotnet");
 
             RunProcess(dotnetPath, repoRoot, "build", appProjectPath, "-v:minimal");
             RunProcess(dotnetPath, repoRoot, "build", localizationProjectPath, "-v:minimal");
+            RunProcess(dotnetPath, repoRoot, "build", defaultItemsProjectPath, "-v:minimal");
 
             ValidateExternalProjectShape(workRoot);
+            ValidateExternalDefaultItemsProjectShape(workRoot);
             ValidateExternalLocalizationDirectives(workRoot);
             string outputRoot = Path.Combine(workRoot, AppAssemblyName, "bin", "Debug", ExternalAppTargetFramework);
             ValidateExternalOutput(outputRoot, packageFeed);
+            string defaultItemsOutputRoot = Path.Combine(workRoot, DefaultItemsAssemblyName, "bin", "Debug", ExternalAppTargetFramework);
+            ValidateExternalDefaultItemsOutput(defaultItemsOutputRoot);
             RunProcess(
                 dotnetPath,
                 outputRoot,
@@ -157,6 +164,18 @@ internal static class Program
                 applicationRunOutput,
                 "External SDK Application.Run validation succeeded.",
                 "external SDK Application.Run validation output");
+            string defaultItemsRunOutput = RunProcess(
+                dotnetPath,
+                defaultItemsOutputRoot,
+                new Dictionary<string, string>
+                {
+                    ["PROGPU_WPF_EXTERNAL_DEFAULT_RUN_VALIDATE"] = "1"
+                },
+                Path.Combine(defaultItemsOutputRoot, DefaultItemsOutputAssemblyName + ".dll"));
+            AssertContains(
+                defaultItemsRunOutput,
+                "External SDK default-item Application.Run validation succeeded.",
+                "external SDK default-item Application.Run validation output");
 
             Console.WriteLine("ProGPU WPF external SDK smoke succeeded.");
             return 0;
@@ -11974,6 +11993,275 @@ internal static class Program
         return localizationProjectPath;
     }
 
+    private static string PrepareExternalDefaultItemsApp(string workRoot)
+    {
+        string appRoot = Path.Combine(workRoot, DefaultItemsAssemblyName);
+        Directory.CreateDirectory(appRoot);
+
+        string appProjectPath = Path.Combine(appRoot, DefaultItemsAssemblyName + ".csproj");
+        WriteFile(
+            appProjectPath,
+            SwitchWpfSdkOnly(
+                $"""
+            <Project Sdk="{OriginalWindowsDesktopWpfSdk}">
+              <PropertyGroup>
+                <AssemblyName>{DefaultItemsOutputAssemblyName}</AssemblyName>
+                <OutputType>WinExe</OutputType>
+                <TargetFramework>{ExternalAppTargetFramework}</TargetFramework>
+                <UseWPF>true</UseWPF>
+              </PropertyGroup>
+            </Project>
+            """,
+                OriginalWindowsDesktopWpfSdk,
+                "external SDK default-item app"));
+
+        WriteFile(
+            Path.Combine(appRoot, "App.xaml"),
+            """
+            <Application
+                x:Class="ExternalSdkDefaultItemsApp.App"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:sys="clr-namespace:System;assembly=System.Private.CoreLib"
+                StartupUri="MainWindow.xaml"
+                Startup="OnDefaultItemsStartup"
+                Exit="OnDefaultItemsExit">
+                <Application.Resources>
+                    <sys:String x:Key="DefaultItemsText">Default item resource text</sys:String>
+                    <SolidColorBrush
+                        x:Key="DefaultItemsBrush"
+                        Color="#335577" />
+                </Application.Resources>
+            </Application>
+            """);
+
+        WriteFile(
+            Path.Combine(appRoot, "App.xaml.cs"),
+            """
+            using System;
+            using System.Windows;
+            using System.Windows.Threading;
+
+            namespace ExternalSdkDefaultItemsApp;
+
+            public partial class App
+            {
+                private static bool s_runValidationRequested;
+
+                public static int StartupEventCount { get; private set; }
+
+                public static int ExitEventCount { get; private set; }
+
+                public static bool MainWindowValidated { get; private set; }
+
+                protected override void OnStartup(StartupEventArgs e)
+                {
+                    if (Environment.GetEnvironmentVariable("PROGPU_WPF_EXTERNAL_DEFAULT_RUN_VALIDATE") == "1")
+                    {
+                        s_runValidationRequested = true;
+                        base.OnStartup(e);
+                        Dispatcher.BeginInvoke(
+                            DispatcherPriority.Normal,
+                            new Action(ValidateAndShutdown));
+                        return;
+                    }
+
+                    base.OnStartup(e);
+                }
+
+                protected override void OnExit(ExitEventArgs e)
+                {
+                    base.OnExit(e);
+
+                    if (s_runValidationRequested)
+                    {
+                        Require(StartupEventCount == 1, "Expected default-item Startup event to run once.");
+                        Require(ExitEventCount == 1, "Expected default-item Exit event to run once.");
+                        Require(MainWindowValidated, "Expected default-item MainWindow validation to run.");
+                        Console.WriteLine("External SDK default-item Application.Run validation succeeded.");
+                    }
+                }
+
+                private void OnDefaultItemsStartup(object sender, StartupEventArgs e)
+                {
+                    StartupEventCount++;
+                }
+
+                private void OnDefaultItemsExit(object sender, ExitEventArgs e)
+                {
+                    ExitEventCount++;
+                }
+
+                private static void ValidateAndShutdown()
+                {
+                    if (Current?.MainWindow is not MainWindow window)
+                    {
+                        throw new InvalidOperationException("Expected default-item Application.MainWindow.");
+                    }
+
+                    window.ValidateDefaultItemsRun();
+                    MainWindowValidated = true;
+                    Current.Shutdown(0);
+                }
+
+                private static void Require(bool condition, string message)
+                {
+                    if (!condition)
+                    {
+                        throw new InvalidOperationException(message);
+                    }
+                }
+            }
+            """);
+
+        WriteFile(
+            Path.Combine(appRoot, "DefaultItemsPanel.xaml"),
+            """
+            <UserControl
+                x:Class="ExternalSdkDefaultItemsApp.DefaultItemsPanel"
+                x:Name="DefaultItemsPanelRoot"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                <Border Padding="2">
+                    <TextBlock
+                        x:Name="PanelCaption"
+                        Text="{Binding Caption, ElementName=DefaultItemsPanelRoot}" />
+                </Border>
+            </UserControl>
+            """);
+
+        WriteFile(
+            Path.Combine(appRoot, "DefaultItemsPanel.xaml.cs"),
+            """
+            using System.Windows;
+            using System.Windows.Controls;
+
+            namespace ExternalSdkDefaultItemsApp;
+
+            public partial class DefaultItemsPanel : UserControl
+            {
+                public static readonly DependencyProperty CaptionProperty = DependencyProperty.Register(
+                    nameof(Caption),
+                    typeof(string),
+                    typeof(DefaultItemsPanel),
+                    new PropertyMetadata(string.Empty));
+
+                public DefaultItemsPanel()
+                {
+                    InitializeComponent();
+                }
+
+                public string Caption
+                {
+                    get => (string)GetValue(CaptionProperty);
+                    set => SetValue(CaptionProperty, value);
+                }
+
+                public string CaptionText => PanelCaption.Text;
+            }
+            """);
+
+        WriteFile(
+            Path.Combine(appRoot, "MainWindow.xaml"),
+            """
+            <Window
+                x:Class="ExternalSdkDefaultItemsApp.MainWindow"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:local="clr-namespace:ExternalSdkDefaultItemsApp"
+                Title="External SDK Default Items"
+                Width="260"
+                Height="140"
+                Loaded="OnDefaultItemsWindowLoaded">
+                <StackPanel>
+                    <TextBlock
+                        x:Name="DefaultItemsTitleText"
+                        Foreground="{DynamicResource DefaultItemsBrush}"
+                        Text="{StaticResource DefaultItemsText}" />
+                    <local:DefaultItemsPanel
+                        x:Name="DefaultItemsPanel"
+                        Caption="Default item panel caption" />
+                    <Button
+                        x:Name="DefaultItemsButton"
+                        Click="OnDefaultItemsButtonClick"
+                        Content="Default item button" />
+                </StackPanel>
+            </Window>
+            """);
+
+        WriteFile(
+            Path.Combine(appRoot, "MainWindow.xaml.cs"),
+            """
+            using System;
+            using System.Windows;
+            using System.Windows.Controls;
+            using System.Windows.Media;
+
+            namespace ExternalSdkDefaultItemsApp;
+
+            public partial class MainWindow : Window
+            {
+                public int LoadedCount { get; private set; }
+
+                public int ButtonClickCount { get; private set; }
+
+                public MainWindow()
+                {
+                    InitializeComponent();
+                }
+
+                public void ValidateDefaultItemsRun()
+                {
+                    Require(DefaultItemsTitleText.Text == "Default item resource text", "Expected default-item StaticResource text.");
+                    var foreground = RequireType<SolidColorBrush>(DefaultItemsTitleText.Foreground, "default-item DynamicResource brush");
+                    Require(
+                        foreground.Color == Color.FromRgb(0x33, 0x55, 0x77),
+                        "Expected default-item DynamicResource brush color.");
+                    Require(
+                        DefaultItemsPanel.Caption == "Default item panel caption",
+                        "Expected default-item UserControl dependency property value.");
+                    Require(
+                        DefaultItemsPanel.CaptionText == "Default item panel caption",
+                        "Expected default-item UserControl ElementName binding.");
+
+                    DefaultItemsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Require(ButtonClickCount == 1, "Expected default-item compiled Click handler.");
+                    Require(
+                        string.Equals(DefaultItemsButton.Tag as string, "default-item clicked", StringComparison.Ordinal),
+                        "Expected default-item click handler to update button state.");
+                }
+
+                private void OnDefaultItemsWindowLoaded(object sender, RoutedEventArgs e)
+                {
+                    LoadedCount++;
+                }
+
+                private void OnDefaultItemsButtonClick(object sender, RoutedEventArgs e)
+                {
+                    ButtonClickCount++;
+                    DefaultItemsButton.Tag = "default-item clicked";
+                }
+
+                private static T RequireType<T>(object? value, string description)
+                {
+                    return value is T typed
+                        ? typed
+                        : throw new InvalidOperationException($"Expected {description} to be {typeof(T).FullName}.");
+                }
+
+                private static void Require(bool condition, string message)
+                {
+                    if (!condition)
+                    {
+                        throw new InvalidOperationException(message);
+                    }
+                }
+            }
+            """);
+
+        return appProjectPath;
+    }
+
     private static void ValidateExternalProjectShape(string workRoot)
     {
         string appProject = File.ReadAllText(Path.Combine(workRoot, AppAssemblyName, AppAssemblyName + ".csproj"));
@@ -12044,6 +12332,35 @@ internal static class Program
         {
             throw new InvalidOperationException("External SDK smoke must not rely on generated Directory.Build.props or Directory.Build.targets files.");
         }
+    }
+
+    private static void ValidateExternalDefaultItemsProjectShape(string workRoot)
+    {
+        string projectPath = Path.Combine(workRoot, DefaultItemsAssemblyName, DefaultItemsAssemblyName + ".csproj");
+        string project = File.ReadAllText(projectPath);
+
+        AssertContains(project, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external default-item app SDK");
+        AssertDoesNotContain(project, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external default-item app original SDK");
+        AssertDoesNotContain(project, $"<Project Sdk=\"{OriginalWindowsDesktopWpfSdk}\">", "external default-item app original WindowsDesktop SDK");
+        AssertContains(project, $"<AssemblyName>{DefaultItemsOutputAssemblyName}</AssemblyName>", "external default-item app custom assembly name");
+        AssertContains(project, "<OutputType>WinExe</OutputType>", "external default-item app output type");
+        AssertContains(project, $"<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", "external default-item app Windows target framework");
+        AssertContains(project, "<UseWPF>true</UseWPF>", "external default-item app WPF property");
+        AssertDoesNotContain(project, "<EnableDefaultItems>false</EnableDefaultItems>", "external default-item app default item opt-out");
+        AssertDoesNotContain(project, "<ItemGroup>", "external default-item app explicit items");
+        AssertDoesNotContain(project, "<Compile Include=", "external default-item app explicit compile items");
+        AssertDoesNotContain(project, "<ApplicationDefinition Include=", "external default-item app explicit application definition item");
+        AssertDoesNotContain(project, "<Page Include=", "external default-item app explicit page item");
+        AssertDoesNotContain(project, "ProGpuWpfReferenceMode", "external default-item app local artifact mode");
+        AssertDoesNotContain(project, "ProGpuWpfManagedReferenceRoot", "external default-item app managed artifact root");
+        AssertDoesNotContain(project, "ProGpuReferenceRoot", "external default-item app ProGPU artifact root");
+
+        RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "App.xaml"), "external SDK default-item App.xaml source");
+        RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "App.xaml.cs"), "external SDK default-item App.xaml.cs source");
+        RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "MainWindow.xaml"), "external SDK default-item MainWindow.xaml source");
+        RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "MainWindow.xaml.cs"), "external SDK default-item MainWindow.xaml.cs source");
+        RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "DefaultItemsPanel.xaml"), "external SDK default-item UserControl XAML source");
+        RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "DefaultItemsPanel.xaml.cs"), "external SDK default-item UserControl code source");
     }
 
     private static string SwitchWpfSdkOnly(string normalWpfProject, string description)
@@ -12147,6 +12464,29 @@ internal static class Program
         AssertContains(depsJson, LibraryOutputAssemblyName, "external SDK referenced library dependency");
 
         ValidateProGpuHiDpiRenderSurface(outputRoot);
+    }
+
+    private static void ValidateExternalDefaultItemsOutput(string outputRoot)
+    {
+        RequireFile(Path.Combine(outputRoot, DefaultItemsOutputAssemblyName + ".dll"), "external SDK default-item app assembly");
+
+        foreach (string assemblyName in s_requiredWpfRuntimeAssemblies
+                     .Concat(s_requiredProGpuRuntimeAssemblies)
+                     .Concat(s_requiredSilkNetRuntimeAssemblies)
+                     .Concat(s_requiredSupportRuntimeAssemblies))
+        {
+            RequireFile(Path.Combine(outputRoot, assemblyName + ".dll"), $"external SDK default-item output asset '{assemblyName}.dll'");
+        }
+
+        RequireAnyFile(outputRoot, GetNativeAssetCandidates("wgpu"), "external SDK default-item output native WebGPU runtime asset");
+        RequireAnyFile(outputRoot, GetNativeAssetCandidates("glfw"), "external SDK default-item output native GLFW runtime asset");
+
+        string depsJson = File.ReadAllText(Path.Combine(outputRoot, DefaultItemsOutputAssemblyName + ".deps.json"));
+        AssertContains(depsJson, "Microsoft.DotNet.Wpf.GitHub", "external SDK default-item WPF transport package dependency");
+        AssertContains(depsJson, "ProGPU.Wpf", "external SDK default-item ProGPU WPF package dependency");
+        AssertContains(depsJson, "ProGPU.Compute", "external SDK default-item ProGPU compute package dependency");
+        AssertContains(depsJson, "ProGPU.Transpiler", "external SDK default-item ProGPU transpiler package dependency");
+        AssertContains(depsJson, "StbImageSharp", "external SDK default-item StbImageSharp package dependency");
     }
 
     private static void ValidateOutputAssemblyMatchesLocalPackage(

@@ -25,9 +25,21 @@ public sealed class SilkNetWpfInputService : IWpfInputService
         ArgumentNullException.ThrowIfNull(inputContext);
 
         var subscriptions = new List<Action>();
+        var mouseSubscriptions = new Dictionary<SilkInput.IMouse, Action>();
+        var keyboardSubscriptions = new Dictionary<SilkInput.IKeyboard, Action>();
 
-        foreach (var mouse in inputContext.Mice)
+        void TrackSubscription(Action unsubscribe)
         {
+            subscriptions.Add(unsubscribe);
+        }
+
+        void AttachMouse(SilkInput.IMouse mouse)
+        {
+            if (!mouse.IsConnected || mouseSubscriptions.ContainsKey(mouse))
+            {
+                return;
+            }
+
             Vector2 lastPosition = mouse.Position;
             bool hasLastPosition = IsFinite(lastPosition);
             Action<SilkInput.IMouse, Vector2> mouseMove = (_, position) =>
@@ -75,14 +87,36 @@ public sealed class SilkNetWpfInputService : IWpfInputService
             mouse.MouseUp += mouseUp;
             mouse.Scroll += scroll;
 
-            subscriptions.Add(() => mouse.MouseMove -= mouseMove);
-            subscriptions.Add(() => mouse.MouseDown -= mouseDown);
-            subscriptions.Add(() => mouse.MouseUp -= mouseUp);
-            subscriptions.Add(() => mouse.Scroll -= scroll);
+            void Unsubscribe()
+            {
+                mouse.MouseMove -= mouseMove;
+                mouse.MouseDown -= mouseDown;
+                mouse.MouseUp -= mouseUp;
+                mouse.Scroll -= scroll;
+            }
+
+            mouseSubscriptions.Add(mouse, Unsubscribe);
+            TrackSubscription(Unsubscribe);
         }
 
-        foreach (var keyboard in inputContext.Keyboards)
+        void DetachMouse(SilkInput.IMouse mouse)
         {
+            if (!mouseSubscriptions.Remove(mouse, out var unsubscribe))
+            {
+                return;
+            }
+
+            unsubscribe();
+            subscriptions.Remove(unsubscribe);
+        }
+
+        void AttachKeyboard(SilkInput.IKeyboard keyboard)
+        {
+            if (!keyboard.IsConnected || keyboardSubscriptions.ContainsKey(keyboard))
+            {
+                return;
+            }
+
             Action<SilkInput.IKeyboard, SilkInput.Key, int> keyDown = (_, key, scanCode) =>
                 OnInputReceived(CreateKeyEvent(WpfInputEventKind.KeyDown, key, scanCode, ReadModifiers(inputContext)));
             Action<SilkInput.IKeyboard, SilkInput.Key, int> keyUp = (_, key, scanCode) =>
@@ -90,14 +124,65 @@ public sealed class SilkNetWpfInputService : IWpfInputService
             Action<SilkInput.IKeyboard, char> keyChar = (_, character) =>
                 OnInputReceived(CreateTextInputEvent(character, ReadModifiers(inputContext)));
 
+            keyboard.BeginInput();
             keyboard.KeyDown += keyDown;
             keyboard.KeyUp += keyUp;
             keyboard.KeyChar += keyChar;
 
-            subscriptions.Add(() => keyboard.KeyDown -= keyDown);
-            subscriptions.Add(() => keyboard.KeyUp -= keyUp);
-            subscriptions.Add(() => keyboard.KeyChar -= keyChar);
+            void Unsubscribe()
+            {
+                keyboard.KeyDown -= keyDown;
+                keyboard.KeyUp -= keyUp;
+                keyboard.KeyChar -= keyChar;
+                keyboard.EndInput();
+            }
+
+            keyboardSubscriptions.Add(keyboard, Unsubscribe);
+            TrackSubscription(Unsubscribe);
         }
+
+        void DetachKeyboard(SilkInput.IKeyboard keyboard)
+        {
+            if (!keyboardSubscriptions.Remove(keyboard, out var unsubscribe))
+            {
+                return;
+            }
+
+            unsubscribe();
+            subscriptions.Remove(unsubscribe);
+        }
+
+        foreach (var mouse in inputContext.Mice)
+        {
+            AttachMouse(mouse);
+        }
+
+        foreach (var keyboard in inputContext.Keyboards)
+        {
+            AttachKeyboard(keyboard);
+        }
+
+        void ConnectionChanged(SilkInput.IInputDevice device, bool connected)
+        {
+            switch (device)
+            {
+                case SilkInput.IMouse mouse when connected:
+                    AttachMouse(mouse);
+                    break;
+                case SilkInput.IMouse mouse:
+                    DetachMouse(mouse);
+                    break;
+                case SilkInput.IKeyboard keyboard when connected:
+                    AttachKeyboard(keyboard);
+                    break;
+                case SilkInput.IKeyboard keyboard:
+                    DetachKeyboard(keyboard);
+                    break;
+            }
+        }
+
+        inputContext.ConnectionChanged += ConnectionChanged;
+        TrackSubscription(() => inputContext.ConnectionChanged -= ConnectionChanged);
 
         return new InputSubscription(inputContext, subscriptions);
     }
@@ -232,28 +317,45 @@ public sealed class SilkNetWpfInputService : IWpfInputService
 
         foreach (var keyboard in inputContext.Keyboards)
         {
-            if (keyboard.IsKeyPressed(SilkInput.Key.ShiftLeft) || keyboard.IsKeyPressed(SilkInput.Key.ShiftRight))
+            if (!keyboard.IsConnected)
+            {
+                continue;
+            }
+
+            if (IsKeyPressed(keyboard, SilkInput.Key.ShiftLeft) || IsKeyPressed(keyboard, SilkInput.Key.ShiftRight))
             {
                 modifiers |= WpfInputModifiers.Shift;
             }
 
-            if (keyboard.IsKeyPressed(SilkInput.Key.ControlLeft) || keyboard.IsKeyPressed(SilkInput.Key.ControlRight))
+            if (IsKeyPressed(keyboard, SilkInput.Key.ControlLeft) || IsKeyPressed(keyboard, SilkInput.Key.ControlRight))
             {
                 modifiers |= WpfInputModifiers.Control;
             }
 
-            if (keyboard.IsKeyPressed(SilkInput.Key.AltLeft) || keyboard.IsKeyPressed(SilkInput.Key.AltRight))
+            if (IsKeyPressed(keyboard, SilkInput.Key.AltLeft) || IsKeyPressed(keyboard, SilkInput.Key.AltRight))
             {
                 modifiers |= WpfInputModifiers.Alt;
             }
 
-            if (keyboard.IsKeyPressed(SilkInput.Key.SuperLeft) || keyboard.IsKeyPressed(SilkInput.Key.SuperRight))
+            if (IsKeyPressed(keyboard, SilkInput.Key.SuperLeft) || IsKeyPressed(keyboard, SilkInput.Key.SuperRight))
             {
                 modifiers |= WpfInputModifiers.Super;
             }
         }
 
         return modifiers;
+    }
+
+    private static bool IsKeyPressed(SilkInput.IKeyboard keyboard, SilkInput.Key key)
+    {
+        try
+        {
+            return keyboard.IsKeyPressed(key);
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     private void OnInputReceived(WpfInputEventArgs args)

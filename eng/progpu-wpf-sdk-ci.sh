@@ -32,6 +32,18 @@ run_dotnet() {
   "${dotnet}" "$@"
 }
 
+apphost_name() {
+  local assembly_name="$1"
+  case "$(uname -s 2>/dev/null || echo unknown)" in
+    MINGW*|MSYS*|CYGWIN*)
+      echo "${assembly_name}.exe"
+      ;;
+    *)
+      echo "${assembly_name}"
+      ;;
+  esac
+}
+
 clean_sdk_smoke_outputs() {
   local project
   for project in \
@@ -104,6 +116,19 @@ PROGPU_WPF_MVP_VALIDATE=1 run_dotnet run --project "${repo_root}/samples/ProGPU.
 
 echo "Running MVP SDK app Application.Run validation..."
 PROGPU_WPF_MVP_RUN_VALIDATE=1 run_dotnet run --project "${repo_root}/samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj" -v:minimal
+
+mvp_output="${repo_root}/artifacts/bin/ProGPU.Wpf.MvpApp/Debug/net11.0-windows"
+mvp_apphost_name="$(apphost_name "ProGPU.Wpf.MvpApp")"
+if [[ ! -x "${mvp_output}/${mvp_apphost_name}" ]]; then
+  echo "Expected MVP SDK apphost at ${mvp_output}/${mvp_apphost_name}" >&2
+  exit 1
+fi
+
+echo "Running MVP SDK app apphost Application.Run validation..."
+(
+  cd "${mvp_output}"
+  PROGPU_WPF_MVP_RUN_VALIDATE=1 "./${mvp_apphost_name}"
+)
 
 echo "Building focused WPF graph tests..."
 run_dotnet build "${repo_root}/src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj" -v:minimal

@@ -6159,8 +6159,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("artifacts/nuget/ProGPU.Wpf.SdkSwitchSmoke", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("artifacts/nuget/ProGPU.Wpf.MvpApp", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("apphost_name()", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_VALIDATE=1", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_RUN_VALIDATE=1", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("Running MVP SDK app apphost Application.Run validation", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("mvp_apphost_name=\"$(apphost_name \"ProGPU.Wpf.MvpApp\")\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_MVP_RUN_VALIDATE=1 \"./${mvp_apphost_name}\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfSdkProvidesSwitchOnlyPackagingSurface", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("dev_package_version=\"${PROGPU_WPF_DEV_PACKAGE_VERSION:-11.0.0-dev}\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("\"${package_output}/${package_id}.${dev_package_version}.nupkg\"", sdkCiScript, StringComparison.Ordinal);
@@ -7088,7 +7092,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("partial class DetailsPage : Page", mvpDetailsPageCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal static class MvpSelfTest", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("dotnet", mvpRunScript, StringComparison.Ordinal);
-        Assert.Contains("run --project \"${mvp_project}\"", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("mvp_output=\"${repo_root}/artifacts/bin/ProGPU.Wpf.MvpApp/Debug/net11.0-windows\"", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("apphost_name=\"ProGPU.Wpf.MvpApp\"", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("\"${dotnet}\" build \"${mvp_project}\" -v:minimal", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("Launching ProGPU WPF MVP apphost", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("\"./${apphost_name}\"", mvpRunScript, StringComparison.Ordinal);
+        Assert.DoesNotContain("run --project \"${mvp_project}\"", mvpRunScript, StringComparison.Ordinal);
 
         Assert.Contains("<_ProGpuWpfProjectUseWPF>$(UseWPF)</_ProGpuWpfProjectUseWPF>", sdkTargets, StringComparison.Ordinal);
         Assert.Contains("<UseWPF Condition=\"'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'\">false</UseWPF>", sdkTargets, StringComparison.Ordinal);

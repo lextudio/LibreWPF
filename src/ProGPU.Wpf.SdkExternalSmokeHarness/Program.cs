@@ -24,7 +24,6 @@ internal static class Program
     private const string LibraryOutputAssemblyName = "ExternalSdkControls";
     private const string LocalizationAssemblyName = "ExternalLocalizationApp";
     private const string DefaultItemsAssemblyName = "ExternalSdkDefaultItemsApp";
-    private const string DefaultItemsOutputAssemblyName = "ExternalSdkDefaultItemsShell";
 
     private static readonly string[] s_requiredWpfRuntimeAssemblies =
     [
@@ -171,7 +170,7 @@ internal static class Program
                 {
                     ["PROGPU_WPF_EXTERNAL_DEFAULT_RUN_VALIDATE"] = "1"
                 },
-                Path.Combine(defaultItemsOutputRoot, DefaultItemsOutputAssemblyName + ".dll"));
+                Path.Combine(defaultItemsOutputRoot, DefaultItemsAssemblyName + ".dll"));
             AssertContains(
                 defaultItemsRunOutput,
                 "External SDK default-item Application.Run validation succeeded.",
@@ -12005,7 +12004,6 @@ internal static class Program
                 $"""
             <Project Sdk="{OriginalWindowsDesktopWpfSdk}">
               <PropertyGroup>
-                <AssemblyName>{DefaultItemsOutputAssemblyName}</AssemblyName>
                 <OutputType>WinExe</OutputType>
                 <TargetFramework>{ExternalAppTargetFramework}</TargetFramework>
                 <UseWPF>true</UseWPF>
@@ -12342,7 +12340,7 @@ internal static class Program
         AssertContains(project, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external default-item app SDK");
         AssertDoesNotContain(project, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external default-item app original SDK");
         AssertDoesNotContain(project, $"<Project Sdk=\"{OriginalWindowsDesktopWpfSdk}\">", "external default-item app original WindowsDesktop SDK");
-        AssertContains(project, $"<AssemblyName>{DefaultItemsOutputAssemblyName}</AssemblyName>", "external default-item app custom assembly name");
+        AssertDoesNotContain(project, "<AssemblyName>", "external default-item app custom assembly name");
         AssertContains(project, "<OutputType>WinExe</OutputType>", "external default-item app output type");
         AssertContains(project, $"<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", "external default-item app Windows target framework");
         AssertContains(project, "<UseWPF>true</UseWPF>", "external default-item app WPF property");
@@ -12468,7 +12466,7 @@ internal static class Program
 
     private static void ValidateExternalDefaultItemsOutput(string outputRoot)
     {
-        RequireFile(Path.Combine(outputRoot, DefaultItemsOutputAssemblyName + ".dll"), "external SDK default-item app assembly");
+        RequireFile(Path.Combine(outputRoot, DefaultItemsAssemblyName + ".dll"), "external SDK default-item app assembly");
 
         foreach (string assemblyName in s_requiredWpfRuntimeAssemblies
                      .Concat(s_requiredProGpuRuntimeAssemblies)
@@ -12481,7 +12479,7 @@ internal static class Program
         RequireAnyFile(outputRoot, GetNativeAssetCandidates("wgpu"), "external SDK default-item output native WebGPU runtime asset");
         RequireAnyFile(outputRoot, GetNativeAssetCandidates("glfw"), "external SDK default-item output native GLFW runtime asset");
 
-        string depsJson = File.ReadAllText(Path.Combine(outputRoot, DefaultItemsOutputAssemblyName + ".deps.json"));
+        string depsJson = File.ReadAllText(Path.Combine(outputRoot, DefaultItemsAssemblyName + ".deps.json"));
         AssertContains(depsJson, "Microsoft.DotNet.Wpf.GitHub", "external SDK default-item WPF transport package dependency");
         AssertContains(depsJson, "ProGPU.Wpf", "external SDK default-item ProGPU WPF package dependency");
         AssertContains(depsJson, "ProGPU.Compute", "external SDK default-item ProGPU compute package dependency");

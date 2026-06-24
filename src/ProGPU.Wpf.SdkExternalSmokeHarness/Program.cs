@@ -26,6 +26,7 @@ internal static class Program
     private const string LibraryOutputAssemblyName = "ExternalSdkControls";
     private const string LocalizationAssemblyName = "ExternalLocalizationApp";
     private const string DefaultItemsAssemblyName = "ExternalSdkDefaultItemsApp";
+    private const string DefaultItemsLibraryAssemblyName = "ExternalSdkDefaultItemsLibrary";
 
     private static readonly string[] s_requiredWpfRuntimeAssemblies =
     [
@@ -12043,7 +12044,69 @@ internal static class Program
     private static string PrepareExternalDefaultItemsApp(string workRoot)
     {
         string appRoot = Path.Combine(workRoot, DefaultItemsAssemblyName);
+        string libraryRoot = Path.Combine(workRoot, DefaultItemsLibraryAssemblyName);
         Directory.CreateDirectory(appRoot);
+        Directory.CreateDirectory(libraryRoot);
+
+        WriteFile(
+            Path.Combine(libraryRoot, DefaultItemsLibraryAssemblyName + ".csproj"),
+            SwitchWpfSdkOnly(
+                $"""
+            <Project Sdk="{OriginalWpfSdk}">
+              <PropertyGroup>
+                <TargetFramework>{ExternalAppTargetFramework}</TargetFramework>
+                <UseWPF>true</UseWPF>
+              </PropertyGroup>
+            </Project>
+            """,
+                "external SDK default-item library"));
+
+        WriteFile(
+            Path.Combine(libraryRoot, "DefaultItemsLibraryPanel.xaml"),
+            """
+            <UserControl
+                x:Class="ExternalSdkDefaultItemsLibrary.DefaultItemsLibraryPanel"
+                x:Name="DefaultItemsLibraryPanelRoot"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                <Border Padding="2">
+                    <TextBlock
+                        x:Name="LibraryPanelCaption"
+                        Text="{Binding Caption, ElementName=DefaultItemsLibraryPanelRoot}" />
+                </Border>
+            </UserControl>
+            """);
+
+        WriteFile(
+            Path.Combine(libraryRoot, "DefaultItemsLibraryPanel.xaml.cs"),
+            """
+            using System.Windows;
+            using System.Windows.Controls;
+
+            namespace ExternalSdkDefaultItemsLibrary;
+
+            public partial class DefaultItemsLibraryPanel : UserControl
+            {
+                public static readonly DependencyProperty CaptionProperty = DependencyProperty.Register(
+                    nameof(Caption),
+                    typeof(string),
+                    typeof(DefaultItemsLibraryPanel),
+                    new PropertyMetadata(string.Empty));
+
+                public DefaultItemsLibraryPanel()
+                {
+                    InitializeComponent();
+                }
+
+                public string Caption
+                {
+                    get => (string)GetValue(CaptionProperty);
+                    set => SetValue(CaptionProperty, value);
+                }
+
+                public string CaptionText => LibraryPanelCaption.Text;
+            }
+            """);
 
         string appProjectPath = Path.Combine(appRoot, DefaultItemsAssemblyName + ".csproj");
         WriteFile(
@@ -12058,7 +12121,7 @@ internal static class Program
               </PropertyGroup>
 
               <ItemGroup>
-                <ProjectReference Include="../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj" />
+                <ProjectReference Include="../{DefaultItemsLibraryAssemblyName}/{DefaultItemsLibraryAssemblyName}.csproj" />
               </ItemGroup>
             </Project>
             """,
@@ -12218,7 +12281,7 @@ internal static class Program
                 x:Class="ExternalSdkDefaultItemsApp.MainWindow"
                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                xmlns:library="clr-namespace:ExternalSdkLibrary;assembly=ExternalSdkControls"
+                xmlns:library="clr-namespace:ExternalSdkDefaultItemsLibrary;assembly=ExternalSdkDefaultItemsLibrary"
                 xmlns:local="clr-namespace:ExternalSdkDefaultItemsApp"
                 Title="External SDK Default Items"
                 Width="260"
@@ -12232,7 +12295,7 @@ internal static class Program
                     <local:DefaultItemsPanel
                         x:Name="DefaultItemsPanel"
                         Caption="Default item panel caption" />
-                    <library:ExternalPanel
+                    <library:DefaultItemsLibraryPanel
                         x:Name="DefaultItemsLibraryPanel"
                         Caption="Default item referenced library caption" />
                     <Button
@@ -12280,6 +12343,9 @@ internal static class Program
                     Require(
                         DefaultItemsLibraryPanel.Caption == "Default item referenced library caption",
                         "Expected default-item referenced library dependency property value.");
+                    Require(
+                        DefaultItemsLibraryPanel.CaptionText == "Default item referenced library caption",
+                        "Expected default-item referenced library ElementName binding.");
 
                     DefaultItemsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     Require(ButtonClickCount == 1, "Expected default-item compiled Click handler.");
@@ -12394,7 +12460,9 @@ internal static class Program
     private static void ValidateExternalDefaultItemsProjectShape(string workRoot)
     {
         string projectPath = Path.Combine(workRoot, DefaultItemsAssemblyName, DefaultItemsAssemblyName + ".csproj");
+        string libraryProjectPath = Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, DefaultItemsLibraryAssemblyName + ".csproj");
         string project = File.ReadAllText(projectPath);
+        string libraryProject = File.ReadAllText(libraryProjectPath);
 
         AssertContains(project, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external default-item app SDK");
         AssertDoesNotContain(project, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external default-item app original SDK");
@@ -12404,7 +12472,7 @@ internal static class Program
         AssertContains(project, $"<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", "external default-item app Windows target framework");
         AssertContains(project, "<UseWPF>true</UseWPF>", "external default-item app WPF property");
         AssertDoesNotContain(project, "<EnableDefaultItems>false</EnableDefaultItems>", "external default-item app default item opt-out");
-        AssertContains(project, $"<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", "external default-item app project reference");
+        AssertContains(project, $"<ProjectReference Include=\"../{DefaultItemsLibraryAssemblyName}/{DefaultItemsLibraryAssemblyName}.csproj\" />", "external default-item app project reference");
         AssertDoesNotContain(project, "<Compile Include=", "external default-item app explicit compile items");
         AssertDoesNotContain(project, "<ApplicationDefinition Include=", "external default-item app explicit application definition item");
         AssertDoesNotContain(project, "<Page Include=", "external default-item app explicit page item");
@@ -12412,12 +12480,26 @@ internal static class Program
         AssertDoesNotContain(project, "ProGpuWpfManagedReferenceRoot", "external default-item app managed artifact root");
         AssertDoesNotContain(project, "ProGpuReferenceRoot", "external default-item app ProGPU artifact root");
 
+        AssertContains(libraryProject, $"<Project Sdk=\"ProGPU.Wpf.Sdk/{SdkVersion}\">", "external default-item library SDK");
+        AssertDoesNotContain(libraryProject, $"<Project Sdk=\"{OriginalWpfSdk}\">", "external default-item library original SDK");
+        AssertDoesNotContain(libraryProject, "<AssemblyName>", "external default-item library custom assembly name");
+        AssertContains(libraryProject, $"<TargetFramework>{ExternalAppTargetFramework}</TargetFramework>", "external default-item library Windows target framework");
+        AssertContains(libraryProject, "<UseWPF>true</UseWPF>", "external default-item library WPF property");
+        AssertDoesNotContain(libraryProject, "<EnableDefaultItems>false</EnableDefaultItems>", "external default-item library default item opt-out");
+        AssertDoesNotContain(libraryProject, "<Compile Include=", "external default-item library explicit compile items");
+        AssertDoesNotContain(libraryProject, "<Page Include=", "external default-item library explicit page item");
+        AssertDoesNotContain(libraryProject, "ProGpuWpfReferenceMode", "external default-item library local artifact mode");
+        AssertDoesNotContain(libraryProject, "ProGpuWpfManagedReferenceRoot", "external default-item library managed artifact root");
+        AssertDoesNotContain(libraryProject, "ProGpuReferenceRoot", "external default-item library ProGPU artifact root");
+
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "App.xaml"), "external SDK default-item App.xaml source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "App.xaml.cs"), "external SDK default-item App.xaml.cs source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "MainWindow.xaml"), "external SDK default-item MainWindow.xaml source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "MainWindow.xaml.cs"), "external SDK default-item MainWindow.xaml.cs source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "DefaultItemsPanel.xaml"), "external SDK default-item UserControl XAML source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "DefaultItemsPanel.xaml.cs"), "external SDK default-item UserControl code source");
+        RequireFile(Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "DefaultItemsLibraryPanel.xaml"), "external SDK default-item library UserControl XAML source");
+        RequireFile(Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "DefaultItemsLibraryPanel.xaml.cs"), "external SDK default-item library UserControl code source");
     }
 
     private static string SwitchWpfSdkOnly(string normalWpfProject, string description)
@@ -12532,7 +12614,7 @@ internal static class Program
         RequireFile(
             Path.Combine(outputRoot, GetAppHostFileName(DefaultItemsAssemblyName)),
             "external SDK default-item apphost");
-        RequireFile(Path.Combine(outputRoot, LibraryOutputAssemblyName + ".dll"), "external SDK default-item referenced library assembly");
+        RequireFile(Path.Combine(outputRoot, DefaultItemsLibraryAssemblyName + ".dll"), "external SDK default-item referenced library assembly");
 
         foreach (string assemblyName in s_requiredWpfRuntimeAssemblies
                      .Concat(s_requiredProGpuRuntimeAssemblies)
@@ -12551,7 +12633,7 @@ internal static class Program
         AssertContains(depsJson, "ProGPU.Compute", "external SDK default-item ProGPU compute package dependency");
         AssertContains(depsJson, "ProGPU.Transpiler", "external SDK default-item ProGPU transpiler package dependency");
         AssertContains(depsJson, "StbImageSharp", "external SDK default-item StbImageSharp package dependency");
-        AssertContains(depsJson, LibraryOutputAssemblyName, "external SDK default-item referenced library dependency");
+        AssertContains(depsJson, DefaultItemsLibraryAssemblyName, "external SDK default-item referenced library dependency");
     }
 
     private static string GetAppHostFileName(string assemblyName)

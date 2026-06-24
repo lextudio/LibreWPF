@@ -8049,6 +8049,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AppOutputAssemblyName = \"ExternalSdkShell\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalSdkLibrary", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("LibraryOutputAssemblyName = \"ExternalSdkControls\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsLibraryAssemblyName = \"ExternalSdkDefaultItemsLibrary\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Project Sdk=\"{OriginalWpfSdk}\">", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Project Sdk=\"{OriginalWindowsDesktopWpfSdk}\">", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("OriginalWindowsDesktopWpfSdk,\n                \"external SDK app\"", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -8087,10 +8088,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("expectedLogicalHeight: 140", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"External SDK default-item apphost live geometry\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("assembly=ExternalSdkControls", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("assembly=ExternalSdkDefaultItemsLibrary", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("LibraryOutputAssemblyName + \".dll\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsLibraryAssemblyName + \".dll\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<ProjectReference Include=\"../{DefaultItemsLibraryAssemblyName}/{DefaultItemsLibraryAssemblyName}.csproj\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsLibraryPanel", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Default item referenced library caption", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external default-item library default item opt-out", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external default-item library explicit compile items", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external default-item library explicit page item", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK default-item referenced library assembly", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK default-item referenced library dependency", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Resource Include=\"Assets/ExternalResource.txt\" />", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -16,6 +16,8 @@ namespace System.Windows.Media.ProGPU;
 
 public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 {
+    private const string TraceRenderSurfaceEnvironmentVariable = "PROGPU_WPF_TRACE_RENDER_SURFACE";
+
     private readonly ProGpuWpfWindowOptions _options;
     private IWindow? _window;
     private ProGpuWpfCompositionTarget? _target;
@@ -711,6 +713,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                     dpiScale))
             {
                 RecordPresentedFrame(CaptureFrameState(_target, pixelWidth, pixelHeight));
+                TraceRenderSurfaceGeometryIfRequested(geometry);
             }
         }
         finally
@@ -781,6 +784,21 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
     }
 
+    private static void TraceRenderSurfaceGeometryIfRequested(RenderSurfaceGeometry geometry)
+    {
+        if (Environment.GetEnvironmentVariable(TraceRenderSurfaceEnvironmentVariable) != "1")
+        {
+            return;
+        }
+
+        Console.WriteLine(
+            "ProGPU WPF render surface: " +
+            $"logical {geometry.LogicalWidth}x{geometry.LogicalHeight}, " +
+            $"pixels {geometry.PixelWidth}x{geometry.PixelHeight}, " +
+            $"viewport {ResolveGeometryViewportDimension(geometry.ViewportWidth, geometry.PixelWidth)}x{ResolveGeometryViewportDimension(geometry.ViewportHeight, geometry.PixelHeight)}@{geometry.ViewportX},{geometry.ViewportY}, " +
+            $"dpi {geometry.DpiScale:0.###}");
+    }
+
     internal static RenderSurfaceGeometry ResolveRenderSurfaceGeometry(
         int clientWidth,
         int clientHeight,
@@ -811,27 +829,6 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         var dpiScaleX = pixelWidth / (double)logicalWidth;
         var dpiScaleY = pixelHeight / (double)logicalHeight;
-        var viewportScale = ResolveClientViewportDpiScale(
-            logicalWidth,
-            logicalHeight,
-            pixelWidth,
-            pixelHeight,
-            fallbackScale);
-        var viewportWidth = Math.Min(
-            pixelWidth,
-            (uint)Math.Max(1, (int)Math.Ceiling(logicalWidth * viewportScale)));
-        var viewportHeight = Math.Min(
-            pixelHeight,
-            (uint)Math.Max(1, (int)Math.Ceiling(logicalHeight * viewportScale)));
-        var viewportX = pixelWidth > viewportWidth
-            ? (pixelWidth - viewportWidth) / 2u
-            : 0u;
-        var viewportY = pixelHeight > viewportHeight
-            ? pixelHeight - viewportHeight
-            : 0u;
-
-        dpiScaleX = viewportWidth / (double)logicalWidth;
-        dpiScaleY = viewportHeight / (double)logicalHeight;
 
         return new RenderSurfaceGeometry(
             logicalWidth,
@@ -841,30 +838,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             dpiScaleX,
             dpiScaleY,
             (dpiScaleX + dpiScaleY) / 2.0,
-            viewportX,
-            viewportY,
-            viewportWidth,
-            viewportHeight);
-    }
-
-    private static double ResolveClientViewportDpiScale(
-        uint logicalWidth,
-        uint logicalHeight,
-        uint pixelWidth,
-        uint pixelHeight,
-        double fallbackScale)
-    {
-        if (fallbackScale > 1.0)
-        {
-            return fallbackScale;
-        }
-
-        var scaleX = pixelWidth / (double)Math.Max(1u, logicalWidth);
-        var scaleY = pixelHeight / (double)Math.Max(1u, logicalHeight);
-        var scale = Math.Min(scaleX, scaleY);
-        return double.IsFinite(scale) && scale > 0.0
-            ? scale
-            : 1.0;
+            ViewportWidth: pixelWidth,
+            ViewportHeight: pixelHeight);
     }
 
     private RenderSurfaceGeometry ResolveCurrentRenderSurfaceGeometry()
@@ -1555,8 +1530,104 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void OnPlatformInputReceived(object? sender, WpfInputEventArgs e)
     {
-        InputReceived?.Invoke(this, e);
+        var input = NormalizeInputEventForCurrentRenderSurface(e);
+        InputReceived?.Invoke(this, input);
+        if (!ReferenceEquals(input, e))
+        {
+            e.Handled = input.Handled;
+        }
+
         WpfRenderScheduler.RequestRender();
+    }
+
+    private WpfInputEventArgs NormalizeInputEventForCurrentRenderSurface(WpfInputEventArgs input)
+    {
+        if (!IsPointerInput(input.Kind) || _window == null)
+        {
+            return input;
+        }
+
+        var geometry = ResolveCurrentRenderSurfaceGeometry();
+        return NormalizeInputEventForRenderSurfaceGeometry(
+            input,
+            geometry,
+            NativeInputCoordinatesLookPhysical(_window.Size, geometry));
+    }
+
+    internal static WpfInputEventArgs NormalizeInputEventForRenderSurfaceGeometry(
+        WpfInputEventArgs input,
+        RenderSurfaceGeometry geometry,
+        bool inputCoordinatesArePhysical)
+    {
+        if (!inputCoordinatesArePhysical || !IsPointerInput(input.Kind))
+        {
+            return input;
+        }
+
+        var viewportWidth = ResolveGeometryViewportDimension(geometry.ViewportWidth, geometry.PixelWidth);
+        var viewportHeight = ResolveGeometryViewportDimension(geometry.ViewportHeight, geometry.PixelHeight);
+        var scaleX = viewportWidth / (double)Math.Max(1u, geometry.LogicalWidth);
+        var scaleY = viewportHeight / (double)Math.Max(1u, geometry.LogicalHeight);
+        var normalized = new WpfInputEventArgs(
+            input.Kind,
+            input.Key,
+            input.ScanCode,
+            input.Character,
+            NormalizeInputCoordinate(input.X, geometry.ViewportX, scaleX),
+            NormalizeInputCoordinate(input.Y, geometry.ViewportY, scaleY),
+            input.DeltaX,
+            input.DeltaY,
+            input.Button,
+            input.Modifiers)
+        {
+            Handled = input.Handled
+        };
+        return normalized;
+    }
+
+    private static bool NativeInputCoordinatesLookPhysical(
+        Vector2D<int> nativeSize,
+        RenderSurfaceGeometry geometry)
+    {
+        return NativeInputDimensionLooksPhysical(
+                nativeSize.X,
+                geometry.LogicalWidth,
+                ResolveGeometryViewportDimension(geometry.ViewportWidth, geometry.PixelWidth)) ||
+            NativeInputDimensionLooksPhysical(
+                nativeSize.Y,
+                geometry.LogicalHeight,
+                ResolveGeometryViewportDimension(geometry.ViewportHeight, geometry.PixelHeight));
+    }
+
+    private static bool NativeInputDimensionLooksPhysical(
+        int nativeDimension,
+        uint logicalDimension,
+        uint pixelDimension)
+    {
+        if (nativeDimension <= 0 || logicalDimension == 0u || pixelDimension <= logicalDimension)
+        {
+            return false;
+        }
+
+        return Math.Abs(nativeDimension - pixelDimension) <= 2;
+    }
+
+    private static bool IsPointerInput(WpfInputEventKind kind)
+    {
+        return kind is WpfInputEventKind.MouseMove or
+            WpfInputEventKind.MouseDown or
+            WpfInputEventKind.MouseUp or
+            WpfInputEventKind.MouseWheel;
+    }
+
+    private static double NormalizeInputCoordinate(double coordinate, uint viewportOffset, double scale)
+    {
+        if (!double.IsFinite(coordinate) || !double.IsFinite(scale) || scale <= 0.0)
+        {
+            return 0.0;
+        }
+
+        return (coordinate - viewportOffset) / scale;
     }
 
     private void AttachDragDropService()

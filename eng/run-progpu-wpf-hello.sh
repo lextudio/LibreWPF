@@ -29,7 +29,8 @@ fi
 
 rm -rf \
   "${repo_root}/artifacts/bin/ProGPU.Wpf.HelloApp" \
-  "${repo_root}/artifacts/obj/ProGPU.Wpf.HelloApp"
+  "${repo_root}/artifacts/obj/ProGPU.Wpf.HelloApp" \
+  "${repo_root}/artifacts/nuget/ProGPU.Wpf.HelloApp"
 
 echo "Building ProGPU WPF Hello app..."
 "${dotnet}" build "${hello_project}" -v:minimal

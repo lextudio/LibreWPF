@@ -272,6 +272,12 @@ public partial class MainWindow : Window
                 $"Expected live ProGPU WPF viewport to fit inside the physical target, but got viewport {viewportWidth}x{viewportHeight} at {viewportX},{viewportY} and pixels {pixelWidth}x{pixelHeight}.");
         }
 
+        if (viewportX != 0 || viewportY != 0 || viewportWidth != pixelWidth || viewportHeight != pixelHeight)
+        {
+            throw new InvalidOperationException(
+                $"Expected live ProGPU WPF viewport to use the full physical target, but got viewport {viewportWidth}x{viewportHeight} at {viewportX},{viewportY} and pixels {pixelWidth}x{pixelHeight}.");
+        }
+
         if (dpiScale > 1.01 &&
             (viewportWidth <= logicalWidth || viewportHeight <= logicalHeight))
         {

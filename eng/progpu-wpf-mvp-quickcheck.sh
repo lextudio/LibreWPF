@@ -22,6 +22,13 @@ apphost_name() {
   esac
 }
 
+package_output="${PROGPU_WPF_PACKAGE_OUTPUT:-${repo_root}/artifacts/packages/Release/NonShipping}"
+sdk_package="${package_output}/ProGPU.Wpf.Sdk.11.0.0-dev.nupkg"
+if [[ "${PROGPU_WPF_MVP_REBUILD_PACKAGES:-0}" == "1" || ! -f "${sdk_package}" ]]; then
+  echo "Building ProGPU WPF SDK packages before quickcheck..."
+  PROGPU_WPF_MVP_REBUILD_PACKAGES=0 "${repo_root}/eng/progpu-wpf-sdk-ci.sh"
+fi
+
 echo "Running external no-source-change ProGPU WPF SDK smoke..."
 "${dotnet}" run \
   --project "${repo_root}/src/ProGPU.Wpf.SdkExternalSmokeHarness/ProGPU.Wpf.SdkExternalSmokeHarness.csproj" \

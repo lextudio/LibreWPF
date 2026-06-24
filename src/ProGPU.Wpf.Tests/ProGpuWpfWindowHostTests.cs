@@ -427,7 +427,7 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
-    public void ResolveRenderSurfaceGeometryPlacesClientViewportBelowDecoratedFramebufferPixels()
+    public void ResolveRenderSurfaceGeometryUsesFullPhysicalViewportWhenFramebufferHasExtraPixels()
     {
         var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
             clientWidth: 420,
@@ -440,16 +440,16 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Equal(840u, geometry.PixelWidth);
         Assert.Equal(1736u, geometry.PixelHeight);
         Assert.Equal(0u, geometry.ViewportX);
-        Assert.Equal(56u, geometry.ViewportY);
+        Assert.Equal(0u, geometry.ViewportY);
         Assert.Equal(840u, geometry.ViewportWidth);
-        Assert.Equal(1680u, geometry.ViewportHeight);
+        Assert.Equal(1736u, geometry.ViewportHeight);
         Assert.Equal(2.0, geometry.DpiScaleX);
-        Assert.Equal(2.0, geometry.DpiScaleY);
-        Assert.Equal(2.0, geometry.DpiScale);
+        Assert.Equal(1736.0 / 840.0, geometry.DpiScaleY);
+        Assert.Equal((2.0 + (1736.0 / 840.0)) / 2.0, geometry.DpiScale);
     }
 
     [Fact]
-    public void ResolveRenderSurfaceGeometryKeepsLogicalScaleWhenOnlyDecorationsGrowFramebuffer()
+    public void ResolveRenderSurfaceGeometryKeepsFullViewportWhenOnlyFramebufferHeightGrows()
     {
         var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
             clientWidth: 420,
@@ -462,10 +462,114 @@ public sealed class ProGpuWpfWindowHostTests
         Assert.Equal(420u, geometry.PixelWidth);
         Assert.Equal(896u, geometry.PixelHeight);
         Assert.Equal(0u, geometry.ViewportX);
-        Assert.Equal(56u, geometry.ViewportY);
+        Assert.Equal(0u, geometry.ViewportY);
         Assert.Equal(420u, geometry.ViewportWidth);
-        Assert.Equal(840u, geometry.ViewportHeight);
-        Assert.Equal(1.0, geometry.DpiScale);
+        Assert.Equal(896u, geometry.ViewportHeight);
+        Assert.Equal(1.0, geometry.DpiScaleX);
+        Assert.Equal(896.0 / 840.0, geometry.DpiScaleY);
+        Assert.Equal((1.0 + (896.0 / 840.0)) / 2.0, geometry.DpiScale);
+    }
+
+    [Fact]
+    public void ResolveRenderSurfaceGeometryUsesFullRetinaViewportForMvpWindow()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 760,
+            clientHeight: 560,
+            framebufferSize: new Vector2D<int>(1520, 1120),
+            monitorDpiScale: 2.0);
+
+        Assert.Equal(760u, geometry.LogicalWidth);
+        Assert.Equal(560u, geometry.LogicalHeight);
+        Assert.Equal(1520u, geometry.PixelWidth);
+        Assert.Equal(1120u, geometry.PixelHeight);
+        Assert.Equal(0u, geometry.ViewportX);
+        Assert.Equal(0u, geometry.ViewportY);
+        Assert.Equal(1520u, geometry.ViewportWidth);
+        Assert.Equal(1120u, geometry.ViewportHeight);
+        Assert.Equal(2.0, geometry.DpiScaleX);
+        Assert.Equal(2.0, geometry.DpiScaleY);
+        Assert.Equal(2.0, geometry.DpiScale);
+    }
+
+    [Fact]
+    public void NormalizeInputEventForRenderSurfaceGeometryMapsPhysicalPointerCoordinatesToLogicalDips()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 760,
+            clientHeight: 560,
+            framebufferSize: new Vector2D<int>(1520, 1120),
+            monitorDpiScale: 2.0);
+        var input = new WpfInputEventArgs(
+            WpfInputEventKind.MouseDown,
+            x: 1000,
+            y: 700,
+            button: WpfMouseButton.Left,
+            modifiers: WpfInputModifiers.Control)
+        {
+            Handled = true
+        };
+
+        var normalized = ProGpuWpfWindowHost.NormalizeInputEventForRenderSurfaceGeometry(
+            input,
+            geometry,
+            inputCoordinatesArePhysical: true);
+
+        Assert.NotSame(input, normalized);
+        Assert.Equal(WpfInputEventKind.MouseDown, normalized.Kind);
+        Assert.Equal(500.0, normalized.X);
+        Assert.Equal(350.0, normalized.Y);
+        Assert.Equal(WpfMouseButton.Left, normalized.Button);
+        Assert.Equal(WpfInputModifiers.Control, normalized.Modifiers);
+        Assert.True(normalized.Handled);
+    }
+
+    [Fact]
+    public void NormalizeInputEventForRenderSurfaceGeometryKeepsLogicalPointerCoordinates()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 760,
+            clientHeight: 560,
+            framebufferSize: new Vector2D<int>(1520, 1120),
+            monitorDpiScale: 2.0);
+        var input = new WpfInputEventArgs(
+            WpfInputEventKind.MouseMove,
+            x: 500,
+            y: 300);
+
+        var normalized = ProGpuWpfWindowHost.NormalizeInputEventForRenderSurfaceGeometry(
+            input,
+            geometry,
+            inputCoordinatesArePhysical: false);
+
+        Assert.Same(input, normalized);
+        Assert.Equal(500.0, normalized.X);
+        Assert.Equal(300.0, normalized.Y);
+    }
+
+    [Fact]
+    public void NormalizeInputEventForRenderSurfaceGeometryLeavesKeyboardInputUnchanged()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 760,
+            clientHeight: 560,
+            framebufferSize: new Vector2D<int>(1520, 1120),
+            monitorDpiScale: 2.0);
+        var input = new WpfInputEventArgs(
+            WpfInputEventKind.KeyDown,
+            key: "A",
+            scanCode: 1,
+            modifiers: WpfInputModifiers.Shift);
+
+        var normalized = ProGpuWpfWindowHost.NormalizeInputEventForRenderSurfaceGeometry(
+            input,
+            geometry,
+            inputCoordinatesArePhysical: true);
+
+        Assert.Same(input, normalized);
+        Assert.Equal("A", normalized.Key);
+        Assert.Equal(1, normalized.ScanCode);
+        Assert.Equal(WpfInputModifiers.Shift, normalized.Modifiers);
     }
 
     [Fact]

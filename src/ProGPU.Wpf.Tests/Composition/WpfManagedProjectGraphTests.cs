@@ -8144,6 +8144,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DefaultItemsAppDictionaryBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item DynamicResource brush invalidation", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item app DynamicResource brush invalidation", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsFreezableBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsUnsharedBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Expected default-item Freezable brush metadata.", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Expected default-item Freezable brush frozen state.", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Expected default-item Freezable brush clone mutability.", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Expected default-item x:Shared=false resource lookup.", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsGrid", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsDockPanel", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsCanvas", externalSdkHarnessProgram, StringComparison.Ordinal);

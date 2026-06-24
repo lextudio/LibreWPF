@@ -12527,6 +12527,14 @@ internal static class Program
                             x:Key="DefaultItemsItemNameConverter" />
                         <local:DefaultItemsStatusSelectionConverter
                             x:Key="DefaultItemsStatusSelectionConverter" />
+                        <SolidColorBrush
+                            x:Key="DefaultItemsFreezableBrush"
+                            Color="#5B8C7A"
+                            Opacity="0.75" />
+                        <SolidColorBrush
+                            x:Key="DefaultItemsUnsharedBrush"
+                            x:Shared="False"
+                            Color="#C45A2B" />
                         <Style
                             x:Key="DefaultItemsStatusTriggerStyle"
                             TargetType="{x:Type TextBlock}">
@@ -13518,6 +13526,40 @@ internal static class Program
                     Require(
                         updatedAppDictionaryForeground.Color == Color.FromRgb(0x22, 0x88, 0x44),
                         "Expected default-item app DynamicResource brush invalidation.");
+                    var defaultItemsFreezableBrush = RequireType<SolidColorBrush>(
+                        Resources["DefaultItemsFreezableBrush"],
+                        "default-item Freezable brush resource");
+                    Require(
+                        defaultItemsFreezableBrush.Color == Color.FromRgb(0x5B, 0x8C, 0x7A)
+                            && Math.Abs(defaultItemsFreezableBrush.Opacity - 0.75) < 0.001
+                            && defaultItemsFreezableBrush.CanFreeze,
+                        "Expected default-item Freezable brush metadata.");
+                    if (!defaultItemsFreezableBrush.IsFrozen)
+                    {
+                        defaultItemsFreezableBrush.Freeze();
+                    }
+
+                    Require(
+                        defaultItemsFreezableBrush.IsFrozen,
+                        "Expected default-item Freezable brush frozen state.");
+                    var defaultItemsFreezableClone = defaultItemsFreezableBrush.Clone();
+                    defaultItemsFreezableClone.Opacity = 0.33;
+                    Require(
+                        !defaultItemsFreezableClone.IsFrozen
+                            && Math.Abs(defaultItemsFreezableClone.Opacity - 0.33) < 0.001
+                            && Math.Abs(defaultItemsFreezableBrush.Opacity - 0.75) < 0.001,
+                        "Expected default-item Freezable brush clone mutability.");
+                    var defaultItemsUnsharedBrushA = RequireType<SolidColorBrush>(
+                        Resources["DefaultItemsUnsharedBrush"],
+                        "default-item x:Shared=false first brush");
+                    var defaultItemsUnsharedBrushB = RequireType<SolidColorBrush>(
+                        Resources["DefaultItemsUnsharedBrush"],
+                        "default-item x:Shared=false second brush");
+                    Require(
+                        !ReferenceEquals(defaultItemsUnsharedBrushA, defaultItemsUnsharedBrushB)
+                            && defaultItemsUnsharedBrushA.Color == Color.FromRgb(0xC4, 0x5A, 0x2B)
+                            && defaultItemsUnsharedBrushB.Color == Color.FromRgb(0xC4, 0x5A, 0x2B),
+                        "Expected default-item x:Shared=false resource lookup.");
                     Require(
                         DefaultItemsLibraryResourceText.Text == "Default item library resource text",
                         "Expected default-item referenced library component resource text.");

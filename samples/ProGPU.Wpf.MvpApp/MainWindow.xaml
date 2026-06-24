@@ -311,6 +311,7 @@
                 </MenuItem>
             </Menu>
             <TextBlock
+                x:Name="MvpTitleText"
                 FontSize="22"
                 FontWeight="SemiBold"
                 Text="ProGPU WPF MVP" />

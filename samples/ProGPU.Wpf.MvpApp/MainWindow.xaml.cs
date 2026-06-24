@@ -989,8 +989,10 @@ public partial class MainWindow : Window
             {
                 var model = Require<MainViewModel>(viewModel, "MVP live input view model before command");
                 int refreshCountBefore = model.RefreshCount;
+                RaiseHostInput(liveHost, "KeyDown", key: "LeftCtrl", modifiers: "Control");
                 RaiseHostInput(liveHost, "KeyDown", key: "R", modifiers: "Control");
                 RaiseHostInput(liveHost, "KeyUp", key: "R", modifiers: "Control");
+                RaiseHostInput(liveHost, "KeyUp", key: "LeftCtrl");
                 Console.WriteLine("ProGPU WPF MVP live input validation Ctrl+R sent.");
                 return refreshCountBefore;
             },
@@ -1014,9 +1016,10 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
 
         string controlMouseStatus = await ValidateLiveControlMouseInputAsync(liveHost);
+        string mouseBindingStatus = await ValidateLiveMouseBindingAsync(liveHost);
         string keyboardNavigationStatus = await ValidateLiveKeyboardNavigationAsync(liveHost);
         string wheelAndCaptureStatus = await ValidateLiveWheelAndCaptureInputAsync(liveHost);
-        return $"{textInputStatus}; {controlMouseStatus}; {keyboardNavigationStatus}; {wheelAndCaptureStatus}";
+        return $"{textInputStatus}; {controlMouseStatus}; {mouseBindingStatus}; {keyboardNavigationStatus}; {wheelAndCaptureStatus}";
     }
 
     private async Task<string> ValidateLiveControlMouseInputAsync(object liveHost)
@@ -1123,6 +1126,106 @@ public partial class MainWindow : Window
                 return "Add item Button and Actions CheckBox mouse clicks updated WPF command/binding state";
             },
             DispatcherPriority.Send);
+    }
+
+    private async Task<string> ValidateLiveMouseBindingAsync(object liveHost)
+    {
+        TextBlock? titleText = null;
+        MainViewModel? viewModel = null;
+        int refreshCountBefore = 0;
+        var mouseBindingTrace = new List<string>();
+        string lastTargetState = "not checked";
+
+        bool sentDoubleClick = false;
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            sentDoubleClick = await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () =>
+                {
+                    var tabControl = Require<TabControl>(FindName("MvpTabControl"), "MVP live mouse-binding TabControl");
+                    tabControl.SelectedIndex = 0;
+                    UpdateLayout();
+
+                    titleText = Require<TextBlock>(FindName("MvpTitleText"), "MVP live MouseBinding title TextBlock");
+                    viewModel = Require<MainViewModel>(DataContext, "MVP live MouseBinding view model");
+                    refreshCountBefore = viewModel.RefreshCount;
+
+                    FrameworkElement target = titleText;
+                    MouseButtonEventHandler previewHandler = (sender, args) =>
+                        mouseBindingTrace.Add(DescribeLiveMouseBindingEvent("preview", sender, args));
+                    MouseButtonEventHandler bubbleHandler = (sender, args) =>
+                        mouseBindingTrace.Add(DescribeLiveMouseBindingEvent("bubble", sender, args));
+                    AddHandler(Mouse.PreviewMouseDownEvent, previewHandler, handledEventsToo: true);
+                    AddHandler(Mouse.MouseDownEvent, bubbleHandler, handledEventsToo: true);
+                    try
+                    {
+                        if (!TryRaiseLiveMouseClick(liveHost, target, "MvpTitleText", out lastTargetState))
+                        {
+                            return false;
+                        }
+
+                        return TryRaiseLiveMouseClick(liveHost, target, "MvpTitleText", out lastTargetState);
+                    }
+                    finally
+                    {
+                        RemoveHandler(Mouse.PreviewMouseDownEvent, previewHandler);
+                        RemoveHandler(Mouse.MouseDownEvent, bubbleHandler);
+                    }
+                },
+                DispatcherPriority.Send);
+            if (sentDoubleClick)
+            {
+                break;
+            }
+
+            await Task.Delay(LiveValidationRetryDelay);
+        }
+
+        if (!sentDoubleClick)
+        {
+            throw new InvalidOperationException(
+                $"Expected MVP live title TextBlock to become double-clickable before injecting MouseBinding input, but last state was: {lastTargetState}.");
+        }
+
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        return await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                var model = Require<MainViewModel>(viewModel, "MVP live MouseBinding view model after double-click");
+                if (model.RefreshCount != refreshCountBefore + 1)
+                {
+                    string trace = mouseBindingTrace.Count == 0
+                        ? "no mouse-down routed events recorded"
+                        : string.Join(" | ", mouseBindingTrace);
+                    throw new InvalidOperationException(
+                        $"Expected MVP live routed MouseBinding command refresh count to be '{refreshCountBefore + 1}', " +
+                        $"but found '{model.RefreshCount}'. {lastTargetState}. Trace: {trace}.");
+                }
+
+                AssertEqual(
+                    $"Refresh command {refreshCountBefore + 1}",
+                    Require<TextBlock>(FindName("CommandStatusText"), "MVP live MouseBinding command status TextBlock").Text,
+                    "MVP live routed MouseBinding command status");
+                return "LeftDoubleClick MouseBinding routed command through host mouse input";
+            },
+            DispatcherPriority.Send);
+    }
+
+    private string DescribeLiveMouseBindingEvent(string stage, object? sender, MouseButtonEventArgs args)
+    {
+        Point windowPosition = args.GetPosition(this);
+        return
+            $"{stage}:{args.RoutedEvent.Name}, " +
+            $"button={args.ChangedButton}, " +
+            $"clicks={args.ClickCount}, " +
+            $"handled={args.Handled}, " +
+            $"source={DescribeInputElement(args.Source)}, " +
+            $"original={DescribeInputElement(args.OriginalSource)}, " +
+            $"sender={DescribeInputElement(sender)}, " +
+            $"position=({windowPosition.X:0.###},{windowPosition.Y:0.###})";
     }
 
     private bool TryRaiseLiveMouseClick(

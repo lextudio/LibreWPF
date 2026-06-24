@@ -996,8 +996,151 @@ public partial class MainWindow : Window
             },
             DispatcherPriority.Send);
 
+        string controlMouseStatus = await ValidateLiveControlMouseInputAsync(liveHost);
         string keyboardNavigationStatus = await ValidateLiveKeyboardNavigationAsync(liveHost);
-        return $"{textInputStatus}; {keyboardNavigationStatus}";
+        return $"{textInputStatus}; {controlMouseStatus}; {keyboardNavigationStatus}";
+    }
+
+    private async Task<string> ValidateLiveControlMouseInputAsync(object liveHost)
+    {
+        Button? addItemButton = null;
+        CheckBox? enabledCheckBox = null;
+        TextBox? textBox = null;
+        MainViewModel? viewModel = null;
+        int itemCountBeforeAdd = 0;
+        string lastTargetState = "not checked";
+
+        bool sentAddClick = false;
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            sentAddClick = await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () =>
+                {
+                    var tabControl = Require<TabControl>(FindName("MvpTabControl"), "MVP live controls TabControl");
+                    tabControl.SelectedIndex = 0;
+                    UpdateLayout();
+
+                    addItemButton = Require<Button>(FindName("AddItemButton"), "MVP live Add item Button");
+                    enabledCheckBox = Require<CheckBox>(FindName("EnabledCheckBox"), "MVP live Actions CheckBox");
+                    textBox = Require<TextBox>(FindName("NameTextBox"), "MVP live Add item TextBox");
+                    viewModel = Require<MainViewModel>(DataContext, "MVP live controls view model");
+
+                    viewModel.ActionsEnabled = true;
+                    viewModel.SelectedCategory = "Input";
+                    viewModel.NewItemName = "MouseAdded";
+                    UpdateBinding(textBox, TextBox.TextProperty);
+                    UpdateBinding(enabledCheckBox, ToggleButton.IsCheckedProperty);
+                    UpdateLayout();
+
+                    itemCountBeforeAdd = viewModel.Items.Count;
+                    return TryRaiseLiveMouseClick(
+                        liveHost,
+                        Require<Button>(addItemButton, "MVP live Add item Button"),
+                        "AddItemButton",
+                        out lastTargetState);
+                },
+                DispatcherPriority.Send);
+            if (sentAddClick)
+            {
+                break;
+            }
+
+            await Task.Delay(LiveValidationRetryDelay);
+        }
+
+        if (!sentAddClick)
+        {
+            throw new InvalidOperationException(
+                $"Expected MVP live Add item Button to become clickable before injecting input, but last state was: {lastTargetState}.");
+        }
+
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                var model = Require<MainViewModel>(viewModel, "MVP live controls view model after Add click");
+                AssertEqual(itemCountBeforeAdd + 1, model.Items.Count, "MVP live Add item Button command item count");
+                AssertEqual("MouseAdded", model.SelectedItem?.Name, "MVP live Add item Button command selected name");
+                AssertEqual("Input", model.SelectedItem?.Category, "MVP live Add item Button command selected category");
+                AssertEqual(true, model.ActionsEnabled, "MVP live controls actions before CheckBox click");
+
+                if (!TryRaiseLiveMouseClick(liveHost, Require<CheckBox>(enabledCheckBox, "MVP live Actions CheckBox"), "EnabledCheckBox", out lastTargetState))
+                {
+                    throw new InvalidOperationException(
+                        $"Expected MVP live Actions CheckBox to be clickable before disabling actions, but state was: {lastTargetState}.");
+                }
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                var model = Require<MainViewModel>(viewModel, "MVP live controls view model after CheckBox disable click");
+                var checkBox = Require<CheckBox>(enabledCheckBox, "MVP live Actions CheckBox after disable click");
+                AssertEqual(false, model.ActionsEnabled, "MVP live Actions CheckBox disabled view-model state");
+                AssertEqual(false, checkBox.IsChecked == true, "MVP live Actions CheckBox disabled checked state");
+
+                if (!TryRaiseLiveMouseClick(liveHost, checkBox, "EnabledCheckBox", out lastTargetState))
+                {
+                    throw new InvalidOperationException(
+                        $"Expected MVP live Actions CheckBox to be clickable before reenabling actions, but state was: {lastTargetState}.");
+                }
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        return await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                var model = Require<MainViewModel>(viewModel, "MVP live controls view model after CheckBox enable click");
+                var checkBox = Require<CheckBox>(enabledCheckBox, "MVP live Actions CheckBox after enable click");
+                AssertEqual(true, model.ActionsEnabled, "MVP live Actions CheckBox restored view-model state");
+                AssertEqual(true, checkBox.IsChecked == true, "MVP live Actions CheckBox restored checked state");
+                return "Add item Button and Actions CheckBox mouse clicks updated WPF command/binding state";
+            },
+            DispatcherPriority.Send);
+    }
+
+    private bool TryRaiseLiveMouseClick(
+        object liveHost,
+        FrameworkElement target,
+        string description,
+        out string targetState)
+    {
+        targetState =
+            $"{description}.IsVisible={target.IsVisible}, " +
+            $"{description}.ActualSize={target.ActualWidth:0.###}x{target.ActualHeight:0.###}, " +
+            $"{description}.IsEnabled={target.IsEnabled}, " +
+            $"{description}.IsHitTestVisible={target.IsHitTestVisible}";
+        if (!target.IsVisible ||
+            target.ActualWidth <= 1.0 ||
+            target.ActualHeight <= 1.0 ||
+            !target.IsEnabled ||
+            !target.IsHitTestVisible)
+        {
+            return false;
+        }
+
+        Point center = target.TranslatePoint(
+            new Point(Math.Max(1.0, target.ActualWidth) / 2.0, Math.Max(1.0, target.ActualHeight) / 2.0),
+            this);
+        object? hit = InputHitTest(center);
+        targetState += $", Input=({center.X:0.###}, {center.Y:0.###}), InputHitTest={DescribeInputElement(hit)}";
+        if (hit == null)
+        {
+            return false;
+        }
+
+        RaiseHostInput(liveHost, "MouseMove", x: center.X, y: center.Y);
+        RaiseHostInput(liveHost, "MouseDown", x: center.X, y: center.Y, button: "Left");
+        RaiseHostInput(liveHost, "MouseUp", x: center.X, y: center.Y, button: "Left");
+        return true;
     }
 
     private async Task<string> ValidateLiveKeyboardNavigationAsync(object liveHost)

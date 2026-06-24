@@ -354,6 +354,7 @@
                                 VerticalContentAlignment="Center"
                                 Text="{Binding NewItemName, UpdateSourceTrigger=PropertyChanged}" />
                             <Button
+                                x:Name="AddItemButton"
                                 Grid.Column="1"
                                 Margin="10,0,0,0"
                                 Command="{Binding AddItemCommand}"

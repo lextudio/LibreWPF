@@ -1118,9 +1118,10 @@ public partial class MainWindow : Window
         string controlMouseStatus = await ValidateLiveControlMouseInputAsync(liveHost);
         string mouseBindingStatus = await ValidateLiveMouseBindingAsync(liveHost);
         string discreteControlStatus = await ValidateLiveDiscreteInputControlsAsync(liveHost);
+        string toolBarStatus = await ValidateLiveToolBarInputAsync(liveHost);
         string keyboardNavigationStatus = await ValidateLiveKeyboardNavigationAsync(liveHost);
         string wheelAndCaptureStatus = await ValidateLiveWheelAndCaptureInputAsync(liveHost);
-        return $"{textInputStatus}; {controlMouseStatus}; {mouseBindingStatus}; {discreteControlStatus}; {keyboardNavigationStatus}; {wheelAndCaptureStatus}";
+        return $"{textInputStatus}; {controlMouseStatus}; {mouseBindingStatus}; {discreteControlStatus}; {toolBarStatus}; {keyboardNavigationStatus}; {wheelAndCaptureStatus}";
     }
 
     private async Task<string> ValidateLiveControlMouseInputAsync(object liveHost)
@@ -1345,6 +1346,129 @@ public partial class MainWindow : Window
                     InputRepeatButtonClickCount,
                     "MVP live RepeatButton host click count");
                 return "RadioButton group selection and RepeatButton click updated through host mouse input";
+            },
+            DispatcherPriority.Send);
+    }
+
+    private async Task<string> ValidateLiveToolBarInputAsync(object liveHost)
+    {
+        ToolBar? toolBar = null;
+        Button? refreshButton = null;
+        ToggleButton? toolBarToggleButton = null;
+        MainViewModel? viewModel = null;
+        int refreshCountBefore = 0;
+        int uncheckedEventsBefore = 0;
+        int checkedEventsBefore = 0;
+        string lastTargetState = "not checked";
+
+        bool sentRefreshClick = false;
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            sentRefreshClick = await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () =>
+                {
+                    var tabControl = Require<TabControl>(FindName("MvpTabControl"), "MVP live ToolBar TabControl");
+                    tabControl.SelectedIndex = 4;
+                    UpdateLayout();
+
+                    toolBar = Require<ToolBar>(FindName("MvpToolBar"), "MVP live ToolBar");
+                    refreshButton = Require<Button>(
+                        FindName("ToolBarRefreshButton"),
+                        "MVP live ToolBar refresh Button");
+                    toolBarToggleButton = Require<ToggleButton>(
+                        FindName("ToolBarToggleButton"),
+                        "MVP live ToolBar ToggleButton");
+                    viewModel = Require<MainViewModel>(DataContext, "MVP live ToolBar view model");
+
+                    viewModel.ActionsEnabled = true;
+                    UpdateBinding(toolBarToggleButton, ToggleButton.IsCheckedProperty);
+                    UpdateLayout();
+
+                    refreshCountBefore = viewModel.RefreshCount;
+                    uncheckedEventsBefore = InputToggleUncheckedCount;
+                    checkedEventsBefore = InputToggleCheckedCount;
+                    return TryRaiseLiveMouseClick(
+                        liveHost,
+                        refreshButton,
+                        "ToolBarRefreshButton",
+                        out lastTargetState);
+                },
+                DispatcherPriority.Send);
+            if (sentRefreshClick)
+            {
+                break;
+            }
+
+            await Task.Delay(LiveValidationRetryDelay);
+        }
+
+        if (!sentRefreshClick)
+        {
+            throw new InvalidOperationException(
+                $"Expected MVP live ToolBar refresh Button to become clickable before injecting input, but last state was: {lastTargetState}.");
+        }
+
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                var model = Require<MainViewModel>(viewModel, "MVP live ToolBar view model after refresh click");
+                AssertEqual(3, Require<ToolBar>(toolBar, "MVP live ToolBar after refresh click").Items.Count, "MVP live ToolBar item count");
+                AssertEqual(refreshCountBefore + 1, model.RefreshCount, "MVP live ToolBar refresh command count");
+                AssertEqual(
+                    $"Refresh command {refreshCountBefore + 1}",
+                    Require<TextBlock>(FindName("CommandStatusText"), "MVP live ToolBar command status TextBlock").Text,
+                    "MVP live ToolBar refresh command status");
+
+                if (!TryRaiseLiveMouseClick(
+                    liveHost,
+                    Require<ToggleButton>(toolBarToggleButton, "MVP live ToolBar ToggleButton before disable click"),
+                    "ToolBarToggleButton",
+                    out lastTargetState))
+                {
+                    throw new InvalidOperationException(
+                        $"Expected MVP live ToolBar ToggleButton to be clickable before disabling actions, but state was: {lastTargetState}.");
+                }
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                var model = Require<MainViewModel>(viewModel, "MVP live ToolBar view model after disable click");
+                var toggle = Require<ToggleButton>(toolBarToggleButton, "MVP live ToolBar ToggleButton after disable click");
+                AssertEqual(false, model.ActionsEnabled, "MVP live ToolBar ToggleButton disabled view-model state");
+                AssertEqual(false, toggle.IsChecked == true, "MVP live ToolBar ToggleButton disabled checked state");
+                AssertLiveGreaterThan(uncheckedEventsBefore, InputToggleUncheckedCount, "MVP live ToolBar ToggleButton unchecked event count");
+
+                if (!TryRaiseLiveMouseClick(
+                    liveHost,
+                    toggle,
+                    "ToolBarToggleButton",
+                    out lastTargetState))
+                {
+                    throw new InvalidOperationException(
+                        $"Expected MVP live ToolBar ToggleButton to be clickable before restoring actions, but state was: {lastTargetState}.");
+                }
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        return await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                var model = Require<MainViewModel>(viewModel, "MVP live ToolBar view model after restore click");
+                var toggle = Require<ToggleButton>(toolBarToggleButton, "MVP live ToolBar ToggleButton after restore click");
+                AssertEqual(true, model.ActionsEnabled, "MVP live ToolBar ToggleButton restored view-model state");
+                AssertEqual(true, toggle.IsChecked == true, "MVP live ToolBar ToggleButton restored checked state");
+                AssertLiveGreaterThan(checkedEventsBefore, InputToggleCheckedCount, "MVP live ToolBar ToggleButton checked event count");
+                return "ToolBar refresh command and toggle binding updated through host mouse input";
             },
             DispatcherPriority.Send);
     }

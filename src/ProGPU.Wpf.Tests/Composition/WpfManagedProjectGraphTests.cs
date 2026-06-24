@@ -7272,6 +7272,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"RenderingRadioButton\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"InputRepeatButton\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RadioButton group selection and RepeatButton click updated through host mouse input", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLiveToolBarInputAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"ToolBarRefreshButton\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"ToolBarToggleButton\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MVP live ToolBar refresh command count", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ToolBar refresh command and toggle binding updated through host mouse input", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MouseWheel=\"OnSelectorScrollViewerMouseWheel\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SelectorScrollViewer.AddHandler(MouseWheelEvent", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveWheelAndCaptureInputAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);

@@ -801,6 +801,7 @@
                             x:Name="SelectorScrollViewer"
                             Height="160"
                             HorizontalScrollBarVisibility="Disabled"
+                            MouseWheel="OnSelectorScrollViewerMouseWheel"
                             VerticalScrollBarVisibility="Auto">
                             <StackPanel>
                                 <TextBlock

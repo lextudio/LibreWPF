@@ -803,6 +803,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("InputManager.PreviewInputReportEvent", activationService, StringComparison.Ordinal);
         Assert.Contains("PortableKeyboardDevice", activationService, StringComparison.Ordinal);
         Assert.Contains("PortableMouseDevice", activationService, StringComparison.Ordinal);
+        Assert.Contains("RawMouseActions mouseActivation = GetMouseActivationAction(inputManager, source)", activationService, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(inputManager.PrimaryMouseDevice?.ActiveSource, source)", activationService, StringComparison.Ordinal);
+        Assert.Contains("mouseActivation | mouseUpAction", activationService, StringComparison.Ordinal);
+        Assert.DoesNotContain("RawMouseActions.Activate | mouseUpAction", activationService, StringComparison.Ordinal);
+        Assert.DoesNotContain("RawMouseActions.Activate | RawMouseActions.AbsoluteMove | mouseUpAction", activationService, StringComparison.Ordinal);
         Assert.Contains("Mouse.MouseWheelDeltaForOneLine", activationService, StringComparison.Ordinal);
         Assert.DoesNotContain("Routed portable input is implemented in a later InputManager slice", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryRun(Window window)", activationService, StringComparison.Ordinal);
@@ -7218,6 +7223,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("MVP live Add item Button command item count", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MVP live Actions CheckBox disabled view-model state", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Add item Button and Actions CheckBox mouse clicks updated WPF command/binding state", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MouseWheel=\"OnSelectorScrollViewerMouseWheel\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SelectorScrollViewer.AddHandler(MouseWheelEvent", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLiveWheelAndCaptureInputAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RaiseHostInput(liveHost, \"MouseWheel\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("deltaY: -1.0", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MVP live ScrollViewer MouseWheel delta", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("TryRaiseLiveThumbDrag(", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MVP live input Thumb mouse capture released", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MouseWheel routed through SelectorScrollViewer and Thumb drag captured, moved, and released through host mouse input", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveKeyboardNavigationAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RaiseHostInput(liveHost, \"KeyDown\", key: \"Tab\")", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MVP live Tab focus moved to second target", mvpMainWindowCodeBehind, StringComparison.Ordinal);

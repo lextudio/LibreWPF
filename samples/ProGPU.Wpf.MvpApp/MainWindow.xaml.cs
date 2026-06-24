@@ -77,6 +77,14 @@ public partial class MainWindow : Window
 
     internal int SelectorExpanderCollapsedCount { get; private set; }
 
+    internal int SelectorMouseWheelCount { get; private set; }
+
+    internal string? LastSelectorMouseWheelSenderName { get; private set; }
+
+    internal string? LastSelectorMouseWheelRoutedEventName { get; private set; }
+
+    internal int LastSelectorMouseWheelDelta { get; private set; }
+
     internal int InputToggleCheckedCount { get; private set; }
 
     internal int InputToggleUncheckedCount { get; private set; }
@@ -261,6 +269,7 @@ public partial class MainWindow : Window
         DataContext = viewModel;
         InitializeComponent();
 
+        SelectorScrollViewer.AddHandler(MouseWheelEvent, new MouseWheelEventHandler(OnSelectorScrollViewerMouseWheel), true);
         MvpRoutedEventScope.AddHandler(
             MvpRoutedEventButton.MvpActivatedEvent,
             new MvpRoutedEventHandler(OnMvpRoutedEventScopeHandledToo),
@@ -598,6 +607,14 @@ public partial class MainWindow : Window
     private void OnSelectorExpanderCollapsed(object sender, RoutedEventArgs e)
     {
         SelectorExpanderCollapsedCount++;
+    }
+
+    private void OnSelectorScrollViewerMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        SelectorMouseWheelCount++;
+        LastSelectorMouseWheelSenderName = GetElementName(sender);
+        LastSelectorMouseWheelRoutedEventName = e.RoutedEvent?.Name;
+        LastSelectorMouseWheelDelta = e.Delta;
     }
 
     private void OnInputToggleChecked(object sender, RoutedEventArgs e)
@@ -998,7 +1015,8 @@ public partial class MainWindow : Window
 
         string controlMouseStatus = await ValidateLiveControlMouseInputAsync(liveHost);
         string keyboardNavigationStatus = await ValidateLiveKeyboardNavigationAsync(liveHost);
-        return $"{textInputStatus}; {controlMouseStatus}; {keyboardNavigationStatus}";
+        string wheelAndCaptureStatus = await ValidateLiveWheelAndCaptureInputAsync(liveHost);
+        return $"{textInputStatus}; {controlMouseStatus}; {keyboardNavigationStatus}; {wheelAndCaptureStatus}";
     }
 
     private async Task<string> ValidateLiveControlMouseInputAsync(object liveHost)
@@ -1143,6 +1161,82 @@ public partial class MainWindow : Window
         return true;
     }
 
+    private bool TryRaiseLiveMouseWheel(
+        object liveHost,
+        FrameworkElement target,
+        string description,
+        double deltaY,
+        out string targetState)
+    {
+        targetState =
+            $"{description}.IsVisible={target.IsVisible}, " +
+            $"{description}.ActualSize={target.ActualWidth:0.###}x{target.ActualHeight:0.###}, " +
+            $"{description}.IsEnabled={target.IsEnabled}, " +
+            $"{description}.IsHitTestVisible={target.IsHitTestVisible}";
+        if (!target.IsVisible ||
+            target.ActualWidth <= 1.0 ||
+            target.ActualHeight <= 1.0 ||
+            !target.IsEnabled ||
+            !target.IsHitTestVisible)
+        {
+            return false;
+        }
+
+        Point center = target.TranslatePoint(
+            new Point(Math.Max(1.0, target.ActualWidth) / 2.0, Math.Max(1.0, target.ActualHeight) / 2.0),
+            this);
+        object? hit = InputHitTest(center);
+        targetState += $", Input=({center.X:0.###}, {center.Y:0.###}), InputHitTest={DescribeInputElement(hit)}";
+        if (hit == null)
+        {
+            return false;
+        }
+
+        RaiseHostInput(liveHost, "MouseMove", x: center.X, y: center.Y);
+        RaiseHostInput(liveHost, "MouseWheel", x: center.X, y: center.Y, deltaY: deltaY);
+        return true;
+    }
+
+    private bool TryRaiseLiveThumbDrag(
+        object liveHost,
+        FrameworkElement target,
+        string description,
+        double horizontalDelta,
+        double verticalDelta,
+        out string targetState)
+    {
+        targetState =
+            $"{description}.IsVisible={target.IsVisible}, " +
+            $"{description}.ActualSize={target.ActualWidth:0.###}x{target.ActualHeight:0.###}, " +
+            $"{description}.IsEnabled={target.IsEnabled}, " +
+            $"{description}.IsHitTestVisible={target.IsHitTestVisible}";
+        if (!target.IsVisible ||
+            target.ActualWidth <= 1.0 ||
+            target.ActualHeight <= 1.0 ||
+            !target.IsEnabled ||
+            !target.IsHitTestVisible)
+        {
+            return false;
+        }
+
+        Point center = target.TranslatePoint(
+            new Point(Math.Max(1.0, target.ActualWidth) / 2.0, Math.Max(1.0, target.ActualHeight) / 2.0),
+            this);
+        Point moved = new(center.X + horizontalDelta, center.Y + verticalDelta);
+        object? hit = InputHitTest(center);
+        targetState += $", Input=({center.X:0.###}, {center.Y:0.###}), InputHitTest={DescribeInputElement(hit)}";
+        if (hit == null)
+        {
+            return false;
+        }
+
+        RaiseHostInput(liveHost, "MouseMove", x: center.X, y: center.Y);
+        RaiseHostInput(liveHost, "MouseDown", x: center.X, y: center.Y, button: "Left");
+        RaiseHostInput(liveHost, "MouseMove", x: moved.X, y: moved.Y);
+        RaiseHostInput(liveHost, "MouseUp", x: moved.X, y: moved.Y, button: "Left");
+        return true;
+    }
+
     private async Task<string> ValidateLiveKeyboardNavigationAsync(object liveHost)
     {
         TextBox? firstBox = null;
@@ -1261,6 +1355,151 @@ public partial class MainWindow : Window
             {
                 AssertEqual(firstBox, Keyboard.FocusedElement, "MVP live Tab focus cycled to first target");
                 return "Tab keyboard navigation cycled focus through live host input";
+            },
+            DispatcherPriority.Send);
+    }
+
+    private async Task<string> ValidateLiveWheelAndCaptureInputAsync(object liveHost)
+    {
+        ScrollViewer? selectorScrollViewer = null;
+        Thumb? inputDragThumb = null;
+        StackPanel? inputThumbPanel = null;
+        TextBlock? inputDragStatusText = null;
+        int wheelCountBefore = 0;
+        int dragStartedBefore = 0;
+        int dragDeltaBefore = 0;
+        int dragCompletedBefore = 0;
+        int bubbledDragDeltaBefore = 0;
+        string lastTargetState = "not checked";
+
+        bool sentWheelInput = false;
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            sentWheelInput = await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () =>
+                {
+                    var tabControl = Require<TabControl>(FindName("MvpTabControl"), "MVP live wheel TabControl");
+                    tabControl.SelectedIndex = 3;
+                    var expander = Require<Expander>(FindName("SelectorExpander"), "MVP live wheel Expander");
+                    expander.IsExpanded = true;
+                    UpdateLayout();
+
+                    selectorScrollViewer = Require<ScrollViewer>(
+                        FindName("SelectorScrollViewer"),
+                        "MVP live selector ScrollViewer");
+                    wheelCountBefore = SelectorMouseWheelCount;
+                    return TryRaiseLiveMouseWheel(
+                        liveHost,
+                        selectorScrollViewer,
+                        "SelectorScrollViewer",
+                        deltaY: -1.0,
+                        out lastTargetState);
+                },
+                DispatcherPriority.Send);
+            if (sentWheelInput)
+            {
+                break;
+            }
+
+            await Task.Delay(LiveValidationRetryDelay);
+        }
+
+        if (!sentWheelInput)
+        {
+            throw new InvalidOperationException(
+                $"Expected MVP live selector ScrollViewer to become wheel-testable before injecting input, but last state was: {lastTargetState}.");
+        }
+
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                AssertLiveGreaterThan(wheelCountBefore, SelectorMouseWheelCount, "MVP live ScrollViewer MouseWheel event count");
+                AssertEqual("SelectorScrollViewer", LastSelectorMouseWheelSenderName, "MVP live ScrollViewer MouseWheel sender");
+                AssertEqual("MouseWheel", LastSelectorMouseWheelRoutedEventName, "MVP live ScrollViewer MouseWheel routed event");
+                AssertEqual(-120, LastSelectorMouseWheelDelta, "MVP live ScrollViewer MouseWheel delta");
+            },
+            DispatcherPriority.Send);
+
+        bool sentDragInput = false;
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            sentDragInput = await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () =>
+                {
+                    var tabControl = Require<TabControl>(FindName("MvpTabControl"), "MVP live Thumb TabControl");
+                    tabControl.SelectedIndex = 4;
+                    UpdateLayout();
+
+                    inputThumbPanel = Require<StackPanel>(FindName("InputThumbPanel"), "MVP live input Thumb panel");
+                    inputDragThumb = Require<Thumb>(FindName("InputDragThumb"), "MVP live input drag Thumb");
+                    inputDragStatusText = Require<TextBlock>(FindName("InputDragStatusText"), "MVP live input drag status");
+                    dragStartedBefore = InputThumbDragStartedCount;
+                    dragDeltaBefore = InputThumbDragDeltaCount;
+                    dragCompletedBefore = InputThumbDragCompletedCount;
+                    bubbledDragDeltaBefore = InputBubbledThumbDragDeltaCount;
+                    return TryRaiseLiveThumbDrag(
+                        liveHost,
+                        inputDragThumb,
+                        "InputDragThumb",
+                        horizontalDelta: 18.0,
+                        verticalDelta: 12.0,
+                        out lastTargetState);
+                },
+                DispatcherPriority.Send);
+            if (sentDragInput)
+            {
+                break;
+            }
+
+            await Task.Delay(LiveValidationRetryDelay);
+        }
+
+        if (!sentDragInput)
+        {
+            throw new InvalidOperationException(
+                $"Expected MVP live input Thumb to become drag-testable before injecting input, but last state was: {lastTargetState}.");
+        }
+
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        return await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                var thumb = Require<Thumb>(inputDragThumb, "MVP live input drag Thumb after drag");
+                Console.WriteLine(
+                    "ProGPU WPF MVP live Thumb state after drag: " +
+                    $"started={InputThumbDragStartedCount - dragStartedBefore}, " +
+                    $"delta={InputThumbDragDeltaCount - dragDeltaBefore}, " +
+                    $"completed={InputThumbDragCompletedCount - dragCompletedBefore}, " +
+                    $"bubbled={InputBubbledThumbDragDeltaCount - bubbledDragDeltaBefore}, " +
+                    $"isDragging={thumb.IsDragging}, " +
+                    $"captured={DescribeInputElement(Mouse.Captured)}, " +
+                    $"left={Mouse.LeftButton}, " +
+                    $"status='{Require<TextBlock>(inputDragStatusText, "MVP live input drag status").Text}'.");
+                AssertEqual(false, thumb.IsDragging, "MVP live input Thumb dragging released state");
+                AssertEqual(null, Mouse.Captured, "MVP live input Thumb mouse capture released");
+                AssertLiveGreaterThan(dragStartedBefore, InputThumbDragStartedCount, "MVP live input Thumb DragStarted event count");
+                AssertLiveGreaterThan(dragDeltaBefore, InputThumbDragDeltaCount, "MVP live input Thumb DragDelta event count");
+                AssertLiveGreaterThan(dragCompletedBefore, InputThumbDragCompletedCount, "MVP live input Thumb DragCompleted event count");
+                AssertLiveGreaterThan(bubbledDragDeltaBefore, InputBubbledThumbDragDeltaCount, "MVP live input Thumb bubbled DragDelta event count");
+                AssertEqual("InputDragThumb", LastInputThumbDragStartedSenderName, "MVP live input Thumb DragStarted sender");
+                AssertEqual("InputDragThumb", LastInputThumbDragDeltaSenderName, "MVP live input Thumb DragDelta sender");
+                AssertEqual("InputDragThumb", LastInputThumbDragCompletedSenderName, "MVP live input Thumb DragCompleted sender");
+                AssertEqual("InputThumbPanel", LastInputBubbledThumbDragDeltaSenderName, "MVP live input Thumb bubbled sender");
+                AssertEqual("InputDragThumb", LastInputBubbledThumbDragDeltaOriginalSourceName, "MVP live input Thumb bubbled original source");
+                AssertEqual("DragStarted", LastInputThumbDragStartedRoutedEventName, "MVP live input Thumb DragStarted routed event");
+                AssertEqual("DragDelta", LastInputThumbDragDeltaRoutedEventName, "MVP live input Thumb DragDelta routed event");
+                AssertEqual("DragCompleted", LastInputThumbDragCompletedRoutedEventName, "MVP live input Thumb DragCompleted routed event");
+                AssertEqual("DragDelta", LastInputBubbledThumbDragDeltaRoutedEventName, "MVP live input Thumb bubbled DragDelta routed event");
+                AssertEqual("Dragged 18, 12", Require<TextBlock>(inputDragStatusText, "MVP live input drag status").Text, "MVP live input Thumb drag status");
+                AssertEqual(true, ReferenceEquals(inputThumbPanel, thumb.Parent), "MVP live input Thumb parent");
+                return "MouseWheel routed through SelectorScrollViewer and Thumb drag captured, moved, and released through host mouse input";
             },
             DispatcherPriority.Send);
     }
@@ -1398,10 +1637,12 @@ public partial class MainWindow : Window
         char? character = null,
         double x = 0.0,
         double y = 0.0,
+        double deltaX = 0.0,
+        double deltaY = 0.0,
         string button = "None",
         string modifiers = "None")
     {
-        object input = CreateWpfInputEventArgs(liveHost, kind, key, character, x, y, button, modifiers);
+        object input = CreateWpfInputEventArgs(liveHost, kind, key, character, x, y, deltaX, deltaY, button, modifiers);
         MethodInfo method = liveHost.GetType().GetMethod(
             "OnPlatformInputReceived",
             BindingFlags.Instance | BindingFlags.NonPublic)
@@ -1416,6 +1657,8 @@ public partial class MainWindow : Window
         char? character,
         double x,
         double y,
+        double deltaX,
+        double deltaY,
         string button,
         string modifiers)
     {
@@ -1437,8 +1680,8 @@ public partial class MainWindow : Window
             character.HasValue ? character.Value : null,
             x,
             y,
-            0.0,
-            0.0,
+            deltaX,
+            deltaY,
             Enum.Parse(buttonType, button),
             Enum.Parse(modifiersType, modifiers))
             ?? throw new InvalidOperationException("Expected WpfInputEventArgs construction to succeed.");
@@ -1487,6 +1730,15 @@ public partial class MainWindow : Window
         {
             throw new InvalidOperationException(
                 $"Expected {description} to be '{expected}', but found '{actual}'.");
+        }
+    }
+
+    private static void AssertLiveGreaterThan(int minimumExclusive, int actual, string description)
+    {
+        if (actual <= minimumExclusive)
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to be greater than '{minimumExclusive}', but found '{actual}'.");
         }
     }
 

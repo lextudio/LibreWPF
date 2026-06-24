@@ -254,6 +254,7 @@ namespace System.Windows
         {
             InputManager inputManager = InputManager.UnsecureCurrent;
             int timestamp = Environment.TickCount;
+            RawMouseActions mouseActivation = GetMouseActivationAction(inputManager, source);
 
             switch (input.Kind)
             {
@@ -264,20 +265,27 @@ namespace System.Windows
                 case PortableInputEventKind.TextInput:
                     return ProcessTextInput(inputManager, source, input, timestamp);
                 case PortableInputEventKind.MouseMove:
-                    return ProcessMouseInput(inputManager, source, input, timestamp, RawMouseActions.Activate | RawMouseActions.AbsoluteMove);
+                    return ProcessMouseInput(inputManager, source, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove);
                 case PortableInputEventKind.MouseDown:
                     return TryGetMouseButtonAction(input.Button, isDown: true, out RawMouseActions mouseDownAction)
-                        && ProcessMouseInput(inputManager, source, input, timestamp, RawMouseActions.Activate | RawMouseActions.AbsoluteMove | mouseDownAction);
+                        && ProcessMouseInput(inputManager, source, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | mouseDownAction);
                 case PortableInputEventKind.MouseUp:
                     return TryGetMouseButtonAction(input.Button, isDown: false, out RawMouseActions mouseUpAction)
-                        && ProcessMouseInput(inputManager, source, input, timestamp, RawMouseActions.Activate | RawMouseActions.AbsoluteMove | mouseUpAction);
+                        && ProcessMouseInput(inputManager, source, input, timestamp, mouseActivation | mouseUpAction);
                 case PortableInputEventKind.MouseWheel:
                     int wheel = ToMouseWheelDelta(input.DeltaY);
                     return wheel != 0
-                        && ProcessMouseInput(inputManager, source, input, timestamp, RawMouseActions.Activate | RawMouseActions.AbsoluteMove | RawMouseActions.VerticalWheelRotate, wheel);
+                        && ProcessMouseInput(inputManager, source, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | RawMouseActions.VerticalWheelRotate, wheel);
                 default:
                     return false;
             }
+        }
+
+        private static RawMouseActions GetMouseActivationAction(InputManager inputManager, PresentationSource source)
+        {
+            return ReferenceEquals(inputManager.PrimaryMouseDevice?.ActiveSource, source)
+                ? RawMouseActions.None
+                : RawMouseActions.Activate;
         }
 
         private static bool ProcessKeyboardInput(

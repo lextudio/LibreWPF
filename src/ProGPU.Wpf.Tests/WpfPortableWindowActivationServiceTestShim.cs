@@ -6,6 +6,22 @@ internal interface IPortableWindowActivationServiceTestTarget
 {
 }
 
+internal interface IPortableDispatcherFlushTarget
+{
+    void FlushDispatcherOperations(string priorityName);
+
+    void FlushDispatcherOperations(string priorityName, TimeSpan timeout);
+}
+
+internal enum PortableDispatcherPriority
+{
+    Input,
+    Loaded,
+    Render,
+    Background,
+    ApplicationIdle
+}
+
 internal static class PortableWindowActivationService
 {
     public static int DropCount { get; private set; }
@@ -75,5 +91,28 @@ internal static class PortableWindowActivationService
         LastAllowedEffects = allowedEffects;
         LastAcceptedEffect = acceptedEffect;
         return (int)Media.ProGPU.Platform.WpfDragDropEffects.Move;
+    }
+
+    internal static void FlushDispatcherOperations(
+        IPortableWindowActivationServiceTestTarget window,
+        PortableDispatcherPriority priority)
+    {
+        if (window is IPortableDispatcherFlushTarget target)
+        {
+            target.FlushDispatcherOperations(priority.ToString());
+        }
+    }
+
+    internal static bool FlushDispatcherOperations(
+        IPortableWindowActivationServiceTestTarget window,
+        PortableDispatcherPriority priority,
+        TimeSpan timeout)
+    {
+        if (window is IPortableDispatcherFlushTarget target)
+        {
+            target.FlushDispatcherOperations(priority.ToString(), timeout);
+        }
+
+        return true;
     }
 }

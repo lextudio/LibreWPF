@@ -883,9 +883,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             framebufferSize,
             cachedLogicalClientWidth,
             cachedLogicalClientHeight,
-            monitorDpiScale);
+            monitorDpiScale,
+            trustNativeLogicalSizeWhenFramebufferScalesNative: HasPresentedFrame);
         logicalSize = ReconcileResolvedLogicalClientSize(
             logicalSize,
+            framebufferSize,
             cachedLogicalClientWidth,
             cachedLogicalClientHeight,
             monitorDpiScale);
@@ -950,9 +952,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             framebufferSize,
             GetCachedLogicalClientWidth(),
             GetCachedLogicalClientHeight(),
-            monitorDpiScale);
+            monitorDpiScale,
+            trustNativeLogicalSizeWhenFramebufferScalesNative: HasPresentedFrame);
         logicalSize = ReconcileResolvedLogicalClientSize(
             logicalSize,
+            framebufferSize,
             GetCachedLogicalClientWidth(),
             GetCachedLogicalClientHeight(),
             monitorDpiScale);
@@ -992,17 +996,27 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private static Vector2D<int> ReconcileResolvedLogicalClientSize(
         Vector2D<int> resolvedSize,
+        Vector2D<int> framebufferSize,
         int cachedWidth,
         int cachedHeight,
         double monitorDpiScale)
     {
         return new Vector2D<int>(
-            ReconcileResolvedLogicalClientDimension(resolvedSize.X, cachedWidth, monitorDpiScale),
-            ReconcileResolvedLogicalClientDimension(resolvedSize.Y, cachedHeight, monitorDpiScale));
+            ReconcileResolvedLogicalClientDimension(
+                resolvedSize.X,
+                framebufferSize.X,
+                cachedWidth,
+                monitorDpiScale),
+            ReconcileResolvedLogicalClientDimension(
+                resolvedSize.Y,
+                framebufferSize.Y,
+                cachedHeight,
+                monitorDpiScale));
     }
 
     private static int ReconcileResolvedLogicalClientDimension(
         int resolvedDimension,
+        int framebufferDimension,
         int cachedDimension,
         double monitorDpiScale)
     {
@@ -1013,10 +1027,33 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         var larger = Math.Max(resolvedDimension, cachedDimension);
         var smaller = Math.Min(resolvedDimension, cachedDimension);
+        if (FramebufferDimensionMatchesScaledLogicalDimension(
+                resolvedDimension,
+                framebufferDimension,
+                monitorDpiScale))
+        {
+            return resolvedDimension;
+        }
+
         return larger == resolvedDimension &&
             DimensionsDifferByDpiScale(larger, smaller, monitorDpiScale)
                 ? smaller
                 : resolvedDimension;
+    }
+
+    private static bool FramebufferDimensionMatchesScaledLogicalDimension(
+        int logicalDimension,
+        int framebufferDimension,
+        double monitorDpiScale)
+    {
+        var normalizedScale = NormalizeMonitorDpiScale(monitorDpiScale);
+        if (logicalDimension <= 0 || framebufferDimension <= 0 || normalizedScale <= 1.0)
+        {
+            return false;
+        }
+
+        return Math.Abs(framebufferDimension - logicalDimension * normalizedScale) <=
+            Math.Max(2.0, normalizedScale);
     }
 
     private Vector2D<int> ReconcileResolvedLogicalClientSizeWithRootRenderSize(
@@ -1179,16 +1216,44 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         int cachedHeight,
         double monitorDpiScale)
     {
+        return ResolveLogicalClientSize(
+            nativeSize,
+            framebufferSize,
+            cachedWidth,
+            cachedHeight,
+            monitorDpiScale,
+            trustNativeLogicalSizeWhenFramebufferScalesNative: false);
+    }
+
+    private static Vector2D<int> ResolveLogicalClientSize(
+        Vector2D<int> nativeSize,
+        Vector2D<int> framebufferSize,
+        int cachedWidth,
+        int cachedHeight,
+        double monitorDpiScale,
+        bool trustNativeLogicalSizeWhenFramebufferScalesNative)
+    {
         return new Vector2D<int>(
-            ResolveLogicalClientDimension(nativeSize.X, framebufferSize.X, cachedWidth, monitorDpiScale),
-            ResolveLogicalClientDimension(nativeSize.Y, framebufferSize.Y, cachedHeight, monitorDpiScale));
+            ResolveLogicalClientDimension(
+                nativeSize.X,
+                framebufferSize.X,
+                cachedWidth,
+                monitorDpiScale,
+                trustNativeLogicalSizeWhenFramebufferScalesNative),
+            ResolveLogicalClientDimension(
+                nativeSize.Y,
+                framebufferSize.Y,
+                cachedHeight,
+                monitorDpiScale,
+                trustNativeLogicalSizeWhenFramebufferScalesNative));
     }
 
     private static int ResolveLogicalClientDimension(
         int nativeDimension,
         int framebufferDimension,
         int cachedDimension,
-        double monitorDpiScale)
+        double monitorDpiScale,
+        bool trustNativeLogicalSizeWhenFramebufferScalesNative)
     {
         var cached = Math.Max(1, cachedDimension);
         var fallback = Math.Max(1, nativeDimension > 0 ? nativeDimension : cached);
@@ -1207,6 +1272,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         if (dpiScale <= 1.0 || framebufferDimension <= 0)
+        {
+            return fallback;
+        }
+
+        if (trustNativeLogicalSizeWhenFramebufferScalesNative &&
+            FramebufferDimensionMatchesScaledLogicalDimension(nativeDimension, framebufferDimension, dpiScale))
         {
             return fallback;
         }

@@ -719,7 +719,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return;
         }
 
-        FlushWpfDispatcherOperations("Render", "ApplicationIdle");
+        FlushWpfDispatcherOperations("Input", "Render", "ApplicationIdle");
     }
 
     private void OnHostUpdateTick(object? sender, EventArgs e)

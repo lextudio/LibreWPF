@@ -506,6 +506,37 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void RenderWakeupFlushesQueuedDispatcherInputBeforeRendering()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var window = new FakeDispatchingPortableInputWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        window.FlushedPriorities.Clear();
+        var args = new WpfInputEventArgs(WpfInputEventKind.TextInput, character: 'x');
+        RaiseHostInputEvent(host, args);
+
+        Assert.Equal(1, window.Dispatcher.BeginInvokeCount);
+        Assert.Equal(1, window.InputCount);
+        Assert.Same(args, window.LastInputArgs);
+        Assert.Contains("Input", window.FlushedPriorities);
+        Assert.Contains("Render", window.FlushedPriorities);
+        Assert.True(
+            window.FlushedPriorities.IndexOf("Input") < window.FlushedPriorities.IndexOf("Render"),
+            "Input-priority WPF work must run before render-priority work on a render wakeup.");
+        Assert.True(scheduler.RequestCount >= 2);
+    }
+
+    [Fact]
     public void DisposingActivationStopsInputForwarding()
     {
         using var host = new ProGpuWpfWindowHost
@@ -782,9 +813,13 @@ public sealed class WpfPortableWindowActivationTests
         }
     }
 
-    private sealed class FakeDispatchingPortableInputWindow
+    private sealed class FakeDispatchingPortableInputWindow :
+        System.Windows.IPortableWindowActivationServiceTestTarget,
+        System.Windows.IPortableDispatcherFlushTarget
     {
         public FakeDispatcher Dispatcher { get; } = new();
+
+        public List<string> FlushedPriorities { get; } = new();
 
         public int InputCount { get; private set; }
 
@@ -794,6 +829,20 @@ public sealed class WpfPortableWindowActivationTests
         {
             InputCount++;
             LastInputArgs = e;
+        }
+
+        public void FlushDispatcherOperations(string priorityName)
+        {
+            FlushedPriorities.Add(priorityName);
+            if (string.Equals(priorityName, "Input", StringComparison.Ordinal))
+            {
+                Dispatcher.TryInvokeQueuedCallback();
+            }
+        }
+
+        public void FlushDispatcherOperations(string priorityName, TimeSpan timeout)
+        {
+            FlushedPriorities.Add(priorityName);
         }
     }
 
@@ -823,6 +872,17 @@ public sealed class WpfPortableWindowActivationTests
         {
             InvokeCount++;
             throw new InvalidOperationException("Input must be queued to the WPF dispatcher instead of invoked synchronously.");
+        }
+
+        public bool TryInvokeQueuedCallback()
+        {
+            if (_queuedCallback == null)
+            {
+                return false;
+            }
+
+            InvokeQueuedCallback();
+            return true;
         }
 
         public void InvokeQueuedCallback()

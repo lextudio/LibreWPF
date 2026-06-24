@@ -1182,6 +1182,36 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void NativeResizeKeepsRealLogicalResizeWhenItMatchesPreviousDpiScaleMultiple()
+    {
+        using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions
+        {
+            Width = 760,
+            Height = 560
+        });
+        var root = new TestRootElement();
+        root.SetRenderSize(760, 560);
+        host.WpfRootVisual = root;
+        host.RecordPresentedFrame(new ProGpuWpfFrameState(
+            pixelWidth: 1520,
+            pixelHeight: 1120,
+            sceneChangeVersion: 1,
+            retainedWpfChangeVersion: 1,
+            flatDrawingChangeVersion: 0,
+            logicalWidth: 760,
+            logicalHeight: 560,
+            dpiScale: 2.0));
+
+        Assert.True(host.UpdateClientSizeFromNativeResize(
+            new Vector2D<int>(1520, 1120),
+            new Vector2D<int>(3040, 2240),
+            monitorDpiScale: 2.0));
+
+        Assert.Equal(1520, host.Width);
+        Assert.Equal(1120, host.Height);
+    }
+
+    [Fact]
     public void NativeResizeUsesPortablePresentationSourceLogicalCacheWhenHostCacheWasPhysical()
     {
         using var host = new ProGpuWpfWindowHost(new ProGpuWpfWindowOptions

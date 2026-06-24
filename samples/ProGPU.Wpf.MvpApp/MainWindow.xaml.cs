@@ -980,7 +980,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
         await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
 
-        return await InvokeWithLiveHostWakeAsync(
+        string textInputStatus = await InvokeWithLiveHostWakeAsync(
             liveHost,
             () =>
             {
@@ -993,6 +993,131 @@ public partial class MainWindow : Window
                     Require<TextBlock>(FindName("CommandStatusText"), "MVP live command status TextBlock").Text,
                     "MVP live routed KeyBinding command status");
                 return "input TextBox focus, Back key editing, text binding, and Ctrl+R routed command updated";
+            },
+            DispatcherPriority.Send);
+
+        string keyboardNavigationStatus = await ValidateLiveKeyboardNavigationAsync(liveHost);
+        return $"{textInputStatus}; {keyboardNavigationStatus}";
+    }
+
+    private async Task<string> ValidateLiveKeyboardNavigationAsync(object liveHost)
+    {
+        TextBox? firstBox = null;
+        Button? secondButton = null;
+        TextBox? thirdBox = null;
+        StackPanel? panel = null;
+        string lastTargetState = "not checked";
+
+        bool preparedNavigation = false;
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            preparedNavigation = await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () =>
+                {
+                    var tabControl = Require<TabControl>(FindName("MvpTabControl"), "MVP live keyboard navigation TabControl");
+                    tabControl.SelectedIndex = 4;
+                    UpdateLayout();
+
+                    var navigationPanel = Require<StackPanel>(
+                        FindName("KeyboardNavigationPanel"),
+                        "MVP live keyboard navigation panel");
+                    panel = navigationPanel;
+                    firstBox = Require<TextBox>(
+                        FindName("KeyboardNavigationFirstBox"),
+                        "MVP live keyboard navigation first TextBox");
+                    secondButton = Require<Button>(
+                        FindName("KeyboardNavigationSecondButton"),
+                        "MVP live keyboard navigation second Button");
+                    thirdBox = Require<TextBox>(
+                        FindName("KeyboardNavigationThirdBox"),
+                        "MVP live keyboard navigation third TextBox");
+
+                    lastTargetState =
+                        $"First.IsVisible={firstBox.IsVisible}, " +
+                        $"First.ActualSize={firstBox.ActualWidth:0.###}x{firstBox.ActualHeight:0.###}, " +
+                        $"Second.IsVisible={secondButton.IsVisible}, " +
+                        $"Third.IsVisible={thirdBox.IsVisible}";
+                    if (!firstBox.IsVisible ||
+                        firstBox.ActualWidth <= 1.0 ||
+                        firstBox.ActualHeight <= 1.0 ||
+                        !firstBox.IsEnabled ||
+                        !firstBox.Focusable ||
+                        !firstBox.IsHitTestVisible ||
+                        !secondButton.IsVisible ||
+                        !secondButton.Focusable ||
+                        !thirdBox.IsVisible ||
+                        !thirdBox.Focusable)
+                    {
+                        return false;
+                    }
+
+                    FocusManager.SetFocusedElement(navigationPanel, firstBox);
+                    return ReferenceEquals(firstBox, Keyboard.Focus(firstBox));
+                },
+                DispatcherPriority.Send);
+            if (preparedNavigation)
+            {
+                break;
+            }
+
+            await Task.Delay(LiveValidationRetryDelay);
+        }
+
+        if (!preparedNavigation)
+        {
+            throw new InvalidOperationException(
+                $"Expected MVP live keyboard-navigation target to become visible and focusable before injecting input, but last state was: {lastTargetState}.");
+        }
+
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                if (!ReferenceEquals(Keyboard.FocusedElement, firstBox))
+                {
+                    throw new InvalidOperationException(
+                        $"Expected MVP live setup to focus KeyboardNavigationFirstBox before Tab input, but focused '{DescribeInputElement(Keyboard.FocusedElement)}'. " +
+                        $"LogicalFocusedElement={DescribeInputElement(FocusManager.GetFocusedElement(Require<StackPanel>(panel, "MVP live keyboard navigation panel")))}, " +
+                        $"Mouse.DirectlyOver={DescribeInputElement(Mouse.DirectlyOver)}.");
+                }
+
+                RaiseHostInput(liveHost, "KeyDown", key: "Tab");
+                RaiseHostInput(liveHost, "KeyUp", key: "Tab");
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                AssertEqual(secondButton, Keyboard.FocusedElement, "MVP live Tab focus moved to second target");
+                RaiseHostInput(liveHost, "KeyDown", key: "Tab");
+                RaiseHostInput(liveHost, "KeyUp", key: "Tab");
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                AssertEqual(thirdBox, Keyboard.FocusedElement, "MVP live Tab focus moved to third target");
+                RaiseHostInput(liveHost, "KeyDown", key: "Tab");
+                RaiseHostInput(liveHost, "KeyUp", key: "Tab");
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        return await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                AssertEqual(firstBox, Keyboard.FocusedElement, "MVP live Tab focus cycled to first target");
+                return "Tab keyboard navigation cycled focus through live host input";
             },
             DispatcherPriority.Send);
     }

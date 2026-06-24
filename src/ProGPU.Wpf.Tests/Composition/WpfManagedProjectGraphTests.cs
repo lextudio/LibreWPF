@@ -7211,6 +7211,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RaiseHostInput(liveHost, \"TextInput\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RaiseHostInput(liveHost, \"KeyDown\", key: \"R\", modifiers: \"Control\")", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RaiseHostInput(liveHost, \"KeyUp\", key: \"R\", modifiers: \"Control\")", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLiveKeyboardNavigationAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RaiseHostInput(liveHost, \"KeyDown\", key: \"Tab\")", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MVP live Tab focus moved to second target", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Tab keyboard navigation cycled focus through live host input", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(\"Live\", Require<TextBox>(textBox, \"MVP live input TextBox\").Text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(\"Live\", model.NewItemName", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MVP live routed KeyBinding command refresh count", mvpMainWindowCodeBehind, StringComparison.Ordinal);

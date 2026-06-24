@@ -8224,6 +8224,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DefaultItemsRichTextBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Default item list entry", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("rich text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsCopyRichTextButton", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Command=\"ApplicationCommands.Copy\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item RichTextBox ToggleBold command availability", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item RichTextBox copied clipboard text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item RichTextBox pasted clipboard text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsFlowDocumentScrollViewer", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item RichTextBox TextRange text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item FlowDocumentScrollViewer TextRange text", externalSdkHarnessProgram, StringComparison.Ordinal);

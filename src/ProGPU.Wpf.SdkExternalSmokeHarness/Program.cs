@@ -12693,7 +12693,7 @@ internal static class Program
                     </Rectangle>
                     <RichTextBox
                         x:Name="DefaultItemsRichTextBox"
-                        IsReadOnly="True">
+                        IsReadOnly="False">
                         <FlowDocument PagePadding="4">
                             <Paragraph>
                                 <Run Text="Default item " />
@@ -12710,6 +12710,18 @@ internal static class Program
                             </BlockUIContainer>
                         </FlowDocument>
                     </RichTextBox>
+                    <StackPanel Orientation="Horizontal">
+                        <Button
+                            x:Name="DefaultItemsCopyRichTextButton"
+                            Command="ApplicationCommands.Copy"
+                            CommandTarget="{Binding ElementName=DefaultItemsRichTextBox}"
+                            Content="Copy default rich text" />
+                        <Button
+                            x:Name="DefaultItemsPasteRichTextButton"
+                            Command="ApplicationCommands.Paste"
+                            CommandTarget="{Binding ElementName=DefaultItemsRichTextBox}"
+                            Content="Paste default rich text" />
+                    </StackPanel>
                     <FlowDocumentScrollViewer
                         x:Name="DefaultItemsFlowDocumentScrollViewer"
                         VerticalScrollBarVisibility="Auto">
@@ -13525,8 +13537,14 @@ internal static class Program
                         imageBrushPixels[5] == 0xFF && imageBrushPixels[15] == 0xFF,
                         "Expected default-item ImageBrush image pixels.");
                     Require(
-                        DefaultItemsRichTextBox.IsReadOnly,
+                        !DefaultItemsRichTextBox.IsReadOnly,
                         "Expected default-item RichTextBox metadata.");
+                    Require(
+                        ReferenceEquals(DefaultItemsCopyRichTextButton.Command, ApplicationCommands.Copy)
+                            && ReferenceEquals(DefaultItemsCopyRichTextButton.CommandTarget, DefaultItemsRichTextBox)
+                            && ReferenceEquals(DefaultItemsPasteRichTextButton.Command, ApplicationCommands.Paste)
+                            && ReferenceEquals(DefaultItemsPasteRichTextButton.CommandTarget, DefaultItemsRichTextBox),
+                        "Expected default-item RichTextBox XAML command metadata.");
                     var richDocument = RequireType<FlowDocument>(
                         DefaultItemsRichTextBox.Document,
                         "default-item RichTextBox FlowDocument");
@@ -13596,6 +13614,46 @@ internal static class Program
                             && richDocumentText.Contains("rich text", StringComparison.Ordinal)
                             && richDocumentText.Contains("Default item list entry", StringComparison.Ordinal),
                         "Expected default-item RichTextBox TextRange text.");
+                    TextSelection richSelection = DefaultItemsRichTextBox.Selection;
+                    richSelection.Select(richRun.ContentStart, richRun.ContentEnd);
+                    Require(
+                        richSelection.Text.Contains("Default item", StringComparison.Ordinal),
+                        "Expected default-item RichTextBox command selection text.");
+                    Require(
+                        EditingCommands.ToggleBold.CanExecute(null, DefaultItemsRichTextBox),
+                        "Expected default-item RichTextBox ToggleBold command availability.");
+                    EditingCommands.ToggleBold.Execute(null, DefaultItemsRichTextBox);
+                    Require(
+                        Equals(FontWeights.Bold, richSelection.GetPropertyValue(TextElement.FontWeightProperty)),
+                        "Expected default-item RichTextBox ToggleBold applied weight.");
+                    EditingCommands.ToggleBold.Execute(null, DefaultItemsRichTextBox);
+                    Require(
+                        Equals(FontWeights.Normal, richSelection.GetPropertyValue(TextElement.FontWeightProperty)),
+                        "Expected default-item RichTextBox ToggleBold restored weight.");
+                    Require(
+                        ApplicationCommands.Copy.CanExecute(null, DefaultItemsRichTextBox),
+                        "Expected default-item RichTextBox Copy command availability.");
+                    ApplicationCommands.Copy.Execute(null, DefaultItemsRichTextBox);
+                    DrainDispatcher();
+                    Require(
+                        Clipboard.ContainsText()
+                            && Clipboard.GetText().Contains("Default item", StringComparison.Ordinal),
+                        "Expected default-item RichTextBox copied clipboard text.");
+                    TextPointer richPastePosition =
+                        richParagraph.ContentEnd.GetInsertionPosition(LogicalDirection.Backward)
+                        ?? richParagraph.ContentEnd;
+                    richSelection.Select(richPastePosition, richPastePosition);
+                    Clipboard.SetText(" default pasted rich text");
+                    Require(
+                        ApplicationCommands.Paste.CanExecute(null, DefaultItemsRichTextBox),
+                        "Expected default-item RichTextBox Paste command availability.");
+                    ApplicationCommands.Paste.Execute(null, DefaultItemsRichTextBox);
+                    DrainDispatcher();
+                    richDocumentText = new TextRange(richDocument.ContentStart, richDocument.ContentEnd).Text;
+                    Require(
+                        richDocumentText.Contains("default pasted rich text", StringComparison.Ordinal),
+                        "Expected default-item RichTextBox pasted clipboard text.");
+                    Clipboard.Clear();
                     Require(
                         DefaultItemsFlowDocumentScrollViewer.VerticalScrollBarVisibility == ScrollBarVisibility.Auto,
                         "Expected default-item FlowDocumentScrollViewer metadata.");

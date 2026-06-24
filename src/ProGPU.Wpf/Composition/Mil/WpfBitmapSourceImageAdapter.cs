@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Windows.Media.Imaging;
 using ProGPU.Backend;
+using Silk.NET.WebGPU;
 using MediaImageSource = System.Windows.Media.ImageSource;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
@@ -10,6 +13,8 @@ namespace System.Windows.Media.ProGPU.Composition.Mil;
 public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
 {
     private const BindingFlags MemberFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+    private static readonly ConcurrentDictionary<Type, PropertyInfo?> s_bitmapSourceTextureProperties = new();
+    private static readonly ConditionalWeakTable<MediaImageSource, AdaptedTextureEntry> s_adaptedTextures = new();
 
     public MediaImageSource? AdaptImageSource(object? imageSource)
     {
@@ -18,7 +23,8 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
             return null;
         }
 
-        if (imageSource is MediaImageSource mediaImageSource)
+        if (imageSource is MediaImageSource mediaImageSource
+            && HasGpuTextureProperty(mediaImageSource))
         {
             return mediaImageSource;
         }
@@ -34,10 +40,197 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
 
         var dpiX = TryReadDoubleProperty(imageSource, "DpiX", out var readDpiX) ? readDpiX : 96;
         var dpiY = TryReadDoubleProperty(imageSource, "DpiY", out var readDpiY) ? readDpiY : 96;
-        var bitmap = new WriteableBitmap(width, height, dpiX, dpiY, PixelFormats.Pbgra32, palette: null);
-        bitmap.WritePbgra32Pixels(new Int32Rect(0, 0, width, height), pixelBuffer);
+        if (imageSource is MediaImageSource mediaSource
+            && TryCreateGpuTexture(width, height, pixelBuffer, out var adaptedTexture))
+        {
+            s_adaptedTextures.Remove(mediaSource);
+            s_adaptedTextures.Add(mediaSource, new AdaptedTextureEntry(adaptedTexture));
+            return mediaSource;
+        }
 
-        return bitmap;
+        return TryCreateShimWriteableBitmap(width, height, dpiX, dpiY, pixelBuffer);
+    }
+
+    internal static bool HasGpuTextureProperty(object imageSource)
+    {
+        return ResolveGpuTextureProperty(imageSource.GetType()) != null;
+    }
+
+    internal static bool TryGetGpuTexture(MediaImageSource imageSource, out GpuTexture texture)
+    {
+        texture = null!;
+
+        var property = s_bitmapSourceTextureProperties.GetOrAdd(imageSource.GetType(), ResolveGpuTextureProperty);
+        if (property != null)
+        {
+            try
+            {
+                if (property.GetValue(imageSource) is GpuTexture resolvedTexture)
+                {
+                    texture = resolvedTexture;
+                    return true;
+                }
+            }
+            catch (TargetInvocationException)
+            {
+            }
+            catch (MethodAccessException)
+            {
+            }
+        }
+
+        if (s_adaptedTextures.TryGetValue(imageSource, out var adapted)
+            && !adapted.Texture.IsDisposed)
+        {
+            texture = adapted.Texture;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static PropertyInfo? ResolveGpuTextureProperty(Type imageSourceType)
+    {
+        var property = imageSourceType.GetProperty(
+            "GpuTexture",
+            MemberFlags,
+            binder: null,
+            returnType: typeof(GpuTexture),
+            types: Type.EmptyTypes,
+            modifiers: null);
+        return property?.GetMethod == null ? null : property;
+    }
+
+    private static bool TryCreateGpuTexture(
+        int width,
+        int height,
+        Pbgra32PixelBuffer pixelBuffer,
+        out GpuTexture texture)
+    {
+        texture = null!;
+
+        try
+        {
+            texture = new GpuTexture(
+                ResolveGpuContext(),
+                (uint)width,
+                (uint)height,
+                TextureFormat.Bgra8Unorm,
+                TextureUsage.RenderAttachment | TextureUsage.CopySrc | TextureUsage.CopyDst | TextureUsage.TextureBinding,
+                "WPF BitmapSource Adapter Texture",
+                alphaMode: GpuTextureAlphaMode.Premultiplied);
+            texture.WritePbgra32(pixelBuffer);
+            return true;
+        }
+        catch (InvalidOperationException)
+        {
+        }
+        catch (NotSupportedException)
+        {
+        }
+
+        texture?.Dispose();
+        texture = null!;
+        return false;
+    }
+
+    private static WgpuContext ResolveGpuContext()
+    {
+        var current = WgpuContext.Current;
+        if (current != null && !current.IsDisposed)
+        {
+            return current;
+        }
+
+        foreach (var active in WgpuContext.ActiveContexts)
+        {
+            if (!active.IsDisposed)
+            {
+                return active;
+            }
+        }
+
+        var context = new WgpuContext();
+        context.Initialize(null);
+        return context;
+    }
+
+    private static MediaImageSource? TryCreateShimWriteableBitmap(
+        int width,
+        int height,
+        double dpiX,
+        double dpiY,
+        Pbgra32PixelBuffer pixelBuffer)
+    {
+        var presentationCore = typeof(MediaImageSource).Assembly;
+        var writeableBitmapType = presentationCore.GetType("System.Windows.Media.Imaging.WriteableBitmap");
+        var pixelFormatsType = presentationCore.GetType("System.Windows.Media.Imaging.PixelFormats");
+        var int32RectType = typeof(MediaImageSource).Assembly.GetType("System.Windows.Int32Rect")
+            ?? Type.GetType("System.Windows.Int32Rect, WindowsBase");
+        var writePixels = writeableBitmapType?.GetMethod(
+            "WritePbgra32Pixels",
+            MemberFlags,
+            binder: null,
+            types: int32RectType == null ? Type.EmptyTypes : new[] { int32RectType, typeof(Pbgra32PixelBuffer) },
+            modifiers: null);
+        var pbgra32Property = pixelFormatsType?.GetProperty("Pbgra32", BindingFlags.Static | BindingFlags.Public);
+        var constructor = writeableBitmapType?.GetConstructor(
+            BindingFlags.Instance | BindingFlags.Public,
+            binder: null,
+            types: pbgra32Property == null
+                ? Type.EmptyTypes
+                : new[]
+                {
+                    typeof(int),
+                    typeof(int),
+                    typeof(double),
+                    typeof(double),
+                    pbgra32Property.PropertyType,
+                    presentationCore.GetType("System.Windows.Media.Imaging.BitmapPalette")
+                        ?? typeof(object)
+                },
+            modifiers: null);
+        var int32RectConstructor = int32RectType?.GetConstructor(new[] { typeof(int), typeof(int), typeof(int), typeof(int) });
+
+        if (writeableBitmapType == null
+            || pbgra32Property == null
+            || constructor == null
+            || writePixels == null
+            || int32RectConstructor == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var bitmap = constructor.Invoke(new[] { width, height, dpiX, dpiY, pbgra32Property.GetValue(null), null });
+            var rect = int32RectConstructor.Invoke(new object[] { 0, 0, width, height });
+            writePixels.Invoke(bitmap, new object[] { rect, pixelBuffer });
+            return bitmap is MediaImageSource mediaImageSource && HasGpuTextureProperty(mediaImageSource)
+                ? mediaImageSource
+                : null;
+        }
+        catch (TargetInvocationException)
+        {
+        }
+        catch (ArgumentException)
+        {
+        }
+        catch (MethodAccessException)
+        {
+        }
+
+        return null;
+    }
+
+    private sealed class AdaptedTextureEntry
+    {
+        public AdaptedTextureEntry(GpuTexture texture)
+        {
+            Texture = texture;
+        }
+
+        public GpuTexture Texture { get; }
     }
 
     internal static bool TryCopyPixelsAsPbgra32(

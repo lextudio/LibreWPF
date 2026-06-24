@@ -381,9 +381,10 @@ internal static class WpfEffectReflection
             && TryGetPropertyValue(brush, "ImageSource", out var imageSource)
             && ResolveImageSource(imageSource, imageSourceAdapter) is MediaBitmapSource bitmapSource
             && bitmapSource.PixelWidth > 0
-            && bitmapSource.PixelHeight > 0)
+            && bitmapSource.PixelHeight > 0
+            && WpfBitmapSourceImageAdapter.TryGetGpuTexture(bitmapSource, out var texture))
         {
-            sampler = new WpfShaderEffectSampler(registerIndex, bitmapSource.GpuTexture, samplingMode);
+            sampler = new WpfShaderEffectSampler(registerIndex, texture, samplingMode);
             return true;
         }
 

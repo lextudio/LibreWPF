@@ -969,7 +969,9 @@ public sealed class WpfReflectionResourceResolver :
 
         if (resource is MediaImageSource imageSource)
         {
-            return imageSource;
+            return WpfBitmapSourceImageAdapter.HasGpuTextureProperty(imageSource)
+                ? imageSource
+                : _imageSourceAdapter?.AdaptImageSource(resource) ?? imageSource;
         }
 
         return _imageSourceAdapter?.AdaptImageSource(resource);

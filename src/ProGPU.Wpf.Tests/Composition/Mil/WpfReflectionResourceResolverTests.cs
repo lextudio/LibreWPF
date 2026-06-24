@@ -2310,6 +2310,30 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
+    public void DecodeImageUsesInjectedImageSourceAdapterForMediaImageWithoutProGpuTexture()
+    {
+        var imageSource = new FakeImageSource();
+        var imageAdapter = new FakeImageSourceAdapter();
+        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { imageSource }, imageAdapter);
+        var sink = new TestSink();
+
+        var payload = new byte[40];
+        WriteRect(payload, 0, 1, 2, 30, 40);
+        WriteUInt32(payload, 32, 1);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawImage, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        Assert.Same(imageSource, imageAdapter.LastImageSource);
+        var replayed = Assert.Single(sink.Images);
+        Assert.Same(imageAdapter.AdaptedImageSource, replayed.ImageSource);
+        Assert.Equal(new Rect(1, 2, 30, 40), replayed.Rectangle);
+    }
+
+    [Fact]
     public void DecodeDrawDrawingReplaysWpfShapedImageDrawingWithInjectedImageSourceAdapter()
     {
         var imageSource = new FakeBitmapSource();

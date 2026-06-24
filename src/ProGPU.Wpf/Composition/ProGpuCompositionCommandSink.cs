@@ -419,12 +419,13 @@ public sealed class ProGpuCompositionCommandSink :
     {
         ThrowIfClosed();
 
-        if (imageSource is MediaBitmapSource bitmapSource)
+        if (imageSource is MediaBitmapSource bitmapSource
+            && WpfBitmapSourceImageAdapter.TryGetGpuTexture(bitmapSource, out var texture))
         {
             NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
             {
                 Type = global::ProGPU.Scene.RenderCommandType.DrawTexture,
-                Texture = bitmapSource.GpuTexture,
+                Texture = texture,
                 Rect = ToNativeRect(rectangle),
                 Transform = _transformStack.Peek(),
                 TextureSamplingMode = _bitmapScalingModeStack.Peek()
@@ -446,12 +447,13 @@ public sealed class ProGpuCompositionCommandSink :
     {
         ThrowIfClosed();
 
-        if (imageSource is MediaBitmapSource bitmapSource)
+        if (imageSource is MediaBitmapSource bitmapSource
+            && WpfBitmapSourceImageAdapter.TryGetGpuTexture(bitmapSource, out var texture))
         {
             NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
             {
                 Type = global::ProGPU.Scene.RenderCommandType.DrawTexture,
-                Texture = bitmapSource.GpuTexture,
+                Texture = texture,
                 Rect = ToNativeRect(rectangle),
                 SrcRect = ToNativeRect(sourceRectangle),
                 Transform = _transformStack.Peek(),
@@ -662,12 +664,13 @@ public sealed class ProGpuCompositionCommandSink :
     {
         ThrowIfClosed();
 
-        if (imageSource is MediaBitmapSource bitmapSource)
+        if (imageSource is MediaBitmapSource bitmapSource
+            && WpfBitmapSourceImageAdapter.TryGetGpuTexture(bitmapSource, out var texture))
         {
             NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
             {
                 Type = global::ProGPU.Scene.RenderCommandType.DrawTexture,
-                Texture = bitmapSource.GpuTexture,
+                Texture = texture,
                 Rect = ToNativeRect(rectangle),
                 Transform = _transformStack.Peek(),
                 TextureSamplingMode = _bitmapScalingModeStack.Peek()
@@ -682,12 +685,13 @@ public sealed class ProGpuCompositionCommandSink :
     {
         ThrowIfClosed();
 
-        if (imageSource is MediaBitmapSource bitmapSource)
+        if (imageSource is MediaBitmapSource bitmapSource
+            && WpfBitmapSourceImageAdapter.TryGetGpuTexture(bitmapSource, out var texture))
         {
             NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
             {
                 Type = global::ProGPU.Scene.RenderCommandType.DrawTexture,
-                Texture = bitmapSource.GpuTexture,
+                Texture = texture,
                 Rect = ToNativeRect(rectangle),
                 SrcRect = ToNativeRect(sourceRectangle),
                 Transform = _transformStack.Peek(),

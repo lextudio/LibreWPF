@@ -12476,6 +12476,10 @@ internal static class Program
                         <local:DefaultItemsItem
                             x:Key="DefaultItemsTemplateItem"
                             Name="Default item template data" />
+                        <local:DefaultItemsItemNameConverter
+                            x:Key="DefaultItemsItemNameConverter" />
+                        <local:DefaultItemsStatusSelectionConverter
+                            x:Key="DefaultItemsStatusSelectionConverter" />
                         <DataTemplate DataType="{x:Type local:DefaultItemsItem}">
                             <TextBlock
                                 x:Name="DefaultItemsImplicitTemplateText"
@@ -12544,6 +12548,17 @@ internal static class Program
                         DisplayMemberPath="Name"
                         ItemsSource="{Binding Items}"
                         SelectedItem="{Binding SelectedItem, Mode=TwoWay}" />
+                    <TextBlock
+                        x:Name="DefaultItemsConvertedSelectionText"
+                        Text="{Binding SelectedItem, Converter={StaticResource DefaultItemsItemNameConverter}}" />
+                    <TextBlock x:Name="DefaultItemsMultiBindingText">
+                        <TextBlock.Text>
+                            <MultiBinding Converter="{StaticResource DefaultItemsStatusSelectionConverter}">
+                                <Binding Path="Status" />
+                                <Binding Path="SelectedItem.Name" />
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
                     <Button
                         x:Name="DefaultItemsCommandButton"
                         Command="{x:Static local:MainWindow.DefaultItemsCommand}"
@@ -12564,10 +12579,12 @@ internal static class Program
             using System.Collections.ObjectModel;
             using System.Configuration;
             using System.ComponentModel;
+            using System.Globalization;
             using System.Runtime.CompilerServices;
             using ExternalSdkDefaultItemsLibrary;
             using System.Windows;
             using System.Windows.Controls;
+            using System.Windows.Data;
             using System.Windows.Input;
             using System.Windows.Media;
             using System.Windows.Threading;
@@ -12631,6 +12648,36 @@ internal static class Program
                 private void OnPropertyChanged([CallerMemberName] string propertyName = "")
                 {
                     PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+                }
+            }
+
+            public sealed class DefaultItemsItemNameConverter : IValueConverter
+            {
+                public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+                {
+                    return value is DefaultItemsItem item ? $"Selected: {item.Name}" : string.Empty;
+                }
+
+                public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+                {
+                    return Binding.DoNothing;
+                }
+            }
+
+            public sealed class DefaultItemsStatusSelectionConverter : IMultiValueConverter
+            {
+                public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+                {
+                    var status = values.Length > 0 ? values[0] as string : null;
+                    var selectedName = values.Length > 1 ? values[1] as string : null;
+                    return $"Composite: {status ?? string.Empty} / {selectedName ?? string.Empty}";
+                }
+
+                public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+                {
+                    var results = new object[targetTypes.Length];
+                    Array.Fill(results, Binding.DoNothing);
+                    return results;
                 }
             }
 
@@ -12802,6 +12849,12 @@ internal static class Program
                         DefaultItemsFormattedStatusText.Text == "Formatted: Default item binding ready",
                         "Expected default-item formatted binding to read the view-model status.");
                     Require(
+                        DefaultItemsConvertedSelectionText.Text == "Selected: Default item alpha",
+                        "Expected default-item converter binding to read the selected item.");
+                    Require(
+                        DefaultItemsMultiBindingText.Text == "Composite: Default item binding ready / Default item alpha",
+                        "Expected default-item MultiBinding converter to read status and selection.");
+                    Require(
                         DefaultItemsEditableStatusTextBox.GetBindingExpression(TextBox.TextProperty) is not null,
                         "Expected default-item TextBox two-way binding expression.");
                     ViewModel.Status = "Default item binding updated";
@@ -12815,6 +12868,9 @@ internal static class Program
                     Require(
                         DefaultItemsFormattedStatusText.Text == "Formatted: Default item binding updated",
                         "Expected default-item formatted binding to observe INotifyPropertyChanged.");
+                    Require(
+                        DefaultItemsMultiBindingText.Text == "Composite: Default item binding updated / Default item alpha",
+                        "Expected default-item MultiBinding converter to observe status changes.");
                     DefaultItemsEditableStatusTextBox.Text = "Default item text box source";
                     DefaultItemsEditableStatusTextBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
                     DrainDispatcher();
@@ -12827,6 +12883,9 @@ internal static class Program
                     Require(
                         DefaultItemsFormattedStatusText.Text == "Formatted: Default item text box source",
                         "Expected default-item TextBox source update to refresh formatted binding.");
+                    Require(
+                        DefaultItemsMultiBindingText.Text == "Composite: Default item text box source / Default item alpha",
+                        "Expected default-item TextBox source update to refresh MultiBinding.");
                     Require(
                         DefaultItemsListBox.Items.Count == 2,
                         "Expected default-item collection binding item count.");
@@ -12858,11 +12917,23 @@ internal static class Program
                     Require(
                         ReferenceEquals(DefaultItemsComboBox.SelectedItem, ViewModel.Items[1]),
                         "Expected default-item selector binding to observe view-model selection.");
+                    Require(
+                        DefaultItemsConvertedSelectionText.Text == "Selected: Default item beta",
+                        "Expected default-item converter binding to observe view-model selection.");
+                    Require(
+                        DefaultItemsMultiBindingText.Text == "Composite: Default item text box source / Default item beta",
+                        "Expected default-item MultiBinding converter to observe view-model selection.");
                     DefaultItemsComboBox.SelectedItem = ViewModel.Items[2];
                     DrainDispatcher();
                     Require(
                         ReferenceEquals(ViewModel.SelectedItem, ViewModel.Items[2]),
                         "Expected default-item selector two-way binding to update the view model.");
+                    Require(
+                        DefaultItemsConvertedSelectionText.Text == "Selected: Default item gamma",
+                        "Expected default-item converter binding to observe control selection.");
+                    Require(
+                        DefaultItemsMultiBindingText.Text == "Composite: Default item text box source / Default item gamma",
+                        "Expected default-item MultiBinding converter to observe control selection.");
 
                     var commandBinding = RequireType<CommandBinding>(
                         CommandBindings[0],

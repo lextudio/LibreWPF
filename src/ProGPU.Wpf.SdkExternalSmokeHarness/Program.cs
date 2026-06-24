@@ -12826,6 +12826,24 @@ internal static class Program
                             </GridView>
                         </ListView.View>
                     </ListView>
+                    <DataGrid
+                        x:Name="DefaultItemsDataGrid"
+                        AutoGenerateColumns="False"
+                        CanUserAddRows="False"
+                        ItemsSource="{Binding Items}"
+                        SelectedItem="{Binding SelectedItem, Mode=TwoWay}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn
+                                Header="Name"
+                                Binding="{Binding Name}" />
+                            <DataGridTextColumn
+                                Header="Kind"
+                                Binding="{Binding Kind}" />
+                            <DataGridCheckBoxColumn
+                                Header="Active"
+                                Binding="{Binding IsActive}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
                     <ListBox
                         x:Name="DefaultItemsGroupedListBox"
                         DisplayMemberPath="Name"
@@ -12909,6 +12927,8 @@ internal static class Program
                 public string Name { get; set; } = string.Empty;
 
                 public string Kind { get; set; } = string.Empty;
+
+                public bool IsActive { get; set; }
             }
 
             public sealed class DefaultItemsNode
@@ -12952,11 +12972,13 @@ internal static class Program
                         {
                             Name = "Default item alpha",
                             Kind = "Framework",
+                            IsActive = true,
                         },
                         new DefaultItemsItem
                         {
                             Name = "Default item beta",
                             Kind = "Data",
+                            IsActive = false,
                         },
                     };
 
@@ -13605,6 +13627,48 @@ internal static class Program
                     Require(
                         ReferenceEquals(DefaultItemsListView.SelectedItem, ViewModel.Items[0]),
                         "Expected default-item ListView selected item.");
+                    Require(
+                        !DefaultItemsDataGrid.AutoGenerateColumns,
+                        "Expected default-item DataGrid explicit columns.");
+                    Require(
+                        DefaultItemsDataGrid.Columns.Count == 3,
+                        "Expected default-item DataGrid column count.");
+                    var dataGridNameColumn = RequireType<DataGridTextColumn>(
+                        DefaultItemsDataGrid.Columns[0],
+                        "default-item DataGrid name column");
+                    var dataGridKindColumn = RequireType<DataGridTextColumn>(
+                        DefaultItemsDataGrid.Columns[1],
+                        "default-item DataGrid kind column");
+                    var dataGridActiveColumn = RequireType<DataGridCheckBoxColumn>(
+                        DefaultItemsDataGrid.Columns[2],
+                        "default-item DataGrid active column");
+                    var dataGridNameBinding = RequireType<Binding>(
+                        dataGridNameColumn.Binding,
+                        "default-item DataGrid name binding");
+                    var dataGridKindBinding = RequireType<Binding>(
+                        dataGridKindColumn.Binding,
+                        "default-item DataGrid kind binding");
+                    var dataGridActiveBinding = RequireType<Binding>(
+                        dataGridActiveColumn.Binding,
+                        "default-item DataGrid active binding");
+                    Require(
+                        Equals(dataGridNameColumn.Header, "Name")
+                            && dataGridNameBinding.Path.Path == "Name",
+                        "Expected default-item DataGrid name column binding.");
+                    Require(
+                        Equals(dataGridKindColumn.Header, "Kind")
+                            && dataGridKindBinding.Path.Path == "Kind",
+                        "Expected default-item DataGrid kind column binding.");
+                    Require(
+                        Equals(dataGridActiveColumn.Header, "Active")
+                            && dataGridActiveBinding.Path.Path == "IsActive",
+                        "Expected default-item DataGrid active column binding.");
+                    Require(
+                        DefaultItemsDataGrid.Items.Count == 2,
+                        "Expected default-item DataGrid item count.");
+                    Require(
+                        ReferenceEquals(DefaultItemsDataGrid.SelectedItem, ViewModel.Items[0]),
+                        "Expected default-item DataGrid selected item.");
                     var groupedItems = RequireType<CollectionViewSource>(
                         FindResource("DefaultItemsGroupedItems"),
                         "default-item grouped CollectionViewSource");
@@ -13760,6 +13824,7 @@ internal static class Program
                         {
                             Name = "Default item gamma",
                             Kind = "Framework",
+                            IsActive = true,
                         });
                     DrainDispatcher();
                     Require(
@@ -13787,6 +13852,9 @@ internal static class Program
                     Require(
                         DefaultItemsListView.Items.Count == 3,
                         "Expected default-item ListView collection update.");
+                    Require(
+                        DefaultItemsDataGrid.Items.Count == 3,
+                        "Expected default-item DataGrid collection update.");
                     groups = groupedItems.View.Groups
                         ?? throw new InvalidOperationException("Expected default-item CollectionViewSource groups after update.");
                     frameworkGroup = RequireType<CollectionViewGroup>(

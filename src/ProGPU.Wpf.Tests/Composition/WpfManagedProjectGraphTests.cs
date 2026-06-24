@@ -8204,6 +8204,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DisplayMemberBinding=\"{Binding Kind}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item GridView name column binding", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item ListView collection update", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsDataGrid", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AutoGenerateColumns=\"False\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<DataGridTextColumn", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<DataGridCheckBoxColumn", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Binding=\"{Binding IsActive}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item DataGrid active column binding", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item DataGrid collection update", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsGroupHeaderTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsGroupedItems", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<PropertyGroupDescription PropertyName=\"Kind\" />", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -179,18 +179,18 @@ internal static class Program
                 applicationAppHostOutput,
                 "External SDK Application.Run validation succeeded.",
                 "external SDK apphost Application.Run validation output");
-            string applicationLiveGeometryOutput = RunAppHostLiveSwapChainProbe(
+            string applicationLiveGeometryOutput = RunAppHostLiveValidationProbe(
                 Path.Combine(outputRoot, GetAppHostFileName(AppOutputAssemblyName)),
                 outputRoot,
-                expectedLogicalWidth: 320,
-                expectedLogicalHeight: 200,
-                "External SDK apphost live geometry",
+                "PROGPU_WPF_EXTERNAL_LIVE_VALIDATE",
+                "External SDK apphost live input validation succeeded:",
+                "External SDK apphost live input",
                 "external-startup-alpha",
                 "external startup beta");
             AssertContains(
                 applicationLiveGeometryOutput,
-                "External SDK apphost live geometry validation succeeded:",
-                "external SDK apphost live geometry validation output");
+                "External SDK apphost live input validation succeeded:",
+                "external SDK apphost live input validation output");
             string defaultItemsRunOutput = RunProcess(
                 dotnetPath,
                 defaultItemsOutputRoot,
@@ -1275,6 +1275,7 @@ internal static class Program
                     primitives:Thumb.DragDelta="OnExternalBubbledThumbDragDelta">
                     <TextBlock
                         x:Name="TitleText"
+                        MouseLeftButtonDown="OnExternalTitleMouseLeftButtonDown"
                         Text="External SDK app" />
                     <TextBlock
                         x:Name="ExternalDispatcherTimerText"
@@ -2458,12 +2459,424 @@ internal static class Program
                     nameof(ExternalCommand),
                     typeof(MainWindow));
 
+                private const string LiveValidationEnvironmentVariable = "PROGPU_WPF_EXTERNAL_LIVE_VALIDATE";
+                private const int LiveValidationMaxAttempts = 400;
+                private static readonly TimeSpan LiveValidationRetryDelay = TimeSpan.FromMilliseconds(16);
+                private bool _externalLiveValidationStarted;
+
                 public ExternalRequeryCommand ExternalRequeryCommand { get; } = new();
 
                 public MainWindow()
                 {
                     DataContext = this;
                     InitializeComponent();
+                    if (Environment.GetEnvironmentVariable(LiveValidationEnvironmentVariable) == "1")
+                    {
+                        Loaded += OnExternalLiveValidationLoaded;
+                        StartExternalLiveValidationIfRequired();
+                    }
+                }
+
+                public int ExternalTitleMouseDownCount { get; private set; }
+
+                private void OnExternalLiveValidationLoaded(object sender, RoutedEventArgs e)
+                {
+                    StartExternalLiveValidationIfRequired();
+                }
+
+                private void StartExternalLiveValidationIfRequired()
+                {
+                    if (_externalLiveValidationStarted ||
+                        Environment.GetEnvironmentVariable(LiveValidationEnvironmentVariable) != "1")
+                    {
+                        return;
+                    }
+
+                    _externalLiveValidationStarted = true;
+                    _ = Task.Run(
+                        async () =>
+                        {
+                            try
+                            {
+                                await ValidateRequiredLiveExternalAsync().ConfigureAwait(false);
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.Error.WriteLine(ex);
+                                Environment.Exit(1);
+                            }
+                        });
+                }
+
+                private async Task ValidateRequiredLiveExternalAsync()
+                {
+                    for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+                    {
+                        await Task.Delay(LiveValidationRetryDelay).ConfigureAwait(false);
+                        if (!TryGetPortableActivationHost(out object? liveHost) ||
+                            liveHost == null)
+                        {
+                            continue;
+                        }
+
+                        if (GetRequiredProperty(liveHost, "HasPresentedFrame") is not bool hasPresentedFrame ||
+                            !hasPresentedFrame)
+                        {
+                            WakeLiveRenderHost(liveHost);
+                            continue;
+                        }
+
+                        string geometryStatus = await InvokeWithLiveHostWakeAsync(
+                            liveHost,
+                            () => ValidateLiveRenderSurfaceGeometryCore(liveHost),
+                            DispatcherPriority.Send);
+                        string inputStatus = await ValidateLiveInputAsync(liveHost);
+                        Console.WriteLine($"External SDK apphost live input validation succeeded: {geometryStatus}; {inputStatus}.");
+                        Environment.Exit(0);
+                        return;
+                    }
+
+                    Console.Error.WriteLine("Expected the external SDK apphost to present a stable ProGPU frame before live input validation.");
+                    Environment.Exit(1);
+                }
+
+                private async Task<string> ValidateLiveInputAsync(object liveHost)
+                {
+                    TextBlock? titleText = null;
+                    TextBox? validationTextBox = null;
+                    Point inputPoint = new();
+                    object? inputHit = null;
+                    string lastTargetState = "not checked";
+
+                    bool sentPointerInput = false;
+                    for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+                    {
+                        sentPointerInput = await InvokeWithLiveHostWakeAsync(
+                            liveHost,
+                            () =>
+                            {
+                                titleText = RequireType<TextBlock>(
+                                    FindName("TitleText"),
+                                    "external SDK live TitleText");
+                                lastTargetState =
+                                    $"TitleText.IsVisible={titleText.IsVisible}, " +
+                                    $"TitleText.ActualSize={titleText.ActualWidth:0.###}x{titleText.ActualHeight:0.###}, " +
+                                    $"TitleText.IsEnabled={titleText.IsEnabled}, " +
+                                    $"TitleText.IsHitTestVisible={titleText.IsHitTestVisible}";
+                                if (!titleText.IsVisible ||
+                                    titleText.ActualWidth <= 1.0 ||
+                                    titleText.ActualHeight <= 1.0 ||
+                                    !titleText.IsEnabled ||
+                                    !titleText.IsHitTestVisible)
+                                {
+                                    return false;
+                                }
+
+                                Point center = titleText.TranslatePoint(
+                                    new Point(Math.Max(1.0, titleText.ActualWidth) / 2.0, Math.Max(1.0, titleText.ActualHeight) / 2.0),
+                                    this);
+                                object? hit = InputHitTest(center);
+                                lastTargetState += $", Input=({center.X:0.###}, {center.Y:0.###}), InputHitTest={DescribeInputElement(hit)}";
+                                if (hit == null)
+                                {
+                                    return false;
+                                }
+
+                                inputPoint = center;
+                                inputHit = hit;
+                                RaiseHostInput(liveHost, "MouseMove", x: center.X, y: center.Y);
+                                RaiseHostInput(liveHost, "MouseDown", x: center.X, y: center.Y, button: "Left");
+                                RaiseHostInput(liveHost, "MouseUp", x: center.X, y: center.Y, button: "Left");
+                                return true;
+                            },
+                            DispatcherPriority.Send);
+                        if (sentPointerInput)
+                        {
+                            break;
+                        }
+
+                        await Task.Delay(LiveValidationRetryDelay).ConfigureAwait(false);
+                    }
+
+                    if (!sentPointerInput)
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected external SDK live TitleText to become visible and hit-testable before injecting input, but last state was: {lastTargetState}.");
+                    }
+
+                    await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+                    await InvokeWithLiveHostWakeAsync(
+                        liveHost,
+                        () =>
+                        {
+                            AssertAtLeast(1, ExternalTitleMouseDownCount, "external SDK live TitleText mouse down count");
+
+                            validationTextBox = RequireType<TextBox>(
+                                FindName("ExternalValidationTextBox"),
+                                "external SDK live validation TextBox");
+                            validationTextBox.Text = string.Empty;
+                            validationTextBox.CaretIndex = 0;
+                            validationTextBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+                            Keyboard.Focus(validationTextBox);
+                            if (!ReferenceEquals(Keyboard.FocusedElement, validationTextBox))
+                            {
+                                throw new InvalidOperationException(
+                                    $"Expected external SDK live input setup to focus ExternalValidationTextBox, but focused '{DescribeInputElement(Keyboard.FocusedElement)}'. " +
+                                    $"MouseInput=({inputPoint.X:0.###}, {inputPoint.Y:0.###}), " +
+                                    $"MouseInputHitTest={DescribeInputElement(inputHit)}.");
+                            }
+
+                            foreach (char character in "Live")
+                            {
+                                string key = char.ToUpperInvariant(character).ToString();
+                                RaiseHostInput(liveHost, "KeyDown", key: key);
+                                RaiseHostInput(liveHost, "TextInput", character: character);
+                                RaiseHostInput(liveHost, "KeyUp", key: key);
+                            }
+                        },
+                        DispatcherPriority.Send);
+                    await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+                    int commandCountBefore = await InvokeWithLiveHostWakeAsync(
+                        liveHost,
+                        () =>
+                        {
+                            var liveValidationTextBox = RequireType<TextBox>(validationTextBox, "external SDK live validation TextBox");
+                            AssertEqual("Live", liveValidationTextBox.Text, "external SDK live TextBox text after host text input");
+                            liveValidationTextBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+                            AssertEqual("Live", ValidationText, "external SDK live view-model source after host text input");
+
+                            int before = ExternalCommandExecutedCount;
+                            RaiseHostInput(liveHost, "KeyDown", key: "E", modifiers: "Control");
+                            RaiseHostInput(liveHost, "KeyUp", key: "E", modifiers: "Control");
+                            return before;
+                        },
+                        DispatcherPriority.Send);
+                    await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+                    return await InvokeWithLiveHostWakeAsync(
+                        liveHost,
+                        () =>
+                        {
+                            AssertEqual(commandCountBefore + 1, ExternalCommandExecutedCount, "external SDK live Ctrl+E KeyBinding execution count");
+                            AssertEqual(nameof(ExternalCommand), LastExternalCommandName, "external SDK live Ctrl+E KeyBinding command name");
+                            return "mouse title click, TextBox text input, and Ctrl+E KeyBinding updated";
+                        },
+                        DispatcherPriority.Send);
+                }
+
+                private async Task InvokeWithLiveHostWakeAsync(
+                    object liveHost,
+                    Action callback,
+                    DispatcherPriority priority)
+                {
+                    if (Dispatcher.CheckAccess())
+                    {
+                        callback();
+                        return;
+                    }
+
+                    DispatcherOperation operation = Dispatcher.InvokeAsync(callback, priority);
+                    WakeLiveRenderHost(liveHost);
+                    await operation;
+                }
+
+                private async Task<T> InvokeWithLiveHostWakeAsync<T>(
+                    object liveHost,
+                    Func<T> callback,
+                    DispatcherPriority priority)
+                {
+                    if (Dispatcher.CheckAccess())
+                    {
+                        return callback();
+                    }
+
+                    DispatcherOperation<T> operation = Dispatcher.InvokeAsync(callback, priority);
+                    WakeLiveRenderHost(liveHost);
+                    return await operation;
+                }
+
+                private bool TryGetPortableActivationHost(out object? host)
+                {
+                    host = null;
+                    PropertyInfo? activationProperty = typeof(Window).GetProperty(
+                        "PortableWindowActivation",
+                        BindingFlags.Instance | BindingFlags.NonPublic);
+                    object? activation = activationProperty?.GetValue(this);
+                    if (activation == null)
+                    {
+                        return false;
+                    }
+
+                    PropertyInfo? hostProperty = activation.GetType().GetProperty(
+                        "Host",
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    host = hostProperty?.GetValue(activation);
+                    return host != null;
+                }
+
+                private static string ValidateLiveRenderSurfaceGeometryCore(object liveHost)
+                {
+                    object geometry = InvokeRequired(liveHost, "ResolveCurrentRenderSurfaceGeometry");
+                    var logicalWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "LogicalWidth"), CultureInfo.InvariantCulture);
+                    var logicalHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "LogicalHeight"), CultureInfo.InvariantCulture);
+                    var pixelWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "PixelWidth"), CultureInfo.InvariantCulture);
+                    var pixelHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "PixelHeight"), CultureInfo.InvariantCulture);
+                    var dpiScale = Convert.ToDouble(GetRequiredProperty(geometry, "DpiScale"), CultureInfo.InvariantCulture);
+                    var viewportX = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportX"), CultureInfo.InvariantCulture);
+                    var viewportY = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportY"), CultureInfo.InvariantCulture);
+                    var viewportWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportWidth"), CultureInfo.InvariantCulture);
+                    var viewportHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportHeight"), CultureInfo.InvariantCulture);
+
+                    AssertEqual(320u, logicalWidth, "external SDK live ProGPU WPF logical width");
+                    AssertEqual(200u, logicalHeight, "external SDK live ProGPU WPF logical height");
+                    if (pixelWidth < logicalWidth || pixelHeight < logicalHeight)
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected external SDK live ProGPU WPF pixels to cover logical content, but got logical {logicalWidth}x{logicalHeight} and pixels {pixelWidth}x{pixelHeight}.");
+                    }
+
+                    if (viewportX != 0 || viewportY != 0 || viewportWidth != pixelWidth || viewportHeight != pixelHeight)
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected external SDK live ProGPU WPF viewport to use the full physical target, but got viewport {viewportWidth}x{viewportHeight}@{viewportX},{viewportY} for pixels {pixelWidth}x{pixelHeight}.");
+                    }
+
+                    return $"logical {logicalWidth}x{logicalHeight}, pixels {pixelWidth}x{pixelHeight}, viewport {viewportWidth}x{viewportHeight}@{viewportX},{viewportY}, dpi {dpiScale:0.###}";
+                }
+
+                private static void WakeLiveRenderHost(object liveHost)
+                {
+                    object scheduler = GetRequiredProperty(liveHost, "WpfRenderScheduler");
+                    MethodInfo requestRender = scheduler.GetType().GetMethod(
+                        "RequestRender",
+                        BindingFlags.Instance | BindingFlags.Public,
+                        binder: null,
+                        types: Type.EmptyTypes,
+                        modifiers: null)
+                        ?? throw new MissingMethodException(scheduler.GetType().FullName, "RequestRender");
+                    requestRender.Invoke(scheduler, null);
+
+                    MethodInfo? requestNativeLoopWakeup = liveHost.GetType().GetMethod(
+                        "TryRequestNativeLoopWakeup",
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                        binder: null,
+                        types: Type.EmptyTypes,
+                        modifiers: null);
+                    requestNativeLoopWakeup?.Invoke(liveHost, null);
+                }
+
+                private static void RaiseHostInput(
+                    object liveHost,
+                    string kind,
+                    string? key = null,
+                    char? character = null,
+                    double x = 0.0,
+                    double y = 0.0,
+                    string button = "None",
+                    string modifiers = "None")
+                {
+                    object input = CreateWpfInputEventArgs(liveHost, kind, key, character, x, y, button, modifiers);
+                    MethodInfo method = liveHost.GetType().GetMethod(
+                        "OnPlatformInputReceived",
+                        BindingFlags.Instance | BindingFlags.NonPublic)
+                        ?? throw new MissingMethodException(liveHost.GetType().FullName, "OnPlatformInputReceived");
+                    method.Invoke(liveHost, new object?[] { null, input });
+                }
+
+                private static object CreateWpfInputEventArgs(
+                    object liveHost,
+                    string kind,
+                    string? key,
+                    char? character,
+                    double x,
+                    double y,
+                    string button,
+                    string modifiers)
+                {
+                    Assembly assembly = liveHost.GetType().Assembly;
+                    Type inputType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfInputEventArgs", throwOnError: true)
+                        ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfInputEventArgs");
+                    Type kindType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfInputEventKind", throwOnError: true)
+                        ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfInputEventKind");
+                    Type buttonType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfMouseButton", throwOnError: true)
+                        ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfMouseButton");
+                    Type modifiersType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfInputModifiers", throwOnError: true)
+                        ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfInputModifiers");
+
+                    return Activator.CreateInstance(
+                        inputType,
+                        Enum.Parse(kindType, kind),
+                        key,
+                        0,
+                        character.HasValue ? character.Value : null,
+                        x,
+                        y,
+                        0.0,
+                        0.0,
+                        Enum.Parse(buttonType, button),
+                        Enum.Parse(modifiersType, modifiers))
+                        ?? throw new InvalidOperationException("Expected WpfInputEventArgs construction to succeed.");
+                }
+
+                private static object InvokeRequired(object target, string methodName)
+                {
+                    MethodInfo method = target.GetType().GetMethod(
+                        methodName,
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                        ?? throw new MissingMethodException(target.GetType().FullName, methodName);
+                    return method.Invoke(target, null)
+                        ?? throw new InvalidOperationException($"Expected {methodName} to return a value.");
+                }
+
+                private static object GetRequiredProperty(object target, string propertyName)
+                {
+                    PropertyInfo property = target.GetType().GetProperty(
+                        propertyName,
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                        ?? throw new MissingMemberException(target.GetType().FullName, propertyName);
+                    return property.GetValue(target)
+                        ?? throw new InvalidOperationException($"Expected {propertyName} to have a value.");
+                }
+
+                private static T RequireType<T>(object? value, string description)
+                {
+                    return value is T typed
+                        ? typed
+                        : throw new InvalidOperationException($"Expected {description} to be {typeof(T).Name}, but found {value?.GetType().FullName ?? "<null>"}.");
+                }
+
+                private static string DescribeInputElement(object? element)
+                {
+                    if (element == null)
+                    {
+                        return "<null>";
+                    }
+
+                    if (element is FrameworkElement frameworkElement && !string.IsNullOrEmpty(frameworkElement.Name))
+                    {
+                        return $"{element.GetType().Name}#{frameworkElement.Name}";
+                    }
+
+                    return element.GetType().Name;
+                }
+
+                private static void AssertAtLeast(int minimum, int actual, string description)
+                {
+                    if (actual < minimum)
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected {description} to be at least {minimum}, but was {actual}.");
+                    }
+                }
+
+                private static void AssertEqual<T>(T expected, T actual, string description)
+                {
+                    if (!Equals(expected, actual))
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected {description} to be '{expected}' but was '{actual}'.");
+                    }
                 }
 
                 public ObservableCollection<ExternalItem> ExternalItems { get; } =
@@ -3143,6 +3556,12 @@ internal static class Program
                 {
                     ExternalMenuClickCount++;
                     LastExternalMenuRoutedEventName = e.RoutedEvent?.Name;
+                }
+
+                private void OnExternalTitleMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+                {
+                    ExternalTitleMouseDownCount++;
+                    e.Handled = true;
                 }
 
                 private void OnExternalMenuItemChecked(object sender, RoutedEventArgs e)
@@ -16213,6 +16632,89 @@ internal static class Program
         }
 
         return output;
+    }
+
+    private static string RunAppHostLiveValidationProbe(
+        string fileName,
+        string workingDirectory,
+        string environmentVariable,
+        string successMarker,
+        string description,
+        params string[] arguments)
+    {
+        var startInfo = new ProcessStartInfo(fileName)
+        {
+            WorkingDirectory = workingDirectory,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false
+        };
+        startInfo.Environment["DOTNET_ROLL_FORWARD"] = "Major";
+        startInfo.Environment[environmentVariable] = "1";
+
+        foreach (string argument in arguments)
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
+
+        var output = new StringBuilder();
+        object outputGate = new();
+        using var process = new Process
+        {
+            StartInfo = startInfo,
+            EnableRaisingEvents = true
+        };
+        process.OutputDataReceived += (_, e) => AppendProcessOutput(output, outputGate, e.Data);
+        process.ErrorDataReceived += (_, e) => AppendProcessOutput(output, outputGate, e.Data);
+
+        if (!process.Start())
+        {
+            throw new InvalidOperationException($"Failed to start '{fileName}' for {description}.");
+        }
+
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+
+        try
+        {
+            var timeout = TimeSpan.FromSeconds(25);
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            while (stopwatch.Elapsed < timeout)
+            {
+                string snapshot;
+                lock (outputGate)
+                {
+                    snapshot = output.ToString();
+                }
+
+                if (snapshot.Contains(successMarker, StringComparison.Ordinal))
+                {
+                    process.WaitForExit(TimeSpan.FromSeconds(2));
+                    return snapshot;
+                }
+
+                if (process.HasExited)
+                {
+                    throw new InvalidOperationException(
+                        $"Expected {description} to print '{successMarker}' before exiting with code {process.ExitCode}.{Environment.NewLine}{snapshot}");
+                }
+
+                Thread.Sleep(50);
+            }
+
+            string timedOutOutput;
+            lock (outputGate)
+            {
+                timedOutOutput = output.ToString();
+            }
+
+            throw new InvalidOperationException(
+                $"Timed out waiting for {description} to print '{successMarker}'.{Environment.NewLine}{timedOutOutput}");
+        }
+        finally
+        {
+            StopLiveProbeProcess(process);
+        }
     }
 
     private static string RunAppHostLiveSwapChainProbe(

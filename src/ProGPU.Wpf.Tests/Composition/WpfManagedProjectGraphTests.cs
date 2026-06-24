@@ -5921,6 +5921,12 @@ public sealed class WpfManagedProjectGraphTests
             "Composition",
             "Mil",
             "WpfReflectionResourceResolver.cs");
+        var wpfBitmapSourceImageAdapterPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfBitmapSourceImageAdapter.cs");
         var wpfTransportTargetsPath = FindRepoPath(
             "packaging",
             "Microsoft.DotNet.Wpf.GitHub",
@@ -6112,6 +6118,7 @@ public sealed class WpfManagedProjectGraphTests
         var wpfReflectionResourceResolverTests = File.ReadAllText(wpfReflectionResourceResolverTestsPath);
         var wpfMilRenderDataDecoder = File.ReadAllText(wpfMilRenderDataDecoderPath);
         var wpfReflectionResourceResolver = File.ReadAllText(wpfReflectionResourceResolverPath);
+        var wpfBitmapSourceImageAdapter = File.ReadAllText(wpfBitmapSourceImageAdapterPath);
         var wpfTransportTargets = File.ReadAllText(wpfTransportTargetsPath);
         var wpfTransportArchNeutralProject = File.ReadAllText(wpfTransportArchNeutralProjectPath);
         var runtimeHarnessProject = File.ReadAllText(runtimeHarnessProjectPath);
@@ -8043,6 +8050,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("ProGpuWpfPen", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("TryReadDashStyle(pen", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("nativeDashArray", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("TryGetGpuTexture(bitmapSource", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("bitmapSource.GpuTexture", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("HasGpuTextureProperty(imageSource)", wpfReflectionResourceResolver, StringComparison.Ordinal);
+        Assert.Contains("&& HasGpuTextureProperty(mediaImageSource)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.False(
             File.Exists(Path.Combine(Path.GetDirectoryName(proGpuWpfCommandSinkPath)!, "ProGpuWpfPen.cs")),
             "The transition ProGpuWpfPen wrapper should stay removed; WPF pen dash metadata belongs on native ProGPU.Vector.Pen.");
@@ -8215,10 +8226,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AppOutputAssemblyName + \".dll\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetAppHostFileName(AppOutputAssemblyName)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"external SDK apphost\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RunAppHostLiveValidationProbe(", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"PROGPU_WPF_EXTERNAL_LIVE_VALIDATE\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"External SDK apphost live input\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RunAppHostLiveSwapChainProbe(", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("expectedLogicalWidth: 320", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("expectedLogicalHeight: 200", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("\"External SDK apphost live geometry\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("expectedLogicalWidth: 260", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("expectedLogicalHeight: 140", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"External SDK default-item apphost live geometry\"", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -8541,7 +8552,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK application startup state property", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("External SDK Application.Run validation succeeded.", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK apphost Application.Run validation output", externalSdkHarnessProgram, StringComparison.Ordinal);
-        Assert.Contains("External SDK apphost live geometry validation succeeded:", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("External SDK apphost live input validation succeeded:", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OnExternalTitleMouseLeftButtonDown", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RaiseHostInput(liveHost, \"MouseDown\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RaiseHostInput(liveHost, \"TextInput\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("liveValidationTextBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RaiseHostInput(liveHost, \"KeyDown\", key: \"E\", modifiers: \"Control\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK live Ctrl+E KeyBinding execution count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("External SDK default-item apphost live geometry validation succeeded:", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Configuring SwapChain:", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssertContains(locText, \"ExternalLocalizationRoot\",", externalSdkHarnessProgram, StringComparison.Ordinal);

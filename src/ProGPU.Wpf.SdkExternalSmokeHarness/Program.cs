@@ -12177,6 +12177,20 @@ internal static class Program
             </ResourceDictionary>
             """);
 
+        WriteFile(
+            Path.Combine(libraryRoot, "Resources", "DefaultItemsLibraryResources.xaml"),
+            """
+            <ResourceDictionary
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:sys="clr-namespace:System;assembly=System.Private.CoreLib">
+                <sys:String x:Key="DefaultItemsLibraryResourceText">Default item library resource text</sys:String>
+                <SolidColorBrush
+                    x:Key="DefaultItemsLibraryResourceBrush"
+                    Color="#765432" />
+            </ResourceDictionary>
+            """);
+
         string appProjectPath = Path.Combine(appRoot, DefaultItemsAssemblyName + ".csproj");
         WriteFile(
             appProjectPath,
@@ -12356,11 +12370,22 @@ internal static class Program
                 Width="260"
                 Height="140"
                 Loaded="OnDefaultItemsWindowLoaded">
+                <Window.Resources>
+                    <ResourceDictionary>
+                        <ResourceDictionary.MergedDictionaries>
+                            <ResourceDictionary Source="/ExternalSdkDefaultItemsLibrary;component/Resources/DefaultItemsLibraryResources.xaml" />
+                        </ResourceDictionary.MergedDictionaries>
+                    </ResourceDictionary>
+                </Window.Resources>
                 <StackPanel>
                     <TextBlock
                         x:Name="DefaultItemsTitleText"
                         Foreground="{DynamicResource DefaultItemsBrush}"
                         Text="{StaticResource DefaultItemsText}" />
+                    <TextBlock
+                        x:Name="DefaultItemsLibraryResourceText"
+                        Foreground="{DynamicResource DefaultItemsLibraryResourceBrush}"
+                        Text="{StaticResource DefaultItemsLibraryResourceText}" />
                     <local:DefaultItemsPanel
                         x:Name="DefaultItemsPanel"
                         Caption="Default item panel caption" />
@@ -12406,6 +12431,15 @@ internal static class Program
                     Require(
                         foreground.Color == Color.FromRgb(0x33, 0x55, 0x77),
                         "Expected default-item DynamicResource brush color.");
+                    Require(
+                        DefaultItemsLibraryResourceText.Text == "Default item library resource text",
+                        "Expected default-item referenced library component resource text.");
+                    var libraryResourceForeground = RequireType<SolidColorBrush>(
+                        DefaultItemsLibraryResourceText.Foreground,
+                        "default-item referenced library component resource brush");
+                    Require(
+                        libraryResourceForeground.Color == Color.FromRgb(0x76, 0x54, 0x32),
+                        "Expected default-item referenced library component resource brush color.");
                     Require(
                         DefaultItemsPanel.Caption == "Default item panel caption",
                         "Expected default-item UserControl dependency property value.");
@@ -12618,11 +12652,22 @@ internal static class Program
             defaultItemsLibraryGenericTheme,
             "DefaultItemsLibraryThemeText",
             "external SDK default-item library Generic.xaml template text");
+        string defaultItemsLibraryResources = File.ReadAllText(
+            Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "Resources", "DefaultItemsLibraryResources.xaml"));
+        AssertContains(
+            defaultItemsLibraryResources,
+            "DefaultItemsLibraryResourceText",
+            "external SDK default-item library component resource dictionary text");
+        AssertContains(
+            defaultItemsLibraryResources,
+            "DefaultItemsLibraryResourceBrush",
+            "external SDK default-item library component resource dictionary brush");
         RequireFile(Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "DefaultItemsLibraryPanel.xaml"), "external SDK default-item library UserControl XAML source");
         RequireFile(Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "DefaultItemsLibraryPanel.xaml.cs"), "external SDK default-item library UserControl code source");
         RequireFile(Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "Properties", "AssemblyInfo.cs"), "external SDK default-item library ThemeInfo source");
         RequireFile(Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "DefaultItemsLibraryThemedControl.cs"), "external SDK default-item library themed control source");
         RequireFile(Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "Themes", "Generic.xaml"), "external SDK default-item library Generic.xaml source");
+        RequireFile(Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "Resources", "DefaultItemsLibraryResources.xaml"), "external SDK default-item library component resource dictionary source");
     }
 
     private static string SwitchWpfSdkOnly(string normalWpfProject, string description)

@@ -8133,6 +8133,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<Binding.ValidationRules>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("UpdateSourceTrigger=PropertyChanged", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsFormattedStatusText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsPriorityStatusText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<PriorityBinding>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item PriorityBinding fallback", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsItemNameConverter", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsStatusSelectionConverter", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsNameTemplateSelector", externalSdkHarnessProgram, StringComparison.Ordinal);

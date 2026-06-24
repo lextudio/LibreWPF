@@ -12707,6 +12707,16 @@ internal static class Program
                     <TextBlock
                         x:Name="DefaultItemsFormattedStatusText"
                         Text="{Binding Status, StringFormat=Formatted: {0}}" />
+                    <TextBlock x:Name="DefaultItemsPriorityStatusText">
+                        <TextBlock.Text>
+                            <PriorityBinding>
+                                <Binding Path="MissingStatus" />
+                                <Binding
+                                    Path="Status"
+                                    StringFormat="Priority: {0}" />
+                            </PriorityBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
                     <TextBlock
                         x:Name="DefaultItemsTriggeredStatusText"
                         Style="{StaticResource DefaultItemsStatusTriggerStyle}"
@@ -13133,6 +13143,9 @@ internal static class Program
                         DefaultItemsFormattedStatusText.Text == "Formatted: Default item binding ready",
                         "Expected default-item formatted binding to read the view-model status.");
                     Require(
+                        DefaultItemsPriorityStatusText.Text == "Priority: Default item binding ready",
+                        "Expected default-item PriorityBinding fallback to read the view-model status.");
+                    Require(
                         string.Equals(DefaultItemsTriggeredStatusText.Tag as string, "default-item trigger inactive", StringComparison.Ordinal),
                         "Expected default-item DataTrigger to start inactive.");
                     Require(
@@ -13227,6 +13240,9 @@ internal static class Program
                         DefaultItemsFormattedStatusText.Text == "Formatted: Default item binding updated",
                         "Expected default-item formatted binding to observe INotifyPropertyChanged.");
                     Require(
+                        DefaultItemsPriorityStatusText.Text == "Priority: Default item binding updated",
+                        "Expected default-item PriorityBinding fallback to observe INotifyPropertyChanged.");
+                    Require(
                         string.Equals(DefaultItemsTriggeredStatusText.Tag as string, "default-item trigger inactive", StringComparison.Ordinal),
                         "Expected default-item DataTrigger to remain inactive for non-matching status.");
                     Require(
@@ -13244,6 +13260,9 @@ internal static class Program
                     Require(
                         DefaultItemsFormattedStatusText.Text == "Formatted: Default item text box source",
                         "Expected default-item TextBox source update to refresh formatted binding.");
+                    Require(
+                        DefaultItemsPriorityStatusText.Text == "Priority: Default item text box source",
+                        "Expected default-item TextBox source update to refresh PriorityBinding.");
                     Require(
                         DefaultItemsValidatedStatusTextBox.Text == "Default item text box source",
                         "Expected default-item TextBox source update to refresh validated binding.");

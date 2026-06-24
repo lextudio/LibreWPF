@@ -268,6 +268,18 @@ public partial class MainWindow : Window
             }
         }
 
+        if (TryGetLivePresentedFramePixelSize(liveHost, out var framePixelWidth, out var framePixelHeight))
+        {
+            AssertClose(framePixelWidth, pixelWidth, "live ProGPU WPF presented frame pixel width");
+            AssertClose(framePixelHeight, pixelHeight, "live ProGPU WPF presented frame pixel height");
+        }
+
+        if (TryGetLiveSwapChainSize(liveHost, out var swapChainWidth, out var swapChainHeight))
+        {
+            AssertClose(swapChainWidth, pixelWidth, "live ProGPU WPF swapchain pixel width");
+            AssertClose(swapChainHeight, pixelHeight, "live ProGPU WPF swapchain pixel height");
+        }
+
         return $"logical {logicalWidth}x{logicalHeight}, pixels {pixelWidth}x{pixelHeight}, dpi {dpiScale:0.###}";
     }
 
@@ -326,10 +338,41 @@ public partial class MainWindow : Window
             TryReadPositiveUintProperty(framebufferSize, "Y", out height);
     }
 
+    private static bool TryGetLivePresentedFramePixelSize(object liveHost, out uint width, out uint height)
+    {
+        width = 0;
+        height = 0;
+        object? frameState = TryGetProperty(liveHost, "LastPresentedFrameState");
+        return frameState != null &&
+            TryReadPositiveUintProperty(frameState, "PixelWidth", out width) &&
+            TryReadPositiveUintProperty(frameState, "PixelHeight", out height);
+    }
+
+    private static bool TryGetLiveSwapChainSize(object liveHost, out uint width, out uint height)
+    {
+        width = 0;
+        height = 0;
+        object? target = TryGetProperty(liveHost, "CompositionTarget");
+        object? context = target == null
+            ? null
+            : TryGetProperty(target, "Context");
+        return context != null &&
+            TryReadPositiveUintField(context, "_lastWidth", out width) &&
+            TryReadPositiveUintField(context, "_lastHeight", out height);
+    }
+
     private static object? TryGetProperty(object target, string propertyName)
     {
         return target.GetType().GetProperty(
                 propertyName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?.GetValue(target);
+    }
+
+    private static object? TryGetField(object target, string fieldName)
+    {
+        return target.GetType().GetField(
+                fieldName,
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
             ?.GetValue(target);
     }
@@ -358,6 +401,19 @@ public partial class MainWindow : Window
     {
         value = 0;
         object? rawValue = TryGetProperty(target, propertyName);
+        return TryConvertPositiveUint(rawValue, out value);
+    }
+
+    private static bool TryReadPositiveUintField(object target, string fieldName, out uint value)
+    {
+        value = 0;
+        object? rawValue = TryGetField(target, fieldName);
+        return TryConvertPositiveUint(rawValue, out value);
+    }
+
+    private static bool TryConvertPositiveUint(object? rawValue, out uint value)
+    {
+        value = 0;
         try
         {
             int dimension = Convert.ToInt32(rawValue, CultureInfo.InvariantCulture);

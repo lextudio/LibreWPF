@@ -5,6 +5,7 @@
     xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
     xmlns:local="clr-namespace:ProGPU.Wpf.MvpApp"
     xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework"
+    xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
     xmlns:sys="clr-namespace:System;assembly=mscorlib"
     xmlns:wpf="clr-namespace:System.Windows;assembly=PresentationFramework"
     x:Name="RootWindow"
@@ -13,6 +14,16 @@
     Height="560"
     MinWidth="560"
     MinHeight="420">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome
+            CaptionHeight="32"
+            CornerRadius="8"
+            GlassFrameThickness="0"
+            NonClientFrameEdges="None"
+            ResizeBorderThickness="6"
+            UseAeroCaptionButtons="False" />
+    </shell:WindowChrome.WindowChrome>
+
     <Window.CommandBindings>
         <CommandBinding
             Command="{x:Static local:MainWindow.RefreshStatusCommand}"
@@ -491,6 +502,40 @@
                             Margin="0,6,0,0"
                             Text="File dialogs idle"
                             TextWrapping="Wrap" />
+                        <TextBlock
+                            Margin="0,18,0,4"
+                            FontWeight="SemiBold"
+                            Text="Chrome metadata" />
+                        <Border
+                            x:Name="ChromeCaptionRegion"
+                            Padding="8"
+                            Background="#E8EDF5"
+                            MouseLeftButtonDown="OnChromeCaptionMouseLeftButtonDown">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    Text="ProGPU chrome metadata" />
+                                <Button
+                                    x:Name="ChromeHitTestButton"
+                                    Grid.Column="1"
+                                    MinWidth="92"
+                                    Margin="8,0,0,0"
+                                    Padding="6,2"
+                                    shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                                    Content="Caption action" />
+                            </Grid>
+                        </Border>
+                        <primitives:Thumb
+                            x:Name="ChromeResizeGrip"
+                            Width="18"
+                            Height="18"
+                            Margin="0,4,0,0"
+                            HorizontalAlignment="Right"
+                            shell:WindowChrome.ResizeGripDirection="BottomRight" />
                         <local:SummaryPanel
                             x:Name="SummaryPanel"
                             Margin="0,18,0,0"

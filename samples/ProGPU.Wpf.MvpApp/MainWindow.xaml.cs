@@ -24,6 +24,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
 using System.Windows.Navigation;
+using System.Windows.Shell;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using WpfCalendar = System.Windows.Controls.Calendar;
@@ -233,6 +234,10 @@ public partial class MainWindow : Window
 
     internal string? LastSystemCommandParameter { get; private set; }
 
+    internal int ChromeCaptionMouseDownCount { get; private set; }
+
+    internal string ChromeDragMoveStatus { get; private set; } = "Idle";
+
     public MainWindow()
     {
         var viewModel = new MainViewModel();
@@ -408,6 +413,29 @@ public partial class MainWindow : Window
         }
 
         e.Handled = true;
+    }
+
+    private void OnChromeCaptionMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        ChromeCaptionMouseDownCount++;
+
+        if (e.ChangedButton != MouseButton.Left ||
+            Mouse.LeftButton != MouseButtonState.Pressed ||
+            WindowState != WindowState.Normal)
+        {
+            ChromeDragMoveStatus = "Skipped";
+            return;
+        }
+
+        try
+        {
+            DragMove();
+            ChromeDragMoveStatus = "Requested";
+        }
+        catch (InvalidOperationException ex)
+        {
+            ChromeDragMoveStatus = ex.GetType().Name;
+        }
     }
 
     private void OnBindingGroupCommitClick(object sender, RoutedEventArgs e)
@@ -1358,6 +1386,15 @@ internal static class MvpSelfTest
         var fileDialogStatusText = Require<TextBlock>(
             window.FindName("FileDialogStatusText"),
             "file dialog status TextBlock");
+        var chromeCaptionRegion = Require<Border>(
+            window.FindName("ChromeCaptionRegion"),
+            "chrome caption region Border");
+        var chromeHitTestButton = Require<Button>(
+            window.FindName("ChromeHitTestButton"),
+            "chrome hit-test Button");
+        var chromeResizeGrip = Require<Thumb>(
+            window.FindName("ChromeResizeGrip"),
+            "chrome resize-grip Thumb");
         var mvpTabControl = Require<TabControl>(
             window.FindName("MvpTabControl"),
             "MVP TabControl");
@@ -1829,6 +1866,11 @@ internal static class MvpSelfTest
             windowMinimizeMenuItem,
             windowRestoreMenuItem,
             windowSystemMenuItem);
+        ValidateMvpWindowChrome(
+            window,
+            chromeCaptionRegion,
+            chromeHitTestButton,
+            chromeResizeGrip);
         ValidateMessageBox(window, messageBoxButton, messageBoxStatusText);
         ValidateFileDialogs(window, fileDialogButton, fileDialogStatusText);
         var refreshKeyBinding = Require<KeyBinding>(window.InputBindings[0], "refresh KeyBinding");
@@ -2428,6 +2470,40 @@ internal static class MvpSelfTest
             initialExecutedCount + 4,
             window.SystemCommandExecutedCount,
             "MVP SystemCommands executed count");
+    }
+
+    private static void ValidateMvpWindowChrome(
+        MainWindow window,
+        Border captionRegion,
+        Button hitTestButton,
+        Thumb resizeGrip)
+    {
+        var chrome = Require<WindowChrome>(
+            WindowChrome.GetWindowChrome(window),
+            "MVP WindowChrome attached value");
+
+        AssertEqual(32.0, chrome.CaptionHeight, "MVP WindowChrome caption height");
+        AssertEqual(new CornerRadius(8.0), chrome.CornerRadius, "MVP WindowChrome corner radius");
+        AssertEqual(new Thickness(0.0), chrome.GlassFrameThickness, "MVP WindowChrome glass thickness");
+        AssertEqual(NonClientFrameEdges.None, chrome.NonClientFrameEdges, "MVP WindowChrome non-client edges");
+        AssertEqual(new Thickness(6.0), chrome.ResizeBorderThickness, "MVP WindowChrome resize border");
+        AssertEqual(false, chrome.UseAeroCaptionButtons, "MVP WindowChrome caption buttons");
+        AssertEqual(
+            true,
+            WindowChrome.GetIsHitTestVisibleInChrome(hitTestButton),
+            "MVP WindowChrome hit-test attached value");
+        AssertEqual(
+            ResizeGripDirection.BottomRight,
+            WindowChrome.GetResizeGripDirection(resizeGrip),
+            "MVP WindowChrome resize-grip direction");
+        AssertEqual(
+            "ProGPU chrome metadata",
+            Require<TextBlock>(
+                Require<Grid>(captionRegion.Child, "MVP WindowChrome caption Grid").Children[0],
+                "MVP WindowChrome caption TextBlock").Text,
+            "MVP WindowChrome caption text");
+        AssertEqual(0, window.ChromeCaptionMouseDownCount, "MVP WindowChrome caption initial mouse count");
+        AssertEqual("Idle", window.ChromeDragMoveStatus, "MVP WindowChrome drag initial status");
     }
 
     private static void ExecuteMvpSystemCommand(

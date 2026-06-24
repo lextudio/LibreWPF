@@ -12465,6 +12465,7 @@ internal static class Program
                 xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
                 xmlns:library="clr-namespace:ExternalSdkDefaultItemsLibrary;assembly=ExternalSdkDefaultItemsLibrary"
                 xmlns:local="clr-namespace:ExternalSdkDefaultItemsApp"
+                xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework"
                 xmlns:sys="clr-namespace:System;assembly=System.Runtime"
                 Title="External SDK Default Items"
                 Width="260"
@@ -12746,6 +12747,29 @@ internal static class Program
                         Maximum="100"
                         Minimum="0"
                         Value="{Binding FormProgress}" />
+                    <Button
+                        x:Name="DefaultItemsPopupOwnerButton"
+                        Content="Default item popup owner">
+                        <Button.ToolTip>
+                            <ToolTip x:Name="DefaultItemsToolTip">
+                                <TextBlock
+                                    x:Name="DefaultItemsToolTipText"
+                                    Text="Default item tooltip content" />
+                            </ToolTip>
+                        </Button.ToolTip>
+                    </Button>
+                    <primitives:Popup
+                        x:Name="DefaultItemsStandalonePopup"
+                        AllowsTransparency="True"
+                        Placement="Bottom"
+                        PlacementTarget="{Binding ElementName=DefaultItemsPopupOwnerButton}"
+                        StaysOpen="False">
+                        <Border Padding="2">
+                            <TextBlock
+                                x:Name="DefaultItemsStandalonePopupText"
+                                Text="Default item standalone popup content" />
+                        </Border>
+                    </primitives:Popup>
                     <Menu x:Name="DefaultItemsMenu">
                         <MenuItem
                             x:Name="DefaultItemsRootMenuItem"
@@ -13041,6 +13065,7 @@ internal static class Program
             using ExternalSdkDefaultItemsLibrary;
             using System.Windows;
             using System.Windows.Controls;
+            using System.Windows.Controls.Primitives;
             using System.Windows.Data;
             using System.Windows.Input;
             using System.Windows.Media;
@@ -13448,6 +13473,39 @@ internal static class Program
                         Math.Abs(DefaultItemsSlider.Value - 40.0) < 0.001
                             && Math.Abs(DefaultItemsProgressBar.Value - 40.0) < 0.001,
                         "Expected default-item range controls to observe source update.");
+                    var toolTip = RequireType<ToolTip>(
+                        DefaultItemsPopupOwnerButton.ToolTip,
+                        "default-item ToolTip");
+                    var toolTipText = RequireType<TextBlock>(
+                        toolTip.Content,
+                        "default-item ToolTip content");
+                    Require(
+                        toolTipText.Text == "Default item tooltip content",
+                        "Expected default-item ToolTip content.");
+                    Require(
+                        DefaultItemsStandalonePopup.Placement == PlacementMode.Bottom
+                            && ReferenceEquals(DefaultItemsStandalonePopup.PlacementTarget, DefaultItemsPopupOwnerButton)
+                            && DefaultItemsStandalonePopup.StaysOpen == false,
+                        "Expected default-item Popup placement metadata.");
+                    Require(
+                        DefaultItemsStandalonePopup.IsOpen == false,
+                        "Expected default-item Popup initial closed state.");
+                    DefaultItemsStandalonePopup.IsOpen = true;
+                    DrainDispatcher();
+                    Require(
+                        DefaultItemsStandalonePopup.IsOpen,
+                        "Expected default-item Popup to open through portable popup service.");
+                    var popupText = RequireType<TextBlock>(
+                        DefaultItemsStandalonePopup.Child is Border popupBorder ? popupBorder.Child : null,
+                        "default-item Popup content");
+                    Require(
+                        popupText.Text == "Default item standalone popup content",
+                        "Expected default-item Popup content.");
+                    DefaultItemsStandalonePopup.IsOpen = false;
+                    DrainDispatcher();
+                    Require(
+                        !DefaultItemsStandalonePopup.IsOpen,
+                        "Expected default-item Popup to close through portable popup service.");
                     Require(
                         DefaultItemsMenu.Items.Count == 1 && ReferenceEquals(DefaultItemsMenu.Items[0], DefaultItemsRootMenuItem),
                         "Expected default-item Menu root item.");

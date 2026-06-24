@@ -8214,6 +8214,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Value=\"{Binding FormProgress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsProgressBar", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item range controls to observe source update", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsPopupOwnerButton", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<ToolTip", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsStandalonePopup", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PlacementTarget=\"{Binding ElementName=DefaultItemsPopupOwnerButton}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item Popup to open through portable popup service", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item Popup to close through portable popup service", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsMenu", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsCommandMenuItem", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item MenuItem Click handler", externalSdkHarnessProgram, StringComparison.Ordinal);

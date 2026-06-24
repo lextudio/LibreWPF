@@ -8191,7 +8191,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DefaultItemsXmlProviderText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item XmlDataProvider bound text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsBoundStatusText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsTargetUpdatedStatusText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("NotifyOnTargetUpdated=True", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Binding.TargetUpdated=\"OnDefaultItemsBindingTargetUpdated\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsEditableStatusTextBox", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsSourceUpdatedStatusTextBox", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("NotifyOnSourceUpdated=True", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Binding.SourceUpdated=\"OnDefaultItemsBindingSourceUpdated\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsValidatedStatusTextBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsRequiredTextRule", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Binding.ValidationRules>", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -8352,6 +8358,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ObservableCollection<DefaultItemsItem>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("public DefaultItemsItem SelectedItem", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Default item binding updated", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item Binding.TargetUpdated to fire after source notification", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item Binding.SourceUpdated to fire after explicit source transfer", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item TextBox two-way binding", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Default item text box source", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item validation rule", externalSdkHarnessProgram, StringComparison.Ordinal);

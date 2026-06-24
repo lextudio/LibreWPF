@@ -13015,9 +13015,17 @@ internal static class Program
                     <TextBlock
                         x:Name="DefaultItemsBoundStatusText"
                         Text="{Binding Status}" />
+                    <TextBlock
+                        x:Name="DefaultItemsTargetUpdatedStatusText"
+                        Binding.TargetUpdated="OnDefaultItemsBindingTargetUpdated"
+                        Text="{Binding Status, NotifyOnTargetUpdated=True}" />
                     <TextBox
                         x:Name="DefaultItemsEditableStatusTextBox"
                         Text="{Binding Status, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox
+                        x:Name="DefaultItemsSourceUpdatedStatusTextBox"
+                        Binding.SourceUpdated="OnDefaultItemsBindingSourceUpdated"
+                        Text="{Binding Status, Mode=TwoWay, NotifyOnSourceUpdated=True, UpdateSourceTrigger=Explicit}" />
                     <TextBox x:Name="DefaultItemsValidatedStatusTextBox">
                         <TextBox.Text>
                             <Binding
@@ -13483,6 +13491,18 @@ internal static class Program
                 public string LastPasswordValue { get; private set; } = string.Empty;
 
                 public string LastCommandParameter { get; private set; } = string.Empty;
+
+                public int BindingTargetUpdatedCount { get; private set; }
+
+                public string LastBindingTargetUpdatedName { get; private set; } = string.Empty;
+
+                public string LastBindingTargetUpdatedPropertyName { get; private set; } = string.Empty;
+
+                public int BindingSourceUpdatedCount { get; private set; }
+
+                public string LastBindingSourceUpdatedName { get; private set; } = string.Empty;
+
+                public string LastBindingSourceUpdatedPropertyName { get; private set; } = string.Empty;
 
                 public DefaultItemsViewModel ViewModel { get; } = new DefaultItemsViewModel();
 
@@ -14219,11 +14239,22 @@ internal static class Program
                         DefaultItemsBoundStatusText.Text == "Default item binding ready",
                         "Expected default-item TextBlock binding to read the view-model status.");
                     Require(
+                        DefaultItemsTargetUpdatedStatusText.Text == "Default item binding ready",
+                        "Expected default-item TargetUpdated binding to read the view-model status.");
+                    Require(
+                        BindingTargetUpdatedCount >= 1
+                            && LastBindingTargetUpdatedName == nameof(DefaultItemsTargetUpdatedStatusText)
+                            && LastBindingTargetUpdatedPropertyName == nameof(TextBlock.Text),
+                        "Expected default-item Binding.TargetUpdated to fire for initial target transfer.");
+                    Require(
                         DefaultItemsGridBoundText.Text == "Grid: Default item binding ready",
                         "Expected default-item Grid child binding to read the view-model status.");
                     Require(
                         DefaultItemsEditableStatusTextBox.Text == "Default item binding ready",
                         "Expected default-item TextBox binding to read the view-model status.");
+                    Require(
+                        DefaultItemsSourceUpdatedStatusTextBox.Text == "Default item binding ready",
+                        "Expected default-item SourceUpdated binding to read the view-model status.");
                     Require(
                         DefaultItemsValidatedStatusTextBox.Text == "Default item binding ready",
                         "Expected default-item validated TextBox binding to read the view-model status.");
@@ -14331,11 +14362,19 @@ internal static class Program
                     Require(
                         DefaultItemsValidatedStatusTextBox.GetBindingExpression(TextBox.TextProperty) is not null,
                         "Expected default-item validated TextBox binding expression.");
+                    var sourceUpdatedBinding = RequireType<BindingExpression>(
+                        DefaultItemsSourceUpdatedStatusTextBox.GetBindingExpression(TextBox.TextProperty),
+                        "default-item SourceUpdated TextBox binding expression");
+                    int targetUpdatedCountBeforeStatusChange = BindingTargetUpdatedCount;
                     ViewModel.Status = "Default item binding updated";
                     DrainDispatcher();
                     Require(
                         DefaultItemsBoundStatusText.Text == "Default item binding updated",
                         "Expected default-item TextBlock binding to observe INotifyPropertyChanged.");
+                    Require(
+                        DefaultItemsTargetUpdatedStatusText.Text == "Default item binding updated"
+                            && BindingTargetUpdatedCount > targetUpdatedCountBeforeStatusChange,
+                        "Expected default-item Binding.TargetUpdated to fire after source notification.");
                     Require(
                         DefaultItemsGridBoundText.Text == "Grid: Default item binding updated",
                         "Expected default-item Grid child binding to observe INotifyPropertyChanged.");
@@ -14371,6 +14410,16 @@ internal static class Program
                     Require(
                         DefaultItemsMultiBindingText.Text == "Composite: Default item binding updated / Default item alpha",
                         "Expected default-item MultiBinding converter to observe status changes.");
+                    int sourceUpdatedCountBeforeTextBoxUpdate = BindingSourceUpdatedCount;
+                    DefaultItemsSourceUpdatedStatusTextBox.Text = "Default item source-updated source";
+                    sourceUpdatedBinding.UpdateSource();
+                    DrainDispatcher();
+                    Require(
+                        ViewModel.Status == "Default item source-updated source"
+                            && BindingSourceUpdatedCount > sourceUpdatedCountBeforeTextBoxUpdate
+                            && LastBindingSourceUpdatedName == nameof(DefaultItemsSourceUpdatedStatusTextBox)
+                            && LastBindingSourceUpdatedPropertyName == nameof(TextBox.Text),
+                        "Expected default-item Binding.SourceUpdated to fire after explicit source transfer.");
                     DefaultItemsEditableStatusTextBox.Text = "Default item text box source";
                     DefaultItemsEditableStatusTextBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
                     DrainDispatcher();
@@ -14952,6 +15001,20 @@ internal static class Program
                 {
                     PasswordChangedCount++;
                     LastPasswordValue = DefaultItemsPasswordBox.Password;
+                }
+
+                private void OnDefaultItemsBindingTargetUpdated(object sender, DataTransferEventArgs e)
+                {
+                    BindingTargetUpdatedCount++;
+                    LastBindingTargetUpdatedName = (e.TargetObject as FrameworkElement)?.Name ?? string.Empty;
+                    LastBindingTargetUpdatedPropertyName = e.Property?.Name ?? string.Empty;
+                }
+
+                private void OnDefaultItemsBindingSourceUpdated(object sender, DataTransferEventArgs e)
+                {
+                    BindingSourceUpdatedCount++;
+                    LastBindingSourceUpdatedName = (e.TargetObject as FrameworkElement)?.Name ?? string.Empty;
+                    LastBindingSourceUpdatedPropertyName = e.Property?.Name ?? string.Empty;
                 }
 
                 private static void DrainDispatcher()

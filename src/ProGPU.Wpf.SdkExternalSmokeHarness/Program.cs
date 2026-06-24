@@ -183,7 +183,7 @@ internal static class Program
                 outputRoot,
                 expectedLogicalWidth: 320,
                 expectedLogicalHeight: 200,
-                "external SDK apphost live geometry",
+                "External SDK apphost live geometry",
                 "external-startup-alpha",
                 "external startup beta");
             AssertContains(
@@ -213,6 +213,16 @@ internal static class Program
                 defaultItemsAppHostOutput,
                 "External SDK default-item Application.Run validation succeeded.",
                 "external SDK default-item apphost validation output");
+            string defaultItemsLiveGeometryOutput = RunAppHostLiveSwapChainProbe(
+                Path.Combine(defaultItemsOutputRoot, GetAppHostFileName(DefaultItemsAssemblyName)),
+                defaultItemsOutputRoot,
+                expectedLogicalWidth: 260,
+                expectedLogicalHeight: 140,
+                "External SDK default-item apphost live geometry");
+            AssertContains(
+                defaultItemsLiveGeometryOutput,
+                "External SDK default-item apphost live geometry validation succeeded:",
+                "external SDK default-item apphost live geometry validation output");
 
             Console.WriteLine("ProGPU WPF external SDK smoke succeeded.");
             return 0;
@@ -13365,7 +13375,7 @@ internal static class Program
                     }
 
                     StopLiveProbeProcess(process);
-                    return $"External SDK apphost live geometry validation succeeded: logical {expectedLogicalWidth}x{expectedLogicalHeight}, pixels {pixelWidth}x{pixelHeight}.";
+                    return $"{description} validation succeeded: logical {expectedLogicalWidth}x{expectedLogicalHeight}, pixels {pixelWidth}x{pixelHeight}.";
                 }
 
                 if (process.HasExited)

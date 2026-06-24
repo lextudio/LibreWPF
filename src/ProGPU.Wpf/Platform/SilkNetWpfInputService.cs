@@ -28,14 +28,47 @@ public sealed class SilkNetWpfInputService : IWpfInputService
 
         foreach (var mouse in inputContext.Mice)
         {
+            Vector2 lastPosition = mouse.Position;
+            bool hasLastPosition = IsFinite(lastPosition);
             Action<SilkInput.IMouse, Vector2> mouseMove = (_, position) =>
+            {
+                lastPosition = position;
+                hasLastPosition = IsFinite(position);
                 OnInputReceived(CreateMouseMoveEvent(position, ReadModifiers(inputContext)));
+            };
             Action<SilkInput.IMouse, SilkInput.MouseButton> mouseDown = (_, button) =>
-                OnInputReceived(CreateMouseButtonEvent(WpfInputEventKind.MouseDown, button, mouse.Position, ReadModifiers(inputContext)));
+            {
+                var position = ResolveMousePosition(mouse.Position, lastPosition, hasLastPosition);
+                if (IsFinite(position))
+                {
+                    lastPosition = position;
+                    hasLastPosition = true;
+                }
+
+                OnInputReceived(CreateMouseButtonEvent(WpfInputEventKind.MouseDown, button, position, ReadModifiers(inputContext)));
+            };
             Action<SilkInput.IMouse, SilkInput.MouseButton> mouseUp = (_, button) =>
-                OnInputReceived(CreateMouseButtonEvent(WpfInputEventKind.MouseUp, button, mouse.Position, ReadModifiers(inputContext)));
+            {
+                var position = ResolveMousePosition(mouse.Position, lastPosition, hasLastPosition);
+                if (IsFinite(position))
+                {
+                    lastPosition = position;
+                    hasLastPosition = true;
+                }
+
+                OnInputReceived(CreateMouseButtonEvent(WpfInputEventKind.MouseUp, button, position, ReadModifiers(inputContext)));
+            };
             Action<SilkInput.IMouse, SilkInput.ScrollWheel> scroll = (_, wheel) =>
-                OnInputReceived(CreateMouseWheelEvent(wheel.X, wheel.Y, mouse.Position, ReadModifiers(inputContext)));
+            {
+                var position = ResolveMousePosition(mouse.Position, lastPosition, hasLastPosition);
+                if (IsFinite(position))
+                {
+                    lastPosition = position;
+                    hasLastPosition = true;
+                }
+
+                OnInputReceived(CreateMouseWheelEvent(wheel.X, wheel.Y, position, ReadModifiers(inputContext)));
+            };
 
             mouse.MouseMove += mouseMove;
             mouse.MouseDown += mouseDown;
@@ -82,7 +115,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService
 
         return new WpfInputEventArgs(
             kind,
-            key: key == SilkInput.Key.Unknown ? null : key.ToString(),
+            key: TranslateKey(key),
             scanCode: scanCode,
             modifiers: modifiers);
     }
@@ -151,6 +184,48 @@ public sealed class SilkNetWpfInputService : IWpfInputService
         };
     }
 
+    public static string? TranslateKey(SilkInput.Key key)
+    {
+        if (key == SilkInput.Key.Unknown)
+        {
+            return null;
+        }
+
+        return key switch
+        {
+            SilkInput.Key.Backspace => "Back",
+            SilkInput.Key.ShiftLeft => "LeftShift",
+            SilkInput.Key.ShiftRight => "RightShift",
+            SilkInput.Key.ControlLeft => "LeftCtrl",
+            SilkInput.Key.ControlRight => "RightCtrl",
+            SilkInput.Key.AltLeft => "LeftAlt",
+            SilkInput.Key.AltRight => "RightAlt",
+            SilkInput.Key.SuperLeft => "LWin",
+            SilkInput.Key.SuperRight => "RWin",
+            SilkInput.Key.Number0 => "D0",
+            SilkInput.Key.Number1 => "D1",
+            SilkInput.Key.Number2 => "D2",
+            SilkInput.Key.Number3 => "D3",
+            SilkInput.Key.Number4 => "D4",
+            SilkInput.Key.Number5 => "D5",
+            SilkInput.Key.Number6 => "D6",
+            SilkInput.Key.Number7 => "D7",
+            SilkInput.Key.Number8 => "D8",
+            SilkInput.Key.Number9 => "D9",
+            SilkInput.Key.Keypad0 => "NumPad0",
+            SilkInput.Key.Keypad1 => "NumPad1",
+            SilkInput.Key.Keypad2 => "NumPad2",
+            SilkInput.Key.Keypad3 => "NumPad3",
+            SilkInput.Key.Keypad4 => "NumPad4",
+            SilkInput.Key.Keypad5 => "NumPad5",
+            SilkInput.Key.Keypad6 => "NumPad6",
+            SilkInput.Key.Keypad7 => "NumPad7",
+            SilkInput.Key.Keypad8 => "NumPad8",
+            SilkInput.Key.Keypad9 => "NumPad9",
+            _ => key.ToString()
+        };
+    }
+
     private static WpfInputModifiers ReadModifiers(SilkInput.IInputContext inputContext)
     {
         var modifiers = WpfInputModifiers.None;
@@ -184,6 +259,26 @@ public sealed class SilkNetWpfInputService : IWpfInputService
     private void OnInputReceived(WpfInputEventArgs args)
     {
         InputReceived?.Invoke(this, args);
+    }
+
+    internal static Vector2 ResolveMousePosition(
+        Vector2 currentPosition,
+        Vector2 lastPosition,
+        bool hasLastPosition)
+    {
+        if (hasLastPosition && IsFinite(lastPosition))
+        {
+            return lastPosition;
+        }
+
+        return IsFinite(currentPosition)
+            ? currentPosition
+            : Vector2.Zero;
+    }
+
+    private static bool IsFinite(Vector2 value)
+    {
+        return float.IsFinite(value.X) && float.IsFinite(value.Y);
     }
 
     private sealed class InputSubscription : IDisposable

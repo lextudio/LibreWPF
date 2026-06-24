@@ -22,6 +22,37 @@ public sealed class SilkNetWpfInputServiceTests
         Assert.Equal(WpfInputModifiers.Control | WpfInputModifiers.Shift, input.Modifiers);
     }
 
+    [Theory]
+    [InlineData(Key.Backspace, "Back")]
+    [InlineData(Key.Enter, "Enter")]
+    [InlineData(Key.Tab, "Tab")]
+    [InlineData(Key.Escape, "Escape")]
+    [InlineData(Key.Left, "Left")]
+    [InlineData(Key.Right, "Right")]
+    [InlineData(Key.Up, "Up")]
+    [InlineData(Key.Down, "Down")]
+    [InlineData(Key.F7, "F7")]
+    [InlineData(Key.Number1, "D1")]
+    [InlineData(Key.Keypad1, "NumPad1")]
+    [InlineData(Key.ShiftLeft, "LeftShift")]
+    [InlineData(Key.ShiftRight, "RightShift")]
+    [InlineData(Key.ControlLeft, "LeftCtrl")]
+    [InlineData(Key.ControlRight, "RightCtrl")]
+    [InlineData(Key.AltLeft, "LeftAlt")]
+    [InlineData(Key.AltRight, "RightAlt")]
+    [InlineData(Key.SuperLeft, "LWin")]
+    [InlineData(Key.SuperRight, "RWin")]
+    public void TranslateKeyMapsSilkNamesToPortableWpfKeyNames(Key silkKey, string expected)
+    {
+        Assert.Equal(expected, SilkNetWpfInputService.TranslateKey(silkKey));
+    }
+
+    [Fact]
+    public void TranslateKeyMapsUnknownToNull()
+    {
+        Assert.Null(SilkNetWpfInputService.TranslateKey(Key.Unknown));
+    }
+
     [Fact]
     public void CreateTextInputEventStoresCharacter()
     {
@@ -58,6 +89,39 @@ public sealed class SilkNetWpfInputServiceTests
         Assert.Equal(12, input.X);
         Assert.Equal(34, input.Y);
         Assert.Equal(WpfInputModifiers.Super, input.Modifiers);
+    }
+
+    [Fact]
+    public void ResolveMousePositionPrefersLastMouseMoveWhenAvailable()
+    {
+        var position = SilkNetWpfInputService.ResolveMousePosition(
+            currentPosition: Vector2.Zero,
+            lastPosition: new Vector2(120, 80),
+            hasLastPosition: true);
+
+        Assert.Equal(new Vector2(120, 80), position);
+    }
+
+    [Fact]
+    public void ResolveMousePositionUsesCurrentPositionBeforeFirstMouseMove()
+    {
+        var position = SilkNetWpfInputService.ResolveMousePosition(
+            currentPosition: new Vector2(42, 24),
+            lastPosition: Vector2.Zero,
+            hasLastPosition: false);
+
+        Assert.Equal(new Vector2(42, 24), position);
+    }
+
+    [Fact]
+    public void ResolveMousePositionFallsBackToZeroForInvalidPositions()
+    {
+        var position = SilkNetWpfInputService.ResolveMousePosition(
+            currentPosition: new Vector2(float.NaN, 24),
+            lastPosition: new Vector2(12, float.PositiveInfinity),
+            hasLastPosition: true);
+
+        Assert.Equal(Vector2.Zero, position);
     }
 
     [Fact]

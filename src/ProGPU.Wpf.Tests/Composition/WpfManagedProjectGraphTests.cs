@@ -8128,6 +8128,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DefaultItemsConvertedSelectionText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsMultiBindingText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("MultiBinding Converter", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsStatusTriggerStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<DataTrigger", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsTriggeredStatusText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsListBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsComboBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SelectedItem=\"{Binding SelectedItem, Mode=TwoWay}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -8139,6 +8142,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Default item text box source", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item validation rule", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Default item validated source", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item DataTrigger", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Default item trigger reset", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item converter binding", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item MultiBinding converter", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item collection binding item count", externalSdkHarnessProgram, StringComparison.Ordinal);

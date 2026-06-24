@@ -12480,6 +12480,22 @@ internal static class Program
                             x:Key="DefaultItemsItemNameConverter" />
                         <local:DefaultItemsStatusSelectionConverter
                             x:Key="DefaultItemsStatusSelectionConverter" />
+                        <Style
+                            x:Key="DefaultItemsStatusTriggerStyle"
+                            TargetType="{x:Type TextBlock}">
+                            <Setter
+                                Property="Tag"
+                                Value="default-item trigger inactive" />
+                            <Style.Triggers>
+                                <DataTrigger
+                                    Binding="{Binding Status}"
+                                    Value="Default item validated source">
+                                    <Setter
+                                        Property="Tag"
+                                        Value="default-item trigger active" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
                         <DataTemplate DataType="{x:Type local:DefaultItemsItem}">
                             <TextBlock
                                 x:Name="DefaultItemsImplicitTemplateText"
@@ -12551,6 +12567,10 @@ internal static class Program
                     <TextBlock
                         x:Name="DefaultItemsFormattedStatusText"
                         Text="{Binding Status, StringFormat=Formatted: {0}}" />
+                    <TextBlock
+                        x:Name="DefaultItemsTriggeredStatusText"
+                        Style="{StaticResource DefaultItemsStatusTriggerStyle}"
+                        Text="{Binding Status}" />
                     <ListBox
                         x:Name="DefaultItemsListBox"
                         DisplayMemberPath="Name"
@@ -12874,6 +12894,9 @@ internal static class Program
                         DefaultItemsFormattedStatusText.Text == "Formatted: Default item binding ready",
                         "Expected default-item formatted binding to read the view-model status.");
                     Require(
+                        string.Equals(DefaultItemsTriggeredStatusText.Tag as string, "default-item trigger inactive", StringComparison.Ordinal),
+                        "Expected default-item DataTrigger to start inactive.");
+                    Require(
                         DefaultItemsConvertedSelectionText.Text == "Selected: Default item alpha",
                         "Expected default-item converter binding to read the selected item.");
                     Require(
@@ -12899,6 +12922,9 @@ internal static class Program
                     Require(
                         DefaultItemsFormattedStatusText.Text == "Formatted: Default item binding updated",
                         "Expected default-item formatted binding to observe INotifyPropertyChanged.");
+                    Require(
+                        string.Equals(DefaultItemsTriggeredStatusText.Tag as string, "default-item trigger inactive", StringComparison.Ordinal),
+                        "Expected default-item DataTrigger to remain inactive for non-matching status.");
                     Require(
                         DefaultItemsMultiBindingText.Text == "Composite: Default item binding updated / Default item alpha",
                         "Expected default-item MultiBinding converter to observe status changes.");
@@ -12993,6 +13019,14 @@ internal static class Program
                     Require(
                         DefaultItemsBoundStatusText.Text == "Default item validated source",
                         "Expected default-item validation success to refresh sibling binding.");
+                    Require(
+                        string.Equals(DefaultItemsTriggeredStatusText.Tag as string, "default-item trigger active", StringComparison.Ordinal),
+                        "Expected default-item DataTrigger to activate after validated source update.");
+                    ViewModel.Status = "Default item trigger reset";
+                    DrainDispatcher();
+                    Require(
+                        string.Equals(DefaultItemsTriggeredStatusText.Tag as string, "default-item trigger inactive", StringComparison.Ordinal),
+                        "Expected default-item DataTrigger to exit after source change.");
 
                     var commandBinding = RequireType<CommandBinding>(
                         CommandBindings[0],

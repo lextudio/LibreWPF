@@ -118,14 +118,11 @@ public partial class MainWindow : Window
 
     private void OnSdkSwitchSmokeWindowLoaded(object sender, RoutedEventArgs e)
     {
-        if (Environment.GetEnvironmentVariable(LiveValidationEnvironmentVariable) == "1" &&
-            TryGetPortableActivationHost(out object? host) &&
-            host != null)
+        if (Environment.GetEnvironmentVariable(LiveValidationEnvironmentVariable) == "1")
         {
             var expectedLogicalWidth = ToExpectedLogicalDimension(Width, RenderSize.Width);
             var expectedLogicalHeight = ToExpectedLogicalDimension(Height, RenderSize.Height);
             _ = ValidateRequiredLiveRenderSurfaceGeometryAsync(
-                host,
                 expectedLogicalWidth,
                 expectedLogicalHeight);
             return;
@@ -187,7 +184,6 @@ public partial class MainWindow : Window
     }
 
     private async Task ValidateRequiredLiveRenderSurfaceGeometryAsync(
-        object liveHost,
         uint expectedLogicalWidth,
         uint expectedLogicalHeight)
     {
@@ -195,9 +191,16 @@ public partial class MainWindow : Window
         for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
         {
             await Task.Delay(LiveValidationRetryDelay).ConfigureAwait(false);
+            if (!TryGetPortableActivationHost(out object? liveHost) ||
+                liveHost == null)
+            {
+                continue;
+            }
+
             if (GetRequiredProperty(liveHost, "HasPresentedFrame") is not bool hasPresentedFrame ||
                 !hasPresentedFrame)
             {
+                WakeLiveRenderHost(liveHost);
                 continue;
             }
 
@@ -209,16 +212,21 @@ public partial class MainWindow : Window
 
             try
             {
-                string status = ValidateLiveRenderSurfaceGeometryCore(
+                string status = await InvokeWithLiveHostWakeAsync(
                     liveHost,
-                    expectedLogicalWidth,
-                    expectedLogicalHeight);
+                    () => ValidateLiveRenderSurfaceGeometryCore(
+                        liveHost,
+                        expectedLogicalWidth,
+                        expectedLogicalHeight),
+                    DispatcherPriority.Send);
                 LiveRenderSurfaceValidationCount++;
                 LiveRenderSurfaceValidationStatus = status;
                 Console.WriteLine($"ProGPU WPF SDK switch live geometry validation succeeded: {status}.");
+                string inputStatus = await ValidateLiveInputAsync(liveHost);
+                Console.WriteLine($"ProGPU WPF SDK switch live input validation succeeded: {status}; {inputStatus}.");
                 Environment.Exit(0);
             }
-            catch (Exception ex) when (ex is InvalidOperationException or MissingMemberException or MissingMethodException)
+            catch (Exception ex) when (ex is InvalidOperationException or MissingMemberException or MissingMethodException or TypeLoadException)
             {
                 Console.Error.WriteLine(ex.Message);
                 Environment.Exit(1);
@@ -227,6 +235,130 @@ public partial class MainWindow : Window
 
         Console.Error.WriteLine("Expected the SDK-switch smoke app to present a stable ProGPU frame before live geometry validation.");
         Environment.Exit(1);
+    }
+
+    private async Task<string> ValidateLiveInputAsync(object liveHost)
+    {
+        Button? actionButton = null;
+        TextBox? inputBox = null;
+        SmokeViewModel? viewModel = null;
+        Point inputPoint = new();
+        object? inputHit = null;
+        string lastTargetState = "not checked";
+
+        bool sentPointerInput = false;
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            sentPointerInput = await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () =>
+                {
+                    actionButton = Require<Button>("ActionButton");
+                    lastTargetState =
+                        $"ActionButton.IsVisible={actionButton.IsVisible}, " +
+                        $"ActionButton.ActualSize={actionButton.ActualWidth:0.###}x{actionButton.ActualHeight:0.###}, " +
+                        $"ActionButton.IsEnabled={actionButton.IsEnabled}, " +
+                        $"ActionButton.Focusable={actionButton.Focusable}, " +
+                        $"ActionButton.IsHitTestVisible={actionButton.IsHitTestVisible}";
+                    if (!actionButton.IsVisible ||
+                        actionButton.ActualWidth <= 1.0 ||
+                        actionButton.ActualHeight <= 1.0 ||
+                        !actionButton.IsEnabled ||
+                        !actionButton.IsHitTestVisible)
+                    {
+                        return false;
+                    }
+
+                    Point center = actionButton.TranslatePoint(
+                        new Point(Math.Max(1.0, actionButton.ActualWidth) / 2.0, Math.Max(1.0, actionButton.ActualHeight) / 2.0),
+                        this);
+                    object? hit = InputHitTest(center);
+                    lastTargetState += $", Input=({center.X:0.###}, {center.Y:0.###}), InputHitTest={DescribeInputElement(hit)}";
+                    if (hit == null)
+                    {
+                        return false;
+                    }
+
+                    ClickStatus.Text = "not clicked";
+                    inputPoint = center;
+                    inputHit = hit;
+                    RaiseHostInput(liveHost, "MouseMove", x: center.X, y: center.Y);
+                    RaiseHostInput(liveHost, "MouseDown", x: center.X, y: center.Y, button: "Left");
+                    RaiseHostInput(liveHost, "MouseUp", x: center.X, y: center.Y, button: "Left");
+                    return true;
+                },
+                DispatcherPriority.Send);
+            if (sentPointerInput)
+            {
+                break;
+            }
+
+            await Task.Delay(LiveValidationRetryDelay).ConfigureAwait(false);
+        }
+
+        if (!sentPointerInput)
+        {
+            throw new InvalidOperationException(
+                $"Expected SDK-switch live ActionButton to become visible and hit-testable before injecting input, but last state was: {lastTargetState}.");
+        }
+
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                AssertEqual("clicked", ClickStatus.Text, "SDK-switch live ActionButton click status");
+
+                inputBox = Require<TextBox>("InputBox");
+                viewModel = Require<SmokeViewModel>(DataContext as SmokeViewModel, "SDK-switch live input view model");
+                inputBox.Text = string.Empty;
+                inputBox.CaretIndex = 0;
+                inputBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+                Keyboard.Focus(inputBox);
+                if (!ReferenceEquals(Keyboard.FocusedElement, inputBox))
+                {
+                    throw new InvalidOperationException(
+                        $"Expected SDK-switch live input setup to focus InputBox, but focused '{DescribeInputElement(Keyboard.FocusedElement)}'. " +
+                        $"MouseInput=({inputPoint.X:0.###}, {inputPoint.Y:0.###}), " +
+                        $"MouseInputHitTest={DescribeInputElement(inputHit)}.");
+                }
+
+                foreach (char character in "Sdk")
+                {
+                    string key = char.ToUpperInvariant(character).ToString();
+                    RaiseHostInput(liveHost, "KeyDown", key: key);
+                    RaiseHostInput(liveHost, "TextInput", character: character);
+                    RaiseHostInput(liveHost, "KeyUp", key: key);
+                }
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        int commandCountBefore = await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                AssertEqual("Sdk", Require<TextBox>(inputBox, "SDK-switch live InputBox").Text, "SDK-switch live TextBox text after host text input");
+                AssertEqual("Sdk", Require<SmokeViewModel>(viewModel, "SDK-switch live input view model").InputText, "SDK-switch live view-model source after host text input");
+
+                int before = SmokeCommandExecutionCount;
+                RaiseHostInput(liveHost, "KeyDown", key: "F6", modifiers: "Control");
+                RaiseHostInput(liveHost, "KeyUp", key: "F6", modifiers: "Control");
+                return before;
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        return await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                AssertEqual(commandCountBefore + 1, SmokeCommandExecutionCount, "SDK-switch live Ctrl+F6 KeyBinding execution count");
+                AssertEqual("input binding payload", LastSmokeCommandParameter, "SDK-switch live Ctrl+F6 KeyBinding command parameter");
+                AssertEqual("input binding payload", CommandStatus.Text, "SDK-switch live command status text");
+                return "mouse button click, TextBox text input, and Ctrl+F6 KeyBinding updated";
+            },
+            DispatcherPriority.Send);
     }
 
     private static string ValidateLiveRenderSurfaceGeometryCore(
@@ -310,6 +442,149 @@ public partial class MainWindow : Window
         }
 
         return $"logical {logicalWidth}x{logicalHeight}, pixels {pixelWidth}x{pixelHeight}, viewport {viewportWidth}x{viewportHeight}@{viewportX},{viewportY}, dpi {dpiScale:0.###}";
+    }
+
+    private async Task InvokeWithLiveHostWakeAsync(
+        object liveHost,
+        Action callback,
+        DispatcherPriority priority)
+    {
+        if (Dispatcher.CheckAccess())
+        {
+            callback();
+            return;
+        }
+
+        DispatcherOperation operation = Dispatcher.InvokeAsync(callback, priority);
+        WakeLiveRenderHost(liveHost);
+        await operation;
+    }
+
+    private async Task<T> InvokeWithLiveHostWakeAsync<T>(
+        object liveHost,
+        Func<T> callback,
+        DispatcherPriority priority)
+    {
+        if (Dispatcher.CheckAccess())
+        {
+            return callback();
+        }
+
+        DispatcherOperation<T> operation = Dispatcher.InvokeAsync(callback, priority);
+        WakeLiveRenderHost(liveHost);
+        return await operation;
+    }
+
+    private static void WakeLiveRenderHost(object liveHost)
+    {
+        object scheduler = GetRequiredProperty(liveHost, "WpfRenderScheduler");
+        MethodInfo requestRender = scheduler.GetType().GetMethod(
+            "RequestRender",
+            BindingFlags.Instance | BindingFlags.Public,
+            binder: null,
+            types: Type.EmptyTypes,
+            modifiers: null)
+            ?? throw new MissingMethodException(scheduler.GetType().FullName, "RequestRender");
+        requestRender.Invoke(scheduler, null);
+
+        MethodInfo? requestNativeLoopWakeup = liveHost.GetType().GetMethod(
+            "TryRequestNativeLoopWakeup",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            types: Type.EmptyTypes,
+            modifiers: null);
+        requestNativeLoopWakeup?.Invoke(liveHost, null);
+    }
+
+    private static void RaiseHostInput(
+        object liveHost,
+        string kind,
+        string? key = null,
+        char? character = null,
+        double x = 0.0,
+        double y = 0.0,
+        string button = "None",
+        string modifiers = "None")
+    {
+        object input = CreateWpfInputEventArgs(liveHost, kind, key, character, x, y, button, modifiers);
+        MethodInfo method = liveHost.GetType().GetMethod(
+            "OnPlatformInputReceived",
+            BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new MissingMethodException(liveHost.GetType().FullName, "OnPlatformInputReceived");
+        method.Invoke(liveHost, new object?[] { null, input });
+    }
+
+    private static object CreateWpfInputEventArgs(
+        object liveHost,
+        string kind,
+        string? key,
+        char? character,
+        double x,
+        double y,
+        string button,
+        string modifiers)
+    {
+        Assembly assembly = liveHost.GetType().Assembly;
+        Type inputType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfInputEventArgs", throwOnError: true)
+            ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfInputEventArgs");
+        Type kindType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfInputEventKind", throwOnError: true)
+            ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfInputEventKind");
+        Type buttonType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfMouseButton", throwOnError: true)
+            ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfMouseButton");
+        Type modifiersType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfInputModifiers", throwOnError: true)
+            ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfInputModifiers");
+
+        return Activator.CreateInstance(
+            inputType,
+            Enum.Parse(kindType, kind),
+            key,
+            0,
+            character.HasValue ? character.Value : null,
+            x,
+            y,
+            0.0,
+            0.0,
+            Enum.Parse(buttonType, button),
+            Enum.Parse(modifiersType, modifiers))
+            ?? throw new InvalidOperationException("Expected WpfInputEventArgs construction to succeed.");
+    }
+
+    private T Require<T>(string name)
+        where T : class
+    {
+        return FindName(name) as T
+            ?? throw new InvalidOperationException($"Expected {name} to be a {typeof(T).Name}.");
+    }
+
+    private static T Require<T>(T? value, string description)
+        where T : class
+    {
+        return value
+            ?? throw new InvalidOperationException($"Expected {description} to be a {typeof(T).Name}.");
+    }
+
+    private static string DescribeInputElement(object? element)
+    {
+        if (element == null)
+        {
+            return "<null>";
+        }
+
+        if (element is FrameworkElement frameworkElement && !string.IsNullOrEmpty(frameworkElement.Name))
+        {
+            return $"{element.GetType().Name}#{frameworkElement.Name}";
+        }
+
+        return element.GetType().Name;
+    }
+
+    private static void AssertEqual<T>(T expected, T actual, string description)
+    {
+        if (!Equals(expected, actual))
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to be '{expected}' but was '{actual}'.");
+        }
     }
 
     private void ScheduleLiveRenderSurfaceValidation()

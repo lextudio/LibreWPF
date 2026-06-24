@@ -44,7 +44,7 @@ if [[ ! -x "${sdk_switch_output}/${sdk_switch_apphost_name}" ]]; then
   exit 1
 fi
 
-echo "Running SDK-switch smoke apphost live geometry probe..."
+echo "Running SDK-switch smoke apphost live input probe..."
 (
   cd "${sdk_switch_output}"
   PROGPU_WPF_SDK_SWITCH_LIVE_VALIDATE=1 "./${sdk_switch_apphost_name}"

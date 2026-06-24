@@ -7225,7 +7225,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGPU.Wpf.SdkSwitchSmoke.csproj", mvpQuickCheckScript, StringComparison.Ordinal);
         Assert.Contains("sdk_switch_output=\"${repo_root}/artifacts/bin/ProGPU.Wpf.SdkSwitchSmoke/Debug/net11.0-windows\"", mvpQuickCheckScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_SDK_SWITCH_LIVE_VALIDATE=1", mvpQuickCheckScript, StringComparison.Ordinal);
-        Assert.Contains("Running SDK-switch smoke apphost live geometry probe", mvpQuickCheckScript, StringComparison.Ordinal);
+        Assert.Contains("Running SDK-switch smoke apphost live input probe", mvpQuickCheckScript, StringComparison.Ordinal);
         Assert.Contains("Running Hello SDK apphost Application.Run self-test", mvpQuickCheckScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_HELLO_RUN_VALIDATE=1", mvpQuickCheckScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_HELLO_LIVE_VALIDATE=1", mvpQuickCheckScript, StringComparison.Ordinal);
@@ -7852,6 +7852,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryGetLiveFramebufferSize(liveHost, out var framebufferWidth, out var framebufferHeight)", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"live ProGPU WPF physical framebuffer width\"", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Console.WriteLine($\"ProGPU WPF SDK switch live geometry validation succeeded:", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLiveInputAsync", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGPU WPF SDK switch live input validation succeeded:", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RaiseHostInput(liveHost, \"MouseDown\"", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RaiseHostInput(liveHost, \"TextInput\"", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RaiseHostInput(liveHost, \"KeyDown\", key: \"F6\", modifiers: \"Control\")", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertEqual(\"Sdk\", Require<TextBox>(inputBox, \"SDK-switch live InputBox\").Text", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SDK-switch live Ctrl+F6 KeyBinding execution count", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Environment.Exit(0);", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public static RoutedUICommand SmokeCommand", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnActionButtonClick", smokeMainWindowCodeBehind, StringComparison.Ordinal);

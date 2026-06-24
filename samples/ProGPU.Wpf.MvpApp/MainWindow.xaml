@@ -693,6 +693,16 @@
                             Margin="0,0,0,8"
                             Text="{Binding NullDisplayText, TargetNullValue=Target null text}" />
                         <TextBlock
+                            x:Name="BindingTargetUpdatedText"
+                            Margin="0,0,0,8"
+                            Binding.TargetUpdated="OnMvpBindingTargetUpdated"
+                            Text="{Binding BindingTransferText, NotifyOnTargetUpdated=True}" />
+                        <TextBox
+                            x:Name="BindingSourceUpdatedTextBox"
+                            Margin="0,0,0,8"
+                            Binding.SourceUpdated="OnMvpBindingSourceUpdated"
+                            Text="{Binding BindingTransferText, Mode=TwoWay, UpdateSourceTrigger=Explicit, NotifyOnSourceUpdated=True}" />
+                        <TextBlock
                             x:Name="RelativeSelfBindingText"
                             Margin="0,0,0,8"
                             Tag="Self binding text"
@@ -721,7 +731,7 @@
                             <TextBlock
                                 Margin="0,8,0,0"
                                 TextWrapping="Wrap"
-                                Text="This tab uses PriorityBinding, FallbackValue, TargetNullValue, and RelativeSource bindings through SDK-built BAML." />
+                                Text="This tab uses PriorityBinding, FallbackValue, TargetNullValue, binding transfer events, and RelativeSource bindings through SDK-built BAML." />
                         </StackPanel>
                     </Border>
                 </Grid>

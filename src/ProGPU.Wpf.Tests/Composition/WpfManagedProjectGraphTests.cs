@@ -6357,6 +6357,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("FallbackValue=Fallback binding text", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"TargetNullBindingText\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("TargetNullValue=Target null text", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"BindingTargetUpdatedText\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Binding.TargetUpdated=\"OnMvpBindingTargetUpdated\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("BindingTransferText, NotifyOnTargetUpdated=True", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"BindingSourceUpdatedTextBox\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Binding.SourceUpdated=\"OnMvpBindingSourceUpdated\"", mvpMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("BindingTransferText, Mode=TwoWay, UpdateSourceTrigger=Explicit, NotifyOnSourceUpdated=True", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"RelativeSelfBindingText\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("RelativeSource={RelativeSource Self}, Path=Tag", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"RelativeAncestorBindingText\"", mvpMainWindowXaml, StringComparison.Ordinal);
@@ -6660,6 +6666,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("OnActiveOnlyFilterChanged", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RefreshItemsView", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ShowActiveOnly", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("internal int BindingTargetUpdatedCount", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnMvpBindingTargetUpdated", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("internal int BindingSourceUpdatedCount", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnMvpBindingSourceUpdated", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public string BindingTransferText", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SourceUpdated binding source value", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MvpActiveTextConverter : IValueConverter", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MvpItemSummaryConverter : IMultiValueConverter", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MvpItemTemplateSelector : DataTemplateSelector", mvpMainWindowCodeBehind, StringComparison.Ordinal);

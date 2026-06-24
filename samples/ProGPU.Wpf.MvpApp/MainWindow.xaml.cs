@@ -52,6 +52,18 @@ public partial class MainWindow : Window
 
     internal bool LastClipboardIsCurrent { get; private set; }
 
+    internal int BindingTargetUpdatedCount { get; private set; }
+
+    internal string? LastBindingTargetUpdatedName { get; private set; }
+
+    internal string? LastBindingTargetUpdatedPropertyName { get; private set; }
+
+    internal int BindingSourceUpdatedCount { get; private set; }
+
+    internal string? LastBindingSourceUpdatedName { get; private set; }
+
+    internal string? LastBindingSourceUpdatedPropertyName { get; private set; }
+
     internal int SelectorSelectionChangedCount { get; private set; }
 
     internal int MultiSelectorSelectionChangedCount { get; private set; }
@@ -352,6 +364,20 @@ public partial class MainWindow : Window
         }
 
         RefreshItemsView();
+    }
+
+    private void OnMvpBindingTargetUpdated(object sender, DataTransferEventArgs e)
+    {
+        BindingTargetUpdatedCount++;
+        LastBindingTargetUpdatedName = GetElementName(e.TargetObject);
+        LastBindingTargetUpdatedPropertyName = e.Property?.Name;
+    }
+
+    private void OnMvpBindingSourceUpdated(object sender, DataTransferEventArgs e)
+    {
+        BindingSourceUpdatedCount++;
+        LastBindingSourceUpdatedName = GetElementName(e.TargetObject);
+        LastBindingSourceUpdatedPropertyName = e.Property?.Name;
     }
 
     private void RefreshItemsView()
@@ -739,6 +765,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDataErrorInfo, INot
     private string _bindingGroupFirstName = "group: Ada";
     private string _bindingGroupLastName = "group: Lovelace";
     private string _bindingGroupStatus = "Group ready";
+    private string _bindingTransferText = "Transfer initial";
     private DateTime? _selectedDate = new(2026, 6, 23);
     private int _selectedTabIndex;
     private string? _nullDisplayText;
@@ -873,6 +900,12 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDataErrorInfo, INot
         set => SetField(ref _bindingGroupStatus, value);
     }
 
+    public string BindingTransferText
+    {
+        get => _bindingTransferText;
+        set => SetField(ref _bindingTransferText, value);
+    }
+
     public DateTime? SelectedDate
     {
         get => _selectedDate;
@@ -988,6 +1021,7 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDataErrorInfo, INot
         BindingGroupFirstName = "group: Ada";
         BindingGroupLastName = "group: Lovelace";
         BindingGroupStatus = "Group ready";
+        BindingTransferText = "Transfer initial";
         SelectedDate = new DateTime(2026, 6, 23);
         SelectedTabIndex = 0;
         NullDisplayText = null;
@@ -1422,6 +1456,12 @@ internal static class MvpSelfTest
         var targetNullBindingText = Require<TextBlock>(
             window.FindName("TargetNullBindingText"),
             "target-null binding TextBlock");
+        var bindingTargetUpdatedText = Require<TextBlock>(
+            window.FindName("BindingTargetUpdatedText"),
+            "binding TargetUpdated TextBlock");
+        var bindingSourceUpdatedTextBox = Require<TextBox>(
+            window.FindName("BindingSourceUpdatedTextBox"),
+            "binding SourceUpdated TextBox");
         var relativeSelfBindingText = Require<TextBlock>(
             window.FindName("RelativeSelfBindingText"),
             "relative self binding TextBlock");
@@ -2020,6 +2060,8 @@ internal static class MvpSelfTest
             priorityBindingText,
             fallbackBindingText,
             targetNullBindingText,
+            bindingTargetUpdatedText,
+            bindingSourceUpdatedTextBox,
             relativeSelfBindingText,
             relativeAncestorBorder,
             relativeAncestorBindingText);
@@ -2837,11 +2879,13 @@ internal static class MvpSelfTest
     }
 
     private static void ValidateBindingFallbacks(
-        Window window,
+        MainWindow window,
         MainViewModel viewModel,
         TextBlock priorityText,
         TextBlock fallbackText,
         TextBlock targetNullText,
+        TextBlock bindingTargetUpdatedText,
+        TextBox bindingSourceUpdatedTextBox,
         TextBlock relativeSelfText,
         Border relativeAncestorBorder,
         TextBlock relativeAncestorText)
@@ -2869,6 +2913,23 @@ internal static class MvpSelfTest
         AssertEqual("NullDisplayText", targetNullBinding.Path.Path, "target-null binding path");
         AssertEqual("Target null text", targetNullBinding.TargetNullValue, "target-null binding value");
 
+        var targetUpdatedBinding = Require<Binding>(
+            BindingOperations.GetBinding(bindingTargetUpdatedText, TextBlock.TextProperty),
+            "TargetUpdated TextBlock binding");
+        AssertEqual("BindingTransferText", targetUpdatedBinding.Path.Path, "TargetUpdated binding path");
+        AssertEqual(true, targetUpdatedBinding.NotifyOnTargetUpdated, "TargetUpdated binding notification flag");
+
+        var sourceUpdatedBinding = Require<Binding>(
+            BindingOperations.GetBinding(bindingSourceUpdatedTextBox, TextBox.TextProperty),
+            "SourceUpdated TextBox binding");
+        AssertEqual("BindingTransferText", sourceUpdatedBinding.Path.Path, "SourceUpdated binding path");
+        AssertEqual(BindingMode.TwoWay, sourceUpdatedBinding.Mode, "SourceUpdated binding mode");
+        AssertEqual(UpdateSourceTrigger.Explicit, sourceUpdatedBinding.UpdateSourceTrigger, "SourceUpdated trigger mode");
+        AssertEqual(true, sourceUpdatedBinding.NotifyOnSourceUpdated, "SourceUpdated binding notification flag");
+        var sourceUpdatedExpression = Require<BindingExpression>(
+            bindingSourceUpdatedTextBox.GetBindingExpression(TextBox.TextProperty),
+            "SourceUpdated TextBox binding expression");
+
         var selfBinding = Require<Binding>(
             BindingOperations.GetBinding(relativeSelfText, TextBlock.TextProperty),
             "relative self binding");
@@ -2892,8 +2953,34 @@ internal static class MvpSelfTest
         AssertEqual("Alpha", priorityText.Text, "initial priority binding text");
         AssertEqual("Fallback binding text", fallbackText.Text, "fallback binding text");
         AssertEqual("Target null text", targetNullText.Text, "target-null binding text");
+        AssertEqual("Transfer initial", bindingTargetUpdatedText.Text, "initial TargetUpdated binding text");
+        AssertEqual("Transfer initial", bindingSourceUpdatedTextBox.Text, "initial SourceUpdated binding text");
+        AssertGreaterThan(0, window.BindingTargetUpdatedCount, "initial TargetUpdated handler count");
+        AssertEqual("BindingTargetUpdatedText", window.LastBindingTargetUpdatedName, "initial TargetUpdated target name");
+        AssertEqual(nameof(TextBlock.Text), window.LastBindingTargetUpdatedPropertyName, "initial TargetUpdated target property");
         AssertEqual("Self binding text", relativeSelfText.Text, "relative self binding text");
         AssertEqual("Ancestor binding text", relativeAncestorText.Text, "relative ancestor binding text");
+
+        int targetUpdatedCountBeforeTransferChange = window.BindingTargetUpdatedCount;
+        viewModel.BindingTransferText = "Transfer from source";
+        DrainDispatcher(window);
+        AssertEqual("Transfer from source", bindingTargetUpdatedText.Text, "source-changed TargetUpdated binding text");
+        AssertGreaterThan(
+            targetUpdatedCountBeforeTransferChange,
+            window.BindingTargetUpdatedCount,
+            "source-changed TargetUpdated handler count");
+
+        int sourceUpdatedCountBeforeExplicitUpdate = window.BindingSourceUpdatedCount;
+        bindingSourceUpdatedTextBox.Text = "Transfer from target";
+        sourceUpdatedExpression.UpdateSource();
+        DrainDispatcher(window);
+        AssertEqual("Transfer from target", viewModel.BindingTransferText, "SourceUpdated binding source value");
+        AssertGreaterThan(
+            sourceUpdatedCountBeforeExplicitUpdate,
+            window.BindingSourceUpdatedCount,
+            "explicit SourceUpdated handler count");
+        AssertEqual("BindingSourceUpdatedTextBox", window.LastBindingSourceUpdatedName, "SourceUpdated target name");
+        AssertEqual(nameof(TextBox.Text), window.LastBindingSourceUpdatedPropertyName, "SourceUpdated target property");
 
         viewModel.NullDisplayText = "Non-null binding text";
         DrainDispatcher(window);

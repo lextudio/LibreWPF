@@ -1017,9 +1017,10 @@ public partial class MainWindow : Window
 
         string controlMouseStatus = await ValidateLiveControlMouseInputAsync(liveHost);
         string mouseBindingStatus = await ValidateLiveMouseBindingAsync(liveHost);
+        string discreteControlStatus = await ValidateLiveDiscreteInputControlsAsync(liveHost);
         string keyboardNavigationStatus = await ValidateLiveKeyboardNavigationAsync(liveHost);
         string wheelAndCaptureStatus = await ValidateLiveWheelAndCaptureInputAsync(liveHost);
-        return $"{textInputStatus}; {controlMouseStatus}; {mouseBindingStatus}; {keyboardNavigationStatus}; {wheelAndCaptureStatus}";
+        return $"{textInputStatus}; {controlMouseStatus}; {mouseBindingStatus}; {discreteControlStatus}; {keyboardNavigationStatus}; {wheelAndCaptureStatus}";
     }
 
     private async Task<string> ValidateLiveControlMouseInputAsync(object liveHost)
@@ -1124,6 +1125,126 @@ public partial class MainWindow : Window
                 AssertEqual(true, model.ActionsEnabled, "MVP live Actions CheckBox restored view-model state");
                 AssertEqual(true, checkBox.IsChecked == true, "MVP live Actions CheckBox restored checked state");
                 return "Add item Button and Actions CheckBox mouse clicks updated WPF command/binding state";
+            },
+            DispatcherPriority.Send);
+    }
+
+    private async Task<string> ValidateLiveDiscreteInputControlsAsync(object liveHost)
+    {
+        RadioButton? frameworkRadioButton = null;
+        RadioButton? renderingRadioButton = null;
+        RepeatButton? inputRepeatButton = null;
+        MainViewModel? viewModel = null;
+        int radioEventsBefore = 0;
+        int repeatClicksBefore = 0;
+        string lastTargetState = "not checked";
+
+        bool sentRenderingClick = false;
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            sentRenderingClick = await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () =>
+                {
+                    var tabControl = Require<TabControl>(FindName("MvpTabControl"), "MVP live discrete controls TabControl");
+                    tabControl.SelectedIndex = 4;
+                    UpdateLayout();
+
+                    frameworkRadioButton = Require<RadioButton>(
+                        FindName("FrameworkRadioButton"),
+                        "MVP live Framework RadioButton");
+                    renderingRadioButton = Require<RadioButton>(
+                        FindName("RenderingRadioButton"),
+                        "MVP live Rendering RadioButton");
+                    inputRepeatButton = Require<RepeatButton>(
+                        FindName("InputRepeatButton"),
+                        "MVP live input RepeatButton");
+                    viewModel = Require<MainViewModel>(DataContext, "MVP live discrete controls view model");
+
+                    frameworkRadioButton.IsChecked = true;
+                    UpdateLayout();
+                    radioEventsBefore = CategoryRadioCheckedCount;
+                    repeatClicksBefore = InputRepeatButtonClickCount;
+
+                    return TryRaiseLiveMouseClick(
+                        liveHost,
+                        renderingRadioButton,
+                        "RenderingRadioButton",
+                        out lastTargetState);
+                },
+                DispatcherPriority.Send);
+            if (sentRenderingClick)
+            {
+                break;
+            }
+
+            await Task.Delay(LiveValidationRetryDelay);
+        }
+
+        if (!sentRenderingClick)
+        {
+            throw new InvalidOperationException(
+                $"Expected MVP live Rendering RadioButton to become clickable before injecting input, but last state was: {lastTargetState}.");
+        }
+
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                var model = Require<MainViewModel>(viewModel, "MVP live discrete controls view model after Rendering click");
+                AssertEqual(false, Require<RadioButton>(frameworkRadioButton, "MVP live Framework RadioButton after Rendering click").IsChecked == true, "MVP live Framework RadioButton unchecked by host click");
+                AssertEqual(true, Require<RadioButton>(renderingRadioButton, "MVP live Rendering RadioButton after host click").IsChecked == true, "MVP live Rendering RadioButton checked by host click");
+                AssertEqual("RenderingRadioButton", LastCategoryRadioName, "MVP live Rendering RadioButton checked sender");
+                AssertEqual("Rendering", model.SelectedCategory, "MVP live Rendering RadioButton selected category");
+                AssertLiveGreaterThan(radioEventsBefore, CategoryRadioCheckedCount, "MVP live RadioButton checked event count after Rendering click");
+
+                if (!TryRaiseLiveMouseClick(
+                    liveHost,
+                    Require<RadioButton>(frameworkRadioButton, "MVP live Framework RadioButton before restore click"),
+                    "FrameworkRadioButton",
+                    out lastTargetState))
+                {
+                    throw new InvalidOperationException(
+                        $"Expected MVP live Framework RadioButton to be clickable before restoring category, but state was: {lastTargetState}.");
+                }
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                var model = Require<MainViewModel>(viewModel, "MVP live discrete controls view model after Framework click");
+                AssertEqual(true, Require<RadioButton>(frameworkRadioButton, "MVP live Framework RadioButton after restore click").IsChecked == true, "MVP live Framework RadioButton restored by host click");
+                AssertEqual(false, Require<RadioButton>(renderingRadioButton, "MVP live Rendering RadioButton after restore click").IsChecked == true, "MVP live Rendering RadioButton unchecked by restore click");
+                AssertEqual("FrameworkRadioButton", LastCategoryRadioName, "MVP live Framework RadioButton checked sender");
+                AssertEqual("Framework", model.SelectedCategory, "MVP live Framework RadioButton selected category");
+
+                if (!TryRaiseLiveMouseClick(
+                    liveHost,
+                    Require<RepeatButton>(inputRepeatButton, "MVP live input RepeatButton before host click"),
+                    "InputRepeatButton",
+                    out lastTargetState))
+                {
+                    throw new InvalidOperationException(
+                        $"Expected MVP live input RepeatButton to be clickable before injecting input, but state was: {lastTargetState}.");
+                }
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        return await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                AssertEqual(
+                    repeatClicksBefore + 1,
+                    InputRepeatButtonClickCount,
+                    "MVP live RepeatButton host click count");
+                return "RadioButton group selection and RepeatButton click updated through host mouse input";
             },
             DispatcherPriority.Send);
     }

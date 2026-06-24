@@ -7230,6 +7230,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("MVP live routed MouseBinding command refresh count", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DescribeLiveMouseBindingEvent", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LeftDoubleClick MouseBinding routed command through host mouse input", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLiveDiscreteInputControlsAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"RenderingRadioButton\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("\"InputRepeatButton\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RadioButton group selection and RepeatButton click updated through host mouse input", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("MouseWheel=\"OnSelectorScrollViewerMouseWheel\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SelectorScrollViewer.AddHandler(MouseWheelEvent", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveWheelAndCaptureInputAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);

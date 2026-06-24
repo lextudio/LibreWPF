@@ -2835,6 +2835,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled CanExecute command disabled button state", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidatePostShowCommandManagerRequery(", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("() => FlushDispatcherOperations(activationServiceType, window, \"Background\")", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("method.GetParameters().Length == 2", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Type dispatcherPriorityType = flushMethod.GetParameters()[1].ParameterType", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetField(window, \"RequeryCommandButton\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetProperty(dataContext, \"RequeryCommand\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Input.CommandManager", harnessProgram, StringComparison.Ordinal);
@@ -2923,6 +2925,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled style MultiDataTrigger partial-condition opacity", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled style MultiDataTrigger EnterActions opacity", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled style MultiDataTrigger ExitActions opacity", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RegisterPortableMessageBox(presentationFramework)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("(Func<object, object>)ShowPortableMessageBox", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("return GetProperty(request, \"FallbackResult\");", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ClearPortableService(presentationFramework, PortableMessageBoxServiceTypeName)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Storyboard target Loaded handler count", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled Storyboard target Loaded routed event name", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMarkupExtension(window)", harnessProgram, StringComparison.Ordinal);
@@ -6150,6 +6156,14 @@ public sealed class WpfManagedProjectGraphTests
             Assert.Contains($"src/Microsoft.DotNet.Wpf/src/Themes/{themeAssembly}/{themeAssembly}.csproj", sdkCiScript, StringComparison.Ordinal);
         }
         Assert.Contains("src/Microsoft.DotNet.Wpf/src/System.Windows.Controls.Ribbon/System.Windows.Controls.Ribbon.csproj", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("Building real WPF compiled XAML harness", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("src/ProGPU.Wpf.RealXamlCompilerHarness/ProGPU.Wpf.RealXamlCompilerHarness.csproj\" -c Release", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("Running real WPF XAML runtime harness", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("src/ProGPU.Wpf.RealXamlRuntimeHarness/ProGPU.Wpf.RealXamlRuntimeHarness.csproj\" -c Release", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("Running real WPF Application.Run harness", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("src/ProGPU.Wpf.RealApplicationRunHarness/ProGPU.Wpf.RealApplicationRunHarness.csproj\" -c Release", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("Running real WPF Fluent theme runtime harness", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("src/ProGPU.Wpf.RealThemeRuntimeHarness/ProGPU.Wpf.RealThemeRuntimeHarness.csproj\" -c Release", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/ProGPU.Wpf/ProGPU.Wpf.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj", sdkCiScript, StringComparison.Ordinal);

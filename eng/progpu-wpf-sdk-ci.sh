@@ -92,6 +92,18 @@ build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Luna/Pr
 build_project "src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Royale/PresentationFramework.Royale.csproj"
 build_project "src/Microsoft.DotNet.Wpf/src/System.Windows.Controls.Ribbon/System.Windows.Controls.Ribbon.csproj"
 
+echo "Building real WPF compiled XAML harness..."
+run_dotnet build "${repo_root}/src/ProGPU.Wpf.RealXamlCompilerHarness/ProGPU.Wpf.RealXamlCompilerHarness.csproj" -c Release -v:minimal
+
+echo "Running real WPF XAML runtime harness..."
+run_dotnet run --project "${repo_root}/src/ProGPU.Wpf.RealXamlRuntimeHarness/ProGPU.Wpf.RealXamlRuntimeHarness.csproj" -c Release -v:minimal
+
+echo "Running real WPF Application.Run harness..."
+run_dotnet run --project "${repo_root}/src/ProGPU.Wpf.RealApplicationRunHarness/ProGPU.Wpf.RealApplicationRunHarness.csproj" -c Release -v:minimal
+
+echo "Running real WPF Fluent theme runtime harness..."
+run_dotnet run --project "${repo_root}/src/ProGPU.Wpf.RealThemeRuntimeHarness/ProGPU.Wpf.RealThemeRuntimeHarness.csproj" -c Release -v:minimal
+
 echo "Packing WPF transport, ProGPU bridge, and custom SDK..."
 pack_project "packaging/Microsoft.DotNet.Wpf.GitHub/Microsoft.DotNet.Wpf.GitHub.ArchNeutral.csproj" "Microsoft.DotNet.Wpf.GitHub"
 pack_project "src/ProGPU.Wpf/ProGPU.Wpf.csproj" "ProGPU.Wpf"

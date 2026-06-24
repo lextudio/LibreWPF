@@ -142,6 +142,7 @@ internal static class Program
             ValidatePortableTextInputActivation(presentationCore, activation, window);
             ValidatePortableMouseClickActivation(presentationCore, activation, window);
             ValidatePortableMouseWheelActivation(presentationCore, activation, window);
+            RegisterPortableMessageBox(presentationFramework);
             ValidatePortableMessageBox(presentationFramework, window);
         }
         finally
@@ -5916,6 +5917,28 @@ internal static class Program
         AssertEqual(ok, ownerResult, "portable MessageBox owner fallback result");
     }
 
+    private static void RegisterPortableMessageBox(Assembly presentationFramework)
+    {
+        Type serviceType = GetRequiredType(presentationFramework, PortableMessageBoxServiceTypeName);
+        MethodInfo register = serviceType.GetMethod(
+                "Register",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: new[] { typeof(Func<object, object>) },
+                modifiers: null)
+            ?? throw new MissingMethodException(serviceType.FullName, "Register");
+
+        register.Invoke(
+            null,
+            new object[] { (Func<object, object>)ShowPortableMessageBox });
+        AssertEqual(true, GetStaticProperty(serviceType, "IsEnabled"), "portable MessageBox service enabled");
+    }
+
+    private static object ShowPortableMessageBox(object request)
+    {
+        return GetProperty(request, "FallbackResult");
+    }
+
     private static void ValidatePortableClipboard(Assembly presentationCore)
     {
         Type serviceType = GetRequiredType(presentationCore, PortableClipboardServiceTypeName);
@@ -6022,9 +6045,10 @@ internal static class Program
 
     private static void FlushDispatcherOperations(Type activationServiceType, object window, params string[] markerPriorityNames)
     {
-        MethodInfo flushMethod = activationServiceType.GetMethod(
-            "FlushDispatcherOperations",
-            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+        MethodInfo flushMethod = activationServiceType.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            .SingleOrDefault(static method =>
+                method.Name == "FlushDispatcherOperations" &&
+                method.GetParameters().Length == 2)
             ?? throw new MissingMethodException(activationServiceType.FullName, "FlushDispatcherOperations");
         Type dispatcherPriorityType = flushMethod.GetParameters()[1].ParameterType;
 

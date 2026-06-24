@@ -12718,6 +12718,17 @@ internal static class Program
                         </TextBlock.Text>
                     </TextBlock>
                     <TextBlock
+                        x:Name="DefaultItemsSelfBindingText"
+                        Tag="Default item self source"
+                        Text="{Binding Tag, RelativeSource={RelativeSource Self}, StringFormat=Self: {0}}" />
+                    <Border
+                        x:Name="DefaultItemsAncestorBindingBorder"
+                        Tag="Default item ancestor source">
+                        <TextBlock
+                            x:Name="DefaultItemsAncestorBindingText"
+                            Text="{Binding Tag, RelativeSource={RelativeSource AncestorType={x:Type Border}}, StringFormat=Ancestor: {0}}" />
+                    </Border>
+                    <TextBlock
                         x:Name="DefaultItemsTriggeredStatusText"
                         Style="{StaticResource DefaultItemsStatusTriggerStyle}"
                         Text="{Binding Status}" />
@@ -13145,6 +13156,21 @@ internal static class Program
                     Require(
                         DefaultItemsPriorityStatusText.Text == "Priority: Default item binding ready",
                         "Expected default-item PriorityBinding fallback to read the view-model status.");
+                    Require(
+                        DefaultItemsSelfBindingText.Text == "Self: Default item self source",
+                        "Expected default-item RelativeSource Self binding.");
+                    Require(
+                        DefaultItemsAncestorBindingText.Text == "Ancestor: Default item ancestor source",
+                        "Expected default-item RelativeSource AncestorType binding.");
+                    DefaultItemsSelfBindingText.Tag = "Default item self updated";
+                    DefaultItemsAncestorBindingBorder.Tag = "Default item ancestor updated";
+                    DrainDispatcher();
+                    Require(
+                        DefaultItemsSelfBindingText.Text == "Self: Default item self updated",
+                        "Expected default-item RelativeSource Self binding refresh.");
+                    Require(
+                        DefaultItemsAncestorBindingText.Text == "Ancestor: Default item ancestor updated",
+                        "Expected default-item RelativeSource AncestorType binding refresh.");
                     Require(
                         string.Equals(DefaultItemsTriggeredStatusText.Tag as string, "default-item trigger inactive", StringComparison.Ordinal),
                         "Expected default-item DataTrigger to start inactive.");

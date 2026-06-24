@@ -8136,6 +8136,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DefaultItemsPriorityStatusText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<PriorityBinding>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item PriorityBinding fallback", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsSelfBindingText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsAncestorBindingText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RelativeSource Self", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RelativeSource AncestorType", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item RelativeSource AncestorType binding refresh", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsItemNameConverter", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsStatusSelectionConverter", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsNameTemplateSelector", externalSdkHarnessProgram, StringComparison.Ordinal);

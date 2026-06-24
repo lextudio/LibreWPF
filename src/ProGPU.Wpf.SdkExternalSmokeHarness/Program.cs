@@ -12311,6 +12311,17 @@ internal static class Program
             """);
 
         WriteFile(
+            Path.Combine(appRoot, "App.config"),
+            """
+            <?xml version="1.0" encoding="utf-8" ?>
+            <configuration>
+              <appSettings>
+                <add key="DefaultItemsSdkSetting" value="Default item SDK app config value" />
+              </appSettings>
+            </configuration>
+            """);
+
+        WriteFile(
             Path.Combine(appRoot, "DefaultItemsPanel.xaml"),
             """
             <UserControl
@@ -12407,6 +12418,7 @@ internal static class Program
             Path.Combine(appRoot, "MainWindow.xaml.cs"),
             """
             using System;
+            using System.Configuration;
             using System.Windows;
             using System.Windows.Controls;
             using System.Windows.Media;
@@ -12440,6 +12452,9 @@ internal static class Program
                     Require(
                         libraryResourceForeground.Color == Color.FromRgb(0x76, 0x54, 0x32),
                         "Expected default-item referenced library component resource brush color.");
+                    Require(
+                        ConfigurationManager.AppSettings["DefaultItemsSdkSetting"] == "Default item SDK app config value",
+                        "Expected default-item app config setting.");
                     Require(
                         DefaultItemsPanel.Caption == "Default item panel caption",
                         "Expected default-item UserControl dependency property value.");
@@ -12608,6 +12623,7 @@ internal static class Program
         AssertDoesNotContain(project, "<Compile Include=", "external default-item app explicit compile items");
         AssertDoesNotContain(project, "<ApplicationDefinition Include=", "external default-item app explicit application definition item");
         AssertDoesNotContain(project, "<Page Include=", "external default-item app explicit page item");
+        AssertDoesNotContain(project, "<None Include=\"App.config\"", "external default-item app explicit app config item");
         AssertDoesNotContain(project, "ProGpuWpfReferenceMode", "external default-item app local artifact mode");
         AssertDoesNotContain(project, "ProGpuWpfManagedReferenceRoot", "external default-item app managed artifact root");
         AssertDoesNotContain(project, "ProGpuReferenceRoot", "external default-item app ProGPU artifact root");
@@ -12626,6 +12642,17 @@ internal static class Program
 
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "App.xaml"), "external SDK default-item App.xaml source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "App.xaml.cs"), "external SDK default-item App.xaml.cs source");
+        string defaultItemsAppConfig = File.ReadAllText(
+            Path.Combine(workRoot, DefaultItemsAssemblyName, "App.config"));
+        AssertContains(
+            defaultItemsAppConfig,
+            "DefaultItemsSdkSetting",
+            "external SDK default-item app config setting key");
+        AssertContains(
+            defaultItemsAppConfig,
+            "Default item SDK app config value",
+            "external SDK default-item app config setting value");
+        RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "App.config"), "external SDK default-item app config source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "MainWindow.xaml"), "external SDK default-item MainWindow.xaml source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "MainWindow.xaml.cs"), "external SDK default-item MainWindow.xaml.cs source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "DefaultItemsPanel.xaml"), "external SDK default-item UserControl XAML source");
@@ -12783,6 +12810,11 @@ internal static class Program
             Path.Combine(outputRoot, GetAppHostFileName(DefaultItemsAssemblyName)),
             "external SDK default-item apphost");
         RequireFile(Path.Combine(outputRoot, DefaultItemsLibraryAssemblyName + ".dll"), "external SDK default-item referenced library assembly");
+        string appConfigPath = Path.Combine(outputRoot, DefaultItemsAssemblyName + ".dll.config");
+        RequireFile(appConfigPath, "external SDK default-item app config output");
+        string appConfig = File.ReadAllText(appConfigPath);
+        AssertContains(appConfig, "DefaultItemsSdkSetting", "external SDK default-item app config output setting key");
+        AssertContains(appConfig, "Default item SDK app config value", "external SDK default-item app config output setting value");
 
         foreach (string assemblyName in s_requiredWpfRuntimeAssemblies
                      .Concat(s_requiredProGpuRuntimeAssemblies)

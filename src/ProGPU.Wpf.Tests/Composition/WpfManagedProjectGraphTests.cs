@@ -8221,6 +8221,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ImageBrush ImageSource=\"pack://application:,,,/Assets/DefaultItemsImage.png\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item XAML resource image pixels", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item ImageBrush image pixels", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsRichTextBox", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Default item list entry", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("rich text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsFlowDocumentScrollViewer", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item RichTextBox TextRange text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item FlowDocumentScrollViewer TextRange text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsCheckBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("IsChecked=\"{Binding IsFormOptionEnabled, Mode=TwoWay}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item CheckBox two-way binding to update source", externalSdkHarnessProgram, StringComparison.Ordinal);

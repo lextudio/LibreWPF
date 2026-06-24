@@ -12691,6 +12691,34 @@ internal static class Program
                             <ImageBrush ImageSource="pack://application:,,,/Assets/DefaultItemsImage.png" />
                         </Rectangle.Fill>
                     </Rectangle>
+                    <RichTextBox
+                        x:Name="DefaultItemsRichTextBox"
+                        IsReadOnly="True">
+                        <FlowDocument PagePadding="4">
+                            <Paragraph>
+                                <Run Text="Default item " />
+                                <Bold><Run Text="rich text" /></Bold>
+                                <Italic><Run Text=" italic text" /></Italic>
+                            </Paragraph>
+                            <List MarkerStyle="Decimal">
+                                <ListItem>
+                                    <Paragraph><Run Text="Default item list entry" /></Paragraph>
+                                </ListItem>
+                            </List>
+                            <BlockUIContainer>
+                                <TextBlock Text="Default item block UI" />
+                            </BlockUIContainer>
+                        </FlowDocument>
+                    </RichTextBox>
+                    <FlowDocumentScrollViewer
+                        x:Name="DefaultItemsFlowDocumentScrollViewer"
+                        VerticalScrollBarVisibility="Auto">
+                        <FlowDocument PagePadding="5">
+                            <Paragraph>
+                                <Run Text="Default item scroll document" />
+                            </Paragraph>
+                        </FlowDocument>
+                    </FlowDocumentScrollViewer>
                     <Grid x:Name="DefaultItemsGrid">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -13124,6 +13152,7 @@ internal static class Program
             using System.Windows.Controls;
             using System.Windows.Controls.Primitives;
             using System.Windows.Data;
+            using System.Windows.Documents;
             using System.Windows.Input;
             using System.Windows.Media;
             using System.Windows.Media.Imaging;
@@ -13495,6 +13524,91 @@ internal static class Program
                     Require(
                         imageBrushPixels[5] == 0xFF && imageBrushPixels[15] == 0xFF,
                         "Expected default-item ImageBrush image pixels.");
+                    Require(
+                        DefaultItemsRichTextBox.IsReadOnly,
+                        "Expected default-item RichTextBox metadata.");
+                    var richDocument = RequireType<FlowDocument>(
+                        DefaultItemsRichTextBox.Document,
+                        "default-item RichTextBox FlowDocument");
+                    Require(
+                        richDocument.Blocks.Count >= 3,
+                        "Expected default-item RichTextBox FlowDocument block metadata.");
+                    var richParagraph = RequireType<Paragraph>(
+                        richDocument.Blocks.FirstBlock,
+                        "default-item RichTextBox Paragraph");
+                    var richRun = richParagraph.Inlines
+                        .OfType<Run>()
+                        .FirstOrDefault(run => run.Text.Contains("Default item", StringComparison.Ordinal));
+                    var richBold = richParagraph.Inlines
+                        .OfType<Bold>()
+                        .FirstOrDefault();
+                    var richItalic = richParagraph.Inlines
+                        .OfType<Italic>()
+                        .FirstOrDefault();
+                    Require(
+                        richRun is not null && richBold is not null && richItalic is not null,
+                        "Expected default-item RichTextBox paragraph inline types.");
+                    richBold = RequireType<Bold>(
+                        richBold,
+                        "default-item RichTextBox Bold inline");
+                    var richBoldRun = RequireType<Run>(
+                        richBold.Inlines.FirstInline,
+                        "default-item RichTextBox Bold run");
+                    richItalic = RequireType<Italic>(
+                        richItalic,
+                        "default-item RichTextBox Italic inline");
+                    var richItalicRun = RequireType<Run>(
+                        richItalic.Inlines.FirstInline,
+                        "default-item RichTextBox Italic run");
+                    Require(
+                        richRun.Text.Contains("Default item", StringComparison.Ordinal)
+                            && richBoldRun.Text == "rich text"
+                            && richItalicRun.Text == " italic text",
+                        "Expected default-item RichTextBox inline text.");
+                    var richList = RequireType<System.Windows.Documents.List>(
+                        richParagraph.NextBlock,
+                        "default-item RichTextBox List block");
+                    Require(
+                        richList.MarkerStyle == TextMarkerStyle.Decimal,
+                        "Expected default-item RichTextBox list marker metadata.");
+                    var richListItem = RequireType<ListItem>(
+                        richList.ListItems.FirstListItem,
+                        "default-item RichTextBox ListItem");
+                    var richListParagraph = RequireType<Paragraph>(
+                        richListItem.Blocks.FirstBlock,
+                        "default-item RichTextBox ListItem Paragraph");
+                    var richListRun = RequireType<Run>(
+                        richListParagraph.Inlines.FirstInline,
+                        "default-item RichTextBox ListItem Run");
+                    var richBlockUi = RequireType<BlockUIContainer>(
+                        richList.NextBlock,
+                        "default-item RichTextBox BlockUIContainer");
+                    var richBlockText = RequireType<TextBlock>(
+                        richBlockUi.Child,
+                        "default-item RichTextBox BlockUIContainer child");
+                    Require(
+                        richListRun.Text == "Default item list entry"
+                            && richBlockText.Text == "Default item block UI",
+                        "Expected default-item RichTextBox list and block UI content.");
+                    string richDocumentText = new TextRange(richDocument.ContentStart, richDocument.ContentEnd).Text;
+                    Require(
+                        richDocumentText.Contains("Default item", StringComparison.Ordinal)
+                            && richDocumentText.Contains("rich text", StringComparison.Ordinal)
+                            && richDocumentText.Contains("Default item list entry", StringComparison.Ordinal),
+                        "Expected default-item RichTextBox TextRange text.");
+                    Require(
+                        DefaultItemsFlowDocumentScrollViewer.VerticalScrollBarVisibility == ScrollBarVisibility.Auto,
+                        "Expected default-item FlowDocumentScrollViewer metadata.");
+                    var scrollDocument = RequireType<FlowDocument>(
+                        DefaultItemsFlowDocumentScrollViewer.Document,
+                        "default-item FlowDocumentScrollViewer document");
+                    Require(
+                        scrollDocument.PagePadding == new Thickness(5) && scrollDocument.Blocks.Count == 1,
+                        "Expected default-item FlowDocumentScrollViewer document metadata.");
+                    string scrollDocumentText = new TextRange(scrollDocument.ContentStart, scrollDocument.ContentEnd).Text;
+                    Require(
+                        scrollDocumentText.Contains("Default item scroll document", StringComparison.Ordinal),
+                        "Expected default-item FlowDocumentScrollViewer TextRange text.");
                     Require(
                         DefaultItemsGrid.RowDefinitions.Count == 2 && DefaultItemsGrid.ColumnDefinitions.Count == 2,
                         "Expected default-item Grid row and column definitions.");

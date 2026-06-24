@@ -8118,6 +8118,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("default-item implicit DataTemplate binding text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsBoundStatusText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsEditableStatusTextBox", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsValidatedStatusTextBox", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsRequiredTextRule", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<Binding.ValidationRules>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("UpdateSourceTrigger=PropertyChanged", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsFormattedStatusText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsItemNameConverter", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -8134,6 +8137,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Default item binding updated", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item TextBox two-way binding", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Default item text box source", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item validation rule", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Default item validated source", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item converter binding", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item MultiBinding converter", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item collection binding item count", externalSdkHarnessProgram, StringComparison.Ordinal);

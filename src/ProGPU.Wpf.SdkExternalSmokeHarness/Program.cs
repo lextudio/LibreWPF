@@ -12536,6 +12536,18 @@ internal static class Program
                     <TextBox
                         x:Name="DefaultItemsEditableStatusTextBox"
                         Text="{Binding Status, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBox x:Name="DefaultItemsValidatedStatusTextBox">
+                        <TextBox.Text>
+                            <Binding
+                                Mode="TwoWay"
+                                Path="Status"
+                                UpdateSourceTrigger="Explicit">
+                                <Binding.ValidationRules>
+                                    <local:DefaultItemsRequiredTextRule />
+                                </Binding.ValidationRules>
+                            </Binding>
+                        </TextBox.Text>
+                    </TextBox>
                     <TextBlock
                         x:Name="DefaultItemsFormattedStatusText"
                         Text="{Binding Status, StringFormat=Formatted: {0}}" />
@@ -12678,6 +12690,16 @@ internal static class Program
                     var results = new object[targetTypes.Length];
                     Array.Fill(results, Binding.DoNothing);
                     return results;
+                }
+            }
+
+            public sealed class DefaultItemsRequiredTextRule : ValidationRule
+            {
+                public override ValidationResult Validate(object value, CultureInfo cultureInfo)
+                {
+                    return string.IsNullOrWhiteSpace(value as string)
+                        ? new ValidationResult(false, "Default item text is required.")
+                        : ValidationResult.ValidResult;
                 }
             }
 
@@ -12846,6 +12868,9 @@ internal static class Program
                         DefaultItemsEditableStatusTextBox.Text == "Default item binding ready",
                         "Expected default-item TextBox binding to read the view-model status.");
                     Require(
+                        DefaultItemsValidatedStatusTextBox.Text == "Default item binding ready",
+                        "Expected default-item validated TextBox binding to read the view-model status.");
+                    Require(
                         DefaultItemsFormattedStatusText.Text == "Formatted: Default item binding ready",
                         "Expected default-item formatted binding to read the view-model status.");
                     Require(
@@ -12857,6 +12882,9 @@ internal static class Program
                     Require(
                         DefaultItemsEditableStatusTextBox.GetBindingExpression(TextBox.TextProperty) is not null,
                         "Expected default-item TextBox two-way binding expression.");
+                    Require(
+                        DefaultItemsValidatedStatusTextBox.GetBindingExpression(TextBox.TextProperty) is not null,
+                        "Expected default-item validated TextBox binding expression.");
                     ViewModel.Status = "Default item binding updated";
                     DrainDispatcher();
                     Require(
@@ -12865,6 +12893,9 @@ internal static class Program
                     Require(
                         DefaultItemsEditableStatusTextBox.Text == "Default item binding updated",
                         "Expected default-item TextBox binding to observe INotifyPropertyChanged.");
+                    Require(
+                        DefaultItemsValidatedStatusTextBox.Text == "Default item binding updated",
+                        "Expected default-item validated TextBox binding to observe INotifyPropertyChanged.");
                     Require(
                         DefaultItemsFormattedStatusText.Text == "Formatted: Default item binding updated",
                         "Expected default-item formatted binding to observe INotifyPropertyChanged.");
@@ -12883,6 +12914,9 @@ internal static class Program
                     Require(
                         DefaultItemsFormattedStatusText.Text == "Formatted: Default item text box source",
                         "Expected default-item TextBox source update to refresh formatted binding.");
+                    Require(
+                        DefaultItemsValidatedStatusTextBox.Text == "Default item text box source",
+                        "Expected default-item TextBox source update to refresh validated binding.");
                     Require(
                         DefaultItemsMultiBindingText.Text == "Composite: Default item text box source / Default item alpha",
                         "Expected default-item TextBox source update to refresh MultiBinding.");
@@ -12934,6 +12968,31 @@ internal static class Program
                     Require(
                         DefaultItemsMultiBindingText.Text == "Composite: Default item text box source / Default item gamma",
                         "Expected default-item MultiBinding converter to observe control selection.");
+
+                    var validatedStatusBinding = RequireType<BindingExpression>(
+                        DefaultItemsValidatedStatusTextBox.GetBindingExpression(TextBox.TextProperty),
+                        "default-item validated TextBox binding expression");
+                    DefaultItemsValidatedStatusTextBox.Text = string.Empty;
+                    validatedStatusBinding.UpdateSource();
+                    DrainDispatcher();
+                    Require(
+                        Validation.GetHasError(DefaultItemsValidatedStatusTextBox),
+                        "Expected default-item validation rule to reject empty text.");
+                    Require(
+                        ViewModel.Status == "Default item text box source",
+                        "Expected default-item validation failure to preserve the source value.");
+                    DefaultItemsValidatedStatusTextBox.Text = "Default item validated source";
+                    validatedStatusBinding.UpdateSource();
+                    DrainDispatcher();
+                    Require(
+                        !Validation.GetHasError(DefaultItemsValidatedStatusTextBox),
+                        "Expected default-item validation rule to accept non-empty text.");
+                    Require(
+                        ViewModel.Status == "Default item validated source",
+                        "Expected default-item validation success to update the source value.");
+                    Require(
+                        DefaultItemsBoundStatusText.Text == "Default item validated source",
+                        "Expected default-item validation success to refresh sibling binding.");
 
                     var commandBinding = RequireType<CommandBinding>(
                         CommandBindings[0],

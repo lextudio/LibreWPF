@@ -163,7 +163,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             }
 
             _wpfRootVisual = value;
-            WpfRenderScheduler.RequestRender();
+            RequestRenderAndWakeNativeLoop();
         }
     }
 
@@ -257,7 +257,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _window.IsVisible = false;
         }
 
-        WpfRenderScheduler.RequestRender();
+        RequestRenderAndWakeNativeLoop();
     }
 
     public void SetWindowState(ProGpuWpfWindowState windowState)
@@ -270,7 +270,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _window.WindowState = ToSilkWindowState(windowState);
         }
 
-        WpfRenderScheduler.RequestRender();
+        RequestRenderAndWakeNativeLoop();
     }
 
     public void SetTitle(string title)
@@ -284,7 +284,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _window.Title = _windowTitle;
         }
 
-        WpfRenderScheduler.RequestRender();
+        RequestRenderAndWakeNativeLoop();
     }
 
     public void SetClientSize(int width, int height)
@@ -304,7 +304,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _window.Position = new Vector2D<int>(left, top);
         }
 
-        WpfRenderScheduler.RequestRender();
+        RequestRenderAndWakeNativeLoop();
     }
 
     public void SetTopmost(bool topmost)
@@ -317,7 +317,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _window.TopMost = topmost;
         }
 
-        WpfRenderScheduler.RequestRender();
+        RequestRenderAndWakeNativeLoop();
     }
 
     public void SetWindowBorder(ProGpuWpfWindowBorder windowBorder)
@@ -330,7 +330,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             _window.WindowBorder = ToSilkWindowBorder(windowBorder);
         }
 
-        WpfRenderScheduler.RequestRender();
+        RequestRenderAndWakeNativeLoop();
     }
 
     internal void SetInitialClientSize(int width, int height)
@@ -357,7 +357,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             UpdatePortablePresentationSourceClientSize((uint)_clientWidth, (uint)_clientHeight);
         }
 
-        WpfRenderScheduler.RequestRender();
+        RequestRenderAndWakeNativeLoop();
     }
 
     public void DoEvents()
@@ -516,7 +516,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         AttachDragDropService();
         AttachWindowEventService();
         SynchronizePortablePresentationSourceGeometry();
-        WpfRenderScheduler.RequestRender();
+        RequestRenderAndWakeNativeLoop();
     }
 
     private void OnResize(Vector2D<int> size)
@@ -534,7 +534,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         if (_target == null || _window == null)
         {
-            WpfRenderScheduler.RequestRender();
+            RequestRenderAndWakeNativeLoop();
             return;
         }
 
@@ -545,7 +545,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             geometry.PixelHeight);
         _target.SceneRootVisual.Invalidate();
         _target.RootVisual.Invalidate();
-        WpfRenderScheduler.RequestRender();
+        RequestRenderAndWakeNativeLoop();
     }
 
     private void OnUpdate(double deltaSeconds)
@@ -593,7 +593,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             var viewportWidth = ResolveGeometryViewportDimension(geometry.ViewportWidth, pixelWidth);
             var viewportHeight = ResolveGeometryViewportDimension(geometry.ViewportHeight, pixelHeight);
             _target.DetectWpfSourceChanges();
-            var frameState = CaptureFrameState(_target, pixelWidth, pixelHeight);
+            var frameState = CaptureFrameState(
+                _target,
+                logicalWidth,
+                logicalHeight,
+                pixelWidth,
+                pixelHeight,
+                dpiScale);
 
             if (!ShouldRenderFrame(frameState))
             {
@@ -717,7 +723,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                     viewportHeight,
                     dpiScale))
             {
-                RecordPresentedFrame(CaptureFrameState(_target, pixelWidth, pixelHeight));
+                RecordPresentedFrame(CaptureFrameState(
+                    _target,
+                    logicalWidth,
+                    logicalHeight,
+                    pixelWidth,
+                    pixelHeight,
+                    dpiScale));
                 TraceRenderSurfaceGeometryIfRequested(geometry);
             }
         }
@@ -1398,7 +1410,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             }
 
             _isHostVisible = true;
-            WpfRenderScheduler.RequestRender();
+            RequestRenderAndWakeNativeLoop();
             return;
         }
 
@@ -1408,7 +1420,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void OnCompositionTargetRenderInvalidated(object? sender, EventArgs e)
     {
-        WpfRenderScheduler.RequestRender();
+        RequestRenderAndWakeNativeLoop();
     }
 
     internal bool ShouldRenderFrame(ProGpuWpfFrameState frameState)
@@ -1441,8 +1453,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private static ProGpuWpfFrameState CaptureFrameState(
         ProGpuWpfCompositionTarget target,
+        uint logicalWidth,
+        uint logicalHeight,
         uint pixelWidth,
-        uint pixelHeight)
+        uint pixelHeight,
+        double dpiScale)
     {
         return new ProGpuWpfFrameState(
             pixelWidth,
@@ -1456,7 +1471,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             target.LastRetainedBranchUnmappedSourceCount,
             target.LastRetainedBranchSharedWithCleanSourceVisualCount,
             target.LastRetainedBranchReplayTargetConflictCount,
-            target.LastRetainedBranchInvalidationUsedFallback);
+            target.LastRetainedBranchInvalidationUsedFallback,
+            logicalWidth: logicalWidth,
+            logicalHeight: logicalHeight,
+            dpiScale: dpiScale);
     }
 
     internal IDisposable? RegisterRenderDataSinkProvider(ProGpuWpfDrawingFrame drawingFrame)
@@ -1544,7 +1562,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             e.Handled = input.Handled;
         }
 
-        WpfRenderScheduler.RequestRender();
+        RequestRenderAndWakeNativeLoop();
     }
 
     private static void TraceInputEvent(string stage, WpfInputEventArgs input)
@@ -1750,7 +1768,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private void OnPlatformDragDropReceived(object? sender, WpfDragDropEventArgs e)
     {
         DragDropReceived?.Invoke(this, e);
-        WpfRenderScheduler.RequestRender();
+        RequestRenderAndWakeNativeLoop();
     }
 
     private void AttachWindowEventService()
@@ -1792,7 +1810,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private void OnPlatformWindowEventReceived(object? sender, WpfWindowEventArgs e)
     {
         WindowEventReceived?.Invoke(this, e);
-        WpfRenderScheduler.RequestRender();
+        RequestRenderAndWakeNativeLoop();
     }
 
     private bool ProcessDispatcherQueueCore()
@@ -1923,6 +1941,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     {
         var window = _window;
         return window != null && TryRequestNativeLoopWakeup(window.ContinueEvents);
+    }
+
+    internal void RequestRenderAndWakeNativeLoop()
+    {
+        WpfRenderScheduler.RequestRender();
+        TryRequestNativeLoopWakeup();
     }
 
     internal bool TryRequestNativeLoopWakeup(Action continueEvents)
@@ -2102,7 +2126,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
         else if (requestRenderWhenInitialized)
         {
-            WpfRenderScheduler.RequestRender();
+            RequestRenderAndWakeNativeLoop();
         }
     }
 

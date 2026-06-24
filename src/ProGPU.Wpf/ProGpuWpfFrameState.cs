@@ -16,10 +16,16 @@ public readonly struct ProGpuWpfFrameState : IEquatable<ProGpuWpfFrameState>
         int retainedBranchUnmappedSourceCount = 0,
         int retainedBranchSharedWithCleanSourceVisualCount = 0,
         int retainedBranchReplayTargetConflictCount = 0,
-        bool retainedBranchInvalidationUsedFallback = false)
+        bool retainedBranchInvalidationUsedFallback = false,
+        uint logicalWidth = 0,
+        uint logicalHeight = 0,
+        double dpiScale = 0.0)
     {
         PixelWidth = pixelWidth;
         PixelHeight = pixelHeight;
+        LogicalWidth = logicalWidth;
+        LogicalHeight = logicalHeight;
+        DpiScale = double.IsFinite(dpiScale) ? dpiScale : 0.0;
         SceneChangeVersion = sceneChangeVersion;
         RetainedWpfChangeVersion = retainedWpfChangeVersion;
         FlatDrawingChangeVersion = flatDrawingChangeVersion;
@@ -35,6 +41,12 @@ public readonly struct ProGpuWpfFrameState : IEquatable<ProGpuWpfFrameState>
     public uint PixelWidth { get; }
 
     public uint PixelHeight { get; }
+
+    public uint LogicalWidth { get; }
+
+    public uint LogicalHeight { get; }
+
+    public double DpiScale { get; }
 
     public long SceneChangeVersion { get; }
 
@@ -60,6 +72,9 @@ public readonly struct ProGpuWpfFrameState : IEquatable<ProGpuWpfFrameState>
     {
         return PixelWidth == other.PixelWidth &&
                PixelHeight == other.PixelHeight &&
+               LogicalWidth == other.LogicalWidth &&
+               LogicalHeight == other.LogicalHeight &&
+               DpiScale.Equals(other.DpiScale) &&
                SceneChangeVersion == other.SceneChangeVersion &&
                RetainedWpfChangeVersion == other.RetainedWpfChangeVersion &&
                FlatDrawingChangeVersion == other.FlatDrawingChangeVersion &&
@@ -82,6 +97,9 @@ public readonly struct ProGpuWpfFrameState : IEquatable<ProGpuWpfFrameState>
         var hashCode = new HashCode();
         hashCode.Add(PixelWidth);
         hashCode.Add(PixelHeight);
+        hashCode.Add(LogicalWidth);
+        hashCode.Add(LogicalHeight);
+        hashCode.Add(DpiScale);
         hashCode.Add(SceneChangeVersion);
         hashCode.Add(RetainedWpfChangeVersion);
         hashCode.Add(FlatDrawingChangeVersion);

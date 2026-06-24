@@ -294,7 +294,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
 
         if (!SyncHostRootVisual())
         {
-            _host.WpfRenderScheduler.RequestRender();
+            _host.RequestRenderAndWakeNativeLoop();
         }
     }
 

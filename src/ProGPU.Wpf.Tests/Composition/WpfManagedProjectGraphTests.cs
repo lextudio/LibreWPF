@@ -493,6 +493,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TraceInputEvent(\"wpf\", input)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_TRACE_RENDER_SURFACE", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("TraceRenderSurfaceGeometryIfRequested(geometry)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("RequestRenderAndWakeNativeLoop();", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("internal void RequestRenderAndWakeNativeLoop()", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("private bool _forceFullWpfReplay;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool ForceFullWpfReplayForNextFrame => _forceFullWpfReplay;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var forceFullWpfReplay = _forceFullWpfReplay;", proGpuHost, StringComparison.Ordinal);
@@ -557,6 +559,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SynchronizePortablePresentationSourceGeometryCachesHighDpiSurfaceGeometry", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("UpdatingPortablePresentationSourceClientSizeForcesFullWpfReplay", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("UpdatingPortablePresentationSourceDpiScaleForcesFullWpfReplay", proGpuWindowHostTests, StringComparison.Ordinal);
+        Assert.Contains("ShouldRenderFrameReturnsTrueWhenLogicalSizeChanges", proGpuWindowHostTests, StringComparison.Ordinal);
+        Assert.Contains("ShouldRenderFrameReturnsTrueWhenDpiScaleChanges", proGpuWindowHostTests, StringComparison.Ordinal);
         Assert.Contains("TryAttachSynchronizesInitialWindowShapeBeforeFirstRender", proGpuActivationTests, StringComparison.Ordinal);
         Assert.Contains("HostDragDropUsesPortableWindowActivationServiceBeforeFallback", proGpuActivationTests, StringComparison.Ordinal);
         Assert.Contains("float dpiScale", proGpuCompositionTarget, StringComparison.Ordinal);
@@ -854,10 +858,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("return IsPortableWindowActive ? new Size(0, 0) : GetHwndNonClientAreaSizeInMeasureUnits()", window, StringComparison.Ordinal);
         Assert.Contains("return new Size(ToNonNegativeFiniteSize(width), ToNonNegativeFiniteSize(height))", window, StringComparison.Ordinal);
         Assert.Contains("frameworkAvailableSize = GetPortableMeasureSizeInMeasureUnits(frameworkAvailableSize);", window, StringComparison.Ordinal);
-        Assert.Contains("Size portableFallbackSize = SizeToContent == SizeToContent.Manual", window, StringComparison.Ordinal);
-        Assert.Contains("? GetWindowSizeInMeasureUnits()", window, StringComparison.Ordinal);
-        Assert.Contains(": arrangeBounds;", window, StringComparison.Ordinal);
-        Assert.Contains("arrangeBounds = GetPortableArrangeSizeInMeasureUnits(DesiredSize, portableFallbackSize);", window, StringComparison.Ordinal);
+        Assert.DoesNotContain("Size portableFallbackSize = SizeToContent == SizeToContent.Manual", window, StringComparison.Ordinal);
+        Assert.Contains("arrangeBounds = GetPortableArrangeSizeInMeasureUnits(DesiredSize, arrangeBounds);", window, StringComparison.Ordinal);
         Assert.Contains("private Size GetPortableMeasureSizeInMeasureUnits(Size windowSize)", window, StringComparison.Ordinal);
         Assert.Contains("? Double.PositiveInfinity", window, StringComparison.Ordinal);
         Assert.Contains("private Size GetPortableArrangeSizeInMeasureUnits(Size measuredSize, Size fallbackSize)", window, StringComparison.Ordinal);

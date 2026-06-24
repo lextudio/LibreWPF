@@ -265,7 +265,7 @@ public sealed class WpfRenderDataSinkProviderBridgeTests
         Assert.Contains("RetainedWpfReplaySkipCount++;", hostSource, StringComparison.Ordinal);
         Assert.True(
             hostSource.IndexOf("_target.DetectWpfSourceChanges();", StringComparison.Ordinal) <
-            hostSource.IndexOf("var frameState = CaptureFrameState(_target, pixelWidth, pixelHeight);", StringComparison.Ordinal));
+            hostSource.IndexOf("var frameState = CaptureFrameState(", StringComparison.Ordinal));
     }
 
     private sealed class FakeVisual

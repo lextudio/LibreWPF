@@ -1884,10 +1884,7 @@ namespace System.Windows
             arrangeBounds.Height = Math.Max(mm.minHeight, Math.Min(arrangeBounds.Height, mm.maxHeight));
             if (IsPortableWindowActive)
             {
-                Size portableFallbackSize = SizeToContent == SizeToContent.Manual
-                    ? GetWindowSizeInMeasureUnits()
-                    : arrangeBounds;
-                arrangeBounds = GetPortableArrangeSizeInMeasureUnits(DesiredSize, portableFallbackSize);
+                arrangeBounds = GetPortableArrangeSizeInMeasureUnits(DesiredSize, arrangeBounds);
             }
 
             // Three primary cases

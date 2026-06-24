@@ -330,6 +330,77 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void ShouldRenderFrameReturnsTrueWhenLogicalSizeChanges()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var frameState = new ProGpuWpfFrameState(
+            200,
+            100,
+            1,
+            2,
+            3,
+            logicalWidth: 100,
+            logicalHeight: 50,
+            dpiScale: 2.0);
+        host.RecordPresentedFrame(frameState);
+
+        var resizedFrameState = new ProGpuWpfFrameState(
+            200,
+            100,
+            1,
+            2,
+            3,
+            logicalWidth: 125,
+            logicalHeight: 50,
+            dpiScale: 2.0);
+
+        Assert.True(host.ShouldRenderFrame(resizedFrameState));
+    }
+
+    [Fact]
+    public void ShouldRenderFrameReturnsTrueWhenDpiScaleChanges()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var frameState = new ProGpuWpfFrameState(
+            200,
+            100,
+            1,
+            2,
+            3,
+            logicalWidth: 100,
+            logicalHeight: 50,
+            dpiScale: 2.0);
+        host.RecordPresentedFrame(frameState);
+
+        var scaledFrameState = new ProGpuWpfFrameState(
+            200,
+            100,
+            1,
+            2,
+            3,
+            logicalWidth: 100,
+            logicalHeight: 50,
+            dpiScale: 1.5);
+
+        Assert.True(host.ShouldRenderFrame(scaledFrameState));
+    }
+
+    [Fact]
+    public void RequestRenderAndWakeNativeLoopSchedulesRenderWithoutWindow()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+
+        host.RequestRenderAndWakeNativeLoop();
+
+        Assert.Equal(1, scheduler.RequestCount);
+        Assert.Equal(0, host.NativeLoopWakeupCount);
+    }
+
+    [Fact]
     public void ShouldRenderFrameReturnsTrueWhenCoalescingIsDisabled()
     {
         using var host = new ProGpuWpfWindowHost

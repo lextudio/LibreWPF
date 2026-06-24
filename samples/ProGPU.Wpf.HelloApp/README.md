@@ -20,6 +20,12 @@ Run a bounded `Application.Run()` validation through the same apphost:
 PROGPU_WPF_HELLO_RUN_VALIDATE=1 ./eng/run-progpu-wpf-hello.sh
 ```
 
+Run a live ProGPU/Silk.NET geometry validation through the same apphost:
+
+```bash
+PROGPU_WPF_HELLO_LIVE_VALIDATE=1 ./eng/run-progpu-wpf-hello.sh
+```
+
 If the local `11.0.0-dev` packages are stale or missing, rebuild the SDK package feed first:
 
 ```bash

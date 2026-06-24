@@ -125,6 +125,9 @@ echo "Running Hello SDK app apphost Application.Run validation..."
   PROGPU_WPF_HELLO_RUN_VALIDATE=1 "./${hello_apphost_name}" "hello-alpha" "hello beta"
 )
 
+echo "Running Hello SDK app live geometry validation..."
+PROGPU_WPF_HELLO_LIVE_VALIDATE=1 "${repo_root}/eng/run-progpu-wpf-hello.sh"
+
 echo "Building MVP SDK app..."
 run_dotnet build "${repo_root}/samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj" -v:minimal
 

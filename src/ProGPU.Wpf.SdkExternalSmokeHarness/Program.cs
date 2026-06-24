@@ -12543,6 +12543,16 @@ internal static class Program
                                 </Setter.Value>
                             </Setter>
                         </Style>
+                        <ItemsPanelTemplate x:Key="DefaultItemsListBoxItemsPanel">
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                        <Style
+                            x:Key="DefaultItemsListBoxItemStyle"
+                            TargetType="{x:Type ListBoxItem}">
+                            <Setter
+                                Property="Padding"
+                                Value="3" />
+                        </Style>
                         <DataTemplate DataType="{x:Type local:DefaultItemsItem}">
                             <TextBlock
                                 x:Name="DefaultItemsImplicitTemplateText"
@@ -12675,6 +12685,8 @@ internal static class Program
                     <ListBox
                         x:Name="DefaultItemsListBox"
                         DisplayMemberPath="Name"
+                        ItemContainerStyle="{StaticResource DefaultItemsListBoxItemStyle}"
+                        ItemsPanel="{StaticResource DefaultItemsListBoxItemsPanel}"
                         ItemsSource="{Binding Items}" />
                     <ComboBox
                         x:Name="DefaultItemsComboBox"
@@ -13133,6 +13145,32 @@ internal static class Program
                     Require(
                         DefaultItemsListBox.Items.Count == 2,
                         "Expected default-item collection binding item count.");
+                    var listItemsPanelTemplate = RequireType<ItemsPanelTemplate>(
+                        DefaultItemsListBox.ItemsPanel,
+                        "default-item ListBox ItemsPanelTemplate");
+                    var listItemsPanelRoot = RequireType<StackPanel>(
+                        listItemsPanelTemplate.LoadContent(),
+                        "default-item ListBox ItemsPanelTemplate root");
+                    Require(
+                        listItemsPanelRoot.Orientation == Orientation.Horizontal,
+                        "Expected default-item ItemsPanelTemplate metadata.");
+                    Require(
+                        DefaultItemsListBox.ItemContainerStyle is not null,
+                        "Expected default-item ItemContainerStyle metadata.");
+                    DefaultItemsListBox.ApplyTemplate();
+                    DefaultItemsListBox.UpdateLayout();
+                    PumpDispatcherUntil(
+                        () => DefaultItemsListBox.ItemContainerGenerator.ContainerFromIndex(0) is ListBoxItem,
+                        "default-item generated ListBoxItem container");
+                    var listBoxItem = RequireType<ListBoxItem>(
+                        DefaultItemsListBox.ItemContainerGenerator.ContainerFromIndex(0),
+                        "default-item generated ListBoxItem container");
+                    Require(
+                        listBoxItem.Padding == new Thickness(3),
+                        "Expected default-item ItemContainerStyle padding.");
+                    Require(
+                        ReferenceEquals(listBoxItem.Content, ViewModel.Items[0]),
+                        "Expected default-item generated ListBoxItem content.");
                     Require(
                         DefaultItemsComboBox.Items.Count == 2,
                         "Expected default-item selector binding item count.");

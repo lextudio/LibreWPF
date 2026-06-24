@@ -8149,6 +8149,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DefaultItemsTemplateButtonRoot", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsTemplateButtonContent", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsTemplatedButton", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsListBoxItemsPanel", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsListBoxItemStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item ItemsPanelTemplate metadata", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item generated ListBoxItem content", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsListBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsComboBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SelectedItem=\"{Binding SelectedItem, Mode=TwoWay}\"", externalSdkHarnessProgram, StringComparison.Ordinal);

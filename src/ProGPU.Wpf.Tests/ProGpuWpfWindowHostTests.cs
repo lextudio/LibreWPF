@@ -82,6 +82,30 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void InvalidateWpfSourceForPortableRenderMarksSourceDirty()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        using var target = ProGpuWpfCompositionTarget.CreateHeadless();
+        var root = new object();
+        var dirtySource = new object();
+        var renderInvalidationCount = 0;
+        typeof(ProGpuWpfWindowHost)
+            .GetField("_target", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(host, target);
+        host.WpfRootVisual = root;
+        target.WpfInvalidationTracker.Attach(root);
+        target.WpfInvalidationTracker.ConsumeDirty();
+        target.RenderInvalidated += (_, _) => renderInvalidationCount++;
+
+        host.InvalidateWpfSourceForPortableRender(dirtySource);
+
+        Assert.True(host.IsWpfRootVisualDirty);
+        Assert.Same(dirtySource, target.LastDirtySource);
+        Assert.Equal(1, target.DirtySourceCount);
+        Assert.Equal(1, renderInvalidationCount);
+    }
+
+    [Fact]
     public void DefaultPlatformServicesUseCrossPlatformLauncherBoundary()
     {
         using var host = new ProGpuWpfWindowHost();

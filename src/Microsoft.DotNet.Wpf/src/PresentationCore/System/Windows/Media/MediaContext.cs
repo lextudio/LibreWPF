@@ -1678,6 +1678,11 @@ namespace System.Windows.Media
         /// </remarks>
         internal void PostRender()
         {
+            PostRender(null);
+        }
+
+        internal void PostRender(object invalidatedSource)
+        {
             // this is now needed because we no longer set Dispatcher.Reserved0 to null
             // in the Dispose method. See comment in the Dispose method.
             if (_isDisposed)
@@ -1707,7 +1712,7 @@ namespace System.Windows.Media
                 // We don't need to keep our promotion timers around.
                 _promoteRenderOpToInput.Stop();
                 _promoteRenderOpToRender.Stop();
-                PortableMediaContextRenderService.RequestRender();
+                PortableMediaContextRenderService.RequestRender(invalidatedSource);
             }
         }
 

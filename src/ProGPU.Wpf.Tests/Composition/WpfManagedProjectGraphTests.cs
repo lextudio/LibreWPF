@@ -193,6 +193,15 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Media",
             "MediaContext.cs");
+        var visualPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Visual.cs");
         var renderServicePath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -292,6 +301,7 @@ public sealed class WpfManagedProjectGraphTests
             "WpfPortableWindowActivationTests.cs");
 
         var mediaContext = File.ReadAllText(mediaContextPath);
+        var visual = File.ReadAllText(visualPath);
         var renderService = File.ReadAllText(renderServicePath);
         var dragDrop = File.ReadAllText(dragDropPath);
         var presentationCoreProject = File.ReadAllText(presentationCoreProjectPath);
@@ -314,16 +324,23 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains(@"<Compile Include=""System\Windows\Media\PortableMediaContextRenderService.cs"" />", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains("internal static class PortableMediaContextRenderService", renderService, StringComparison.Ordinal);
         Assert.Contains("RuntimeInformation.IsOSPlatform(OSPlatform.Windows)", renderService, StringComparison.Ordinal);
+        Assert.Contains("List<Action<object, TimeSpan>>", renderService, StringComparison.Ordinal);
         Assert.Contains("internal static IDisposable Register(Action requestRender)", renderService, StringComparison.Ordinal);
         Assert.Contains("internal static IDisposable Register(Action<TimeSpan> requestRender)", renderService, StringComparison.Ordinal);
+        Assert.Contains("internal static IDisposable Register(Action<object, TimeSpan> requestRender)", renderService, StringComparison.Ordinal);
         Assert.Contains("internal static void RequestRender()", renderService, StringComparison.Ordinal);
         Assert.Contains("internal static void RequestRender(TimeSpan delay)", renderService, StringComparison.Ordinal);
+        Assert.Contains("internal static void RequestRender(object invalidatedSource, TimeSpan delay)", renderService, StringComparison.Ordinal);
         Assert.Contains("PortableMediaContextRenderService.RequestRender(nextTickNeeded)", mediaContext, StringComparison.Ordinal);
+        Assert.Contains("internal void PostRender(object invalidatedSource)", mediaContext, StringComparison.Ordinal);
+        Assert.Contains("PortableMediaContextRenderService.RequestRender(invalidatedSource)", mediaContext, StringComparison.Ordinal);
         Assert.Contains("RenderDisconnectedMessageHandlerCore(resizedCompositionTarget)", mediaContext, StringComparison.Ordinal);
         Assert.Contains("private void RenderDisconnectedMessageHandlerCore", mediaContext, StringComparison.Ordinal);
         Assert.Contains("ScheduleNextRenderOp(_timeDelay)", mediaContext, StringComparison.Ordinal);
         Assert.Contains("if (Channel != null)", mediaContext, StringComparison.Ordinal);
         Assert.Contains("EnterInterlockedPresentation();", mediaContext, StringComparison.Ordinal);
+        Assert.Contains("if (mctx.Channel != null || PortableMediaContextRenderService.IsEnabled)", visual, StringComparison.Ordinal);
+        Assert.Contains("mctx.PostRender(e);", visual, StringComparison.Ordinal);
 
         Assert.Contains("internal static void FlushDispatcherOperations(object window, DispatcherPriority markerPriority)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static bool FlushDispatcherOperations(object window, DispatcherPriority markerPriority, TimeSpan timeout)", activationService, StringComparison.Ordinal);
@@ -340,8 +357,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("void RequestRender(TimeSpan delay)", proGpuScheduler, StringComparison.Ordinal);
         Assert.Contains("PortableMediaContextRenderServiceTypeName", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryRegisterMediaContextRenderService(presentationCoreAssembly)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("typeof(Action<object, TimeSpan>)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("typeof(Action<TimeSpan>)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("IWpfDelayedRenderScheduler delayedScheduler", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("ProcessHostInputAndRequestRender", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("Host.TryRequestNativeLoopWakeup();", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("RequestRenderFromMediaContext(RootVisual, TimeSpan.Zero);", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("Host.InvalidateWpfSourceForPortableRender(invalidatedSource ?? RootVisual);", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.RenderWakeupRequested += OnHostRenderWakeupRequested", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.UpdateTick += OnHostUpdateTick", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("SynchronizeInitialWindowState(updatePortablePresentationSource: false);", proGpuActivation, StringComparison.Ordinal);
@@ -495,6 +517,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TraceRenderSurfaceGeometryIfRequested(geometry)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("RequestRenderAndWakeNativeLoop();", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal void RequestRenderAndWakeNativeLoop()", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("internal void InvalidateWpfSourceForPortableRender(object? source)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("object? dirtySource = source ?? _wpfRootVisual;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("private bool _forceFullWpfReplay;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool ForceFullWpfReplayForNextFrame => _forceFullWpfReplay;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var forceFullWpfReplay = _forceFullWpfReplay;", proGpuHost, StringComparison.Ordinal);
@@ -7212,8 +7236,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("logical_height=560", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF MVP live geometry validation succeeded", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("ValidateRequiredLiveMvpAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLiveNativeResizeAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SetLiveNativeWindowSize(liveHost, 900, 640)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("native resize relaid out WPF content", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("WaitForLiveInputPresentedFrameAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LivePresentedFrameContentChanged(previousFrame, currentFrame)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("presented ProGPU frame scene", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"AddItemButton\"", mvpMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ResolveCurrentRenderSurfaceGeometry", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("GetRequiredProperty(liveHost, \"SilkWindow\")", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("TryRequestNativeLoopWakeup", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RaiseHostInput(liveHost, \"MouseDown\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RaiseHostInput(liveHost, \"TextInput\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);

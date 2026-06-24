@@ -1949,6 +1949,23 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         TryRequestNativeLoopWakeup();
     }
 
+    internal void InvalidateWpfSourceForPortableRender(object? source)
+    {
+        if (_target == null)
+        {
+            return;
+        }
+
+        object? dirtySource = source ?? _wpfRootVisual;
+        if (dirtySource != null)
+        {
+            _target.WpfInvalidationTracker.MarkDirty(dirtySource);
+            return;
+        }
+
+        _target.WpfInvalidationTracker.MarkDirty();
+    }
+
     internal bool TryRequestNativeLoopWakeup(Action continueEvents)
     {
         ArgumentNullException.ThrowIfNull(continueEvents);

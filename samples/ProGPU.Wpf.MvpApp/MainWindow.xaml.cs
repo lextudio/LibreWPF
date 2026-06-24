@@ -847,14 +847,101 @@ public partial class MainWindow : Window
                 () => ValidateLiveRenderSurfaceGeometryCore(liveHost, 760, 560),
                 DispatcherPriority.Send);
             Console.WriteLine("ProGPU WPF MVP live input validation geometry ready.");
+            string resizeStatus = await ValidateLiveNativeResizeAsync(liveHost);
+            Console.WriteLine("ProGPU WPF MVP live native resize validation ready.");
             string inputStatus = await ValidateLiveInputAsync(liveHost);
-            Console.WriteLine($"ProGPU WPF MVP live input validation succeeded: {geometryStatus}; {inputStatus}.");
+            Console.WriteLine($"ProGPU WPF MVP live input validation succeeded: {geometryStatus}; {resizeStatus}; {inputStatus}.");
             Environment.Exit(0);
             return;
         }
 
         Console.Error.WriteLine("Expected the MVP app to present a stable ProGPU frame before live input validation.");
         Environment.Exit(1);
+    }
+
+    private async Task<string> ValidateLiveNativeResizeAsync(object liveHost)
+    {
+        var initialLayout = await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            CaptureLiveLayoutSize,
+            DispatcherPriority.Send);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => SetLiveNativeWindowSize(liveHost, 900, 640),
+            DispatcherPriority.Send);
+        var resizedLayout = await WaitForLiveNativeResizeAsync(
+            liveHost,
+            expectedLogicalWidth: 900,
+            expectedLogicalHeight: 640,
+            description: "resized",
+            layoutReady: layout =>
+                layout.ContentWidth >= initialLayout.ContentWidth + 80.0 &&
+                layout.ContentHeight >= initialLayout.ContentHeight + 40.0);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => SetLiveNativeWindowSize(liveHost, 760, 560),
+            DispatcherPriority.Send);
+        var restoredLayout = await WaitForLiveNativeResizeAsync(
+            liveHost,
+            expectedLogicalWidth: 760,
+            expectedLogicalHeight: 560,
+            description: "restored",
+            layoutReady: layout =>
+                layout.ContentWidth <= resizedLayout.ContentWidth - 80.0 &&
+                layout.ContentHeight <= resizedLayout.ContentHeight - 40.0);
+
+        return
+            $"native resize relaid out WPF content to {resizedLayout.GeometryStatus} " +
+            $"and restored {restoredLayout.GeometryStatus}";
+    }
+
+    private async Task<LiveLayoutSize> WaitForLiveNativeResizeAsync(
+        object liveHost,
+        uint expectedLogicalWidth,
+        uint expectedLogicalHeight,
+        string description,
+        Func<LiveLayoutSize, bool> layoutReady)
+    {
+        string lastState = "not checked";
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            await Task.Delay(LiveValidationRetryDelay);
+            try
+            {
+                var layout = await InvokeWithLiveHostWakeAsync(
+                    liveHost,
+                    () =>
+                    {
+                        var current = CaptureLiveLayoutSize();
+                        bool geometryReady = LiveRenderSurfaceGeometryIsReady(
+                            current.Geometry,
+                            expectedLogicalWidth,
+                            expectedLogicalHeight);
+                        bool layoutSizeReady = layoutReady(current);
+                        lastState =
+                            $"{description}: {current.GeometryStatus}, " +
+                            $"window actual {current.WindowWidth:0.###}x{current.WindowHeight:0.###}, " +
+                            $"content actual {current.ContentWidth:0.###}x{current.ContentHeight:0.###}, " +
+                            $"layoutReady={layoutSizeReady}";
+                        return geometryReady && layoutSizeReady ? current : default;
+                    },
+                    DispatcherPriority.Send);
+
+                if (layout.IsValid)
+                {
+                    return layout;
+                }
+            }
+            catch (Exception ex)
+            {
+                lastState = $"{description}: {ex.GetType().Name}: {ex.Message}";
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Expected MVP live native resize to reach {expectedLogicalWidth}x{expectedLogicalHeight}, but last state was: {lastState}.");
     }
 
     private async Task<string> ValidateLiveInputAsync(object liveHost)
@@ -937,6 +1024,9 @@ public partial class MainWindow : Window
 
         Console.WriteLine($"ProGPU WPF MVP live input validation pointer sent: {lastTargetState}.");
         await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+        LivePresentedFrameState textInputFrameBefore = await CaptureLivePresentedFrameStateAsync(liveHost);
+        long textInputRenderWakeupsBefore = 0;
+        long textInputRenderWakeupsAfter = 0;
 
         await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -955,6 +1045,7 @@ public partial class MainWindow : Window
                         $"TextBox.IsHitTestVisible={textBox?.IsHitTestVisible}.");
                 }
 
+                textInputRenderWakeupsBefore = ReadLiveRenderSchedulerWakeupCount(liveHost);
                 foreach (char character in "Live")
                 {
                     string key = char.ToUpperInvariant(character).ToString();
@@ -964,10 +1055,14 @@ public partial class MainWindow : Window
                 }
                 RaiseHostInput(liveHost, "KeyDown", key: "Back");
                 RaiseHostInput(liveHost, "KeyUp", key: "Back");
+                textInputRenderWakeupsAfter = ReadLiveRenderSchedulerWakeupCount(liveHost);
                 Console.WriteLine("ProGPU WPF MVP live input validation text sent.");
             },
             DispatcherPriority.Send);
-        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+        var textInputFrameAfter = await WaitForLiveInputPresentedFrameAsync(
+            liveHost,
+            textInputFrameBefore,
+            "TextBox keyboard input");
 
         await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -1011,7 +1106,12 @@ public partial class MainWindow : Window
                     $"Refresh command {refreshCountBeforeCommand + 1}",
                     Require<TextBlock>(FindName("CommandStatusText"), "MVP live command status TextBlock").Text,
                     "MVP live routed KeyBinding command status");
-                return "input TextBox focus, Back key editing, text binding, and Ctrl+R routed command updated";
+                return
+                    "input TextBox focus, Back key editing, text binding, and Ctrl+R routed command updated; " +
+                    $"keyboard input observed render wakeups {textInputRenderWakeupsBefore}->{textInputRenderWakeupsAfter} " +
+                    $"and presented ProGPU frame scene {textInputFrameBefore.SceneChangeVersion}->{textInputFrameAfter.SceneChangeVersion}, " +
+                    $"wpf {textInputFrameBefore.RetainedWpfChangeVersion}->{textInputFrameAfter.RetainedWpfChangeVersion}, " +
+                    $"flat {textInputFrameBefore.FlatDrawingChangeVersion}->{textInputFrameAfter.FlatDrawingChangeVersion}";
             },
             DispatcherPriority.Send);
 
@@ -1728,6 +1828,61 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
+    private async Task<LivePresentedFrameState> CaptureLivePresentedFrameStateAsync(object liveHost)
+    {
+        return await InvokeWithLiveNativeLoopWakeAsync(
+            liveHost,
+            () => ReadLivePresentedFrameState(liveHost),
+            DispatcherPriority.Send);
+    }
+
+    private async Task<LivePresentedFrameState> WaitForLiveInputPresentedFrameAsync(
+        object liveHost,
+        LivePresentedFrameState previousFrame,
+        string description)
+    {
+        string lastState = "not checked";
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            await Task.Delay(LiveValidationRetryDelay);
+            var currentFrame = await InvokeWithLiveNativeLoopWakeAsync(
+                liveHost,
+                () =>
+                {
+                    var current = ReadLivePresentedFrameState(liveHost);
+                    long renderWakeups = ReadLiveRenderSchedulerWakeupCount(liveHost);
+                    lastState =
+                        $"{description}: {FormatLivePresentedFrameState(current)}, " +
+                        $"render wakeups {renderWakeups}";
+                    return current;
+                },
+                DispatcherPriority.Background);
+
+            if (LivePresentedFrameContentChanged(previousFrame, currentFrame))
+            {
+                return currentFrame;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Expected MVP live {description} to present a new ProGPU frame-state change without a resize, " +
+            $"but previous frame was {FormatLivePresentedFrameState(previousFrame)} and last state was: {lastState}.");
+    }
+
+    private static bool LivePresentedFrameContentChanged(
+        LivePresentedFrameState previousFrame,
+        LivePresentedFrameState currentFrame)
+    {
+        return currentFrame.HasPresentedFrame &&
+            currentFrame.LogicalWidth == previousFrame.LogicalWidth &&
+            currentFrame.LogicalHeight == previousFrame.LogicalHeight &&
+            currentFrame.PixelWidth == previousFrame.PixelWidth &&
+            currentFrame.PixelHeight == previousFrame.PixelHeight &&
+            (currentFrame.SceneChangeVersion > previousFrame.SceneChangeVersion ||
+             currentFrame.RetainedWpfChangeVersion > previousFrame.RetainedWpfChangeVersion ||
+             currentFrame.FlatDrawingChangeVersion > previousFrame.FlatDrawingChangeVersion);
+    }
+
     private async Task InvokeWithLiveHostWakeAsync(
         object liveHost,
         Action callback,
@@ -1759,6 +1914,21 @@ public partial class MainWindow : Window
         return await operation;
     }
 
+    private async Task<T> InvokeWithLiveNativeLoopWakeAsync<T>(
+        object liveHost,
+        Func<T> callback,
+        DispatcherPriority priority)
+    {
+        if (Dispatcher.CheckAccess())
+        {
+            return callback();
+        }
+
+        DispatcherOperation<T> operation = Dispatcher.InvokeAsync(callback, priority);
+        WakeLiveNativeLoop(liveHost);
+        return await operation;
+    }
+
     private static void WakeLiveRenderHost(object liveHost)
     {
         object scheduler = GetRequiredProperty(liveHost, "WpfRenderScheduler");
@@ -1771,6 +1941,11 @@ public partial class MainWindow : Window
             ?? throw new MissingMethodException(scheduler.GetType().FullName, "RequestRender");
         requestRender.Invoke(scheduler, null);
 
+        WakeLiveNativeLoop(liveHost);
+    }
+
+    private static void WakeLiveNativeLoop(object liveHost)
+    {
         MethodInfo? requestNativeLoopWakeup = liveHost.GetType().GetMethod(
             "TryRequestNativeLoopWakeup",
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
@@ -1778,6 +1953,43 @@ public partial class MainWindow : Window
             types: Type.EmptyTypes,
             modifiers: null);
         requestNativeLoopWakeup?.Invoke(liveHost, null);
+    }
+
+    private static long ReadLiveRenderSchedulerWakeupCount(object liveHost)
+    {
+        return Convert.ToInt64(GetRequiredProperty(liveHost, "RenderSchedulerWakeupCount"), CultureInfo.InvariantCulture);
+    }
+
+    private static LivePresentedFrameState ReadLivePresentedFrameState(object liveHost)
+    {
+        if (GetRequiredProperty(liveHost, "HasPresentedFrame") is not bool hasPresentedFrame)
+        {
+            throw new InvalidOperationException("Expected MVP live host HasPresentedFrame to be a Boolean.");
+        }
+
+        object frameState = GetRequiredProperty(liveHost, "LastPresentedFrameState");
+        return new LivePresentedFrameState(
+            hasPresentedFrame,
+            Convert.ToUInt32(GetRequiredProperty(frameState, "LogicalWidth"), CultureInfo.InvariantCulture),
+            Convert.ToUInt32(GetRequiredProperty(frameState, "LogicalHeight"), CultureInfo.InvariantCulture),
+            Convert.ToUInt32(GetRequiredProperty(frameState, "PixelWidth"), CultureInfo.InvariantCulture),
+            Convert.ToUInt32(GetRequiredProperty(frameState, "PixelHeight"), CultureInfo.InvariantCulture),
+            Convert.ToDouble(GetRequiredProperty(frameState, "DpiScale"), CultureInfo.InvariantCulture),
+            Convert.ToInt64(GetRequiredProperty(frameState, "SceneChangeVersion"), CultureInfo.InvariantCulture),
+            Convert.ToInt64(GetRequiredProperty(frameState, "RetainedWpfChangeVersion"), CultureInfo.InvariantCulture),
+            Convert.ToInt64(GetRequiredProperty(frameState, "FlatDrawingChangeVersion"), CultureInfo.InvariantCulture));
+    }
+
+    private static string FormatLivePresentedFrameState(LivePresentedFrameState frame)
+    {
+        return
+            $"presented={frame.HasPresentedFrame}, " +
+            $"logical {frame.LogicalWidth}x{frame.LogicalHeight}, " +
+            $"pixels {frame.PixelWidth}x{frame.PixelHeight}, " +
+            $"dpi {frame.DpiScale:0.###}, " +
+            $"scene {frame.SceneChangeVersion}, " +
+            $"wpf {frame.RetainedWpfChangeVersion}, " +
+            $"flat {frame.FlatDrawingChangeVersion}";
     }
 
     private static string DescribeInputElement(object? element)
@@ -1814,21 +2026,60 @@ public partial class MainWindow : Window
         return host != null;
     }
 
+    private LiveLayoutSize CaptureLiveLayoutSize()
+    {
+        if (!TryGetPortableActivationHost(out var liveHost) || liveHost == null)
+        {
+            throw new InvalidOperationException("Expected portable activation host while capturing MVP live layout size.");
+        }
+
+        FrameworkElement contentElement = Require<FrameworkElement>(
+            Content,
+            "MVP live layout root content");
+        var geometry = ReadLiveRenderSurfaceGeometry(liveHost);
+        var geometryStatus = FormatLiveRenderSurfaceGeometry(geometry);
+        return new LiveLayoutSize(
+            IsValid: true,
+            geometry,
+            geometryStatus,
+            ActualWidth,
+            ActualHeight,
+            contentElement.ActualWidth,
+            contentElement.ActualHeight);
+    }
+
+    private static void SetLiveNativeWindowSize(object liveHost, int width, int height)
+    {
+        object silkWindow = GetRequiredProperty(liveHost, "SilkWindow");
+        Type silkWindowType = silkWindow.GetType();
+        Type silkWindowInterface = silkWindowType.GetInterface("Silk.NET.Windowing.IWindowProperties")
+            ?? throw new InvalidOperationException(
+                $"Expected MVP live host SilkWindow to implement Silk.NET.Windowing.IWindowProperties, but got {silkWindowType.FullName}.");
+        PropertyInfo sizeProperty = silkWindowInterface.GetProperty(
+            "Size",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(silkWindowInterface.FullName, "Size");
+        object size = Activator.CreateInstance(sizeProperty.PropertyType, width, height)
+            ?? throw new InvalidOperationException($"Expected {sizeProperty.PropertyType.FullName} construction to succeed.");
+        sizeProperty.SetValue(silkWindow, size);
+        WakeLiveRenderHost(liveHost);
+    }
+
     private static string ValidateLiveRenderSurfaceGeometryCore(
         object liveHost,
         uint expectedLogicalWidth,
         uint expectedLogicalHeight)
     {
-        object geometry = InvokeRequired(liveHost, "ResolveCurrentRenderSurfaceGeometry");
-        var logicalWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "LogicalWidth"), CultureInfo.InvariantCulture);
-        var logicalHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "LogicalHeight"), CultureInfo.InvariantCulture);
-        var pixelWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "PixelWidth"), CultureInfo.InvariantCulture);
-        var pixelHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "PixelHeight"), CultureInfo.InvariantCulture);
-        var dpiScale = Convert.ToDouble(GetRequiredProperty(geometry, "DpiScale"), CultureInfo.InvariantCulture);
-        var viewportX = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportX"), CultureInfo.InvariantCulture);
-        var viewportY = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportY"), CultureInfo.InvariantCulture);
-        var viewportWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportWidth"), CultureInfo.InvariantCulture);
-        var viewportHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportHeight"), CultureInfo.InvariantCulture);
+        var geometry = ReadLiveRenderSurfaceGeometry(liveHost);
+        var logicalWidth = geometry.LogicalWidth;
+        var logicalHeight = geometry.LogicalHeight;
+        var pixelWidth = geometry.PixelWidth;
+        var pixelHeight = geometry.PixelHeight;
+        var dpiScale = geometry.DpiScale;
+        var viewportX = geometry.ViewportX;
+        var viewportY = geometry.ViewportY;
+        var viewportWidth = geometry.ViewportWidth;
+        var viewportHeight = geometry.ViewportHeight;
 
         AssertEqual(expectedLogicalWidth, logicalWidth, "MVP live ProGPU WPF logical width");
         AssertEqual(expectedLogicalHeight, logicalHeight, "MVP live ProGPU WPF logical height");
@@ -1851,8 +2102,81 @@ public partial class MainWindow : Window
                 $"Expected MVP live ProGPU WPF viewport to use the full physical target, but got viewport {viewportWidth}x{viewportHeight}@{viewportX},{viewportY} for pixels {pixelWidth}x{pixelHeight}.");
         }
 
-        return $"logical {logicalWidth}x{logicalHeight}, pixels {pixelWidth}x{pixelHeight}, viewport {viewportWidth}x{viewportHeight}@{viewportX},{viewportY}, dpi {dpiScale:0.###}";
+        return FormatLiveRenderSurfaceGeometry(geometry);
     }
+
+    private static LiveRenderSurfaceGeometry ReadLiveRenderSurfaceGeometry(object liveHost)
+    {
+        object geometry = InvokeRequired(liveHost, "ResolveCurrentRenderSurfaceGeometry");
+        return new LiveRenderSurfaceGeometry(
+            Convert.ToUInt32(GetRequiredProperty(geometry, "LogicalWidth"), CultureInfo.InvariantCulture),
+            Convert.ToUInt32(GetRequiredProperty(geometry, "LogicalHeight"), CultureInfo.InvariantCulture),
+            Convert.ToUInt32(GetRequiredProperty(geometry, "PixelWidth"), CultureInfo.InvariantCulture),
+            Convert.ToUInt32(GetRequiredProperty(geometry, "PixelHeight"), CultureInfo.InvariantCulture),
+            Convert.ToDouble(GetRequiredProperty(geometry, "DpiScale"), CultureInfo.InvariantCulture),
+            Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportX"), CultureInfo.InvariantCulture),
+            Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportY"), CultureInfo.InvariantCulture),
+            Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportWidth"), CultureInfo.InvariantCulture),
+            Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportHeight"), CultureInfo.InvariantCulture));
+    }
+
+    private static bool LiveRenderSurfaceGeometryIsReady(
+        LiveRenderSurfaceGeometry geometry,
+        uint expectedLogicalWidth,
+        uint expectedLogicalHeight)
+    {
+        return geometry.LogicalWidth == expectedLogicalWidth &&
+               geometry.LogicalHeight == expectedLogicalHeight &&
+               geometry.PixelWidth >= geometry.LogicalWidth &&
+               geometry.PixelHeight >= geometry.LogicalHeight &&
+               geometry.ViewportX == 0 &&
+               geometry.ViewportY == 0 &&
+               geometry.ViewportWidth == geometry.PixelWidth &&
+               geometry.ViewportHeight == geometry.PixelHeight &&
+               (geometry.DpiScale <= 1.01 ||
+                (geometry.PixelWidth > geometry.LogicalWidth &&
+                 geometry.PixelHeight > geometry.LogicalHeight));
+    }
+
+    private static string FormatLiveRenderSurfaceGeometry(LiveRenderSurfaceGeometry geometry)
+    {
+        return
+            $"logical {geometry.LogicalWidth}x{geometry.LogicalHeight}, " +
+            $"pixels {geometry.PixelWidth}x{geometry.PixelHeight}, " +
+            $"viewport {geometry.ViewportWidth}x{geometry.ViewportHeight}@{geometry.ViewportX},{geometry.ViewportY}, " +
+            $"dpi {geometry.DpiScale:0.###}";
+    }
+
+    private readonly record struct LiveRenderSurfaceGeometry(
+        uint LogicalWidth,
+        uint LogicalHeight,
+        uint PixelWidth,
+        uint PixelHeight,
+        double DpiScale,
+        uint ViewportX,
+        uint ViewportY,
+        uint ViewportWidth,
+        uint ViewportHeight);
+
+    private readonly record struct LiveLayoutSize(
+        bool IsValid,
+        LiveRenderSurfaceGeometry Geometry,
+        string GeometryStatus,
+        double WindowWidth,
+        double WindowHeight,
+        double ContentWidth,
+        double ContentHeight);
+
+    private readonly record struct LivePresentedFrameState(
+        bool HasPresentedFrame,
+        uint LogicalWidth,
+        uint LogicalHeight,
+        uint PixelWidth,
+        uint PixelHeight,
+        double DpiScale,
+        long SceneChangeVersion,
+        long RetainedWpfChangeVersion,
+        long FlatDrawingChangeVersion);
 
     private static void RaiseHostInput(
         object liveHost,

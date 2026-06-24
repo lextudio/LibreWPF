@@ -10,7 +10,7 @@ namespace System.Windows.Media
     internal static class PortableMediaContextRenderService
     {
         private static readonly object s_lock = new object();
-        private static readonly List<Action<TimeSpan>> s_renderRequests = new List<Action<TimeSpan>>();
+        private static readonly List<Action<object, TimeSpan>> s_renderRequests = new List<Action<object, TimeSpan>>();
         private static readonly bool s_isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
         internal static bool IsEnabled
@@ -32,10 +32,16 @@ namespace System.Windows.Media
         internal static IDisposable Register(Action requestRender)
         {
             ArgumentNullException.ThrowIfNull(requestRender);
-            return Register(_ => requestRender());
+            return Register((_, _) => requestRender());
         }
 
         internal static IDisposable Register(Action<TimeSpan> requestRender)
+        {
+            ArgumentNullException.ThrowIfNull(requestRender);
+            return Register((_, delay) => requestRender(delay));
+        }
+
+        internal static IDisposable Register(Action<object, TimeSpan> requestRender)
         {
             ArgumentNullException.ThrowIfNull(requestRender);
 
@@ -54,10 +60,20 @@ namespace System.Windows.Media
 
         internal static void RequestRender()
         {
-            RequestRender(TimeSpan.Zero);
+            RequestRender(null, TimeSpan.Zero);
         }
 
         internal static void RequestRender(TimeSpan delay)
+        {
+            RequestRender(null, delay);
+        }
+
+        internal static void RequestRender(object invalidatedSource)
+        {
+            RequestRender(invalidatedSource, TimeSpan.Zero);
+        }
+
+        internal static void RequestRender(object invalidatedSource, TimeSpan delay)
         {
             if (s_isWindows)
             {
@@ -69,7 +85,7 @@ namespace System.Windows.Media
                 delay = TimeSpan.Zero;
             }
 
-            Action<TimeSpan>[] renderRequests;
+            Action<object, TimeSpan>[] renderRequests;
             lock (s_lock)
             {
                 if (s_renderRequests.Count == 0)
@@ -82,22 +98,22 @@ namespace System.Windows.Media
 
             for (int i = 0; i < renderRequests.Length; i++)
             {
-                renderRequests[i](delay);
+                renderRequests[i](invalidatedSource, delay);
             }
         }
 
         private sealed class Registration : IDisposable
         {
-            private Action<TimeSpan> _requestRender;
+            private Action<object, TimeSpan> _requestRender;
 
-            public Registration(Action<TimeSpan> requestRender)
+            public Registration(Action<object, TimeSpan> requestRender)
             {
                 _requestRender = requestRender;
             }
 
             public void Dispose()
             {
-                Action<TimeSpan> requestRender = _requestRender;
+                Action<object, TimeSpan> requestRender = _requestRender;
                 if (requestRender == null)
                 {
                     return;

@@ -773,7 +773,13 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return;
         }
 
+        ProcessHostInputAndRequestRender(e);
+    }
+
+    private void ProcessHostInputAndRequestRender(WpfInputEventArgs e)
+    {
         ProcessHostInput(e);
+        RequestRenderFromMediaContext(RootVisual, TimeSpan.Zero);
     }
 
     private void ProcessHostInput(WpfInputEventArgs e)
@@ -806,7 +812,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return false;
         }
 
-        var callback = new Action(() => ProcessHostInput(e));
+        var callback = new Action(() => ProcessHostInputAndRequestRender(e));
         object? dispatcherPriority = TryCreateDispatcherPriority(dispatcherType, "Input");
         MethodInfo? beginInvokeMethod = null;
         object[]? beginInvokeArgs = null;
@@ -841,7 +847,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         if (beginInvokeMethod != null)
         {
             beginInvokeMethod.Invoke(dispatcher, beginInvokeArgs);
-            RequestRenderFromMediaContext();
+            Host.TryRequestNativeLoopWakeup();
             return true;
         }
 
@@ -1250,11 +1256,23 @@ public sealed class WpfPortableWindowActivation : IDisposable
             "Register",
             BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
             binder: null,
-            types: new[] { typeof(Action<TimeSpan>) },
+            types: new[] { typeof(Action<object, TimeSpan>) },
             modifiers: null);
         var registerParameter = registerMethod == null
             ? null
-            : (object)(Action<TimeSpan>)RequestRenderFromMediaContext;
+            : (object)(Action<object?, TimeSpan>)RequestRenderFromMediaContext;
+        if (registerMethod == null)
+        {
+            registerMethod = serviceType.GetMethod(
+                "Register",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: new[] { typeof(Action<TimeSpan>) },
+                modifiers: null);
+            registerParameter = registerMethod == null
+                ? null
+                : (object)(Action<TimeSpan>)RequestRenderFromMediaContext;
+        }
         if (registerMethod == null)
         {
             registerMethod = serviceType.GetMethod(
@@ -1284,10 +1302,15 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private void RequestRenderFromMediaContext()
     {
-        RequestRenderFromMediaContext(TimeSpan.Zero);
+        RequestRenderFromMediaContext(null, TimeSpan.Zero);
     }
 
     private void RequestRenderFromMediaContext(TimeSpan delay)
+    {
+        RequestRenderFromMediaContext(null, delay);
+    }
+
+    private void RequestRenderFromMediaContext(object? invalidatedSource, TimeSpan delay)
     {
         if (_isDisposed)
         {
@@ -1296,6 +1319,8 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
         try
         {
+            Host.InvalidateWpfSourceForPortableRender(invalidatedSource ?? RootVisual);
+
             if (Host.WpfRenderScheduler is IWpfDelayedRenderScheduler delayedScheduler)
             {
                 delayedScheduler.RequestRender(delay);

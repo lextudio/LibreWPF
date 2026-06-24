@@ -372,7 +372,11 @@ public sealed class WpfPortableWindowActivationTests
     [Fact]
     public void HostInputForwardsPayloadToPortableWindowInputHandler()
     {
-        using var host = new ProGpuWpfWindowHost();
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
         var window = new FakePortableInputWindow();
         var source = new FakePortablePresentationSource();
 
@@ -386,15 +390,17 @@ public sealed class WpfPortableWindowActivationTests
             key: "A",
             scanCode: 42,
             modifiers: WpfInputModifiers.Control);
+        int requestCountBeforeInput = scheduler.RequestCount;
         RaiseHostInputEvent(host, args);
 
         Assert.Equal(1, window.InputCount);
         Assert.Same(args, window.LastInputArgs);
         Assert.True(args.Handled);
+        Assert.True(scheduler.RequestCount > requestCountBeforeInput);
     }
 
     [Fact]
-    public void HostInputFromNonDispatcherThreadQueuesInputAndRequestsRender()
+    public void HostInputFromNonDispatcherThreadQueuesInputAndRequestsRenderAfterProcessing()
     {
         var scheduler = new TestRenderScheduler();
         using var host = new ProGpuWpfWindowHost
@@ -417,11 +423,13 @@ public sealed class WpfPortableWindowActivationTests
         Assert.Equal(1, window.Dispatcher.BeginInvokeCount);
         Assert.Equal(0, window.Dispatcher.InvokeCount);
         Assert.True(scheduler.RequestCount > requestCountBeforeInput);
+        int requestCountBeforeQueuedInput = scheduler.RequestCount;
 
         window.Dispatcher.InvokeQueuedCallback();
 
         Assert.Equal(1, window.InputCount);
         Assert.Same(args, window.LastInputArgs);
+        Assert.True(scheduler.RequestCount > requestCountBeforeQueuedInput);
     }
 
     [Fact]

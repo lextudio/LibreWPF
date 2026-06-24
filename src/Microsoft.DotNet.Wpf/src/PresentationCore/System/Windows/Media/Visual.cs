@@ -5198,9 +5198,9 @@ namespace System.Windows.Media
                 {
                     MediaContext mctx = MediaContext.From(e.Dispatcher);
 
-                    if (mctx.Channel != null)
+                    if (mctx.Channel != null || PortableMediaContextRenderService.IsEnabled)
                     {
-                        mctx.PostRender();
+                        mctx.PostRender(e);
                     }
                 }
                 else if (e.CheckFlagsAnd(VisualFlags.NodeIsCyclicBrushRoot))
@@ -5363,8 +5363,6 @@ namespace System.Windows.Media
         #endregion Private Fields
     }
 }
-
-
 
 
 

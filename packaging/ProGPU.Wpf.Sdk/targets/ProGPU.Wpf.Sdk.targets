@@ -184,4 +184,52 @@
           SkipUnchangedFiles="true" />
   </Target>
 
+  <PropertyGroup>
+    <ProGpuWpfEnableWin32CompatShim Condition="'$(ProGpuWpfEnableWin32CompatShim)' == ''">true</ProGpuWpfEnableWin32CompatShim>
+    <ProGpuWpfWin32CompatCompiler Condition="'$(ProGpuWpfWin32CompatCompiler)' == ''">cc</ProGpuWpfWin32CompatCompiler>
+    <_ProGpuWpfWin32CompatSource>$(MSBuildThisFileDirectory)ProGPU.Wpf.Sdk.Win32Compat.c</_ProGpuWpfWin32CompatSource>
+    <_ProGpuWpfWin32CompatIntermediateDirectory>$([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', 'obj', '$(Configuration)', '$(TargetFramework)', 'ProGPU.Wpf.Sdk.Win32Compat'))</_ProGpuWpfWin32CompatIntermediateDirectory>
+    <_ProGpuWpfWin32CompatOutput Condition="$([MSBuild]::IsOSPlatform('OSX'))">$(_ProGpuWpfWin32CompatIntermediateDirectory)/ProGPU.Wpf.Sdk.Win32Compat.dylib</_ProGpuWpfWin32CompatOutput>
+    <_ProGpuWpfWin32CompatOutput Condition="$([MSBuild]::IsOSPlatform('Linux'))">$(_ProGpuWpfWin32CompatIntermediateDirectory)/ProGPU.Wpf.Sdk.Win32Compat.so</_ProGpuWpfWin32CompatOutput>
+    <_ProGpuWpfWin32CompatCompileCommand Condition="$([MSBuild]::IsOSPlatform('OSX'))">&quot;$(ProGpuWpfWin32CompatCompiler)&quot; -dynamiclib -O2 -fvisibility=hidden -o &quot;$(_ProGpuWpfWin32CompatOutput)&quot; &quot;$(_ProGpuWpfWin32CompatSource)&quot;</_ProGpuWpfWin32CompatCompileCommand>
+    <_ProGpuWpfWin32CompatCompileCommand Condition="$([MSBuild]::IsOSPlatform('Linux'))">&quot;$(ProGpuWpfWin32CompatCompiler)&quot; -shared -fPIC -O2 -fvisibility=hidden -o &quot;$(_ProGpuWpfWin32CompatOutput)&quot; &quot;$(_ProGpuWpfWin32CompatSource)&quot;</_ProGpuWpfWin32CompatCompileCommand>
+  </PropertyGroup>
+
+  <Target Name="_ProGpuWpfSdkBuildWin32CompatShim"
+          AfterTargets="CopyFilesToOutputDirectory"
+          Condition="'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true' And '$(ProGpuWpfEnableWin32CompatShim)' == 'true' And '$(_ProGpuWpfWin32CompatOutput)' != '' And !Exists('$(TargetDir)kernel32.dll')">
+    <MakeDir Directories="$(_ProGpuWpfWin32CompatIntermediateDirectory)" />
+    <Exec Command="$(_ProGpuWpfWin32CompatCompileCommand)"
+          StandardOutputImportance="Low"
+          StandardErrorImportance="High" />
+
+    <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+      <_ProGpuWpfWin32CompatShim Include="$(_ProGpuWpfWin32CompatOutput)">
+        <TargetPath>$(TargetDir)kernel32.dll</TargetPath>
+      </_ProGpuWpfWin32CompatShim>
+      <_ProGpuWpfWin32CompatShim Include="$(_ProGpuWpfWin32CompatOutput)">
+        <TargetPath>$(TargetDir)user32.dll</TargetPath>
+      </_ProGpuWpfWin32CompatShim>
+    </ItemGroup>
+
+    <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+      <_ProGpuWpfWin32CompatShim Include="$(_ProGpuWpfWin32CompatOutput)">
+        <TargetPath>$(TargetDir)kernel32.dll.so</TargetPath>
+      </_ProGpuWpfWin32CompatShim>
+      <_ProGpuWpfWin32CompatShim Include="$(_ProGpuWpfWin32CompatOutput)">
+        <TargetPath>$(TargetDir)libkernel32.dll.so</TargetPath>
+      </_ProGpuWpfWin32CompatShim>
+      <_ProGpuWpfWin32CompatShim Include="$(_ProGpuWpfWin32CompatOutput)">
+        <TargetPath>$(TargetDir)user32.dll.so</TargetPath>
+      </_ProGpuWpfWin32CompatShim>
+      <_ProGpuWpfWin32CompatShim Include="$(_ProGpuWpfWin32CompatOutput)">
+        <TargetPath>$(TargetDir)libuser32.dll.so</TargetPath>
+      </_ProGpuWpfWin32CompatShim>
+    </ItemGroup>
+
+    <Copy SourceFiles="@(_ProGpuWpfWin32CompatShim)"
+          DestinationFiles="@(_ProGpuWpfWin32CompatShim->'%(TargetPath)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
 </Project>

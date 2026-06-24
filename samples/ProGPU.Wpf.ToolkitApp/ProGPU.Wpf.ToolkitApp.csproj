@@ -1,0 +1,11 @@
+<Project Sdk="ProGPU.Wpf.Sdk/11.0.0-dev">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net11.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Extended.Wpf.Toolkit" Version="5.1.2" />
+  </ItemGroup>
+</Project>

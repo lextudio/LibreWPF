@@ -394,7 +394,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private static bool IsCurrentApplicationMainWindow(object window)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("_isNativeRunStarted = true;", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FlushWpfDispatcherOperations(\"Loaded\", \"Render\")", proGpuActivation, StringComparison.Ordinal);
-        Assert.Contains("FlushWpfDispatcherOperations(\"Render\", \"ApplicationIdle\")", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("FlushWpfDispatcherOperations(\"Input\", \"Render\", \"ApplicationIdle\")", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("private void OnHostUpdateTick(object? sender, EventArgs e)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("FlushWpfDispatcherOperation(\"Background\", UpdateTickFlushTimeout)", proGpuActivation, StringComparison.Ordinal);
         Assert.DoesNotContain("FlushWpfDispatcherOperations(\"ApplicationIdle\")", proGpuActivation, StringComparison.Ordinal);
@@ -5749,6 +5749,90 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("ProGPU.Wpf", project, StringComparison.Ordinal);
         Assert.DoesNotContain(@"external\ProGPU", project, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGPU.Scene", project, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PortableTextFormatterKeepsCollapsedSimpleTextOnManagedPath()
+    {
+        var simpleTextLine = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "MS",
+            "Internal",
+            "TextFormatting",
+            "SimpleTextLine.cs"));
+
+        Assert.Contains("return CollapsePortable(collapsingPropertiesList) ?? this;", simpleTextLine, StringComparison.Ordinal);
+        Assert.Contains("private TextLine CollapsePortable(", simpleTextLine, StringComparison.Ordinal);
+        Assert.Contains("CreatePortableSymbolRun", simpleTextLine, StringComparison.Ordinal);
+        Assert.Contains("new TextCollapsedRange(_cpFirst + keptCharacters, collapsedLength, collapsedWidth)", simpleTextLine, StringComparison.Ordinal);
+        Assert.Contains("private IList<TextCollapsedRange> _collapsedRanges", simpleTextLine, StringComparison.Ordinal);
+        Assert.Contains("get { return (_statusFlags & StatusFlags.HasCollapsed) != 0; }", simpleTextLine, StringComparison.Ordinal);
+        AssertGuardBefore(simpleTextLine, "if (!OperatingSystem.IsWindows())", "new TextMetrics.FullTextLine");
+    }
+
+    [Fact]
+    public void ProGpuWpfSdkNativeCompatShimUsesPortableOutputPaths()
+    {
+        var portableTargets = File.ReadAllText(FindRepoPath(
+            "packaging",
+            "ProGPU.Wpf.Sdk",
+            "targets",
+            "ProGPU.Wpf.Sdk.targets"));
+        var win32Compat = File.ReadAllText(FindRepoPath(
+            "packaging",
+            "ProGPU.Wpf.Sdk",
+            "targets",
+            "ProGPU.Wpf.Sdk.Win32Compat.c"));
+
+        Assert.Contains("ProGpuWpfEnableWin32CompatShim", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.Sdk.Win32Compat.c", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("$([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', 'obj', '$(Configuration)', '$(TargetFramework)', 'ProGPU.Wpf.Sdk.Win32Compat'))", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<MakeDir Directories=\"$(_ProGpuWpfWin32CompatIntermediateDirectory)\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<TargetPath>$(TargetDir)kernel32.dll</TargetPath>", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<TargetPath>$(TargetDir)user32.dll</TargetPath>", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("GetCurrentThreadId", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("SetWindowsHookEx", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("GetClientRect", win32Compat, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ProGpuWpfToolkitSampleExercisesXceedToolkitAndAvalonDock()
+    {
+        var project = XDocument.Load(FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.ToolkitApp",
+            "ProGPU.Wpf.ToolkitApp.csproj"));
+        var appCodeBehind = File.ReadAllText(FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.ToolkitApp",
+            "App.xaml.cs"));
+        var mainWindowXaml = File.ReadAllText(FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.ToolkitApp",
+            "MainWindow.xaml"));
+        var mainWindowCodeBehind = File.ReadAllText(FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.ToolkitApp",
+            "MainWindow.xaml.cs"));
+        var runScript = File.ReadAllText(FindRepoPath(
+            "eng",
+            "run-progpu-wpf-toolkit.sh"));
+
+        Assert.Equal("ProGPU.Wpf.Sdk/11.0.0-dev", project.Root?.Attribute("Sdk")?.Value);
+        AssertPackageReference(project, "Extended.Wpf.Toolkit");
+        Assert.Contains("xmlns:xctk=\"http://schemas.xceed.com/wpf/xaml/toolkit\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("xmlns:xcad=\"http://schemas.xceed.com/wpf/xaml/avalondock\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcad:DockingManager x:Name=\"DockManager\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcad:AeroTheme />", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xctk:IntegerUpDown x:Name=\"PriorityEditor\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xctk:PropertyGrid x:Name=\"DocumentPropertyGrid\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Require<DockingManager>(window, \"DockManager\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<PropertyGrid>(window, \"DocumentPropertyGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGPU WPF Toolkit Application.Run validation succeeded.", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_TOOLKIT_RUN_VALIDATE", runScript, StringComparison.Ordinal);
     }
 
     [Fact]

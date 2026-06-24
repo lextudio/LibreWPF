@@ -12,6 +12,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.TextFormatting;
 using System.Collections;
+using System.Text;
 
 namespace MS.Internal.TextFormatting
 {
@@ -52,6 +53,7 @@ namespace MS.Internal.TextFormatting
         private Rect                    _boundingBox;           // line bounding rectangle
         private StatusFlags             _statusFlags;           // status flags
         private FormatSettings          _settings;              // formatting settings (only kept in an overflowed line for collapsing purpose only)
+        private IList<TextCollapsedRange> _collapsedRanges;     // collapsed ranges when created by portable fallback
 
 
         [Flags]
@@ -60,6 +62,7 @@ namespace MS.Internal.TextFormatting
             None                = 0,
             BoundingBoxComputed = 0x00000001,   // bounding box has been computed
             HasOverflowed       = 0x00000002,   // line width overflows paragraph width
+            HasCollapsed        = 0x00000004,   // line was collapsed by the portable fallback
         }
 
 
@@ -281,7 +284,8 @@ namespace MS.Internal.TextFormatting
             ArrayList               runs,
             ref int                 trailing,
             ref int                 trailingSpaceWidth,
-            double pixelsPerDip
+            double pixelsPerDip,
+            IList<TextCollapsedRange> collapsedRanges = null
             ) : base(pixelsPerDip)
         {
             // Compute line metrics
@@ -370,6 +374,11 @@ namespace MS.Internal.TextFormatting
 
             _cpFirst = cpFirst;
             _trailing = trailing;
+            _collapsedRanges = collapsedRanges;
+            if (collapsedRanges != null && collapsedRanges.Count != 0)
+            {
+                _statusFlags |= StatusFlags.HasCollapsed;
+            }
 
             int idealWidthAtTrailing = idealWidth - trailingSpaceWidth;
 
@@ -545,6 +554,11 @@ namespace MS.Internal.TextFormatting
 
             Invariant.Assert(_settings != null);
 
+            if (!OperatingSystem.IsWindows())
+            {
+                return CollapsePortable(collapsingPropertiesList) ?? this;
+            }
+
             // instantiate a collapsible full text line, collapse it and return the collapsed line
             TextMetrics.FullTextLine textLine = new TextMetrics.FullTextLine(
                 _settings,
@@ -575,6 +589,332 @@ namespace MS.Internal.TextFormatting
             }
 
             return textLine;
+        }
+
+        private TextLine CollapsePortable(
+            TextCollapsingProperties[] collapsingPropertiesList
+            )
+        {
+            TextCollapsingProperties collapsingProperties = GetPortableCollapsingProperties(collapsingPropertiesList);
+            if (collapsingProperties == null)
+            {
+                return this;
+            }
+
+            int targetIdealWidth = TextFormatterImp.RealToIdealFloor(Math.Max(0, collapsingProperties.Width));
+            if (targetIdealWidth <= 0)
+            {
+                return CreatePortableCollapsedLine(collapsingProperties, targetIdealWidth, 0, _cpLength, collapsedWidth: WidthIncludingTrailingWhitespace);
+            }
+
+            SimpleRun symbolRun = CreatePortableSymbolRun(collapsingProperties.Symbol, targetIdealWidth);
+            if (symbolRun == null)
+            {
+                return this;
+            }
+
+            int availableTextWidth = Math.Max(0, targetIdealWidth - symbolRun.IdealWidth);
+            ArrayList collapsedRuns = new ArrayList(_runs.Length + 1);
+            int keptCharacters = 0;
+            int keptWidth = 0;
+            int nonHiddenLength = 0;
+
+            foreach (SimpleRun run in _runs)
+            {
+                if (run.EOT)
+                {
+                    break;
+                }
+
+                if (run.Ghost)
+                {
+                    AddRun(collapsedRuns, run, ref nonHiddenLength);
+                    keptCharacters += run.Length;
+                    continue;
+                }
+
+                int remainingWidth = availableTextWidth - keptWidth;
+                int take = GetPortableCollapsedLength(run, remainingWidth);
+                if (take <= 0)
+                {
+                    break;
+                }
+
+                SimpleRun keptRun = CreatePortableRunSlice(run, take, keptWidth);
+                if (keptRun == null)
+                {
+                    break;
+                }
+
+                AddRun(collapsedRuns, keptRun, ref nonHiddenLength);
+                keptCharacters += take;
+                keptWidth += keptRun.IdealWidth;
+
+                if (take < run.Length)
+                {
+                    break;
+                }
+            }
+
+            if (collapsingProperties.Style == TextCollapsingStyle.TrailingWord)
+            {
+                TrimPortableWordCollapse(collapsedRuns, ref keptCharacters, ref keptWidth);
+            }
+
+            AddRun(collapsedRuns, symbolRun, ref nonHiddenLength);
+
+            int collapsedLength = Math.Max(0, _cpLength - keptCharacters);
+            double collapsedWidth = Math.Max(0, WidthIncludingTrailingWhitespace - _settings.Formatter.IdealToReal(keptWidth, PixelsPerDip));
+            return CreatePortableCollapsedLine(collapsingProperties, targetIdealWidth, keptCharacters, collapsedLength, collapsedWidth, collapsedRuns);
+        }
+
+        private static TextCollapsingProperties GetPortableCollapsingProperties(
+            TextCollapsingProperties[] collapsingPropertiesList
+            )
+        {
+            if (collapsingPropertiesList == null)
+            {
+                return null;
+            }
+
+            foreach (TextCollapsingProperties collapsingProperties in collapsingPropertiesList)
+            {
+                if (collapsingProperties?.Symbol is TextCharacters)
+                {
+                    return collapsingProperties;
+                }
+            }
+
+            return null;
+        }
+
+        private TextLine CreatePortableCollapsedLine(
+            TextCollapsingProperties collapsingProperties,
+            int targetIdealWidth,
+            int keptCharacters,
+            int collapsedLength,
+            double collapsedWidth,
+            ArrayList collapsedRuns = null
+            )
+        {
+            if (collapsedRuns == null)
+            {
+                collapsedRuns = new ArrayList(1);
+                SimpleRun symbolRun = CreatePortableSymbolRun(collapsingProperties.Symbol, targetIdealWidth);
+                if (symbolRun != null)
+                {
+                    int nonHiddenLength = 0;
+                    AddRun(collapsedRuns, symbolRun, ref nonHiddenLength);
+                }
+            }
+
+            int trailing = 0;
+            int trailingSpaceWidth = 0;
+            List<TextCollapsedRange> collapsedRanges = new List<TextCollapsedRange>(1)
+            {
+                new TextCollapsedRange(_cpFirst + keptCharacters, collapsedLength, collapsedWidth)
+            };
+
+            return new SimpleTextLine(
+                _settings,
+                _cpFirst,
+                targetIdealWidth,
+                collapsedRuns,
+                ref trailing,
+                ref trailingSpaceWidth,
+                PixelsPerDip,
+                collapsedRanges
+                ) as TextLine;
+        }
+
+        private SimpleRun CreatePortableSymbolRun(
+            TextRun symbol,
+            int widthLeft
+            )
+        {
+            if (symbol is not TextCharacters)
+            {
+                return null;
+            }
+
+            return SimpleRun.Create(
+                _settings,
+                new CharacterBufferRange(symbol),
+                symbol,
+                _cpFirst,
+                _cpFirst,
+                symbol.Length,
+                widthLeft,
+                0,
+                PixelsPerDip
+                );
+        }
+
+        private SimpleRun CreatePortableRunSlice(
+            SimpleRun run,
+            int length,
+            int idealRunOffsetUnRounded
+            )
+        {
+            if (length <= 0 || length > run.Length || run.TextRun is not TextCharacters)
+            {
+                return null;
+            }
+
+            if (length == run.Length)
+            {
+                return run;
+            }
+
+            TextCharacters textRun = new TextCharacters(
+                GetRunText(run, length),
+                run.TextRun.Properties
+                );
+
+            return SimpleRun.Create(
+                _settings,
+                new CharacterBufferRange(textRun),
+                textRun,
+                _cpFirst,
+                _cpFirst,
+                length,
+                int.MaxValue,
+                idealRunOffsetUnRounded,
+                PixelsPerDip
+                );
+        }
+
+        private static int GetPortableCollapsedLength(
+            SimpleRun run,
+            int idealWidth
+            )
+        {
+            if (idealWidth <= 0 || run.Length <= 0)
+            {
+                return 0;
+            }
+
+            if (run.Ghost)
+            {
+                return run.Length;
+            }
+
+            if (run.Tab)
+            {
+                return run.IdealWidth <= idealWidth ? run.Length : 0;
+            }
+
+            int length = 0;
+            int width = 0;
+            while (length < run.Length)
+            {
+                int nextWidth = width + run.NominalAdvances[length];
+                if (nextWidth > idealWidth)
+                {
+                    break;
+                }
+
+                width = nextWidth;
+                length++;
+            }
+
+            return length;
+        }
+
+        private static void TrimPortableWordCollapse(
+            ArrayList collapsedRuns,
+            ref int keptCharacters,
+            ref int keptWidth
+            )
+        {
+            for (int i = collapsedRuns.Count - 1; i >= 0; --i)
+            {
+                if (collapsedRuns[i] is not SimpleRun run || run.Ghost || run.Tab || run.TextRun is not TextCharacters)
+                {
+                    continue;
+                }
+
+                int breakLength = FindTrailingWordBreak(run);
+                if (breakLength == run.Length)
+                {
+                    return;
+                }
+
+                if (breakLength <= 0)
+                {
+                    keptCharacters -= run.Length;
+                    keptWidth -= run.IdealWidth;
+                    collapsedRuns.RemoveAt(i);
+                    continue;
+                }
+
+                SimpleRun slicedRun = CreatePortableWordSlice(run, breakLength);
+                if (slicedRun == null)
+                {
+                    return;
+                }
+
+                keptCharacters -= run.Length - breakLength;
+                keptWidth -= run.IdealWidth - slicedRun.IdealWidth;
+                collapsedRuns[i] = slicedRun;
+                return;
+            }
+        }
+
+        private static SimpleRun CreatePortableWordSlice(
+            SimpleRun run,
+            int length
+            )
+        {
+            TextCharacters textRun = new TextCharacters(
+                GetRunText(run, length),
+                run.TextRun.Properties
+                );
+
+            return SimpleRun.CreateSimpleTextRun(
+                new CharacterBufferRange(textRun),
+                textRun,
+                run.Formatter,
+                int.MaxValue,
+                false,
+                false,
+                run.PixelsPerDip
+                );
+        }
+
+        private static int FindTrailingWordBreak(SimpleRun run)
+        {
+            int length = run.Length;
+            while (length > 0 && SimpleRun.IsSpace(GetRunChar(run, length - 1)))
+            {
+                length--;
+            }
+
+            for (int i = length - 1; i >= 0; --i)
+            {
+                if (SimpleRun.IsSpace(GetRunChar(run, i)))
+                {
+                    return i + 1;
+                }
+            }
+
+            return length;
+        }
+
+        private static string GetRunText(SimpleRun run, int length)
+        {
+            StringBuilder builder = new StringBuilder(length);
+            run.CharBufferReference.CharacterBuffer.AppendToStringBuilder(
+                builder,
+                run.CharBufferReference.OffsetToFirstChar,
+                length
+                );
+            return builder.ToString();
+        }
+
+        private static char GetRunChar(SimpleRun run, int index)
+        {
+            return run.CharBufferReference.CharacterBuffer[run.CharBufferReference.OffsetToFirstChar + index];
         }
 
 
@@ -1008,9 +1348,7 @@ namespace MS.Internal.TextFormatting
         /// </summary>
         public override IList<TextCollapsedRange> GetTextCollapsedRanges()
         {
-            // A collapsed line is never implemented as simple text line
-            Invariant.Assert(!HasCollapsed);
-            return null;
+            return _collapsedRanges;
         }
 
         /// <summary>
@@ -1203,8 +1541,7 @@ namespace MS.Internal.TextFormatting
         /// </summary>
         public override bool HasCollapsed
         {
-            // A collapsed line is never implemented as simple text line
-            get { return false; }
+            get { return (_statusFlags & StatusFlags.HasCollapsed) != 0; }
         }
 
         /// <summary>
@@ -1384,6 +1721,16 @@ namespace MS.Internal.TextFormatting
         internal double EmSize
         {
             get { return TextRun.Properties.FontRenderingEmSize; }
+        }
+
+        internal TextFormatterImp Formatter
+        {
+            get { return _textFormatterImp; }
+        }
+
+        internal double PixelsPerDip
+        {
+            get { return _pixelsPerDip; }
         }
 
         internal bool IsVisible
@@ -1972,7 +2319,7 @@ namespace MS.Internal.TextFormatting
             return false;
         }
 
-        private static bool IsSpace(char ch)
+        internal static bool IsSpace(char ch)
         {
             if (TextStore.IsSpace(ch))
                 return true;

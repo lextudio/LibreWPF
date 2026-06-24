@@ -64,21 +64,35 @@ if [[ "${PROGPU_WPF_HELLO_LIVE_VALIDATE:-0}" == "1" ]]; then
   ) >"${live_log}" 2>&1 &
   apphost_pid="$!"
 
+  live_validation_line=""
   swapchain_line=""
-  for _ in {1..200}; do
+  for _ in {1..600}; do
+    live_validation_line="$(grep -E "ProGPU WPF HelloApp live input validation succeeded:" "${live_log}" | tail -n 1 || true)"
+    swapchain_line="$(grep -E "Configuring SwapChain: [0-9]+x[0-9]+" "${live_log}" | tail -n 1 || true)"
+    if [[ -n "${live_validation_line}" ]]; then
+      break
+    fi
+
     if ! kill -0 "${apphost_pid}" 2>/dev/null; then
-      echo "Hello apphost exited before configuring a ProGPU swapchain." >&2
+      live_validation_line="$(grep -E "ProGPU WPF HelloApp live input validation succeeded:" "${live_log}" | tail -n 1 || true)"
+      swapchain_line="$(grep -E "Configuring SwapChain: [0-9]+x[0-9]+" "${live_log}" | tail -n 1 || true)"
+      if [[ -n "${live_validation_line}" ]]; then
+        break
+      fi
+
+      echo "Hello apphost exited before live input validation succeeded." >&2
       cat "${live_log}" >&2
       exit 1
     fi
 
-    swapchain_line="$(grep -E "Configuring SwapChain: [0-9]+x[0-9]+" "${live_log}" | tail -n 1 || true)"
-    if [[ -n "${swapchain_line}" ]]; then
-      break
-    fi
-
     sleep 0.05
   done
+
+  if [[ -z "${live_validation_line}" ]]; then
+    echo "Expected Hello apphost live input validation to succeed before timeout." >&2
+    cat "${live_log}" >&2
+    exit 1
+  fi
 
   if [[ -z "${swapchain_line}" ]]; then
     echo "Expected Hello apphost to configure a ProGPU swapchain." >&2
@@ -86,16 +100,31 @@ if [[ "${PROGPU_WPF_HELLO_LIVE_VALIDATE:-0}" == "1" ]]; then
     exit 1
   fi
 
-  if [[ ! "${swapchain_line}" =~ Configuring[[:space:]]SwapChain:[[:space:]]([0-9]+)x([0-9]+) ]]; then
-    echo "Could not parse Hello apphost swapchain line: ${swapchain_line}" >&2
+  logical_width=520
+  logical_height=360
+  if [[ "${live_validation_line}" =~ logical[[:space:]]([0-9]+)x([0-9]+),[[:space:]]pixels[[:space:]]([0-9]+)x([0-9]+),[[:space:]]viewport[[:space:]]([0-9]+)x([0-9]+)@([0-9]+),([0-9]+),[[:space:]]dpi[[:space:]]([0-9]+(\.[0-9]+)?) ]]; then
+    logical_width="${BASH_REMATCH[1]}"
+    logical_height="${BASH_REMATCH[2]}"
+    pixel_width="${BASH_REMATCH[3]}"
+    pixel_height="${BASH_REMATCH[4]}"
+    viewport_width="${BASH_REMATCH[5]}"
+    viewport_height="${BASH_REMATCH[6]}"
+    viewport_x="${BASH_REMATCH[7]}"
+    viewport_y="${BASH_REMATCH[8]}"
+    if (( viewport_x != 0 || viewport_y != 0 || viewport_width != pixel_width || viewport_height != pixel_height )); then
+      echo "Expected Hello apphost viewport to cover full pixel target, but got viewport ${viewport_width}x${viewport_height}@${viewport_x},${viewport_y} for ${pixel_width}x${pixel_height} pixels." >&2
+      cat "${live_log}" >&2
+      exit 1
+    fi
+  elif [[ "${swapchain_line}" =~ Configuring[[:space:]]SwapChain:[[:space:]]([0-9]+)x([0-9]+) ]]; then
+    pixel_width="${BASH_REMATCH[1]}"
+    pixel_height="${BASH_REMATCH[2]}"
+  else
+    echo "Could not parse Hello apphost geometry from live validation or swapchain line." >&2
     cat "${live_log}" >&2
     exit 1
   fi
 
-  pixel_width="${BASH_REMATCH[1]}"
-  pixel_height="${BASH_REMATCH[2]}"
-  logical_width=520
-  logical_height=360
   if (( pixel_width < logical_width || pixel_height < logical_height )); then
     echo "Expected Hello apphost pixels to cover ${logical_width}x${logical_height} logical content, but got ${pixel_width}x${pixel_height}." >&2
     cat "${live_log}" >&2
@@ -104,6 +133,7 @@ if [[ "${PROGPU_WPF_HELLO_LIVE_VALIDATE:-0}" == "1" ]]; then
 
   trap - EXIT
   cleanup_live_probe >/dev/null 2>&1
+  echo "${live_validation_line}"
   echo "ProGPU WPF HelloApp live geometry validation succeeded: logical ${logical_width}x${logical_height}, pixels ${pixel_width}x${pixel_height}."
   exit 0
 fi

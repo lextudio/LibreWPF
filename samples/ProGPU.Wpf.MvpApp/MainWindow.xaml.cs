@@ -896,13 +896,10 @@ public partial class MainWindow : Window
 
                     inputPoint = center;
                     inputHit = hit;
-                    (double dpiScaleX, double dpiScaleY) = GetLiveRenderSurfaceDpiScale(liveHost);
-                    double physicalX = center.X * dpiScaleX;
-                    double physicalY = center.Y * dpiScaleY;
-                    Console.WriteLine($"ProGPU WPF MVP live input validation raising pointer at {physicalX:0.###}, {physicalY:0.###}.");
-                    RaiseHostInput(liveHost, "MouseMove", x: physicalX, y: physicalY);
-                    RaiseHostInput(liveHost, "MouseDown", x: physicalX, y: physicalY, button: "Left");
-                    RaiseHostInput(liveHost, "MouseUp", x: physicalX, y: physicalY, button: "Left");
+                    Console.WriteLine($"ProGPU WPF MVP live input validation raising pointer at {center.X:0.###}, {center.Y:0.###}.");
+                    RaiseHostInput(liveHost, "MouseMove", x: center.X, y: center.Y);
+                    RaiseHostInput(liveHost, "MouseDown", x: center.X, y: center.Y, button: "Left");
+                    RaiseHostInput(liveHost, "MouseUp", x: center.X, y: center.Y, button: "Left");
                     Console.WriteLine("ProGPU WPF MVP live input validation pointer raised.");
                     return true;
                 },
@@ -962,14 +959,6 @@ public partial class MainWindow : Window
                 return "input TextBox focus and text binding updated";
             },
             DispatcherPriority.Send);
-    }
-
-    private static (double X, double Y) GetLiveRenderSurfaceDpiScale(object liveHost)
-    {
-        object geometry = InvokeRequired(liveHost, "ResolveCurrentRenderSurfaceGeometry");
-        var dpiScaleX = Convert.ToDouble(GetRequiredProperty(geometry, "DpiScaleX"), CultureInfo.InvariantCulture);
-        var dpiScaleY = Convert.ToDouble(GetRequiredProperty(geometry, "DpiScaleY"), CultureInfo.InvariantCulture);
-        return (dpiScaleX, dpiScaleY);
     }
 
     private async Task InvokeWithLiveHostWakeAsync(

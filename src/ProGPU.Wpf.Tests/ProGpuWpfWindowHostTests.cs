@@ -596,7 +596,7 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
-    public void NativeInputCoordinatesLookPhysicalForRetinaFramebufferEvenInsideLogicalBounds()
+    public void NativeInputCoordinatesLookPhysicalKeepsRetinaPointerInputLogicalInsideClientBounds()
     {
         var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
             clientWidth: 760,
@@ -607,6 +607,27 @@ public sealed class ProGpuWpfWindowHostTests
             WpfInputEventKind.MouseDown,
             x: 320,
             y: 180,
+            button: WpfMouseButton.Left);
+
+        Assert.False(
+            ProGpuWpfWindowHost.NativeInputCoordinatesLookPhysical(
+                new Vector2D<int>(760, 560),
+                geometry,
+                input));
+    }
+
+    [Fact]
+    public void NativeInputCoordinatesLookPhysicalDetectsPointerCoordinatesOutsideLogicalBounds()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 760,
+            clientHeight: 560,
+            framebufferSize: new Vector2D<int>(1520, 1120),
+            monitorDpiScale: 2.0);
+        var input = new WpfInputEventArgs(
+            WpfInputEventKind.MouseDown,
+            x: 1000,
+            y: 700,
             button: WpfMouseButton.Left);
 
         Assert.True(

@@ -485,8 +485,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal event EventHandler? UpdateTick;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("UpdateTick?.Invoke(this, EventArgs.Empty);", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryRequestNativeLoopWakeup()", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("RenderSurfaceCoordinatesLookPhysical(geometry)", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("viewportWidth > geometry.LogicalWidth || viewportHeight > geometry.LogicalHeight", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("return PointerInputCoordinateExceedsLogicalClient(input, geometry);", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("PointerCoordinateExceedsLogicalClient(input.X, geometry.LogicalWidth)", proGpuHost, StringComparison.Ordinal);
+        Assert.DoesNotContain("RenderSurfaceCoordinatesLookPhysical(geometry)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_TRACE_INPUT", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("TraceInputEvent(\"native\", e)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("TraceInputEvent(\"wpf\", input)", proGpuHost, StringComparison.Ordinal);
@@ -6053,6 +6054,13 @@ public sealed class WpfManagedProjectGraphTests
             "samples",
             "ProGPU.Wpf.MvpApp",
             "DetailsPage.xaml.cs");
+        var helloMainWindowCodeBehindPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.HelloApp",
+            "MainWindow.xaml.cs");
+        var helloRunScriptPath = FindRepoPath(
+            "eng",
+            "run-progpu-wpf-hello.sh");
         var mvpRunScriptPath = FindRepoPath(
             "eng",
             "run-progpu-wpf-mvp.sh");
@@ -6134,6 +6142,8 @@ public sealed class WpfManagedProjectGraphTests
         var mvpOverviewPageCodeBehind = File.ReadAllText(mvpOverviewPageCodeBehindPath);
         var mvpDetailsPageXaml = File.ReadAllText(mvpDetailsPageXamlPath);
         var mvpDetailsPageCodeBehind = File.ReadAllText(mvpDetailsPageCodeBehindPath);
+        var helloMainWindowCodeBehind = File.ReadAllText(helloMainWindowCodeBehindPath);
+        var helloRunScript = File.ReadAllText(helloRunScriptPath);
         var mvpRunScript = File.ReadAllText(mvpRunScriptPath);
         var mvpQuickCheckScript = File.ReadAllText(mvpQuickCheckScriptPath);
         string[] wpfThemeAssemblies =
@@ -7194,6 +7204,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AssertEqual(\"Live\", Require<MainViewModel>(viewModel, \"MVP live input view model\").NewItemName", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"./${apphost_name}\"", mvpRunScript, StringComparison.Ordinal);
         Assert.DoesNotContain("run --project \"${mvp_project}\"", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("ValidateRequiredLiveHelloAsync", helloMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RaiseHostInput(liveHost, \"MouseDown\"", helloMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RaiseHostInput(liveHost, \"TextInput\"", helloMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertEqual(\"Live\", ViewModel.Name", helloMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertEqual(\"Updated for Live\", ViewModel.Status", helloMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGPU WPF HelloApp live input validation succeeded:", helloRunScript, StringComparison.Ordinal);
+        Assert.Contains("live_validation_line", helloRunScript, StringComparison.Ordinal);
+        Assert.Contains("viewport_width != pixel_width", helloRunScript, StringComparison.Ordinal);
         Assert.Contains("Building ProGPU WPF SDK packages before quickcheck", mvpQuickCheckScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_REBUILD_PACKAGES=0 \"${repo_root}/eng/progpu-wpf-sdk-ci.sh\"", mvpQuickCheckScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Wpf.SdkExternalSmokeHarness.csproj", mvpQuickCheckScript, StringComparison.Ordinal);

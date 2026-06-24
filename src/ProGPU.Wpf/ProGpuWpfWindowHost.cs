@@ -1623,22 +1623,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
-        return RenderSurfaceCoordinatesLookPhysical(geometry) ||
-            NativeInputDimensionLooksPhysical(
-                nativeSize.X,
-                geometry.LogicalWidth,
-                ResolveGeometryViewportDimension(geometry.ViewportWidth, geometry.PixelWidth)) ||
-            NativeInputDimensionLooksPhysical(
-                nativeSize.Y,
-                geometry.LogicalHeight,
-                ResolveGeometryViewportDimension(geometry.ViewportHeight, geometry.PixelHeight));
-    }
-
-    private static bool RenderSurfaceCoordinatesLookPhysical(RenderSurfaceGeometry geometry)
-    {
-        var viewportWidth = ResolveGeometryViewportDimension(geometry.ViewportWidth, geometry.PixelWidth);
-        var viewportHeight = ResolveGeometryViewportDimension(geometry.ViewportHeight, geometry.PixelHeight);
-        return viewportWidth > geometry.LogicalWidth || viewportHeight > geometry.LogicalHeight;
+        _ = nativeSize;
+        return PointerInputCoordinateExceedsLogicalClient(input, geometry);
     }
 
     internal static bool PointerInputCoordinateExceedsLogicalClient(
@@ -1662,19 +1648,6 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         return coordinate > logicalDimension + 1.0;
-    }
-
-    private static bool NativeInputDimensionLooksPhysical(
-        int nativeDimension,
-        uint logicalDimension,
-        uint pixelDimension)
-    {
-        if (nativeDimension <= 0 || logicalDimension == 0u || pixelDimension <= logicalDimension)
-        {
-            return false;
-        }
-
-        return Math.Abs(nativeDimension - pixelDimension) <= 2;
     }
 
     private static bool IsPointerInput(WpfInputEventKind kind)

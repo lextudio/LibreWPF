@@ -8152,6 +8152,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("default-item DockPanel attached dock", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item Canvas attached position", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item UniformGrid metadata and children", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"DefaultItemsTransformedText\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RenderTransformOrigin=\"0.5,0.5\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<TransformGroup>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<ScaleTransform ScaleX=\"1.25\" ScaleY=\"0.75\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<RotateTransform Angle=\"15\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<TranslateTransform X=\"3\" Y=\"4\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<SkewTransform AngleX=\"5\" AngleY=\"0\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Expected default-item transform target metadata.", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Expected default-item RenderTransform group child count.", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item LayoutTransform skew", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Expected default-item transform values.", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsTemplateItem", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DataTemplate DataType=\"{x:Type local:DefaultItemsItem}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsImplicitTemplateText", externalSdkHarnessProgram, StringComparison.Ordinal);

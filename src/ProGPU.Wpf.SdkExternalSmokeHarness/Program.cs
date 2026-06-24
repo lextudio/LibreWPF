@@ -12782,6 +12782,21 @@ internal static class Program
                         <TextBlock Text="Default item uniform one" />
                         <TextBlock Text="Default item uniform two" />
                     </UniformGrid>
+                    <TextBlock
+                        x:Name="DefaultItemsTransformedText"
+                        RenderTransformOrigin="0.5,0.5"
+                        Text="Default item transformed">
+                        <TextBlock.RenderTransform>
+                            <TransformGroup>
+                                <ScaleTransform ScaleX="1.25" ScaleY="0.75" />
+                                <RotateTransform Angle="15" />
+                                <TranslateTransform X="3" Y="4" />
+                            </TransformGroup>
+                        </TextBlock.RenderTransform>
+                        <TextBlock.LayoutTransform>
+                            <SkewTransform AngleX="5" AngleY="0" />
+                        </TextBlock.LayoutTransform>
+                    </TextBlock>
                     <Label
                         x:Name="DefaultItemsStatusLabel"
                         Content="_Status"
@@ -13730,6 +13745,37 @@ internal static class Program
                     Require(
                         DefaultItemsUniformGrid.Rows == 1 && DefaultItemsUniformGrid.Columns == 2 && DefaultItemsUniformGrid.Children.Count == 2,
                         "Expected default-item UniformGrid metadata and children.");
+                    Require(
+                        DefaultItemsTransformedText.Text == "Default item transformed"
+                            && DefaultItemsTransformedText.RenderTransformOrigin == new Point(0.5, 0.5),
+                        "Expected default-item transform target metadata.");
+                    var renderTransformGroup = RequireType<TransformGroup>(
+                        DefaultItemsTransformedText.RenderTransform,
+                        "default-item RenderTransform group");
+                    Require(
+                        renderTransformGroup.Children.Count == 3,
+                        "Expected default-item RenderTransform group child count.");
+                    var scaleTransform = RequireType<ScaleTransform>(
+                        renderTransformGroup.Children[0],
+                        "default-item RenderTransform scale");
+                    var rotateTransform = RequireType<RotateTransform>(
+                        renderTransformGroup.Children[1],
+                        "default-item RenderTransform rotate");
+                    var translateTransform = RequireType<TranslateTransform>(
+                        renderTransformGroup.Children[2],
+                        "default-item RenderTransform translate");
+                    var layoutTransform = RequireType<SkewTransform>(
+                        DefaultItemsTransformedText.LayoutTransform,
+                        "default-item LayoutTransform skew");
+                    Require(
+                        Math.Abs(scaleTransform.ScaleX - 1.25) < 0.001
+                            && Math.Abs(scaleTransform.ScaleY - 0.75) < 0.001
+                            && Math.Abs(rotateTransform.Angle - 15.0) < 0.001
+                            && Math.Abs(translateTransform.X - 3.0) < 0.001
+                            && Math.Abs(translateTransform.Y - 4.0) < 0.001
+                            && Math.Abs(layoutTransform.AngleX - 5.0) < 0.001
+                            && Math.Abs(layoutTransform.AngleY) < 0.001,
+                        "Expected default-item transform values.");
                     Require(
                         Equals(DefaultItemsStatusLabel.Content, "_Status")
                             && ReferenceEquals(DefaultItemsStatusLabel.Target, DefaultItemsEditableStatusTextBox),

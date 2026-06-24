@@ -8204,6 +8204,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DisplayMemberBinding=\"{Binding Kind}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item GridView name column binding", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item ListView collection update", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsStatusLabel", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Target=\"{Binding ElementName=DefaultItemsEditableStatusTextBox}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item Label target metadata", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsGroupBox", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item GroupBox content binding to observe INotifyPropertyChanged", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsScrollViewer", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CanContentScroll=\"False\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item ScrollViewer metadata and content", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsCheckBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("IsChecked=\"{Binding IsFormOptionEnabled, Mode=TwoWay}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item CheckBox two-way binding to update source", externalSdkHarnessProgram, StringComparison.Ordinal);

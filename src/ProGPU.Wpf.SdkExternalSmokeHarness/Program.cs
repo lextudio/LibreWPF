@@ -12716,6 +12716,26 @@ internal static class Program
                         <TextBlock Text="Default item uniform one" />
                         <TextBlock Text="Default item uniform two" />
                     </UniformGrid>
+                    <Label
+                        x:Name="DefaultItemsStatusLabel"
+                        Content="_Status"
+                        Target="{Binding ElementName=DefaultItemsEditableStatusTextBox}" />
+                    <GroupBox
+                        x:Name="DefaultItemsGroupBox"
+                        Header="Default item group">
+                        <TextBlock
+                            x:Name="DefaultItemsGroupBoxText"
+                            Text="{Binding Status, StringFormat=Group: {0}}" />
+                    </GroupBox>
+                    <ScrollViewer
+                        x:Name="DefaultItemsScrollViewer"
+                        CanContentScroll="False"
+                        HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+                        <TextBlock
+                            x:Name="DefaultItemsScrollViewerText"
+                            Text="Default item scroll viewer content" />
+                    </ScrollViewer>
                     <CheckBox
                         x:Name="DefaultItemsCheckBox"
                         Content="Default item check box"
@@ -13455,6 +13475,22 @@ internal static class Program
                         DefaultItemsUniformGrid.Rows == 1 && DefaultItemsUniformGrid.Columns == 2 && DefaultItemsUniformGrid.Children.Count == 2,
                         "Expected default-item UniformGrid metadata and children.");
                     Require(
+                        Equals(DefaultItemsStatusLabel.Content, "_Status")
+                            && ReferenceEquals(DefaultItemsStatusLabel.Target, DefaultItemsEditableStatusTextBox),
+                        "Expected default-item Label target metadata.");
+                    Require(
+                        Equals(DefaultItemsGroupBox.Header, "Default item group")
+                            && ReferenceEquals(DefaultItemsGroupBox.Content, DefaultItemsGroupBoxText)
+                            && DefaultItemsGroupBoxText.Text == "Group: Default item binding ready",
+                        "Expected default-item GroupBox header and bound content.");
+                    Require(
+                        DefaultItemsScrollViewer.HorizontalScrollBarVisibility == ScrollBarVisibility.Disabled
+                            && DefaultItemsScrollViewer.VerticalScrollBarVisibility == ScrollBarVisibility.Auto
+                            && !DefaultItemsScrollViewer.CanContentScroll
+                            && ReferenceEquals(DefaultItemsScrollViewer.Content, DefaultItemsScrollViewerText)
+                            && DefaultItemsScrollViewerText.Text == "Default item scroll viewer content",
+                        "Expected default-item ScrollViewer metadata and content.");
+                    Require(
                         DefaultItemsCheckBox.IsChecked == true && ViewModel.IsFormOptionEnabled,
                         "Expected default-item CheckBox initial binding.");
                     DefaultItemsCheckBox.IsChecked = false;
@@ -13959,6 +13995,9 @@ internal static class Program
                     Require(
                         DefaultItemsGridBoundText.Text == "Grid: Default item binding updated",
                         "Expected default-item Grid child binding to observe INotifyPropertyChanged.");
+                    Require(
+                        DefaultItemsGroupBoxText.Text == "Group: Default item binding updated",
+                        "Expected default-item GroupBox content binding to observe INotifyPropertyChanged.");
                     Require(
                         DefaultItemsEditableStatusTextBox.Text == "Default item binding updated",
                         "Expected default-item TextBox binding to observe INotifyPropertyChanged.");

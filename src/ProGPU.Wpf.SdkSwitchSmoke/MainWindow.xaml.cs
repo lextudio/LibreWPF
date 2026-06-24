@@ -21,7 +21,7 @@ public partial class MainWindow : Window
         typeof(MainWindow));
 
     private const string LiveValidationEnvironmentVariable = "PROGPU_WPF_SDK_SWITCH_LIVE_VALIDATE";
-    private const int LiveValidationMaxAttempts = 120;
+    private const int LiveValidationMaxAttempts = 300;
     private static readonly TimeSpan LiveValidationRetryDelay = TimeSpan.FromMilliseconds(16);
 
     public MainWindow()

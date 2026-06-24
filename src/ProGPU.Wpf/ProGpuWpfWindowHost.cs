@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using System.Threading;
 using ProGPU.Backend;
 using Silk.NET.Maths;
 using Silk.NET.WebGPU;
@@ -185,7 +186,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     public bool EnableFrameCoalescing { get; set; } = true;
 
-    public bool HasPresentedFrame => _hasPresentedFrame;
+    public bool HasPresentedFrame => Volatile.Read(ref _hasPresentedFrame);
 
     public ProGpuWpfFrameState LastPresentedFrameState { get; private set; }
 
@@ -1423,13 +1424,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return true;
         }
 
-        return !_hasPresentedFrame || LastPresentedFrameState != frameState;
+        return !HasPresentedFrame || LastPresentedFrameState != frameState;
     }
 
     internal void RecordPresentedFrame(ProGpuWpfFrameState frameState)
     {
         LastPresentedFrameState = frameState;
-        _hasPresentedFrame = true;
+        Volatile.Write(ref _hasPresentedFrame, true);
     }
 
     private bool HasExplicitFrameCallbacks => Draw != null || WpfDraw != null || Render != null;
@@ -1797,7 +1798,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         _target = null;
         WpfRenderScheduler.Reset();
         LastPresentedFrameState = default;
-        _hasPresentedFrame = false;
+        Volatile.Write(ref _hasPresentedFrame, false);
         SkippedFrameCount = 0;
         RetainedWpfReplaySkipCount = 0;
         RetainedWpfBranchReplayCount = 0;

@@ -7792,7 +7792,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Text=\"{TemplateBinding Text}\"", smokeGenericThemeXaml, StringComparison.Ordinal);
         Assert.Contains("DataContext = new SmokeViewModel();", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_SDK_SWITCH_LIVE_VALIDATE", smokeMainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("private const int LiveValidationMaxAttempts = 120;", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private const int LiveValidationMaxAttempts = 300;", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateRequiredLiveRenderSurfaceGeometryAsync(", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GetRequiredProperty(liveHost, \"HasPresentedFrame\")", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("TryGetLiveFramebufferSize(liveHost, out var framebufferWidth, out var framebufferHeight)", smokeMainWindowCodeBehind, StringComparison.Ordinal);

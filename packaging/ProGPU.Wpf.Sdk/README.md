@@ -23,3 +23,22 @@ The SDK also supplies the WPF markup compiler defaults and portable runtime-fram
   </PropertyGroup>
 </Project>
 ```
+
+The current repo MVP validation is intentionally apphost-based, because that is how users run a built SDK-switched WPF application. From the repository root:
+
+```bash
+./eng/run-progpu-wpf-hello.sh
+./eng/run-progpu-wpf-mvp.sh
+```
+
+For a fast validation pass that exercises the external no-source-change SDK smoke plus both live ProGPU/Silk.NET apphost geometry probes:
+
+```bash
+./eng/progpu-wpf-mvp-quickcheck.sh
+```
+
+The quickcheck expects the local `11.0.0-dev` package feed to be current. Use the full SDK CI gate when package contents need to be rebuilt from source:
+
+```bash
+./eng/progpu-wpf-sdk-ci.sh
+```

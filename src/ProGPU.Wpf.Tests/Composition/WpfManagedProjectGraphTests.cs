@@ -6013,6 +6013,9 @@ public sealed class WpfManagedProjectGraphTests
         var mvpRunScriptPath = FindRepoPath(
             "eng",
             "run-progpu-wpf-mvp.sh");
+        var mvpQuickCheckScriptPath = FindRepoPath(
+            "eng",
+            "progpu-wpf-mvp-quickcheck.sh");
 
         var sdkProject = XDocument.Load(sdkProjectPath);
         var sdkProps = File.ReadAllText(sdkPropsPath);
@@ -6089,6 +6092,7 @@ public sealed class WpfManagedProjectGraphTests
         var mvpDetailsPageXaml = File.ReadAllText(mvpDetailsPageXamlPath);
         var mvpDetailsPageCodeBehind = File.ReadAllText(mvpDetailsPageCodeBehindPath);
         var mvpRunScript = File.ReadAllText(mvpRunScriptPath);
+        var mvpQuickCheckScript = File.ReadAllText(mvpQuickCheckScriptPath);
         string[] wpfThemeAssemblies =
         [
             "PresentationFramework.Aero",
@@ -7119,6 +7123,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGPU WPF MVP live geometry validation succeeded", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("\"./${apphost_name}\"", mvpRunScript, StringComparison.Ordinal);
         Assert.DoesNotContain("run --project \"${mvp_project}\"", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.SdkExternalSmokeHarness.csproj", mvpQuickCheckScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_HELLO_LIVE_VALIDATE=1", mvpQuickCheckScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_MVP_LIVE_VALIDATE=1", mvpQuickCheckScript, StringComparison.Ordinal);
+        Assert.Contains("ProGPU WPF MVP quickcheck succeeded.", mvpQuickCheckScript, StringComparison.Ordinal);
 
         Assert.Contains("<_ProGpuWpfProjectUseWPF>$(UseWPF)</_ProGpuWpfProjectUseWPF>", sdkTargets, StringComparison.Ordinal);
         Assert.Contains("<UseWPF Condition=\"'$(ProGpuWpfUsePortableFrameworkReferences)' == 'true'\">false</UseWPF>", sdkTargets, StringComparison.Ordinal);

@@ -7200,8 +7200,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryRequestNativeLoopWakeup", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RaiseHostInput(liveHost, \"MouseDown\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RaiseHostInput(liveHost, \"TextInput\"", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RaiseHostInput(liveHost, \"KeyDown\", key: \"R\", modifiers: \"Control\")", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RaiseHostInput(liveHost, \"KeyUp\", key: \"R\", modifiers: \"Control\")", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertEqual(\"Live\", Require<TextBox>(textBox, \"MVP live input TextBox\").Text", mvpMainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("AssertEqual(\"Live\", Require<MainViewModel>(viewModel, \"MVP live input view model\").NewItemName", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertEqual(\"Live\", model.NewItemName", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MVP live routed KeyBinding command refresh count", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MVP live routed KeyBinding command status", mvpMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Enum.Parse(modifiersType, modifiers)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"./${apphost_name}\"", mvpRunScript, StringComparison.Ordinal);
         Assert.DoesNotContain("run --project \"${mvp_project}\"", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("ValidateRequiredLiveHelloAsync", helloMainWindowCodeBehind, StringComparison.Ordinal);

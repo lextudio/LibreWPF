@@ -950,13 +950,33 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
         await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
 
+        int refreshCountBeforeCommand = await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                var model = Require<MainViewModel>(viewModel, "MVP live input view model before command");
+                int refreshCountBefore = model.RefreshCount;
+                RaiseHostInput(liveHost, "KeyDown", key: "R", modifiers: "Control");
+                RaiseHostInput(liveHost, "KeyUp", key: "R", modifiers: "Control");
+                Console.WriteLine("ProGPU WPF MVP live input validation Ctrl+R sent.");
+                return refreshCountBefore;
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
         return await InvokeWithLiveHostWakeAsync(
             liveHost,
             () =>
             {
+                var model = Require<MainViewModel>(viewModel, "MVP live input view model");
                 AssertEqual("Live", Require<TextBox>(textBox, "MVP live input TextBox").Text, "MVP live TextBox text after host input");
-                AssertEqual("Live", Require<MainViewModel>(viewModel, "MVP live input view model").NewItemName, "MVP live view-model source after host input");
-                return "input TextBox focus and text binding updated";
+                AssertEqual("Live", model.NewItemName, "MVP live view-model source after host input");
+                AssertEqual(refreshCountBeforeCommand + 1, model.RefreshCount, "MVP live routed KeyBinding command refresh count");
+                AssertEqual(
+                    $"Refresh command {refreshCountBeforeCommand + 1}",
+                    Require<TextBlock>(FindName("CommandStatusText"), "MVP live command status TextBlock").Text,
+                    "MVP live routed KeyBinding command status");
+                return "input TextBox focus, text binding, and Ctrl+R routed command updated";
             },
             DispatcherPriority.Send);
     }
@@ -1094,9 +1114,10 @@ public partial class MainWindow : Window
         char? character = null,
         double x = 0.0,
         double y = 0.0,
-        string button = "None")
+        string button = "None",
+        string modifiers = "None")
     {
-        object input = CreateWpfInputEventArgs(liveHost, kind, key, character, x, y, button);
+        object input = CreateWpfInputEventArgs(liveHost, kind, key, character, x, y, button, modifiers);
         MethodInfo method = liveHost.GetType().GetMethod(
             "OnPlatformInputReceived",
             BindingFlags.Instance | BindingFlags.NonPublic)
@@ -1111,7 +1132,8 @@ public partial class MainWindow : Window
         char? character,
         double x,
         double y,
-        string button)
+        string button,
+        string modifiers)
     {
         Assembly assembly = liveHost.GetType().Assembly;
         Type inputType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfInputEventArgs", throwOnError: true)
@@ -1134,7 +1156,7 @@ public partial class MainWindow : Window
             0.0,
             0.0,
             Enum.Parse(buttonType, button),
-            Enum.Parse(modifiersType, "None"))
+            Enum.Parse(modifiersType, modifiers))
             ?? throw new InvalidOperationException("Expected WpfInputEventArgs construction to succeed.");
     }
 

@@ -12473,6 +12473,15 @@ internal static class Program
                         <ResourceDictionary.MergedDictionaries>
                             <ResourceDictionary Source="/ExternalSdkDefaultItemsLibrary;component/Resources/DefaultItemsLibraryResources.xaml" />
                         </ResourceDictionary.MergedDictionaries>
+                        <local:DefaultItemsItem
+                            x:Key="DefaultItemsTemplateItem"
+                            Name="Default item template data" />
+                        <DataTemplate DataType="{x:Type local:DefaultItemsItem}">
+                            <TextBlock
+                                x:Name="DefaultItemsImplicitTemplateText"
+                                Tag="default-item implicit template"
+                                Text="{Binding Name, StringFormat=Template: {0}}" />
+                        </DataTemplate>
                     </ResourceDictionary>
                 </Window.Resources>
                 <StackPanel>
@@ -12501,6 +12510,9 @@ internal static class Program
                         x:Name="DefaultItemsFrame"
                         Source="DefaultItemsPage.xaml"
                         NavigationUIVisibility="Hidden" />
+                    <ContentPresenter
+                        x:Name="DefaultItemsImplicitTemplatePresenter"
+                        Content="{StaticResource DefaultItemsTemplateItem}" />
                     <Button
                         x:Name="DefaultItemsButton"
                         Click="OnDefaultItemsButtonClick"
@@ -12521,6 +12533,11 @@ internal static class Program
             using System.Windows.Threading;
 
             namespace ExternalSdkDefaultItemsApp;
+
+            public sealed class DefaultItemsItem
+            {
+                public string Name { get; set; } = string.Empty;
+            }
 
             public partial class MainWindow : Window
             {
@@ -12643,6 +12660,26 @@ internal static class Program
                     Require(
                         loadedLibraryPage.PageText == "Default item library compiled page text",
                         "Expected default-item referenced library compiled Page text.");
+                    Require(
+                        TryFindResource(new DataTemplateKey(typeof(DefaultItemsItem))) is DataTemplate,
+                        "Expected default-item implicit DataTemplate resource lookup.");
+                    DefaultItemsImplicitTemplatePresenter.ApplyTemplate();
+                    DefaultItemsImplicitTemplatePresenter.UpdateLayout();
+                    var implicitTemplateText = FindVisualDescendantByName<TextBlock>(
+                        DefaultItemsImplicitTemplatePresenter,
+                        "DefaultItemsImplicitTemplateText");
+                    Require(
+                        implicitTemplateText is not null,
+                        "Expected default-item implicit DataTemplate visual tree.");
+                    Require(
+                        implicitTemplateText.Text == "Template: Default item template data",
+                        "Expected default-item implicit DataTemplate binding text.");
+                    Require(
+                        string.Equals(
+                            implicitTemplateText.Tag as string,
+                            "default-item implicit template",
+                            StringComparison.Ordinal),
+                        "Expected default-item implicit DataTemplate text tag.");
 
                     DefaultItemsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     Require(ButtonClickCount == 1, "Expected default-item compiled Click handler.");
@@ -12687,6 +12724,28 @@ internal static class Program
                             throw new InvalidOperationException($"Timed out waiting for {description}.");
                         }
                     }
+                }
+
+                private static T? FindVisualDescendantByName<T>(DependencyObject root, string name)
+                    where T : FrameworkElement
+                {
+                    int childCount = VisualTreeHelper.GetChildrenCount(root);
+                    for (int i = 0; i < childCount; i++)
+                    {
+                        DependencyObject child = VisualTreeHelper.GetChild(root, i);
+                        if (child is T typed && string.Equals(typed.Name, name, StringComparison.Ordinal))
+                        {
+                            return typed;
+                        }
+
+                        T? nested = FindVisualDescendantByName<T>(child, name);
+                        if (nested is not null)
+                        {
+                            return nested;
+                        }
+                    }
+
+                    return null;
                 }
 
                 private static T RequireType<T>(object? value, string description)

@@ -8111,6 +8111,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Resources/DefaultItemsAppResources.xaml", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsAppDictionaryText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsAppDictionaryBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsTemplateItem", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DataTemplate DataType=\"{x:Type local:DefaultItemsItem}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsImplicitTemplateText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item implicit DataTemplate visual tree", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item implicit DataTemplate binding text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsSdkSetting", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Default item SDK app config value", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsPage.xaml", externalSdkHarnessProgram, StringComparison.Ordinal);

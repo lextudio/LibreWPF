@@ -8094,7 +8094,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ProjectReference Include=\"../{DefaultItemsLibraryAssemblyName}/{DefaultItemsLibraryAssemblyName}.csproj\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsLibraryPanel", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsLibraryThemedControl", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsLibraryThemeText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Default item referenced library caption", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Default item library theme text", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK default-item library ThemeInfo source", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK default-item library default style key", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK default-item library Generic.xaml source", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external default-item library default item opt-out", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external default-item library explicit compile items", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external default-item library explicit page item", externalSdkHarnessProgram, StringComparison.Ordinal);

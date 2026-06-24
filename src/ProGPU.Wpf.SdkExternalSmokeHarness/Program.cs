@@ -12062,6 +12062,14 @@ internal static class Program
                 "external SDK default-item library"));
 
         WriteFile(
+            Path.Combine(libraryRoot, "Properties", "AssemblyInfo.cs"),
+            """
+            using System.Windows;
+
+            [assembly: ThemeInfo(ResourceDictionaryLocation.None, ResourceDictionaryLocation.SourceAssembly)]
+            """);
+
+        WriteFile(
             Path.Combine(libraryRoot, "DefaultItemsLibraryPanel.xaml"),
             """
             <UserControl
@@ -12106,6 +12114,67 @@ internal static class Program
 
                 public string CaptionText => LibraryPanelCaption.Text;
             }
+            """);
+
+        WriteFile(
+            Path.Combine(libraryRoot, "DefaultItemsLibraryThemedControl.cs"),
+            """
+            using System.Windows;
+            using System.Windows.Controls;
+
+            namespace ExternalSdkDefaultItemsLibrary;
+
+            public sealed class DefaultItemsLibraryThemedControl : Control
+            {
+                public static readonly DependencyProperty TextProperty = DependencyProperty.Register(
+                    nameof(Text),
+                    typeof(string),
+                    typeof(DefaultItemsLibraryThemedControl),
+                    new FrameworkPropertyMetadata(string.Empty));
+
+                static DefaultItemsLibraryThemedControl()
+                {
+                    DefaultStyleKeyProperty.OverrideMetadata(
+                        typeof(DefaultItemsLibraryThemedControl),
+                        new FrameworkPropertyMetadata(typeof(DefaultItemsLibraryThemedControl)));
+                }
+
+                public string Text
+                {
+                    get => (string)GetValue(TextProperty);
+                    set => SetValue(TextProperty, value);
+                }
+            }
+            """);
+
+        WriteFile(
+            Path.Combine(libraryRoot, "Themes", "Generic.xaml"),
+            """
+            <ResourceDictionary
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:local="clr-namespace:ExternalSdkDefaultItemsLibrary">
+                <Style TargetType="{x:Type local:DefaultItemsLibraryThemedControl}">
+                    <Setter Property="Background" Value="#456789" />
+                    <Setter Property="Foreground" Value="#123456" />
+                    <Setter Property="Padding" Value="3" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="{x:Type local:DefaultItemsLibraryThemedControl}">
+                                <Border
+                                    x:Name="DefaultItemsLibraryThemeRoot"
+                                    Background="{TemplateBinding Background}"
+                                    Padding="{TemplateBinding Padding}">
+                                    <TextBlock
+                                        x:Name="DefaultItemsLibraryThemeText"
+                                        Foreground="{TemplateBinding Foreground}"
+                                        Text="{TemplateBinding Text}" />
+                                </Border>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </ResourceDictionary>
             """);
 
         string appProjectPath = Path.Combine(appRoot, DefaultItemsAssemblyName + ".csproj");
@@ -12298,6 +12367,9 @@ internal static class Program
                     <library:DefaultItemsLibraryPanel
                         x:Name="DefaultItemsLibraryPanel"
                         Caption="Default item referenced library caption" />
+                    <library:DefaultItemsLibraryThemedControl
+                        x:Name="DefaultItemsLibraryThemedControl"
+                        Text="Default item library theme text" />
                     <Button
                         x:Name="DefaultItemsButton"
                         Click="OnDefaultItemsButtonClick"
@@ -12346,6 +12418,32 @@ internal static class Program
                     Require(
                         DefaultItemsLibraryPanel.CaptionText == "Default item referenced library caption",
                         "Expected default-item referenced library ElementName binding.");
+                    DefaultItemsLibraryThemedControl.ApplyTemplate();
+                    var themeRoot = RequireType<Border>(
+                        DefaultItemsLibraryThemedControl.Template.FindName(
+                            "DefaultItemsLibraryThemeRoot",
+                            DefaultItemsLibraryThemedControl),
+                        "default-item referenced library theme root");
+                    var themeText = RequireType<TextBlock>(
+                        DefaultItemsLibraryThemedControl.Template.FindName(
+                            "DefaultItemsLibraryThemeText",
+                            DefaultItemsLibraryThemedControl),
+                        "default-item referenced library theme text");
+                    var themeBackground = RequireType<SolidColorBrush>(
+                        themeRoot.Background,
+                        "default-item referenced library theme background");
+                    var themeForeground = RequireType<SolidColorBrush>(
+                        themeText.Foreground,
+                        "default-item referenced library theme foreground");
+                    Require(
+                        themeText.Text == "Default item library theme text",
+                        "Expected default-item referenced library theme TemplateBinding text.");
+                    Require(
+                        themeBackground.Color == Color.FromRgb(0x45, 0x67, 0x89),
+                        "Expected default-item referenced library theme background.");
+                    Require(
+                        themeForeground.Color == Color.FromRgb(0x12, 0x34, 0x56),
+                        "Expected default-item referenced library theme foreground.");
 
                     DefaultItemsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     Require(ButtonClickCount == 1, "Expected default-item compiled Click handler.");
@@ -12498,8 +12596,33 @@ internal static class Program
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "MainWindow.xaml.cs"), "external SDK default-item MainWindow.xaml.cs source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "DefaultItemsPanel.xaml"), "external SDK default-item UserControl XAML source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "DefaultItemsPanel.xaml.cs"), "external SDK default-item UserControl code source");
+        string defaultItemsLibraryAssemblyInfo = File.ReadAllText(
+            Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "Properties", "AssemblyInfo.cs"));
+        string defaultItemsLibraryThemedControl = File.ReadAllText(
+            Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "DefaultItemsLibraryThemedControl.cs"));
+        string defaultItemsLibraryGenericTheme = File.ReadAllText(
+            Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "Themes", "Generic.xaml"));
+        AssertContains(
+            defaultItemsLibraryAssemblyInfo,
+            "[assembly: ThemeInfo(ResourceDictionaryLocation.None, ResourceDictionaryLocation.SourceAssembly)]",
+            "external SDK default-item library ThemeInfo source");
+        AssertContains(
+            defaultItemsLibraryThemedControl,
+            "DefaultStyleKeyProperty.OverrideMetadata",
+            "external SDK default-item library default style key");
+        AssertContains(
+            defaultItemsLibraryGenericTheme,
+            "DefaultItemsLibraryThemedControl",
+            "external SDK default-item library Generic.xaml themed control style");
+        AssertContains(
+            defaultItemsLibraryGenericTheme,
+            "DefaultItemsLibraryThemeText",
+            "external SDK default-item library Generic.xaml template text");
         RequireFile(Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "DefaultItemsLibraryPanel.xaml"), "external SDK default-item library UserControl XAML source");
         RequireFile(Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "DefaultItemsLibraryPanel.xaml.cs"), "external SDK default-item library UserControl code source");
+        RequireFile(Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "Properties", "AssemblyInfo.cs"), "external SDK default-item library ThemeInfo source");
+        RequireFile(Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "DefaultItemsLibraryThemedControl.cs"), "external SDK default-item library themed control source");
+        RequireFile(Path.Combine(workRoot, DefaultItemsLibraryAssemblyName, "Themes", "Generic.xaml"), "external SDK default-item library Generic.xaml source");
     }
 
     private static string SwitchWpfSdkOnly(string normalWpfProject, string description)

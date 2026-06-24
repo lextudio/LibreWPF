@@ -394,6 +394,37 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void HostInputFromNonDispatcherThreadQueuesInputAndRequestsRender()
+    {
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var window = new FakeDispatchingPortableInputWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        int requestCountBeforeInput = scheduler.RequestCount;
+        var args = new WpfInputEventArgs(WpfInputEventKind.MouseDown, x: 12, y: 24, button: WpfMouseButton.Left);
+        RaiseHostInputEvent(host, args);
+
+        Assert.Equal(0, window.InputCount);
+        Assert.Equal(1, window.Dispatcher.BeginInvokeCount);
+        Assert.Equal(0, window.Dispatcher.InvokeCount);
+        Assert.True(scheduler.RequestCount > requestCountBeforeInput);
+
+        window.Dispatcher.InvokeQueuedCallback();
+
+        Assert.Equal(1, window.InputCount);
+        Assert.Same(args, window.LastInputArgs);
+    }
+
+    [Fact]
     public void HostInputActivatesWindowBeforeForwardingInput()
     {
         using var host = new ProGpuWpfWindowHost();
@@ -740,6 +771,58 @@ public sealed class WpfPortableWindowActivationTests
             InputCount++;
             LastInputArgs = e;
             e.Handled = true;
+        }
+    }
+
+    private sealed class FakeDispatchingPortableInputWindow
+    {
+        public FakeDispatcher Dispatcher { get; } = new();
+
+        public int InputCount { get; private set; }
+
+        public WpfInputEventArgs? LastInputArgs { get; private set; }
+
+        private void OnPortableInput(WpfInputEventArgs e)
+        {
+            InputCount++;
+            LastInputArgs = e;
+        }
+    }
+
+    private sealed class FakeDispatcher
+    {
+        private Delegate? _queuedCallback;
+        private object[] _queuedArgs = Array.Empty<object>();
+
+        public int BeginInvokeCount { get; private set; }
+
+        public int InvokeCount { get; private set; }
+
+        public bool CheckAccess()
+        {
+            return false;
+        }
+
+        public object BeginInvoke(Delegate callback, object[] args)
+        {
+            BeginInvokeCount++;
+            _queuedCallback = callback;
+            _queuedArgs = args;
+            return new object();
+        }
+
+        public object? Invoke(Action callback)
+        {
+            InvokeCount++;
+            throw new InvalidOperationException("Input must be queued to the WPF dispatcher instead of invoked synchronously.");
+        }
+
+        public void InvokeQueuedCallback()
+        {
+            var callback = _queuedCallback
+                ?? throw new InvalidOperationException("Expected a dispatcher callback to be queued.");
+            _queuedCallback = null;
+            callback.DynamicInvoke(_queuedArgs);
         }
     }
 

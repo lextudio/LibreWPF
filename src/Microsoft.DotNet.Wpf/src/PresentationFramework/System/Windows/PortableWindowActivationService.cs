@@ -6,6 +6,7 @@ using System.Collections.Specialized;
 using System.Threading;
 using System.Windows.Input;
 using System.Windows.Threading;
+using MS.Internal;
 
 namespace System.Windows
 {
@@ -355,17 +356,26 @@ namespace System.Windows
                 }
             }
 
+            Point clientPoint = ToMouseClientPoint(source, input);
             RawMouseInputReport report = new RawMouseInputReport(
                 InputMode.Foreground,
                 timestamp,
                 source,
                 actions,
-                ToInputCoordinate(input.X),
-                ToInputCoordinate(input.Y),
+                ToInputCoordinate(clientPoint.X),
+                ToInputCoordinate(clientPoint.Y),
                 wheel,
                 IntPtr.Zero);
 
             return ProcessInputReport(inputManager, report);
+        }
+
+        private static Point ToMouseClientPoint(PresentationSource source, PortableInputEventArgs input)
+        {
+            Point rootPoint = new Point(input.X, input.Y);
+            return source?.CompositionTarget == null
+                ? rootPoint
+                : PointUtil.RootToClient(rootPoint, source);
         }
 
         private static bool ProcessInputReport(InputManager inputManager, InputReport report)

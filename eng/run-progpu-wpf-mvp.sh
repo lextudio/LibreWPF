@@ -37,7 +37,9 @@ echo "Building ProGPU WPF MVP app..."
 
 if [[ "${PROGPU_WPF_MVP_LIVE_VALIDATE:-0}" == "1" ]]; then
   export PROGPU_WPF_MVP_LIVE_VALIDATE
-  export PROGPU_WPF_TRACE_RENDER_SURFACE=1
+  if [[ "${PROGPU_WPF_MVP_TRACE_RENDER_SURFACE:-0}" == "1" ]]; then
+    export PROGPU_WPF_TRACE_RENDER_SURFACE=1
+  fi
   live_log="$(mktemp "${TMPDIR:-/tmp}/progpu-wpf-mvp-live.XXXXXX")"
   apphost_pid=""
   cleanup_live_probe() {
@@ -64,31 +66,26 @@ if [[ "${PROGPU_WPF_MVP_LIVE_VALIDATE:-0}" == "1" ]]; then
   ) >"${live_log}" 2>&1 &
   apphost_pid="$!"
 
+  live_validation_line=""
   render_surface_line=""
   swapchain_line=""
-  for _ in {1..200}; do
+  for _ in {1..600}; do
+    live_validation_line="$(grep -E "ProGPU WPF MVP live input validation succeeded:" "${live_log}" | tail -n 1 || true)"
     render_surface_line="$(grep -E "ProGPU WPF render surface:" "${live_log}" | tail -n 1 || true)"
-    if [[ -n "${render_surface_line}" ]]; then
-      break
-    fi
-
     swapchain_line="$(grep -E "Configuring SwapChain: [0-9]+x[0-9]+" "${live_log}" | tail -n 1 || true)"
-    if [[ -n "${swapchain_line}" ]]; then
+    if [[ -n "${live_validation_line}" ]]; then
       break
     fi
 
     if ! kill -0 "${apphost_pid}" 2>/dev/null; then
+      live_validation_line="$(grep -E "ProGPU WPF MVP live input validation succeeded:" "${live_log}" | tail -n 1 || true)"
       render_surface_line="$(grep -E "ProGPU WPF render surface:" "${live_log}" | tail -n 1 || true)"
-      if [[ -n "${render_surface_line}" ]]; then
-        break
-      fi
-
       swapchain_line="$(grep -E "Configuring SwapChain: [0-9]+x[0-9]+" "${live_log}" | tail -n 1 || true)"
-      if [[ -n "${swapchain_line}" ]]; then
+      if [[ -n "${live_validation_line}" ]]; then
         break
       fi
 
-      echo "MVP apphost exited before configuring a ProGPU swapchain." >&2
+      echo "MVP apphost exited before live input validation succeeded." >&2
       cat "${live_log}" >&2
       exit 1
     fi
@@ -96,12 +93,19 @@ if [[ "${PROGPU_WPF_MVP_LIVE_VALIDATE:-0}" == "1" ]]; then
     sleep 0.05
   done
 
+  if [[ -z "${live_validation_line}" ]]; then
+    echo "Expected MVP apphost live input validation to succeed before timeout." >&2
+    cat "${live_log}" >&2
+    exit 1
+  fi
+
   logical_width=760
   logical_height=560
   viewport_width=""
   viewport_height=""
   viewport_x=""
   viewport_y=""
+  has_viewport_geometry=0
 
   if [[ -n "${render_surface_line}" ]]; then
     if [[ ! "${render_surface_line}" =~ logical[[:space:]]([0-9]+)x([0-9]+),[[:space:]]pixels[[:space:]]([0-9]+)x([0-9]+),[[:space:]]viewport[[:space:]]([0-9]+)x([0-9]+)@([0-9]+),([0-9]+),[[:space:]]dpi[[:space:]]([0-9]+(\.[0-9]+)?) ]]; then
@@ -118,6 +122,17 @@ if [[ "${PROGPU_WPF_MVP_LIVE_VALIDATE:-0}" == "1" ]]; then
     viewport_height="${BASH_REMATCH[6]}"
     viewport_x="${BASH_REMATCH[7]}"
     viewport_y="${BASH_REMATCH[8]}"
+    has_viewport_geometry=1
+  elif [[ "${live_validation_line}" =~ logical[[:space:]]([0-9]+)x([0-9]+),[[:space:]]pixels[[:space:]]([0-9]+)x([0-9]+),[[:space:]]viewport[[:space:]]([0-9]+)x([0-9]+)@([0-9]+),([0-9]+),[[:space:]]dpi[[:space:]]([0-9]+(\.[0-9]+)?) ]]; then
+    logical_width="${BASH_REMATCH[1]}"
+    logical_height="${BASH_REMATCH[2]}"
+    pixel_width="${BASH_REMATCH[3]}"
+    pixel_height="${BASH_REMATCH[4]}"
+    viewport_width="${BASH_REMATCH[5]}"
+    viewport_height="${BASH_REMATCH[6]}"
+    viewport_x="${BASH_REMATCH[7]}"
+    viewport_y="${BASH_REMATCH[8]}"
+    has_viewport_geometry=1
   else
     if [[ -z "${swapchain_line}" ]]; then
       echo "Expected MVP apphost to configure a ProGPU swapchain." >&2
@@ -147,7 +162,7 @@ if [[ "${PROGPU_WPF_MVP_LIVE_VALIDATE:-0}" == "1" ]]; then
     exit 1
   fi
 
-  if [[ -n "${render_surface_line}" ]] && (( viewport_x != 0 || viewport_y != 0 || viewport_width != pixel_width || viewport_height != pixel_height )); then
+  if (( has_viewport_geometry == 1 )) && (( viewport_x != 0 || viewport_y != 0 || viewport_width != pixel_width || viewport_height != pixel_height )); then
     echo "Expected MVP apphost viewport to use full physical target, but got ${viewport_width}x${viewport_height}@${viewport_x},${viewport_y} for pixels ${pixel_width}x${pixel_height}." >&2
     cat "${live_log}" >&2
     exit 1
@@ -155,7 +170,8 @@ if [[ "${PROGPU_WPF_MVP_LIVE_VALIDATE:-0}" == "1" ]]; then
 
   trap - EXIT
   cleanup_live_probe >/dev/null 2>&1
-  if [[ -n "${render_surface_line}" ]]; then
+  echo "${live_validation_line}"
+  if (( has_viewport_geometry == 1 )); then
     echo "ProGPU WPF MVP live geometry validation succeeded: logical ${logical_width}x${logical_height}, pixels ${pixel_width}x${pixel_height}, viewport ${viewport_width}x${viewport_height}@${viewport_x},${viewport_y}."
   else
     echo "ProGPU WPF MVP live geometry validation succeeded: logical ${logical_width}x${logical_height}, pixels ${pixel_width}x${pixel_height}."

@@ -193,6 +193,20 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void NativeUpdateRaisesUpdateTick()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var updateTickCount = 0;
+        host.UpdateTick += (_, _) => updateTickCount++;
+
+        typeof(ProGpuWpfWindowHost)
+            .GetMethod("OnUpdate", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(host, new object[] { 0.0 });
+
+        Assert.Equal(1, updateTickCount);
+    }
+
+    [Fact]
     public void ReplacingRenderSchedulerDisconnectsPreviousWakeupSource()
     {
         var firstScheduler = new TestRenderScheduler();
@@ -579,6 +593,48 @@ public sealed class ProGpuWpfWindowHostTests
             button: WpfMouseButton.Left);
 
         Assert.True(ProGpuWpfWindowHost.PointerInputCoordinateExceedsLogicalClient(input, geometry));
+    }
+
+    [Fact]
+    public void NativeInputCoordinatesLookPhysicalForRetinaFramebufferEvenInsideLogicalBounds()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 760,
+            clientHeight: 560,
+            framebufferSize: new Vector2D<int>(1520, 1120),
+            monitorDpiScale: 2.0);
+        var input = new WpfInputEventArgs(
+            WpfInputEventKind.MouseDown,
+            x: 320,
+            y: 180,
+            button: WpfMouseButton.Left);
+
+        Assert.True(
+            ProGpuWpfWindowHost.NativeInputCoordinatesLookPhysical(
+                new Vector2D<int>(760, 560),
+                geometry,
+                input));
+    }
+
+    [Fact]
+    public void NativeInputCoordinatesLookPhysicalKeepsSingleScalePointerInputLogical()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 760,
+            clientHeight: 560,
+            framebufferSize: new Vector2D<int>(760, 560),
+            monitorDpiScale: 1.0);
+        var input = new WpfInputEventArgs(
+            WpfInputEventKind.MouseDown,
+            x: 320,
+            y: 180,
+            button: WpfMouseButton.Left);
+
+        Assert.False(
+            ProGpuWpfWindowHost.NativeInputCoordinatesLookPhysical(
+                new Vector2D<int>(760, 560),
+                geometry,
+                input));
     }
 
     [Fact]

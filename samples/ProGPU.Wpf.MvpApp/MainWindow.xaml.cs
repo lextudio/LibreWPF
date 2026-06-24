@@ -36,6 +36,11 @@ public partial class MainWindow : Window
     public static readonly RoutedUICommand RefreshStatusCommand =
         new("Refresh status", nameof(RefreshStatusCommand), typeof(MainWindow));
 
+    private const string LiveValidationEnvironmentVariable = "PROGPU_WPF_MVP_LIVE_VALIDATE";
+    private const int LiveValidationMaxAttempts = 600;
+    private static readonly TimeSpan LiveValidationRetryDelay = TimeSpan.FromMilliseconds(16);
+    private bool _liveValidationStarted;
+
     internal int EditorPasswordChangedCount { get; private set; }
 
     internal int DataObjectRoundTripCount { get; private set; }
@@ -265,6 +270,42 @@ public partial class MainWindow : Window
         {
             itemsViewSource.Source = viewModel.Items;
         }
+
+        StartLiveValidationIfRequired();
+    }
+
+    private void OnMvpWindowLoaded(object sender, RoutedEventArgs e)
+    {
+        StartLiveValidationIfRequired();
+    }
+
+    private void StartLiveValidationIfRequired()
+    {
+        if (_liveValidationStarted)
+        {
+            return;
+        }
+
+        if (Environment.GetEnvironmentVariable(LiveValidationEnvironmentVariable) != "1")
+        {
+            return;
+        }
+
+        _liveValidationStarted = true;
+        Console.WriteLine("ProGPU WPF MVP live input validation started.");
+        _ = Task.Run(
+            async () =>
+            {
+                try
+                {
+                    await ValidateRequiredLiveMvpAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine(ex);
+                    Environment.Exit(1);
+                }
+            });
     }
 
     private void OnOverviewNavigationClick(object sender, RoutedEventArgs e)
@@ -275,6 +316,22 @@ public partial class MainWindow : Window
     private void OnDetailsNavigationClick(object sender, RoutedEventArgs e)
     {
         NavigationFrame.Navigate(new Uri("DetailsPage.xaml", UriKind.Relative));
+    }
+
+    private void OnBackNavigationClick(object sender, RoutedEventArgs e)
+    {
+        if (NavigationFrame.CanGoBack)
+        {
+            NavigationFrame.GoBack();
+        }
+    }
+
+    private void OnForwardNavigationClick(object sender, RoutedEventArgs e)
+    {
+        if (NavigationFrame.CanGoForward)
+        {
+            NavigationFrame.GoForward();
+        }
     }
 
     private void OnAboutMenuItemClick(object sender, RoutedEventArgs e)
@@ -742,6 +799,400 @@ public partial class MainWindow : Window
         LastMvpStyleEventSetterRoutedEventName = e.RoutedEvent?.Name;
         EventSetterStatusText.Text = "EventSetter clicked";
         e.Handled = true;
+    }
+
+    private async Task ValidateRequiredLiveMvpAsync()
+    {
+        int presentedSampleCount = 0;
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            await Task.Delay(LiveValidationRetryDelay);
+            if (!TryGetPortableActivationHost(out var liveHost) || liveHost == null)
+            {
+                continue;
+            }
+
+            if (GetRequiredProperty(liveHost, "HasPresentedFrame") is not bool hasPresentedFrame ||
+                !hasPresentedFrame)
+            {
+                continue;
+            }
+
+            presentedSampleCount++;
+            if (presentedSampleCount < 5)
+            {
+                continue;
+            }
+
+            Console.WriteLine("ProGPU WPF MVP live input validation frame ready.");
+            string geometryStatus = await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () => ValidateLiveRenderSurfaceGeometryCore(liveHost, 760, 560),
+                DispatcherPriority.Send);
+            Console.WriteLine("ProGPU WPF MVP live input validation geometry ready.");
+            string inputStatus = await ValidateLiveInputAsync(liveHost);
+            Console.WriteLine($"ProGPU WPF MVP live input validation succeeded: {geometryStatus}; {inputStatus}.");
+            Environment.Exit(0);
+            return;
+        }
+
+        Console.Error.WriteLine("Expected the MVP app to present a stable ProGPU frame before live input validation.");
+        Environment.Exit(1);
+    }
+
+    private async Task<string> ValidateLiveInputAsync(object liveHost)
+    {
+        TextBox? textBox = null;
+        MainViewModel? viewModel = null;
+        Point inputPoint = new();
+        object? inputHit = null;
+        string lastTargetState = "not checked";
+
+        Console.WriteLine("ProGPU WPF MVP live input validation locating TextBox.");
+        bool sentPointerInput = false;
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            sentPointerInput = await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () =>
+                {
+                    Console.WriteLine("ProGPU WPF MVP live input validation TextBox dispatcher entered.");
+                    textBox = Require<TextBox>(FindName("NameTextBox"), "MVP live input TextBox");
+                    viewModel = Require<MainViewModel>(DataContext, "MVP live input view model");
+
+                    lastTargetState =
+                        $"TextBox.IsVisible={textBox.IsVisible}, " +
+                        $"TextBox.ActualSize={textBox.ActualWidth:0.###}x{textBox.ActualHeight:0.###}, " +
+                        $"TextBox.IsEnabled={textBox.IsEnabled}, " +
+                        $"TextBox.Focusable={textBox.Focusable}, " +
+                        $"TextBox.IsHitTestVisible={textBox.IsHitTestVisible}";
+                    Console.WriteLine($"ProGPU WPF MVP live input validation TextBox state: {lastTargetState}.");
+                    if (!textBox.IsVisible ||
+                        textBox.ActualWidth <= 1.0 ||
+                        textBox.ActualHeight <= 1.0 ||
+                        !textBox.IsEnabled ||
+                        !textBox.Focusable ||
+                        !textBox.IsHitTestVisible)
+                    {
+                        return false;
+                    }
+
+                    Point center = textBox.TranslatePoint(
+                        new Point(Math.Max(1.0, textBox.ActualWidth) / 2.0, Math.Max(1.0, textBox.ActualHeight) / 2.0),
+                        this);
+                    object? hit = InputHitTest(center);
+                    lastTargetState += $", Input=({center.X:0.###}, {center.Y:0.###}), InputHitTest={DescribeInputElement(hit)}";
+                    Console.WriteLine($"ProGPU WPF MVP live input validation TextBox hit: {lastTargetState}.");
+                    if (hit == null)
+                    {
+                        return false;
+                    }
+
+                    viewModel.NewItemName = string.Empty;
+                    UpdateBinding(textBox, TextBox.TextProperty);
+                    textBox.Text = string.Empty;
+                    textBox.CaretIndex = 0;
+                    UpdateSource(textBox, TextBox.TextProperty);
+
+                    inputPoint = center;
+                    inputHit = hit;
+                    (double dpiScaleX, double dpiScaleY) = GetLiveRenderSurfaceDpiScale(liveHost);
+                    double physicalX = center.X * dpiScaleX;
+                    double physicalY = center.Y * dpiScaleY;
+                    Console.WriteLine($"ProGPU WPF MVP live input validation raising pointer at {physicalX:0.###}, {physicalY:0.###}.");
+                    RaiseHostInput(liveHost, "MouseMove", x: physicalX, y: physicalY);
+                    RaiseHostInput(liveHost, "MouseDown", x: physicalX, y: physicalY, button: "Left");
+                    RaiseHostInput(liveHost, "MouseUp", x: physicalX, y: physicalY, button: "Left");
+                    Console.WriteLine("ProGPU WPF MVP live input validation pointer raised.");
+                    return true;
+                },
+                DispatcherPriority.Send);
+            if (sentPointerInput)
+            {
+                break;
+            }
+
+            await Task.Delay(LiveValidationRetryDelay);
+        }
+
+        if (!sentPointerInput)
+        {
+            throw new InvalidOperationException(
+                $"Expected MVP live input target to become visible and hit-testable before injecting input, but last state was: {lastTargetState}.");
+        }
+
+        Console.WriteLine($"ProGPU WPF MVP live input validation pointer sent: {lastTargetState}.");
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                if (!ReferenceEquals(Keyboard.FocusedElement, textBox))
+                {
+                    throw new InvalidOperationException(
+                        $"Expected MVP live host click to focus NameTextBox, but focused '{DescribeInputElement(Keyboard.FocusedElement)}'. " +
+                        $"Input=({inputPoint.X:0.###}, {inputPoint.Y:0.###}), " +
+                        $"InputHitTest={DescribeInputElement(inputHit)}, " +
+                        $"Mouse.DirectlyOver={DescribeInputElement(Mouse.DirectlyOver)}, " +
+                        $"TextBox.IsVisible={textBox?.IsVisible}, " +
+                        $"TextBox.IsEnabled={textBox?.IsEnabled}, " +
+                        $"TextBox.Focusable={textBox?.Focusable}, " +
+                        $"TextBox.IsHitTestVisible={textBox?.IsHitTestVisible}.");
+                }
+
+                foreach (char character in "Live")
+                {
+                    string key = char.ToUpperInvariant(character).ToString();
+                    RaiseHostInput(liveHost, "KeyDown", key: key);
+                    RaiseHostInput(liveHost, "TextInput", character: character);
+                    RaiseHostInput(liveHost, "KeyUp", key: key);
+                }
+                Console.WriteLine("ProGPU WPF MVP live input validation text sent.");
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        return await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                AssertEqual("Live", Require<TextBox>(textBox, "MVP live input TextBox").Text, "MVP live TextBox text after host input");
+                AssertEqual("Live", Require<MainViewModel>(viewModel, "MVP live input view model").NewItemName, "MVP live view-model source after host input");
+                return "input TextBox focus and text binding updated";
+            },
+            DispatcherPriority.Send);
+    }
+
+    private static (double X, double Y) GetLiveRenderSurfaceDpiScale(object liveHost)
+    {
+        object geometry = InvokeRequired(liveHost, "ResolveCurrentRenderSurfaceGeometry");
+        var dpiScaleX = Convert.ToDouble(GetRequiredProperty(geometry, "DpiScaleX"), CultureInfo.InvariantCulture);
+        var dpiScaleY = Convert.ToDouble(GetRequiredProperty(geometry, "DpiScaleY"), CultureInfo.InvariantCulture);
+        return (dpiScaleX, dpiScaleY);
+    }
+
+    private async Task InvokeWithLiveHostWakeAsync(
+        object liveHost,
+        Action callback,
+            DispatcherPriority priority)
+    {
+        if (Dispatcher.CheckAccess())
+        {
+            callback();
+            return;
+        }
+
+        DispatcherOperation operation = Dispatcher.InvokeAsync(callback, priority);
+        WakeLiveRenderHost(liveHost);
+        await operation;
+    }
+
+    private async Task<T> InvokeWithLiveHostWakeAsync<T>(
+        object liveHost,
+        Func<T> callback,
+            DispatcherPriority priority)
+    {
+        if (Dispatcher.CheckAccess())
+        {
+            return callback();
+        }
+
+        DispatcherOperation<T> operation = Dispatcher.InvokeAsync(callback, priority);
+        WakeLiveRenderHost(liveHost);
+        return await operation;
+    }
+
+    private static void WakeLiveRenderHost(object liveHost)
+    {
+        object scheduler = GetRequiredProperty(liveHost, "WpfRenderScheduler");
+        MethodInfo requestRender = scheduler.GetType().GetMethod(
+            "RequestRender",
+            BindingFlags.Instance | BindingFlags.Public,
+            binder: null,
+            types: Type.EmptyTypes,
+            modifiers: null)
+            ?? throw new MissingMethodException(scheduler.GetType().FullName, "RequestRender");
+        requestRender.Invoke(scheduler, null);
+
+        MethodInfo? requestNativeLoopWakeup = liveHost.GetType().GetMethod(
+            "TryRequestNativeLoopWakeup",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            types: Type.EmptyTypes,
+            modifiers: null);
+        requestNativeLoopWakeup?.Invoke(liveHost, null);
+    }
+
+    private static string DescribeInputElement(object? element)
+    {
+        if (element == null)
+        {
+            return "<null>";
+        }
+
+        if (element is FrameworkElement frameworkElement && !string.IsNullOrEmpty(frameworkElement.Name))
+        {
+            return $"{element.GetType().Name}#{frameworkElement.Name}";
+        }
+
+        return element.GetType().Name;
+    }
+
+    private bool TryGetPortableActivationHost(out object? host)
+    {
+        host = null;
+        PropertyInfo? activationProperty = typeof(Window).GetProperty(
+            "PortableWindowActivation",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        object? activation = activationProperty?.GetValue(this);
+        if (activation == null)
+        {
+            return false;
+        }
+
+        PropertyInfo? hostProperty = activation.GetType().GetProperty(
+            "Host",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        host = hostProperty?.GetValue(activation);
+        return host != null;
+    }
+
+    private static string ValidateLiveRenderSurfaceGeometryCore(
+        object liveHost,
+        uint expectedLogicalWidth,
+        uint expectedLogicalHeight)
+    {
+        object geometry = InvokeRequired(liveHost, "ResolveCurrentRenderSurfaceGeometry");
+        var logicalWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "LogicalWidth"), CultureInfo.InvariantCulture);
+        var logicalHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "LogicalHeight"), CultureInfo.InvariantCulture);
+        var pixelWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "PixelWidth"), CultureInfo.InvariantCulture);
+        var pixelHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "PixelHeight"), CultureInfo.InvariantCulture);
+        var dpiScale = Convert.ToDouble(GetRequiredProperty(geometry, "DpiScale"), CultureInfo.InvariantCulture);
+        var viewportX = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportX"), CultureInfo.InvariantCulture);
+        var viewportY = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportY"), CultureInfo.InvariantCulture);
+        var viewportWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportWidth"), CultureInfo.InvariantCulture);
+        var viewportHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportHeight"), CultureInfo.InvariantCulture);
+
+        AssertEqual(expectedLogicalWidth, logicalWidth, "MVP live ProGPU WPF logical width");
+        AssertEqual(expectedLogicalHeight, logicalHeight, "MVP live ProGPU WPF logical height");
+        if (pixelWidth < logicalWidth || pixelHeight < logicalHeight)
+        {
+            throw new InvalidOperationException(
+                $"Expected MVP live ProGPU WPF pixels to cover logical content, but got logical {logicalWidth}x{logicalHeight} and pixels {pixelWidth}x{pixelHeight}.");
+        }
+
+        if (dpiScale > 1.01 &&
+            (pixelWidth <= logicalWidth || pixelHeight <= logicalHeight))
+        {
+            throw new InvalidOperationException(
+                $"Expected MVP live ProGPU WPF high-DPI pixels to exceed logical size, but got logical {logicalWidth}x{logicalHeight}, pixels {pixelWidth}x{pixelHeight}, DPI {dpiScale}.");
+        }
+
+        if (viewportX != 0 || viewportY != 0 || viewportWidth != pixelWidth || viewportHeight != pixelHeight)
+        {
+            throw new InvalidOperationException(
+                $"Expected MVP live ProGPU WPF viewport to use the full physical target, but got viewport {viewportWidth}x{viewportHeight}@{viewportX},{viewportY} for pixels {pixelWidth}x{pixelHeight}.");
+        }
+
+        return $"logical {logicalWidth}x{logicalHeight}, pixels {pixelWidth}x{pixelHeight}, viewport {viewportWidth}x{viewportHeight}@{viewportX},{viewportY}, dpi {dpiScale:0.###}";
+    }
+
+    private static void RaiseHostInput(
+        object liveHost,
+        string kind,
+        string? key = null,
+        char? character = null,
+        double x = 0.0,
+        double y = 0.0,
+        string button = "None")
+    {
+        object input = CreateWpfInputEventArgs(liveHost, kind, key, character, x, y, button);
+        MethodInfo method = liveHost.GetType().GetMethod(
+            "OnPlatformInputReceived",
+            BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new MissingMethodException(liveHost.GetType().FullName, "OnPlatformInputReceived");
+        method.Invoke(liveHost, new object?[] { null, input });
+    }
+
+    private static object CreateWpfInputEventArgs(
+        object liveHost,
+        string kind,
+        string? key,
+        char? character,
+        double x,
+        double y,
+        string button)
+    {
+        Assembly assembly = liveHost.GetType().Assembly;
+        Type inputType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfInputEventArgs", throwOnError: true)
+            ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfInputEventArgs");
+        Type kindType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfInputEventKind", throwOnError: true)
+            ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfInputEventKind");
+        Type buttonType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfMouseButton", throwOnError: true)
+            ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfMouseButton");
+        Type modifiersType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfInputModifiers", throwOnError: true)
+            ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfInputModifiers");
+
+        return Activator.CreateInstance(
+            inputType,
+            Enum.Parse(kindType, kind),
+            key,
+            0,
+            character.HasValue ? character.Value : null,
+            x,
+            y,
+            0.0,
+            0.0,
+            Enum.Parse(buttonType, button),
+            Enum.Parse(modifiersType, "None"))
+            ?? throw new InvalidOperationException("Expected WpfInputEventArgs construction to succeed.");
+    }
+
+    private static object InvokeRequired(object target, string methodName)
+    {
+        MethodInfo method = target.GetType().GetMethod(
+            methodName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMethodException(target.GetType().FullName, methodName);
+        return method.Invoke(target, null)
+            ?? throw new InvalidOperationException($"Expected {target.GetType().FullName}.{methodName} to return a value.");
+    }
+
+    private static object GetRequiredProperty(object target, string propertyName)
+    {
+        PropertyInfo property = target.GetType().GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(target.GetType().FullName, propertyName);
+        return property.GetValue(target)
+            ?? throw new InvalidOperationException($"Expected {target.GetType().FullName}.{propertyName} to return a value.");
+    }
+
+    private static void UpdateBinding(DependencyObject target, DependencyProperty property)
+    {
+        BindingOperations.GetBindingExpression(target, property)?.UpdateTarget();
+    }
+
+    private static void UpdateSource(DependencyObject target, DependencyProperty property)
+    {
+        BindingOperations.GetBindingExpression(target, property)?.UpdateSource();
+    }
+
+    private static T Require<T>(object? value, string description)
+    {
+        return value is T typed
+            ? typed
+            : throw new InvalidOperationException($"Expected {description} to be {typeof(T).Name}.");
+    }
+
+    private static void AssertEqual<T>(T expected, T actual, string description)
+    {
+        if (!Equals(expected, actual))
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to be '{expected}', but found '{actual}'.");
+        }
     }
 
     private static string? GetElementName(object? value)

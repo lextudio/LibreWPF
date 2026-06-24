@@ -12,6 +12,7 @@
     Title="ProGPU WPF MVP"
     Width="760"
     Height="560"
+    Loaded="OnMvpWindowLoaded"
     MinWidth="560"
     MinHeight="420">
     <shell:WindowChrome.WindowChrome>

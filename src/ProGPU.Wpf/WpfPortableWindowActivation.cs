@@ -14,6 +14,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
     private const string PortableFileDialogServiceTypeName = "Microsoft.Win32.PortableFileDialogService";
     private const string PortableMediaContextRenderServiceTypeName = "System.Windows.Media.PortableMediaContextRenderService";
     private static readonly TimeSpan ApplicationIdleFlushTimeout = TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan UpdateTickFlushTimeout = TimeSpan.FromMilliseconds(8);
     private bool _isDisposed;
     private bool _isClosingFromNative;
     private bool _isClosingFromWpf;
@@ -36,6 +37,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         Host.WindowEventReceived += OnHostWindowEventReceived;
         Host.DragDropReceived += OnHostDragDropReceived;
         Host.RenderWakeupRequested += OnHostRenderWakeupRequested;
+        Host.UpdateTick += OnHostUpdateTick;
         SynchronizeInitialWindowState(updatePortablePresentationSource: false);
     }
 
@@ -479,6 +481,7 @@ public sealed class WpfPortableWindowActivation : IDisposable
         Host.WindowEventReceived -= OnHostWindowEventReceived;
         Host.DragDropReceived -= OnHostDragDropReceived;
         Host.RenderWakeupRequested -= OnHostRenderWakeupRequested;
+        Host.UpdateTick -= OnHostUpdateTick;
         _mediaContextRenderRegistration?.Dispose();
         _mediaContextRenderRegistration = null;
         Host.Dispose();
@@ -719,6 +722,16 @@ public sealed class WpfPortableWindowActivation : IDisposable
         FlushWpfDispatcherOperations("Render", "ApplicationIdle");
     }
 
+    private void OnHostUpdateTick(object? sender, EventArgs e)
+    {
+        if (_isDisposed || _isFlushingWpfDispatcher)
+        {
+            return;
+        }
+
+        FlushWpfDispatcherOperation("Background", UpdateTickFlushTimeout);
+    }
+
     private void FlushWpfDispatcherOperations(params string[] markerPriorityNames)
     {
         if (_isFlushingWpfDispatcher)
@@ -734,13 +747,18 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 TimeSpan? timeout = string.Equals(markerPriorityName, "ApplicationIdle", StringComparison.Ordinal)
                     ? ApplicationIdleFlushTimeout
                     : null;
-                TryFlushDispatcherOperations(Window, markerPriorityName, timeout);
+                FlushWpfDispatcherOperation(markerPriorityName, timeout);
             }
         }
         finally
         {
             _isFlushingWpfDispatcher = false;
         }
+    }
+
+    private void FlushWpfDispatcherOperation(string markerPriorityName, TimeSpan? timeout)
+    {
+        TryFlushDispatcherOperations(Window, markerPriorityName, timeout);
     }
 
     private void OnHostInputReceived(object? sender, WpfInputEventArgs e)
@@ -750,8 +768,102 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return;
         }
 
+        if (TryDispatchHostInputToWindowDispatcher(e))
+        {
+            return;
+        }
+
+        ProcessHostInput(e);
+    }
+
+    private void ProcessHostInput(WpfInputEventArgs e)
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
         TrySetWindowActivationState(Window, isActive: true);
         TryForwardInputToWindow(Window, e);
+    }
+
+    private bool TryDispatchHostInputToWindowDispatcher(WpfInputEventArgs e)
+    {
+        if (!TryReadProperty(Window, "Dispatcher", out object? dispatcher) || dispatcher == null)
+        {
+            return false;
+        }
+
+        var dispatcherType = dispatcher.GetType();
+        var checkAccessMethod = dispatcherType.GetMethod(
+            "CheckAccess",
+            BindingFlags.Instance | BindingFlags.Public,
+            Type.EmptyTypes);
+        if (checkAccessMethod == null ||
+            checkAccessMethod.Invoke(dispatcher, null) is not bool hasAccess ||
+            hasAccess)
+        {
+            return false;
+        }
+
+        var callback = new Action(() => ProcessHostInput(e));
+        object? dispatcherPriority = TryCreateDispatcherPriority(dispatcherType, "Input");
+        MethodInfo? beginInvokeMethod = null;
+        object[]? beginInvokeArgs = null;
+        foreach (var method in dispatcherType.GetMethods(BindingFlags.Instance | BindingFlags.Public))
+        {
+            if (!string.Equals(method.Name, "BeginInvoke", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var parameters = method.GetParameters();
+            if (parameters.Length == 2 &&
+                parameters[0].ParameterType.FullName == "System.Windows.Threading.DispatcherPriority" &&
+                parameters[1].ParameterType == typeof(Delegate) &&
+                dispatcherPriority != null)
+            {
+                beginInvokeMethod = method;
+                beginInvokeArgs = new object[] { dispatcherPriority, callback };
+                break;
+            }
+
+            if (parameters.Length == 2 &&
+                parameters[0].ParameterType == typeof(Delegate) &&
+                parameters[1].ParameterType == typeof(object[]))
+            {
+                beginInvokeMethod = method;
+                beginInvokeArgs = new object[] { callback, Array.Empty<object>() };
+                break;
+            }
+        }
+
+        if (beginInvokeMethod != null)
+        {
+            beginInvokeMethod.Invoke(dispatcher, beginInvokeArgs);
+            RequestRenderFromMediaContext();
+            return true;
+        }
+
+        return false;
+    }
+
+    private static object? TryCreateDispatcherPriority(Type dispatcherType, string priorityName)
+    {
+        Type? priorityType = dispatcherType.Assembly.GetType("System.Windows.Threading.DispatcherPriority");
+        if (priorityType == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return Enum.Parse(priorityType, priorityName);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
     }
 
     private static bool TryForwardInputToWindow(object window, WpfInputEventArgs e)
@@ -1192,6 +1304,8 @@ public sealed class WpfPortableWindowActivation : IDisposable
             {
                 Host.WpfRenderScheduler.RequestRender();
             }
+
+            Host.TryRequestNativeLoopWakeup();
         }
         catch (ObjectDisposedException)
         {

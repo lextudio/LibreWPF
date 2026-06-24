@@ -18,6 +18,7 @@ namespace System.Windows.Media.ProGPU;
 public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 {
     private const string TraceRenderSurfaceEnvironmentVariable = "PROGPU_WPF_TRACE_RENDER_SURFACE";
+    private const string TraceInputEnvironmentVariable = "PROGPU_WPF_TRACE_INPUT";
 
     private readonly ProGpuWpfWindowOptions _options;
     private IWindow? _window;
@@ -95,6 +96,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public event EventHandler<ProGpuWpfFrameEventArgs>? Render;
 
     internal event EventHandler? RenderWakeupRequested;
+
+    internal event EventHandler? UpdateTick;
 
     public event EventHandler<WpfInputEventArgs>? InputReceived;
 
@@ -548,6 +551,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private void OnUpdate(double deltaSeconds)
     {
         TryProcessDispatcherWorkWakeup();
+        UpdateTick?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnRender(double deltaSeconds)
@@ -1531,7 +1535,9 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void OnPlatformInputReceived(object? sender, WpfInputEventArgs e)
     {
+        TraceInputEvent("native", e);
         var input = NormalizeInputEventForCurrentRenderSurface(e);
+        TraceInputEvent("wpf", input);
         InputReceived?.Invoke(this, input);
         if (!ReferenceEquals(input, e))
         {
@@ -1539,6 +1545,27 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
 
         WpfRenderScheduler.RequestRender();
+    }
+
+    private static void TraceInputEvent(string stage, WpfInputEventArgs input)
+    {
+        if (Environment.GetEnvironmentVariable(TraceInputEnvironmentVariable) != "1")
+        {
+            return;
+        }
+
+        string character = input.Character.HasValue
+            ? input.Character.Value.ToString()
+            : string.Empty;
+        Console.WriteLine(
+            "ProGPU WPF input " +
+            $"{stage}: {input.Kind}, " +
+            $"key '{input.Key ?? string.Empty}', " +
+            $"scan {input.ScanCode}, " +
+            $"char '{character}', " +
+            $"x {input.X:0.###}, y {input.Y:0.###}, " +
+            $"delta {input.DeltaX:0.###},{input.DeltaY:0.###}, " +
+            $"button {input.Button}, modifiers {input.Modifiers}, handled {input.Handled}");
     }
 
     private WpfInputEventArgs NormalizeInputEventForCurrentRenderSurface(WpfInputEventArgs input)
@@ -1586,18 +1613,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return normalized;
     }
 
-    private static bool NativeInputCoordinatesLookPhysical(
+    internal static bool NativeInputCoordinatesLookPhysical(
         Vector2D<int> nativeSize,
         RenderSurfaceGeometry geometry,
         WpfInputEventArgs input)
     {
-        if (!IsPointerInput(input.Kind) ||
-            !PointerInputCoordinateExceedsLogicalClient(input, geometry))
+        if (!IsPointerInput(input.Kind))
         {
             return false;
         }
 
-        return NativeInputDimensionLooksPhysical(
+        return RenderSurfaceCoordinatesLookPhysical(geometry) ||
+            NativeInputDimensionLooksPhysical(
                 nativeSize.X,
                 geometry.LogicalWidth,
                 ResolveGeometryViewportDimension(geometry.ViewportWidth, geometry.PixelWidth)) ||
@@ -1605,6 +1632,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 nativeSize.Y,
                 geometry.LogicalHeight,
                 ResolveGeometryViewportDimension(geometry.ViewportHeight, geometry.PixelHeight));
+    }
+
+    private static bool RenderSurfaceCoordinatesLookPhysical(RenderSurfaceGeometry geometry)
+    {
+        var viewportWidth = ResolveGeometryViewportDimension(geometry.ViewportWidth, geometry.PixelWidth);
+        var viewportHeight = ResolveGeometryViewportDimension(geometry.ViewportHeight, geometry.PixelHeight);
+        return viewportWidth > geometry.LogicalWidth || viewportHeight > geometry.LogicalHeight;
     }
 
     internal static bool PointerInputCoordinateExceedsLogicalClient(
@@ -1869,7 +1903,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         }
     }
 
-    private bool TryRequestNativeLoopWakeup()
+    internal bool TryRequestNativeLoopWakeup()
     {
         var window = _window;
         return window != null && TryRequestNativeLoopWakeup(window.ContinueEvents);

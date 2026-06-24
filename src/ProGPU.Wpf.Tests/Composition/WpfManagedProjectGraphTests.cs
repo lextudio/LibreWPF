@@ -7153,6 +7153,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"./${apphost_name}\"", mvpRunScript, StringComparison.Ordinal);
         Assert.DoesNotContain("run --project \"${mvp_project}\"", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Wpf.SdkExternalSmokeHarness.csproj", mvpQuickCheckScript, StringComparison.Ordinal);
+        Assert.Contains("Running Hello SDK apphost Application.Run self-test", mvpQuickCheckScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_HELLO_RUN_VALIDATE=1", mvpQuickCheckScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_HELLO_LIVE_VALIDATE=1", mvpQuickCheckScript, StringComparison.Ordinal);
         Assert.Contains("Running MVP SDK apphost Application.Run self-test", mvpQuickCheckScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_RUN_VALIDATE=1", mvpQuickCheckScript, StringComparison.Ordinal);

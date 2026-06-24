@@ -15,6 +15,9 @@ echo "Running external no-source-change ProGPU WPF SDK smoke..."
   --project "${repo_root}/src/ProGPU.Wpf.SdkExternalSmokeHarness/ProGPU.Wpf.SdkExternalSmokeHarness.csproj" \
   -v:minimal
 
+echo "Running Hello SDK apphost Application.Run self-test..."
+PROGPU_WPF_HELLO_RUN_VALIDATE=1 "${repo_root}/eng/run-progpu-wpf-hello.sh"
+
 echo "Running Hello SDK apphost live geometry probe..."
 PROGPU_WPF_HELLO_LIVE_VALIDATE=1 "${repo_root}/eng/run-progpu-wpf-hello.sh"
 

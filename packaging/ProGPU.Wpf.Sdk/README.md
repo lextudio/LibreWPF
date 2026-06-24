@@ -31,7 +31,7 @@ The current repo MVP validation is intentionally apphost-based, because that is 
 ./eng/run-progpu-wpf-mvp.sh
 ```
 
-For a fast validation pass that exercises the external no-source-change SDK smoke plus both live ProGPU/Silk.NET apphost geometry probes:
+For a fast validation pass that exercises the external no-source-change SDK smoke, Hello and MVP `Application.Run` apphost self-tests, and both live ProGPU/Silk.NET apphost geometry probes:
 
 ```bash
 ./eng/progpu-wpf-mvp-quickcheck.sh

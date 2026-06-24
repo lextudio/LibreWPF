@@ -12513,6 +12513,13 @@ internal static class Program
                     <ContentPresenter
                         x:Name="DefaultItemsImplicitTemplatePresenter"
                         Content="{StaticResource DefaultItemsTemplateItem}" />
+                    <TextBlock
+                        x:Name="DefaultItemsBoundStatusText"
+                        Text="{Binding Status}" />
+                    <ListBox
+                        x:Name="DefaultItemsListBox"
+                        DisplayMemberPath="Name"
+                        ItemsSource="{Binding Items}" />
                     <Button
                         x:Name="DefaultItemsButton"
                         Click="OnDefaultItemsButtonClick"
@@ -12525,7 +12532,10 @@ internal static class Program
             Path.Combine(appRoot, "MainWindow.xaml.cs"),
             """
             using System;
+            using System.Collections.ObjectModel;
             using System.Configuration;
+            using System.ComponentModel;
+            using System.Runtime.CompilerServices;
             using ExternalSdkDefaultItemsLibrary;
             using System.Windows;
             using System.Windows.Controls;
@@ -12539,15 +12549,52 @@ internal static class Program
                 public string Name { get; set; } = string.Empty;
             }
 
+            public sealed class DefaultItemsViewModel : INotifyPropertyChanged
+            {
+                private string _status = "Default item binding ready";
+
+                public event PropertyChangedEventHandler PropertyChanged = delegate { };
+
+                public ObservableCollection<DefaultItemsItem> Items { get; } =
+                    new ObservableCollection<DefaultItemsItem>
+                    {
+                        new DefaultItemsItem { Name = "Default item alpha" },
+                        new DefaultItemsItem { Name = "Default item beta" },
+                    };
+
+                public string Status
+                {
+                    get => _status;
+                    set
+                    {
+                        if (string.Equals(_status, value, StringComparison.Ordinal))
+                        {
+                            return;
+                        }
+
+                        _status = value;
+                        OnPropertyChanged();
+                    }
+                }
+
+                private void OnPropertyChanged([CallerMemberName] string propertyName = "")
+                {
+                    PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+                }
+            }
+
             public partial class MainWindow : Window
             {
                 public int LoadedCount { get; private set; }
 
                 public int ButtonClickCount { get; private set; }
 
+                public DefaultItemsViewModel ViewModel { get; } = new DefaultItemsViewModel();
+
                 public MainWindow()
                 {
                     InitializeComponent();
+                    DataContext = ViewModel;
                 }
 
                 public void ValidateDefaultItemsRun()
@@ -12680,6 +12727,32 @@ internal static class Program
                             "default-item implicit template",
                             StringComparison.Ordinal),
                         "Expected default-item implicit DataTemplate text tag.");
+
+                    Require(
+                        ReferenceEquals(DataContext, ViewModel),
+                        "Expected default-item DataContext to use the app view model.");
+                    Require(
+                        DefaultItemsBoundStatusText.Text == "Default item binding ready",
+                        "Expected default-item TextBlock binding to read the view-model status.");
+                    ViewModel.Status = "Default item binding updated";
+                    DrainDispatcher();
+                    Require(
+                        DefaultItemsBoundStatusText.Text == "Default item binding updated",
+                        "Expected default-item TextBlock binding to observe INotifyPropertyChanged.");
+                    Require(
+                        DefaultItemsListBox.Items.Count == 2,
+                        "Expected default-item collection binding item count.");
+                    ViewModel.Items.Add(new DefaultItemsItem { Name = "Default item gamma" });
+                    DrainDispatcher();
+                    Require(
+                        DefaultItemsListBox.Items.Count == 3,
+                        "Expected default-item ObservableCollection update.");
+                    var appendedItem = RequireType<DefaultItemsItem>(
+                        DefaultItemsListBox.Items[2],
+                        "default-item appended collection item");
+                    Require(
+                        appendedItem.Name == "Default item gamma",
+                        "Expected default-item appended collection item name.");
 
                     DefaultItemsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     Require(ButtonClickCount == 1, "Expected default-item compiled Click handler.");

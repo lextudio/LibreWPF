@@ -1623,8 +1623,52 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
-        _ = nativeSize;
-        return PointerInputCoordinateExceedsLogicalClient(input, geometry);
+        return NativeWindowSizeLooksPhysical(nativeSize, geometry) ||
+            PointerInputCoordinateExceedsLogicalClient(input, geometry);
+    }
+
+    internal static bool NativeWindowSizeLooksPhysical(
+        Vector2D<int> nativeSize,
+        RenderSurfaceGeometry geometry)
+    {
+        if (geometry.DpiScale <= 1.0 + double.Epsilon)
+        {
+            return false;
+        }
+
+        var viewportWidth = ResolveGeometryViewportDimension(geometry.ViewportWidth, geometry.PixelWidth);
+        var viewportHeight = ResolveGeometryViewportDimension(geometry.ViewportHeight, geometry.PixelHeight);
+        var nativeWidth = Math.Abs(nativeSize.X);
+        var nativeHeight = Math.Abs(nativeSize.Y);
+        if (nativeWidth <= 0 || nativeHeight <= 0)
+        {
+            return false;
+        }
+
+        return NativeDimensionLooksPhysical(nativeWidth, geometry.LogicalWidth, geometry.PixelWidth, viewportWidth) &&
+            NativeDimensionLooksPhysical(nativeHeight, geometry.LogicalHeight, geometry.PixelHeight, viewportHeight);
+    }
+
+    private static bool NativeDimensionLooksPhysical(
+        int nativeDimension,
+        uint logicalDimension,
+        uint pixelDimension,
+        uint viewportDimension)
+    {
+        if (logicalDimension == 0u ||
+            NativeDimensionMatches(nativeDimension, logicalDimension))
+        {
+            return false;
+        }
+
+        return NativeDimensionMatches(nativeDimension, pixelDimension) ||
+            NativeDimensionMatches(nativeDimension, viewportDimension);
+    }
+
+    private static bool NativeDimensionMatches(int nativeDimension, uint targetDimension)
+    {
+        return targetDimension > 0u &&
+            Math.Abs(nativeDimension - (int)targetDimension) <= 1;
     }
 
     internal static bool PointerInputCoordinateExceedsLogicalClient(

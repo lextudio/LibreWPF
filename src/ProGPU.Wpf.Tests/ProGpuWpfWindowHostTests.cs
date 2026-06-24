@@ -539,6 +539,31 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void NormalizeInputEventForRenderSurfaceGeometryMapsUpperLeftPhysicalPointerCoordinatesToLogicalDips()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 760,
+            clientHeight: 560,
+            framebufferSize: new Vector2D<int>(1520, 1120),
+            monitorDpiScale: 2.0);
+        var input = new WpfInputEventArgs(
+            WpfInputEventKind.MouseDown,
+            x: 320,
+            y: 180,
+            button: WpfMouseButton.Left);
+
+        var normalized = ProGpuWpfWindowHost.NormalizeInputEventForRenderSurfaceGeometry(
+            input,
+            geometry,
+            inputCoordinatesArePhysical: true);
+
+        Assert.NotSame(input, normalized);
+        Assert.Equal(160.0, normalized.X);
+        Assert.Equal(90.0, normalized.Y);
+        Assert.Equal(WpfMouseButton.Left, normalized.Button);
+    }
+
+    [Fact]
     public void NormalizeInputEventForRenderSurfaceGeometryKeepsLogicalPointerCoordinates()
     {
         var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
@@ -614,6 +639,42 @@ public sealed class ProGpuWpfWindowHostTests
                 new Vector2D<int>(760, 560),
                 geometry,
                 input));
+    }
+
+    [Fact]
+    public void NativeInputCoordinatesLookPhysicalDetectsRetinaPhysicalNativeWindowInsideLogicalBounds()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 760,
+            clientHeight: 560,
+            framebufferSize: new Vector2D<int>(1520, 1120),
+            monitorDpiScale: 2.0);
+        var input = new WpfInputEventArgs(
+            WpfInputEventKind.MouseDown,
+            x: 320,
+            y: 180,
+            button: WpfMouseButton.Left);
+
+        Assert.True(
+            ProGpuWpfWindowHost.NativeInputCoordinatesLookPhysical(
+                new Vector2D<int>(1520, 1120),
+                geometry,
+                input));
+    }
+
+    [Fact]
+    public void NativeWindowSizeLooksPhysicalDetectsRetinaPhysicalNativeWindow()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 760,
+            clientHeight: 560,
+            framebufferSize: new Vector2D<int>(1520, 1120),
+            monitorDpiScale: 2.0);
+
+        Assert.True(
+            ProGpuWpfWindowHost.NativeWindowSizeLooksPhysical(
+                new Vector2D<int>(1520, 1120),
+                geometry));
     }
 
     [Fact]

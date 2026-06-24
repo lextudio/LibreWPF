@@ -8198,6 +8198,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("default-item CollectionViewSource sorted order", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item CollectionViewSource current item from selection", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item sorted ListBox collection update", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsListView", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<GridViewColumn", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DisplayMemberBinding=\"{Binding Name}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DisplayMemberBinding=\"{Binding Kind}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item GridView name column binding", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item ListView collection update", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsGroupHeaderTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsGroupedItems", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<PropertyGroupDescription PropertyName=\"Kind\" />", externalSdkHarnessProgram, StringComparison.Ordinal);

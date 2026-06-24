@@ -12811,6 +12811,21 @@ internal static class Program
                         DisplayMemberPath="Name"
                         IsSynchronizedWithCurrentItem="True"
                         ItemsSource="{Binding Source={StaticResource DefaultItemsSortedItems}}" />
+                    <ListView
+                        x:Name="DefaultItemsListView"
+                        ItemsSource="{Binding Items}"
+                        SelectedIndex="0">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn
+                                    Header="Name"
+                                    DisplayMemberBinding="{Binding Name}" />
+                                <GridViewColumn
+                                    Header="Kind"
+                                    DisplayMemberBinding="{Binding Kind}" />
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
                     <ListBox
                         x:Name="DefaultItemsGroupedListBox"
                         DisplayMemberPath="Name"
@@ -13564,6 +13579,32 @@ internal static class Program
                     Require(
                         ReferenceEquals(DefaultItemsSortedListBox.SelectedItem, ViewModel.Items[1]),
                         "Expected default-item sorted ListBox selection to follow current item.");
+                    var listViewGrid = RequireType<GridView>(
+                        DefaultItemsListView.View,
+                        "default-item ListView GridView");
+                    Require(
+                        listViewGrid.Columns.Count == 2,
+                        "Expected default-item GridView column count.");
+                    var nameColumnBinding = RequireType<Binding>(
+                        listViewGrid.Columns[0].DisplayMemberBinding,
+                        "default-item GridView name column binding");
+                    var kindColumnBinding = RequireType<Binding>(
+                        listViewGrid.Columns[1].DisplayMemberBinding,
+                        "default-item GridView kind column binding");
+                    Require(
+                        Equals(listViewGrid.Columns[0].Header, "Name")
+                            && nameColumnBinding.Path.Path == "Name",
+                        "Expected default-item GridView name column binding.");
+                    Require(
+                        Equals(listViewGrid.Columns[1].Header, "Kind")
+                            && kindColumnBinding.Path.Path == "Kind",
+                        "Expected default-item GridView kind column binding.");
+                    Require(
+                        DefaultItemsListView.Items.Count == 2,
+                        "Expected default-item ListView item count.");
+                    Require(
+                        ReferenceEquals(DefaultItemsListView.SelectedItem, ViewModel.Items[0]),
+                        "Expected default-item ListView selected item.");
                     var groupedItems = RequireType<CollectionViewSource>(
                         FindResource("DefaultItemsGroupedItems"),
                         "default-item grouped CollectionViewSource");
@@ -13743,6 +13784,9 @@ internal static class Program
                     Require(
                         ReferenceEquals(DefaultItemsSortedListBox.Items[0], appendedItem),
                         "Expected default-item sorted ListBox collection update.");
+                    Require(
+                        DefaultItemsListView.Items.Count == 3,
+                        "Expected default-item ListView collection update.");
                     groups = groupedItems.View.Groups
                         ?? throw new InvalidOperationException("Expected default-item CollectionViewSource groups after update.");
                     frameworkGroup = RequireType<CollectionViewGroup>(

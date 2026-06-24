@@ -12529,6 +12529,12 @@ internal static class Program
                     <TextBlock
                         x:Name="DefaultItemsBoundStatusText"
                         Text="{Binding Status}" />
+                    <TextBox
+                        x:Name="DefaultItemsEditableStatusTextBox"
+                        Text="{Binding Status, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock
+                        x:Name="DefaultItemsFormattedStatusText"
+                        Text="{Binding Status, StringFormat=Formatted: {0}}" />
                     <ListBox
                         x:Name="DefaultItemsListBox"
                         DisplayMemberPath="Name"
@@ -12763,11 +12769,38 @@ internal static class Program
                     Require(
                         DefaultItemsBoundStatusText.Text == "Default item binding ready",
                         "Expected default-item TextBlock binding to read the view-model status.");
+                    Require(
+                        DefaultItemsEditableStatusTextBox.Text == "Default item binding ready",
+                        "Expected default-item TextBox binding to read the view-model status.");
+                    Require(
+                        DefaultItemsFormattedStatusText.Text == "Formatted: Default item binding ready",
+                        "Expected default-item formatted binding to read the view-model status.");
+                    Require(
+                        DefaultItemsEditableStatusTextBox.GetBindingExpression(TextBox.TextProperty) is not null,
+                        "Expected default-item TextBox two-way binding expression.");
                     ViewModel.Status = "Default item binding updated";
                     DrainDispatcher();
                     Require(
                         DefaultItemsBoundStatusText.Text == "Default item binding updated",
                         "Expected default-item TextBlock binding to observe INotifyPropertyChanged.");
+                    Require(
+                        DefaultItemsEditableStatusTextBox.Text == "Default item binding updated",
+                        "Expected default-item TextBox binding to observe INotifyPropertyChanged.");
+                    Require(
+                        DefaultItemsFormattedStatusText.Text == "Formatted: Default item binding updated",
+                        "Expected default-item formatted binding to observe INotifyPropertyChanged.");
+                    DefaultItemsEditableStatusTextBox.Text = "Default item text box source";
+                    DefaultItemsEditableStatusTextBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+                    DrainDispatcher();
+                    Require(
+                        ViewModel.Status == "Default item text box source",
+                        "Expected default-item TextBox two-way binding to update the view model.");
+                    Require(
+                        DefaultItemsBoundStatusText.Text == "Default item text box source",
+                        "Expected default-item TextBox source update to refresh sibling binding.");
+                    Require(
+                        DefaultItemsFormattedStatusText.Text == "Formatted: Default item text box source",
+                        "Expected default-item TextBox source update to refresh formatted binding.");
                     Require(
                         DefaultItemsListBox.Items.Count == 2,
                         "Expected default-item collection binding item count.");

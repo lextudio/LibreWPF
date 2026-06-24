@@ -8117,10 +8117,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("default-item implicit DataTemplate visual tree", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item implicit DataTemplate binding text", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsBoundStatusText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsEditableStatusTextBox", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("UpdateSourceTrigger=PropertyChanged", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsFormattedStatusText", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsListBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsViewModel", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ObservableCollection<DefaultItemsItem>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Default item binding updated", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item TextBox two-way binding", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Default item text box source", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item collection binding item count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Window.CommandBindings", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Window.InputBindings", externalSdkHarnessProgram, StringComparison.Ordinal);

@@ -12462,6 +12462,7 @@ internal static class Program
                 x:Class="ExternalSdkDefaultItemsApp.MainWindow"
                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
                 xmlns:library="clr-namespace:ExternalSdkDefaultItemsLibrary;assembly=ExternalSdkDefaultItemsLibrary"
                 xmlns:local="clr-namespace:ExternalSdkDefaultItemsApp"
                 Title="External SDK Default Items"
@@ -12491,6 +12492,15 @@ internal static class Program
                                 </defaultItems>
                             </x:XData>
                         </XmlDataProvider>
+                        <CollectionViewSource
+                            x:Key="DefaultItemsSortedItems"
+                            Source="{Binding Items}">
+                            <CollectionViewSource.SortDescriptions>
+                                <componentModel:SortDescription
+                                    PropertyName="Name"
+                                    Direction="Descending" />
+                            </CollectionViewSource.SortDescriptions>
+                        </CollectionViewSource>
                         <local:DefaultItemsItemNameConverter
                             x:Key="DefaultItemsItemNameConverter" />
                         <local:DefaultItemsStatusSelectionConverter
@@ -12776,6 +12786,11 @@ internal static class Program
                         ItemContainerStyle="{StaticResource DefaultItemsListBoxItemStyle}"
                         ItemsPanel="{StaticResource DefaultItemsListBoxItemsPanel}"
                         ItemsSource="{Binding Items}" />
+                    <ListBox
+                        x:Name="DefaultItemsSortedListBox"
+                        DisplayMemberPath="Name"
+                        IsSynchronizedWithCurrentItem="True"
+                        ItemsSource="{Binding Source={StaticResource DefaultItemsSortedItems}}" />
                     <ComboBox
                         x:Name="DefaultItemsComboBox"
                         DisplayMemberPath="Name"
@@ -12821,6 +12836,7 @@ internal static class Program
             using System.Configuration;
             using System.ComponentModel;
             using System.Globalization;
+            using System.Linq;
             using System.Runtime.CompilerServices;
             using ExternalSdkDefaultItemsLibrary;
             using System.Windows;
@@ -13425,6 +13441,47 @@ internal static class Program
                     Require(
                         ReferenceEquals(listBoxItem.Content, ViewModel.Items[0]),
                         "Expected default-item generated ListBoxItem content.");
+                    var sortedItems = RequireType<CollectionViewSource>(
+                        FindResource("DefaultItemsSortedItems"),
+                        "default-item sorted CollectionViewSource");
+                    Require(
+                        sortedItems.SortDescriptions.Count == 1,
+                        "Expected default-item CollectionViewSource sort count.");
+                    Require(
+                        sortedItems.SortDescriptions[0].PropertyName == "Name",
+                        "Expected default-item CollectionViewSource sort property.");
+                    Require(
+                        sortedItems.SortDescriptions[0].Direction == ListSortDirection.Descending,
+                        "Expected default-item CollectionViewSource sort direction.");
+                    Require(
+                        ReferenceEquals(sortedItems.View, DefaultItemsSortedListBox.ItemsSource),
+                        "Expected default-item sorted ListBox to use CollectionViewSource view.");
+                    Require(
+                        DefaultItemsSortedListBox.IsSynchronizedWithCurrentItem == true,
+                        "Expected default-item sorted ListBox current-item synchronization.");
+                    var sortedViewItems = sortedItems.View.Cast<object>().ToArray();
+                    Require(
+                        sortedViewItems.Length == 2,
+                        "Expected default-item CollectionViewSource sorted item count.");
+                    Require(
+                        ReferenceEquals(sortedViewItems[0], ViewModel.Items[1])
+                            && ReferenceEquals(sortedViewItems[1], ViewModel.Items[0]),
+                        "Expected default-item CollectionViewSource sorted order.");
+                    Require(
+                        ReferenceEquals(DefaultItemsSortedListBox.Items[0], ViewModel.Items[1]),
+                        "Expected default-item sorted ListBox first item.");
+                    DefaultItemsSortedListBox.SelectedIndex = 1;
+                    DrainDispatcher();
+                    Require(
+                        ReferenceEquals(sortedItems.View.CurrentItem, ViewModel.Items[0]),
+                        "Expected default-item CollectionViewSource current item from selection.");
+                    Require(
+                        sortedItems.View.MoveCurrentToPosition(0),
+                        "Expected default-item CollectionViewSource current move result.");
+                    DrainDispatcher();
+                    Require(
+                        ReferenceEquals(DefaultItemsSortedListBox.SelectedItem, ViewModel.Items[1]),
+                        "Expected default-item sorted ListBox selection to follow current item.");
                     Require(
                         DefaultItemsComboBox.Items.Count == 2,
                         "Expected default-item selector binding item count.");
@@ -13448,6 +13505,16 @@ internal static class Program
                     Require(
                         appendedItem.Name == "Default item gamma",
                         "Expected default-item appended collection item name.");
+                    var refreshedSortedViewItems = sortedItems.View.Cast<object>().ToArray();
+                    Require(
+                        refreshedSortedViewItems.Length == 3,
+                        "Expected default-item CollectionViewSource collection update count.");
+                    Require(
+                        ReferenceEquals(refreshedSortedViewItems[0], appendedItem),
+                        "Expected default-item CollectionViewSource collection update sorted item.");
+                    Require(
+                        ReferenceEquals(DefaultItemsSortedListBox.Items[0], appendedItem),
+                        "Expected default-item sorted ListBox collection update.");
                     ViewModel.SelectedItem = ViewModel.Items[1];
                     DrainDispatcher();
                     Require(

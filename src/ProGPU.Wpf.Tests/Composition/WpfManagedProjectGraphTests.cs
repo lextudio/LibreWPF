@@ -8182,6 +8182,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DefaultItemsListBoxItemStyle", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item ItemsPanelTemplate metadata", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item generated ListBoxItem content", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsSortedItems", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<CollectionViewSource.SortDescriptions>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("componentModel:SortDescription", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsSortedListBox", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("IsSynchronizedWithCurrentItem=\"True\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item CollectionViewSource sorted order", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item CollectionViewSource current item from selection", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item sorted ListBox collection update", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsListBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsComboBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SelectedItem=\"{Binding SelectedItem, Mode=TwoWay}\"", externalSdkHarnessProgram, StringComparison.Ordinal);

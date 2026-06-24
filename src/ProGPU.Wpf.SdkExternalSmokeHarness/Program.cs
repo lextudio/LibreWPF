@@ -12539,6 +12539,11 @@ internal static class Program
                         x:Name="DefaultItemsListBox"
                         DisplayMemberPath="Name"
                         ItemsSource="{Binding Items}" />
+                    <ComboBox
+                        x:Name="DefaultItemsComboBox"
+                        DisplayMemberPath="Name"
+                        ItemsSource="{Binding Items}"
+                        SelectedItem="{Binding SelectedItem, Mode=TwoWay}" />
                     <Button
                         x:Name="DefaultItemsCommandButton"
                         Command="{x:Static local:MainWindow.DefaultItemsCommand}"
@@ -12577,6 +12582,7 @@ internal static class Program
             public sealed class DefaultItemsViewModel : INotifyPropertyChanged
             {
                 private string _status = "Default item binding ready";
+                private DefaultItemsItem _selectedItem;
 
                 public event PropertyChangedEventHandler PropertyChanged = delegate { };
 
@@ -12586,6 +12592,11 @@ internal static class Program
                         new DefaultItemsItem { Name = "Default item alpha" },
                         new DefaultItemsItem { Name = "Default item beta" },
                     };
+
+                public DefaultItemsViewModel()
+                {
+                    _selectedItem = Items[0];
+                }
 
                 public string Status
                 {
@@ -12598,6 +12609,21 @@ internal static class Program
                         }
 
                         _status = value;
+                        OnPropertyChanged();
+                    }
+                }
+
+                public DefaultItemsItem SelectedItem
+                {
+                    get => _selectedItem;
+                    set
+                    {
+                        if (ReferenceEquals(_selectedItem, value))
+                        {
+                            return;
+                        }
+
+                        _selectedItem = value;
                         OnPropertyChanged();
                     }
                 }
@@ -12804,17 +12830,39 @@ internal static class Program
                     Require(
                         DefaultItemsListBox.Items.Count == 2,
                         "Expected default-item collection binding item count.");
+                    Require(
+                        DefaultItemsComboBox.Items.Count == 2,
+                        "Expected default-item selector binding item count.");
+                    Require(
+                        ReferenceEquals(DefaultItemsComboBox.SelectedItem, ViewModel.SelectedItem),
+                        "Expected default-item selector binding initial selected item.");
+                    Require(
+                        ViewModel.SelectedItem.Name == "Default item alpha",
+                        "Expected default-item selector binding initial view-model item.");
                     ViewModel.Items.Add(new DefaultItemsItem { Name = "Default item gamma" });
                     DrainDispatcher();
                     Require(
                         DefaultItemsListBox.Items.Count == 3,
                         "Expected default-item ObservableCollection update.");
+                    Require(
+                        DefaultItemsComboBox.Items.Count == 3,
+                        "Expected default-item selector collection update.");
                     var appendedItem = RequireType<DefaultItemsItem>(
                         DefaultItemsListBox.Items[2],
                         "default-item appended collection item");
                     Require(
                         appendedItem.Name == "Default item gamma",
                         "Expected default-item appended collection item name.");
+                    ViewModel.SelectedItem = ViewModel.Items[1];
+                    DrainDispatcher();
+                    Require(
+                        ReferenceEquals(DefaultItemsComboBox.SelectedItem, ViewModel.Items[1]),
+                        "Expected default-item selector binding to observe view-model selection.");
+                    DefaultItemsComboBox.SelectedItem = ViewModel.Items[2];
+                    DrainDispatcher();
+                    Require(
+                        ReferenceEquals(ViewModel.SelectedItem, ViewModel.Items[2]),
+                        "Expected default-item selector two-way binding to update the view model.");
 
                     var commandBinding = RequireType<CommandBinding>(
                         CommandBindings[0],

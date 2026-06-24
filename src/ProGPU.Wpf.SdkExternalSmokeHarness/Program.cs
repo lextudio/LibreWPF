@@ -12502,6 +12502,18 @@ internal static class Program
                                     Direction="Descending" />
                             </CollectionViewSource.SortDescriptions>
                         </CollectionViewSource>
+                        <DataTemplate x:Key="DefaultItemsGroupHeaderTemplate">
+                            <TextBlock
+                                x:Name="DefaultItemsGroupHeaderText"
+                                Text="{Binding Name, StringFormat=Default group: {0}}" />
+                        </DataTemplate>
+                        <CollectionViewSource
+                            x:Key="DefaultItemsGroupedItems"
+                            Source="{Binding Items}">
+                            <CollectionViewSource.GroupDescriptions>
+                                <PropertyGroupDescription PropertyName="Kind" />
+                            </CollectionViewSource.GroupDescriptions>
+                        </CollectionViewSource>
                         <local:DefaultItemsItemNameConverter
                             x:Key="DefaultItemsItemNameConverter" />
                         <local:DefaultItemsStatusSelectionConverter
@@ -12792,6 +12804,14 @@ internal static class Program
                         DisplayMemberPath="Name"
                         IsSynchronizedWithCurrentItem="True"
                         ItemsSource="{Binding Source={StaticResource DefaultItemsSortedItems}}" />
+                    <ListBox
+                        x:Name="DefaultItemsGroupedListBox"
+                        DisplayMemberPath="Name"
+                        ItemsSource="{Binding Source={StaticResource DefaultItemsGroupedItems}}">
+                        <ListBox.GroupStyle>
+                            <GroupStyle HeaderTemplate="{StaticResource DefaultItemsGroupHeaderTemplate}" />
+                        </ListBox.GroupStyle>
+                    </ListBox>
                     <ListBox x:Name="DefaultItemsCompositeListBox">
                         <ListBox.ItemsSource>
                             <CompositeCollection>
@@ -12861,6 +12881,8 @@ internal static class Program
             public sealed class DefaultItemsItem
             {
                 public string Name { get; set; } = string.Empty;
+
+                public string Kind { get; set; } = string.Empty;
             }
 
             public sealed class DefaultItemsProviderSource
@@ -12892,8 +12914,16 @@ internal static class Program
                 public ObservableCollection<DefaultItemsItem> Items { get; } =
                     new ObservableCollection<DefaultItemsItem>
                     {
-                        new DefaultItemsItem { Name = "Default item alpha" },
-                        new DefaultItemsItem { Name = "Default item beta" },
+                        new DefaultItemsItem
+                        {
+                            Name = "Default item alpha",
+                            Kind = "Framework",
+                        },
+                        new DefaultItemsItem
+                        {
+                            Name = "Default item beta",
+                            Kind = "Data",
+                        },
                     };
 
                 public DefaultItemsViewModel()
@@ -13502,6 +13532,52 @@ internal static class Program
                     Require(
                         ReferenceEquals(DefaultItemsSortedListBox.SelectedItem, ViewModel.Items[1]),
                         "Expected default-item sorted ListBox selection to follow current item.");
+                    var groupedItems = RequireType<CollectionViewSource>(
+                        FindResource("DefaultItemsGroupedItems"),
+                        "default-item grouped CollectionViewSource");
+                    Require(
+                        groupedItems.GroupDescriptions.Count == 1,
+                        "Expected default-item CollectionViewSource group count.");
+                    var groupDescription = RequireType<PropertyGroupDescription>(
+                        groupedItems.GroupDescriptions[0],
+                        "default-item CollectionViewSource group description");
+                    Require(
+                        groupDescription.PropertyName == "Kind",
+                        "Expected default-item CollectionViewSource group property.");
+                    Require(
+                        ReferenceEquals(groupedItems.View, DefaultItemsGroupedListBox.ItemsSource),
+                        "Expected default-item grouped ListBox to use CollectionViewSource view.");
+                    Require(
+                        DefaultItemsGroupedListBox.GroupStyle.Count == 1,
+                        "Expected default-item grouped ListBox GroupStyle count.");
+                    var groupHeaderTemplate = RequireType<DataTemplate>(
+                        FindResource("DefaultItemsGroupHeaderTemplate"),
+                        "default-item GroupStyle header template");
+                    Require(
+                        ReferenceEquals(groupHeaderTemplate, DefaultItemsGroupedListBox.GroupStyle[0].HeaderTemplate),
+                        "Expected default-item grouped ListBox header template.");
+                    var groups = groupedItems.View.Groups
+                        ?? throw new InvalidOperationException("Expected default-item CollectionViewSource groups.");
+                    Require(
+                        groups.Count == 2,
+                        "Expected default-item CollectionViewSource initial group count.");
+                    var frameworkGroup = RequireType<CollectionViewGroup>(
+                        groups.Cast<object>().First(group => Equals(((CollectionViewGroup)group).Name, "Framework")),
+                        "default-item Framework group");
+                    var dataGroup = RequireType<CollectionViewGroup>(
+                        groups.Cast<object>().First(group => Equals(((CollectionViewGroup)group).Name, "Data")),
+                        "default-item Data group");
+                    Require(
+                        frameworkGroup.ItemCount == 1 && dataGroup.ItemCount == 1,
+                        "Expected default-item CollectionViewSource initial group item counts.");
+                    var groupHeaderRoot = RequireType<TextBlock>(
+                        groupHeaderTemplate.LoadContent(),
+                        "default-item GroupStyle header root");
+                    groupHeaderRoot.DataContext = frameworkGroup;
+                    DrainDispatcher();
+                    Require(
+                        groupHeaderRoot.Text == "Default group: Framework",
+                        "Expected default-item GroupStyle header binding.");
                     var compositeItems = RequireType<CompositeCollection>(
                         DefaultItemsCompositeListBox.ItemsSource,
                         "default-item CompositeCollection source");
@@ -13560,7 +13636,12 @@ internal static class Program
                     Require(
                         ViewModel.SelectedItem.Name == "Default item alpha",
                         "Expected default-item selector binding initial view-model item.");
-                    ViewModel.Items.Add(new DefaultItemsItem { Name = "Default item gamma" });
+                    ViewModel.Items.Add(
+                        new DefaultItemsItem
+                        {
+                            Name = "Default item gamma",
+                            Kind = "Framework",
+                        });
                     DrainDispatcher();
                     Require(
                         DefaultItemsListBox.Items.Count == 3,
@@ -13584,6 +13665,14 @@ internal static class Program
                     Require(
                         ReferenceEquals(DefaultItemsSortedListBox.Items[0], appendedItem),
                         "Expected default-item sorted ListBox collection update.");
+                    groups = groupedItems.View.Groups
+                        ?? throw new InvalidOperationException("Expected default-item CollectionViewSource groups after update.");
+                    frameworkGroup = RequireType<CollectionViewGroup>(
+                        groups.Cast<object>().First(group => Equals(((CollectionViewGroup)group).Name, "Framework")),
+                        "default-item Framework group after update");
+                    Require(
+                        frameworkGroup.ItemCount == 2,
+                        "Expected default-item CollectionViewSource collection-change group item count.");
                     ViewModel.SelectedItem = ViewModel.Items[1];
                     DrainDispatcher();
                     Require(

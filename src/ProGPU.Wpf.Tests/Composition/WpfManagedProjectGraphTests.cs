@@ -8190,6 +8190,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("default-item CollectionViewSource sorted order", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item CollectionViewSource current item from selection", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item sorted ListBox collection update", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsGroupHeaderTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsGroupedItems", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<PropertyGroupDescription PropertyName=\"Kind\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsGroupedListBox", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GroupStyle HeaderTemplate=\"{StaticResource DefaultItemsGroupHeaderTemplate}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item CollectionViewSource initial group item counts", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item GroupStyle header binding", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item CollectionViewSource collection-change group item count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsCompositeListBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<CompositeCollection>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("CollectionContainer Collection=\"{x:Static local:DefaultItemsCompositeProvider.Items}\"", externalSdkHarnessProgram, StringComparison.Ordinal);

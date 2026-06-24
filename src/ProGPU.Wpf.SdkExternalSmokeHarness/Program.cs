@@ -12747,6 +12747,22 @@ internal static class Program
                         Maximum="100"
                         Minimum="0"
                         Value="{Binding FormProgress}" />
+                    <PasswordBox
+                        x:Name="DefaultItemsPasswordBox"
+                        MaxLength="32"
+                        PasswordChanged="OnDefaultItemsPasswordChanged"
+                        PasswordChar="*" />
+                    <Calendar
+                        x:Name="DefaultItemsCalendar"
+                        DisplayDate="2026-06-24"
+                        SelectedDate="{Binding SelectedDate, Mode=TwoWay}"
+                        SelectionMode="SingleDate" />
+                    <DatePicker
+                        x:Name="DefaultItemsDatePicker"
+                        DisplayDateStart="2026-01-01"
+                        DisplayDateEnd="2026-12-31"
+                        SelectedDate="{Binding SelectedDate, Mode=TwoWay}"
+                        SelectedDateFormat="Long" />
                     <Button
                         x:Name="DefaultItemsPopupOwnerButton"
                         Content="Default item popup owner">
@@ -13114,6 +13130,7 @@ internal static class Program
                 private string? _optionalStatus;
                 private bool _isFormOptionEnabled = true;
                 private double _formProgress = 25.0;
+                private DateTime? _selectedDate = new DateTime(2026, 6, 24);
                 private DefaultItemsItem _selectedItem;
 
                 public event PropertyChangedEventHandler PropertyChanged = delegate { };
@@ -13228,6 +13245,21 @@ internal static class Program
                     }
                 }
 
+                public DateTime? SelectedDate
+                {
+                    get => _selectedDate;
+                    set
+                    {
+                        if (Nullable.Equals(_selectedDate, value))
+                        {
+                            return;
+                        }
+
+                        _selectedDate = value;
+                        OnPropertyChanged();
+                    }
+                }
+
                 private void OnPropertyChanged([CallerMemberName] string propertyName = "")
                 {
                     PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
@@ -13334,6 +13366,10 @@ internal static class Program
                 public int RadioButtonCheckedCount { get; private set; }
 
                 public string LastRadioButtonCheckedName { get; private set; } = string.Empty;
+
+                public int PasswordChangedCount { get; private set; }
+
+                public string LastPasswordValue { get; private set; } = string.Empty;
 
                 public string LastCommandParameter { get; private set; } = string.Empty;
 
@@ -13473,6 +13509,39 @@ internal static class Program
                         Math.Abs(DefaultItemsSlider.Value - 40.0) < 0.001
                             && Math.Abs(DefaultItemsProgressBar.Value - 40.0) < 0.001,
                         "Expected default-item range controls to observe source update.");
+                    Require(
+                        DefaultItemsPasswordBox.MaxLength == 32 && DefaultItemsPasswordBox.PasswordChar == '*',
+                        "Expected default-item PasswordBox metadata.");
+                    int passwordChangedBefore = PasswordChangedCount;
+                    DefaultItemsPasswordBox.Password = "default-secret";
+                    DrainDispatcher();
+                    Require(
+                        PasswordChangedCount == passwordChangedBefore + 1
+                            && LastPasswordValue == "default-secret",
+                        "Expected default-item PasswordBox changed handler.");
+                    Require(
+                        DefaultItemsCalendar.SelectionMode == CalendarSelectionMode.SingleDate
+                            && DefaultItemsCalendar.SelectedDate == new DateTime(2026, 6, 24)
+                            && DefaultItemsCalendar.DisplayDate == new DateTime(2026, 6, 24),
+                        "Expected default-item Calendar initial date binding.");
+                    Require(
+                        DefaultItemsDatePicker.SelectedDate == new DateTime(2026, 6, 24)
+                            && DefaultItemsDatePicker.DisplayDateStart == new DateTime(2026, 1, 1)
+                            && DefaultItemsDatePicker.DisplayDateEnd == new DateTime(2026, 12, 31)
+                            && DefaultItemsDatePicker.SelectedDateFormat == DatePickerFormat.Long,
+                        "Expected default-item DatePicker initial date binding.");
+                    DefaultItemsDatePicker.SelectedDate = new DateTime(2026, 7, 1);
+                    DrainDispatcher();
+                    Require(
+                        ViewModel.SelectedDate == new DateTime(2026, 7, 1)
+                            && DefaultItemsCalendar.SelectedDate == new DateTime(2026, 7, 1),
+                        "Expected default-item DatePicker two-way selected-date binding.");
+                    ViewModel.SelectedDate = new DateTime(2026, 8, 15);
+                    DrainDispatcher();
+                    Require(
+                        DefaultItemsDatePicker.SelectedDate == new DateTime(2026, 8, 15)
+                            && DefaultItemsCalendar.SelectedDate == new DateTime(2026, 8, 15),
+                        "Expected default-item date controls to observe source update.");
                     var toolTip = RequireType<ToolTip>(
                         DefaultItemsPopupOwnerButton.ToolTip,
                         "default-item ToolTip");
@@ -14494,6 +14563,12 @@ internal static class Program
                 {
                     RadioButtonCheckedCount++;
                     LastRadioButtonCheckedName = (sender as FrameworkElement)?.Name ?? string.Empty;
+                }
+
+                private void OnDefaultItemsPasswordChanged(object sender, RoutedEventArgs e)
+                {
+                    PasswordChangedCount++;
+                    LastPasswordValue = DefaultItemsPasswordBox.Password;
                 }
 
                 private static void DrainDispatcher()

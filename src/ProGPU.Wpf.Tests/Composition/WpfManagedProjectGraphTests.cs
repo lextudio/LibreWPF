@@ -8214,6 +8214,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Value=\"{Binding FormProgress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsProgressBar", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item range controls to observe source update", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsPasswordBox", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PasswordChanged=\"OnDefaultItemsPasswordChanged\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item PasswordBox changed handler", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsCalendar", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SelectionMode=\"SingleDate\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsDatePicker", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SelectedDate=\"{Binding SelectedDate, Mode=TwoWay}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item date controls to observe source update", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsPopupOwnerButton", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ToolTip", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsStandalonePopup", externalSdkHarnessProgram, StringComparison.Ordinal);

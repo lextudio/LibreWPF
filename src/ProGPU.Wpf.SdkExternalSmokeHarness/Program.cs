@@ -12223,10 +12223,15 @@ internal static class Program
                 Startup="OnDefaultItemsStartup"
                 Exit="OnDefaultItemsExit">
                 <Application.Resources>
-                    <sys:String x:Key="DefaultItemsText">Default item resource text</sys:String>
-                    <SolidColorBrush
-                        x:Key="DefaultItemsBrush"
-                        Color="#335577" />
+                    <ResourceDictionary>
+                        <ResourceDictionary.MergedDictionaries>
+                            <ResourceDictionary Source="Resources/DefaultItemsAppResources.xaml" />
+                        </ResourceDictionary.MergedDictionaries>
+                        <sys:String x:Key="DefaultItemsText">Default item resource text</sys:String>
+                        <SolidColorBrush
+                            x:Key="DefaultItemsBrush"
+                            Color="#335577" />
+                    </ResourceDictionary>
                 </Application.Resources>
             </Application>
             """);
@@ -12319,6 +12324,20 @@ internal static class Program
                 <add key="DefaultItemsSdkSetting" value="Default item SDK app config value" />
               </appSettings>
             </configuration>
+            """);
+
+        WriteFile(
+            Path.Combine(appRoot, "Resources", "DefaultItemsAppResources.xaml"),
+            """
+            <ResourceDictionary
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:sys="clr-namespace:System;assembly=System.Private.CoreLib">
+                <sys:String x:Key="DefaultItemsAppDictionaryText">Default item app dictionary text</sys:String>
+                <SolidColorBrush
+                    x:Key="DefaultItemsAppDictionaryBrush"
+                    Color="#447799" />
+            </ResourceDictionary>
             """);
 
         WriteFile(
@@ -12428,6 +12447,10 @@ internal static class Program
                         Foreground="{DynamicResource DefaultItemsBrush}"
                         Text="{StaticResource DefaultItemsText}" />
                     <TextBlock
+                        x:Name="DefaultItemsAppDictionaryText"
+                        Foreground="{DynamicResource DefaultItemsAppDictionaryBrush}"
+                        Text="{StaticResource DefaultItemsAppDictionaryText}" />
+                    <TextBlock
                         x:Name="DefaultItemsLibraryResourceText"
                         Foreground="{DynamicResource DefaultItemsLibraryResourceBrush}"
                         Text="{StaticResource DefaultItemsLibraryResourceText}" />
@@ -12482,6 +12505,15 @@ internal static class Program
                     Require(
                         foreground.Color == Color.FromRgb(0x33, 0x55, 0x77),
                         "Expected default-item DynamicResource brush color.");
+                    Require(
+                        DefaultItemsAppDictionaryText.Text == "Default item app dictionary text",
+                        "Expected default-item app resource dictionary text.");
+                    var appDictionaryForeground = RequireType<SolidColorBrush>(
+                        DefaultItemsAppDictionaryText.Foreground,
+                        "default-item app resource dictionary brush");
+                    Require(
+                        appDictionaryForeground.Color == Color.FromRgb(0x44, 0x77, 0x99),
+                        "Expected default-item app resource dictionary brush color.");
                     Require(
                         DefaultItemsLibraryResourceText.Text == "Default item library resource text",
                         "Expected default-item referenced library component resource text.");
@@ -12545,6 +12577,17 @@ internal static class Program
                     Require(
                         defaultItemsPage.PageText == "Default item compiled page text",
                         "Expected default-item compiled Page text.");
+                    var loadedPanel = RequireType<DefaultItemsPanel>(
+                        Application.LoadComponent(
+                            new Uri(
+                                "/ExternalSdkDefaultItemsApp;component/DefaultItemsPanel.xaml",
+                                UriKind.Relative)),
+                        "default-item Application.LoadComponent panel");
+                    loadedPanel.Caption = "Default item loaded panel caption";
+                    loadedPanel.UpdateLayout();
+                    Require(
+                        loadedPanel.CaptionText == "Default item loaded panel caption",
+                        "Expected default-item Application.LoadComponent ElementName binding.");
 
                     DefaultItemsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     Require(ButtonClickCount == 1, "Expected default-item compiled Click handler.");
@@ -12732,6 +12775,17 @@ internal static class Program
             "Default item SDK app config value",
             "external SDK default-item app config setting value");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "App.config"), "external SDK default-item app config source");
+        string defaultItemsAppResources = File.ReadAllText(
+            Path.Combine(workRoot, DefaultItemsAssemblyName, "Resources", "DefaultItemsAppResources.xaml"));
+        AssertContains(
+            defaultItemsAppResources,
+            "DefaultItemsAppDictionaryText",
+            "external SDK default-item app resource dictionary text");
+        AssertContains(
+            defaultItemsAppResources,
+            "DefaultItemsAppDictionaryBrush",
+            "external SDK default-item app resource dictionary brush");
+        RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "Resources", "DefaultItemsAppResources.xaml"), "external SDK default-item app resource dictionary source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "MainWindow.xaml"), "external SDK default-item MainWindow.xaml source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "MainWindow.xaml.cs"), "external SDK default-item MainWindow.xaml.cs source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "DefaultItemsPanel.xaml"), "external SDK default-item UserControl XAML source");

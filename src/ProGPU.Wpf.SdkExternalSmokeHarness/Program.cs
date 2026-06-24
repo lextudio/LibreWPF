@@ -12715,6 +12715,37 @@ internal static class Program
                         <TextBlock Text="Default item uniform one" />
                         <TextBlock Text="Default item uniform two" />
                     </UniformGrid>
+                    <CheckBox
+                        x:Name="DefaultItemsCheckBox"
+                        Content="Default item check box"
+                        IsChecked="{Binding IsFormOptionEnabled, Mode=TwoWay}" />
+                    <StackPanel
+                        x:Name="DefaultItemsRadioPanel"
+                        Orientation="Horizontal">
+                        <RadioButton
+                            x:Name="DefaultItemsFirstRadioButton"
+                            Checked="OnDefaultItemsRadioButtonChecked"
+                            Content="Default item first mode"
+                            GroupName="DefaultItemsMode"
+                            IsChecked="True" />
+                        <RadioButton
+                            x:Name="DefaultItemsSecondRadioButton"
+                            Checked="OnDefaultItemsRadioButtonChecked"
+                            Content="Default item second mode"
+                            GroupName="DefaultItemsMode" />
+                    </StackPanel>
+                    <Slider
+                        x:Name="DefaultItemsSlider"
+                        IsSnapToTickEnabled="True"
+                        Maximum="100"
+                        Minimum="0"
+                        TickFrequency="10"
+                        Value="{Binding FormProgress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <ProgressBar
+                        x:Name="DefaultItemsProgressBar"
+                        Maximum="100"
+                        Minimum="0"
+                        Value="{Binding FormProgress}" />
                     <Menu x:Name="DefaultItemsMenu">
                         <MenuItem
                             x:Name="DefaultItemsRootMenuItem"
@@ -13056,6 +13087,8 @@ internal static class Program
             {
                 private string _status = "Default item binding ready";
                 private string? _optionalStatus;
+                private bool _isFormOptionEnabled = true;
+                private double _formProgress = 25.0;
                 private DefaultItemsItem _selectedItem;
 
                 public event PropertyChangedEventHandler PropertyChanged = delegate { };
@@ -13136,6 +13169,36 @@ internal static class Program
                         }
 
                         _optionalStatus = value;
+                        OnPropertyChanged();
+                    }
+                }
+
+                public bool IsFormOptionEnabled
+                {
+                    get => _isFormOptionEnabled;
+                    set
+                    {
+                        if (_isFormOptionEnabled == value)
+                        {
+                            return;
+                        }
+
+                        _isFormOptionEnabled = value;
+                        OnPropertyChanged();
+                    }
+                }
+
+                public double FormProgress
+                {
+                    get => _formProgress;
+                    set
+                    {
+                        if (Math.Abs(_formProgress - value) < 0.001)
+                        {
+                            return;
+                        }
+
+                        _formProgress = value;
                         OnPropertyChanged();
                     }
                 }
@@ -13243,6 +13306,10 @@ internal static class Program
 
                 public int ContextMenuUncheckedCount { get; private set; }
 
+                public int RadioButtonCheckedCount { get; private set; }
+
+                public string LastRadioButtonCheckedName { get; private set; } = string.Empty;
+
                 public string LastCommandParameter { get; private set; } = string.Empty;
 
                 public DefaultItemsViewModel ViewModel { get; } = new DefaultItemsViewModel();
@@ -13326,6 +13393,61 @@ internal static class Program
                     Require(
                         DefaultItemsUniformGrid.Rows == 1 && DefaultItemsUniformGrid.Columns == 2 && DefaultItemsUniformGrid.Children.Count == 2,
                         "Expected default-item UniformGrid metadata and children.");
+                    Require(
+                        DefaultItemsCheckBox.IsChecked == true && ViewModel.IsFormOptionEnabled,
+                        "Expected default-item CheckBox initial binding.");
+                    DefaultItemsCheckBox.IsChecked = false;
+                    DrainDispatcher();
+                    Require(
+                        DefaultItemsCheckBox.IsChecked == false && !ViewModel.IsFormOptionEnabled,
+                        "Expected default-item CheckBox two-way binding to update source.");
+                    ViewModel.IsFormOptionEnabled = true;
+                    DrainDispatcher();
+                    Require(
+                        DefaultItemsCheckBox.IsChecked == true,
+                        "Expected default-item CheckBox binding to observe source update.");
+                    Require(
+                        DefaultItemsRadioPanel.Orientation == Orientation.Horizontal,
+                        "Expected default-item RadioButton panel orientation.");
+                    Require(
+                        Equals(DefaultItemsFirstRadioButton.GroupName, "DefaultItemsMode")
+                            && Equals(DefaultItemsSecondRadioButton.GroupName, "DefaultItemsMode"),
+                        "Expected default-item RadioButton group metadata.");
+                    Require(
+                        DefaultItemsFirstRadioButton.IsChecked == true && DefaultItemsSecondRadioButton.IsChecked == false,
+                        "Expected default-item RadioButton initial group state.");
+                    int radioCheckedBefore = RadioButtonCheckedCount;
+                    DefaultItemsSecondRadioButton.IsChecked = true;
+                    DrainDispatcher();
+                    Require(
+                        DefaultItemsFirstRadioButton.IsChecked == false && DefaultItemsSecondRadioButton.IsChecked == true,
+                        "Expected default-item RadioButton group exclusivity.");
+                    Require(
+                        RadioButtonCheckedCount == radioCheckedBefore + 1
+                            && LastRadioButtonCheckedName == nameof(DefaultItemsSecondRadioButton),
+                        "Expected default-item RadioButton checked handler.");
+                    Require(
+                        DefaultItemsSlider.Minimum == 0
+                            && DefaultItemsSlider.Maximum == 100
+                            && DefaultItemsSlider.TickFrequency == 10
+                            && DefaultItemsSlider.IsSnapToTickEnabled,
+                        "Expected default-item Slider range metadata.");
+                    Require(
+                        Math.Abs(DefaultItemsSlider.Value - 25.0) < 0.001
+                            && Math.Abs(DefaultItemsProgressBar.Value - 25.0) < 0.001,
+                        "Expected default-item range controls initial binding.");
+                    DefaultItemsSlider.Value = 70.0;
+                    DrainDispatcher();
+                    Require(
+                        Math.Abs(ViewModel.FormProgress - 70.0) < 0.001
+                            && Math.Abs(DefaultItemsProgressBar.Value - 70.0) < 0.001,
+                        "Expected default-item Slider two-way binding to update progress.");
+                    ViewModel.FormProgress = 40.0;
+                    DrainDispatcher();
+                    Require(
+                        Math.Abs(DefaultItemsSlider.Value - 40.0) < 0.001
+                            && Math.Abs(DefaultItemsProgressBar.Value - 40.0) < 0.001,
+                        "Expected default-item range controls to observe source update.");
                     Require(
                         DefaultItemsMenu.Items.Count == 1 && ReferenceEquals(DefaultItemsMenu.Items[0], DefaultItemsRootMenuItem),
                         "Expected default-item Menu root item.");
@@ -14308,6 +14430,12 @@ internal static class Program
                 private void OnDefaultItemsContextMenuItemUnchecked(object sender, RoutedEventArgs e)
                 {
                     ContextMenuUncheckedCount++;
+                }
+
+                private void OnDefaultItemsRadioButtonChecked(object sender, RoutedEventArgs e)
+                {
+                    RadioButtonCheckedCount++;
+                    LastRadioButtonCheckedName = (sender as FrameworkElement)?.Name ?? string.Empty;
                 }
 
                 private static void DrainDispatcher()

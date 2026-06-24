@@ -8204,6 +8204,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DisplayMemberBinding=\"{Binding Kind}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item GridView name column binding", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item ListView collection update", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsCheckBox", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("IsChecked=\"{Binding IsFormOptionEnabled, Mode=TwoWay}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item CheckBox two-way binding to update source", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsRadioPanel", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GroupName=\"DefaultItemsMode\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item RadioButton group exclusivity", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsSlider", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Value=\"{Binding FormProgress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsProgressBar", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item range controls to observe source update", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsMenu", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsCommandMenuItem", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item MenuItem Click handler", externalSdkHarnessProgram, StringComparison.Ordinal);

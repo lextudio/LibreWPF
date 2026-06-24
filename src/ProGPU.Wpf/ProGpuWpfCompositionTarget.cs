@@ -9,6 +9,7 @@ using MediaDrawingContext = System.Windows.Media.DrawingContext;
 using ProGpuContainerVisual = global::ProGPU.Scene.ContainerVisual;
 using ProGpuCompositor = global::ProGPU.Scene.Compositor;
 using ProGpuDrawingVisual = global::ProGPU.Scene.DrawingVisual;
+using ProGpuRenderTargetViewport = global::ProGPU.Scene.RenderTargetViewport;
 using ProGpuWgpuContext = global::ProGPU.Backend.WgpuContext;
 
 namespace System.Windows.Media.ProGPU;
@@ -283,6 +284,25 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         float dpiScale,
         TextureView* targetView)
     {
+        Render(
+            logicalWidth,
+            logicalHeight,
+            pixelWidth,
+            pixelHeight,
+            ProGpuRenderTargetViewport.Full(pixelWidth, pixelHeight),
+            dpiScale,
+            targetView);
+    }
+
+    public void Render(
+        uint logicalWidth,
+        uint logicalHeight,
+        uint pixelWidth,
+        uint pixelHeight,
+        ProGpuRenderTargetViewport renderTargetViewport,
+        float dpiScale,
+        TextureView* targetView)
+    {
         ThrowIfDisposed();
 
         if (targetView == null)
@@ -304,6 +324,7 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
             logicalHeight,
             pixelWidth,
             pixelHeight,
+            renderTargetViewport,
             dpiScale,
             targetView);
     }

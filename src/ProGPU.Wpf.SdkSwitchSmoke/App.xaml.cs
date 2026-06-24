@@ -52,6 +52,7 @@ public partial class App : Application
         Type hostType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfWindowHost");
         Type compositionTargetType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfCompositionTarget");
         Type compositorType = GetRequiredType(proGpuScene, "ProGPU.Scene.Compositor");
+        Type renderTargetViewportType = GetRequiredType(proGpuScene, "ProGPU.Scene.RenderTargetViewport");
         Type displayScaleResolverType = GetRequiredType(proGpuBackend, "ProGPU.Backend.DisplayScaleResolver");
         Type vector2DIntType = GetRequiredType(silkNetMaths, "Silk.NET.Maths.Vector2D`1").MakeGenericType(typeof(int));
 
@@ -76,6 +77,10 @@ public partial class App : Application
             "logicalHeight",
             "pixelWidth",
             "pixelHeight",
+            "viewportX",
+            "viewportY",
+            "viewportWidth",
+            "viewportHeight",
             "dpiScale");
         RequireMethodByParameterNames(hostType, "SynchronizePortablePresentationSourceGeometry", "geometry");
         RequireMethodByParameterNames(
@@ -87,6 +92,20 @@ public partial class App : Application
             "pixelHeight",
             "dpiScale",
             "targetView");
+        MethodInfo compositionViewportRender = RequireMethodByParameterNames(
+            compositionTargetType,
+            "Render",
+            "logicalWidth",
+            "logicalHeight",
+            "pixelWidth",
+            "pixelHeight",
+            "renderTargetViewport",
+            "dpiScale",
+            "targetView");
+        AssertEqual(
+            renderTargetViewportType,
+            compositionViewportRender.GetParameters()[4].ParameterType,
+            "SDK smoke ProGPU WPF viewport render parameter type");
         RequireMethodByParameterNames(
             compositorType,
             "RenderScene",
@@ -97,6 +116,21 @@ public partial class App : Application
             "renderTargetHeight",
             "dpiScale",
             "targetView");
+        MethodInfo compositorViewportRender = RequireMethodByParameterNames(
+            compositorType,
+            "RenderScene",
+            "root",
+            "logicalWidth",
+            "logicalHeight",
+            "renderTargetWidth",
+            "renderTargetHeight",
+            "renderTargetViewport",
+            "dpiScale",
+            "targetView");
+        AssertEqual(
+            renderTargetViewportType,
+            compositorViewportRender.GetParameters()[5].ParameterType,
+            "SDK smoke ProGPU compositor viewport render parameter type");
 
         double dpiScale = Convert.ToDouble(
             resolveDisplayScale.Invoke(null, new object?[] { 1.0, new Func<double?>(() => 2.0) }));
@@ -111,6 +145,10 @@ public partial class App : Application
         AssertEqual(840u, GetProperty(geometry, "LogicalHeight"), "SDK smoke Retina logical height");
         AssertEqual(840u, GetProperty(geometry, "PixelWidth"), "SDK smoke Retina physical width");
         AssertEqual(1680u, GetProperty(geometry, "PixelHeight"), "SDK smoke Retina physical height");
+        AssertEqual(0u, GetProperty(geometry, "ViewportX"), "SDK smoke Retina viewport X");
+        AssertEqual(0u, GetProperty(geometry, "ViewportY"), "SDK smoke Retina viewport Y");
+        AssertEqual(840u, GetProperty(geometry, "ViewportWidth"), "SDK smoke Retina viewport width");
+        AssertEqual(1680u, GetProperty(geometry, "ViewportHeight"), "SDK smoke Retina viewport height");
         AssertEqual(2.0, GetProperty(geometry, "DpiScale"), "SDK smoke Retina DPI scale");
         ValidateHostRecoversDeclaredLogicalSize(hostType, vector2DIntType, dpiScale);
 

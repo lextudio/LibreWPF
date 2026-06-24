@@ -427,6 +427,48 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
+    public void ResolveRenderSurfaceGeometryPlacesClientViewportBelowDecoratedFramebufferPixels()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 420,
+            clientHeight: 840,
+            framebufferSize: new Vector2D<int>(840, 1736),
+            monitorDpiScale: 2.0);
+
+        Assert.Equal(420u, geometry.LogicalWidth);
+        Assert.Equal(840u, geometry.LogicalHeight);
+        Assert.Equal(840u, geometry.PixelWidth);
+        Assert.Equal(1736u, geometry.PixelHeight);
+        Assert.Equal(0u, geometry.ViewportX);
+        Assert.Equal(56u, geometry.ViewportY);
+        Assert.Equal(840u, geometry.ViewportWidth);
+        Assert.Equal(1680u, geometry.ViewportHeight);
+        Assert.Equal(2.0, geometry.DpiScaleX);
+        Assert.Equal(2.0, geometry.DpiScaleY);
+        Assert.Equal(2.0, geometry.DpiScale);
+    }
+
+    [Fact]
+    public void ResolveRenderSurfaceGeometryKeepsLogicalScaleWhenOnlyDecorationsGrowFramebuffer()
+    {
+        var geometry = ProGpuWpfWindowHost.ResolveRenderSurfaceGeometry(
+            clientWidth: 420,
+            clientHeight: 840,
+            framebufferSize: new Vector2D<int>(420, 896),
+            monitorDpiScale: 1.0);
+
+        Assert.Equal(420u, geometry.LogicalWidth);
+        Assert.Equal(840u, geometry.LogicalHeight);
+        Assert.Equal(420u, geometry.PixelWidth);
+        Assert.Equal(896u, geometry.PixelHeight);
+        Assert.Equal(0u, geometry.ViewportX);
+        Assert.Equal(56u, geometry.ViewportY);
+        Assert.Equal(420u, geometry.ViewportWidth);
+        Assert.Equal(840u, geometry.ViewportHeight);
+        Assert.Equal(1.0, geometry.DpiScale);
+    }
+
+    [Fact]
     public void ResolveLogicalClientSizeKeepsDipsWhenNativeSizeReportsPhysicalFramebuffer()
     {
         var logicalSize = ProGpuWpfWindowHost.ResolveLogicalClientSize(

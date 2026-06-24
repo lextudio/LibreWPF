@@ -8,6 +8,7 @@ using System.Windows.Media.ProGPU.Composition;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using System.Windows.Media.ProGPU.Platform;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
+using ProGpuRenderTargetViewport = global::ProGPU.Scene.RenderTargetViewport;
 using SilkWindowBorder = Silk.NET.Windowing.WindowBorder;
 using SilkWindowState = Silk.NET.Windowing.WindowState;
 
@@ -61,7 +62,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         uint PixelHeight,
         double DpiScaleX,
         double DpiScaleY,
-        double DpiScale);
+        double DpiScale,
+        uint ViewportX = 0,
+        uint ViewportY = 0,
+        uint ViewportWidth = 0,
+        uint ViewportHeight = 0);
 
     public ProGpuWpfWindowHost(ProGpuWpfWindowOptions? options = null)
     {
@@ -576,6 +581,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             var dpiScaleX = geometry.DpiScaleX;
             var dpiScaleY = geometry.DpiScaleY;
             var dpiScale = geometry.DpiScale;
+            var viewportX = geometry.ViewportX;
+            var viewportY = geometry.ViewportY;
+            var viewportWidth = ResolveGeometryViewportDimension(geometry.ViewportWidth, pixelWidth);
+            var viewportHeight = ResolveGeometryViewportDimension(geometry.ViewportHeight, pixelHeight);
             _target.DetectWpfSourceChanges();
             var frameState = CaptureFrameState(_target, pixelWidth, pixelHeight);
 
@@ -598,8 +607,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             var clearRetainedWpfVisualRoot = wpfRootVisual == null ||
                 (shouldReplayWpfRootVisual && !canReplayDirtyWpfBranches);
             var drawingFrame = _target.BeginDrawingFrame(
-                pixelWidth,
-                pixelHeight,
+                viewportWidth,
+                viewportHeight,
                 clearRetainedWpfVisualRoot,
                 logicalWidth,
                 logicalHeight,
@@ -690,7 +699,16 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
                 WpfRenderScheduler.ConsumeRenderRequest();
             }
 
-            if (Present(logicalWidth, logicalHeight, pixelWidth, pixelHeight, dpiScale))
+            if (Present(
+                    logicalWidth,
+                    logicalHeight,
+                    pixelWidth,
+                    pixelHeight,
+                    viewportX,
+                    viewportY,
+                    viewportWidth,
+                    viewportHeight,
+                    dpiScale))
             {
                 RecordPresentedFrame(CaptureFrameState(_target, pixelWidth, pixelHeight));
             }
@@ -706,6 +724,10 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         uint logicalHeight,
         uint pixelWidth,
         uint pixelHeight,
+        uint viewportX,
+        uint viewportY,
+        uint viewportWidth,
+        uint viewportHeight,
         double dpiScale)
     {
         if (_target == null)
@@ -735,7 +757,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         var targetView = _target.Context.Wgpu.TextureCreateView(surfaceTexture.Texture, &viewDescriptor);
         try
         {
-            _target.Render(logicalWidth, logicalHeight, pixelWidth, pixelHeight, (float)dpiScale, targetView);
+            _target.Render(
+                logicalWidth,
+                logicalHeight,
+                pixelWidth,
+                pixelHeight,
+                new ProGpuRenderTargetViewport(
+                    viewportX,
+                    viewportY,
+                    ResolveGeometryViewportDimension(viewportWidth, pixelWidth),
+                    ResolveGeometryViewportDimension(viewportHeight, pixelHeight)),
+                (float)dpiScale,
+                targetView);
             _target.Context.Wgpu.SurfacePresent(_target.Context.Surface);
             return true;
         }
@@ -765,12 +798,12 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             var scaledPixelWidth = (uint)Math.Max(1, (int)Math.Ceiling(logicalWidth * fallbackScale));
             var scaledPixelHeight = (uint)Math.Max(1, (int)Math.Ceiling(logicalHeight * fallbackScale));
 
-            if (pixelWidth <= logicalWidth)
+            if (pixelWidth < scaledPixelWidth)
             {
                 pixelWidth = Math.Max(pixelWidth, scaledPixelWidth);
             }
 
-            if (pixelHeight <= logicalHeight)
+            if (pixelHeight < scaledPixelHeight)
             {
                 pixelHeight = Math.Max(pixelHeight, scaledPixelHeight);
             }
@@ -778,6 +811,27 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         var dpiScaleX = pixelWidth / (double)logicalWidth;
         var dpiScaleY = pixelHeight / (double)logicalHeight;
+        var viewportScale = ResolveClientViewportDpiScale(
+            logicalWidth,
+            logicalHeight,
+            pixelWidth,
+            pixelHeight,
+            fallbackScale);
+        var viewportWidth = Math.Min(
+            pixelWidth,
+            (uint)Math.Max(1, (int)Math.Ceiling(logicalWidth * viewportScale)));
+        var viewportHeight = Math.Min(
+            pixelHeight,
+            (uint)Math.Max(1, (int)Math.Ceiling(logicalHeight * viewportScale)));
+        var viewportX = pixelWidth > viewportWidth
+            ? (pixelWidth - viewportWidth) / 2u
+            : 0u;
+        var viewportY = pixelHeight > viewportHeight
+            ? pixelHeight - viewportHeight
+            : 0u;
+
+        dpiScaleX = viewportWidth / (double)logicalWidth;
+        dpiScaleY = viewportHeight / (double)logicalHeight;
 
         return new RenderSurfaceGeometry(
             logicalWidth,
@@ -786,7 +840,31 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             pixelHeight,
             dpiScaleX,
             dpiScaleY,
-            (dpiScaleX + dpiScaleY) / 2.0);
+            (dpiScaleX + dpiScaleY) / 2.0,
+            viewportX,
+            viewportY,
+            viewportWidth,
+            viewportHeight);
+    }
+
+    private static double ResolveClientViewportDpiScale(
+        uint logicalWidth,
+        uint logicalHeight,
+        uint pixelWidth,
+        uint pixelHeight,
+        double fallbackScale)
+    {
+        if (fallbackScale > 1.0)
+        {
+            return fallbackScale;
+        }
+
+        var scaleX = pixelWidth / (double)Math.Max(1u, logicalWidth);
+        var scaleY = pixelHeight / (double)Math.Max(1u, logicalHeight);
+        var scale = Math.Min(scaleX, scaleY);
+        return double.IsFinite(scale) && scale > 0.0
+            ? scale
+            : 1.0;
     }
 
     private RenderSurfaceGeometry ResolveCurrentRenderSurfaceGeometry()
@@ -830,6 +908,13 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             monitorDpiScale);
         LastResolvedRenderSurfaceGeometry = geometry;
         return geometry;
+    }
+
+    private static uint ResolveGeometryViewportDimension(uint viewportDimension, uint fallbackPixelDimension)
+    {
+        return viewportDimension > 0u
+            ? viewportDimension
+            : Math.Max(1u, fallbackPixelDimension);
     }
 
     internal bool SynchronizePortablePresentationSourceDpiScale(RenderSurfaceGeometry geometry)

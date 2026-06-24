@@ -15413,6 +15413,7 @@ internal static class Program
             AssertEqual(typeof(void), setPortableTopmost.ReturnType, "external SDK portable window activation topmost return type");
 
             Type compositionTargetType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfCompositionTarget");
+            Type renderTargetViewportType = GetRequiredType(proGpuScene, "ProGPU.Scene.RenderTargetViewport");
             MethodInfo compositionRender = FindMethodByParameterNames(
                 compositionTargetType,
                 "Render",
@@ -15422,14 +15423,23 @@ internal static class Program
                 [typeof(uint), typeof(uint), typeof(uint), typeof(uint), typeof(float)],
                 "external SDK ProGPU WPF composition render logical/physical surface");
             AssertEqual(true, compositionRender.GetParameters()[5].ParameterType.IsPointer, "external SDK ProGPU WPF composition render target view pointer");
+            MethodInfo compositionViewportRender = FindMethodByParameterNames(
+                compositionTargetType,
+                "Render",
+                ["logicalWidth", "logicalHeight", "pixelWidth", "pixelHeight", "renderTargetViewport", "dpiScale", "targetView"]);
+            AssertParameterTypes(
+                compositionViewportRender,
+                [typeof(uint), typeof(uint), typeof(uint), typeof(uint), renderTargetViewportType, typeof(float)],
+                "external SDK ProGPU WPF composition render viewport surface");
+            AssertEqual(true, compositionViewportRender.GetParameters()[6].ParameterType.IsPointer, "external SDK ProGPU WPF composition render viewport target view pointer");
             MethodInfo hostPresent = FindMethodByParameterNames(
                 windowHostType,
                 "Present",
-                ["logicalWidth", "logicalHeight", "pixelWidth", "pixelHeight", "dpiScale"]);
+                ["logicalWidth", "logicalHeight", "pixelWidth", "pixelHeight", "viewportX", "viewportY", "viewportWidth", "viewportHeight", "dpiScale"]);
             AssertMethodCallsSpecificMethod(
                 hostPresent,
-                compositionRender,
-                "external SDK ProGPU WPF host present logical/physical render overload");
+                compositionViewportRender,
+                "external SDK ProGPU WPF host present viewport render overload");
             MethodInfo synchronizeGeometry = FindMethodByParameterNames(
                 windowHostType,
                 "SynchronizePortablePresentationSourceGeometry",
@@ -15474,10 +15484,33 @@ internal static class Program
                 [visualType, typeof(uint), typeof(uint), typeof(uint), typeof(uint), typeof(float)],
                 "external SDK ProGPU compositor render logical/physical surface");
             AssertEqual(true, compositorRenderScene.GetParameters()[6].ParameterType.IsPointer, "external SDK ProGPU compositor render target view pointer");
+            MethodInfo compositorViewportRenderScene = FindMethodByParameterNames(
+                compositorType,
+                "RenderScene",
+                ["root", "logicalWidth", "logicalHeight", "renderTargetWidth", "renderTargetHeight", "renderTargetViewport", "dpiScale", "targetView"]);
+            AssertParameterTypes(
+                compositorViewportRenderScene,
+                [visualType, typeof(uint), typeof(uint), typeof(uint), typeof(uint), renderTargetViewportType, typeof(float)],
+                "external SDK ProGPU compositor render viewport surface");
+            AssertEqual(true, compositorViewportRenderScene.GetParameters()[7].ParameterType.IsPointer, "external SDK ProGPU compositor render viewport target view pointer");
             AssertMethodCallsSpecificMethod(
                 compositionRender,
-                compositorRenderScene,
-                "external SDK ProGPU WPF composition target forwards logical/physical render surface");
+                compositionViewportRender,
+                "external SDK ProGPU WPF composition render delegates to viewport render surface");
+            AssertMethodCallsSpecificMethod(
+                compositionViewportRender,
+                compositorViewportRenderScene,
+                "external SDK ProGPU WPF composition target forwards viewport render surface");
+            AssertPropertyGetterReferencesField(
+                compositorType,
+                "CurrentCanvasPixelX",
+                "_explicitRenderTargetViewport",
+                "external SDK ProGPU compositor canvas pixel X viewport origin");
+            AssertPropertyGetterReferencesField(
+                compositorType,
+                "CurrentCanvasPixelY",
+                "_explicitRenderTargetViewport",
+                "external SDK ProGPU compositor canvas pixel Y viewport origin");
             AssertPropertyGetterReferencesField(
                 compositorType,
                 "CurrentCanvasPixelWidth",
@@ -15495,7 +15528,7 @@ internal static class Program
             MethodInfo applyRenderPassViewport = FindMethodByNameAndParameterCount(
                 compositorType,
                 "ApplyRenderPassViewport",
-                3);
+                4);
             AssertMethodCallsMethod(
                 compositorPhysicalRenderScene,
                 compositorType.FullName ?? string.Empty,
@@ -15631,6 +15664,10 @@ internal static class Program
             AssertEqual(840u, GetProperty(geometry, "LogicalHeight"), $"{descriptionPrefix} packaged Retina render logical height");
             AssertEqual(840u, GetProperty(geometry, "PixelWidth"), $"{descriptionPrefix} packaged Retina render pixel width");
             AssertEqual(1680u, GetProperty(geometry, "PixelHeight"), $"{descriptionPrefix} packaged Retina render pixel height");
+            AssertEqual(0u, GetProperty(geometry, "ViewportX"), $"{descriptionPrefix} packaged Retina render viewport X");
+            AssertEqual(0u, GetProperty(geometry, "ViewportY"), $"{descriptionPrefix} packaged Retina render viewport Y");
+            AssertEqual(840u, GetProperty(geometry, "ViewportWidth"), $"{descriptionPrefix} packaged Retina render viewport width");
+            AssertEqual(1680u, GetProperty(geometry, "ViewportHeight"), $"{descriptionPrefix} packaged Retina render viewport height");
             AssertEqual(2.0, GetProperty(geometry, "DpiScale"), $"{descriptionPrefix} packaged Retina render DPI scale");
         }
         finally

@@ -240,6 +240,10 @@ public partial class MainWindow : Window
         var pixelWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "PixelWidth"));
         var pixelHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "PixelHeight"));
         var dpiScale = Convert.ToDouble(GetRequiredProperty(geometry, "DpiScale"), CultureInfo.InvariantCulture);
+        var viewportX = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportX"));
+        var viewportY = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportY"));
+        var viewportWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportWidth"));
+        var viewportHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportHeight"));
 
         AssertClose(logicalWidth, expectedLogicalWidth, "live ProGPU WPF logical width");
         AssertClose(logicalHeight, expectedLogicalHeight, "live ProGPU WPF logical height");
@@ -254,6 +258,25 @@ public partial class MainWindow : Window
         {
             throw new InvalidOperationException(
                 $"Expected live ProGPU WPF high-DPI pixels to exceed logical size, but got logical {logicalWidth}x{logicalHeight}, pixels {pixelWidth}x{pixelHeight}, DPI {dpiScale}.");
+        }
+
+        if (viewportWidth < logicalWidth || viewportHeight < logicalHeight)
+        {
+            throw new InvalidOperationException(
+                $"Expected live ProGPU WPF viewport to cover logical content, but got logical {logicalWidth}x{logicalHeight} and viewport {viewportWidth}x{viewportHeight} at {viewportX},{viewportY}.");
+        }
+
+        if (viewportX + viewportWidth > pixelWidth || viewportY + viewportHeight > pixelHeight)
+        {
+            throw new InvalidOperationException(
+                $"Expected live ProGPU WPF viewport to fit inside the physical target, but got viewport {viewportWidth}x{viewportHeight} at {viewportX},{viewportY} and pixels {pixelWidth}x{pixelHeight}.");
+        }
+
+        if (dpiScale > 1.01 &&
+            (viewportWidth <= logicalWidth || viewportHeight <= logicalHeight))
+        {
+            throw new InvalidOperationException(
+                $"Expected live ProGPU WPF high-DPI viewport to exceed logical size, but got logical {logicalWidth}x{logicalHeight}, viewport {viewportWidth}x{viewportHeight}, DPI {dpiScale}.");
         }
 
         if (TryGetLiveFramebufferSize(liveHost, out var framebufferWidth, out var framebufferHeight))
@@ -280,7 +303,7 @@ public partial class MainWindow : Window
             AssertClose(swapChainHeight, pixelHeight, "live ProGPU WPF swapchain pixel height");
         }
 
-        return $"logical {logicalWidth}x{logicalHeight}, pixels {pixelWidth}x{pixelHeight}, dpi {dpiScale:0.###}";
+        return $"logical {logicalWidth}x{logicalHeight}, pixels {pixelWidth}x{pixelHeight}, viewport {viewportWidth}x{viewportHeight}@{viewportX},{viewportY}, dpi {dpiScale:0.###}";
     }
 
     private void ScheduleLiveRenderSurfaceValidation()

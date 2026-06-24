@@ -8204,6 +8204,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DisplayMemberBinding=\"{Binding Kind}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item GridView name column binding", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item ListView collection update", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsMenu", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsCommandMenuItem", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item MenuItem Click handler", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsContextMenu", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsContextCommandMenuItem", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item ContextMenu Unchecked handler", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsToolBarTray", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsToolBarCommandButton", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item ToolBar command metadata", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsStatusBarText", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item StatusBar binding to observe INotifyPropertyChanged", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsTabControl", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SelectedIndex=\"1\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<TabItem", externalSdkHarnessProgram, StringComparison.Ordinal);

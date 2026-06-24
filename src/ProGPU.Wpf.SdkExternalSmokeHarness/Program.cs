@@ -12715,6 +12715,73 @@ internal static class Program
                         <TextBlock Text="Default item uniform one" />
                         <TextBlock Text="Default item uniform two" />
                     </UniformGrid>
+                    <Menu x:Name="DefaultItemsMenu">
+                        <MenuItem
+                            x:Name="DefaultItemsRootMenuItem"
+                            Header="_File">
+                            <MenuItem
+                                x:Name="DefaultItemsCommandMenuItem"
+                                Command="{x:Static local:MainWindow.DefaultItemsCommand}"
+                                CommandParameter="menu-command"
+                                Header="_Run" />
+                            <Separator x:Name="DefaultItemsMenuSeparator" />
+                            <MenuItem
+                                x:Name="DefaultItemsClickMenuItem"
+                                Click="OnDefaultItemsMenuItemClick"
+                                Header="_Click" />
+                            <MenuItem
+                                x:Name="DefaultItemsCheckableMenuItem"
+                                Checked="OnDefaultItemsMenuItemChecked"
+                                Header="_Check"
+                                IsCheckable="True"
+                                Unchecked="OnDefaultItemsMenuItemUnchecked" />
+                        </MenuItem>
+                    </Menu>
+                    <ToolBarTray x:Name="DefaultItemsToolBarTray">
+                        <ToolBar x:Name="DefaultItemsToolBar">
+                            <Button
+                                x:Name="DefaultItemsToolBarCommandButton"
+                                Command="{x:Static local:MainWindow.DefaultItemsCommand}"
+                                CommandParameter="toolbar-command"
+                                Content="Default item toolbar command" />
+                            <Separator x:Name="DefaultItemsToolBarSeparator" />
+                            <ToggleButton
+                                x:Name="DefaultItemsToolBarToggle"
+                                Content="Default item toolbar toggle"
+                                IsChecked="True" />
+                        </ToolBar>
+                    </ToolBarTray>
+                    <StatusBar x:Name="DefaultItemsStatusBar">
+                        <StatusBarItem x:Name="DefaultItemsStatusBarItem">
+                            <TextBlock
+                                x:Name="DefaultItemsStatusBarText"
+                                Text="{Binding Status, StringFormat=Status: {0}}" />
+                        </StatusBarItem>
+                    </StatusBar>
+                    <Button
+                        x:Name="DefaultItemsContextMenuOwner"
+                        Content="Default item context menu owner">
+                        <Button.ContextMenu>
+                            <ContextMenu x:Name="DefaultItemsContextMenu">
+                                <MenuItem
+                                    x:Name="DefaultItemsContextCommandMenuItem"
+                                    Command="{x:Static local:MainWindow.DefaultItemsCommand}"
+                                    CommandParameter="context-command"
+                                    Header="Context run" />
+                                <Separator x:Name="DefaultItemsContextMenuSeparator" />
+                                <MenuItem
+                                    x:Name="DefaultItemsContextClickMenuItem"
+                                    Click="OnDefaultItemsContextMenuItemClick"
+                                    Header="Context click" />
+                                <MenuItem
+                                    x:Name="DefaultItemsContextCheckableMenuItem"
+                                    Checked="OnDefaultItemsContextMenuItemChecked"
+                                    Header="Context check"
+                                    IsCheckable="True"
+                                    Unchecked="OnDefaultItemsContextMenuItemUnchecked" />
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                    </Button>
                     <TabControl
                         x:Name="DefaultItemsTabControl"
                         SelectedIndex="1">
@@ -13164,6 +13231,18 @@ internal static class Program
 
                 public int ExpanderCollapsedCount { get; private set; }
 
+                public int MenuClickCount { get; private set; }
+
+                public int MenuCheckedCount { get; private set; }
+
+                public int MenuUncheckedCount { get; private set; }
+
+                public int ContextMenuClickCount { get; private set; }
+
+                public int ContextMenuCheckedCount { get; private set; }
+
+                public int ContextMenuUncheckedCount { get; private set; }
+
                 public string LastCommandParameter { get; private set; } = string.Empty;
 
                 public DefaultItemsViewModel ViewModel { get; } = new DefaultItemsViewModel();
@@ -13247,6 +13326,79 @@ internal static class Program
                     Require(
                         DefaultItemsUniformGrid.Rows == 1 && DefaultItemsUniformGrid.Columns == 2 && DefaultItemsUniformGrid.Children.Count == 2,
                         "Expected default-item UniformGrid metadata and children.");
+                    Require(
+                        DefaultItemsMenu.Items.Count == 1 && ReferenceEquals(DefaultItemsMenu.Items[0], DefaultItemsRootMenuItem),
+                        "Expected default-item Menu root item.");
+                    Require(
+                        Equals(DefaultItemsRootMenuItem.Header, "_File") && DefaultItemsRootMenuItem.Items.Count == 4,
+                        "Expected default-item MenuItem root metadata.");
+                    Require(
+                        ReferenceEquals(DefaultItemsCommandMenuItem.Command, DefaultItemsCommand)
+                            && Equals(DefaultItemsCommandMenuItem.CommandParameter, "menu-command"),
+                        "Expected default-item MenuItem command metadata.");
+                    Require(
+                        ReferenceEquals(DefaultItemsRootMenuItem.Items[1], DefaultItemsMenuSeparator),
+                        "Expected default-item Menu separator metadata.");
+                    DefaultItemsClickMenuItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    Require(
+                        MenuClickCount == 1 && Equals(DefaultItemsClickMenuItem.Tag, "default-item menu clicked"),
+                        "Expected default-item MenuItem Click handler.");
+                    DefaultItemsCheckableMenuItem.IsChecked = true;
+                    DrainDispatcher();
+                    Require(
+                        DefaultItemsCheckableMenuItem.IsChecked && MenuCheckedCount == 1,
+                        "Expected default-item MenuItem Checked handler.");
+                    DefaultItemsCheckableMenuItem.IsChecked = false;
+                    DrainDispatcher();
+                    Require(
+                        !DefaultItemsCheckableMenuItem.IsChecked && MenuUncheckedCount == 1,
+                        "Expected default-item MenuItem Unchecked handler.");
+                    Require(
+                        DefaultItemsToolBarTray.ToolBars.Count == 1 && ReferenceEquals(DefaultItemsToolBarTray.ToolBars[0], DefaultItemsToolBar),
+                        "Expected default-item ToolBarTray toolbar registration.");
+                    Require(
+                        DefaultItemsToolBar.Items.Count == 3,
+                        "Expected default-item ToolBar item count.");
+                    Require(
+                        ReferenceEquals(DefaultItemsToolBarCommandButton.Command, DefaultItemsCommand)
+                            && Equals(DefaultItemsToolBarCommandButton.CommandParameter, "toolbar-command"),
+                        "Expected default-item ToolBar command metadata.");
+                    Require(
+                        ReferenceEquals(DefaultItemsToolBar.Items[1], DefaultItemsToolBarSeparator)
+                            && DefaultItemsToolBarToggle.IsChecked == true,
+                        "Expected default-item ToolBar separator and toggle metadata.");
+                    Require(
+                        DefaultItemsStatusBar.Items.Count == 1
+                            && ReferenceEquals(DefaultItemsStatusBar.Items[0], DefaultItemsStatusBarItem)
+                            && DefaultItemsStatusBarText.Text == "Status: Default item binding ready",
+                        "Expected default-item StatusBar bound content.");
+                    Require(
+                        ReferenceEquals(DefaultItemsContextMenuOwner.ContextMenu, DefaultItemsContextMenu),
+                        "Expected default-item ContextMenu owner metadata.");
+                    Require(
+                        DefaultItemsContextMenu.Items.Count == 4,
+                        "Expected default-item ContextMenu item count.");
+                    Require(
+                        ReferenceEquals(DefaultItemsContextCommandMenuItem.Command, DefaultItemsCommand)
+                            && Equals(DefaultItemsContextCommandMenuItem.CommandParameter, "context-command"),
+                        "Expected default-item ContextMenu command metadata.");
+                    Require(
+                        ReferenceEquals(DefaultItemsContextMenu.Items[1], DefaultItemsContextMenuSeparator),
+                        "Expected default-item ContextMenu separator metadata.");
+                    DefaultItemsContextClickMenuItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    Require(
+                        ContextMenuClickCount == 1 && Equals(DefaultItemsContextClickMenuItem.Tag, "default-item context menu clicked"),
+                        "Expected default-item ContextMenu Click handler.");
+                    DefaultItemsContextCheckableMenuItem.IsChecked = true;
+                    DrainDispatcher();
+                    Require(
+                        DefaultItemsContextCheckableMenuItem.IsChecked && ContextMenuCheckedCount == 1,
+                        "Expected default-item ContextMenu Checked handler.");
+                    DefaultItemsContextCheckableMenuItem.IsChecked = false;
+                    DrainDispatcher();
+                    Require(
+                        !DefaultItemsContextCheckableMenuItem.IsChecked && ContextMenuUncheckedCount == 1,
+                        "Expected default-item ContextMenu Unchecked handler.");
                     Require(
                         DefaultItemsTabControl.SelectedIndex == 1 && ReferenceEquals(DefaultItemsTabControl.SelectedItem, DefaultItemsDetailsTab),
                         "Expected default-item TabControl initial selection.");
@@ -13573,6 +13725,9 @@ internal static class Program
                     Require(
                         DefaultItemsDetailsTabText.Text == "Tab: Default item binding updated",
                         "Expected default-item selected TabItem binding to observe INotifyPropertyChanged.");
+                    Require(
+                        DefaultItemsStatusBarText.Text == "Status: Default item binding updated",
+                        "Expected default-item StatusBar binding to observe INotifyPropertyChanged.");
                     ViewModel.OptionalStatus = "Default item optional status";
                     DrainDispatcher();
                     Require(
@@ -14121,6 +14276,38 @@ internal static class Program
                 private void OnDefaultItemsExpanderCollapsed(object sender, RoutedEventArgs e)
                 {
                     ExpanderCollapsedCount++;
+                }
+
+                private void OnDefaultItemsMenuItemClick(object sender, RoutedEventArgs e)
+                {
+                    MenuClickCount++;
+                    DefaultItemsClickMenuItem.Tag = "default-item menu clicked";
+                }
+
+                private void OnDefaultItemsMenuItemChecked(object sender, RoutedEventArgs e)
+                {
+                    MenuCheckedCount++;
+                }
+
+                private void OnDefaultItemsMenuItemUnchecked(object sender, RoutedEventArgs e)
+                {
+                    MenuUncheckedCount++;
+                }
+
+                private void OnDefaultItemsContextMenuItemClick(object sender, RoutedEventArgs e)
+                {
+                    ContextMenuClickCount++;
+                    DefaultItemsContextClickMenuItem.Tag = "default-item context menu clicked";
+                }
+
+                private void OnDefaultItemsContextMenuItemChecked(object sender, RoutedEventArgs e)
+                {
+                    ContextMenuCheckedCount++;
+                }
+
+                private void OnDefaultItemsContextMenuItemUnchecked(object sender, RoutedEventArgs e)
+                {
+                    ContextMenuUncheckedCount++;
                 }
 
                 private static void DrainDispatcher()

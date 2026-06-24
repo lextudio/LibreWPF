@@ -5838,8 +5838,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PropertyPane.Hide(false)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PropertyPane.Show()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RoundTripLayout", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_TOOLKIT_LIVE_VALIDATE", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGPU WPF Toolkit live input validation succeeded:", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("OnPlatformInputReceived", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ResolveCurrentRenderSurfaceGeometry", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF Toolkit Application.Run validation succeeded.", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_TOOLKIT_RUN_VALIDATE", runScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_TOOLKIT_LIVE_VALIDATE", runScript, StringComparison.Ordinal);
+        Assert.Contains("ProGPU WPF Toolkit live geometry validation succeeded", runScript, StringComparison.Ordinal);
     }
 
     [Fact]

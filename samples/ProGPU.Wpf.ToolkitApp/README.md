@@ -27,6 +27,12 @@ Run through `Application.Run()` and `StartupUri`:
 PROGPU_WPF_TOOLKIT_RUN_VALIDATE=1 ./eng/run-progpu-wpf-toolkit.sh
 ```
 
+Run the live ProGPU/Silk.NET apphost input probe:
+
+```bash
+PROGPU_WPF_TOOLKIT_LIVE_VALIDATE=1 ./eng/run-progpu-wpf-toolkit.sh
+```
+
 If the local `11.0.0-dev` SDK packages are stale or missing, rebuild the package feed first:
 
 ```bash

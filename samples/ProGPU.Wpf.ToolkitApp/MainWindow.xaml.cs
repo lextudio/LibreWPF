@@ -1,12 +1,16 @@
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Threading;
 using Xceed.Wpf.AvalonDock;
 using Xceed.Wpf.AvalonDock.Layout;
@@ -19,12 +23,18 @@ namespace ProGPU.Wpf.ToolkitApp;
 
 public partial class MainWindow : Window
 {
+    private const string LiveValidationEnvironmentVariable = "PROGPU_WPF_TOOLKIT_LIVE_VALIDATE";
+    private const int LiveValidationMaxAttempts = 400;
+    private static readonly TimeSpan LiveValidationRetryDelay = TimeSpan.FromMilliseconds(16);
     private readonly ToolkitViewModel _viewModel = new();
+    private bool _liveValidationStarted;
 
     public MainWindow()
     {
         DataContext = _viewModel;
         InitializeComponent();
+        Loaded += OnToolkitWindowLoaded;
+        StartLiveValidationIfRequired();
     }
 
     private void AddDocumentButton_Click(object sender, RoutedEventArgs e)
@@ -116,6 +126,448 @@ public partial class MainWindow : Window
     }
 
     internal ToolkitViewModel ViewModel => _viewModel;
+
+    private void OnToolkitWindowLoaded(object sender, RoutedEventArgs e)
+    {
+        StartLiveValidationIfRequired();
+    }
+
+    private void StartLiveValidationIfRequired()
+    {
+        if (_liveValidationStarted ||
+            Environment.GetEnvironmentVariable(LiveValidationEnvironmentVariable) != "1")
+        {
+            return;
+        }
+
+        _liveValidationStarted = true;
+        Console.WriteLine("ProGPU WPF Toolkit live input validation started.");
+        _ = Task.Run(
+            async () =>
+            {
+                try
+                {
+                    await ValidateRequiredLiveToolkitAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine(ex);
+                    Environment.Exit(1);
+                }
+            });
+    }
+
+    private async Task ValidateRequiredLiveToolkitAsync()
+    {
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            await Task.Delay(LiveValidationRetryDelay);
+            if (!TryGetPortableActivationHost(out var liveHost) || liveHost == null)
+            {
+                continue;
+            }
+
+            if (GetRequiredProperty(liveHost, "HasPresentedFrame") is not bool hasPresentedFrame ||
+                !hasPresentedFrame)
+            {
+                WakeLiveRenderHost(liveHost);
+                continue;
+            }
+
+            string geometryStatus = await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () => ValidateLiveRenderSurfaceGeometryCore(liveHost),
+                DispatcherPriority.Send);
+            string inputStatus = await ValidateLiveInputAsync(liveHost);
+            Console.WriteLine($"ProGPU WPF Toolkit live input validation succeeded: {geometryStatus}; {inputStatus}.");
+            Environment.Exit(0);
+            return;
+        }
+
+        Console.Error.WriteLine("Expected the Toolkit app to present a stable ProGPU frame before live input validation.");
+        Environment.Exit(1);
+    }
+
+    private async Task<string> ValidateLiveInputAsync(object liveHost)
+    {
+        string lastTargetState = "not checked";
+        bool focusedFilter = false;
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            focusedFilter = await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () =>
+                {
+                    if (!TryRaiseLiveMouseClick(liveHost, FilterTextBox, "FilterTextBox", out lastTargetState))
+                    {
+                        return false;
+                    }
+
+                    FilterTextBox.Text = string.Empty;
+                    FilterTextBox.CaretIndex = 0;
+                    FilterTextBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+                    return true;
+                },
+                DispatcherPriority.Send);
+            if (focusedFilter)
+            {
+                break;
+            }
+
+            await Task.Delay(LiveValidationRetryDelay);
+        }
+
+        if (!focusedFilter)
+        {
+            throw new InvalidOperationException(
+                $"Expected Toolkit live filter TextBox to become visible and hit-testable before injecting input, but last state was: {lastTargetState}.");
+        }
+
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                if (!FilterTextBox.IsKeyboardFocusWithin)
+                {
+                    throw new InvalidOperationException(
+                        $"Expected Toolkit live host click to focus FilterTextBox, but focused '{DescribeInputElement(Keyboard.FocusedElement)}'. {lastTargetState}.");
+                }
+
+                foreach (char character in "Dock")
+                {
+                    string key = char.ToUpperInvariant(character).ToString();
+                    RaiseHostInput(liveHost, "KeyDown", key: key);
+                    RaiseHostInput(liveHost, "TextInput", character: character);
+                    RaiseHostInput(liveHost, "KeyUp", key: key);
+                }
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                AssertEqual("Dock", FilterTextBox.Text, "Toolkit live WatermarkTextBox text");
+                AssertEqual("Dock", ViewModel.FilterText, "Toolkit live FilterText binding source");
+            },
+            DispatcherPriority.Send);
+
+        int documentsBeforeAdd = ViewModel.DocumentCount;
+        await ClickLiveControlAsync(liveHost, AddDocumentButton, "AddDocumentButton");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                AssertEqual(documentsBeforeAdd + 1, ViewModel.DocumentCount, "Toolkit live added document count");
+                AssertEqual($"Added Generated {documentsBeforeAdd + 1}", ViewModel.Status, "Toolkit live Add document status");
+                AssertEqual(documentsBeforeAdd + 1, DocumentPane.ChildrenCount, "Toolkit live AvalonDock document pane count");
+            },
+            DispatcherPriority.Send);
+
+        await ClickLiveControlAsync(liveHost, ActivateEditorButton, "ActivateEditorButton");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                AssertEqual(true, EditorDocument.IsSelected, "Toolkit live editor document selected state");
+                AssertEqual(true, EditorDocument.IsActive, "Toolkit live editor document active state");
+            },
+            DispatcherPriority.Send);
+
+        await ClickLiveControlAsync(liveHost, TogglePropertyPaneButton, "TogglePropertyPaneButton");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                AssertEqual(true, PropertyPane.IsHidden, "Toolkit live property pane hidden state");
+                if (!DockLayoutRoot.Hidden.Contains(PropertyPane))
+                {
+                    throw new InvalidOperationException("Expected Toolkit live property pane to be in AvalonDock hidden collection.");
+                }
+            },
+            DispatcherPriority.Send);
+
+        await ClickLiveControlAsync(liveHost, TogglePropertyPaneButton, "TogglePropertyPaneButton");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => AssertEqual(false, PropertyPane.IsHidden, "Toolkit live property pane restored state"),
+            DispatcherPriority.Send);
+
+        await ClickLiveControlAsync(liveHost, SerializeLayoutButton, "SerializeLayoutButton");
+        return await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                if (!ViewModel.LastSerializedLayout.Contains("<LayoutRoot", StringComparison.Ordinal) ||
+                    !ViewModel.LastSerializedLayout.Contains("ContentId=\"editor\"", StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException("Expected Toolkit live AvalonDock serialization to include document content ids.");
+                }
+
+                var roundTripped = RoundTripLayout(ViewModel.LastSerializedLayout);
+                if (roundTripped.Layout.RootPanel is null ||
+                    roundTripped.Layout.RootPanel.ChildrenCount != DockLayoutRoot.RootPanel.ChildrenCount)
+                {
+                    throw new InvalidOperationException("Expected Toolkit live AvalonDock deserialization to restore root panel shape.");
+                }
+
+                return "host mouse/text input, binding update, AvalonDock document activation, anchorable hide/show, and layout serialization updated";
+            },
+            DispatcherPriority.Send);
+    }
+
+    private async Task ClickLiveControlAsync(object liveHost, FrameworkElement target, string targetName)
+    {
+        string lastTargetState = "not checked";
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            bool sentClick = await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () => TryRaiseLiveMouseClick(liveHost, target, targetName, out lastTargetState),
+                DispatcherPriority.Send);
+            if (sentClick)
+            {
+                await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+                return;
+            }
+
+            await Task.Delay(LiveValidationRetryDelay);
+        }
+
+        throw new InvalidOperationException(
+            $"Expected Toolkit live target {targetName} to become visible and hit-testable, but last state was: {lastTargetState}.");
+    }
+
+    private bool TryRaiseLiveMouseClick(object liveHost, FrameworkElement target, string targetName, out string targetState)
+    {
+        targetState =
+            $"{targetName}.IsVisible={target.IsVisible}, " +
+            $"{targetName}.ActualSize={target.ActualWidth:0.###}x{target.ActualHeight:0.###}, " +
+            $"{targetName}.IsEnabled={target.IsEnabled}, " +
+            $"{targetName}.Focusable={target.Focusable}, " +
+            $"{targetName}.IsHitTestVisible={target.IsHitTestVisible}";
+        if (!target.IsVisible ||
+            target.ActualWidth <= 1.0 ||
+            target.ActualHeight <= 1.0 ||
+            !target.IsEnabled ||
+            !target.IsHitTestVisible)
+        {
+            return false;
+        }
+
+        Point center = target.TranslatePoint(
+            new Point(Math.Max(1.0, target.ActualWidth) / 2.0, Math.Max(1.0, target.ActualHeight) / 2.0),
+            this);
+        object? hit = InputHitTest(center);
+        targetState += $", Input=({center.X:0.###}, {center.Y:0.###}), InputHitTest={DescribeInputElement(hit)}";
+        if (hit == null)
+        {
+            return false;
+        }
+
+        RaiseHostInput(liveHost, "MouseMove", x: center.X, y: center.Y);
+        RaiseHostInput(liveHost, "MouseDown", x: center.X, y: center.Y, button: "Left");
+        RaiseHostInput(liveHost, "MouseUp", x: center.X, y: center.Y, button: "Left");
+        return true;
+    }
+
+    private async Task<T> InvokeWithLiveHostWakeAsync<T>(
+        object liveHost,
+        Func<T> callback,
+        DispatcherPriority priority)
+    {
+        if (Dispatcher.CheckAccess())
+        {
+            return callback();
+        }
+
+        DispatcherOperation<T> operation = Dispatcher.InvokeAsync(callback, priority);
+        WakeLiveRenderHost(liveHost);
+        return await operation;
+    }
+
+    private async Task InvokeWithLiveHostWakeAsync(
+        object liveHost,
+        Action callback,
+        DispatcherPriority priority)
+    {
+        if (Dispatcher.CheckAccess())
+        {
+            callback();
+            return;
+        }
+
+        DispatcherOperation operation = Dispatcher.InvokeAsync(callback, priority);
+        WakeLiveRenderHost(liveHost);
+        await operation;
+    }
+
+    private static void WakeLiveRenderHost(object liveHost)
+    {
+        object scheduler = GetRequiredProperty(liveHost, "WpfRenderScheduler");
+        MethodInfo requestRender = scheduler.GetType().GetMethod(
+            "RequestRender",
+            BindingFlags.Instance | BindingFlags.Public,
+            binder: null,
+            types: Type.EmptyTypes,
+            modifiers: null)
+            ?? throw new MissingMethodException(scheduler.GetType().FullName, "RequestRender");
+        requestRender.Invoke(scheduler, null);
+
+        MethodInfo? requestNativeLoopWakeup = liveHost.GetType().GetMethod(
+            "TryRequestNativeLoopWakeup",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+            binder: null,
+            types: Type.EmptyTypes,
+            modifiers: null);
+        requestNativeLoopWakeup?.Invoke(liveHost, null);
+    }
+
+    private bool TryGetPortableActivationHost(out object? host)
+    {
+        host = null;
+        PropertyInfo? activationProperty = typeof(Window).GetProperty(
+            "PortableWindowActivation",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        object? activation = activationProperty?.GetValue(this);
+        if (activation == null)
+        {
+            return false;
+        }
+
+        PropertyInfo? hostProperty = activation.GetType().GetProperty(
+            "Host",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        host = hostProperty?.GetValue(activation);
+        return host != null;
+    }
+
+    private static string ValidateLiveRenderSurfaceGeometryCore(object liveHost)
+    {
+        object geometry = InvokeRequired(liveHost, "ResolveCurrentRenderSurfaceGeometry");
+        var logicalWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "LogicalWidth"), CultureInfo.InvariantCulture);
+        var logicalHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "LogicalHeight"), CultureInfo.InvariantCulture);
+        var pixelWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "PixelWidth"), CultureInfo.InvariantCulture);
+        var pixelHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "PixelHeight"), CultureInfo.InvariantCulture);
+        var dpiScale = Convert.ToDouble(GetRequiredProperty(geometry, "DpiScale"), CultureInfo.InvariantCulture);
+        var viewportX = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportX"), CultureInfo.InvariantCulture);
+        var viewportY = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportY"), CultureInfo.InvariantCulture);
+        var viewportWidth = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportWidth"), CultureInfo.InvariantCulture);
+        var viewportHeight = Convert.ToUInt32(GetRequiredProperty(geometry, "ViewportHeight"), CultureInfo.InvariantCulture);
+
+        AssertEqual(980u, logicalWidth, "Toolkit live ProGPU WPF logical width");
+        AssertEqual(640u, logicalHeight, "Toolkit live ProGPU WPF logical height");
+        if (pixelWidth < logicalWidth || pixelHeight < logicalHeight)
+        {
+            throw new InvalidOperationException(
+                $"Expected Toolkit live ProGPU WPF pixels to cover logical content, but got logical {logicalWidth}x{logicalHeight} and pixels {pixelWidth}x{pixelHeight}.");
+        }
+
+        if (viewportX != 0 || viewportY != 0 || viewportWidth != pixelWidth || viewportHeight != pixelHeight)
+        {
+            throw new InvalidOperationException(
+                $"Expected Toolkit live ProGPU WPF viewport to use the full physical target, but got viewport {viewportWidth}x{viewportHeight}@{viewportX},{viewportY} for pixels {pixelWidth}x{pixelHeight}.");
+        }
+
+        return $"logical {logicalWidth}x{logicalHeight}, pixels {pixelWidth}x{pixelHeight}, viewport {viewportWidth}x{viewportHeight}@{viewportX},{viewportY}, dpi {dpiScale:0.###}";
+    }
+
+    private static void RaiseHostInput(
+        object liveHost,
+        string kind,
+        string? key = null,
+        char? character = null,
+        double x = 0.0,
+        double y = 0.0,
+        string button = "None")
+    {
+        object input = CreateWpfInputEventArgs(liveHost, kind, key, character, x, y, button);
+        MethodInfo method = liveHost.GetType().GetMethod(
+            "OnPlatformInputReceived",
+            BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new MissingMethodException(liveHost.GetType().FullName, "OnPlatformInputReceived");
+        method.Invoke(liveHost, new object?[] { null, input });
+    }
+
+    private static object CreateWpfInputEventArgs(
+        object liveHost,
+        string kind,
+        string? key,
+        char? character,
+        double x,
+        double y,
+        string button)
+    {
+        Assembly assembly = liveHost.GetType().Assembly;
+        Type inputType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfInputEventArgs", throwOnError: true)
+            ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfInputEventArgs");
+        Type kindType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfInputEventKind", throwOnError: true)
+            ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfInputEventKind");
+        Type buttonType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfMouseButton", throwOnError: true)
+            ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfMouseButton");
+        Type modifiersType = assembly.GetType("System.Windows.Media.ProGPU.Platform.WpfInputModifiers", throwOnError: true)
+            ?? throw new TypeLoadException("System.Windows.Media.ProGPU.Platform.WpfInputModifiers");
+
+        return Activator.CreateInstance(
+            inputType,
+            Enum.Parse(kindType, kind),
+            key,
+            0,
+            character.HasValue ? character.Value : null,
+            x,
+            y,
+            0.0,
+            0.0,
+            Enum.Parse(buttonType, button),
+            Enum.Parse(modifiersType, "None"))
+            ?? throw new InvalidOperationException("Expected WpfInputEventArgs construction to succeed.");
+    }
+
+    private static object InvokeRequired(object target, string methodName)
+    {
+        MethodInfo method = target.GetType().GetMethod(
+            methodName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMethodException(target.GetType().FullName, methodName);
+        return method.Invoke(target, null)
+            ?? throw new InvalidOperationException($"Expected {methodName} to return a value.");
+    }
+
+    private static object GetRequiredProperty(object target, string propertyName)
+    {
+        PropertyInfo property = target.GetType().GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(target.GetType().FullName, propertyName);
+        return property.GetValue(target)
+            ?? throw new InvalidOperationException($"Expected {propertyName} to have a value.");
+    }
+
+    private static string DescribeInputElement(object? element)
+    {
+        if (element == null)
+        {
+            return "<null>";
+        }
+
+        if (element is FrameworkElement frameworkElement && !string.IsNullOrEmpty(frameworkElement.Name))
+        {
+            return $"{element.GetType().Name}#{frameworkElement.Name}";
+        }
+
+        return element.GetType().Name;
+    }
+
+    private static void AssertEqual<T>(T expected, T actual, string description)
+    {
+        if (!Equals(expected, actual))
+        {
+            throw new InvalidOperationException(
+                $"Expected {description} to be '{expected}' but was '{actual}'.");
+        }
+    }
 }
 
 internal sealed class ToolkitViewModel : INotifyPropertyChanged

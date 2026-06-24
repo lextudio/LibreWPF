@@ -8113,6 +8113,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DefaultItemsAppDictionaryBrush", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item DynamicResource brush invalidation", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item app DynamicResource brush invalidation", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsGrid", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsDockPanel", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsCanvas", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsUniformGrid", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item Grid attached row and column", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item DockPanel attached dock", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item Canvas attached position", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item UniformGrid metadata and children", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsTemplateItem", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DataTemplate DataType=\"{x:Type local:DefaultItemsItem}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsImplicitTemplateText", externalSdkHarnessProgram, StringComparison.Ordinal);

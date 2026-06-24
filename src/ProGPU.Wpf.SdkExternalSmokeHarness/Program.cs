@@ -12577,6 +12577,52 @@ internal static class Program
                         x:Name="DefaultItemsLibraryResourceText"
                         Foreground="{DynamicResource DefaultItemsLibraryResourceBrush}"
                         Text="{StaticResource DefaultItemsLibraryResourceText}" />
+                    <Grid x:Name="DefaultItemsGrid">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock
+                            x:Name="DefaultItemsGridOriginText"
+                            Grid.Row="0"
+                            Grid.Column="0"
+                            Text="Default item grid origin" />
+                        <TextBlock
+                            x:Name="DefaultItemsGridBoundText"
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            Text="{Binding Status, StringFormat=Grid: {0}}" />
+                    </Grid>
+                    <DockPanel
+                        x:Name="DefaultItemsDockPanel"
+                        LastChildFill="False">
+                        <TextBlock
+                            x:Name="DefaultItemsDockedText"
+                            DockPanel.Dock="Left"
+                            Text="Default item dock left" />
+                        <TextBlock Text="Default item dock trailing" />
+                    </DockPanel>
+                    <Canvas
+                        x:Name="DefaultItemsCanvas"
+                        Width="80"
+                        Height="24">
+                        <TextBlock
+                            x:Name="DefaultItemsCanvasChild"
+                            Canvas.Left="12"
+                            Canvas.Top="6"
+                            Text="Default item canvas" />
+                    </Canvas>
+                    <UniformGrid
+                        x:Name="DefaultItemsUniformGrid"
+                        Rows="1"
+                        Columns="2">
+                        <TextBlock Text="Default item uniform one" />
+                        <TextBlock Text="Default item uniform two" />
+                    </UniformGrid>
                     <local:DefaultItemsPanel
                         x:Name="DefaultItemsPanel"
                         Caption="Default item panel caption" />
@@ -12846,6 +12892,36 @@ internal static class Program
                         libraryResourceForeground.Color == Color.FromRgb(0x76, 0x54, 0x32),
                         "Expected default-item referenced library component resource brush color.");
                     Require(
+                        DefaultItemsGrid.RowDefinitions.Count == 2 && DefaultItemsGrid.ColumnDefinitions.Count == 2,
+                        "Expected default-item Grid row and column definitions.");
+                    Require(
+                        Grid.GetRow(DefaultItemsGridBoundText) == 1 && Grid.GetColumn(DefaultItemsGridBoundText) == 1,
+                        "Expected default-item Grid attached row and column.");
+                    Require(
+                        DefaultItemsGridOriginText.Text == "Default item grid origin",
+                        "Expected default-item Grid child text.");
+                    Require(
+                        DefaultItemsDockPanel.LastChildFill == false,
+                        "Expected default-item DockPanel LastChildFill metadata.");
+                    Require(
+                        DockPanel.GetDock(DefaultItemsDockedText) == Dock.Left,
+                        "Expected default-item DockPanel attached dock.");
+                    Require(
+                        DefaultItemsDockedText.Text == "Default item dock left",
+                        "Expected default-item DockPanel child text.");
+                    Require(
+                        DefaultItemsCanvas.Width == 80 && DefaultItemsCanvas.Height == 24,
+                        "Expected default-item Canvas size metadata.");
+                    Require(
+                        Canvas.GetLeft(DefaultItemsCanvasChild) == 12 && Canvas.GetTop(DefaultItemsCanvasChild) == 6,
+                        "Expected default-item Canvas attached position.");
+                    Require(
+                        DefaultItemsCanvasChild.Text == "Default item canvas",
+                        "Expected default-item Canvas child text.");
+                    Require(
+                        DefaultItemsUniformGrid.Rows == 1 && DefaultItemsUniformGrid.Columns == 2 && DefaultItemsUniformGrid.Children.Count == 2,
+                        "Expected default-item UniformGrid metadata and children.");
+                    Require(
                         ConfigurationManager.AppSettings["DefaultItemsSdkSetting"] == "Default item SDK app config value",
                         "Expected default-item app config setting.");
                     Require(
@@ -12958,6 +13034,9 @@ internal static class Program
                         DefaultItemsBoundStatusText.Text == "Default item binding ready",
                         "Expected default-item TextBlock binding to read the view-model status.");
                     Require(
+                        DefaultItemsGridBoundText.Text == "Grid: Default item binding ready",
+                        "Expected default-item Grid child binding to read the view-model status.");
+                    Require(
                         DefaultItemsEditableStatusTextBox.Text == "Default item binding ready",
                         "Expected default-item TextBox binding to read the view-model status.");
                     Require(
@@ -13015,6 +13094,9 @@ internal static class Program
                     Require(
                         DefaultItemsBoundStatusText.Text == "Default item binding updated",
                         "Expected default-item TextBlock binding to observe INotifyPropertyChanged.");
+                    Require(
+                        DefaultItemsGridBoundText.Text == "Grid: Default item binding updated",
+                        "Expected default-item Grid child binding to observe INotifyPropertyChanged.");
                     Require(
                         DefaultItemsEditableStatusTextBox.Text == "Default item binding updated",
                         "Expected default-item TextBox binding to observe INotifyPropertyChanged.");

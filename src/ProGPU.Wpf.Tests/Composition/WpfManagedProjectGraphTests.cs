@@ -6165,6 +6165,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Running MVP SDK app apphost Application.Run validation", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("mvp_apphost_name=\"$(apphost_name \"ProGPU.Wpf.MvpApp\")\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_MVP_RUN_VALIDATE=1 \"./${mvp_apphost_name}\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("Running MVP SDK app live geometry validation", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_MVP_LIVE_VALIDATE=1 \"${repo_root}/eng/run-progpu-wpf-mvp.sh\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfSdkProvidesSwitchOnlyPackagingSurface", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("dev_package_version=\"${PROGPU_WPF_DEV_PACKAGE_VERSION:-11.0.0-dev}\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("\"${package_output}/${package_id}.${dev_package_version}.nupkg\"", sdkCiScript, StringComparison.Ordinal);
@@ -7096,6 +7098,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("apphost_name=\"ProGPU.Wpf.MvpApp\"", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("\"${dotnet}\" build \"${mvp_project}\" -v:minimal", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("Launching ProGPU WPF MVP apphost", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_MVP_LIVE_VALIDATE", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("Launching ProGPU WPF MVP apphost live geometry probe", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("logical_width=760", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("logical_height=560", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("ProGPU WPF MVP live geometry validation succeeded", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("\"./${apphost_name}\"", mvpRunScript, StringComparison.Ordinal);
         Assert.DoesNotContain("run --project \"${mvp_project}\"", mvpRunScript, StringComparison.Ordinal);
 

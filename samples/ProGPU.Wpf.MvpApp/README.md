@@ -20,6 +20,12 @@ Run the same app through a bounded `Application.Run()` validation that opens via
 PROGPU_WPF_MVP_RUN_VALIDATE=1 ./eng/run-progpu-wpf-mvp.sh
 ```
 
+Run the native apphost long enough to verify the live ProGPU/Silk.NET swapchain covers the declared `760x560` WPF window before terminating the probe:
+
+```bash
+PROGPU_WPF_MVP_LIVE_VALIDATE=1 ./eng/run-progpu-wpf-mvp.sh
+```
+
 If the local `11.0.0-dev` packages are stale or missing, rebuild the SDK package feed first:
 
 ```bash

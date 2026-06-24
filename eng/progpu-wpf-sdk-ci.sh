@@ -150,6 +150,9 @@ echo "Running MVP SDK app apphost Application.Run validation..."
   PROGPU_WPF_MVP_RUN_VALIDATE=1 "./${mvp_apphost_name}"
 )
 
+echo "Running MVP SDK app live geometry validation..."
+PROGPU_WPF_MVP_LIVE_VALIDATE=1 "${repo_root}/eng/run-progpu-wpf-mvp.sh"
+
 echo "Building focused WPF graph tests..."
 run_dotnet build "${repo_root}/src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj" -v:minimal
 

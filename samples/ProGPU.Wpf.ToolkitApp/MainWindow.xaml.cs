@@ -595,6 +595,13 @@ public partial class MainWindow : Window
             throw new InvalidOperationException("Expected source-backed AvalonDock layout items to be discoverable from their generated layout models.");
         }
 
+        ValidateSourceLayoutUpdateStrategyState(requireInsertedCallbacks: false);
+        ValidateSourceBackedAvalonDockDynamicMetadata(
+            firstDocument,
+            generatedDocument,
+            firstAnchorable,
+            generatedAnchorable);
+
         int activeContentChangesBefore = ViewModel.SourceActiveContentChangedCount;
         SourceDockManager.ActiveContent = firstDocument;
         AssertEqual(firstDocument, ViewModel.SourceActiveContent, "AvalonDock source active document binding");
@@ -615,6 +622,11 @@ public partial class MainWindow : Window
 
         if (mutateSources)
         {
+            int beforeInsertDocumentCount = ViewModel.SourceLayoutStrategy.BeforeInsertDocumentCount;
+            int afterInsertDocumentCount = ViewModel.SourceLayoutStrategy.AfterInsertDocumentCount;
+            int beforeInsertAnchorableCount = ViewModel.SourceLayoutStrategy.BeforeInsertAnchorableCount;
+            int afterInsertAnchorableCount = ViewModel.SourceLayoutStrategy.AfterInsertAnchorableCount;
+
             int documentCountBeforeAdd = SourceDocumentPane.ChildrenCount;
             var addedDocument = ViewModel.AddSourceDocument();
             PumpDispatcherUntil(
@@ -628,7 +640,111 @@ public partial class MainWindow : Window
 
             SourceDockManager.ActiveContent = addedDocument;
             AssertEqual(addedDocument, ViewModel.SourceActiveContent, "AvalonDock added source active document binding");
+
+            int anchorableCountBeforeAdd = SourceAnchorablePane.ChildrenCount;
+            var addedAnchorable = ViewModel.AddSourceAnchorable();
+            PumpDispatcherUntil(
+                this,
+                () => SourceAnchorablePane.ChildrenCount == anchorableCountBeforeAdd + 1,
+                TimeSpan.FromSeconds(2),
+                "AvalonDock source anchorable insertion");
+            var generatedAddedAnchorable = FindGeneratedAnchorable(addedAnchorable);
+            AssertEqual(addedAnchorable.Title, generatedAddedAnchorable.Title, "AvalonDock added source anchorable title");
+            AssertEqual(addedAnchorable.ContentId, generatedAddedAnchorable.ContentId, "AvalonDock added source anchorable content id");
+
+            SourceDockManager.ActiveContent = addedAnchorable;
+            AssertEqual(addedAnchorable, ViewModel.SourceActiveContent, "AvalonDock added source active anchorable binding");
+
+            if (ViewModel.SourceLayoutStrategy.BeforeInsertDocumentCount <= beforeInsertDocumentCount ||
+                ViewModel.SourceLayoutStrategy.AfterInsertDocumentCount <= afterInsertDocumentCount ||
+                ViewModel.SourceLayoutStrategy.BeforeInsertAnchorableCount <= beforeInsertAnchorableCount ||
+                ViewModel.SourceLayoutStrategy.AfterInsertAnchorableCount <= afterInsertAnchorableCount)
+            {
+                throw new InvalidOperationException(
+                    "Expected AvalonDock layout update strategy callbacks to fire for added source-backed document and anchorable.");
+            }
+
+            ValidateSourceLayoutUpdateStrategyState(requireInsertedCallbacks: true);
         }
+    }
+
+    internal void ValidateSourceLayoutUpdateStrategyState(bool requireInsertedCallbacks)
+    {
+        if (!ReferenceEquals(SourceDockManager.LayoutUpdateStrategy, ViewModel.SourceLayoutStrategy))
+        {
+            throw new InvalidOperationException("Expected source-backed AvalonDock manager to use the view-model layout update strategy.");
+        }
+
+        var strategy = ViewModel.SourceLayoutStrategy;
+        if (!requireInsertedCallbacks)
+        {
+            return;
+        }
+
+        if (strategy.BeforeInsertDocumentCount == 0 ||
+            strategy.AfterInsertDocumentCount == 0)
+        {
+            throw new InvalidOperationException(
+                "Expected AvalonDock layout update strategy to observe inserted source documents.");
+        }
+
+        if (strategy.BeforeInsertAnchorableCount == 0 ||
+            strategy.AfterInsertAnchorableCount == 0)
+        {
+            throw new InvalidOperationException(
+                "Expected AvalonDock layout update strategy to observe inserted source anchorables.");
+        }
+
+        if (string.IsNullOrWhiteSpace(strategy.LastInsertedDocumentContentId) ||
+            string.IsNullOrWhiteSpace(strategy.LastInsertedAnchorableContentId))
+        {
+            throw new InvalidOperationException("Expected AvalonDock layout update strategy to record inserted content ids.");
+        }
+    }
+
+    private void ValidateSourceBackedAvalonDockDynamicMetadata(
+        ToolkitDockItem sourceDocument,
+        LayoutDocument generatedDocument,
+        ToolkitDockItem sourceAnchorable,
+        LayoutAnchorable generatedAnchorable)
+    {
+        string originalDocumentTitle = sourceDocument.Title;
+        bool originalDocumentCanClose = sourceDocument.CanClose;
+        string originalAnchorableTitle = sourceAnchorable.Title;
+        bool originalAnchorableCanClose = sourceAnchorable.CanClose;
+
+        sourceDocument.Title = "Source Overview Updated";
+        sourceDocument.CanClose = false;
+        sourceAnchorable.Title = "Source Tool Updated";
+        sourceAnchorable.CanClose = true;
+
+        PumpDispatcherUntil(
+            this,
+            () => string.Equals(generatedDocument.Title, sourceDocument.Title, StringComparison.Ordinal) &&
+                  generatedDocument.CanClose == sourceDocument.CanClose &&
+                  string.Equals(generatedAnchorable.Title, sourceAnchorable.Title, StringComparison.Ordinal) &&
+                  generatedAnchorable.CanClose == sourceAnchorable.CanClose,
+            TimeSpan.FromSeconds(2),
+            "AvalonDock generated layout item metadata update");
+
+        AssertEqual(sourceDocument.Title, generatedDocument.Title, "AvalonDock source document dynamic title");
+        AssertEqual(sourceDocument.CanClose, generatedDocument.CanClose, "AvalonDock source document dynamic close policy");
+        AssertEqual(sourceAnchorable.Title, generatedAnchorable.Title, "AvalonDock source anchorable dynamic title");
+        AssertEqual(sourceAnchorable.CanClose, generatedAnchorable.CanClose, "AvalonDock source anchorable dynamic close policy");
+
+        sourceDocument.Title = originalDocumentTitle;
+        sourceDocument.CanClose = originalDocumentCanClose;
+        sourceAnchorable.Title = originalAnchorableTitle;
+        sourceAnchorable.CanClose = originalAnchorableCanClose;
+
+        PumpDispatcherUntil(
+            this,
+            () => string.Equals(generatedDocument.Title, originalDocumentTitle, StringComparison.Ordinal) &&
+                  generatedDocument.CanClose == originalDocumentCanClose &&
+                  string.Equals(generatedAnchorable.Title, originalAnchorableTitle, StringComparison.Ordinal) &&
+                  generatedAnchorable.CanClose == originalAnchorableCanClose,
+            TimeSpan.FromSeconds(2),
+            "AvalonDock generated layout item metadata restore");
     }
 
     internal void ValidateAvalonDockThemeState(string expectedThemeName)
@@ -1054,7 +1170,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, AvalonDock source-backed documents/anchorables, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -1733,6 +1849,8 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
 
     public ObservableCollection<ToolkitDockItem> SourceAnchorables { get; }
 
+    public ToolkitLayoutUpdateStrategy SourceLayoutStrategy { get; } = new();
+
     public ObservableCollection<string> Categories { get; }
 
     public ObservableCollection<string> Owners { get; }
@@ -1775,6 +1893,19 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         SourceDocuments.Add(document);
         SourceActiveContent = document;
         return document;
+    }
+
+    public ToolkitDockItem AddSourceAnchorable()
+    {
+        int index = SourceAnchorables.Count + 1;
+        var anchorable = new ToolkitDockItem(
+            $"Source Tool {index}",
+            $"source-tool-{index}",
+            $"Generated source-backed AvalonDock anchorable {index}.",
+            canClose: false);
+        SourceAnchorables.Add(anchorable);
+        SourceActiveContent = anchorable;
+        return anchorable;
     }
 
     public int Priority
@@ -2383,23 +2514,47 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
 
 internal sealed class ToolkitDockItem : INotifyPropertyChanged
 {
+    private string _title;
     private string _body;
+    private bool _canClose;
 
     public ToolkitDockItem(string title, string contentId, string body, bool canClose)
     {
-        Title = title;
+        _title = title;
         ContentId = contentId;
         _body = body;
-        CanClose = canClose;
+        _canClose = canClose;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public string Title { get; }
+    public string Title
+    {
+        get => _title;
+        set
+        {
+            if (!string.Equals(_title, value, StringComparison.Ordinal))
+            {
+                _title = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     public string ContentId { get; }
 
-    public bool CanClose { get; }
+    public bool CanClose
+    {
+        get => _canClose;
+        set
+        {
+            if (_canClose != value)
+            {
+                _canClose = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     public string Body
     {
@@ -2409,9 +2564,116 @@ internal sealed class ToolkitDockItem : INotifyPropertyChanged
             if (!string.Equals(_body, value, StringComparison.Ordinal))
             {
                 _body = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Body)));
+                OnPropertyChanged();
             }
         }
+    }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+}
+
+internal sealed class ToolkitLayoutUpdateStrategy : ILayoutUpdateStrategy
+{
+    public int BeforeInsertDocumentCount { get; private set; }
+
+    public int AfterInsertDocumentCount { get; private set; }
+
+    public int BeforeInsertAnchorableCount { get; private set; }
+
+    public int AfterInsertAnchorableCount { get; private set; }
+
+    public string LastInsertedDocumentContentId { get; private set; } = string.Empty;
+
+    public string LastInsertedAnchorableContentId { get; private set; } = string.Empty;
+
+    public bool BeforeInsertDocument(
+        LayoutRoot layout,
+        LayoutDocument anchorableToShow,
+        ILayoutContainer destinationContainer)
+    {
+        BeforeInsertDocumentCount++;
+        LastInsertedDocumentContentId = ResolveContentId(anchorableToShow);
+
+        var documentPane = FindFirst<LayoutDocumentPane>(layout.RootPanel) ??
+            destinationContainer as LayoutDocumentPane;
+        if (documentPane == null ||
+            documentPane.Children.Contains(anchorableToShow))
+        {
+            return false;
+        }
+
+        documentPane.Children.Add(anchorableToShow);
+        return true;
+    }
+
+    public void AfterInsertDocument(LayoutRoot layout, LayoutDocument anchorableShown)
+    {
+        AfterInsertDocumentCount++;
+        LastInsertedDocumentContentId = ResolveContentId(anchorableShown, LastInsertedDocumentContentId);
+    }
+
+    public bool BeforeInsertAnchorable(
+        LayoutRoot layout,
+        LayoutAnchorable anchorableToShow,
+        ILayoutContainer destinationContainer)
+    {
+        BeforeInsertAnchorableCount++;
+        LastInsertedAnchorableContentId = ResolveContentId(anchorableToShow);
+
+        var anchorablePane = FindFirst<LayoutAnchorablePane>(layout.RootPanel) ??
+            destinationContainer as LayoutAnchorablePane;
+        if (anchorablePane == null ||
+            anchorablePane.Children.Contains(anchorableToShow))
+        {
+            return false;
+        }
+
+        anchorablePane.Children.Add(anchorableToShow);
+        return true;
+    }
+
+    public void AfterInsertAnchorable(LayoutRoot layout, LayoutAnchorable anchorableShown)
+    {
+        AfterInsertAnchorableCount++;
+        LastInsertedAnchorableContentId = ResolveContentId(anchorableShown, LastInsertedAnchorableContentId);
+    }
+
+    private static string ResolveContentId(LayoutContent content, string fallback = "")
+    {
+        return content.ContentId ??
+            (content.Content as ToolkitDockItem)?.ContentId ??
+            fallback;
+    }
+
+    private static T? FindFirst<T>(ILayoutContainer? container)
+        where T : class
+    {
+        if (container == null)
+        {
+            return null;
+        }
+
+        if (container is T match)
+        {
+            return match;
+        }
+
+        foreach (ILayoutElement child in container.Children)
+        {
+            if (child is ILayoutContainer childContainer)
+            {
+                var childMatch = FindFirst<T>(childContainer);
+                if (childMatch != null)
+                {
+                    return childMatch;
+                }
+            }
+        }
+
+        return null;
     }
 }
 

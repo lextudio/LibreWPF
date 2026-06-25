@@ -5953,6 +5953,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DocumentsSource=\"{Binding SourceDocuments}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("AnchorablesSource=\"{Binding SourceAnchorables}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ActiveContent=\"{Binding SourceActiveContent, Mode=TwoWay}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("LayoutUpdateStrategy=\"{Binding SourceLayoutStrategy}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("TargetType=\"{x:Type xcadc:LayoutItem}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcad:AeroTheme />", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcad:LayoutRoot.LeftSide>", mainWindowXaml, StringComparison.Ordinal);
@@ -6052,7 +6053,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SourceDockManager.ActiveContentChanged", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ViewModel.SourceDocuments", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SourceDockManager.GetLayoutItemFromModel", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ToolkitLayoutUpdateStrategy", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ILayoutUpdateStrategy", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("BeforeInsertDocumentCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AfterInsertAnchorableCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateSourceLayoutUpdateStrategyState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateSourceBackedAvalonDockDynamicMetadata", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AvalonDock generated layout item metadata update", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AddSourceDocument()", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AddSourceAnchorable()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveInputEditorsAsync", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PresentationSource.FromVisual(ActionDropDownContentRoot)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PresentationSource.FromVisual(SplitActionDropDownContentRoot)", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6111,6 +6120,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ResolveCurrentRenderSurfaceGeometry", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("floating document window", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock source-backed documents/anchorables", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AvalonDock layout update strategy and dynamic metadata", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock theme switching", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock document context menu and close cancellation", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("layout replacement events", mainWindowCodeBehind, StringComparison.Ordinal);

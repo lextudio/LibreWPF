@@ -467,7 +467,8 @@
                                        BorderThickness="1"
                                        ActiveContent="{Binding SourceActiveContent, Mode=TwoWay}"
                                        DocumentsSource="{Binding SourceDocuments}"
-                                       AnchorablesSource="{Binding SourceAnchorables}">
+                                       AnchorablesSource="{Binding SourceAnchorables}"
+                                       LayoutUpdateStrategy="{Binding SourceLayoutStrategy}">
                     <xcad:DockingManager.LayoutItemContainerStyle>
                       <Style TargetType="{x:Type xcadc:LayoutItem}">
                         <Setter Property="Title" Value="{Binding Model.Title}" />

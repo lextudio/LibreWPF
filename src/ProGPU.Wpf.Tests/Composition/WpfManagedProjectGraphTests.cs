@@ -5990,6 +5990,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<xcad:DockingManager x:Name=\"DockManager\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcad:DockingManager x:Name=\"SourceDockManager\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcad:DockingManager.DocumentContextMenu>", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcad:DockingManager.AnchorableContextMenu>", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcad:DockingManager.DocumentHeaderTemplate>", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SourceDocumentTitleTemplate", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SourceAnchorableTitleTemplate", mainWindowXaml, StringComparison.Ordinal);
@@ -6074,8 +6075,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AutomationProperties.AutomationId=\"ToolkitDocumentListAutomation\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.AutomationId=\"ToolkitEditorTextBoxAutomation\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DockContextCancelNextCloseMenuItem", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DockAnchorableContextMenu", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DockAnchorContextActivateToolkitMenuItem", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DockAnchorContextTogglePropertyMenuItem", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{x:Static local:ToolkitDockCommands.ActivateEditor}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{x:Static local:ToolkitDockCommands.CloseOverview}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{x:Static local:ToolkitDockCommands.ActivateToolkitPane}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{x:Static local:ToolkitDockCommands.TogglePropertyPane}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{x:Static local:ToolkitDockCommands.CycleDockContent}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{x:Static local:ToolkitDockCommands.CycleDockAnchorable}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{x:Static local:ToolkitDockCommands.CycleAutoHideOverlay}\"", mainWindowXaml, StringComparison.Ordinal);
@@ -6149,6 +6155,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Require<LayoutAnchorablePane>(window, \"SourceAnchorablePane\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<ContextMenu>(window, \"DockDocumentContextMenu\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<MenuItem>(window, \"DockContextCancelNextCloseMenuItem\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<ContextMenu>(window, \"DockAnchorableContextMenu\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<MenuItem>(window, \"DockAnchorContextActivateToolkitMenuItem\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<Button>(window, \"CloseOverviewDocumentButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<Button>(window, \"ReopenOverviewDocumentButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<Button>(window, \"CycleDockThemeButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6312,12 +6320,19 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateOverviewDocumentLifecycleState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateOverviewCloseCanceledState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateAvalonDockDocumentContextMenuState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateAvalonDockAnchorableContextMenuState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ToolkitDockCommands.ActivateEditor", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ToolkitDockCommands.CloseOverview", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ToolkitDockCommands.ActivateToolkitPane", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ToolkitDockCommands.TogglePropertyPane", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ExerciseAvalonDockDocumentContextMenuCommands", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ExerciseAvalonDockAnchorableContextMenuCommands", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLiveAvalonDockAnchorableContextMenuAsync", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("CanExecuteDockContextCommand", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ExecuteDockContextCommand", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDockContextMenuCommandExecutedCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AvalonDockAnchorableContextMenuCommandExecutedCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastAvalonDockAnchorableContextMenuCommand", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ToolkitDockCommands.CycleDockAnchorable", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ToolkitDockCommands.CycleAutoHideOverlay", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ExerciseAvalonDockKeyboardNavigation", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6366,6 +6381,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AvalonDock auto-hide overlay keyboard navigation", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock theme switching", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock document context menu commands and close cancellation", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AvalonDock anchorable context menu commands", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("layout replacement events", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("document close/reopen", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PumpDispatcherUntil", mainWindowCodeBehind, StringComparison.Ordinal);

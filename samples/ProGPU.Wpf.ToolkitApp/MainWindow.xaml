@@ -70,6 +70,12 @@
     <CommandBinding Command="{x:Static local:ToolkitDockCommands.CloseOverview}"
                     CanExecute="CloseOverviewCommand_CanExecute"
                     Executed="CloseOverviewCommand_Executed" />
+    <CommandBinding Command="{x:Static local:ToolkitDockCommands.ActivateToolkitPane}"
+                    CanExecute="ActivateToolkitPaneCommand_CanExecute"
+                    Executed="ActivateToolkitPaneCommand_Executed" />
+    <CommandBinding Command="{x:Static local:ToolkitDockCommands.TogglePropertyPane}"
+                    CanExecute="TogglePropertyPaneCommand_CanExecute"
+                    Executed="TogglePropertyPaneCommand_Executed" />
     <CommandBinding Command="{x:Static local:ToolkitDockCommands.CycleDockContent}"
                     CanExecute="CycleDockContentCommand_CanExecute"
                     Executed="CycleDockContentCommand_Executed" />
@@ -210,6 +216,19 @@
                     IsChecked="{Binding CancelNextOverviewClose, Mode=TwoWay}" />
         </ContextMenu>
       </xcad:DockingManager.DocumentContextMenu>
+      <xcad:DockingManager.AnchorableContextMenu>
+        <ContextMenu x:Name="DockAnchorableContextMenu"
+                     AutomationProperties.AutomationId="ToolkitDockAnchorableContextMenuAutomation">
+          <MenuItem x:Name="DockAnchorContextActivateToolkitMenuItem"
+                    Header="Activate Toolkit pane"
+                    Command="{x:Static local:ToolkitDockCommands.ActivateToolkitPane}"
+                    CommandTarget="{Binding PlacementTarget, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+          <MenuItem x:Name="DockAnchorContextTogglePropertyMenuItem"
+                    Header="Toggle property pane"
+                    Command="{x:Static local:ToolkitDockCommands.TogglePropertyPane}"
+                    CommandTarget="{Binding PlacementTarget, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+        </ContextMenu>
+      </xcad:DockingManager.AnchorableContextMenu>
       <xcad:DockingManager.DocumentHeaderTemplate>
         <DataTemplate>
           <StackPanel Orientation="Horizontal">

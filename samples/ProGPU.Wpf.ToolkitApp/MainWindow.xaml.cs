@@ -51,6 +51,16 @@ public static class ToolkitDockCommands
         nameof(CloseOverview),
         typeof(ToolkitDockCommands));
 
+    public static readonly RoutedUICommand ActivateToolkitPane = new(
+        "Activate Toolkit pane",
+        nameof(ActivateToolkitPane),
+        typeof(ToolkitDockCommands));
+
+    public static readonly RoutedUICommand TogglePropertyPane = new(
+        "Toggle property pane",
+        nameof(TogglePropertyPane),
+        typeof(ToolkitDockCommands));
+
     public static readonly RoutedUICommand CycleDockContent = new(
         "Cycle dock content",
         nameof(CycleDockContent),
@@ -222,6 +232,44 @@ public partial class MainWindow : Window
         }
 
         _viewModel.Status = "Overview document closed";
+        _viewModel.Activity.Add(_viewModel.Status);
+    }
+
+    private void ActivateToolkitPaneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+        ViewModel.AvalonDockAnchorableContextMenuCommandCanExecuteCount++;
+        e.CanExecute = ToolkitPane.IsVisible;
+        e.Handled = true;
+    }
+
+    private void ActivateToolkitPaneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        ActivateToolkitPane();
+        RecordAvalonDockAnchorableContextMenuCommand("ActivateToolkitPane");
+        e.Handled = true;
+    }
+
+    private void TogglePropertyPaneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+        ViewModel.AvalonDockAnchorableContextMenuCommandCanExecuteCount++;
+        e.CanExecute = true;
+        e.Handled = true;
+    }
+
+    private void TogglePropertyPaneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        TogglePropertyPane();
+        RecordAvalonDockAnchorableContextMenuCommand("TogglePropertyPane");
+        e.Handled = true;
+    }
+
+    private void ActivateToolkitPane()
+    {
+        DockManager.ActiveContent = ToolkitPane.Content;
+        SelectAvalonDockAnchorable(ToolkitPane);
+        ToolkitPane.IsActive = true;
+        FocusAvalonDockAnchorableContent(ToolkitPane);
+        _viewModel.Status = "Toolkit pane activated";
         _viewModel.Activity.Add(_viewModel.Status);
     }
 
@@ -505,6 +553,12 @@ public partial class MainWindow : Window
         _viewModel.LastAvalonDockContextMenuCommand = commandName;
     }
 
+    private void RecordAvalonDockAnchorableContextMenuCommand(string commandName)
+    {
+        _viewModel.AvalonDockAnchorableContextMenuCommandExecutedCount++;
+        _viewModel.LastAvalonDockAnchorableContextMenuCommand = commandName;
+    }
+
     private void ReopenOverviewDocumentButton_Click(object sender, RoutedEventArgs e)
     {
         if (!DocumentPane.Children.Contains(OverviewDocument))
@@ -601,6 +655,11 @@ public partial class MainWindow : Window
     }
 
     private void TogglePropertyPaneButton_Click(object sender, RoutedEventArgs e)
+    {
+        TogglePropertyPane();
+    }
+
+    private void TogglePropertyPane()
     {
         if (PropertyPane.IsHidden)
         {
@@ -2336,6 +2395,85 @@ public partial class MainWindow : Window
         }
     }
 
+    internal void ValidateAvalonDockAnchorableContextMenuState(bool expectedOpen)
+    {
+        AssertEqual(expectedOpen, DockAnchorableContextMenu.IsOpen, "AvalonDock anchorable context menu open state");
+        if (DockManager.AnchorableContextMenu != DockAnchorableContextMenu)
+        {
+            throw new InvalidOperationException("Expected AvalonDock DockingManager to expose the sample anchorable context menu.");
+        }
+
+        if (expectedOpen)
+        {
+            var menuSource = PresentationSource.FromVisual(DockAnchorContextActivateToolkitMenuItem);
+            if (menuSource is not HwndSource ||
+                menuSource.CompositionTarget == null)
+            {
+                throw new InvalidOperationException(
+                    "Expected AvalonDock anchorable context menu to be rooted in the portable public HwndSource facade while open.");
+            }
+
+            DockAnchorContextActivateToolkitMenuItem.GetBindingExpression(MenuItem.CommandTargetProperty)?.UpdateTarget();
+            DockAnchorContextTogglePropertyMenuItem.GetBindingExpression(MenuItem.CommandTargetProperty)?.UpdateTarget();
+            AssertEqual((ICommand)ToolkitDockCommands.ActivateToolkitPane, DockAnchorContextActivateToolkitMenuItem.Command, "AvalonDock anchorable context menu activate command");
+            AssertEqual((ICommand)ToolkitDockCommands.TogglePropertyPane, DockAnchorContextTogglePropertyMenuItem.Command, "AvalonDock anchorable context menu toggle property command");
+            AssertEqual((IInputElement)DockManager, DockAnchorContextActivateToolkitMenuItem.CommandTarget, "AvalonDock anchorable context menu activate command target");
+            AssertEqual((IInputElement)DockManager, DockAnchorContextTogglePropertyMenuItem.CommandTarget, "AvalonDock anchorable context menu toggle command target");
+
+            int canExecuteCountBefore = ViewModel.AvalonDockAnchorableContextMenuCommandCanExecuteCount;
+            if (!CanExecuteDockContextCommand(DockAnchorContextActivateToolkitMenuItem) ||
+                !CanExecuteDockContextCommand(DockAnchorContextTogglePropertyMenuItem))
+            {
+                throw new InvalidOperationException("Expected AvalonDock anchorable context menu commands to be executable.");
+            }
+
+            if (ViewModel.AvalonDockAnchorableContextMenuCommandCanExecuteCount <= canExecuteCountBefore)
+            {
+                throw new InvalidOperationException("Expected AvalonDock anchorable context menu commands to route CanExecute through the window command bindings.");
+            }
+        }
+    }
+
+    internal void ExerciseAvalonDockAnchorableContextMenuCommands()
+    {
+        bool closeMenuAfterExercise = false;
+        if (!DockAnchorableContextMenu.IsOpen)
+        {
+            DockAnchorableContextMenu.PlacementTarget = DockManager;
+            DockAnchorableContextMenu.IsOpen = true;
+            closeMenuAfterExercise = true;
+        }
+
+        if (PropertyPane.IsHidden)
+        {
+            PropertyPane.Show();
+            Dispatcher.Invoke(static () => { }, DispatcherPriority.Background);
+        }
+
+        ValidateAvalonDockAnchorableContextMenuState(expectedOpen: true);
+
+        int executedCountBefore = ViewModel.AvalonDockAnchorableContextMenuCommandExecutedCount;
+        ExecuteDockContextCommand(DockAnchorContextActivateToolkitMenuItem);
+        AssertEqual(executedCountBefore + 1, ViewModel.AvalonDockAnchorableContextMenuCommandExecutedCount, "AvalonDock anchorable context menu command executed count");
+        AssertEqual("ActivateToolkitPane", ViewModel.LastAvalonDockAnchorableContextMenuCommand, "AvalonDock last anchorable context menu command");
+        AssertEqual(true, ToolkitPane.IsActive, "AvalonDock anchorable context menu activated Toolkit pane");
+        AssertEqual("Toolkit pane activated", ViewModel.Status, "AvalonDock anchorable context menu activate status");
+
+        ExecuteDockContextCommand(DockAnchorContextTogglePropertyMenuItem);
+        AssertEqual(executedCountBefore + 2, ViewModel.AvalonDockAnchorableContextMenuCommandExecutedCount, "AvalonDock anchorable context menu toggle command executed count");
+        AssertEqual("TogglePropertyPane", ViewModel.LastAvalonDockAnchorableContextMenuCommand, "AvalonDock last anchorable context menu toggle command");
+        AssertEqual(true, PropertyPane.IsHidden, "AvalonDock anchorable context menu hidden property pane");
+        AssertEqual("Property pane hidden", ViewModel.Status, "AvalonDock anchorable context menu toggle status");
+
+        PropertyPane.Show();
+        Dispatcher.Invoke(static () => { }, DispatcherPriority.Background);
+
+        if (closeMenuAfterExercise)
+        {
+            DockAnchorableContextMenu.IsOpen = false;
+        }
+    }
+
     internal void ExerciseAvalonDockKeyboardNavigation()
     {
         var keyBinding = InputBindings
@@ -3362,6 +3500,7 @@ public partial class MainWindow : Window
 
         await ValidateLivePopupControlsAsync(liveHost);
         await ValidateLiveAvalonDockDocumentContextMenuAsync(liveHost);
+        await ValidateLiveAvalonDockAnchorableContextMenuAsync(liveHost);
         await ValidateLiveInputEditorsAsync(liveHost);
         await ValidateLiveToolkitResourceThemeAsync(liveHost);
         await ValidateLiveWizardAsync(liveHost);
@@ -3502,7 +3641,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit resource theme updates, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit/AvalonDock automation peers, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock keyboard navigation, AvalonDock anchorable keyboard navigation, AvalonDock auto-hide overlay keyboard navigation, AvalonDock theme switching, AvalonDock document context menu commands and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit resource theme updates, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit/AvalonDock automation peers, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock keyboard navigation, AvalonDock anchorable keyboard navigation, AvalonDock auto-hide overlay keyboard navigation, AvalonDock theme switching, AvalonDock document context menu commands and close cancellation, AvalonDock anchorable context menu commands, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -3634,6 +3773,43 @@ public partial class MainWindow : Window
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () => ValidateAvalonDockDocumentContextMenuState(expectedOpen: false),
+            DispatcherPriority.Send);
+    }
+
+    private async Task ValidateLiveAvalonDockAnchorableContextMenuAsync(object liveHost)
+    {
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                DockAnchorableContextMenu.PlacementTarget = DockManager;
+                DockAnchorableContextMenu.IsOpen = true;
+            },
+            DispatcherPriority.Send);
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => DockAnchorableContextMenu.IsOpen,
+            "Toolkit live AvalonDock anchorable context menu open state");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                ValidateAvalonDockAnchorableContextMenuState(expectedOpen: true);
+                ExerciseAvalonDockAnchorableContextMenuCommands();
+            },
+            DispatcherPriority.Send);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => DockAnchorableContextMenu.IsOpen = false,
+            DispatcherPriority.Send);
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => !DockAnchorableContextMenu.IsOpen,
+            "Toolkit live AvalonDock anchorable context menu closed state");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => ValidateAvalonDockAnchorableContextMenuState(expectedOpen: false),
             DispatcherPriority.Send);
     }
 
@@ -4609,6 +4785,9 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private int _avalonDockContextMenuCommandCanExecuteCount;
     private int _avalonDockContextMenuCommandExecutedCount;
     private string _lastAvalonDockContextMenuCommand = string.Empty;
+    private int _avalonDockAnchorableContextMenuCommandCanExecuteCount;
+    private int _avalonDockAnchorableContextMenuCommandExecutedCount;
+    private string _lastAvalonDockAnchorableContextMenuCommand = string.Empty;
     private int _avalonDockKeyboardNavigationCanExecuteCount;
     private int _avalonDockKeyboardNavigationCount;
     private string _lastAvalonDockKeyboardNavigationTarget = string.Empty;
@@ -5728,6 +5907,45 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         }
     }
 
+    public int AvalonDockAnchorableContextMenuCommandCanExecuteCount
+    {
+        get => _avalonDockAnchorableContextMenuCommandCanExecuteCount;
+        set
+        {
+            if (_avalonDockAnchorableContextMenuCommandCanExecuteCount != value)
+            {
+                _avalonDockAnchorableContextMenuCommandCanExecuteCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int AvalonDockAnchorableContextMenuCommandExecutedCount
+    {
+        get => _avalonDockAnchorableContextMenuCommandExecutedCount;
+        set
+        {
+            if (_avalonDockAnchorableContextMenuCommandExecutedCount != value)
+            {
+                _avalonDockAnchorableContextMenuCommandExecutedCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string LastAvalonDockAnchorableContextMenuCommand
+    {
+        get => _lastAvalonDockAnchorableContextMenuCommand;
+        set
+        {
+            if (!string.Equals(_lastAvalonDockAnchorableContextMenuCommand, value, StringComparison.Ordinal))
+            {
+                _lastAvalonDockAnchorableContextMenuCommand = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public int AvalonDockKeyboardNavigationCanExecuteCount
     {
         get => _avalonDockKeyboardNavigationCanExecuteCount;
@@ -6389,6 +6607,9 @@ internal static class ToolkitSelfTest
         Require<MenuItem>(window, "DockContextActivateEditorMenuItem");
         Require<MenuItem>(window, "DockContextCloseOverviewMenuItem");
         Require<MenuItem>(window, "DockContextCancelNextCloseMenuItem");
+        Require<ContextMenu>(window, "DockAnchorableContextMenu");
+        Require<MenuItem>(window, "DockAnchorContextActivateToolkitMenuItem");
+        Require<MenuItem>(window, "DockAnchorContextTogglePropertyMenuItem");
         Require<Button>(window, "ActivateEditorButton");
         Require<Button>(window, "CloseOverviewDocumentButton");
         Require<Button>(window, "ReopenOverviewDocumentButton");
@@ -6559,6 +6780,24 @@ internal static class ToolkitSelfTest
                 TimeSpan.FromSeconds(2),
                 "AvalonDock document context menu closed state");
             window.ValidateAvalonDockDocumentContextMenuState(expectedOpen: false);
+
+            window.DockAnchorableContextMenu.PlacementTarget = window.DockManager;
+            window.DockAnchorableContextMenu.IsOpen = true;
+            PumpDispatcherUntil(
+                window,
+                () => window.DockAnchorableContextMenu.IsOpen,
+                TimeSpan.FromSeconds(2),
+                "AvalonDock anchorable context menu open state");
+            window.ValidateAvalonDockAnchorableContextMenuState(expectedOpen: true);
+            window.ExerciseAvalonDockAnchorableContextMenuCommands();
+            window.DockAnchorableContextMenu.IsOpen = false;
+            PumpDispatcherUntil(
+                window,
+                () => !window.DockAnchorableContextMenu.IsOpen,
+                TimeSpan.FromSeconds(2),
+                "AvalonDock anchorable context menu closed state");
+            window.ValidateAvalonDockAnchorableContextMenuState(expectedOpen: false);
+
             window.ExerciseAvalonDockKeyboardNavigation();
             window.ExerciseAvalonDockAnchorableKeyboardNavigation();
             window.ExerciseAvalonDockAutoHideOverlayKeyboardNavigation();

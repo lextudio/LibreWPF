@@ -110,6 +110,11 @@ public partial class MainWindow : Window
         _viewModel.Activity.Add(_viewModel.Status);
     }
 
+    private void ExerciseSourceTabGroupsButton_Click(object sender, RoutedEventArgs e)
+    {
+        ExerciseSourceBackedAvalonDockTabGroupCommands();
+    }
+
     private void ActivateEditorButton_Click(object sender, RoutedEventArgs e)
     {
         EditorDocument.IsSelected = true;
@@ -1305,7 +1310,102 @@ public partial class MainWindow : Window
             }
 
             ValidateSourceLayoutUpdateStrategyState(requireInsertedCallbacks: true);
+            ExerciseSourceBackedAvalonDockTabGroupCommands();
         }
+    }
+
+    internal void ExerciseSourceBackedAvalonDockTabGroupCommands()
+    {
+        var target = EnsureSecondSourceDocument();
+        var generatedDocument = FindGeneratedDocument(target);
+        if (SourceDockManager.GetLayoutItemFromModel(generatedDocument) is not AvalonDockDocumentItem documentItem)
+        {
+            throw new InvalidOperationException("Expected source-backed AvalonDock document to expose a generated document item.");
+        }
+
+        ExecuteSourceDocumentTabGroupRoundTrip(
+            documentItem,
+            generatedDocument,
+            documentItem.NewHorizontalTabGroupCommand,
+            Orientation.Vertical,
+            "new horizontal tab group");
+        ExecuteSourceDocumentTabGroupRoundTrip(
+            documentItem,
+            generatedDocument,
+            documentItem.NewVerticalTabGroupCommand,
+            Orientation.Horizontal,
+            "new vertical tab group");
+
+        ViewModel.SourceTabGroupCommandCount += 2;
+        ViewModel.Status = $"Exercised source tab groups {ViewModel.SourceTabGroupCommandCount}";
+        ViewModel.Activity.Add(ViewModel.Status);
+    }
+
+    private ToolkitDockItem EnsureSecondSourceDocument()
+    {
+        if (ViewModel.SourceDocuments.Count >= 2)
+        {
+            return ViewModel.SourceDocuments[1];
+        }
+
+        int documentCountBeforeAdd = SourceDocumentPane.ChildrenCount;
+        var addedDocument = ViewModel.AddSourceDocument();
+        PumpDispatcherUntil(
+            this,
+            () => SourceDocumentPane.ChildrenCount == documentCountBeforeAdd + 1,
+            TimeSpan.FromSeconds(2),
+            "AvalonDock source document insertion for tab-group commands");
+        return addedDocument;
+    }
+
+    private void ExecuteSourceDocumentTabGroupRoundTrip(
+        AvalonDockDocumentItem documentItem,
+        LayoutDocument document,
+        ICommand? newGroupCommand,
+        Orientation expectedOrientation,
+        string description)
+    {
+        if (newGroupCommand == null || !newGroupCommand.CanExecute(null))
+        {
+            throw new InvalidOperationException($"Expected AvalonDock {description} command to be executable.");
+        }
+
+        if (document.Parent is not LayoutDocumentPane originalPane)
+        {
+            throw new InvalidOperationException("Expected AvalonDock source document to start in a document pane.");
+        }
+
+        int originalPaneChildren = originalPane.ChildrenCount;
+        newGroupCommand.Execute(null);
+
+        if (document.Parent is not LayoutDocumentPane generatedPane ||
+            ReferenceEquals(generatedPane, originalPane) ||
+            generatedPane.Parent is not LayoutDocumentPaneGroup generatedGroup)
+        {
+            throw new InvalidOperationException($"Expected AvalonDock {description} command to create a sibling document pane.");
+        }
+
+        AssertEqual(expectedOrientation, generatedGroup.Orientation, $"AvalonDock {description} group orientation");
+        AssertEqual(1, generatedPane.ChildrenCount, $"AvalonDock {description} generated pane child count");
+        if (!generatedPane.Children.Contains(document))
+        {
+            throw new InvalidOperationException($"Expected AvalonDock {description} command to move the source document into the generated pane.");
+        }
+
+        if (documentItem.MoveToPreviousTabGroupCommand == null ||
+            !documentItem.MoveToPreviousTabGroupCommand.CanExecute(null))
+        {
+            throw new InvalidOperationException("Expected AvalonDock move-to-previous-tab-group command to be executable after tab-group creation.");
+        }
+
+        documentItem.MoveToPreviousTabGroupCommand.Execute(null);
+        PumpDispatcherUntil(
+            this,
+            () => ReferenceEquals(document.Parent, originalPane) &&
+                  originalPane.Children.Contains(document),
+            TimeSpan.FromSeconds(2),
+            $"AvalonDock {description} move-to-previous round trip");
+        AssertEqual(originalPaneChildren, originalPane.ChildrenCount, $"AvalonDock {description} restored pane child count");
     }
 
     internal void ValidateSourceLayoutUpdateStrategyState(bool requireInsertedCallbacks)
@@ -1888,7 +1988,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit zoombox and magnifier, Toolkit panels, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit zoombox and magnifier, Toolkit panels, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -2701,6 +2801,7 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private object? _sourceActiveContent;
     private int _sourceActiveContentChangedCount;
     private string _lastSourceActiveTitle = string.Empty;
+    private int _sourceTabGroupCommandCount;
     private string _activeDockThemeName = "Aero";
     private int _dockThemeSwitchCount;
     private string _status = "Toolkit sample ready";
@@ -3609,6 +3710,19 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         }
     }
 
+    public int SourceTabGroupCommandCount
+    {
+        get => _sourceTabGroupCommandCount;
+        set
+        {
+            if (_sourceTabGroupCommandCount != value)
+            {
+                _sourceTabGroupCommandCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public string ActiveDockThemeName
     {
         get => _activeDockThemeName;
@@ -4041,6 +4155,7 @@ internal static class ToolkitSelfTest
         Require<PropertyGrid>(window, "DocumentPropertyGrid");
         Require<Button>(window, "AddSourceDocumentButton");
         Require<Button>(window, "ActivateSourceToolButton");
+        Require<Button>(window, "ExerciseSourceTabGroupsButton");
         Require<DockingManager>(window, "SourceDockManager");
         Require<LayoutDocumentPane>(window, "SourceDocumentPane");
         Require<LayoutAnchorablePane>(window, "SourceAnchorablePane");

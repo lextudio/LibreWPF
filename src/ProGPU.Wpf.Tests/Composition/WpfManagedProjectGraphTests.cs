@@ -6021,6 +6021,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DockContextCancelNextCloseMenuItem", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("AddSourceDocumentButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ActivateSourceToolButton", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ExerciseSourceTabGroupsButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SourceDocumentPane", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SourceAnchorablePane", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ReopenOverviewDocumentButton", mainWindowXaml, StringComparison.Ordinal);
@@ -6081,6 +6082,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Require<Button>(window, \"CloseOverviewDocumentButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<Button>(window, \"ReopenOverviewDocumentButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<Button>(window, \"CycleDockThemeButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<Button>(window, \"ExerciseSourceTabGroupsButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitPopupState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitInputEditorState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitWizardState", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6125,6 +6127,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CollectionEntryTypes", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("CollectionDialogUpdateCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateSourceBackedAvalonDockState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ExerciseSourceBackedAvalonDockTabGroupCommands", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ExecuteSourceDocumentTabGroupRoundTrip", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("documentItem.NewHorizontalTabGroupCommand", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("documentItem.NewVerticalTabGroupCommand", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MoveToPreviousTabGroupCommand.Execute", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SourceTabGroupCommandCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveSourceBackedAvalonDockAsync", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateAvalonDockThemeState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveAvalonDockThemeSwitchingAsync", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6211,6 +6219,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AvalonDock source-backed documents/anchorables", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock layout update strategy and dynamic metadata", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock title selectors and layout item commands", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AvalonDock tab group commands", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock theme switching", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock document context menu and close cancellation", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("layout replacement events", mainWindowCodeBehind, StringComparison.Ordinal);

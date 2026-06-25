@@ -737,8 +737,14 @@
                     <Button x:Name="ActivateSourceToolButton"
                             Content="Activate source tool"
                             MinWidth="120"
+                            Margin="0,0,6,0"
                             Padding="8,4"
                             Click="ActivateSourceToolButton_Click" />
+                    <Button x:Name="ExerciseSourceTabGroupsButton"
+                            Content="Tab group commands"
+                            MinWidth="132"
+                            Padding="8,4"
+                            Click="ExerciseSourceTabGroupsButton_Click" />
                   </WrapPanel>
                   <xcad:DockingManager x:Name="SourceDockManager"
                                        Height="220"

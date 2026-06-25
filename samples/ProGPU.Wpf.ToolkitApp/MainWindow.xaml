@@ -697,6 +697,16 @@
                               Margin="0,0,6,0"
                               Padding="8,4"
                               Click="SelectCollectionEntryButton_Click" />
+                      <xctk:CollectionControlButton x:Name="OpenCollectionDialogButton"
+                                                    Content="Open dialog"
+                                                    MinWidth="96"
+                                                    Margin="0,0,6,0"
+                                                    Padding="8,4"
+                                                    ItemsSource="{Binding CollectionEntries}"
+                                                    ItemsSourceType="{x:Type local:ToolkitCollectionEntry}"
+                                                    NewItemTypes="{Binding CollectionEntryTypes}"
+                                                    IsReadOnly="False"
+                                                    CollectionUpdated="OpenCollectionDialogButton_CollectionUpdated" />
                       <TextBlock x:Name="CollectionControlStatusText"
                                  VerticalAlignment="Center"
                                  Foreground="#5E6A73"

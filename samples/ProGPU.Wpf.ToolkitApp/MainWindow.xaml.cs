@@ -671,6 +671,14 @@ public partial class MainWindow : Window
         SelectSecondToolkitCollectionEntry();
     }
 
+    private void OpenCollectionDialogButton_CollectionUpdated(object sender, RoutedEventArgs e)
+    {
+        ViewModel.CollectionDialogUpdateCount++;
+        ViewModel.CollectionControlStatus = $"Dialog updated {ViewModel.CollectionEntries.Count} entries";
+        ViewModel.Status = ViewModel.CollectionControlStatus;
+        ViewModel.Activity.Add(ViewModel.CollectionControlStatus);
+    }
+
     internal ToolkitCollectionEntry AddToolkitCollectionEntry()
     {
         int index = ViewModel.CollectionEntries.Count + 1;
@@ -720,6 +728,7 @@ public partial class MainWindow : Window
         bool persistedChanges = ToolkitCollectionControl.PersistChanges();
         AssertEqual(false, persistedChanges, "Toolkit CollectionControl persisted changes state after external collection update");
         ValidateToolkitCollectionControlState(expectLoaded: true);
+        ExerciseToolkitCollectionDialogButton();
     }
 
     internal void ValidateToolkitCollectionControlState(bool expectLoaded)
@@ -751,6 +760,150 @@ public partial class MainWindow : Window
             {
                 throw new InvalidOperationException("Expected loaded Toolkit CollectionControl and inner PropertyGrid to participate in layout.");
             }
+        }
+    }
+
+    internal void ExerciseToolkitCollectionDialogButton()
+    {
+        ValidateToolkitCollectionDialogButtonState(expectLoaded: true);
+
+        using var dialogScope = CreateToolkitCollectionControlDialog();
+        ValidateToolkitCollectionDialogInstance(dialogScope.Dialog, expectLoaded: false);
+
+        int updateCountBefore = ViewModel.CollectionDialogUpdateCount;
+        OpenCollectionDialogButton.RaiseEvent(new RoutedEventArgs(CollectionControlButton.CollectionUpdatedEvent, OpenCollectionDialogButton));
+        AssertEqual(updateCountBefore + 1, ViewModel.CollectionDialogUpdateCount, "Toolkit CollectionControlButton collection-updated event count");
+        AssertEqual($"Dialog updated {ViewModel.CollectionEntries.Count} entries", ViewModel.CollectionControlStatus, "Toolkit CollectionControlButton collection-updated status");
+
+        if (!IsLoaded)
+        {
+            return;
+        }
+
+        bool sawDialog = false;
+        var closeTimer = new DispatcherTimer(DispatcherPriority.Send, Dispatcher)
+        {
+            Interval = TimeSpan.FromMilliseconds(16)
+        };
+
+        closeTimer.Tick += (_, _) =>
+        {
+            var dialog = Application.Current.Windows
+                .OfType<CollectionControlDialog>()
+                .FirstOrDefault(window => !ReferenceEquals(window, this));
+            if (dialog is null)
+            {
+                return;
+            }
+
+            sawDialog = true;
+            ValidateToolkitCollectionDialogInstance(dialog, expectLoaded: true);
+            dialog.Close();
+            closeTimer.Stop();
+        };
+
+        closeTimer.Start();
+        try
+        {
+            OpenCollectionDialogButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, OpenCollectionDialogButton));
+        }
+        finally
+        {
+            closeTimer.Stop();
+        }
+
+        if (!sawDialog)
+        {
+            throw new InvalidOperationException("Expected Toolkit CollectionControlButton click to open a CollectionControlDialog.");
+        }
+
+        AssertEqual(updateCountBefore + 1, ViewModel.CollectionDialogUpdateCount, "Toolkit CollectionControlButton canceled dialog update count");
+    }
+
+    internal void ValidateToolkitCollectionDialogButtonState(bool expectLoaded)
+    {
+        if (!ReferenceEquals(OpenCollectionDialogButton.ItemsSource, ViewModel.CollectionEntries))
+        {
+            throw new InvalidOperationException("Expected Toolkit CollectionControlButton ItemsSource to bind the view-model collection.");
+        }
+
+        AssertEqual(typeof(ToolkitCollectionEntry), OpenCollectionDialogButton.ItemsSourceType, "Toolkit CollectionControlButton items source type");
+        AssertEqual(false, OpenCollectionDialogButton.IsReadOnly, "Toolkit CollectionControlButton read-only state");
+        AssertEqual("Open dialog", Convert.ToString(OpenCollectionDialogButton.Content, CultureInfo.InvariantCulture), "Toolkit CollectionControlButton content");
+
+        if (OpenCollectionDialogButton.NewItemTypes is null ||
+            !OpenCollectionDialogButton.NewItemTypes.OfType<Type>().Contains(typeof(ToolkitCollectionEntry)))
+        {
+            throw new InvalidOperationException("Expected Toolkit CollectionControlButton NewItemTypes to include the sample entry type.");
+        }
+
+        if (expectLoaded)
+        {
+            OpenCollectionDialogButton.ApplyTemplate();
+            OpenCollectionDialogButton.UpdateLayout();
+            if (OpenCollectionDialogButton.ActualWidth <= 0 ||
+                OpenCollectionDialogButton.ActualHeight <= 0)
+            {
+                throw new InvalidOperationException("Expected loaded Toolkit CollectionControlButton to participate in layout.");
+            }
+        }
+    }
+
+    private ToolkitCollectionDialogScope CreateToolkitCollectionControlDialog()
+    {
+        var dialog = new CollectionControlDialog
+        {
+            ItemsSource = ViewModel.CollectionEntries,
+            ItemsSourceType = typeof(ToolkitCollectionEntry),
+            NewItemTypes = ViewModel.CollectionEntryTypes.ToList(),
+            IsReadOnly = false,
+            EditorDefinitions = OpenCollectionDialogButton.EditorDefinitions
+        };
+
+        return new ToolkitCollectionDialogScope(dialog);
+    }
+
+    private void ValidateToolkitCollectionDialogInstance(CollectionControlDialog dialog, bool expectLoaded)
+    {
+        if (!ReferenceEquals(dialog.ItemsSource, ViewModel.CollectionEntries))
+        {
+            throw new InvalidOperationException("Expected Toolkit CollectionControlDialog ItemsSource to bind the view-model collection.");
+        }
+
+        AssertEqual(typeof(ToolkitCollectionEntry), dialog.ItemsSourceType, "Toolkit CollectionControlDialog items source type");
+        AssertEqual(false, dialog.IsReadOnly, "Toolkit CollectionControlDialog read-only state");
+        if (dialog.NewItemTypes is null ||
+            !dialog.NewItemTypes.OfType<Type>().Contains(typeof(ToolkitCollectionEntry)))
+        {
+            throw new InvalidOperationException("Expected Toolkit CollectionControlDialog NewItemTypes to include the sample entry type.");
+        }
+
+        var innerControl = dialog.CollectionControl;
+        if (innerControl is null)
+        {
+            throw new InvalidOperationException("Expected Toolkit CollectionControlDialog to create an embedded CollectionControl.");
+        }
+
+        innerControl.ApplyTemplate();
+        dialog.UpdateLayout();
+        innerControl.UpdateLayout();
+
+        if (!expectLoaded)
+        {
+            return;
+        }
+
+        if (!ReferenceEquals(innerControl.ItemsSource, ViewModel.CollectionEntries))
+        {
+            throw new InvalidOperationException("Expected Toolkit CollectionControlDialog embedded CollectionControl to bind ItemsSource.");
+        }
+
+        AssertEqual(typeof(ToolkitCollectionEntry), innerControl.ItemsSourceType, "Toolkit CollectionControlDialog embedded items source type");
+        AssertEqual(false, innerControl.IsReadOnly, "Toolkit CollectionControlDialog embedded read-only state");
+        if (innerControl.NewItemTypes is null ||
+            !innerControl.NewItemTypes.OfType<Type>().Contains(typeof(ToolkitCollectionEntry)))
+        {
+            throw new InvalidOperationException("Expected Toolkit CollectionControlDialog embedded NewItemTypes to include the sample entry type.");
         }
     }
 
@@ -1735,7 +1888,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit zoombox and magnifier, Toolkit panels, Toolkit collection control, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit zoombox and magnifier, Toolkit panels, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -2096,6 +2249,7 @@ public partial class MainWindow : Window
             {
                 AssertEqual($"Added Entry {countBefore + 1}", ViewModel.CollectionControlStatus, "Toolkit live CollectionControl add status");
                 ValidateToolkitCollectionControlState(expectLoaded: true);
+                ValidateToolkitCollectionDialogButtonState(expectLoaded: true);
             },
             DispatcherPriority.Send);
 
@@ -2108,6 +2262,7 @@ public partial class MainWindow : Window
                 AssertEqual(ViewModel.SelectedCollectionEntry, ToolkitCollectionControl.SelectedItem, "Toolkit live CollectionControl selected item");
                 AssertEqual($"Selected {ViewModel.CollectionEntries[1].Name}", ViewModel.CollectionControlStatus, "Toolkit live CollectionControl select status");
                 ValidateToolkitCollectionControlState(expectLoaded: true);
+                ValidateToolkitCollectionDialogButtonState(expectLoaded: true);
             },
             DispatcherPriority.Send);
     }
@@ -2525,6 +2680,7 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private string _zoomboxStatus = "Zoombox idle";
     private ToolkitCollectionEntry _selectedCollectionEntry = null!;
     private string _collectionControlStatus = "CollectionControl idle";
+    private int _collectionDialogUpdateCount;
     private int _wizardPageChanges;
     private int _wizardFinishes;
     private int _wizardCancels;
@@ -3180,6 +3336,19 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         }
     }
 
+    public int CollectionDialogUpdateCount
+    {
+        get => _collectionDialogUpdateCount;
+        set
+        {
+            if (_collectionDialogUpdateCount != value)
+            {
+                _collectionDialogUpdateCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public int WizardPageChanges
     {
         get => _wizardPageChanges;
@@ -3626,6 +3795,24 @@ public sealed class ToolkitCollectionEntry : INotifyPropertyChanged
     }
 }
 
+internal sealed class ToolkitCollectionDialogScope : IDisposable
+{
+    public ToolkitCollectionDialogScope(CollectionControlDialog dialog)
+    {
+        Dialog = dialog;
+    }
+
+    public CollectionControlDialog Dialog { get; }
+
+    public void Dispose()
+    {
+        if (Dialog.IsVisible)
+        {
+            Dialog.Close();
+        }
+    }
+}
+
 internal sealed class ToolkitLayoutUpdateStrategy : ILayoutUpdateStrategy
 {
     public int BeforeInsertDocumentCount { get; private set; }
@@ -3849,6 +4036,7 @@ internal static class ToolkitSelfTest
         Require<CollectionControl>(window, "ToolkitCollectionControl");
         Require<Button>(window, "AddCollectionEntryButton");
         Require<Button>(window, "SelectCollectionEntryButton");
+        Require<CollectionControlButton>(window, "OpenCollectionDialogButton");
         Require<TextBlock>(window, "CollectionControlStatusText");
         Require<PropertyGrid>(window, "DocumentPropertyGrid");
         Require<Button>(window, "AddSourceDocumentButton");
@@ -3945,6 +4133,7 @@ internal static class ToolkitSelfTest
         window.ValidateToolkitZoomboxAndMagnifierState(expectLoaded);
         window.ValidateToolkitPanelState(expectLoaded);
         window.ValidateToolkitCollectionControlState(expectLoaded);
+        window.ValidateToolkitCollectionDialogButtonState(expectLoaded);
         window.ValidateSourceBackedAvalonDockState(mutateSources: true);
 
         if (expectLoaded)

@@ -400,7 +400,7 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
-    public void HostInputFromNonDispatcherThreadQueuesInputAndRequestsRenderAfterProcessing()
+    public void HostInputFromNonDispatcherThreadQueuesInputAndRenderWakeupProcessesIt()
     {
         var scheduler = new TestRenderScheduler();
         using var host = new ProGpuWpfWindowHost
@@ -419,17 +419,16 @@ public sealed class WpfPortableWindowActivationTests
         var args = new WpfInputEventArgs(WpfInputEventKind.MouseDown, x: 12, y: 24, button: WpfMouseButton.Left);
         RaiseHostInputEvent(host, args);
 
-        Assert.Equal(0, window.InputCount);
         Assert.Equal(1, window.Dispatcher.BeginInvokeCount);
         Assert.Equal(0, window.Dispatcher.InvokeCount);
-        Assert.True(scheduler.RequestCount > requestCountBeforeInput);
-        int requestCountBeforeQueuedInput = scheduler.RequestCount;
-
-        window.Dispatcher.InvokeQueuedCallback();
-
         Assert.Equal(1, window.InputCount);
         Assert.Same(args, window.LastInputArgs);
-        Assert.True(scheduler.RequestCount > requestCountBeforeQueuedInput);
+        Assert.Contains("Input", window.FlushedPriorities);
+        Assert.Contains("Render", window.FlushedPriorities);
+        Assert.True(
+            window.FlushedPriorities.IndexOf("Input") < window.FlushedPriorities.IndexOf("Render"),
+            "Input-priority WPF work must run before render-priority work on a render wakeup.");
+        Assert.True(scheduler.RequestCount > requestCountBeforeInput);
     }
 
     [Fact]

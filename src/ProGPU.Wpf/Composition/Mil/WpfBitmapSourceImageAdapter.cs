@@ -247,9 +247,15 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
 
     private static bool IsUsableInContext(GpuTexture texture, WgpuContext? context)
     {
+        var textureContext = texture.Context;
+        if (textureContext == null)
+        {
+            return !texture.IsDisposed;
+        }
+
         return !texture.IsDisposed
-            && !texture.Context.IsDisposed
-            && (context == null || ReferenceEquals(texture.Context, context));
+            && !textureContext.IsDisposed
+            && (context == null || ReferenceEquals(textureContext, context));
     }
 
     private sealed class AdaptedTextureCache

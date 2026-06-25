@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Globalization;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Media;
@@ -681,7 +682,7 @@ public sealed class WpfReplayToProGpuCommandTests
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
         var command = Assert.Single(nativeContext.Commands);
         Assert.Equal(RenderCommandType.DrawLine, command.Type);
-        AssertNativeDashPattern(command.Pen, new[] { 0.0, 4.0 });
+        AssertNativeDashPattern(command.Pen, new[] { 0.0, 2.0 });
     }
 
     [Fact]
@@ -711,7 +712,7 @@ public sealed class WpfReplayToProGpuCommandTests
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
         var command = Assert.Single(nativeContext.Commands);
         Assert.Equal(RenderCommandType.DrawLine, command.Type);
-        AssertNativeDashPattern(command.Pen, new[] { 2.0, 2.0 });
+        AssertNativeDashPattern(command.Pen, new[] { 1.0, 1.0 });
         Assert.Equal(global::ProGPU.Vector.PenLineCap.Round, command.Pen!.DashCap);
     }
 
@@ -742,7 +743,7 @@ public sealed class WpfReplayToProGpuCommandTests
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
         var command = Assert.Single(nativeContext.Commands);
         Assert.Equal(RenderCommandType.DrawLine, command.Type);
-        AssertNativeDashPattern(command.Pen, new[] { 2.0, 2.0 });
+        AssertNativeDashPattern(command.Pen, new[] { 1.0, 1.0 });
         Assert.Equal(global::ProGPU.Vector.PenLineCap.Triangle, command.Pen!.DashCap);
     }
 
@@ -2526,11 +2527,13 @@ public sealed class WpfReplayToProGpuCommandTests
 
     private sealed class FakeBitmapSource : System.Windows.Media.Imaging.BitmapSource
     {
+        private static readonly GpuTexture s_texture = (GpuTexture)RuntimeHelpers.GetUninitializedObject(typeof(GpuTexture));
+
         public override int PixelWidth => 1;
 
         public override int PixelHeight => 1;
 
-        public override ProGPU.Backend.GpuTexture GpuTexture => null!;
+        public override GpuTexture GpuTexture => s_texture;
     }
 
     private sealed class FakeGeometryDrawing

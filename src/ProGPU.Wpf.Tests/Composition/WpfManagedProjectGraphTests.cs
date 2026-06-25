@@ -5884,12 +5884,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("s_adaptedTextures.GetValue(mediaSource, static _ => new AdaptedTextureCache())", adapter, StringComparison.Ordinal);
         Assert.Contains("private static WgpuContext? ResolveCurrentGpuContext()", adapter, StringComparison.Ordinal);
         Assert.Contains("private static bool IsUsableInContext(GpuTexture texture, WgpuContext? context)", adapter, StringComparison.Ordinal);
-        Assert.Contains("ReferenceEquals(texture.Context, context)", adapter, StringComparison.Ordinal);
+        Assert.Contains("var textureContext = texture.Context", adapter, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(textureContext, context)", adapter, StringComparison.Ordinal);
         Assert.Contains("private sealed class AdaptedTextureCache", adapter, StringComparison.Ordinal);
         Assert.Contains("private readonly Dictionary<WgpuContext, GpuTexture> _texturesByContext", adapter, StringComparison.Ordinal);
 
         Assert.Contains("private bool IsTextureBindable(GpuTexture? texture)", compositor, StringComparison.Ordinal);
-        Assert.Contains("ReferenceEquals(texture.Context, _context)", compositor, StringComparison.Ordinal);
+        Assert.Contains("var textureContext = texture?.Context", compositor, StringComparison.Ordinal);
+        Assert.Contains("textureContext != null", compositor, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(textureContext, _context)", compositor, StringComparison.Ordinal);
         Assert.Contains("texture.TexturePtr != null", compositor, StringComparison.Ordinal);
         Assert.Contains("texture.ViewPtr != null", compositor, StringComparison.Ordinal);
         Assert.Contains("dc.Type == DrawCallType.Texture && IsTextureBindable(dc.Texture)", compositor, StringComparison.Ordinal);

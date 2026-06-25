@@ -1011,6 +1011,7 @@ public partial class MainWindow : Window
         AssertEqual(updateCountBefore + 1, ViewModel.CollectionDialogUpdateCount, "Toolkit CollectionControlButton canceled dialog update count");
 
         ExerciseToolkitCollectionDialogOkPersistence(updateCountBefore + 1);
+        ExerciseToolkitCollectionDialogCancelRollback(updateCountBefore + 2);
     }
 
     internal void ExerciseToolkitCollectionDialogOkPersistence(int updateCountBefore)
@@ -1070,6 +1071,83 @@ public partial class MainWindow : Window
         AssertEqual("Dialog", persistedEntry.Category, "Toolkit CollectionControlDialog persisted entry category");
         AssertEqual(100 + countBefore, persistedEntry.Weight, "Toolkit CollectionControlDialog persisted entry weight");
         AssertEqual($"Dialog updated {ViewModel.CollectionEntries.Count} entries", ViewModel.CollectionControlStatus, "Toolkit CollectionControlDialog accepted status");
+        ValidateToolkitCollectionControlState(expectLoaded: true);
+        ValidateToolkitCollectionDialogButtonState(expectLoaded: true);
+    }
+
+    internal void ExerciseToolkitCollectionDialogCancelRollback(int updateCountBefore)
+    {
+        var originalEntries = ViewModel.CollectionEntries
+            .Select(entry => new ToolkitCollectionEntry(entry.Name, entry.Category, entry.Weight))
+            .ToList();
+        bool canceledDialog = false;
+        var cancelTimer = new DispatcherTimer(DispatcherPriority.Send, Dispatcher)
+        {
+            Interval = TimeSpan.FromMilliseconds(16)
+        };
+
+        cancelTimer.Tick += (_, _) =>
+        {
+            var dialog = Application.Current.Windows
+                .OfType<CollectionControlDialog>()
+                .FirstOrDefault(window => !ReferenceEquals(window, this) && window.IsVisible);
+            if (dialog is null)
+            {
+                return;
+            }
+
+            canceledDialog = true;
+            ValidateToolkitCollectionDialogInstance(dialog, expectLoaded: true);
+
+            var innerControl = dialog.CollectionControl;
+            ApplicationCommands.New.Execute(typeof(ToolkitCollectionEntry), innerControl);
+            var canceledEntry = innerControl.Items.OfType<ToolkitCollectionEntry>().Last();
+            canceledEntry.Name = "Canceled Dialog Entry";
+            canceledEntry.Category = "Rollback";
+            canceledEntry.Weight = 999;
+
+            var firstEntry = innerControl.Items.OfType<ToolkitCollectionEntry>().First();
+            firstEntry.Name = "Canceled Mutation";
+            firstEntry.Category = "Rollback";
+            firstEntry.Weight = -1;
+            innerControl.SelectedItem = canceledEntry;
+
+            Button cancelButton = FindCollectionDialogButton(dialog, "Cancel", isDefault: false);
+            cancelButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, cancelButton));
+            cancelTimer.Stop();
+        };
+
+        cancelTimer.Start();
+        try
+        {
+            OpenCollectionDialogButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, OpenCollectionDialogButton));
+        }
+        finally
+        {
+            cancelTimer.Stop();
+        }
+
+        if (!canceledDialog)
+        {
+            throw new InvalidOperationException("Expected Toolkit CollectionControlButton Cancel path to open a CollectionControlDialog.");
+        }
+
+        AssertEqual(updateCountBefore, ViewModel.CollectionDialogUpdateCount, "Toolkit CollectionControlButton canceled dialog update count after rollback");
+        AssertEqual(originalEntries.Count, ViewModel.CollectionEntries.Count, "Toolkit CollectionControlDialog rollback entry count");
+        for (int i = 0; i < originalEntries.Count; i++)
+        {
+            AssertEqual(originalEntries[i].Name, ViewModel.CollectionEntries[i].Name, $"Toolkit CollectionControlDialog rollback entry {i} name");
+            AssertEqual(originalEntries[i].Category, ViewModel.CollectionEntries[i].Category, $"Toolkit CollectionControlDialog rollback entry {i} category");
+            AssertEqual(originalEntries[i].Weight, ViewModel.CollectionEntries[i].Weight, $"Toolkit CollectionControlDialog rollback entry {i} weight");
+        }
+
+        if (ViewModel.CollectionEntries.Any(entry => string.Equals(entry.Name, "Canceled Dialog Entry", StringComparison.Ordinal)))
+        {
+            throw new InvalidOperationException("Expected Toolkit CollectionControlDialog cancel to discard the added entry.");
+        }
+
+        ViewModel.SelectedCollectionEntry = ViewModel.CollectionEntries[0];
+        ToolkitCollectionControl.SelectedItem = ViewModel.SelectedCollectionEntry;
         ValidateToolkitCollectionControlState(expectLoaded: true);
         ValidateToolkitCollectionDialogButtonState(expectLoaded: true);
     }

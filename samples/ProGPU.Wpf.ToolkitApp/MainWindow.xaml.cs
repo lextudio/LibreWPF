@@ -20,6 +20,7 @@ using Xceed.Wpf.AvalonDock.Layout;
 using Xceed.Wpf.AvalonDock.Layout.Serialization;
 using Xceed.Wpf.AvalonDock.Themes;
 using Xceed.Wpf.Toolkit;
+using Xceed.Wpf.Toolkit.Core;
 using Xceed.Wpf.Toolkit.PropertyGrid;
 using ToolkitRichTextBox = Xceed.Wpf.Toolkit.RichTextBox;
 
@@ -148,6 +149,28 @@ public partial class MainWindow : Window
         _viewModel.Status = "Owner set to SDK";
         _viewModel.Activity.Add(_viewModel.Status);
         SplitActionButton.IsOpen = false;
+    }
+
+    private void ToolkitWizard_PageChanged(object sender, RoutedEventArgs e)
+    {
+        _viewModel.WizardPageChanges++;
+        _viewModel.WizardStatus = ToolkitWizard.CurrentPage?.Title ?? "No wizard page";
+    }
+
+    private void ToolkitWizard_Finish(object sender, CancelRoutedEventArgs e)
+    {
+        _viewModel.WizardFinishes++;
+        _viewModel.WizardStatus = "Wizard finished";
+        _viewModel.Status = "Wizard finished";
+        _viewModel.Activity.Add(_viewModel.Status);
+    }
+
+    private void ToolkitWizard_Cancel(object sender, RoutedEventArgs e)
+    {
+        _viewModel.WizardCancels++;
+        _viewModel.WizardStatus = "Wizard canceled";
+        _viewModel.Status = "Wizard canceled";
+        _viewModel.Activity.Add(_viewModel.Status);
     }
 
     private void SerializeLayoutButton_Click(object sender, RoutedEventArgs e)
@@ -291,6 +314,61 @@ public partial class MainWindow : Window
         }
     }
 
+    internal void ValidateToolkitWizardState(bool expectLoaded)
+    {
+        if (ToolkitWizard.Items.Count != 2)
+        {
+            throw new InvalidOperationException($"Expected Toolkit Wizard to contain two pages, got {ToolkitWizard.Items.Count}.");
+        }
+
+        AssertEqual("Scope", WizardScopePage.Title, "Toolkit Wizard first page title");
+        AssertEqual("Choose owner and priority range", WizardScopePage.Description, "Toolkit Wizard first page description");
+        AssertEqual(WizardPageType.Interior, WizardScopePage.PageType, "Toolkit Wizard first page type");
+        AssertEqual(false, WizardScopePage.CanFinish.GetValueOrDefault(), "Toolkit Wizard first page finish capability");
+        AssertEqual("Review", WizardReviewPage.Title, "Toolkit Wizard review page title");
+        AssertEqual("Confirm Toolkit state", WizardReviewPage.Description, "Toolkit Wizard review page description");
+        AssertEqual(WizardPageType.Interior, WizardReviewPage.PageType, "Toolkit Wizard review page type");
+        AssertEqual(true, WizardReviewPage.CanFinish.GetValueOrDefault(), "Toolkit Wizard review page finish capability");
+        AssertEqual(false, ToolkitWizard.FinishButtonClosesWindow, "Toolkit Wizard finish close behavior");
+        AssertEqual(false, ToolkitWizard.CancelButtonClosesWindow, "Toolkit Wizard cancel close behavior");
+
+        if (expectLoaded && ToolkitWizard.CurrentPage == null)
+        {
+            throw new InvalidOperationException("Expected loaded Toolkit Wizard to select an initial page.");
+        }
+    }
+
+    internal void ExerciseToolkitWizard()
+    {
+        ValidateToolkitWizardState(expectLoaded: true);
+
+        int pageChangesBefore = ViewModel.WizardPageChanges;
+        ToolkitWizard.CurrentPage = WizardReviewPage;
+        AssertEqual(WizardReviewPage, ToolkitWizard.CurrentPage, "Toolkit Wizard current page after review navigation");
+        if (ViewModel.WizardPageChanges <= pageChangesBefore)
+        {
+            throw new InvalidOperationException("Expected Toolkit Wizard page change event to update the view model.");
+        }
+
+        int finishesBefore = ViewModel.WizardFinishes;
+        ToolkitWizard.RaiseEvent(new CancelRoutedEventArgs { RoutedEvent = Wizard.FinishEvent });
+        if (ViewModel.WizardFinishes <= finishesBefore ||
+            !string.Equals(ViewModel.WizardStatus, "Wizard finished", StringComparison.Ordinal) ||
+            !string.Equals(ViewModel.Status, "Wizard finished", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Expected Toolkit Wizard finish event to update sample state.");
+        }
+
+        int cancelsBefore = ViewModel.WizardCancels;
+        ToolkitWizard.RaiseEvent(new RoutedEventArgs(Wizard.CancelEvent));
+        if (ViewModel.WizardCancels <= cancelsBefore ||
+            !string.Equals(ViewModel.WizardStatus, "Wizard canceled", StringComparison.Ordinal) ||
+            !string.Equals(ViewModel.Status, "Wizard canceled", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Expected Toolkit Wizard cancel event to update sample state.");
+        }
+    }
+
     private void OnToolkitWindowLoaded(object sender, RoutedEventArgs e)
     {
         StartLiveValidationIfRequired();
@@ -420,6 +498,7 @@ public partial class MainWindow : Window
 
         await ValidateLivePopupControlsAsync(liveHost);
         await ValidateLiveInputEditorsAsync(liveHost);
+        await ValidateLiveWizardAsync(liveHost);
 
         int documentsBeforeAdd = ViewModel.DocumentCount;
         await ClickLiveControlAsync(liveHost, AddDocumentButton, "AddDocumentButton");
@@ -529,7 +608,7 @@ public partial class MainWindow : Window
                     throw new InvalidOperationException("Expected Toolkit live AvalonDock deserialization to restore root panel shape.");
                 }
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/checklist/rich editors, Toolkit selector/range/split controls, AvalonDock document activation, floating document window, anchorable hide/show, auto-hide side groups, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/checklist/rich editors, Toolkit selector/range/split controls, Toolkit wizard navigation, AvalonDock document activation, floating document window, anchorable hide/show, auto-hide side groups, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -676,6 +755,14 @@ public partial class MainWindow : Window
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () => AssertEqual("Applied owner ProGPU", ViewModel.Status, "Toolkit live SplitButton click status"),
+            DispatcherPriority.Send);
+    }
+
+    private async Task ValidateLiveWizardAsync(object liveHost)
+    {
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => ExerciseToolkitWizard(),
             DispatcherPriority.Send);
     }
 
@@ -964,6 +1051,10 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private decimal? _estimate = 12.5m;
     private string _richNotes = "Toolkit rich notes";
     private bool _isBusy;
+    private int _wizardPageChanges;
+    private int _wizardFinishes;
+    private int _wizardCancels;
+    private string _wizardStatus = "Wizard idle";
     private string _status = "Toolkit sample ready";
     private string _lastSerializedLayout = string.Empty;
 
@@ -1171,6 +1262,58 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         }
     }
 
+    public int WizardPageChanges
+    {
+        get => _wizardPageChanges;
+        set
+        {
+            if (_wizardPageChanges != value)
+            {
+                _wizardPageChanges = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int WizardFinishes
+    {
+        get => _wizardFinishes;
+        set
+        {
+            if (_wizardFinishes != value)
+            {
+                _wizardFinishes = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int WizardCancels
+    {
+        get => _wizardCancels;
+        set
+        {
+            if (_wizardCancels != value)
+            {
+                _wizardCancels = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string WizardStatus
+    {
+        get => _wizardStatus;
+        set
+        {
+            if (!string.Equals(_wizardStatus, value, StringComparison.Ordinal))
+            {
+                _wizardStatus = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public string Status
     {
         get => _status;
@@ -1261,6 +1404,9 @@ internal static class ToolkitSelfTest
         Require<SplitButton>(window, "SplitActionButton");
         Require<ListBox>(window, "OwnerPickerList");
         Require<Button>(window, "AssignSdkOwnerButton");
+        Require<Wizard>(window, "ToolkitWizard");
+        Require<WizardPage>(window, "WizardScopePage");
+        Require<WizardPage>(window, "WizardReviewPage");
         Require<ToolkitRichTextBox>(window, "ToolkitRichTextBox");
         Require<BusyIndicator>(window, "BusyIndicator");
         Require<PropertyGrid>(window, "DocumentPropertyGrid");
@@ -1343,6 +1489,7 @@ internal static class ToolkitSelfTest
         }
 
         window.ValidateToolkitInputEditorState();
+        window.ValidateToolkitWizardState(expectLoaded);
 
         if (expectLoaded)
         {
@@ -1474,6 +1621,11 @@ internal static class ToolkitSelfTest
         if (!string.Equals(window.ViewModel.Status, "Applied owner SDK", StringComparison.Ordinal))
         {
             throw new InvalidOperationException("Expected Toolkit SplitButton primary command to update sample status.");
+        }
+
+        if (expectLoaded)
+        {
+            window.ExerciseToolkitWizard();
         }
 
         if (expectLoaded)

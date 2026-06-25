@@ -5906,6 +5906,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<xctk:CalculatorUpDown x:Name=\"EstimateEditor\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:DropDownButton x:Name=\"ActionDropDownButton\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:SplitButton x:Name=\"SplitActionButton\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xctk:Wizard x:Name=\"ToolkitWizard\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xctk:WizardPage x:Name=\"WizardScopePage\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xctk:WizardPage x:Name=\"WizardReviewPage\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:RichTextBox x:Name=\"ToolkitRichTextBox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:PlainTextFormatter />", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:PropertyGrid x:Name=\"DocumentPropertyGrid\"", mainWindowXaml, StringComparison.Ordinal);
@@ -5927,10 +5930,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Require<CalculatorUpDown>(window, \"EstimateEditor\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<DropDownButton>(window, \"ActionDropDownButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<SplitButton>(window, \"SplitActionButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<Wizard>(window, \"ToolkitWizard\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<WizardPage>(window, \"WizardScopePage\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<ToolkitRichTextBox>(window, \"ToolkitRichTextBox\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<PropertyGrid>(window, \"DocumentPropertyGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitPopupState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitInputEditorState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateToolkitWizardState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ExerciseToolkitWizard", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveInputEditorsAsync", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PresentationSource.FromVisual(ActionDropDownContentRoot)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PresentationSource.FromVisual(SplitActionDropDownContentRoot)", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -5943,6 +5950,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Toolkit popup/dropdown editors", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Toolkit masked/time/checklist/rich editors", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Toolkit selector/range/split controls", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Toolkit wizard navigation", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("target.BringIntoView()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("XmlLayoutSerializer", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PropertyPane.Hide(false)", mainWindowCodeBehind, StringComparison.Ordinal);

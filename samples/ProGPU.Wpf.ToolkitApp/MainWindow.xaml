@@ -272,6 +272,46 @@
                     </xctk:SplitButton.DropDownContent>
                   </xctk:SplitButton>
 
+                  <TextBlock Text="Wizard" />
+                  <xctk:Wizard x:Name="ToolkitWizard"
+                               Height="220"
+                               Margin="0,4,0,12"
+                               BackButtonContent="Back"
+                               NextButtonContent="Next"
+                               FinishButtonContent="Finish"
+                               CancelButtonContent="Cancel"
+                               FinishButtonClosesWindow="False"
+                               CancelButtonClosesWindow="False"
+                               PageChanged="ToolkitWizard_PageChanged"
+                               Finish="ToolkitWizard_Finish"
+                               Cancel="ToolkitWizard_Cancel">
+                    <xctk:WizardPage x:Name="WizardScopePage"
+                                     Title="Scope"
+                                     Description="Choose owner and priority range"
+                                     PageType="Interior"
+                                     CanFinish="False">
+                      <StackPanel Margin="8">
+                        <TextBlock FontWeight="SemiBold"
+                                   Text="Selection" />
+                        <TextBlock Text="{Binding SelectedOwner, StringFormat=Owner: {0}}" />
+                        <TextBlock Text="{Binding PriorityRangeStart, StringFormat=Priority from: {0:F1}}" />
+                        <TextBlock Text="{Binding PriorityRangeEnd, StringFormat=Priority to: {0:F1}}" />
+                      </StackPanel>
+                    </xctk:WizardPage>
+                    <xctk:WizardPage x:Name="WizardReviewPage"
+                                     Title="Review"
+                                     Description="Confirm Toolkit state"
+                                     PageType="Interior"
+                                     CanFinish="True">
+                      <StackPanel Margin="8">
+                        <TextBlock FontWeight="SemiBold"
+                                   Text="Ready" />
+                        <TextBlock Text="Wizard page state is handled by Xceed and WPF." />
+                        <TextBlock Text="{Binding WizardStatus}" />
+                      </StackPanel>
+                    </xctk:WizardPage>
+                  </xctk:Wizard>
+
                   <TextBlock Text="RichTextBox" />
                   <xctk:RichTextBox x:Name="ToolkitRichTextBox"
                                     Height="96"

@@ -4,6 +4,7 @@
         xmlns:sys="clr-namespace:System;assembly=System.Private.CoreLib"
         xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
         xmlns:xcad="http://schemas.xceed.com/wpf/xaml/avalondock"
+        xmlns:xcadc="clr-namespace:Xceed.Wpf.AvalonDock.Controls;assembly=Xceed.Wpf.AvalonDock"
         Title="ProGPU WPF Toolkit + AvalonDock"
         Width="980"
         Height="640"
@@ -363,6 +364,58 @@
                       <TextBlock Text="BusyIndicator content remains interactive when IsBusy is false." />
                     </Border>
                   </xctk:BusyIndicator>
+
+                  <TextBlock Text="AvalonDock MVVM sources"
+                             Margin="0,12,0,0" />
+                  <WrapPanel Margin="0,4,0,4">
+                    <Button x:Name="AddSourceDocumentButton"
+                            Content="Add source doc"
+                            MinWidth="104"
+                            Margin="0,0,6,0"
+                            Padding="8,4"
+                            Click="AddSourceDocumentButton_Click" />
+                    <Button x:Name="ActivateSourceToolButton"
+                            Content="Activate source tool"
+                            MinWidth="120"
+                            Padding="8,4"
+                            Click="ActivateSourceToolButton_Click" />
+                  </WrapPanel>
+                  <xcad:DockingManager x:Name="SourceDockManager"
+                                       Height="220"
+                                       BorderBrush="#B8C2CC"
+                                       BorderThickness="1"
+                                       ActiveContent="{Binding SourceActiveContent, Mode=TwoWay}"
+                                       DocumentsSource="{Binding SourceDocuments}"
+                                       AnchorablesSource="{Binding SourceAnchorables}">
+                    <xcad:DockingManager.LayoutItemContainerStyle>
+                      <Style TargetType="{x:Type xcadc:LayoutItem}">
+                        <Setter Property="Title" Value="{Binding Model.Title}" />
+                        <Setter Property="ContentId" Value="{Binding Model.ContentId}" />
+                        <Setter Property="IconSource" Value="{StaticResource ToolIcon}" />
+                        <Setter Property="CanClose" Value="{Binding Model.CanClose}" />
+                      </Style>
+                    </xcad:DockingManager.LayoutItemContainerStyle>
+                    <xcad:DockingManager.LayoutItemTemplate>
+                      <DataTemplate>
+                        <StackPanel Margin="8">
+                          <TextBlock FontWeight="SemiBold"
+                                     Text="{Binding Title}" />
+                          <TextBlock Margin="0,4,0,0"
+                                     Text="{Binding Body}" />
+                          <TextBlock Margin="0,8,0,0"
+                                     Foreground="#5E6A73"
+                                     Text="{Binding ContentId, StringFormat=ContentId: {0}}" />
+                        </StackPanel>
+                      </DataTemplate>
+                    </xcad:DockingManager.LayoutItemTemplate>
+                    <xcad:LayoutRoot x:Name="SourceDockLayoutRoot">
+                      <xcad:LayoutPanel Orientation="Horizontal">
+                        <xcad:LayoutAnchorablePane x:Name="SourceAnchorablePane"
+                                                   DockWidth="105" />
+                        <xcad:LayoutDocumentPane x:Name="SourceDocumentPane" />
+                      </xcad:LayoutPanel>
+                    </xcad:LayoutRoot>
+                  </xcad:DockingManager>
                 </StackPanel>
               </ScrollViewer>
             </xcad:LayoutAnchorable>

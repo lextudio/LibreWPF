@@ -45,6 +45,7 @@ public partial class MainWindow : Window
         DockManager.Docked += DockManager_Docked;
         DockManager.LayoutChanging += DockManager_LayoutChanging;
         DockManager.LayoutChanged += DockManager_LayoutChanged;
+        SourceDockManager.ActiveContentChanged += SourceDockManager_ActiveContentChanged;
         OverviewDocument.Closed += OverviewDocument_Closed;
         Loaded += OnToolkitWindowLoaded;
         StartLiveValidationIfRequired();
@@ -78,6 +79,22 @@ public partial class MainWindow : Window
             });
 
         _viewModel.Status = $"Added {document.Title}";
+    }
+
+    private void AddSourceDocumentButton_Click(object sender, RoutedEventArgs e)
+    {
+        var document = _viewModel.AddSourceDocument();
+        SourceDockManager.ActiveContent = document;
+        _viewModel.Status = $"Added source {document.Title}";
+        _viewModel.Activity.Add(_viewModel.Status);
+    }
+
+    private void ActivateSourceToolButton_Click(object sender, RoutedEventArgs e)
+    {
+        var tool = _viewModel.SourceAnchorables.First();
+        SourceDockManager.ActiveContent = tool;
+        _viewModel.Status = $"Activated source {tool.Title}";
+        _viewModel.Activity.Add(_viewModel.Status);
     }
 
     private void ActivateEditorButton_Click(object sender, RoutedEventArgs e)
@@ -168,6 +185,15 @@ public partial class MainWindow : Window
     private void DockManager_LayoutChanged(object? sender, EventArgs e)
     {
         _viewModel.AvalonDockLayoutChangedCount++;
+    }
+
+    private void SourceDockManager_ActiveContentChanged(object? sender, EventArgs e)
+    {
+        _viewModel.SourceActiveContentChangedCount++;
+        _viewModel.LastSourceActiveTitle =
+            (_viewModel.SourceActiveContent as ToolkitDockItem)?.Title ??
+            (SourceDockManager.ActiveContent as ToolkitDockItem)?.Title ??
+            string.Empty;
     }
 
     private void OverviewDocument_Closed(object? sender, EventArgs e)
@@ -471,6 +497,89 @@ public partial class MainWindow : Window
         }
     }
 
+    internal void ValidateSourceBackedAvalonDockState(bool mutateSources)
+    {
+        if (!ReferenceEquals(SourceDockManager.DocumentsSource, ViewModel.SourceDocuments))
+        {
+            throw new InvalidOperationException("Expected source-backed AvalonDock documents source to use the view-model collection.");
+        }
+
+        if (!ReferenceEquals(SourceDockManager.AnchorablesSource, ViewModel.SourceAnchorables))
+        {
+            throw new InvalidOperationException("Expected source-backed AvalonDock anchorables source to use the view-model collection.");
+        }
+
+        AssertEqual(ViewModel.SourceDocuments.Count, SourceDocumentPane.ChildrenCount, "AvalonDock source document count");
+        AssertEqual(ViewModel.SourceAnchorables.Count, SourceAnchorablePane.ChildrenCount, "AvalonDock source anchorable count");
+
+        var firstDocument = ViewModel.SourceDocuments.First();
+        var generatedDocument = FindGeneratedDocument(firstDocument);
+        AssertEqual(firstDocument.Title, generatedDocument.Title, "AvalonDock source document title");
+        AssertEqual(firstDocument.ContentId, generatedDocument.ContentId, "AvalonDock source document content id");
+
+        var firstAnchorable = ViewModel.SourceAnchorables.First();
+        var generatedAnchorable = FindGeneratedAnchorable(firstAnchorable);
+        AssertEqual(firstAnchorable.Title, generatedAnchorable.Title, "AvalonDock source anchorable title");
+        AssertEqual(firstAnchorable.ContentId, generatedAnchorable.ContentId, "AvalonDock source anchorable content id");
+
+        if (SourceDockManager.GetLayoutItemFromModel(generatedDocument) == null ||
+            SourceDockManager.GetLayoutItemFromModel(generatedAnchorable) == null)
+        {
+            throw new InvalidOperationException("Expected source-backed AvalonDock layout items to be discoverable from their generated layout models.");
+        }
+
+        int activeContentChangesBefore = ViewModel.SourceActiveContentChangedCount;
+        SourceDockManager.ActiveContent = firstDocument;
+        AssertEqual(firstDocument, ViewModel.SourceActiveContent, "AvalonDock source active document binding");
+        AssertEqual(firstDocument.Title, ViewModel.LastSourceActiveTitle, "AvalonDock source active document title");
+        if (ViewModel.SourceActiveContentChangedCount <= activeContentChangesBefore)
+        {
+            throw new InvalidOperationException("Expected source-backed AvalonDock ActiveContentChanged to fire for a source document.");
+        }
+
+        activeContentChangesBefore = ViewModel.SourceActiveContentChangedCount;
+        SourceDockManager.ActiveContent = firstAnchorable;
+        AssertEqual(firstAnchorable, ViewModel.SourceActiveContent, "AvalonDock source active anchorable binding");
+        AssertEqual(firstAnchorable.Title, ViewModel.LastSourceActiveTitle, "AvalonDock source active anchorable title");
+        if (ViewModel.SourceActiveContentChangedCount <= activeContentChangesBefore)
+        {
+            throw new InvalidOperationException("Expected source-backed AvalonDock ActiveContentChanged to fire for a source anchorable.");
+        }
+
+        if (mutateSources)
+        {
+            int documentCountBeforeAdd = SourceDocumentPane.ChildrenCount;
+            var addedDocument = ViewModel.AddSourceDocument();
+            PumpDispatcherUntil(
+                this,
+                () => SourceDocumentPane.ChildrenCount == documentCountBeforeAdd + 1,
+                TimeSpan.FromSeconds(2),
+                "AvalonDock source document insertion");
+            var generatedAddedDocument = FindGeneratedDocument(addedDocument);
+            AssertEqual(addedDocument.Title, generatedAddedDocument.Title, "AvalonDock added source document title");
+            AssertEqual(addedDocument.ContentId, generatedAddedDocument.ContentId, "AvalonDock added source document content id");
+
+            SourceDockManager.ActiveContent = addedDocument;
+            AssertEqual(addedDocument, ViewModel.SourceActiveContent, "AvalonDock added source active document binding");
+        }
+    }
+
+    private LayoutDocument FindGeneratedDocument(ToolkitDockItem sourceDocument)
+    {
+        return SourceDocumentPane.Children
+            .OfType<LayoutDocument>()
+            .FirstOrDefault(document => ReferenceEquals(document.Content, sourceDocument))
+            ?? throw new InvalidOperationException($"Expected AvalonDock source document '{sourceDocument.ContentId}' to generate a LayoutDocument.");
+    }
+
+    private LayoutAnchorable FindGeneratedAnchorable(ToolkitDockItem sourceAnchorable)
+    {
+        return SourceAnchorablePane.Children
+            .OfType<LayoutAnchorable>()
+            .FirstOrDefault(anchorable => ReferenceEquals(anchorable.Content, sourceAnchorable))
+            ?? throw new InvalidOperationException($"Expected AvalonDock source anchorable '{sourceAnchorable.ContentId}' to generate a LayoutAnchorable.");
+    }
+
     internal void ValidateToolkitInputEditorState()
     {
         AssertEqual(ViewModel.ReferenceCode, ReferenceMaskTextBox.Text, "Toolkit MaskedTextBox text binding target");
@@ -691,6 +800,7 @@ public partial class MainWindow : Window
         await ValidateLiveAvalonDockDocumentContextMenuAsync(liveHost);
         await ValidateLiveInputEditorsAsync(liveHost);
         await ValidateLiveWizardAsync(liveHost);
+        await ValidateLiveSourceBackedAvalonDockAsync(liveHost);
 
         int documentsBeforeAdd = ViewModel.DocumentCount;
         await ClickLiveControlAsync(liveHost, AddDocumentButton, "AddDocumentButton");
@@ -809,7 +919,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/checklist/rich editors, Toolkit selector/range/split controls, Toolkit wizard navigation, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/checklist/rich editors, Toolkit selector/range/split controls, Toolkit wizard navigation, AvalonDock source-backed documents/anchorables, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -1003,6 +1113,14 @@ public partial class MainWindow : Window
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () => ExerciseToolkitWizard(),
+            DispatcherPriority.Send);
+    }
+
+    private async Task ValidateLiveSourceBackedAvalonDockAsync(object liveHost)
+    {
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => ValidateSourceBackedAvalonDockState(mutateSources: true),
             DispatcherPriority.Send);
     }
 
@@ -1305,6 +1423,33 @@ public partial class MainWindow : Window
         return element.GetType().Name;
     }
 
+    private static void PumpDispatcherUntil(
+        DispatcherObject dispatcherObject,
+        Func<bool> condition,
+        TimeSpan timeout,
+        string description)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (!condition())
+        {
+            dispatcherObject.Dispatcher.Invoke(
+                static () => { },
+                DispatcherPriority.Background);
+
+            if (condition())
+            {
+                return;
+            }
+
+            if (DateTime.UtcNow >= deadline)
+            {
+                throw new InvalidOperationException($"Timed out waiting for {description}.");
+            }
+
+            System.Threading.Thread.Sleep(1);
+        }
+    }
+
     private static void AssertEqual<T>(T expected, T actual, string description)
     {
         if (!Equals(expected, actual))
@@ -1347,6 +1492,9 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private bool _cancelNextOverviewClose;
     private string _lastClosingDocumentContentId = string.Empty;
     private string _lastClosedDocumentContentId = string.Empty;
+    private object? _sourceActiveContent;
+    private int _sourceActiveContentChangedCount;
+    private string _lastSourceActiveTitle = string.Empty;
     private string _status = "Toolkit sample ready";
     private string _lastSerializedLayout = string.Empty;
 
@@ -1357,6 +1505,15 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
             new("Overview", "WPF", DateTime.Today, "No-source-change SDK app consuming Extended WPF Toolkit."),
             new("AvalonDock", "Xceed", DateTime.Today.AddDays(-1), "DockingManager layout with documents and anchorables.")
         ];
+        SourceDocuments =
+        [
+            new("Source Overview", "source-overview", "Generated from DockingManager.DocumentsSource.", canClose: true),
+            new("Source Editor", "source-editor", "Another source-backed document view model.", canClose: true)
+        ];
+        SourceAnchorables =
+        [
+            new("Source Tool", "source-tool", "Generated from DockingManager.AnchorablesSource.", canClose: false)
+        ];
         Owners = ["WPF", "ProGPU", "SDK", "Xceed"];
         Categories = ["Framework", "Toolkit", "AvalonDock", "Rendering"];
         SelectedCategories = ["Toolkit", "AvalonDock"];
@@ -1364,12 +1521,19 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         SelectedFlags = ["Pinned"];
         Activity = ["Toolkit package loaded", "AvalonDock layout loaded"];
         _selectedDocument = Documents[0];
+        _sourceActiveContent = SourceDocuments[0];
         Documents.CollectionChanged += (_, _) => OnPropertyChanged(nameof(DocumentCount));
+        SourceDocuments.CollectionChanged += (_, _) => OnPropertyChanged(nameof(SourceDocumentCount));
+        SourceAnchorables.CollectionChanged += (_, _) => OnPropertyChanged(nameof(SourceAnchorableCount));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public ObservableCollection<ToolkitDocument> Documents { get; }
+
+    public ObservableCollection<ToolkitDockItem> SourceDocuments { get; }
+
+    public ObservableCollection<ToolkitDockItem> SourceAnchorables { get; }
 
     public ObservableCollection<string> Categories { get; }
 
@@ -1397,6 +1561,23 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     }
 
     public int DocumentCount => Documents.Count;
+
+    public int SourceDocumentCount => SourceDocuments.Count;
+
+    public int SourceAnchorableCount => SourceAnchorables.Count;
+
+    public ToolkitDockItem AddSourceDocument()
+    {
+        int index = SourceDocuments.Count + 1;
+        var document = new ToolkitDockItem(
+            $"Source Generated {index}",
+            $"source-generated-{index}",
+            $"Generated source-backed AvalonDock document {index}.",
+            canClose: true);
+        SourceDocuments.Add(document);
+        SourceActiveContent = document;
+        return document;
+    }
 
     public int Priority
     {
@@ -1775,6 +1956,45 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         }
     }
 
+    public object? SourceActiveContent
+    {
+        get => _sourceActiveContent;
+        set
+        {
+            if (!ReferenceEquals(_sourceActiveContent, value))
+            {
+                _sourceActiveContent = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int SourceActiveContentChangedCount
+    {
+        get => _sourceActiveContentChangedCount;
+        set
+        {
+            if (_sourceActiveContentChangedCount != value)
+            {
+                _sourceActiveContentChangedCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string LastSourceActiveTitle
+    {
+        get => _lastSourceActiveTitle;
+        set
+        {
+            if (!string.Equals(_lastSourceActiveTitle, value, StringComparison.Ordinal))
+            {
+                _lastSourceActiveTitle = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public string Status
     {
         get => _status;
@@ -1804,6 +2024,40 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+}
+
+internal sealed class ToolkitDockItem : INotifyPropertyChanged
+{
+    private string _body;
+
+    public ToolkitDockItem(string title, string contentId, string body, bool canClose)
+    {
+        Title = title;
+        ContentId = contentId;
+        _body = body;
+        CanClose = canClose;
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public string Title { get; }
+
+    public string ContentId { get; }
+
+    public bool CanClose { get; }
+
+    public string Body
+    {
+        get => _body;
+        set
+        {
+            if (!string.Equals(_body, value, StringComparison.Ordinal))
+            {
+                _body = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Body)));
+            }
+        }
     }
 }
 
@@ -1871,6 +2125,11 @@ internal static class ToolkitSelfTest
         Require<ToolkitRichTextBox>(window, "ToolkitRichTextBox");
         Require<BusyIndicator>(window, "BusyIndicator");
         Require<PropertyGrid>(window, "DocumentPropertyGrid");
+        Require<Button>(window, "AddSourceDocumentButton");
+        Require<Button>(window, "ActivateSourceToolButton");
+        Require<DockingManager>(window, "SourceDockManager");
+        Require<LayoutDocumentPane>(window, "SourceDocumentPane");
+        Require<LayoutAnchorablePane>(window, "SourceAnchorablePane");
         Require<ContextMenu>(window, "DockDocumentContextMenu");
         Require<MenuItem>(window, "DockContextActivateEditorMenuItem");
         Require<MenuItem>(window, "DockContextCloseOverviewMenuItem");
@@ -1957,6 +2216,7 @@ internal static class ToolkitSelfTest
 
         window.ValidateToolkitInputEditorState();
         window.ValidateToolkitWizardState(expectLoaded);
+        window.ValidateSourceBackedAvalonDockState(mutateSources: true);
 
         if (expectLoaded)
         {

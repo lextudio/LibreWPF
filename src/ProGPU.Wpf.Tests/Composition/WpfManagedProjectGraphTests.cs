@@ -5947,8 +5947,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("xmlns:xctk=\"http://schemas.xceed.com/wpf/xaml/toolkit\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:xcad=\"http://schemas.xceed.com/wpf/xaml/avalondock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcad:DockingManager x:Name=\"DockManager\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcad:DockingManager x:Name=\"SourceDockManager\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcad:DockingManager.DocumentContextMenu>", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcad:DockingManager.DocumentHeaderTemplate>", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DocumentsSource=\"{Binding SourceDocuments}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("AnchorablesSource=\"{Binding SourceAnchorables}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ActiveContent=\"{Binding SourceActiveContent, Mode=TwoWay}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("TargetType=\"{x:Type xcadc:LayoutItem}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcad:AeroTheme />", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcad:LayoutRoot.LeftSide>", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"AgendaPane\"", mainWindowXaml, StringComparison.Ordinal);
@@ -5976,6 +5981,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CloseOverviewDocumentButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DockDocumentContextMenu", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DockContextCancelNextCloseMenuItem", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("AddSourceDocumentButton", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ActivateSourceToolButton", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SourceDocumentPane", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SourceAnchorablePane", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ReopenOverviewDocumentButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ToggleEditorFloatButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("TogglePropertyPaneButton", mainWindowXaml, StringComparison.Ordinal);
@@ -5996,6 +6005,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Require<WizardPage>(window, \"WizardScopePage\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<ToolkitRichTextBox>(window, \"ToolkitRichTextBox\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<PropertyGrid>(window, \"DocumentPropertyGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<DockingManager>(window, \"SourceDockManager\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<LayoutDocumentPane>(window, \"SourceDocumentPane\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<LayoutAnchorablePane>(window, \"SourceAnchorablePane\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<ContextMenu>(window, \"DockDocumentContextMenu\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<MenuItem>(window, \"DockContextCancelNextCloseMenuItem\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<Button>(window, \"CloseOverviewDocumentButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6004,6 +6016,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateToolkitInputEditorState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitWizardState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ExerciseToolkitWizard", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateSourceBackedAvalonDockState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLiveSourceBackedAvalonDockAsync", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SourceDockManager.ActiveContentChanged", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ViewModel.SourceDocuments", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SourceDockManager.GetLayoutItemFromModel", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AddSourceDocument()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveInputEditorsAsync", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PresentationSource.FromVisual(ActionDropDownContentRoot)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PresentationSource.FromVisual(SplitActionDropDownContentRoot)", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6049,6 +6067,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("OnPlatformInputReceived", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ResolveCurrentRenderSurfaceGeometry", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("floating document window", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AvalonDock source-backed documents/anchorables", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock document context menu and close cancellation", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("layout replacement events", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("document close/reopen", mainWindowCodeBehind, StringComparison.Ordinal);

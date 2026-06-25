@@ -3395,6 +3395,19 @@ public partial class MainWindow : Window
         }
     }
 
+    internal void ValidateAvalonDockManagerOptionState()
+    {
+        AssertEqual(true, DockManager.AllowMixedOrientation, "AvalonDock mixed orientation option");
+        AssertEqual(7.0, DockManager.GridSplitterWidth, "AvalonDock grid splitter width");
+        AssertEqual(6.0, DockManager.GridSplitterHeight, "AvalonDock grid splitter height");
+        AssertEqual(false, DockManager.ShowSystemMenu, "AvalonDock system menu option");
+        AssertEqual(750, DockManager.AutoHideWindowClosingTimer, "AvalonDock auto-hide close timer option");
+
+        AssertEqual(true, SourceDockManager.AllowMixedOrientation, "source AvalonDock mixed orientation option");
+        AssertEqual(5.0, SourceDockManager.GridSplitterWidth, "source AvalonDock grid splitter width");
+        AssertEqual(5.0, SourceDockManager.GridSplitterHeight, "source AvalonDock grid splitter height");
+    }
+
     private static void AssertAvalonDockTheme(Theme theme, string expectedThemeName, string managerName)
     {
         string expectedTypeName = expectedThemeName switch
@@ -3699,6 +3712,10 @@ public partial class MainWindow : Window
         await ValidateLiveToolkitCollectionControlAsync(liveHost);
         await ValidateLiveSourceBackedAvalonDockAsync(liveHost);
         await ValidateLiveAvalonDockThemeSwitchingAsync(liveHost);
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => ValidateAvalonDockManagerOptionState(),
+            DispatcherPriority.Send);
 
         int documentsBeforeAdd = ViewModel.DocumentCount;
         await ClickLiveControlAsync(liveHost, AddDocumentButton, "AddDocumentButton");
@@ -3851,7 +3868,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit resource theme updates, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit/AvalonDock automation peers, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock keyboard navigation, AvalonDock anchorable keyboard navigation, AvalonDock auto-hide overlay keyboard navigation, AvalonDock theme switching, AvalonDock document context menu commands and close cancellation, AvalonDock anchorable context menu commands, AvalonDock anchorable lifecycle events, AvalonDock anchorable close/reopen, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit resource theme updates, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit/AvalonDock automation peers, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock manager options, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock keyboard navigation, AvalonDock anchorable keyboard navigation, AvalonDock auto-hide overlay keyboard navigation, AvalonDock theme switching, AvalonDock document context menu commands and close cancellation, AvalonDock anchorable context menu commands, AvalonDock anchorable lifecycle events, AvalonDock anchorable close/reopen, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -6934,6 +6951,7 @@ internal static class ToolkitSelfTest
         Require<Button>(window, "SerializeLayoutButton");
 
         window.ValidateAvalonDockThemeState("Aero");
+        window.ValidateAvalonDockManagerOptionState();
 
         if (window.DockManager.DocumentHeaderTemplate is null)
         {

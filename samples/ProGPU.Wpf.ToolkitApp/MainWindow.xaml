@@ -208,8 +208,12 @@
                          AutomationProperties.AutomationId="ToolkitDockManagerAutomation"
                          AutomationProperties.Name="Toolkit AvalonDock manager"
                          AllowMixedOrientation="True"
+                         AutoHideWindowClosingTimer="750"
                          BorderBrush="#708090"
-                         BorderThickness="1">
+                         BorderThickness="1"
+                         GridSplitterHeight="6"
+                         GridSplitterWidth="7"
+                         ShowSystemMenu="False">
       <xcad:DockingManager.DocumentContextMenu>
         <ContextMenu x:Name="DockDocumentContextMenu"
                      AutomationProperties.AutomationId="ToolkitDockDocumentContextMenuAutomation">
@@ -881,6 +885,9 @@
                                        ActiveContent="{Binding SourceActiveContent, Mode=TwoWay}"
                                        DocumentsSource="{Binding SourceDocuments}"
                                        AnchorablesSource="{Binding SourceAnchorables}"
+                                       AllowMixedOrientation="True"
+                                       GridSplitterHeight="5"
+                                       GridSplitterWidth="5"
                                        LayoutUpdateStrategy="{Binding SourceLayoutStrategy}"
                                        DocumentTitleTemplateSelector="{StaticResource SourceDockTitleTemplateSelector}"
                                        AnchorableTitleTemplateSelector="{StaticResource SourceDockTitleTemplateSelector}">

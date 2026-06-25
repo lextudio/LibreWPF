@@ -5988,6 +5988,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("xmlns:xcad=\"http://schemas.xceed.com/wpf/xaml/avalondock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:local=\"clr-namespace:ProGPU.Wpf.ToolkitApp\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcad:DockingManager x:Name=\"DockManager\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("AllowMixedOrientation=\"True\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("AutoHideWindowClosingTimer=\"750\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("GridSplitterHeight=\"6\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("GridSplitterWidth=\"7\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ShowSystemMenu=\"False\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcad:DockingManager x:Name=\"SourceDockManager\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcad:DockingManager.DocumentContextMenu>", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcad:DockingManager.AnchorableContextMenu>", mainWindowXaml, StringComparison.Ordinal);
@@ -6261,6 +6266,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SourceTabGroupCommandCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveSourceBackedAvalonDockAsync", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateAvalonDockThemeState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateAvalonDockManagerOptionState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DockManager.AutoHideWindowClosingTimer", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SourceDockManager.GridSplitterWidth", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveAvalonDockThemeSwitchingAsync", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("new MetroTheme()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("new VS2010Theme()", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6399,6 +6407,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ResolveCurrentRenderSurfaceGeometry", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("floating document window", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock source-backed documents/anchorables", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AvalonDock manager options", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Toolkit/AvalonDock automation peers", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock layout update strategy and dynamic metadata", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock title selectors and layout item commands", mainWindowCodeBehind, StringComparison.Ordinal);

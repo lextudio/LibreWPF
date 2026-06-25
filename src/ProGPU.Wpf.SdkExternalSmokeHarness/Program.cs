@@ -654,6 +654,7 @@ internal static class Program
                 <Page Include="**/*.xaml" Exclude="App.xaml" />
                 <None Include="App.config" />
                 <ProjectReference Include="../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj" />
+                <PackageReference Include="Extended.Wpf.Toolkit" Version="5.1.2" />
                 <Resource Include="Assets/ExternalResource.txt" />
                 <Resource Include="Assets/ExternalImage.png" />
                 <SplashScreen Include="Assets/ExternalSplash.png" />
@@ -924,6 +925,8 @@ internal static class Program
                 xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
                 xmlns:sys="clr-namespace:System;assembly=System.Runtime"
                 xmlns:wpf="clr-namespace:System.Windows;assembly=PresentationFramework"
+                xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+                xmlns:xcad="http://schemas.xceed.com/wpf/xaml/avalondock"
                 Title="External SDK App"
                 Width="320"
                 Height="200"
@@ -1914,6 +1917,47 @@ internal static class Program
                                 Binding="{Binding IsActive}" />
                         </DataGrid.Columns>
                     </DataGrid>
+                    <xctk:WatermarkTextBox
+                        x:Name="ExternalToolkitWatermarkTextBox"
+                        Watermark="External toolkit watermark"
+                        Text="{Binding ExternalToolkitText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <xctk:IntegerUpDown
+                        x:Name="ExternalToolkitIntegerUpDown"
+                        Minimum="1"
+                        Maximum="9"
+                        Value="{Binding ExternalToolkitNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <xcad:DockingManager
+                        x:Name="ExternalDockManager"
+                        AllowMixedOrientation="True"
+                        AutoHideWindowClosingTimer="600"
+                        GridSplitterHeight="4"
+                        GridSplitterWidth="4"
+                        Height="120">
+                        <xcad:DockingManager.Theme>
+                            <xcad:AeroTheme />
+                        </xcad:DockingManager.Theme>
+                        <xcad:LayoutRoot x:Name="ExternalDockLayoutRoot">
+                            <xcad:LayoutPanel Orientation="Horizontal">
+                                <xcad:LayoutAnchorablePane x:Name="ExternalDockAnchorablePane">
+                                    <xcad:LayoutAnchorable
+                                        x:Name="ExternalToolkitPane"
+                                        Title="Toolkit"
+                                        ContentId="external-toolkit"
+                                        CanClose="False">
+                                        <TextBlock Text="External Toolkit pane" />
+                                    </xcad:LayoutAnchorable>
+                                </xcad:LayoutAnchorablePane>
+                                <xcad:LayoutDocumentPane x:Name="ExternalDockDocumentPane">
+                                    <xcad:LayoutDocument
+                                        x:Name="ExternalDockDocument"
+                                        Title="Document"
+                                        ContentId="external-document">
+                                        <TextBlock Text="External dock document" />
+                                    </xcad:LayoutDocument>
+                                </xcad:LayoutDocumentPane>
+                            </xcad:LayoutPanel>
+                        </xcad:LayoutRoot>
+                    </xcad:DockingManager>
                     <TreeView
                         x:Name="ExternalTreeView"
                         ItemTemplate="{StaticResource ExternalNodeTemplate}"
@@ -2912,6 +2956,10 @@ internal static class Program
                 public ExternalItem SelectedExternalItem => ExternalItems[0];
 
                 public string SelectedExternalKind { get; set; } = "Rendering";
+
+                public string ExternalToolkitText { get; set; } = "external toolkit initial";
+
+                public int? ExternalToolkitNumber { get; set; } = 4;
 
                 public string ValidationText { get; set; } = "valid external text";
 
@@ -4614,6 +4662,7 @@ internal static class Program
                     ValidateSpellCheck(window);
                     ValidateCommandsAndFocus(window);
                     ValidateThumbDragManager(window);
+                    ValidateXceedToolkitAndAvalonDock(window);
 
                     var themedControl = RequireType<ExternalThemedControl>(
                         window.FindName("ExternalThemedControl"),
@@ -4741,6 +4790,65 @@ internal static class Program
                     AssertEqual(typeof(ExternalSecondPage).FullName, window.LastExternalFrameContentType, "external SDK canceled frame retained content type");
                     AssertEqual(true, frame.CanGoBack, "external SDK frame can go back after canceled navigation");
                     AssertEqual(false, frame.CanGoForward, "external SDK frame cannot go forward after canceled navigation");
+                }
+
+                private static void ValidateXceedToolkitAndAvalonDock(MainWindow window)
+                {
+                    var watermarkTextBox = RequireType<Xceed.Wpf.Toolkit.WatermarkTextBox>(
+                        window.FindName("ExternalToolkitWatermarkTextBox"),
+                        "external SDK Xceed WatermarkTextBox");
+                    AssertEqual("external toolkit initial", watermarkTextBox.Text, "external SDK Xceed WatermarkTextBox initial binding");
+                    AssertEqual("External toolkit watermark", Convert.ToString(watermarkTextBox.Watermark, CultureInfo.InvariantCulture), "external SDK Xceed WatermarkTextBox watermark");
+                    watermarkTextBox.Text = "external toolkit updated";
+                    watermarkTextBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+                    AssertEqual("external toolkit updated", window.ExternalToolkitText, "external SDK Xceed WatermarkTextBox source update");
+
+                    var integerUpDown = RequireType<Xceed.Wpf.Toolkit.IntegerUpDown>(
+                        window.FindName("ExternalToolkitIntegerUpDown"),
+                        "external SDK Xceed IntegerUpDown");
+                    AssertEqual((int?)4, integerUpDown.Value, "external SDK Xceed IntegerUpDown initial binding");
+                    integerUpDown.Value = 7;
+                    var valueProperty = RequireType<DependencyProperty>(
+                        integerUpDown.GetType()
+                            .GetField("ValueProperty", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)
+                            ?.GetValue(null),
+                        "external SDK Xceed IntegerUpDown ValueProperty");
+                    integerUpDown.GetBindingExpression(valueProperty)?.UpdateSource();
+                    AssertEqual((int?)7, window.ExternalToolkitNumber, "external SDK Xceed IntegerUpDown source update");
+
+                    var dockManager = RequireType<Xceed.Wpf.AvalonDock.DockingManager>(
+                        window.FindName("ExternalDockManager"),
+                        "external SDK AvalonDock DockingManager");
+                    AssertEqual(true, dockManager.AllowMixedOrientation, "external SDK AvalonDock mixed orientation option");
+                    AssertEqual(4.0, dockManager.GridSplitterWidth, "external SDK AvalonDock grid splitter width");
+                    AssertEqual(4.0, dockManager.GridSplitterHeight, "external SDK AvalonDock grid splitter height");
+                    AssertEqual(600, dockManager.AutoHideWindowClosingTimer, "external SDK AvalonDock auto-hide close timer option");
+                    AssertEqual("AeroTheme", dockManager.Theme.GetType().Name, "external SDK AvalonDock theme type");
+
+                    var dockRoot = RequireType<Xceed.Wpf.AvalonDock.Layout.LayoutRoot>(
+                        window.FindName("ExternalDockLayoutRoot"),
+                        "external SDK AvalonDock layout root");
+                    var documentPane = RequireType<Xceed.Wpf.AvalonDock.Layout.LayoutDocumentPane>(
+                        window.FindName("ExternalDockDocumentPane"),
+                        "external SDK AvalonDock document pane");
+                    var anchorablePane = RequireType<Xceed.Wpf.AvalonDock.Layout.LayoutAnchorablePane>(
+                        window.FindName("ExternalDockAnchorablePane"),
+                        "external SDK AvalonDock anchorable pane");
+                    var document = RequireType<Xceed.Wpf.AvalonDock.Layout.LayoutDocument>(
+                        window.FindName("ExternalDockDocument"),
+                        "external SDK AvalonDock document");
+                    var anchorable = RequireType<Xceed.Wpf.AvalonDock.Layout.LayoutAnchorable>(
+                        window.FindName("ExternalToolkitPane"),
+                        "external SDK AvalonDock anchorable");
+
+                    AssertEqual(dockRoot, dockManager.Layout, "external SDK AvalonDock manager layout root");
+                    AssertEqual(1, documentPane.ChildrenCount, "external SDK AvalonDock document pane child count");
+                    AssertEqual(1, anchorablePane.ChildrenCount, "external SDK AvalonDock anchorable pane child count");
+                    AssertEqual("external-document", document.ContentId, "external SDK AvalonDock document content id");
+                    AssertEqual("Document", document.Title, "external SDK AvalonDock document title");
+                    AssertEqual("external-toolkit", anchorable.ContentId, "external SDK AvalonDock anchorable content id");
+                    AssertEqual("Toolkit", anchorable.Title, "external SDK AvalonDock anchorable title");
+                    AssertEqual(false, anchorable.CanClose, "external SDK AvalonDock anchorable close policy");
                 }
 
                 public static void ValidateApplicationRunAndShutdown()
@@ -15524,6 +15632,7 @@ internal static class Program
         AssertContains(appProject, "<Page Include=\"**/*.xaml\" Exclude=\"App.xaml\" />", "external app explicit page items");
         AssertContains(appProject, "<None Include=\"App.config\" />", "external app explicit app config item");
         AssertContains(appProject, $"<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", "external app project reference");
+        AssertContains(appProject, "<PackageReference Include=\"Extended.Wpf.Toolkit\" Version=\"5.1.2\" />", "external app Xceed Toolkit package reference");
         AssertContains(appProject, "<Resource Include=\"Assets/ExternalResource.txt\" />", "external app WPF resource item");
         AssertContains(appProject, "<Resource Include=\"Assets/ExternalImage.png\" />", "external app WPF image resource item");
         AssertContains(appProject, "<SplashScreen Include=\"Assets/ExternalSplash.png\" />", "external app WPF splash item");
@@ -15765,6 +15874,12 @@ internal static class Program
             RequireFile(Path.Combine(outputRoot, assemblyName + ".dll"), $"external SDK output asset '{assemblyName}.dll'");
         }
 
+        RequireFile(Path.Combine(outputRoot, "Xceed.Wpf.Toolkit.dll"), "external SDK output Xceed Toolkit asset");
+        RequireFile(Path.Combine(outputRoot, "Xceed.Wpf.AvalonDock.dll"), "external SDK output AvalonDock asset");
+        RequireFile(Path.Combine(outputRoot, "Xceed.Wpf.AvalonDock.Themes.Aero.dll"), "external SDK output AvalonDock Aero theme asset");
+        RequireFile(Path.Combine(outputRoot, "Xceed.Wpf.AvalonDock.Themes.Metro.dll"), "external SDK output AvalonDock Metro theme asset");
+        RequireFile(Path.Combine(outputRoot, "Xceed.Wpf.AvalonDock.Themes.VS2010.dll"), "external SDK output AvalonDock VS2010 theme asset");
+
         ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, "ProGPU.Wpf", "ProGPU.Wpf", "net10.0");
         ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, "ProGPU.Scene", "ProGPU.Scene", "net10.0");
         foreach (string assemblyName in s_requiredWpfRuntimeAssemblies)
@@ -15786,6 +15901,8 @@ internal static class Program
         AssertContains(depsJson, "ProGPU.Compute", "external SDK ProGPU compute package dependency");
         AssertContains(depsJson, "ProGPU.Transpiler", "external SDK ProGPU transpiler package dependency");
         AssertContains(depsJson, "StbImageSharp", "external SDK StbImageSharp package dependency");
+        AssertContains(depsJson, "Extended.Wpf.Toolkit", "external SDK Xceed Toolkit package dependency");
+        AssertContains(depsJson, "Xceed.Wpf.AvalonDock", "external SDK AvalonDock assembly dependency");
         AssertContains(depsJson, LibraryOutputAssemblyName, "external SDK referenced library dependency");
 
         ValidateProGpuHiDpiRenderSurface(outputRoot);

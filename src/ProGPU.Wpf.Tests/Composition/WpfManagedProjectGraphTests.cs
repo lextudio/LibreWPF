@@ -8984,6 +8984,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<ApplicationDefinition Include=\"App.xaml\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Page Include=\"**/*.xaml\" Exclude=\"App.xaml\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<None Include=\"App.config\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"Extended.Wpf.Toolkit\" Version=\"5.1.2\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Compile Include=\"ExternalPanel.xaml.cs\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Compile Include=\"ExternalThemedControl.cs\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<Compile Include=\"Properties/AssemblyInfo.cs\" />", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -9003,6 +9004,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"External SDK default-item apphost live geometry\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("assembly=ExternalSdkControls", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("assembly=ExternalSdkDefaultItemsLibrary", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("xmlns:xctk=\"http://schemas.xceed.com/wpf/xaml/toolkit\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("xmlns:xcad=\"http://schemas.xceed.com/wpf/xaml/avalondock\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalToolkitWatermarkTextBox", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalToolkitIntegerUpDown", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalDockManager", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("<xcad:AeroTheme />", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateXceedToolkitAndAvalonDock(window)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RequireFile(Path.Combine(outputRoot, \"Xceed.Wpf.Toolkit.dll\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("AssertContains(depsJson, \"Extended.Wpf.Toolkit\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("LibraryOutputAssemblyName + \".dll\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsLibraryAssemblyName + \".dll\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<ProjectReference Include=\"../{LibraryAssemblyName}/{LibraryAssemblyName}.csproj\" />", externalSdkHarnessProgram, StringComparison.Ordinal);

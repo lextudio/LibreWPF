@@ -499,6 +499,34 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void NativeRectangleClipRecordsTransformedPushClipCommand()
+    {
+        var nativeContext = new ProGPU.Scene.DrawingContext();
+        using var sink = new ProGpuCompositionCommandSink(nativeContext);
+        var transformSink = (IWpfNativeTransformCommandSink)sink;
+        var clipSink = (IWpfNativeClipCommandSink)sink;
+
+        transformSink.PushNativeTransform(Matrix4x4.CreateTranslation(5, 7, 0));
+        clipSink.PushNativeClip(new WpfReplayRect(1, 2, 30, 40));
+        sink.Pop();
+        sink.Pop();
+
+        Assert.Collection(
+            nativeContext.Commands,
+            push =>
+            {
+                Assert.Equal(ProGpuRenderCommandType.PushClip, push.Type);
+                Assert.Equal(1, push.Rect.X);
+                Assert.Equal(2, push.Rect.Y);
+                Assert.Equal(30, push.Rect.Width);
+                Assert.Equal(40, push.Rect.Height);
+                Assert.Equal(5, push.Transform.M41);
+                Assert.Equal(7, push.Transform.M42);
+            },
+            pop => Assert.Equal(ProGpuRenderCommandType.PopClip, pop.Type));
+    }
+
+    [Fact]
     public void RetainedSinkAppliesNativeOpacityMaskStateToCurrentOwnerScope()
     {
         var retainedRoot = new ProGpuContainerVisual();

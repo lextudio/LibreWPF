@@ -30,7 +30,8 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
     IWpfRetainedVisualBranchSink,
     IWpfRetainedVisualStateSink,
     IWpfNativeTransformCommandSink,
-    IWpfNativePrimitiveCommandSink
+    IWpfNativePrimitiveCommandSink,
+    IWpfNativeClipCommandSink
 {
     private enum ScopeKind
     {
@@ -312,6 +313,12 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
     public void PushNativeOpacityMask(MediaBrush? opacityMask, WpfReplayRect bounds)
     {
         ((IWpfNativePrimitiveCommandSink)Current.Sink).PushNativeOpacityMask(opacityMask, bounds);
+        _scopeStack.Push(ScopeKind.Delegate);
+    }
+
+    public void PushNativeClip(WpfReplayRect bounds)
+    {
+        ((IWpfNativeClipCommandSink)Current.Sink).PushNativeClip(bounds);
         _scopeStack.Push(ScopeKind.Delegate);
     }
 

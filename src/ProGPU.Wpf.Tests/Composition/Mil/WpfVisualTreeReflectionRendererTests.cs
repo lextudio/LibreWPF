@@ -770,13 +770,13 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var sink = new TestSink();
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
-        Assert.Equal(new[] { "PushTransform", "PushClip", "DrawRectangle", "Pop", "Pop" }, sink.Operations);
+        Assert.Equal(new[] { "PushTransform", "PushNativeClip", "DrawRectangle", "Pop", "Pop" }, sink.Operations);
         Assert.Empty(sink.Transforms);
         var transform = Assert.Single(sink.NativeTransforms);
         Assert.Equal(3, transform.M41);
         Assert.Equal(4, transform.M42);
-        var clip = Assert.Single(sink.Clips);
-        Assert.Equal(new Rect(0, 0, 100, 50), clip.Bounds);
+        var clip = Assert.Single(sink.NativeClips);
+        AssertReplayRect(0, 0, 100, 50, clip);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
     }
@@ -881,7 +881,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(
-            new[] { "PushOpacityMask", "PushTransform", "PushTransform", "PushClip", "DrawRectangle", "Pop", "Pop", "Pop", "Pop" },
+            new[] { "PushOpacityMask", "PushTransform", "PushTransform", "PushNativeClip", "DrawRectangle", "Pop", "Pop", "Pop", "Pop" },
             sink.Operations);
         var mask = Assert.Single(sink.OpacityMasks);
         Assert.Same(Brushes.White, mask.OpacityMask);
@@ -942,9 +942,9 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var sink = new TestSink();
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
-        Assert.Equal(new[] { "PushClip", "DrawRectangle", "Pop" }, sink.Operations);
-        var clip = Assert.Single(sink.Clips);
-        Assert.Equal(new Rect(2, 3, 40, 50), clip.Bounds);
+        Assert.Equal(new[] { "PushNativeClip", "DrawRectangle", "Pop" }, sink.Operations);
+        var clip = Assert.Single(sink.NativeClips);
+        AssertReplayRect(2, 3, 40, 50, clip);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
     }
@@ -961,9 +961,9 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var sink = new TestSink();
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
-        Assert.Equal(new[] { "PushClip", "DrawRectangle", "Pop" }, sink.Operations);
-        var clip = Assert.Single(sink.Clips);
-        Assert.Equal(new Rect(2, 3, 40, 50), clip.Bounds);
+        Assert.Equal(new[] { "PushNativeClip", "DrawRectangle", "Pop" }, sink.Operations);
+        var clip = Assert.Single(sink.NativeClips);
+        AssertReplayRect(2, 3, 40, 50, clip);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
     }
@@ -982,7 +982,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(
-            new[] { "PushTransform", "PushTransform", "PushClip", "PushTransform", "DrawRectangle", "Pop", "Pop", "Pop", "Pop" },
+            new[] { "PushTransform", "PushTransform", "PushNativeClip", "PushTransform", "DrawRectangle", "Pop", "Pop", "Pop", "Pop" },
             sink.Operations);
         Assert.Equal(3, sink.NativeTransforms.Count);
         Assert.Equal(10, sink.NativeTransforms[0].M41);
@@ -991,8 +991,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.Equal(-20, sink.NativeTransforms[1].M42);
         Assert.Equal(10, sink.NativeTransforms[2].M41);
         Assert.Equal(20, sink.NativeTransforms[2].M42);
-        var clip = Assert.Single(sink.Clips);
-        Assert.Equal(new Rect(2, 3, 40, 50), clip.Bounds);
+        var clip = Assert.Single(sink.NativeClips);
+        AssertReplayRect(2, 3, 40, 50, clip);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
     }
@@ -1972,7 +1972,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
         IWpfVisualCacheCommandSink,
         IWpfRetainedVisualBranchSink,
         IWpfRetainedVisualStateSink,
-        IWpfNativeTransformCommandSink
+        IWpfNativeTransformCommandSink,
+        IWpfNativeClipCommandSink
     {
         public List<string> Operations { get; } = new();
 
@@ -1991,6 +1992,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public List<Matrix4x4> NativeTransforms { get; } = new();
 
         public List<MediaGeometry> Clips { get; } = new();
+
+        public List<WpfReplayRect> NativeClips { get; } = new();
 
         public List<double> Opacities { get; } = new();
 
@@ -2113,6 +2116,12 @@ public sealed class WpfVisualTreeReflectionRendererTests
         {
             Operations.Add("PushTransform");
             NativeTransforms.Add(transform);
+        }
+
+        public void PushNativeClip(WpfReplayRect bounds)
+        {
+            Operations.Add("PushNativeClip");
+            NativeClips.Add(bounds);
         }
 
         public void PushGuidelineSet()

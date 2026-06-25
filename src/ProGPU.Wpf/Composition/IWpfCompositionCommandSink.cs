@@ -114,3 +114,8 @@ internal interface IWpfNativePrimitiveCommandSink
 
     void PushNativeOpacityMask(MediaBrush? opacityMask, WpfReplayRect bounds);
 }
+
+internal interface IWpfNativeClipCommandSink
+{
+    void PushNativeClip(WpfReplayRect bounds);
+}

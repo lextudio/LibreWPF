@@ -760,15 +760,23 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         if (TryGetPropertyValue(visual, "Clip", out var clip) && clip != null)
         {
-            var clipGeometry = WpfReflectionResourceResolver.AdaptGeometry(clip);
-            if (clipGeometry != null)
+            if (TryReadRectangleClipBounds(clip, out var rectangleClipBounds))
             {
-                sink.PushClip(clipGeometry);
+                PushRectangleClip(sink, rectangleClipBounds);
                 popCount++;
             }
             else
             {
-                stats.UnsupportedVisualStateCount++;
+                var clipGeometry = WpfReflectionResourceResolver.AdaptGeometry(clip);
+                if (clipGeometry != null)
+                {
+                    sink.PushClip(clipGeometry);
+                    popCount++;
+                }
+                else
+                {
+                    stats.UnsupportedVisualStateCount++;
+                }
             }
         }
 
@@ -783,14 +791,14 @@ public sealed class WpfVisualTreeReflectionRenderer
                 {
                     nativeTransformSink.PushNativeTransform(inverseLocalTransform);
                     popCount++;
-                    sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(scrollableClipBounds));
+                    PushRectangleClip(sink, scrollableClipBounds);
                     popCount++;
                     nativeTransformSink.PushNativeTransform(localVisualTransform);
                     popCount++;
                 }
                 else
                 {
-                    sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(scrollableClipBounds));
+                    PushRectangleClip(sink, scrollableClipBounds);
                     popCount++;
                 }
             }
@@ -954,6 +962,17 @@ public sealed class WpfVisualTreeReflectionRenderer
         stats.UnsupportedVisualStateCount += CountUnsupportedVisualState(visual);
 
         return popCount;
+    }
+
+    private static void PushRectangleClip(IWpfCompositionCommandSink sink, WpfReplayRect bounds)
+    {
+        if (sink is IWpfNativeClipCommandSink nativeClipSink)
+        {
+            nativeClipSink.PushNativeClip(bounds);
+            return;
+        }
+
+        sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(bounds));
     }
 
     private static int CountUnsupportedVisualState(object visual)

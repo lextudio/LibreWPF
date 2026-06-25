@@ -39,13 +39,15 @@ public sealed class ProGpuCompositionCommandSink :
     IWpfViewport3DCommandSink,
     IWpfCompositionCommandSinkDiagnostics,
     IWpfNativeTransformCommandSink,
-    IWpfNativePrimitiveCommandSink
+    IWpfNativePrimitiveCommandSink,
+    IWpfNativeClipCommandSink
 {
     private const float TransformEpsilon = 0.0001f;
 
     private enum PushKind
     {
         DrawingContext,
+        Clip,
         GeometryClip,
         Guideline,
         NoOp,
@@ -539,6 +541,18 @@ public sealed class ProGpuCompositionCommandSink :
         }
     }
 
+    void IWpfNativeClipCommandSink.PushNativeClip(WpfReplayRect bounds)
+    {
+        ThrowIfClosed();
+        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        {
+            Type = global::ProGPU.Scene.RenderCommandType.PushClip,
+            Rect = ToNativeRect(bounds),
+            Transform = _transformStack.Peek()
+        });
+        _pushStack.Push(PushKind.Clip);
+    }
+
     public void PushOpacity(double opacity)
     {
         ThrowIfClosed();
@@ -886,6 +900,12 @@ public sealed class ProGpuCompositionCommandSink :
         }
 
         var pushKind = _pushStack.Pop();
+        if (pushKind == PushKind.Clip)
+        {
+            NativeContext.PopClip();
+            return;
+        }
+
         if (pushKind == PushKind.GeometryClip)
         {
             NativeContext.PopGeometryClip();

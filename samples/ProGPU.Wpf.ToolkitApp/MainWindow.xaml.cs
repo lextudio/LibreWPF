@@ -117,6 +117,7 @@ public partial class MainWindow : Window
 
     private void ConfigureToolkitWindowControlPrimitive()
     {
+        ToolkitWindowControl.WindowThickness = new Thickness(2);
         ToolkitWindowControl.AddHandler(WindowControl.HeaderIconClickedEvent, new MouseButtonEventHandler(ToolkitWindowControl_HeaderIconClicked));
         ToolkitWindowControl.AddHandler(WindowControl.HeaderIconDoubleClickedEvent, new MouseButtonEventHandler(ToolkitWindowControl_HeaderIconDoubleClicked));
         ToolkitWindowControl.AddHandler(WindowControl.HeaderMouseLeftButtonDoubleClickedEvent, new MouseButtonEventHandler(ToolkitWindowControl_HeaderMouseLeftButtonDoubleClicked));
@@ -1103,6 +1104,7 @@ public partial class MainWindow : Window
         AssertEqual(Visibility.Visible, ToolkitWindowControl.CloseButtonVisibility, "Toolkit WindowControl close button visibility");
         AssertEqual(System.Windows.WindowStyle.SingleBorderWindow, ToolkitWindowControl.WindowStyle, "Toolkit WindowControl style");
         AssertEqual(new Thickness(1), ToolkitWindowControl.WindowBorderThickness, "Toolkit WindowControl border thickness");
+        AssertEqual(new Thickness(2), ToolkitWindowControl.WindowThickness, "Toolkit WindowControl window thickness");
         AssertEqual(true, ToolkitWindowControl.CaptionIcon != null, "Toolkit WindowControl caption icon");
         AssertEqual(ViewModel.WindowControlText, WindowControlInputTextBox.Text, "Toolkit WindowControl text binding");
 

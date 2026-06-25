@@ -6204,6 +6204,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ConfigureToolkitWindowControlPrimitive", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ToolkitWindowControl.AddHandler(WindowControl.HeaderIconClickedEvent", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ToolkitWindowControl.AddHandler(WindowControl.HeaderMouseRightButtonClickedEvent", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ToolkitWindowControl.WindowThickness = new Thickness(2)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("WindowControl.HeaderMouseLeftButtonClickedEvent", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("WindowControl.HeaderIconClickedEvent", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("WindowControl.HeaderIconDoubleClickedEvent", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6216,6 +6217,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("WindowControlHeaderRightClickCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GetToolkitWindowControlButton(\"PART_CloseButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("WindowControlCloseButtonClickCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Toolkit WindowControl window thickness", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Toolkit window control primitive", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitZoomboxAndMagnifierState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ExerciseToolkitZoomboxAndMagnifier", mainWindowCodeBehind, StringComparison.Ordinal);

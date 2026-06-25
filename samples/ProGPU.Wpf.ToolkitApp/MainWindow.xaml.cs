@@ -434,6 +434,191 @@ public partial class MainWindow : Window
         AssertEqual("ChildWindow accepted", ViewModel.ChildWindowStatus, "Toolkit ChildWindow accepted status");
     }
 
+    private void ToggleWindowControlButton_Click(object sender, RoutedEventArgs e)
+    {
+        ToggleToolkitWindowControl();
+    }
+
+    private void ActivateWindowControlButton_Click(object sender, RoutedEventArgs e)
+    {
+        ActivateToolkitWindowControl();
+    }
+
+    private void ToolkitWindowControl_Activated(object sender, RoutedEventArgs e)
+    {
+        ViewModel.WindowControlActivatedCount++;
+        ViewModel.WindowControlStatus = "WindowControl activated";
+        ViewModel.Status = ViewModel.WindowControlStatus;
+        ViewModel.Activity.Add(ViewModel.WindowControlStatus);
+    }
+
+    private void ToolkitWindowControl_HeaderMouseLeftButtonClicked(object sender, MouseButtonEventArgs e)
+    {
+        ViewModel.WindowControlHeaderClickCount++;
+        ViewModel.WindowControlStatus = "WindowControl header clicked";
+        ViewModel.Status = ViewModel.WindowControlStatus;
+        ViewModel.Activity.Add(ViewModel.WindowControlStatus);
+    }
+
+    private void ToolkitWindowControl_HeaderDragDelta(object sender, System.Windows.Controls.Primitives.DragDeltaEventArgs e)
+    {
+        ViewModel.WindowControlHeaderDragCount++;
+        ViewModel.WindowControlStatus = "WindowControl header dragged";
+        ViewModel.Status = ViewModel.WindowControlStatus;
+        ViewModel.Activity.Add(ViewModel.WindowControlStatus);
+    }
+
+    private void ToolkitWindowControl_CloseButtonClicked(object sender, RoutedEventArgs e)
+    {
+        ViewModel.WindowControlCloseButtonClickCount++;
+        CloseToolkitWindowControl("WindowControl closed");
+    }
+
+    internal void ToggleToolkitWindowControl()
+    {
+        ViewModel.WindowControlToggleCount++;
+        if (ToolkitWindowControl.Visibility == Visibility.Visible)
+        {
+            CloseToolkitWindowControl("WindowControl hidden");
+            return;
+        }
+
+        ShowToolkitWindowControl();
+    }
+
+    internal void ShowToolkitWindowControl()
+    {
+        ViewModel.ToolkitWindowControlVisibility = Visibility.Visible;
+        ToolkitWindowControl.SetCurrentValue(VisibilityProperty, Visibility.Visible);
+        ViewModel.WindowControlStatus = "WindowControl visible";
+        ViewModel.Status = ViewModel.WindowControlStatus;
+        ViewModel.Activity.Add(ViewModel.WindowControlStatus);
+    }
+
+    internal void CloseToolkitWindowControl(string status)
+    {
+        ViewModel.ToolkitWindowControlVisibility = Visibility.Collapsed;
+        ToolkitWindowControl.SetCurrentValue(VisibilityProperty, Visibility.Collapsed);
+        ViewModel.WindowControlStatus = status;
+        ViewModel.Status = status;
+        ViewModel.Activity.Add(status);
+    }
+
+    internal void ActivateToolkitWindowControl()
+    {
+        if (ToolkitWindowControl.Visibility != Visibility.Visible)
+        {
+            ShowToolkitWindowControl();
+        }
+
+        ToolkitWindowControl.IsActive = false;
+        ToolkitWindowControl.IsActive = true;
+        ToolkitWindowControl.Focus();
+        WindowControlInputTextBox.Focus();
+    }
+
+    internal void RaiseToolkitWindowControlHeaderClick()
+    {
+        var args = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+        {
+            RoutedEvent = WindowControl.HeaderMouseLeftButtonClickedEvent,
+            Source = ToolkitWindowControl
+        };
+        ToolkitWindowControl.RaiseEvent(args);
+    }
+
+    internal void RaiseToolkitWindowControlHeaderDrag()
+    {
+        var args = new System.Windows.Controls.Primitives.DragDeltaEventArgs(8.0, 4.0)
+        {
+            RoutedEvent = WindowControl.HeaderDragDeltaEvent,
+            Source = ToolkitWindowControl
+        };
+        ToolkitWindowControl.RaiseEvent(args);
+    }
+
+    internal Button GetToolkitWindowControlButton(string partName)
+    {
+        ToolkitWindowControl.ApplyTemplate();
+        ToolkitWindowControl.UpdateLayout();
+        return ToolkitWindowControl.Template?.FindName(partName, ToolkitWindowControl) as Button
+            ?? throw new InvalidOperationException($"Expected Toolkit WindowControl template button '{partName}'.");
+    }
+
+    internal void ValidateToolkitWindowControlState(bool expectedVisible, bool expectLoaded)
+    {
+        AssertEqual(true, ToolkitPrimitiveWindowContainer.Children.Contains(ToolkitWindowControl), "Toolkit WindowControl WindowContainer membership");
+        AssertEqual(expectedVisible ? Visibility.Visible : Visibility.Collapsed, ToolkitWindowControl.Visibility, "Toolkit WindowControl visibility");
+        AssertEqual(ViewModel.ToolkitWindowControlVisibility, ToolkitWindowControl.Visibility, "Toolkit WindowControl visibility binding");
+        AssertEqual("Toolkit window control", Convert.ToString(ToolkitWindowControl.Caption, CultureInfo.InvariantCulture), "Toolkit WindowControl caption");
+        AssertEqual(Visibility.Visible, ToolkitWindowControl.CloseButtonVisibility, "Toolkit WindowControl close button visibility");
+        AssertEqual(System.Windows.WindowStyle.SingleBorderWindow, ToolkitWindowControl.WindowStyle, "Toolkit WindowControl style");
+        AssertEqual(new Thickness(1), ToolkitWindowControl.WindowBorderThickness, "Toolkit WindowControl border thickness");
+        AssertEqual(true, ToolkitWindowControl.CaptionIcon != null, "Toolkit WindowControl caption icon");
+        AssertEqual(ViewModel.WindowControlText, WindowControlInputTextBox.Text, "Toolkit WindowControl text binding");
+
+        if (BindingOperations.GetBindingExpression(ToolkitWindowControl, VisibilityProperty) is null)
+        {
+            throw new InvalidOperationException("Expected Toolkit WindowControl visibility to bind to the view model.");
+        }
+
+        if (BindingOperations.GetBindingExpression(WindowControlInputTextBox, TextBox.TextProperty) is null)
+        {
+            throw new InvalidOperationException("Expected Toolkit WindowControl text box to bind to the view model.");
+        }
+
+        if (expectLoaded && expectedVisible)
+        {
+            ToolkitWindowControl.ApplyTemplate();
+            ToolkitWindowControl.UpdateLayout();
+            if (ToolkitWindowControl.ActualWidth <= 0 ||
+                ToolkitWindowControl.ActualHeight <= 0)
+            {
+                throw new InvalidOperationException("Expected loaded Toolkit WindowControl to participate in layout.");
+            }
+
+            _ = GetToolkitWindowControlButton("PART_CloseButton");
+            if (ToolkitWindowControl.Template?.FindName("PART_HeaderThumb", ToolkitWindowControl) is not System.Windows.Controls.Primitives.Thumb)
+            {
+                throw new InvalidOperationException("Expected Toolkit WindowControl template to expose the header thumb.");
+            }
+        }
+    }
+
+    internal void ExerciseToolkitWindowControl()
+    {
+        ShowToolkitWindowControl();
+        ValidateToolkitWindowControlState(expectedVisible: true, expectLoaded: true);
+
+        WindowControlInputTextBox.Text = "WindowControl primitive input";
+        WindowControlInputTextBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+        AssertEqual("WindowControl primitive input", ViewModel.WindowControlText, "Toolkit WindowControl text source update");
+
+        int activatedCountBefore = ViewModel.WindowControlActivatedCount;
+        ActivateToolkitWindowControl();
+        if (ViewModel.WindowControlActivatedCount <= activatedCountBefore)
+        {
+            throw new InvalidOperationException("Expected Toolkit WindowControl Activated event to fire.");
+        }
+
+        int headerClickCountBefore = ViewModel.WindowControlHeaderClickCount;
+        RaiseToolkitWindowControlHeaderClick();
+        AssertEqual(headerClickCountBefore + 1, ViewModel.WindowControlHeaderClickCount, "Toolkit WindowControl header click count");
+
+        int headerDragCountBefore = ViewModel.WindowControlHeaderDragCount;
+        RaiseToolkitWindowControlHeaderDrag();
+        AssertEqual(headerDragCountBefore + 1, ViewModel.WindowControlHeaderDragCount, "Toolkit WindowControl header drag count");
+
+        int closeClickCountBefore = ViewModel.WindowControlCloseButtonClickCount;
+        Button closeButton = GetToolkitWindowControlButton("PART_CloseButton");
+        closeButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, closeButton));
+        AssertEqual(closeClickCountBefore + 1, ViewModel.WindowControlCloseButtonClickCount, "Toolkit WindowControl close button count");
+        ValidateToolkitWindowControlState(expectedVisible: false, expectLoaded: true);
+
+        ToggleToolkitWindowControl();
+        ValidateToolkitWindowControlState(expectedVisible: true, expectLoaded: true);
+    }
+
     private void ShowToolkitMessageBoxButton_Click(object sender, RoutedEventArgs e)
     {
         ShowToolkitMessageBox();
@@ -1862,6 +2047,7 @@ public partial class MainWindow : Window
         await ValidateLiveWizardAsync(liveHost);
         await ValidateLiveToolkitChildWindowAsync(liveHost);
         await ValidateLiveToolkitMessageBoxAsync(liveHost);
+        await ValidateLiveToolkitWindowControlAsync(liveHost);
         await ValidateLiveToolkitZoomboxAndMagnifierAsync(liveHost);
         await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -1988,7 +2174,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit zoombox and magnifier, Toolkit panels, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -2290,6 +2476,96 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
+    private async Task ValidateLiveToolkitWindowControlAsync(object liveHost)
+    {
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                ShowToolkitWindowControl();
+                WindowControlInputTextBox.Text = string.Empty;
+                WindowControlInputTextBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+                ValidateToolkitWindowControlState(expectedVisible: true, expectLoaded: true);
+            },
+            DispatcherPriority.Send);
+
+        await ClickLiveControlAsync(liveHost, WindowControlInputTextBox, "WindowControlInputTextBox");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                if (!WindowControlInputTextBox.IsKeyboardFocusWithin)
+                {
+                    throw new InvalidOperationException(
+                        $"Expected Toolkit live WindowControl input to receive focus, but focused '{DescribeInputElement(Keyboard.FocusedElement)}'.");
+                }
+
+                foreach (char character in "Pane")
+                {
+                    string key = char.ToUpperInvariant(character).ToString();
+                    RaiseHostInput(liveHost, "KeyDown", key: key);
+                    RaiseHostInput(liveHost, "TextInput", character: character);
+                    RaiseHostInput(liveHost, "KeyUp", key: key);
+                }
+            },
+            DispatcherPriority.Send);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                AssertEqual("Pane", WindowControlInputTextBox.Text, "Toolkit live WindowControl input text");
+                AssertEqual("Pane", ViewModel.WindowControlText, "Toolkit live WindowControl input binding source");
+            },
+            DispatcherPriority.Send);
+
+        int activatedCountBefore = ViewModel.WindowControlActivatedCount;
+        await ClickLiveControlAsync(liveHost, ActivateWindowControlButton, "ActivateWindowControlButton");
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => ViewModel.WindowControlActivatedCount > activatedCountBefore,
+            "Toolkit live WindowControl activation event");
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                int headerClickCountBefore = ViewModel.WindowControlHeaderClickCount;
+                int headerDragCountBefore = ViewModel.WindowControlHeaderDragCount;
+                RaiseToolkitWindowControlHeaderClick();
+                RaiseToolkitWindowControlHeaderDrag();
+                AssertEqual(headerClickCountBefore + 1, ViewModel.WindowControlHeaderClickCount, "Toolkit live WindowControl header click count");
+                AssertEqual(headerDragCountBefore + 1, ViewModel.WindowControlHeaderDragCount, "Toolkit live WindowControl header drag count");
+            },
+            DispatcherPriority.Send);
+
+        int closeClickCountBefore = ViewModel.WindowControlCloseButtonClickCount;
+        Button closeButton = await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => GetToolkitWindowControlButton("PART_CloseButton"),
+            DispatcherPriority.Send);
+        await ClickLiveControlAsync(liveHost, closeButton, "ToolkitWindowControlCloseButton");
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => ToolkitWindowControl.Visibility == Visibility.Collapsed &&
+                  ViewModel.WindowControlCloseButtonClickCount == closeClickCountBefore + 1,
+            "Toolkit live WindowControl close button event");
+
+        await ClickLiveControlAsync(liveHost, ToggleWindowControlButton, "ToggleWindowControlButton");
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => ToolkitWindowControl.Visibility == Visibility.Visible,
+            "Toolkit live WindowControl toggle visible state");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                ValidateToolkitWindowControlState(expectedVisible: true, expectLoaded: true);
+                CloseToolkitWindowControl("WindowControl live validated");
+            },
+            DispatcherPriority.Send);
+    }
+
     private async Task ValidateLiveToolkitZoomboxAndMagnifierAsync(object liveHost)
     {
         int commandCountBefore = ViewModel.ZoomboxCommandCount;
@@ -2502,7 +2778,8 @@ public partial class MainWindow : Window
             this);
         object? hit = InputHitTest(center);
         targetState += $", Input=({center.X:0.###}, {center.Y:0.###}), InputHitTest={DescribeInputElement(hit)}";
-        if (hit == null)
+        if (hit == null ||
+            !IsInputElementWithinTarget(hit, target))
         {
             return false;
         }
@@ -2511,6 +2788,37 @@ public partial class MainWindow : Window
         RaiseHostInput(liveHost, "MouseDown", x: center.X, y: center.Y, button: "Left");
         RaiseHostInput(liveHost, "MouseUp", x: center.X, y: center.Y, button: "Left");
         return true;
+    }
+
+    private static bool IsInputElementWithinTarget(object hit, FrameworkElement target)
+    {
+        if (ReferenceEquals(hit, target))
+        {
+            return true;
+        }
+
+        var current = hit as DependencyObject;
+        while (current != null)
+        {
+            if (ReferenceEquals(current, target))
+            {
+                return true;
+            }
+
+            DependencyObject? parent = null;
+            try
+            {
+                parent = VisualTreeHelper.GetParent(current);
+            }
+            catch (InvalidOperationException)
+            {
+            }
+
+            parent ??= LogicalTreeHelper.GetParent(current);
+            current = parent;
+        }
+
+        return false;
     }
 
     private async Task<T> InvokeWithLiveHostWakeAsync<T>(
@@ -2772,6 +3080,14 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private MessageBoxResult _lastToolkitMessageBoxResult = MessageBoxResult.None;
     private string _toolkitMessageBoxStatus = "MessageBox idle";
     private string _windowContainerStatus = "WindowContainer idle";
+    private Visibility _toolkitWindowControlVisibility = Visibility.Visible;
+    private string _windowControlStatus = "WindowControl visible";
+    private string _windowControlText = "WindowControl primitive";
+    private int _windowControlToggleCount;
+    private int _windowControlActivatedCount;
+    private int _windowControlHeaderClickCount;
+    private int _windowControlHeaderDragCount;
+    private int _windowControlCloseButtonClickCount;
     private int _zoomboxCommandCount;
     private int _zoomboxViewChangedCount;
     private int _zoomboxViewStackIndexChangedCount;
@@ -3328,6 +3644,110 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
             if (!string.Equals(_windowContainerStatus, value, StringComparison.Ordinal))
             {
                 _windowContainerStatus = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public Visibility ToolkitWindowControlVisibility
+    {
+        get => _toolkitWindowControlVisibility;
+        set
+        {
+            if (_toolkitWindowControlVisibility != value)
+            {
+                _toolkitWindowControlVisibility = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string WindowControlStatus
+    {
+        get => _windowControlStatus;
+        set
+        {
+            if (!string.Equals(_windowControlStatus, value, StringComparison.Ordinal))
+            {
+                _windowControlStatus = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string WindowControlText
+    {
+        get => _windowControlText;
+        set
+        {
+            if (!string.Equals(_windowControlText, value, StringComparison.Ordinal))
+            {
+                _windowControlText = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int WindowControlToggleCount
+    {
+        get => _windowControlToggleCount;
+        set
+        {
+            if (_windowControlToggleCount != value)
+            {
+                _windowControlToggleCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int WindowControlActivatedCount
+    {
+        get => _windowControlActivatedCount;
+        set
+        {
+            if (_windowControlActivatedCount != value)
+            {
+                _windowControlActivatedCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int WindowControlHeaderClickCount
+    {
+        get => _windowControlHeaderClickCount;
+        set
+        {
+            if (_windowControlHeaderClickCount != value)
+            {
+                _windowControlHeaderClickCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int WindowControlHeaderDragCount
+    {
+        get => _windowControlHeaderDragCount;
+        set
+        {
+            if (_windowControlHeaderDragCount != value)
+            {
+                _windowControlHeaderDragCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int WindowControlCloseButtonClickCount
+    {
+        get => _windowControlCloseButtonClickCount;
+        set
+        {
+            if (_windowControlCloseButtonClickCount != value)
+            {
+                _windowControlCloseButtonClickCount = value;
                 OnPropertyChanged();
             }
         }
@@ -4133,9 +4553,15 @@ internal static class ToolkitSelfTest
         Require<ChildWindow>(window, "ToolkitChildWindow");
         Require<Button>(window, "ShowChildWindowButton");
         Require<Button>(window, "ShowToolkitMessageBoxButton");
+        Require<Button>(window, "ToggleWindowControlButton");
         Require<TextBox>(window, "ChildWindowInputTextBox");
         Require<Button>(window, "AcceptChildWindowButton");
         Require<ToolkitMessageBoxControl>(window, "ToolkitMessageBox");
+        Require<WindowContainer>(window, "ToolkitPrimitiveWindowContainer");
+        Require<WindowControl>(window, "ToolkitWindowControl");
+        Require<TextBox>(window, "WindowControlInputTextBox");
+        Require<Button>(window, "ActivateWindowControlButton");
+        Require<TextBlock>(window, "WindowControlStatusText");
         Require<ToolkitZoomboxControl>(window, "ToolkitZoombox");
         Require<Grid>(window, "ZoomboxContentRoot");
         Require<Button>(window, "ZoomInButton");
@@ -4245,6 +4671,7 @@ internal static class ToolkitSelfTest
         window.ValidateToolkitWizardState(expectLoaded);
         window.ValidateToolkitChildWindowState(expectedOpen: false);
         window.ValidateToolkitMessageBoxState(expectedOpen: false);
+        window.ValidateToolkitWindowControlState(expectedVisible: true, expectLoaded);
         window.ValidateToolkitZoomboxAndMagnifierState(expectLoaded);
         window.ValidateToolkitPanelState(expectLoaded);
         window.ValidateToolkitCollectionControlState(expectLoaded);
@@ -4389,6 +4816,7 @@ internal static class ToolkitSelfTest
 
             window.ExerciseToolkitChildWindow();
             window.ExerciseToolkitMessageBox();
+            window.ExerciseToolkitWindowControl();
             window.ExerciseToolkitZoomboxAndMagnifier();
             window.ExerciseToolkitCollectionControl();
         }

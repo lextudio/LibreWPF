@@ -471,6 +471,7 @@
                     <Grid.RowDefinitions>
                       <RowDefinition Height="Auto" />
                       <RowDefinition Height="Auto" />
+                      <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <WrapPanel Margin="0,0,0,6">
                       <Button x:Name="ShowChildWindowButton"
@@ -485,10 +486,21 @@
                               Margin="0,0,6,0"
                               Padding="8,4"
                               Click="ShowToolkitMessageBoxButton_Click" />
+                      <Button x:Name="ToggleWindowControlButton"
+                              Content="Toggle window"
+                              MinWidth="112"
+                              Margin="0,0,6,0"
+                              Padding="8,4"
+                              Click="ToggleWindowControlButton_Click" />
                       <TextBlock x:Name="ChildWindowStatusText"
                                  VerticalAlignment="Center"
                                  Foreground="#5E6A73"
                                  Text="{Binding WindowContainerStatus}" />
+                      <TextBlock x:Name="WindowControlStatusText"
+                                 VerticalAlignment="Center"
+                                 Margin="10,0,0,0"
+                                 Foreground="#5E6A73"
+                                 Text="{Binding WindowControlStatus}" />
                     </WrapPanel>
                     <xctk:WindowContainer x:Name="ToolkitChildWindowContainer"
                                           Grid.Row="1"
@@ -527,6 +539,43 @@
                                        Top="36"
                                        OkButtonContent="OK"
                                        Closed="ToolkitMessageBox_Closed" />
+                    </xctk:WindowContainer>
+                    <xctk:WindowContainer x:Name="ToolkitPrimitiveWindowContainer"
+                                          Grid.Row="2"
+                                          Height="160"
+                                          Margin="0,8,0,0"
+                                          Background="{StaticResource ToolkitSubtleBrush}">
+                      <xctk:WindowControl x:Name="ToolkitWindowControl"
+                                          Caption="Toolkit window control"
+                                          CaptionIcon="{StaticResource ToolIcon}"
+                                          Width="228"
+                                          Height="124"
+                                          Left="18"
+                                          Top="24"
+                                          CloseButtonVisibility="Visible"
+                                          WindowStyle="SingleBorderWindow"
+                                          WindowBackground="#FFFFFFFF"
+                                          WindowInactiveBackground="#FFEFF4F8"
+                                          WindowBorderBrush="#5B8DEF"
+                                          WindowBorderThickness="1"
+                                          Visibility="{Binding ToolkitWindowControlVisibility, Mode=TwoWay}"
+                                          Activated="ToolkitWindowControl_Activated"
+                                          HeaderMouseLeftButtonClicked="ToolkitWindowControl_HeaderMouseLeftButtonClicked"
+                                          HeaderDragDelta="ToolkitWindowControl_HeaderDragDelta"
+                                          CloseButtonClicked="ToolkitWindowControl_CloseButtonClicked">
+                        <StackPanel Margin="10">
+                          <TextBlock Text="Primitive WindowControl hosted directly in Xceed WindowContainer." />
+                          <TextBox x:Name="WindowControlInputTextBox"
+                                   Margin="0,8,0,8"
+                                   Text="{Binding WindowControlText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                          <Button x:Name="ActivateWindowControlButton"
+                                  Content="Activate"
+                                  HorizontalAlignment="Right"
+                                  MinWidth="72"
+                                  Padding="8,3"
+                                  Click="ActivateWindowControlButton_Click" />
+                        </StackPanel>
+                      </xctk:WindowControl>
                     </xctk:WindowContainer>
                   </Grid>
 

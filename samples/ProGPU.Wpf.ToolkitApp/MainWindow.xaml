@@ -73,10 +73,15 @@
     <CommandBinding Command="{x:Static local:ToolkitDockCommands.CycleDockContent}"
                     CanExecute="CycleDockContentCommand_CanExecute"
                     Executed="CycleDockContentCommand_Executed" />
+    <CommandBinding Command="{x:Static local:ToolkitDockCommands.CycleDockAnchorable}"
+                    CanExecute="CycleDockAnchorableCommand_CanExecute"
+                    Executed="CycleDockAnchorableCommand_Executed" />
   </Window.CommandBindings>
   <Window.InputBindings>
     <KeyBinding Key="F9"
                 Command="{x:Static local:ToolkitDockCommands.CycleDockContent}" />
+    <KeyBinding Key="F10"
+                Command="{x:Static local:ToolkitDockCommands.CycleDockAnchorable}" />
   </Window.InputBindings>
 
   <DockPanel LastChildFill="True">

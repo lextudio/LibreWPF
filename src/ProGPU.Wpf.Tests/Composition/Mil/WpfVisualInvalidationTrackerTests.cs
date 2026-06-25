@@ -153,6 +153,29 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
+    public void VisualClipChangeMarksTrackerDirtyWithoutEvent()
+    {
+        var root = new FakeVisual();
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        root.VisualClip = new Rect(0, 0, 100, 40);
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+        Assert.Contains(root, tracker.DirtySources);
+
+        tracker.ConsumeDirty();
+        root.VisualClip = new Rect(0, 0, 100, 56);
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+    }
+
+    [Fact]
     public void PrivateVersionFieldChangeMarksTrackerDirtyWithoutEvent()
     {
         var brush = new FakePrivateVersionResource();
@@ -455,6 +478,8 @@ public sealed class WpfVisualInvalidationTrackerTests
         public object? Brush { get; init; }
 
         public object? Clip { get; init; }
+
+        public object? VisualClip { get; set; }
 
         public object? Effect { get; init; }
 

@@ -138,6 +138,24 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeLowersInternalVisualClipIntoRetainedOwnerScopes()
+    {
+        var root = new FakeVisual
+        {
+            Clip = new FakeRectangleGeometry(new FakeRect(0, 0, 500, 500)),
+            VisualClip = new FakeRectangleGeometry(new FakeRect(5, 6, 70, 80))
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(2, sink.RetainedVisualStates.Count);
+        AssertReplayRect(5, 6, 70, 80, sink.RetainedVisualStates[0].ClipBounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
     public void ReplaySubtreeLowersVisualScrollableAreaClipIntoRetainedOwnerScopes()
     {
         var root = new FakeVisual
@@ -1559,6 +1577,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public object? Transform { get; init; }
 
         public object? Clip { get; init; }
+
+        public object? VisualClip { get; init; }
 
         public object? Bounds { get; init; }
 

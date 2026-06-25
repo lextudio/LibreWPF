@@ -238,6 +238,7 @@ public sealed class WpfVisualTreeReflectionRenderer
     {
         RegisterRetainedVisualPropertyDirectDependency(visual, "Children", sink);
         RegisterRetainedVisualPropertyDependency(visual, "Transform", sink);
+        RegisterRetainedVisualPropertyDependency(visual, "VisualClip", sink);
         RegisterRetainedVisualPropertyDependency(visual, "Clip", sink);
         RegisterRetainedVisualPropertyDependency(visual, "ScrollableAreaClip", sink);
         RegisterRetainedVisualPropertyDependency(visual, "VisualScrollableAreaClip", sink);
@@ -323,7 +324,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             offset = new Vector2((float)offsetX, (float)offsetY);
         }
 
-        if (TryGetPropertyValue(visual, "Clip", out var clip) && clip != null)
+        if (TryGetVisualClip(visual, out var clip) && clip != null)
         {
             if (!TryReadRectangleClipBounds(clip, out var rectangleClipBounds))
             {
@@ -758,7 +759,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             popCount++;
         }
 
-        if (TryGetPropertyValue(visual, "Clip", out var clip) && clip != null)
+        if (TryGetVisualClip(visual, out var clip) && clip != null)
         {
             if (TryReadRectangleClipBounds(clip, out var rectangleClipBounds))
             {
@@ -1280,7 +1281,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
 
         WpfReplayRect? clipBounds = null;
-        if (TryGetPropertyValue(child, "Clip", out var clip) && clip != null)
+        if (TryGetVisualClip(child, out var clip) && clip != null)
         {
             if (!TryReadRectangleClipBounds(clip, out var childClipBounds))
             {
@@ -1322,6 +1323,16 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
 
         return TryGetPropertyValue(visual, "VisualScrollableAreaClip", out scrollableAreaClip);
+    }
+
+    private static bool TryGetVisualClip(object visual, out object? clip)
+    {
+        if (TryGetPropertyValue(visual, "VisualClip", out clip) && clip != null)
+        {
+            return true;
+        }
+
+        return TryGetPropertyValue(visual, "Clip", out clip);
     }
 
     private static bool TryReadSize(object sizeValue, out double width, out double height)

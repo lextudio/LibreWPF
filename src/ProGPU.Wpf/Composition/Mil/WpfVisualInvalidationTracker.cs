@@ -34,6 +34,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         "GlyphRun",
         "Transform",
         "RelativeTransform",
+        "VisualClip",
         "Clip",
         "ClipGeometry",
         "OpacityMask",
@@ -577,7 +578,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             builder.SetOffset(offsetX, offsetY);
         }
 
-        if (TryGetPropertyValue(source, "Clip", out var clip))
+        if (TryGetVisualClip(source, out var clip))
         {
             builder.SetClip(clip);
         }
@@ -618,6 +619,16 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         return TryGetPropertyValue(source, "VisualScrollableAreaClip", out value);
+    }
+
+    private static bool TryGetVisualClip(object source, out object? value)
+    {
+        if (TryGetPropertyValue(source, "VisualClip", out value) && value != null)
+        {
+            return true;
+        }
+
+        return TryGetPropertyValue(source, "Clip", out value);
     }
 
     private static bool TryReadVectorLikeProperty(object instance, string propertyName, out double x, out double y)

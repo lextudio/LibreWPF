@@ -6290,6 +6290,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DocumentTitleTemplateSelector", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("CloseAllButThisCommand", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AutoHideCommand", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("anchorableItem.AutoHideCommand.Execute(null)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("anchorableItem.DockCommand.Execute(null)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("source-backed AvalonDock anchorable auto-hide command to move the model into a side group", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ActivateCommand.Execute", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AddSourceDocument()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AddSourceAnchorable()", mainWindowCodeBehind, StringComparison.Ordinal);

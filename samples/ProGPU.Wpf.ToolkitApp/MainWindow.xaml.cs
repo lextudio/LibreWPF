@@ -3328,6 +3328,23 @@ public partial class MainWindow : Window
 
         anchorableItem.ActivateCommand.Execute(null);
         AssertEqual(true, generatedAnchorable.IsActive, "AvalonDock source anchorable LayoutItem activate command");
+
+        anchorableItem.AutoHideCommand.Execute(null);
+        AssertEqual(true, generatedAnchorable.IsAutoHidden, "AvalonDock source anchorable LayoutItem auto-hide command");
+        if (!SourceDockLayoutRoot.LeftSide.Children.Any(group => group.Children.Contains(generatedAnchorable)) &&
+            !SourceDockLayoutRoot.RightSide.Children.Any(group => group.Children.Contains(generatedAnchorable)) &&
+            !SourceDockLayoutRoot.TopSide.Children.Any(group => group.Children.Contains(generatedAnchorable)) &&
+            !SourceDockLayoutRoot.BottomSide.Children.Any(group => group.Children.Contains(generatedAnchorable)))
+        {
+            throw new InvalidOperationException("Expected source-backed AvalonDock anchorable auto-hide command to move the model into a side group.");
+        }
+
+        anchorableItem.DockCommand.Execute(null);
+        AssertEqual(false, generatedAnchorable.IsAutoHidden, "AvalonDock source anchorable LayoutItem dock command");
+        if (generatedAnchorable.Parent is not LayoutAnchorablePane)
+        {
+            throw new InvalidOperationException("Expected source-backed AvalonDock anchorable dock command to restore pane membership.");
+        }
     }
 
     private void ValidateSourceBackedAvalonDockDynamicMetadata(

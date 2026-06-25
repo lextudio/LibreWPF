@@ -6027,6 +6027,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<WrapPanel Grid.Row=\"1\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CloseOverviewDocumentButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DockDocumentContextMenu", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.AutomationId=\"ToolkitDockManagerAutomation\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.AutomationId=\"ToolkitDocumentListAutomation\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.AutomationId=\"ToolkitEditorTextBoxAutomation\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DockContextCancelNextCloseMenuItem", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{x:Static local:ToolkitDockCommands.ActivateEditor}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{x:Static local:ToolkitDockCommands.CloseOverview}\"", mainWindowXaml, StringComparison.Ordinal);
@@ -6248,6 +6251,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RaiseHostInput(liveHost, \"KeyDown\", key: \"F9\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDockKeyboardNavigationCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastAvalonDockKeyboardNavigationTarget", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateToolkitAutomationState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.GetAutomationId(DockManager)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("UIElementAutomationPeer.CreatePeerForElement(element)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("activateButtonPeer.GetPattern(PatternInterface.Invoke)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("documentListPeer.GetPattern(PatternInterface.Selection)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("editorTextBoxPeer.GetPattern(PatternInterface.Value)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateAvalonDockLayoutReplacementEvents", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveOverviewDocumentLifecycleAsync", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ContentId=\\\"overview\\\"", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6264,6 +6273,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ResolveCurrentRenderSurfaceGeometry", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("floating document window", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock source-backed documents/anchorables", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Toolkit/AvalonDock automation peers", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock layout update strategy and dynamic metadata", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock title selectors and layout item commands", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock tab group commands", mainWindowCodeBehind, StringComparison.Ordinal);

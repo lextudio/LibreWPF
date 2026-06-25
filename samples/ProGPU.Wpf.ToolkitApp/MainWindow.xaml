@@ -103,6 +103,7 @@
                   Content="Add document"
                   Click="AddDocumentButton_Click" />
           <Button x:Name="ActivateEditorButton"
+                  AutomationProperties.AutomationId="ToolkitActivateEditorButtonAutomation"
                   MinWidth="104"
                   Margin="0,0,6,0"
                   Padding="10,4"
@@ -176,11 +177,14 @@
     </StatusBar>
 
     <xcad:DockingManager x:Name="DockManager"
+                         AutomationProperties.AutomationId="ToolkitDockManagerAutomation"
+                         AutomationProperties.Name="Toolkit AvalonDock manager"
                          AllowMixedOrientation="True"
                          BorderBrush="#708090"
                          BorderThickness="1">
       <xcad:DockingManager.DocumentContextMenu>
-        <ContextMenu x:Name="DockDocumentContextMenu">
+        <ContextMenu x:Name="DockDocumentContextMenu"
+                     AutomationProperties.AutomationId="ToolkitDockDocumentContextMenuAutomation">
           <MenuItem x:Name="DockContextActivateEditorMenuItem"
                     Header="Activate editor"
                     Command="{x:Static local:ToolkitDockCommands.ActivateEditor}"
@@ -873,6 +877,8 @@
                              FontWeight="SemiBold"
                              Text="AvalonDock document surface" />
                   <ListView x:Name="DocumentList"
+                            AutomationProperties.AutomationId="ToolkitDocumentListAutomation"
+                            AutomationProperties.Name="Toolkit documents"
                             Grid.Row="1"
                             Margin="0,12,0,0"
                             ItemsSource="{Binding Documents}"
@@ -907,6 +913,8 @@
                              FontWeight="SemiBold"
                              Text="{Binding SelectedDocument.Title}" />
                   <TextBox x:Name="EditorTextBox"
+                           AutomationProperties.AutomationId="ToolkitEditorTextBoxAutomation"
+                           AutomationProperties.Name="Toolkit editor body"
                            Grid.Row="1"
                            Margin="0,12,0,0"
                            AcceptsReturn="True"

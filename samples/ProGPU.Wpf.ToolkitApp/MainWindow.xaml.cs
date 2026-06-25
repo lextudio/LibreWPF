@@ -10,6 +10,9 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Automation;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
@@ -1726,6 +1729,53 @@ public partial class MainWindow : Window
         AssertEqual($"Keyboard dock navigation: {expectedContent.Title}", ViewModel.Status, "AvalonDock keyboard navigation status");
     }
 
+    internal void ValidateToolkitAutomationState(bool expectLoaded)
+    {
+        AssertEqual("ToolkitDockManagerAutomation", AutomationProperties.GetAutomationId(DockManager), "Toolkit DockingManager automation id");
+        AssertEqual("Toolkit AvalonDock manager", AutomationProperties.GetName(DockManager), "Toolkit DockingManager automation name");
+        AssertEqual("ToolkitActivateEditorButtonAutomation", AutomationProperties.GetAutomationId(ActivateEditorButton), "Toolkit activate editor automation id");
+        AssertEqual("ToolkitDockDocumentContextMenuAutomation", AutomationProperties.GetAutomationId(DockDocumentContextMenu), "Toolkit document context menu automation id");
+        AssertEqual("ToolkitDocumentListAutomation", AutomationProperties.GetAutomationId(DocumentList), "Toolkit document list automation id");
+        AssertEqual("Toolkit documents", AutomationProperties.GetName(DocumentList), "Toolkit document list automation name");
+        AssertEqual("ToolkitEditorTextBoxAutomation", AutomationProperties.GetAutomationId(EditorTextBox), "Toolkit editor text box automation id");
+        AssertEqual("Toolkit editor body", AutomationProperties.GetName(EditorTextBox), "Toolkit editor text box automation name");
+
+        if (!expectLoaded)
+        {
+            return;
+        }
+
+        AutomationPeer? dockPeer = UIElementAutomationPeer.CreatePeerForElement(DockManager);
+        if (dockPeer != null)
+        {
+            AssertEqual("Toolkit AvalonDock manager", dockPeer.GetName(), "Toolkit DockingManager automation peer name");
+        }
+
+        AutomationPeer activateButtonPeer = RequireAutomationPeer(ActivateEditorButton, "Toolkit activate editor button");
+        if (activateButtonPeer.GetPattern(PatternInterface.Invoke) is not IInvokeProvider)
+        {
+            throw new InvalidOperationException("Expected Toolkit activate editor button automation peer to expose Invoke.");
+        }
+
+        AutomationPeer documentListPeer = RequireAutomationPeer(DocumentList, "Toolkit document list");
+        if (documentListPeer.GetPattern(PatternInterface.Selection) is not ISelectionProvider)
+        {
+            throw new InvalidOperationException("Expected Toolkit document list automation peer to expose Selection.");
+        }
+
+        AutomationPeer editorTextBoxPeer = RequireAutomationPeer(EditorTextBox, "Toolkit editor text box");
+        if (editorTextBoxPeer.GetPattern(PatternInterface.Value) is not IValueProvider)
+        {
+            throw new InvalidOperationException("Expected Toolkit editor text box automation peer to expose Value.");
+        }
+    }
+
+    private static AutomationPeer RequireAutomationPeer(UIElement element, string description)
+    {
+        return UIElementAutomationPeer.CreatePeerForElement(element)
+            ?? throw new InvalidOperationException($"Expected {description} to create a WPF automation peer.");
+    }
+
     private static bool CanExecuteDockContextCommand(MenuItem menuItem)
     {
         if (menuItem.Command is not RoutedCommand command ||
@@ -2454,6 +2504,10 @@ public partial class MainWindow : Window
             liveHost,
             () => ValidateToolkitPanelState(expectLoaded: true),
             DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => ValidateToolkitAutomationState(expectLoaded: true),
+            DispatcherPriority.Send);
         await ValidateLiveToolkitCollectionControlAsync(liveHost);
         await ValidateLiveSourceBackedAvalonDockAsync(liveHost);
         await ValidateLiveAvalonDockThemeSwitchingAsync(liveHost);
@@ -2577,7 +2631,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock keyboard navigation, AvalonDock theme switching, AvalonDock document context menu commands and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit/AvalonDock automation peers, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock keyboard navigation, AvalonDock theme switching, AvalonDock document context menu commands and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -5212,6 +5266,7 @@ internal static class ToolkitSelfTest
         window.ValidateToolkitCollectionControlState(expectLoaded);
         window.ValidateToolkitCollectionDialogButtonState(expectLoaded);
         window.ValidateSourceBackedAvalonDockState(mutateSources: true);
+        window.ValidateToolkitAutomationState(expectLoaded);
 
         if (expectLoaded)
         {

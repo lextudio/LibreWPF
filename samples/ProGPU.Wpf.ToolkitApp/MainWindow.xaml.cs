@@ -85,6 +85,7 @@ public partial class MainWindow : Window
         DataContext = _viewModel;
         InitializeComponent();
         ToolkitChildWindow.FocusedElement = ChildWindowInputTextBox;
+        ConfigureToolkitWindowControlPrimitive();
         MagnifierManager.SetMagnifier(ZoomboxContentRoot, ToolkitMagnifier);
         SetAvalonDockTheme(AvalonDockThemeNames[_avalonDockThemeIndex], recordSwitch: false);
         DockManager.ActiveContentChanged += DockManager_ActiveContentChanged;
@@ -98,6 +99,14 @@ public partial class MainWindow : Window
         OverviewDocument.Closed += OverviewDocument_Closed;
         Loaded += OnToolkitWindowLoaded;
         StartLiveValidationIfRequired();
+    }
+
+    private void ConfigureToolkitWindowControlPrimitive()
+    {
+        ToolkitWindowControl.AddHandler(WindowControl.HeaderIconClickedEvent, new MouseButtonEventHandler(ToolkitWindowControl_HeaderIconClicked));
+        ToolkitWindowControl.AddHandler(WindowControl.HeaderIconDoubleClickedEvent, new MouseButtonEventHandler(ToolkitWindowControl_HeaderIconDoubleClicked));
+        ToolkitWindowControl.AddHandler(WindowControl.HeaderMouseLeftButtonDoubleClickedEvent, new MouseButtonEventHandler(ToolkitWindowControl_HeaderMouseLeftButtonDoubleClicked));
+        ToolkitWindowControl.AddHandler(WindowControl.HeaderMouseRightButtonClickedEvent, new MouseButtonEventHandler(ToolkitWindowControl_HeaderMouseRightButtonClicked));
     }
 
     private void AddDocumentButton_Click(object sender, RoutedEventArgs e)
@@ -814,6 +823,38 @@ public partial class MainWindow : Window
         ViewModel.Activity.Add(ViewModel.WindowControlStatus);
     }
 
+    private void ToolkitWindowControl_HeaderIconClicked(object sender, MouseButtonEventArgs e)
+    {
+        ViewModel.WindowControlHeaderIconClickCount++;
+        ViewModel.WindowControlStatus = "WindowControl header icon clicked";
+        ViewModel.Status = ViewModel.WindowControlStatus;
+        ViewModel.Activity.Add(ViewModel.WindowControlStatus);
+    }
+
+    private void ToolkitWindowControl_HeaderIconDoubleClicked(object sender, MouseButtonEventArgs e)
+    {
+        ViewModel.WindowControlHeaderIconDoubleClickCount++;
+        ViewModel.WindowControlStatus = "WindowControl header icon double-clicked";
+        ViewModel.Status = ViewModel.WindowControlStatus;
+        ViewModel.Activity.Add(ViewModel.WindowControlStatus);
+    }
+
+    private void ToolkitWindowControl_HeaderMouseLeftButtonDoubleClicked(object sender, MouseButtonEventArgs e)
+    {
+        ViewModel.WindowControlHeaderDoubleClickCount++;
+        ViewModel.WindowControlStatus = "WindowControl header double-clicked";
+        ViewModel.Status = ViewModel.WindowControlStatus;
+        ViewModel.Activity.Add(ViewModel.WindowControlStatus);
+    }
+
+    private void ToolkitWindowControl_HeaderMouseRightButtonClicked(object sender, MouseButtonEventArgs e)
+    {
+        ViewModel.WindowControlHeaderRightClickCount++;
+        ViewModel.WindowControlStatus = "WindowControl header right-clicked";
+        ViewModel.Status = ViewModel.WindowControlStatus;
+        ViewModel.Activity.Add(ViewModel.WindowControlStatus);
+    }
+
     private void ToolkitWindowControl_HeaderDragDelta(object sender, System.Windows.Controls.Primitives.DragDeltaEventArgs e)
     {
         ViewModel.WindowControlHeaderDragCount++;
@@ -873,12 +914,27 @@ public partial class MainWindow : Window
 
     internal void RaiseToolkitWindowControlHeaderClick()
     {
-        var args = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
-        {
-            RoutedEvent = WindowControl.HeaderMouseLeftButtonClickedEvent,
-            Source = ToolkitWindowControl
-        };
-        ToolkitWindowControl.RaiseEvent(args);
+        RaiseToolkitWindowControlMouseEvent(WindowControl.HeaderMouseLeftButtonClickedEvent, MouseButton.Left);
+    }
+
+    internal void RaiseToolkitWindowControlHeaderIconClick()
+    {
+        RaiseToolkitWindowControlMouseEvent(WindowControl.HeaderIconClickedEvent, MouseButton.Left);
+    }
+
+    internal void RaiseToolkitWindowControlHeaderIconDoubleClick()
+    {
+        RaiseToolkitWindowControlMouseEvent(WindowControl.HeaderIconDoubleClickedEvent, MouseButton.Left);
+    }
+
+    internal void RaiseToolkitWindowControlHeaderDoubleClick()
+    {
+        RaiseToolkitWindowControlMouseEvent(WindowControl.HeaderMouseLeftButtonDoubleClickedEvent, MouseButton.Left);
+    }
+
+    internal void RaiseToolkitWindowControlHeaderRightClick()
+    {
+        RaiseToolkitWindowControlMouseEvent(WindowControl.HeaderMouseRightButtonClickedEvent, MouseButton.Right);
     }
 
     internal void RaiseToolkitWindowControlHeaderDrag()
@@ -886,6 +942,16 @@ public partial class MainWindow : Window
         var args = new System.Windows.Controls.Primitives.DragDeltaEventArgs(8.0, 4.0)
         {
             RoutedEvent = WindowControl.HeaderDragDeltaEvent,
+            Source = ToolkitWindowControl
+        };
+        ToolkitWindowControl.RaiseEvent(args);
+    }
+
+    private void RaiseToolkitWindowControlMouseEvent(RoutedEvent routedEvent, MouseButton mouseButton)
+    {
+        var args = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, mouseButton)
+        {
+            RoutedEvent = routedEvent,
             Source = ToolkitWindowControl
         };
         ToolkitWindowControl.RaiseEvent(args);
@@ -958,6 +1024,22 @@ public partial class MainWindow : Window
         int headerClickCountBefore = ViewModel.WindowControlHeaderClickCount;
         RaiseToolkitWindowControlHeaderClick();
         AssertEqual(headerClickCountBefore + 1, ViewModel.WindowControlHeaderClickCount, "Toolkit WindowControl header click count");
+
+        int headerIconClickCountBefore = ViewModel.WindowControlHeaderIconClickCount;
+        RaiseToolkitWindowControlHeaderIconClick();
+        AssertEqual(headerIconClickCountBefore + 1, ViewModel.WindowControlHeaderIconClickCount, "Toolkit WindowControl header icon click count");
+
+        int headerIconDoubleClickCountBefore = ViewModel.WindowControlHeaderIconDoubleClickCount;
+        RaiseToolkitWindowControlHeaderIconDoubleClick();
+        AssertEqual(headerIconDoubleClickCountBefore + 1, ViewModel.WindowControlHeaderIconDoubleClickCount, "Toolkit WindowControl header icon double-click count");
+
+        int headerDoubleClickCountBefore = ViewModel.WindowControlHeaderDoubleClickCount;
+        RaiseToolkitWindowControlHeaderDoubleClick();
+        AssertEqual(headerDoubleClickCountBefore + 1, ViewModel.WindowControlHeaderDoubleClickCount, "Toolkit WindowControl header double-click count");
+
+        int headerRightClickCountBefore = ViewModel.WindowControlHeaderRightClickCount;
+        RaiseToolkitWindowControlHeaderRightClick();
+        AssertEqual(headerRightClickCountBefore + 1, ViewModel.WindowControlHeaderRightClickCount, "Toolkit WindowControl header right-click count");
 
         int headerDragCountBefore = ViewModel.WindowControlHeaderDragCount;
         RaiseToolkitWindowControlHeaderDrag();
@@ -3922,10 +4004,22 @@ public partial class MainWindow : Window
             () =>
             {
                 int headerClickCountBefore = ViewModel.WindowControlHeaderClickCount;
+                int headerIconClickCountBefore = ViewModel.WindowControlHeaderIconClickCount;
+                int headerIconDoubleClickCountBefore = ViewModel.WindowControlHeaderIconDoubleClickCount;
+                int headerDoubleClickCountBefore = ViewModel.WindowControlHeaderDoubleClickCount;
+                int headerRightClickCountBefore = ViewModel.WindowControlHeaderRightClickCount;
                 int headerDragCountBefore = ViewModel.WindowControlHeaderDragCount;
                 RaiseToolkitWindowControlHeaderClick();
+                RaiseToolkitWindowControlHeaderIconClick();
+                RaiseToolkitWindowControlHeaderIconDoubleClick();
+                RaiseToolkitWindowControlHeaderDoubleClick();
+                RaiseToolkitWindowControlHeaderRightClick();
                 RaiseToolkitWindowControlHeaderDrag();
                 AssertEqual(headerClickCountBefore + 1, ViewModel.WindowControlHeaderClickCount, "Toolkit live WindowControl header click count");
+                AssertEqual(headerIconClickCountBefore + 1, ViewModel.WindowControlHeaderIconClickCount, "Toolkit live WindowControl header icon click count");
+                AssertEqual(headerIconDoubleClickCountBefore + 1, ViewModel.WindowControlHeaderIconDoubleClickCount, "Toolkit live WindowControl header icon double-click count");
+                AssertEqual(headerDoubleClickCountBefore + 1, ViewModel.WindowControlHeaderDoubleClickCount, "Toolkit live WindowControl header double-click count");
+                AssertEqual(headerRightClickCountBefore + 1, ViewModel.WindowControlHeaderRightClickCount, "Toolkit live WindowControl header right-click count");
                 AssertEqual(headerDragCountBefore + 1, ViewModel.WindowControlHeaderDragCount, "Toolkit live WindowControl header drag count");
             },
             DispatcherPriority.Send);
@@ -4483,6 +4577,10 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private int _windowControlToggleCount;
     private int _windowControlActivatedCount;
     private int _windowControlHeaderClickCount;
+    private int _windowControlHeaderIconClickCount;
+    private int _windowControlHeaderIconDoubleClickCount;
+    private int _windowControlHeaderDoubleClickCount;
+    private int _windowControlHeaderRightClickCount;
     private int _windowControlHeaderDragCount;
     private int _windowControlCloseButtonClickCount;
     private int _zoomboxCommandCount;
@@ -5209,6 +5307,58 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
             if (_windowControlHeaderClickCount != value)
             {
                 _windowControlHeaderClickCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int WindowControlHeaderIconClickCount
+    {
+        get => _windowControlHeaderIconClickCount;
+        set
+        {
+            if (_windowControlHeaderIconClickCount != value)
+            {
+                _windowControlHeaderIconClickCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int WindowControlHeaderIconDoubleClickCount
+    {
+        get => _windowControlHeaderIconDoubleClickCount;
+        set
+        {
+            if (_windowControlHeaderIconDoubleClickCount != value)
+            {
+                _windowControlHeaderIconDoubleClickCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int WindowControlHeaderDoubleClickCount
+    {
+        get => _windowControlHeaderDoubleClickCount;
+        set
+        {
+            if (_windowControlHeaderDoubleClickCount != value)
+            {
+                _windowControlHeaderDoubleClickCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int WindowControlHeaderRightClickCount
+    {
+        get => _windowControlHeaderRightClickCount;
+        set
+        {
+            if (_windowControlHeaderRightClickCount != value)
+            {
+                _windowControlHeaderRightClickCount = value;
                 OnPropertyChanged();
             }
         }

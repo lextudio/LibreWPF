@@ -240,6 +240,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         RegisterRetainedVisualPropertyDependency(visual, "Transform", sink);
         RegisterRetainedVisualPropertyDependency(visual, "Clip", sink);
         RegisterRetainedVisualPropertyDependency(visual, "ScrollableAreaClip", sink);
+        RegisterRetainedVisualPropertyDependency(visual, "VisualScrollableAreaClip", sink);
         RegisterRetainedVisualPropertyDependency(visual, "OpacityMask", sink);
         RegisterRetainedVisualPropertyDependency(visual, "Effect", sink);
         RegisterRetainedVisualPropertyDependency(visual, "BitmapEffect", sink);
@@ -337,7 +338,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             clipBounds = combinedClipBounds;
         }
 
-        if (TryGetPropertyValue(visual, "ScrollableAreaClip", out var scrollableAreaClip) && scrollableAreaClip != null)
+        if (TryGetScrollableAreaClip(visual, out var scrollableAreaClip) && scrollableAreaClip != null)
         {
             if (!TryReadRect(scrollableAreaClip, out var scrollableClipBounds) || !IsUsableBounds(scrollableClipBounds))
             {
@@ -765,7 +766,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             }
         }
 
-        if (TryGetPropertyValue(visual, "ScrollableAreaClip", out var scrollableAreaClip) && scrollableAreaClip != null)
+        if (TryGetScrollableAreaClip(visual, out var scrollableAreaClip) && scrollableAreaClip != null)
         {
             if (TryReadRect(scrollableAreaClip, out var scrollableClipBounds) && IsUsableBounds(scrollableClipBounds))
             {
@@ -1239,7 +1240,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             clipBounds = childClipBounds;
         }
 
-        if (TryGetPropertyValue(child, "ScrollableAreaClip", out var scrollableAreaClip) && scrollableAreaClip != null)
+        if (TryGetScrollableAreaClip(child, out var scrollableAreaClip) && scrollableAreaClip != null)
         {
             if (!TryReadRect(scrollableAreaClip, out var scrollableClipBounds) || !IsUsableBounds(scrollableClipBounds))
             {
@@ -1273,6 +1274,16 @@ public sealed class WpfVisualTreeReflectionRenderer
 
         bounds = default;
         return false;
+    }
+
+    private static bool TryGetScrollableAreaClip(object visual, out object? scrollableAreaClip)
+    {
+        if (TryGetPropertyValue(visual, "ScrollableAreaClip", out scrollableAreaClip) && scrollableAreaClip != null)
+        {
+            return true;
+        }
+
+        return TryGetPropertyValue(visual, "VisualScrollableAreaClip", out scrollableAreaClip);
     }
 
     private static bool TryReadSize(object sizeValue, out double width, out double height)

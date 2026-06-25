@@ -265,8 +265,10 @@
                                    IconSource="{StaticResource ToolIcon}"
                                    CanClose="False"
                                    CanHide="False">
-              <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel Margin="12">
+              <ScrollViewer x:Name="ToolkitPaneScrollViewer"
+                            VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="ToolkitPaneContentPanel"
+                            Margin="12">
                   <TextBlock Style="{StaticResource PanelHeaderText}"
                              Text="Toolkit controls" />
 

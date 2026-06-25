@@ -1616,6 +1616,39 @@ public partial class MainWindow : Window
         }
     }
 
+    internal void ValidateToolkitScrollClipState(bool expectLoaded)
+    {
+        AssertEqual(ScrollBarVisibility.Auto, ToolkitPaneScrollViewer.VerticalScrollBarVisibility, "Toolkit pane vertical scrollbar visibility");
+        if (!ReferenceEquals(ToolkitPaneScrollViewer.Content, ToolkitPaneContentPanel))
+        {
+            throw new InvalidOperationException("Expected Toolkit pane ScrollViewer to host the named content panel.");
+        }
+
+        if (!expectLoaded)
+        {
+            return;
+        }
+
+        ToolkitPaneScrollViewer.UpdateLayout();
+        if (ToolkitPaneScrollViewer.ViewportHeight <= 0 ||
+            ToolkitPaneScrollViewer.ScrollableHeight <= 0)
+        {
+            throw new InvalidOperationException("Expected Toolkit pane ScrollViewer to expose a clipped scrollable viewport.");
+        }
+
+        double targetOffset = Math.Min(120.0, ToolkitPaneScrollViewer.ScrollableHeight);
+        ToolkitPaneScrollViewer.ScrollToVerticalOffset(targetOffset);
+        ToolkitPaneScrollViewer.UpdateLayout();
+
+        if (ToolkitPaneScrollViewer.VerticalOffset <= 0)
+        {
+            throw new InvalidOperationException("Expected Toolkit pane ScrollViewer to apply a non-zero vertical offset.");
+        }
+
+        ToolkitPaneScrollViewer.ScrollToVerticalOffset(0);
+        ToolkitPaneScrollViewer.UpdateLayout();
+    }
+
     private void AddCollectionEntryButton_Click(object sender, RoutedEventArgs e)
     {
         AddToolkitCollectionEntry();
@@ -3649,6 +3682,10 @@ public partial class MainWindow : Window
         await ValidateLiveToolkitMessageBoxAsync(liveHost);
         await ValidateLiveToolkitWindowControlAsync(liveHost);
         await ValidateLiveToolkitZoomboxAndMagnifierAsync(liveHost);
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => ValidateToolkitScrollClipState(expectLoaded: true),
+            DispatcherPriority.Send);
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () => ValidateToolkitPanelState(expectLoaded: true),
@@ -6859,6 +6896,8 @@ internal static class ToolkitSelfTest
         {
             throw new InvalidOperationException("Expected Toolkit Magnifier resource to be available for manager attachment.");
         }
+        Require<ScrollViewer>(window, "ToolkitPaneScrollViewer");
+        Require<StackPanel>(window, "ToolkitPaneContentPanel");
         Require<ToolkitWrapPanel>(window, "ToolkitWrapPanel");
         Require<CollectionControl>(window, "ToolkitCollectionControl");
         Require<Button>(window, "AddCollectionEntryButton");
@@ -6967,6 +7006,7 @@ internal static class ToolkitSelfTest
         window.ValidateStaticToolkitMessageBoxState(expectedValidated: false);
         window.ValidateToolkitWindowControlState(expectedVisible: true, expectLoaded);
         window.ValidateToolkitZoomboxAndMagnifierState(expectLoaded);
+        window.ValidateToolkitScrollClipState(expectLoaded);
         window.ValidateToolkitPanelState(expectLoaded);
         window.ValidateToolkitCollectionControlState(expectLoaded);
         window.ValidateToolkitCollectionDialogButtonState(expectLoaded);

@@ -133,7 +133,7 @@ This bridge is intentionally narrow. It does not yet walk `ContainerVisual.Child
 - replays `DrawingVisual` content when `_content` is backed by `RenderData`;
 - recurses through a public `Children` property with WPF's `VisualCollection` shape;
 - routes WPF-shaped `Viewport3DVisual` content through `IWpfViewport3DCommandSink` instead of recursing its `Visual3DCollection` as 2D visuals;
-- applies compatible `Transform`, `Offset`, native geometry `Clip`, rectangular `ScrollableAreaClip`, `Opacity`, `OpacityMask` with exposed or inferred finite bounds, guideline state, and supported bitmap-scaling state through `IWpfCompositionCommandSink`;
+- applies compatible `Transform`, `Offset`, native geometry `Clip`, rectangular `ScrollableAreaClip` plus real WPF `VisualScrollableAreaClip`, `Opacity`, `OpacityMask` with exposed or inferred finite bounds, guideline state, and supported bitmap-scaling state through `IWpfCompositionCommandSink`;
 - aggregates decoded MIL record counts and unsupported content/state counts in `WpfVisualReplayResult`.
 
 The transform order follows WPF's ancestor-transform path: visual transform first, then visual offset. Visual-level `Transform` and `Clip` properties use the same `WpfReflectionResourceResolver` adaptation helpers as `RenderData` dependent resources, so WPF-shaped matrix, translate, scale, rotate, skew, and transform-group affine transforms and line/rectangle/ellipse/group/path geometry clips can be pushed even when their assembly identity differs from the ProGPU shim. Richer media still need adapters until type identity is unified with the ProGPU shim.

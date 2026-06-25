@@ -6050,6 +6050,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("xmlns:xctkz=\"clr-namespace:Xceed.Wpf.Toolkit.Zoombox;assembly=Xceed.Wpf.Toolkit\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctkz:Zoombox x:Name=\"ToolkitZoombox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:Magnifier x:Key=\"ToolkitMagnifierResource\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ToolkitPaneScrollViewer\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ToolkitPaneContentPanel\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:WrapPanel x:Name=\"ToolkitWrapPanel\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:CollectionControl x:Name=\"ToolkitCollectionControl\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:CollectionControlButton x:Name=\"OpenCollectionDialogButton\"", mainWindowXaml, StringComparison.Ordinal);
@@ -6149,6 +6151,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Require<Button>(window, \"ZoomInButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<Button>(window, \"FitZoomboxButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<Button>(window, \"BackZoomboxButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<ScrollViewer>(window, \"ToolkitPaneScrollViewer\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<StackPanel>(window, \"ToolkitPaneContentPanel\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<ToolkitWrapPanel>(window, \"ToolkitWrapPanel\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<CollectionControl>(window, \"ToolkitCollectionControl\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<Button>(window, \"AddCollectionEntryButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6223,6 +6227,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ToolkitZoombox.GoBack()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ZoomboxViewChangedCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Toolkit zoombox and magnifier", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateToolkitScrollClipState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Toolkit pane ScrollViewer to expose a clipped scrollable viewport", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitPanelState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Toolkit panels", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitCollectionControlState", mainWindowCodeBehind, StringComparison.Ordinal);

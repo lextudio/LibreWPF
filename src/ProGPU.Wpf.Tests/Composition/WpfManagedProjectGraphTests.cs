@@ -5879,6 +5879,12 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Scene",
             "Extensions",
             "WpfShaderEffectExtensionPipeline.cs"));
+        var visual = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Scene",
+            "Visual.cs"));
         var shaderToyTranspiler = File.ReadAllText(FindRepoPath(
             "external",
             "ProGPU",
@@ -5900,13 +5906,17 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains("GetStableShaderSourceKey", shaderParams, StringComparison.Ordinal);
         Assert.Contains("_src_{p.GetStableShaderSourceKey()}", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("_failedShaderSourceKey", visual, StringComparison.Ordinal);
         Assert.Contains("ParseForInitializerExpressions", shaderToyTranspiler, StringComparison.Ordinal);
         Assert.Contains("new BlockStatement(initializers.Select", shaderToyTranspiler, StringComparison.Ordinal);
+        Assert.Contains("smoothstep\" || name == \"mod\"", shaderToyTranspiler, StringComparison.Ordinal);
         Assert.Contains("wgsl_mod_fv2", shaderToyTranspiler, StringComparison.Ordinal);
         Assert.Contains("t0 == \"float\" && t1 == \"vec2\"", shaderToyTranspiler, StringComparison.Ordinal);
         Assert.Contains("ShaderToyForLoopLowersCommaSeparatedInitializerExpressions", compositorReviewTests, StringComparison.Ordinal);
         Assert.Contains("ShaderToyModBroadcastsScalarFirstVectorDivisor", compositorReviewTests, StringComparison.Ordinal);
+        Assert.Contains("ShaderToyModVectorResultBroadcastsScalarAddition", compositorReviewTests, StringComparison.Ordinal);
         Assert.Contains("WpfShaderEffectShaderModuleCacheTracksSourceWithExplicitShaderKey", wpfShaderTests, StringComparison.Ordinal);
+        Assert.Contains("WpfShaderEffectRetainedVisualRecoversAfterShaderSourceChange", wpfShaderTests, StringComparison.Ordinal);
     }
 
     [Fact]

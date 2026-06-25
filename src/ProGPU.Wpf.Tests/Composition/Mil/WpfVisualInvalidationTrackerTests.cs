@@ -111,6 +111,48 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
+    public void VisualOffsetChangeMarksTrackerDirtyWithoutEvent()
+    {
+        var root = new FakeVisual
+        {
+            VisualOffset = new System.Windows.Vector(0, 0)
+        };
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        root.VisualOffset = new System.Windows.Vector(0, -120);
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+        Assert.Contains(root, tracker.DirtySources);
+    }
+
+    [Fact]
+    public void VisualScrollableAreaClipChangeMarksTrackerDirtyWithoutEvent()
+    {
+        var root = new FakeVisual();
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        root.VisualScrollableAreaClip = new Rect(0, 0, 100, 40);
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+        Assert.Contains(root, tracker.DirtySources);
+
+        tracker.ConsumeDirty();
+        root.VisualScrollableAreaClip = new Rect(0, 0, 100, 56);
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+    }
+
+    [Fact]
     public void PrivateVersionFieldChangeMarksTrackerDirtyWithoutEvent()
     {
         var brush = new FakePrivateVersionResource();
@@ -417,6 +459,10 @@ public sealed class WpfVisualInvalidationTrackerTests
         public object? Effect { get; init; }
 
         public double Opacity { get; set; } = 1;
+
+        public System.Windows.Vector VisualOffset { get; set; }
+
+        public Rect? VisualScrollableAreaClip { get; set; }
 
         public void RaiseChanged()
         {

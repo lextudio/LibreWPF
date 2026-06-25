@@ -73,6 +73,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
     private readonly List<Action> _unsubscribeActions = new();
     private readonly Dictionary<object, object> _versionSnapshots = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<object, VisualStateSnapshot> _visualStateSnapshots = new(ReferenceEqualityComparer.Instance);
     private readonly HashSet<object> _dirtySources = new(ReferenceEqualityComparer.Instance);
     private object? _root;
     private object? _lastDirtySource;
@@ -88,6 +89,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     public int SubscriptionCount => _unsubscribeActions.Count;
 
     public int VersionSnapshotCount => _versionSnapshots.Count;
+
+    public int VisualStateSnapshotCount => _visualStateSnapshots.Count;
 
     public int DirtySourceCount => _dirtySources.Count;
 
@@ -152,7 +155,13 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         var currentSnapshots = CaptureVersionSnapshots(_root);
-        var changedSources = CollectVersionChanges(_versionSnapshots, currentSnapshots);
+        var currentVisualStateSnapshots = CaptureVisualStateSnapshots(_root);
+        var changedSources = new List<object>(CollectVersionChanges(_versionSnapshots, currentSnapshots));
+        foreach (var changedSource in CollectVisualStateChanges(_visualStateSnapshots, currentVisualStateSnapshots))
+        {
+            changedSources.Add(changedSource);
+        }
+
         if (changedSources.Count == 0)
         {
             return false;
@@ -188,6 +197,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     {
         ClearSubscriptions();
         _versionSnapshots.Clear();
+        _visualStateSnapshots.Clear();
         _dirtySources.Clear();
         _root = null;
         _lastDirtySource = null;
@@ -227,6 +237,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         {
             ClearSubscriptions();
             _versionSnapshots.Clear();
+            _visualStateSnapshots.Clear();
             SubscribeGraph(_root);
         }
         finally
@@ -250,6 +261,7 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         SubscribeInvalidationEvents(source);
         CaptureVersionSnapshot(source);
+        CaptureVisualStateSnapshot(source);
 
         if (source is INotifyCollectionChanged collectionChanged)
         {
@@ -289,11 +301,27 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
     }
 
+    private void CaptureVisualStateSnapshot(object source)
+    {
+        if (TryReadVisualStateSnapshot(source, out var snapshot))
+        {
+            _visualStateSnapshots[source] = snapshot;
+        }
+    }
+
     private static Dictionary<object, object> CaptureVersionSnapshots(object root)
     {
         var snapshots = new Dictionary<object, object>(ReferenceEqualityComparer.Instance);
         var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
         CaptureObjectVersions(root, snapshots, visited);
+        return snapshots;
+    }
+
+    private static Dictionary<object, VisualStateSnapshot> CaptureVisualStateSnapshots(object root)
+    {
+        var snapshots = new Dictionary<object, VisualStateSnapshot>(ReferenceEqualityComparer.Instance);
+        var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        CaptureObjectVisualStates(root, snapshots, visited);
         return snapshots;
     }
 
@@ -330,6 +358,43 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             if (TryGetFieldValue(source, fieldName, out var value))
             {
                 CaptureObjectVersions(value, snapshots, visited);
+            }
+        }
+    }
+
+    private static void CaptureObjectVisualStates(
+        object? source,
+        Dictionary<object, VisualStateSnapshot> snapshots,
+        HashSet<object> visited)
+    {
+        if (source == null || IsTerminalValue(source) || !visited.Add(source))
+        {
+            return;
+        }
+
+        if (TryReadVisualStateSnapshot(source, out var snapshot))
+        {
+            snapshots[source] = snapshot;
+        }
+
+        foreach (var item in EnumerateCollection(source))
+        {
+            CaptureObjectVisualStates(item, snapshots, visited);
+        }
+
+        foreach (var propertyName in s_referencePropertyNames)
+        {
+            if (TryGetPropertyValue(source, propertyName, out var value))
+            {
+                CaptureObjectVisualStates(value, snapshots, visited);
+            }
+        }
+
+        foreach (var fieldName in s_fieldNames)
+        {
+            if (TryGetFieldValue(source, fieldName, out var value))
+            {
+                CaptureObjectVisualStates(value, snapshots, visited);
             }
         }
     }
@@ -378,6 +443,32 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         {
             if (!previous.TryGetValue(snapshot.Key, out var previousVersion) ||
                 !Equals(previousVersion, snapshot.Value))
+            {
+                changedSources.Add(snapshot.Key);
+            }
+        }
+
+        foreach (var snapshot in previous)
+        {
+            if (!current.ContainsKey(snapshot.Key))
+            {
+                changedSources.Add(snapshot.Key);
+            }
+        }
+
+        return changedSources;
+    }
+
+    private static List<object> CollectVisualStateChanges(
+        IReadOnlyDictionary<object, VisualStateSnapshot> previous,
+        IReadOnlyDictionary<object, VisualStateSnapshot> current)
+    {
+        var changedSources = new List<object>();
+
+        foreach (var snapshot in current)
+        {
+            if (!previous.TryGetValue(snapshot.Key, out var previousSnapshot) ||
+                !previousSnapshot.Equals(snapshot.Value))
             {
                 changedSources.Add(snapshot.Key);
             }
@@ -472,6 +563,135 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         version = 0;
+        return false;
+    }
+
+    private static bool TryReadVisualStateSnapshot(object source, out VisualStateSnapshot snapshot)
+    {
+        var builder = new VisualStateSnapshotBuilder();
+
+        if (TryReadVectorLikeProperty(source, "Offset", out var offsetX, out var offsetY) ||
+            TryReadVectorLikeProperty(source, "VisualOffset", out offsetX, out offsetY) ||
+            TryReadVectorLikeField(source, "_offset", out offsetX, out offsetY))
+        {
+            builder.SetOffset(offsetX, offsetY);
+        }
+
+        if (TryGetPropertyValue(source, "Clip", out var clip))
+        {
+            builder.SetClip(clip);
+        }
+
+        if (TryGetPropertyValue(source, "Transform", out var transform) ||
+            TryGetPropertyValue(source, "VisualTransform", out transform) ||
+            TryGetFieldValue(source, "_transform", out transform))
+        {
+            builder.SetTransform(transform);
+        }
+
+        if (TryGetScrollableAreaClip(source, out var scrollClip))
+        {
+            builder.SetScrollableAreaClip(scrollClip);
+        }
+
+        if (TryReadDoubleProperty(source, "Opacity", out var opacity))
+        {
+            builder.SetOpacity(opacity);
+        }
+
+        if (TryReadSizeProperty(source, "RenderSize", out var width, out var height) ||
+            (TryReadDoubleProperty(source, "ActualWidth", out width) &&
+             TryReadDoubleProperty(source, "ActualHeight", out height)))
+        {
+            builder.SetRenderSize(width, height);
+        }
+
+        snapshot = builder.ToSnapshot();
+        return builder.HasState;
+    }
+
+    private static bool TryGetScrollableAreaClip(object source, out object? value)
+    {
+        if (TryGetPropertyValue(source, "ScrollableAreaClip", out value))
+        {
+            return true;
+        }
+
+        return TryGetPropertyValue(source, "VisualScrollableAreaClip", out value);
+    }
+
+    private static bool TryReadVectorLikeProperty(object instance, string propertyName, out double x, out double y)
+    {
+        x = 0;
+        y = 0;
+
+        return TryGetPropertyValue(instance, propertyName, out var value)
+            && value != null
+            && TryReadDoubleProperty(value, "X", out x)
+            && TryReadDoubleProperty(value, "Y", out y);
+    }
+
+    private static bool TryReadVectorLikeField(object instance, string fieldName, out double x, out double y)
+    {
+        x = 0;
+        y = 0;
+
+        return TryGetFieldValue(instance, fieldName, out var value)
+            && value != null
+            && TryReadDoubleProperty(value, "X", out x)
+            && TryReadDoubleProperty(value, "Y", out y);
+    }
+
+    private static bool TryReadSizeProperty(object instance, string propertyName, out double width, out double height)
+    {
+        width = 0;
+        height = 0;
+
+        return TryGetPropertyValue(instance, propertyName, out var value)
+            && value != null
+            && TryReadDoubleProperty(value, "Width", out width)
+            && TryReadDoubleProperty(value, "Height", out height);
+    }
+
+    private static bool TryReadRect(object value, out double x, out double y, out double width, out double height)
+    {
+        x = 0;
+        y = 0;
+        width = 0;
+        height = 0;
+
+        return TryReadDoubleProperty(value, "X", out x)
+            && TryReadDoubleProperty(value, "Y", out y)
+            && TryReadDoubleProperty(value, "Width", out width)
+            && TryReadDoubleProperty(value, "Height", out height);
+    }
+
+    private static bool TryReadDoubleProperty(object instance, string propertyName, out double value)
+    {
+        value = 0;
+        if (!TryGetPropertyValue(instance, propertyName, out var propertyValue))
+        {
+            return false;
+        }
+
+        if (propertyValue is IConvertible convertible)
+        {
+            try
+            {
+                value = convertible.ToDouble(System.Globalization.CultureInfo.InvariantCulture);
+                return true;
+            }
+            catch (FormatException)
+            {
+            }
+            catch (InvalidCastException)
+            {
+            }
+            catch (OverflowException)
+            {
+            }
+        }
+
         return false;
     }
 
@@ -636,6 +856,248 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             || type == typeof(decimal)
             || type == typeof(DateTime)
             || type == typeof(TimeSpan);
+    }
+
+    private readonly struct VisualStateSnapshot : IEquatable<VisualStateSnapshot>
+    {
+        public VisualStateSnapshot(
+            bool hasOffset,
+            double offsetX,
+            double offsetY,
+            bool hasClipProperty,
+            object? clipReference,
+            bool hasTransformProperty,
+            object? transformReference,
+            bool hasScrollableAreaClipProperty,
+            bool hasScrollableAreaClipRect,
+            double scrollClipX,
+            double scrollClipY,
+            double scrollClipWidth,
+            double scrollClipHeight,
+            object? scrollClipReference,
+            bool hasOpacity,
+            double opacity,
+            bool hasRenderSize,
+            double renderWidth,
+            double renderHeight)
+        {
+            HasOffset = hasOffset;
+            OffsetX = offsetX;
+            OffsetY = offsetY;
+            HasClipProperty = hasClipProperty;
+            ClipReference = clipReference;
+            HasTransformProperty = hasTransformProperty;
+            TransformReference = transformReference;
+            HasScrollableAreaClipProperty = hasScrollableAreaClipProperty;
+            HasScrollableAreaClipRect = hasScrollableAreaClipRect;
+            ScrollClipX = scrollClipX;
+            ScrollClipY = scrollClipY;
+            ScrollClipWidth = scrollClipWidth;
+            ScrollClipHeight = scrollClipHeight;
+            ScrollClipReference = scrollClipReference;
+            HasOpacity = hasOpacity;
+            Opacity = opacity;
+            HasRenderSize = hasRenderSize;
+            RenderWidth = renderWidth;
+            RenderHeight = renderHeight;
+        }
+
+        private bool HasOffset { get; }
+
+        private double OffsetX { get; }
+
+        private double OffsetY { get; }
+
+        private bool HasClipProperty { get; }
+
+        private object? ClipReference { get; }
+
+        private bool HasTransformProperty { get; }
+
+        private object? TransformReference { get; }
+
+        private bool HasScrollableAreaClipProperty { get; }
+
+        private bool HasScrollableAreaClipRect { get; }
+
+        private double ScrollClipX { get; }
+
+        private double ScrollClipY { get; }
+
+        private double ScrollClipWidth { get; }
+
+        private double ScrollClipHeight { get; }
+
+        private object? ScrollClipReference { get; }
+
+        private bool HasOpacity { get; }
+
+        private double Opacity { get; }
+
+        private bool HasRenderSize { get; }
+
+        private double RenderWidth { get; }
+
+        private double RenderHeight { get; }
+
+        public bool Equals(VisualStateSnapshot other)
+        {
+            return HasOffset == other.HasOffset &&
+                OffsetX.Equals(other.OffsetX) &&
+                OffsetY.Equals(other.OffsetY) &&
+                HasClipProperty == other.HasClipProperty &&
+                ReferenceEquals(ClipReference, other.ClipReference) &&
+                HasTransformProperty == other.HasTransformProperty &&
+                ReferenceEquals(TransformReference, other.TransformReference) &&
+                HasScrollableAreaClipProperty == other.HasScrollableAreaClipProperty &&
+                HasScrollableAreaClipRect == other.HasScrollableAreaClipRect &&
+                ScrollClipX.Equals(other.ScrollClipX) &&
+                ScrollClipY.Equals(other.ScrollClipY) &&
+                ScrollClipWidth.Equals(other.ScrollClipWidth) &&
+                ScrollClipHeight.Equals(other.ScrollClipHeight) &&
+                ReferenceEquals(ScrollClipReference, other.ScrollClipReference) &&
+                HasOpacity == other.HasOpacity &&
+                Opacity.Equals(other.Opacity) &&
+                HasRenderSize == other.HasRenderSize &&
+                RenderWidth.Equals(other.RenderWidth) &&
+                RenderHeight.Equals(other.RenderHeight);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is VisualStateSnapshot other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            var hash = new HashCode();
+            hash.Add(HasOffset);
+            hash.Add(OffsetX);
+            hash.Add(OffsetY);
+            hash.Add(HasClipProperty);
+            hash.Add(GetReferenceHashCode(ClipReference));
+            hash.Add(HasTransformProperty);
+            hash.Add(GetReferenceHashCode(TransformReference));
+            hash.Add(HasScrollableAreaClipProperty);
+            hash.Add(HasScrollableAreaClipRect);
+            hash.Add(ScrollClipX);
+            hash.Add(ScrollClipY);
+            hash.Add(ScrollClipWidth);
+            hash.Add(ScrollClipHeight);
+            hash.Add(GetReferenceHashCode(ScrollClipReference));
+            hash.Add(HasOpacity);
+            hash.Add(Opacity);
+            hash.Add(HasRenderSize);
+            hash.Add(RenderWidth);
+            hash.Add(RenderHeight);
+            return hash.ToHashCode();
+        }
+
+        private static int GetReferenceHashCode(object? value)
+        {
+            return value == null ? 0 : RuntimeHelpers.GetHashCode(value);
+        }
+    }
+
+    private struct VisualStateSnapshotBuilder
+    {
+        private bool _hasOffset;
+        private double _offsetX;
+        private double _offsetY;
+        private bool _hasClipProperty;
+        private object? _clipReference;
+        private bool _hasTransformProperty;
+        private object? _transformReference;
+        private bool _hasScrollableAreaClipProperty;
+        private bool _hasScrollableAreaClipRect;
+        private double _scrollClipX;
+        private double _scrollClipY;
+        private double _scrollClipWidth;
+        private double _scrollClipHeight;
+        private object? _scrollClipReference;
+        private bool _hasOpacity;
+        private double _opacity;
+        private bool _hasRenderSize;
+        private double _renderWidth;
+        private double _renderHeight;
+
+        public bool HasState { get; private set; }
+
+        public void SetOffset(double x, double y)
+        {
+            HasState = true;
+            _hasOffset = true;
+            _offsetX = x;
+            _offsetY = y;
+        }
+
+        public void SetClip(object? clip)
+        {
+            HasState = true;
+            _hasClipProperty = true;
+            _clipReference = clip;
+        }
+
+        public void SetTransform(object? transform)
+        {
+            HasState = true;
+            _hasTransformProperty = true;
+            _transformReference = transform;
+        }
+
+        public void SetScrollableAreaClip(object? clip)
+        {
+            HasState = true;
+            _hasScrollableAreaClipProperty = true;
+            _scrollClipReference = clip;
+            if (clip != null && TryReadRect(clip, out var x, out var y, out var width, out var height))
+            {
+                _hasScrollableAreaClipRect = true;
+                _scrollClipX = x;
+                _scrollClipY = y;
+                _scrollClipWidth = width;
+                _scrollClipHeight = height;
+            }
+        }
+
+        public void SetOpacity(double opacity)
+        {
+            HasState = true;
+            _hasOpacity = true;
+            _opacity = opacity;
+        }
+
+        public void SetRenderSize(double width, double height)
+        {
+            HasState = true;
+            _hasRenderSize = true;
+            _renderWidth = width;
+            _renderHeight = height;
+        }
+
+        public readonly VisualStateSnapshot ToSnapshot()
+        {
+            return new VisualStateSnapshot(
+                _hasOffset,
+                _offsetX,
+                _offsetY,
+                _hasClipProperty,
+                _clipReference,
+                _hasTransformProperty,
+                _transformReference,
+                _hasScrollableAreaClipProperty,
+                _hasScrollableAreaClipRect,
+                _scrollClipX,
+                _scrollClipY,
+                _scrollClipWidth,
+                _scrollClipHeight,
+                _scrollClipReference,
+                _hasOpacity,
+                _opacity,
+                _hasRenderSize,
+                _renderWidth,
+                _renderHeight);
+        }
     }
 
     private void ClearSubscriptions()

@@ -1926,6 +1926,49 @@ internal static class Program
                         Minimum="1"
                         Maximum="9"
                         Value="{Binding ExternalToolkitNumber, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <xctk:ColorPicker
+                        x:Name="ExternalToolkitColorPicker"
+                        DisplayColorAndName="True"
+                        ShowAvailableColors="True"
+                        ShowRecentColors="True"
+                        ShowStandardColors="True"
+                        SelectedColor="{Binding ExternalToolkitAccentColor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <xctk:CalculatorUpDown
+                        x:Name="ExternalToolkitCalculatorUpDown"
+                        Minimum="0"
+                        Maximum="100"
+                        Increment="0.25"
+                        FormatString="F2"
+                        Value="{Binding ExternalToolkitEstimate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <xctk:DropDownButton
+                        x:Name="ExternalToolkitDropDownButton"
+                        Content="External actions">
+                        <xctk:DropDownButton.DropDownContent>
+                            <StackPanel
+                                x:Name="ExternalToolkitDropDownContentRoot"
+                                MinWidth="160">
+                                <Button
+                                    x:Name="ExternalToolkitDropDownActionButton"
+                                    Content="Apply external action"
+                                    Click="OnExternalToolkitDropDownActionClick" />
+                            </StackPanel>
+                        </xctk:DropDownButton.DropDownContent>
+                    </xctk:DropDownButton>
+                    <xctk:SplitButton
+                        x:Name="ExternalToolkitSplitButton"
+                        Content="External split"
+                        Click="OnExternalToolkitSplitButtonClick">
+                        <xctk:SplitButton.DropDownContent>
+                            <StackPanel
+                                x:Name="ExternalToolkitSplitDropDownContentRoot"
+                                MinWidth="160">
+                                <Button
+                                    x:Name="ExternalToolkitSplitDropDownActionButton"
+                                    Content="Apply split action"
+                                    Click="OnExternalToolkitSplitDropDownActionClick" />
+                            </StackPanel>
+                        </xctk:SplitButton.DropDownContent>
+                    </xctk:SplitButton>
                     <xcad:DockingManager
                         x:Name="ExternalDockManager"
                         AllowMixedOrientation="True"
@@ -2961,6 +3004,12 @@ internal static class Program
 
                 public int? ExternalToolkitNumber { get; set; } = 4;
 
+                public Color? ExternalToolkitAccentColor { get; set; } = Colors.SteelBlue;
+
+                public decimal? ExternalToolkitEstimate { get; set; } = 12.50m;
+
+                public string ExternalToolkitActionStatus { get; set; } = "external toolkit idle";
+
                 public string ValidationText { get; set; } = "valid external text";
 
                 public string DataErrorText { get; set; } = "data: valid initial";
@@ -3877,6 +3926,23 @@ internal static class Program
                     ExternalCommandButtonClickCount++;
                 }
 
+                private void OnExternalToolkitDropDownActionClick(object sender, RoutedEventArgs e)
+                {
+                    ExternalToolkitActionStatus = "external toolkit dropdown action";
+                    ExternalToolkitDropDownButton.IsOpen = false;
+                }
+
+                private void OnExternalToolkitSplitButtonClick(object sender, RoutedEventArgs e)
+                {
+                    ExternalToolkitActionStatus = "external toolkit split primary action";
+                }
+
+                private void OnExternalToolkitSplitDropDownActionClick(object sender, RoutedEventArgs e)
+                {
+                    ExternalToolkitActionStatus = "external toolkit split dropdown action";
+                    ExternalToolkitSplitButton.IsOpen = false;
+                }
+
                 private void OnExternalStyleEventButtonClick(object sender, RoutedEventArgs e)
                 {
                     ExternalStyleEventButtonClickCount++;
@@ -4662,7 +4728,7 @@ internal static class Program
                     ValidateSpellCheck(window);
                     ValidateCommandsAndFocus(window);
                     ValidateThumbDragManager(window);
-                    ValidateXceedToolkitAndAvalonDock(window);
+                    ValidateXceedToolkitAndAvalonDock(window, expectLoaded: false);
 
                     var themedControl = RequireType<ExternalThemedControl>(
                         window.FindName("ExternalThemedControl"),
@@ -4792,7 +4858,7 @@ internal static class Program
                     AssertEqual(false, frame.CanGoForward, "external SDK frame cannot go forward after canceled navigation");
                 }
 
-                private static void ValidateXceedToolkitAndAvalonDock(MainWindow window)
+                private static void ValidateXceedToolkitAndAvalonDock(MainWindow window, bool expectLoaded)
                 {
                     var watermarkTextBox = RequireType<Xceed.Wpf.Toolkit.WatermarkTextBox>(
                         window.FindName("ExternalToolkitWatermarkTextBox"),
@@ -4815,6 +4881,42 @@ internal static class Program
                         "external SDK Xceed IntegerUpDown ValueProperty");
                     integerUpDown.GetBindingExpression(valueProperty)?.UpdateSource();
                     AssertEqual((int?)7, window.ExternalToolkitNumber, "external SDK Xceed IntegerUpDown source update");
+
+                    var colorPicker = RequireType<Xceed.Wpf.Toolkit.ColorPicker>(
+                        window.FindName("ExternalToolkitColorPicker"),
+                        "external SDK Xceed ColorPicker");
+                    AssertEqual((Color?)Colors.SteelBlue, colorPicker.SelectedColor, "external SDK Xceed ColorPicker initial binding");
+                    colorPicker.SelectedColor = Colors.MediumSeaGreen;
+                    colorPicker.GetBindingExpression(Xceed.Wpf.Toolkit.ColorPicker.SelectedColorProperty)?.UpdateSource();
+                    AssertEqual((Color?)Colors.MediumSeaGreen, window.ExternalToolkitAccentColor, "external SDK Xceed ColorPicker source update");
+
+                    var calculatorUpDown = RequireType<Xceed.Wpf.Toolkit.CalculatorUpDown>(
+                        window.FindName("ExternalToolkitCalculatorUpDown"),
+                        "external SDK Xceed CalculatorUpDown");
+                    AssertEqual((decimal?)12.50m, calculatorUpDown.Value, "external SDK Xceed CalculatorUpDown initial binding");
+                    calculatorUpDown.Value = 42.25m;
+                    var calculatorValueProperty = RequireType<DependencyProperty>(
+                        calculatorUpDown.GetType()
+                            .GetField("ValueProperty", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)
+                            ?.GetValue(null),
+                        "external SDK Xceed CalculatorUpDown ValueProperty");
+                    calculatorUpDown.GetBindingExpression(calculatorValueProperty)?.UpdateSource();
+                    AssertEqual((decimal?)42.25m, window.ExternalToolkitEstimate, "external SDK Xceed CalculatorUpDown source update");
+
+                    var dropDownButton = RequireType<Xceed.Wpf.Toolkit.DropDownButton>(
+                        window.FindName("ExternalToolkitDropDownButton"),
+                        "external SDK Xceed DropDownButton");
+                    var splitButton = RequireType<Xceed.Wpf.Toolkit.SplitButton>(
+                        window.FindName("ExternalToolkitSplitButton"),
+                        "external SDK Xceed SplitButton");
+                    AssertEqual(false, dropDownButton.IsOpen, "external SDK Xceed DropDownButton initial popup state");
+                    AssertEqual(false, splitButton.IsOpen, "external SDK Xceed SplitButton initial popup state");
+
+                    if (expectLoaded)
+                    {
+                        ValidateExternalToolkitDropDownButton(window, dropDownButton);
+                        ValidateExternalToolkitSplitButton(window, splitButton);
+                    }
 
                     var dockManager = RequireType<Xceed.Wpf.AvalonDock.DockingManager>(
                         window.FindName("ExternalDockManager"),
@@ -4849,6 +4951,72 @@ internal static class Program
                     AssertEqual("external-toolkit", anchorable.ContentId, "external SDK AvalonDock anchorable content id");
                     AssertEqual("Toolkit", anchorable.Title, "external SDK AvalonDock anchorable title");
                     AssertEqual(false, anchorable.CanClose, "external SDK AvalonDock anchorable close policy");
+                }
+
+                private static void ValidateExternalToolkitDropDownButton(
+                    MainWindow window,
+                    Xceed.Wpf.Toolkit.DropDownButton dropDownButton)
+                {
+                    var dropDownRoot = RequireType<FrameworkElement>(
+                        window.FindName("ExternalToolkitDropDownContentRoot"),
+                        "external SDK Xceed DropDownButton dropdown content root");
+                    var dropDownActionButton = RequireType<Button>(
+                        window.FindName("ExternalToolkitDropDownActionButton"),
+                        "external SDK Xceed DropDownButton action");
+
+                    dropDownButton.IsOpen = true;
+                    DrainDispatcher();
+                    dropDownButton.UpdateLayout();
+                    dropDownRoot.UpdateLayout();
+                    AssertEqual(true, dropDownButton.IsOpen, "external SDK Xceed DropDownButton open state");
+                    AssertDropDownContentSource(
+                        dropDownRoot,
+                        "external SDK Xceed DropDownButton dropdown source");
+
+                    dropDownActionButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    DrainDispatcher();
+                    AssertEqual(false, dropDownButton.IsOpen, "external SDK Xceed DropDownButton closed by routed click");
+                    AssertEqual("external toolkit dropdown action", window.ExternalToolkitActionStatus, "external SDK Xceed DropDownButton action status");
+                }
+
+                private static void ValidateExternalToolkitSplitButton(
+                    MainWindow window,
+                    Xceed.Wpf.Toolkit.SplitButton splitButton)
+                {
+                    var splitRoot = RequireType<FrameworkElement>(
+                        window.FindName("ExternalToolkitSplitDropDownContentRoot"),
+                        "external SDK Xceed SplitButton dropdown content root");
+                    var splitActionButton = RequireType<Button>(
+                        window.FindName("ExternalToolkitSplitDropDownActionButton"),
+                        "external SDK Xceed SplitButton dropdown action");
+
+                    splitButton.RaiseEvent(new RoutedEventArgs(Xceed.Wpf.Toolkit.SplitButton.ClickEvent));
+                    DrainDispatcher();
+                    AssertEqual("external toolkit split primary action", window.ExternalToolkitActionStatus, "external SDK Xceed SplitButton primary action status");
+
+                    splitButton.IsOpen = true;
+                    DrainDispatcher();
+                    splitButton.UpdateLayout();
+                    splitRoot.UpdateLayout();
+                    AssertEqual(true, splitButton.IsOpen, "external SDK Xceed SplitButton open state");
+                    AssertDropDownContentSource(
+                        splitRoot,
+                        "external SDK Xceed SplitButton dropdown source");
+
+                    splitActionButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    DrainDispatcher();
+                    AssertEqual(false, splitButton.IsOpen, "external SDK Xceed SplitButton closed by routed click");
+                    AssertEqual("external toolkit split dropdown action", window.ExternalToolkitActionStatus, "external SDK Xceed SplitButton dropdown action status");
+                }
+
+                private static void AssertDropDownContentSource(FrameworkElement root, string description)
+                {
+                    var source = PresentationSource.FromVisual(root);
+                    if (source is not System.Windows.Interop.HwndSource || source.CompositionTarget is null)
+                    {
+                        throw new InvalidOperationException(
+                            $"Expected {description} to use the portable public HwndSource facade.");
+                    }
                 }
 
                 public static void ValidateApplicationRunAndShutdown()
@@ -4939,6 +5107,7 @@ internal static class Program
                     ValidateClassInputBindingAfterRun(window);
                     ValidateKeyboardNavigationAfterRun(window);
                     ValidatePopupOpeningAfterRun(window);
+                    ValidateXceedToolkitAndAvalonDock(window, expectLoaded: true);
                     ValidateApplicationWindowLifetime(app, window);
 
                     App.MarkExternalRunValidated();

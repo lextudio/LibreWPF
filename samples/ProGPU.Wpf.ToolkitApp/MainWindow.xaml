@@ -635,6 +635,48 @@
                     </Border>
                   </Grid>
 
+                  <TextBlock Text="Toolkit panels"
+                             Margin="0,12,0,0" />
+                  <Grid Margin="0,4,0,12">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition />
+                      <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                      <RowDefinition Height="Auto" />
+                      <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <xctk:WrapPanel x:Name="ToolkitWrapPanel"
+                                     Grid.ColumnSpan="2"
+                                     Margin="0,0,0,6"
+                                     Background="{StaticResource ToolkitSubtleBrush}"
+                                     ItemWidth="64"
+                                     ItemHeight="34"
+                                     Orientation="Horizontal"
+                                     IsChildOrderReversed="False">
+                      <Border Background="#5B8DEF"
+                              Margin="4">
+                        <TextBlock Foreground="White"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Text="Wrap" />
+                      </Border>
+                      <Border Background="#20A67A"
+                              Margin="4">
+                        <TextBlock Foreground="White"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Text="Panel" />
+                      </Border>
+                      <Border Background="#F5B849"
+                              Margin="4">
+                        <TextBlock HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Text="Item" />
+                      </Border>
+                    </xctk:WrapPanel>
+                  </Grid>
+
                   <TextBlock Text="AvalonDock MVVM sources"
                              Margin="0,12,0,0" />
                   <WrapPanel Margin="0,4,0,4">

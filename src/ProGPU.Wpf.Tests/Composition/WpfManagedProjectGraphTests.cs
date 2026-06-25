@@ -5997,6 +5997,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("xmlns:xctkz=\"clr-namespace:Xceed.Wpf.Toolkit.Zoombox;assembly=Xceed.Wpf.Toolkit\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctkz:Zoombox x:Name=\"ToolkitZoombox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:Magnifier x:Key=\"ToolkitMagnifierResource\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xctk:WrapPanel x:Name=\"ToolkitWrapPanel\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ShowChildWindowButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ShowToolkitMessageBoxButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ZoomInButton", mainWindowXaml, StringComparison.Ordinal);
@@ -6061,6 +6062,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Require<Button>(window, \"ZoomInButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<Button>(window, \"FitZoomboxButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<Button>(window, \"BackZoomboxButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<ToolkitWrapPanel>(window, \"ToolkitWrapPanel\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<PropertyGrid>(window, \"DocumentPropertyGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<DockingManager>(window, \"SourceDockManager\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<LayoutDocumentPane>(window, \"SourceDocumentPane\")", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6100,6 +6102,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ToolkitZoombox.GoBack()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ZoomboxViewChangedCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Toolkit zoombox and magnifier", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateToolkitPanelState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Toolkit panels", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateSourceBackedAvalonDockState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveSourceBackedAvalonDockAsync", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateAvalonDockThemeState", mainWindowCodeBehind, StringComparison.Ordinal);

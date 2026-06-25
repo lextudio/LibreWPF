@@ -29,6 +29,7 @@ using AvalonDockDocumentItem = Xceed.Wpf.AvalonDock.Controls.LayoutDocumentItem;
 using AvalonDockLayoutItem = Xceed.Wpf.AvalonDock.Controls.LayoutItem;
 using ToolkitMessageBoxControl = Xceed.Wpf.Toolkit.MessageBox;
 using ToolkitRichTextBox = Xceed.Wpf.Toolkit.RichTextBox;
+using ToolkitWrapPanel = Xceed.Wpf.Toolkit.Panels.WrapPanel;
 using ToolkitZoomboxControl = Xceed.Wpf.Toolkit.Zoombox.Zoombox;
 
 namespace ProGPU.Wpf.ToolkitApp;
@@ -639,6 +640,25 @@ public partial class MainWindow : Window
             ToolkitZoombox.CurrentView.ViewKind,
             ToolkitZoombox.ViewStackIndex,
             ToolkitZoombox.ViewStackCount);
+    }
+
+    internal void ValidateToolkitPanelState(bool expectLoaded)
+    {
+        AssertEqual(Orientation.Horizontal, ToolkitWrapPanel.Orientation, "Toolkit WrapPanel orientation");
+        AssertEqual(false, ToolkitWrapPanel.IsChildOrderReversed, "Toolkit WrapPanel child order");
+        AssertEqual(64.0, ToolkitWrapPanel.ItemWidth, "Toolkit WrapPanel item width");
+        AssertEqual(34.0, ToolkitWrapPanel.ItemHeight, "Toolkit WrapPanel item height");
+        AssertEqual(3, ToolkitWrapPanel.Children.Count, "Toolkit WrapPanel child count");
+
+        if (expectLoaded)
+        {
+            ToolkitWrapPanel.UpdateLayout();
+            if (ToolkitWrapPanel.ActualWidth <= 0 ||
+                ToolkitWrapPanel.ActualHeight <= 0)
+            {
+                throw new InvalidOperationException("Expected Toolkit panel controls to participate in loaded layout.");
+            }
+        }
     }
 
     private void SerializeLayoutButton_Click(object sender, RoutedEventArgs e)
@@ -1497,6 +1517,10 @@ public partial class MainWindow : Window
         await ValidateLiveToolkitChildWindowAsync(liveHost);
         await ValidateLiveToolkitMessageBoxAsync(liveHost);
         await ValidateLiveToolkitZoomboxAndMagnifierAsync(liveHost);
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => ValidateToolkitPanelState(expectLoaded: true),
+            DispatcherPriority.Send);
         await ValidateLiveSourceBackedAvalonDockAsync(liveHost);
         await ValidateLiveAvalonDockThemeSwitchingAsync(liveHost);
 
@@ -1617,7 +1641,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit zoombox and magnifier, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit zoombox and magnifier, Toolkit panels, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -3588,6 +3612,7 @@ internal static class ToolkitSelfTest
         {
             throw new InvalidOperationException("Expected Toolkit Magnifier resource to be available for manager attachment.");
         }
+        Require<ToolkitWrapPanel>(window, "ToolkitWrapPanel");
         Require<PropertyGrid>(window, "DocumentPropertyGrid");
         Require<Button>(window, "AddSourceDocumentButton");
         Require<Button>(window, "ActivateSourceToolButton");
@@ -3681,6 +3706,7 @@ internal static class ToolkitSelfTest
         window.ValidateToolkitChildWindowState(expectedOpen: false);
         window.ValidateToolkitMessageBoxState(expectedOpen: false);
         window.ValidateToolkitZoomboxAndMagnifierState(expectLoaded);
+        window.ValidateToolkitPanelState(expectLoaded);
         window.ValidateSourceBackedAvalonDockState(mutateSources: true);
 
         if (expectLoaded)

@@ -4990,6 +4990,23 @@ public sealed class WpfManagedProjectGraphTests
             "MS",
             "Win32",
             "SafeNativeMethodsCLR.cs"));
+        var unsafeNativeMethodsClr = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "Shared",
+            "MS",
+            "Win32",
+            "UnsafeNativeMethodsCLR.cs"));
+        var hwndHost = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationFramework",
+            "System",
+            "Windows",
+            "Interop",
+            "HwndHost.cs"));
         var textServicesLoader = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -5616,6 +5633,10 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(safeNativeMethodsClr, "if (!OperatingSystem.IsWindows())", "SafeNativeMethodsPrivate.GetTickCount()");
         Assert.Contains("return Environment.TickCount;", safeNativeMethodsClr, StringComparison.Ordinal);
         Assert.Contains("return System.OperatingSystem.IsWindows()\n                ? SafeNativeMethodsPrivate.GetDoubleClickTime()\n                : 500;", safeNativeMethodsClr, StringComparison.Ordinal);
+        Assert.Contains("return IntGetParent(hWnd);", unsafeNativeMethodsClr, StringComparison.Ordinal);
+        Assert.Contains("[DllImport(ExternDll.User32, EntryPoint = \"GetParent\"", unsafeNativeMethodsClr, StringComparison.Ordinal);
+        AssertGuardBefore(hwndHost, "if (!global::System.OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetParent(_hwnd)");
+        Assert.Contains("if (!_hasDpiAwarenessContextTransition || !global::System.OperatingSystem.IsWindows()) return 1;", hwndHost, StringComparison.Ordinal);
         AssertGuardBefore(textServicesLoader, "if (!OperatingSystem.IsWindows())", "Invariant.Assert(Thread.CurrentThread.GetApartmentState() == ApartmentState.STA");
         Assert.Contains("return null;", textServicesLoader, StringComparison.Ordinal);
         Assert.DoesNotContain("System.Private.Windows.BinaryFormat", dataStreams, StringComparison.Ordinal);
@@ -5821,6 +5842,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DefWindowProcW", win32Compat, StringComparison.Ordinal);
         Assert.Contains("SetWindowsHookEx", win32Compat, StringComparison.Ordinal);
         Assert.Contains("GetClientRect", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("GetCapture", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("SetCapture", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("ReleaseCapture", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("WindowFromPoint", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("ScreenToClient", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("ClientToScreen", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("GetCursor", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("SetCursor", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("ShowCursor", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("LoadCursorW", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("DestroyCursor", win32Compat, StringComparison.Ordinal);
         Assert.Contains("GetStockObject", win32Compat, StringComparison.Ordinal);
         Assert.Contains("DwmIsCompositionEnabled", win32Compat, StringComparison.Ordinal);
         Assert.Contains("IsThemeActive", win32Compat, StringComparison.Ordinal);
@@ -6046,9 +6078,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Command=\"{x:Static local:ToolkitDockCommands.CloseOverview}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{x:Static local:ToolkitDockCommands.CycleDockContent}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{x:Static local:ToolkitDockCommands.CycleDockAnchorable}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{x:Static local:ToolkitDockCommands.CycleAutoHideOverlay}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<Window.InputBindings>", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Key=\"F9\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Key=\"F10\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Key=\"F11\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CommandTarget=\"{Binding PlacementTarget, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("AddSourceDocumentButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ActivateSourceToolButton", mainWindowXaml, StringComparison.Ordinal);
@@ -6266,16 +6300,22 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExecuteDockContextCommand", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDockContextMenuCommandExecutedCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ToolkitDockCommands.CycleDockAnchorable", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ToolkitDockCommands.CycleAutoHideOverlay", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ExerciseAvalonDockKeyboardNavigation", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ExerciseAvalonDockAnchorableKeyboardNavigation", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ExerciseAvalonDockAutoHideOverlayKeyboardNavigation", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveAvalonDockKeyboardNavigationAsync", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveAvalonDockAnchorableKeyboardNavigationAsync", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLiveAvalonDockAutoHideOverlayAsync", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RaiseHostInput(liveHost, \"KeyDown\", key: \"F9\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("RaiseHostInput(liveHost, \"KeyDown\", key: \"F10\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RaiseHostInput(liveHost, \"KeyDown\", key: \"F11\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDockKeyboardNavigationCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastAvalonDockKeyboardNavigationTarget", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDockAnchorableKeyboardNavigationCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastAvalonDockAnchorableKeyboardNavigationTarget", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AvalonDockAutoHideOverlayCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastAvalonDockAutoHideOverlayTarget", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitAutomationState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.GetAutomationId(DockManager)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("UIElementAutomationPeer.CreatePeerForElement(element)", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6304,6 +6344,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AvalonDock tab group commands", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock keyboard navigation", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock anchorable keyboard navigation", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AvalonDock auto-hide overlay keyboard navigation", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock theme switching", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock document context menu commands and close cancellation", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("layout replacement events", mainWindowCodeBehind, StringComparison.Ordinal);

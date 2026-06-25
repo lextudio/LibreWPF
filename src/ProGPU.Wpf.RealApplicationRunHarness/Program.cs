@@ -5616,10 +5616,19 @@ internal static class Program
 
     private static object GetProperty(object instance, string propertyName)
     {
-        return instance.GetType().GetProperty(
-            propertyName,
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(instance)
-            ?? throw new InvalidOperationException($"Expected '{instance.GetType().FullName}.{propertyName}' to have a value.");
+        for (Type? type = instance.GetType(); type != null; type = type.BaseType)
+        {
+            PropertyInfo? property = type.GetProperty(
+                propertyName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+            if (property != null)
+            {
+                return property.GetValue(instance)
+                    ?? throw new InvalidOperationException($"Expected '{type.FullName}.{propertyName}' to have a value.");
+            }
+        }
+
+        throw new MissingMemberException(instance.GetType().FullName, propertyName);
     }
 
     private static object GetStaticProperty(Type type, string propertyName)
@@ -5657,9 +5666,18 @@ internal static class Program
 
     private static object? TryGetProperty(object instance, string propertyName)
     {
-        return instance.GetType().GetProperty(
-            propertyName,
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(instance);
+        for (Type? type = instance.GetType(); type != null; type = type.BaseType)
+        {
+            PropertyInfo? property = type.GetProperty(
+                propertyName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+            if (property != null)
+            {
+                return property.GetValue(instance);
+            }
+        }
+
+        return null;
     }
 
     private static (double X, double Y) GetElementCenterInWindow(Assembly presentationCore, object element, object window)

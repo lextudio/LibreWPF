@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 #if defined(__APPLE__)
@@ -29,6 +30,8 @@ static progpu_intptr progpu_next_fake_handle = 2;
 #define PROGPU_GWL_USERDATA (-21)
 #define PROGPU_DEFAULT_STYLE ((progpu_intptr)0x10CF0000)
 #define PROGPU_DEFAULT_EX_STYLE ((progpu_intptr)0x00000100)
+#define PROGPU_DEF_WINDOW_PROC_A ((progpu_intptr)0x10001)
+#define PROGPU_DEF_WINDOW_PROC_W ((progpu_intptr)0x10002)
 #define PROGPU_FAKE_WINDOW_STATE_COUNT 256
 
 typedef struct progpu_window_state
@@ -41,9 +44,17 @@ typedef struct progpu_window_state
     progpu_intptr parent;
     progpu_intptr id;
     progpu_intptr user_data;
+    int32_t x;
+    int32_t y;
+    int32_t width;
+    int32_t height;
+    int32_t visible;
 } progpu_window_state;
 
 static progpu_window_state progpu_fake_window_states[PROGPU_FAKE_WINDOW_STATE_COUNT];
+static progpu_intptr progpu_capture_window = 0;
+static progpu_intptr progpu_current_cursor = 0;
+static int32_t progpu_cursor_show_count = 0;
 
 static progpu_intptr progpu_allocate_fake_handle(void)
 {
@@ -60,6 +71,11 @@ static void progpu_initialize_window_state(progpu_window_state* state, progpu_in
     state->parent = 0;
     state->id = 1;
     state->user_data = 1;
+    state->x = 0;
+    state->y = 0;
+    state->width = 0;
+    state->height = 0;
+    state->visible = 0;
 }
 
 static progpu_window_state* progpu_get_window_state(progpu_intptr window, int create)
@@ -239,6 +255,89 @@ PROGPU_EXPORT progpu_intptr GetModuleHandle(const void* module_name)
     return GetModuleHandleW(module_name);
 }
 
+PROGPU_EXPORT int32_t GetModuleHandleExW(uint32_t flags, const void* module_name, progpu_intptr* module)
+{
+    (void)flags;
+    (void)module_name;
+    if (module != 0)
+    {
+        *module = 1;
+    }
+
+    return 1;
+}
+
+PROGPU_EXPORT int32_t GetModuleHandleExA(uint32_t flags, const void* module_name, progpu_intptr* module)
+{
+    return GetModuleHandleExW(flags, module_name, module);
+}
+
+PROGPU_EXPORT int32_t GetModuleHandleEx(uint32_t flags, const void* module_name, progpu_intptr* module)
+{
+    return GetModuleHandleExW(flags, module_name, module);
+}
+
+PROGPU_EXPORT progpu_intptr GetProcAddress(progpu_intptr module, const char* procedure_name)
+{
+    (void)module;
+    if (procedure_name == 0)
+    {
+        return 0;
+    }
+
+    if (strcmp(procedure_name, "DefWindowProcW") == 0 ||
+        strcmp(procedure_name, "DefWindowProc") == 0)
+    {
+        return PROGPU_DEF_WINDOW_PROC_W;
+    }
+
+    if (strcmp(procedure_name, "DefWindowProcA") == 0)
+    {
+        return PROGPU_DEF_WINDOW_PROC_A;
+    }
+
+    return 0;
+}
+
+PROGPU_EXPORT progpu_intptr LoadLibraryW(const void* file_name)
+{
+    (void)file_name;
+    return 1;
+}
+
+PROGPU_EXPORT progpu_intptr LoadLibraryA(const void* file_name)
+{
+    return LoadLibraryW(file_name);
+}
+
+PROGPU_EXPORT progpu_intptr LoadLibrary(const void* file_name)
+{
+    return LoadLibraryW(file_name);
+}
+
+PROGPU_EXPORT progpu_intptr LoadLibraryExW(const void* file_name, progpu_intptr file, uint32_t flags)
+{
+    (void)file;
+    (void)flags;
+    return LoadLibraryW(file_name);
+}
+
+PROGPU_EXPORT progpu_intptr LoadLibraryExA(const void* file_name, progpu_intptr file, uint32_t flags)
+{
+    return LoadLibraryExW(file_name, file, flags);
+}
+
+PROGPU_EXPORT progpu_intptr LoadLibraryEx(const void* file_name, progpu_intptr file, uint32_t flags)
+{
+    return LoadLibraryExW(file_name, file, flags);
+}
+
+PROGPU_EXPORT int32_t FreeLibrary(progpu_intptr module)
+{
+    (void)module;
+    return 1;
+}
+
 PROGPU_EXPORT uint32_t SetErrorMode(uint32_t mode)
 {
     (void)mode;
@@ -304,6 +403,24 @@ PROGPU_EXPORT progpu_intptr SetFocus(progpu_intptr window)
     return 0;
 }
 
+PROGPU_EXPORT progpu_intptr GetCapture(void)
+{
+    return progpu_capture_window;
+}
+
+PROGPU_EXPORT progpu_intptr SetCapture(progpu_intptr window)
+{
+    progpu_intptr previous = progpu_capture_window;
+    progpu_capture_window = window;
+    return previous;
+}
+
+PROGPU_EXPORT int32_t ReleaseCapture(void)
+{
+    progpu_capture_window = 0;
+    return 1;
+}
+
 PROGPU_EXPORT int32_t IsChild(progpu_intptr parent, progpu_intptr child)
 {
     (void)parent;
@@ -318,7 +435,8 @@ PROGPU_EXPORT int32_t IsWindow(progpu_intptr window)
 
 PROGPU_EXPORT int32_t IsWindowVisible(progpu_intptr window)
 {
-    return window != 0;
+    progpu_window_state* state = progpu_get_window_state(window, 0);
+    return state != 0 ? state->visible : window != 0;
 }
 
 PROGPU_EXPORT int32_t IsWindowEnabled(progpu_intptr window)
@@ -341,27 +459,43 @@ PROGPU_EXPORT int32_t SetWindowPos(
     int32_t height,
     uint32_t flags)
 {
-    (void)window;
     (void)insert_after;
-    (void)x;
-    (void)y;
-    (void)width;
-    (void)height;
-    (void)flags;
+    progpu_window_state* state = progpu_get_window_state(window, 1);
+    if (state != 0)
+    {
+        if ((flags & 0x0002u) == 0)
+        {
+            state->x = x;
+            state->y = y;
+        }
+
+        if ((flags & 0x0001u) == 0)
+        {
+            state->width = width;
+            state->height = height;
+        }
+    }
+
     return 1;
 }
 
 PROGPU_EXPORT progpu_intptr SetParent(progpu_intptr child, progpu_intptr new_parent)
 {
-    (void)child;
-    (void)new_parent;
-    return 0;
+    progpu_window_state* state = progpu_get_window_state(child, 1);
+    if (state == 0)
+    {
+        return 0;
+    }
+
+    progpu_intptr previous = state->parent;
+    state->parent = new_parent;
+    return previous;
 }
 
 PROGPU_EXPORT progpu_intptr GetParent(progpu_intptr window)
 {
-    (void)window;
-    return 0;
+    progpu_window_state* state = progpu_get_window_state(window, 0);
+    return state != 0 ? state->parent : 0;
 }
 
 PROGPU_EXPORT progpu_intptr GetTopWindow(progpu_intptr window)
@@ -388,15 +522,110 @@ PROGPU_EXPORT int32_t GetCursorPos(progpu_point* point)
     return 1;
 }
 
+PROGPU_EXPORT progpu_intptr GetCursor(void)
+{
+    return progpu_current_cursor;
+}
+
+PROGPU_EXPORT progpu_intptr SetCursor(progpu_intptr cursor)
+{
+    progpu_intptr previous = progpu_current_cursor;
+    progpu_current_cursor = cursor;
+    return previous;
+}
+
+PROGPU_EXPORT int32_t ShowCursor(int32_t show)
+{
+    progpu_cursor_show_count += show ? 1 : -1;
+    return progpu_cursor_show_count;
+}
+
+PROGPU_EXPORT progpu_intptr LoadCursor(progpu_intptr instance, progpu_intptr cursor_name)
+{
+    (void)instance;
+    return cursor_name != 0 ? cursor_name : progpu_allocate_fake_handle();
+}
+
+PROGPU_EXPORT progpu_intptr LoadCursorA(progpu_intptr instance, progpu_intptr cursor_name)
+{
+    return LoadCursor(instance, cursor_name);
+}
+
+PROGPU_EXPORT progpu_intptr LoadCursorW(progpu_intptr instance, progpu_intptr cursor_name)
+{
+    return LoadCursor(instance, cursor_name);
+}
+
+PROGPU_EXPORT int32_t DestroyCursor(progpu_intptr cursor)
+{
+    if (progpu_current_cursor == cursor)
+    {
+        progpu_current_cursor = 0;
+    }
+
+    return 1;
+}
+
+PROGPU_EXPORT progpu_intptr WindowFromPoint(progpu_point point)
+{
+    if (progpu_capture_window != 0)
+    {
+        return progpu_capture_window;
+    }
+
+    for (int i = PROGPU_FAKE_WINDOW_STATE_COUNT - 1; i >= 0; i--)
+    {
+        progpu_window_state* state = &progpu_fake_window_states[i];
+        if (state->window == 0 || !state->visible)
+        {
+            continue;
+        }
+
+        if (point.x >= state->x &&
+            point.y >= state->y &&
+            point.x < state->x + state->width &&
+            point.y < state->y + state->height)
+        {
+            return state->window;
+        }
+    }
+
+    return 0;
+}
+
+PROGPU_EXPORT int32_t ScreenToClient(progpu_intptr window, progpu_point* point)
+{
+    progpu_window_state* state = progpu_get_window_state(window, 0);
+    if (point != 0 && state != 0)
+    {
+        point->x -= state->x;
+        point->y -= state->y;
+    }
+
+    return 1;
+}
+
+PROGPU_EXPORT int32_t ClientToScreen(progpu_intptr window, progpu_point* point)
+{
+    progpu_window_state* state = progpu_get_window_state(window, 0);
+    if (point != 0 && state != 0)
+    {
+        point->x += state->x;
+        point->y += state->y;
+    }
+
+    return 1;
+}
+
 PROGPU_EXPORT int32_t GetClientRect(progpu_intptr window, progpu_rect* rect)
 {
-    (void)window;
     if (rect != 0)
     {
+        progpu_window_state* state = progpu_get_window_state(window, 0);
         rect->left = 0;
         rect->top = 0;
-        rect->right = 0;
-        rect->bottom = 0;
+        rect->right = state != 0 ? state->width : 0;
+        rect->bottom = state != 0 ? state->height : 0;
     }
 
     return 1;
@@ -404,7 +633,20 @@ PROGPU_EXPORT int32_t GetClientRect(progpu_intptr window, progpu_rect* rect)
 
 PROGPU_EXPORT int32_t GetWindowRect(progpu_intptr window, progpu_rect* rect)
 {
-    return GetClientRect(window, rect);
+    if (rect != 0)
+    {
+        progpu_window_state* state = progpu_get_window_state(window, 0);
+        int32_t x = state != 0 ? state->x : 0;
+        int32_t y = state != 0 ? state->y : 0;
+        int32_t width = state != 0 ? state->width : 0;
+        int32_t height = state != 0 ? state->height : 0;
+        rect->left = x;
+        rect->top = y;
+        rect->right = x + width;
+        rect->bottom = y + height;
+    }
+
+    return 1;
 }
 
 PROGPU_EXPORT progpu_intptr MonitorFromRect(progpu_rect* rect, uint32_t flags)
@@ -446,6 +688,14 @@ PROGPU_EXPORT int32_t PostMessage(progpu_intptr window, int32_t message, progpu_
     return 1;
 }
 
+PROGPU_EXPORT void NotifyWinEvent(int32_t event_id, progpu_intptr window, int32_t object_id, int32_t child_id)
+{
+    (void)event_id;
+    (void)window;
+    (void)object_id;
+    (void)child_id;
+}
+
 PROGPU_EXPORT progpu_intptr DefWindowProcW(progpu_intptr window, int32_t message, progpu_intptr w_param, progpu_intptr l_param)
 {
     (void)window;
@@ -463,6 +713,41 @@ PROGPU_EXPORT progpu_intptr DefWindowProcA(progpu_intptr window, int32_t message
 PROGPU_EXPORT progpu_intptr DefWindowProc(progpu_intptr window, int32_t message, progpu_intptr w_param, progpu_intptr l_param)
 {
     return DefWindowProcW(window, message, w_param, l_param);
+}
+
+PROGPU_EXPORT progpu_intptr CallWindowProcW(
+    progpu_intptr procedure,
+    progpu_intptr window,
+    int32_t message,
+    progpu_intptr w_param,
+    progpu_intptr l_param)
+{
+    if (procedure == PROGPU_DEF_WINDOW_PROC_A || procedure == PROGPU_DEF_WINDOW_PROC_W || procedure == 1)
+    {
+        return DefWindowProcW(window, message, w_param, l_param);
+    }
+
+    return 0;
+}
+
+PROGPU_EXPORT progpu_intptr CallWindowProcA(
+    progpu_intptr procedure,
+    progpu_intptr window,
+    int32_t message,
+    progpu_intptr w_param,
+    progpu_intptr l_param)
+{
+    return CallWindowProcW(procedure, window, message, w_param, l_param);
+}
+
+PROGPU_EXPORT progpu_intptr CallWindowProc(
+    progpu_intptr procedure,
+    progpu_intptr window,
+    int32_t message,
+    progpu_intptr w_param,
+    progpu_intptr l_param)
+{
+    return CallWindowProcW(procedure, window, message, w_param, l_param);
 }
 
 PROGPU_EXPORT int16_t RegisterClassExW(void* window_class)
@@ -549,6 +834,11 @@ PROGPU_EXPORT progpu_intptr CreateWindowEx(
         state->parent = parent;
         state->id = menu == 0 ? 1 : menu;
         state->instance = instance == 0 ? 1 : instance;
+        state->x = x;
+        state->y = y;
+        state->width = width;
+        state->height = height;
+        state->visible = (style & 0x10000000) != 0;
     }
 
     return handle;
@@ -590,7 +880,17 @@ PROGPU_EXPORT progpu_intptr CreateWindowExA(
 
 PROGPU_EXPORT int32_t DestroyWindow(progpu_intptr window)
 {
-    (void)window;
+    progpu_window_state* state = progpu_get_window_state(window, 0);
+    if (state != 0)
+    {
+        state->window = 0;
+    }
+
+    if (progpu_capture_window == window)
+    {
+        progpu_capture_window = 0;
+    }
+
     return 1;
 }
 
@@ -602,9 +902,18 @@ PROGPU_EXPORT int32_t DestroyIcon(progpu_intptr icon)
 
 PROGPU_EXPORT int32_t ShowWindow(progpu_intptr window, int32_t command)
 {
-    (void)window;
-    (void)command;
+    progpu_window_state* state = progpu_get_window_state(window, 1);
+    if (state != 0)
+    {
+        state->visible = command != 0;
+    }
+
     return 1;
+}
+
+PROGPU_EXPORT int32_t ShowWindowAsync(progpu_intptr window, int32_t command)
+{
+    return ShowWindow(window, command);
 }
 
 PROGPU_EXPORT int32_t GetSystemMetrics(int32_t metric)

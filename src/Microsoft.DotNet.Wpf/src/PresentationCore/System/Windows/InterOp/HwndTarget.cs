@@ -2357,7 +2357,10 @@ namespace System.Windows.Interop
                     // event when this happens?); MS.Internal.Automation.NativeEventListener may have a context
                     // monitor that is holding onto the old _rootVisual and that would need to be cleaned up.
                     // Do we treat swapping in a new root as a new app?  Need to understand when this could happen.
-                    UnsafeNativeMethods.NotifyWinEvent(UnsafeNativeMethods.EventObjectUIFragmentCreate, _hWnd.MakeHandleRef(this), 0, 0);
+                    if (!_isPortable)
+                    {
+                        UnsafeNativeMethods.NotifyWinEvent(UnsafeNativeMethods.EventObjectUIFragmentCreate, _hWnd.MakeHandleRef(this), 0, 0);
+                    }
                 }
             }
         }
@@ -2520,6 +2523,11 @@ namespace System.Windows.Interop
                 if(_usesPerPixelOpacity != value)
                 {
                     _usesPerPixelOpacity = value;
+
+                    if (_isPortable)
+                    {
+                        return;
+                    }
 
                     UpdateWindowSettings();
                 }

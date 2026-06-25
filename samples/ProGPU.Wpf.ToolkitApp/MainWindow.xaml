@@ -76,12 +76,17 @@
     <CommandBinding Command="{x:Static local:ToolkitDockCommands.CycleDockAnchorable}"
                     CanExecute="CycleDockAnchorableCommand_CanExecute"
                     Executed="CycleDockAnchorableCommand_Executed" />
+    <CommandBinding Command="{x:Static local:ToolkitDockCommands.CycleAutoHideOverlay}"
+                    CanExecute="CycleAutoHideOverlayCommand_CanExecute"
+                    Executed="CycleAutoHideOverlayCommand_Executed" />
   </Window.CommandBindings>
   <Window.InputBindings>
     <KeyBinding Key="F9"
                 Command="{x:Static local:ToolkitDockCommands.CycleDockContent}" />
     <KeyBinding Key="F10"
                 Command="{x:Static local:ToolkitDockCommands.CycleDockAnchorable}" />
+    <KeyBinding Key="F11"
+                Command="{x:Static local:ToolkitDockCommands.CycleAutoHideOverlay}" />
   </Window.InputBindings>
 
   <DockPanel LastChildFill="True">

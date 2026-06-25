@@ -29,6 +29,7 @@ using Xceed.Wpf.Toolkit.Primitives;
 using Xceed.Wpf.Toolkit.PropertyGrid;
 using Xceed.Wpf.Toolkit.Zoombox;
 using AvalonDockAnchorableItem = Xceed.Wpf.AvalonDock.Controls.LayoutAnchorableItem;
+using AvalonDockLayoutAnchorControl = Xceed.Wpf.AvalonDock.Controls.LayoutAnchorControl;
 using AvalonDockDocumentItem = Xceed.Wpf.AvalonDock.Controls.LayoutDocumentItem;
 using AvalonDockLayoutItem = Xceed.Wpf.AvalonDock.Controls.LayoutItem;
 using ToolkitMessageBoxControl = Xceed.Wpf.Toolkit.MessageBox;
@@ -59,6 +60,11 @@ public static class ToolkitDockCommands
         "Cycle dock anchorable",
         nameof(CycleDockAnchorable),
         typeof(ToolkitDockCommands));
+
+    public static readonly RoutedUICommand CycleAutoHideOverlay = new(
+        "Cycle auto-hide overlay",
+        nameof(CycleAutoHideOverlay),
+        typeof(ToolkitDockCommands));
 }
 
 public partial class MainWindow : Window
@@ -71,6 +77,7 @@ public partial class MainWindow : Window
     private int _avalonDockThemeIndex;
     private int _avalonDockKeyboardNavigationIndex;
     private int _avalonDockAnchorableKeyboardNavigationIndex;
+    private int _avalonDockAutoHideOverlayIndex;
     private bool _liveValidationStarted;
 
     public MainWindow()
@@ -236,6 +243,20 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private void CycleAutoHideOverlayCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+        ViewModel.AvalonDockAutoHideOverlayCanExecuteCount++;
+        e.CanExecute = IsLoaded &&
+            GetAutoHideOverlayAnchorables().Any(anchorable => anchorable.IsAutoHidden);
+        e.Handled = true;
+    }
+
+    private void CycleAutoHideOverlayCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        CycleAvalonDockAutoHideOverlay();
+        e.Handled = true;
+    }
+
     internal void CycleAvalonDockKeyboardNavigation()
     {
         LayoutContent[] cycle =
@@ -382,6 +403,91 @@ public partial class MainWindow : Window
 
         focusTarget.Focus();
         Keyboard.Focus(focusTarget);
+    }
+
+    private LayoutAnchorable[] GetAutoHideOverlayAnchorables()
+    {
+        return
+        [
+            AgendaPane,
+            ContactsPane
+        ];
+    }
+
+    internal void CycleAvalonDockAutoHideOverlay()
+    {
+        LayoutAnchorable[] cycle = GetAutoHideOverlayAnchorables();
+        int currentIndex = Array.FindIndex(
+            cycle,
+            content => string.Equals(
+                ViewModel.LastAvalonDockAutoHideOverlayTarget,
+                content.ContentId ?? content.Title,
+                StringComparison.Ordinal));
+        if (currentIndex >= 0)
+        {
+            _avalonDockAutoHideOverlayIndex = currentIndex;
+        }
+
+        _avalonDockAutoHideOverlayIndex = (_avalonDockAutoHideOverlayIndex + 1) % cycle.Length;
+        LayoutAnchorable nextContent = cycle[_avalonDockAutoHideOverlayIndex];
+        ShowAvalonDockAutoHideOverlay(nextContent);
+
+        ViewModel.AvalonDockAutoHideOverlayCount++;
+        ViewModel.LastAvalonDockAutoHideOverlayTarget = nextContent.ContentId ?? nextContent.Title;
+        ViewModel.Status = $"Auto-hide overlay shown: {nextContent.Title}";
+        ViewModel.Activity.Add(ViewModel.Status);
+    }
+
+    private void ShowAvalonDockAutoHideOverlay(LayoutAnchorable anchorable)
+    {
+        if (!anchorable.IsAutoHidden)
+        {
+            anchorable.ToggleAutoHide();
+            Dispatcher.Invoke(static () => { }, DispatcherPriority.Background);
+        }
+
+        AvalonDockLayoutAnchorControl anchorControl = FindAutoHideAnchorControl(anchorable);
+        InvokeAvalonDockAutoHideWindowMethod("HideAutoHideWindow", anchorControl);
+        InvokeAvalonDockAutoHideWindowMethod("ShowAutoHideWindow", anchorControl);
+        Dispatcher.Invoke(static () => { }, DispatcherPriority.Background);
+    }
+
+    private void HideAvalonDockAutoHideOverlay(LayoutAnchorable anchorable)
+    {
+        AvalonDockLayoutAnchorControl anchorControl = FindAutoHideAnchorControl(anchorable);
+        InvokeAvalonDockAutoHideWindowMethod("HideAutoHideWindow", anchorControl);
+        Dispatcher.Invoke(static () => { }, DispatcherPriority.Background);
+    }
+
+    private AvalonDockLayoutAnchorControl FindAutoHideAnchorControl(LayoutAnchorable anchorable)
+    {
+        DockManager.ApplyTemplate();
+        DockManager.UpdateLayout();
+
+        return EnumerateVisualDescendants<AvalonDockLayoutAnchorControl>(DockManager)
+            .FirstOrDefault(anchorControl => ReferenceEquals(anchorControl.Model, anchorable))
+            ?? throw new InvalidOperationException(
+                $"Expected AvalonDock auto-hide side tab control for '{anchorable.Title}'.");
+    }
+
+    private void InvokeAvalonDockAutoHideWindowMethod(string methodName, AvalonDockLayoutAnchorControl anchorControl)
+    {
+        MethodInfo method = DockManager
+            .GetType()
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .FirstOrDefault(candidate =>
+            {
+                if (!string.Equals(candidate.Name, methodName, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+
+                ParameterInfo[] parameters = candidate.GetParameters();
+                return parameters.Length == 1 &&
+                    parameters[0].ParameterType.IsAssignableFrom(anchorControl.GetType());
+            })
+            ?? throw new MissingMethodException(DockManager.GetType().FullName, methodName);
+        method.Invoke(DockManager, [anchorControl]);
     }
 
     private void RecordAvalonDockContextMenuCommand(string commandName)
@@ -2049,6 +2155,122 @@ public partial class MainWindow : Window
         AssertEqual($"Keyboard anchorable navigation: {expectedContent.Title}", ViewModel.Status, "AvalonDock anchorable keyboard navigation status");
     }
 
+    internal void ExerciseAvalonDockAutoHideOverlayKeyboardNavigation()
+    {
+        var keyBinding = InputBindings
+            .OfType<KeyBinding>()
+            .SingleOrDefault(binding => ReferenceEquals(binding.Command, ToolkitDockCommands.CycleAutoHideOverlay))
+            ?? throw new InvalidOperationException("Expected AvalonDock auto-hide overlay keyboard navigation KeyBinding.");
+        AssertEqual(Key.F11, keyBinding.Key, "AvalonDock auto-hide overlay keyboard navigation key");
+        AssertEqual(ModifierKeys.None, keyBinding.Modifiers, "AvalonDock auto-hide overlay keyboard navigation modifiers");
+
+        EnsureAutoHideOverlayAnchorables();
+        _avalonDockAutoHideOverlayIndex = -1;
+        ViewModel.LastAvalonDockAutoHideOverlayTarget = string.Empty;
+        int canExecuteCountBefore = ViewModel.AvalonDockAutoHideOverlayCanExecuteCount;
+        if (!ToolkitDockCommands.CycleAutoHideOverlay.CanExecute(null, this))
+        {
+            throw new InvalidOperationException("Expected AvalonDock auto-hide overlay keyboard navigation command to be executable.");
+        }
+
+        if (ViewModel.AvalonDockAutoHideOverlayCanExecuteCount <= canExecuteCountBefore)
+        {
+            throw new InvalidOperationException("Expected AvalonDock auto-hide overlay keyboard navigation command to route CanExecute.");
+        }
+
+        int overlayCountBefore = ViewModel.AvalonDockAutoHideOverlayCount;
+        ToolkitDockCommands.CycleAutoHideOverlay.Execute(null, this);
+        Dispatcher.Invoke(static () => { }, DispatcherPriority.Background);
+        ValidateAvalonDockAutoHideOverlayTarget(AgendaPane, overlayCountBefore + 1);
+
+        ToolkitDockCommands.CycleAutoHideOverlay.Execute(null, this);
+        Dispatcher.Invoke(static () => { }, DispatcherPriority.Background);
+        ValidateAvalonDockAutoHideOverlayTarget(ContactsPane, overlayCountBefore + 2);
+        HideAvalonDockAutoHideOverlay(ContactsPane);
+    }
+
+    internal void ValidateAvalonDockAutoHideOverlayTarget(LayoutAnchorable expectedContent, int expectedOverlayCount)
+    {
+        if (!expectedContent.IsAutoHidden)
+        {
+            throw new InvalidOperationException($"Expected AvalonDock auto-hide overlay target '{expectedContent.Title}' to remain auto-hidden.");
+        }
+
+        object? overlayModel = GetAvalonDockAutoHideWindowModel();
+        if (!AutoHideOverlayModelContains(overlayModel, expectedContent))
+        {
+            throw new InvalidOperationException(
+                $"Expected AvalonDock auto-hide overlay to host '{expectedContent.Title}', but model was '{FormatAvalonDockActiveContent(overlayModel)}'.");
+        }
+
+        AssertEqual(expectedOverlayCount, ViewModel.AvalonDockAutoHideOverlayCount, "AvalonDock auto-hide overlay count");
+        AssertEqual(expectedContent.ContentId ?? expectedContent.Title, ViewModel.LastAvalonDockAutoHideOverlayTarget, "AvalonDock auto-hide overlay last target");
+        AssertEqual($"Auto-hide overlay shown: {expectedContent.Title}", ViewModel.Status, "AvalonDock auto-hide overlay status");
+    }
+
+    private void EnsureAutoHideOverlayAnchorables()
+    {
+        foreach (LayoutAnchorable anchorable in GetAutoHideOverlayAnchorables())
+        {
+            if (!anchorable.IsAutoHidden)
+            {
+                anchorable.ToggleAutoHide();
+                Dispatcher.Invoke(static () => { }, DispatcherPriority.Background);
+            }
+        }
+    }
+
+    private object? GetAvalonDockAutoHideWindowModel()
+    {
+        object? autoHideWindow = DockManager
+            .GetType()
+            .GetProperty("AutoHideWindow", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?.GetValue(DockManager);
+        return autoHideWindow
+            ?.GetType()
+            .GetProperty("Model", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?.GetValue(autoHideWindow);
+    }
+
+    private static bool AutoHideOverlayModelContains(object? overlayModel, LayoutAnchorable expectedContent)
+    {
+        if (ReferenceEquals(overlayModel, expectedContent))
+        {
+            return true;
+        }
+
+        if (overlayModel is LayoutAnchorablePane pane)
+        {
+            return pane.Children.Contains(expectedContent);
+        }
+
+        if (overlayModel is ILayoutContainer container)
+        {
+            return ContainsLayoutContent(container, expectedContent);
+        }
+
+        return false;
+    }
+
+    private static bool ContainsLayoutContent(ILayoutContainer container, LayoutContent expectedContent)
+    {
+        foreach (ILayoutElement child in container.Children)
+        {
+            if (ReferenceEquals(child, expectedContent))
+            {
+                return true;
+            }
+
+            if (child is ILayoutContainer childContainer &&
+                ContainsLayoutContent(childContainer, expectedContent))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static string FormatAvalonDockActiveContent(object? activeContent)
     {
         return activeContent switch
@@ -2880,6 +3102,7 @@ public partial class MainWindow : Window
 
         await ValidateLiveAvalonDockKeyboardNavigationAsync(liveHost);
         await ValidateLiveAvalonDockAnchorableKeyboardNavigationAsync(liveHost);
+        await ValidateLiveAvalonDockAutoHideOverlayAsync(liveHost);
 
         await ValidateLiveOverviewDocumentLifecycleAsync(liveHost);
 
@@ -2972,7 +3195,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit resource theme updates, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit/AvalonDock automation peers, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock keyboard navigation, AvalonDock anchorable keyboard navigation, AvalonDock theme switching, AvalonDock document context menu commands and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit resource theme updates, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit/AvalonDock automation peers, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock keyboard navigation, AvalonDock anchorable keyboard navigation, AvalonDock auto-hide overlay keyboard navigation, AvalonDock theme switching, AvalonDock document context menu commands and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -3192,6 +3415,54 @@ public partial class MainWindow : Window
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () => ValidateAvalonDockAnchorableKeyboardNavigationTarget(ActivityPane, navigationCountBefore + 2),
+            DispatcherPriority.Send);
+    }
+
+    private async Task ValidateLiveAvalonDockAutoHideOverlayAsync(object liveHost)
+    {
+        int overlayCountBefore = await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                EnsureAutoHideOverlayAnchorables();
+                _avalonDockAutoHideOverlayIndex = -1;
+                ViewModel.LastAvalonDockAutoHideOverlayTarget = string.Empty;
+                ActivateEditorButton.Focus();
+                Keyboard.Focus(ActivateEditorButton);
+                return ViewModel.AvalonDockAutoHideOverlayCount;
+            },
+            DispatcherPriority.Send);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                RaiseHostInput(liveHost, "KeyDown", key: "F11");
+                RaiseHostInput(liveHost, "KeyUp", key: "F11");
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => ValidateAvalonDockAutoHideOverlayTarget(AgendaPane, overlayCountBefore + 1),
+            DispatcherPriority.Send);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                RaiseHostInput(liveHost, "KeyDown", key: "F11");
+                RaiseHostInput(liveHost, "KeyUp", key: "F11");
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                ValidateAvalonDockAutoHideOverlayTarget(ContactsPane, overlayCountBefore + 2);
+                HideAvalonDockAutoHideOverlay(ContactsPane);
+            },
             DispatcherPriority.Send);
     }
 
@@ -4016,6 +4287,9 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private int _avalonDockAnchorableKeyboardNavigationCanExecuteCount;
     private int _avalonDockAnchorableKeyboardNavigationCount;
     private string _lastAvalonDockAnchorableKeyboardNavigationTarget = string.Empty;
+    private int _avalonDockAutoHideOverlayCanExecuteCount;
+    private int _avalonDockAutoHideOverlayCount;
+    private string _lastAvalonDockAutoHideOverlayTarget = string.Empty;
     private bool _cancelNextOverviewClose;
     private string _lastClosingDocumentContentId = string.Empty;
     private string _lastClosedDocumentContentId = string.Empty;
@@ -5087,6 +5361,45 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         }
     }
 
+    public int AvalonDockAutoHideOverlayCanExecuteCount
+    {
+        get => _avalonDockAutoHideOverlayCanExecuteCount;
+        set
+        {
+            if (_avalonDockAutoHideOverlayCanExecuteCount != value)
+            {
+                _avalonDockAutoHideOverlayCanExecuteCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int AvalonDockAutoHideOverlayCount
+    {
+        get => _avalonDockAutoHideOverlayCount;
+        set
+        {
+            if (_avalonDockAutoHideOverlayCount != value)
+            {
+                _avalonDockAutoHideOverlayCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string LastAvalonDockAutoHideOverlayTarget
+    {
+        get => _lastAvalonDockAutoHideOverlayTarget;
+        set
+        {
+            if (!string.Equals(_lastAvalonDockAutoHideOverlayTarget, value, StringComparison.Ordinal))
+            {
+                _lastAvalonDockAutoHideOverlayTarget = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public bool CancelNextOverviewClose
     {
         get => _cancelNextOverviewClose;
@@ -5800,6 +6113,7 @@ internal static class ToolkitSelfTest
             window.ValidateAvalonDockDocumentContextMenuState(expectedOpen: false);
             window.ExerciseAvalonDockKeyboardNavigation();
             window.ExerciseAvalonDockAnchorableKeyboardNavigation();
+            window.ExerciseAvalonDockAutoHideOverlayKeyboardNavigation();
 
             if (window.ViewModel.AccentColor != Colors.MediumSeaGreen ||
                 window.ViewModel.Estimate != 42.25m)

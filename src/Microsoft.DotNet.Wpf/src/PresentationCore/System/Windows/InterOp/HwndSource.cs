@@ -284,16 +284,21 @@ namespace System.Windows.Interop
                                        parameters.ParentWindow,
                                        wrapperHooks);
 
-            _hwndTarget = new HwndTarget(_hwndWrapper.Handle)
-            {
-                UsesPerPixelOpacity = parameters.EffectivePerPixelOpacity
-            };
+            _hwndTarget = OperatingSystem.IsWindows()
+                ? new HwndTarget(_hwndWrapper.Handle)
+                {
+                    UsesPerPixelOpacity = parameters.EffectivePerPixelOpacity
+                }
+                : HwndTarget.CreatePortable(_hwndWrapper.Handle, 1.0, 1.0);
             if (_hwndTarget.UsesPerPixelOpacity)
             {
                 _hwndTarget.BackgroundColor = Colors.Transparent;
 
                 // Prevent this window from being themed.
-                UnsafeNativeMethods.CriticalSetWindowTheme(new HandleRef(this, _hwndWrapper.Handle), "", "");
+                if (OperatingSystem.IsWindows())
+                {
+                    UnsafeNativeMethods.CriticalSetWindowTheme(new HandleRef(this, _hwndWrapper.Handle), "", "");
+                }
             }
             _constructionParameters = null;
 
@@ -347,7 +352,7 @@ namespace System.Windows.Interop
             AddSource();
 
             // Register dropable window.
-            if (_hwndWrapper.Handle != IntPtr.Zero)
+            if (_hwndWrapper.Handle != IntPtr.Zero && OperatingSystem.IsWindows())
             {
                 // This call is safe since DragDrop.RegisterDropTarget is checking the unmanged
                 // code permission.
@@ -977,6 +982,11 @@ namespace System.Windows.Interop
         {
             get
             {
+                if (!OperatingSystem.IsWindows())
+                {
+                    return false;
+                }
+
                 IntPtr capture = SafeNativeMethods.GetCapture();
 
                 return ( capture == Handle );
@@ -2612,7 +2622,7 @@ namespace System.Windows.Interop
                         if (_hwndWrapper != null)
                         {
                             // Revoke the drop target.
-                            if (_hwndWrapper.Handle != IntPtr.Zero && _registeredDropTargetCount > 0)
+                            if (_hwndWrapper.Handle != IntPtr.Zero && _registeredDropTargetCount > 0 && OperatingSystem.IsWindows())
                             {
                                 // This call is safe since DragDrop.RevokeDropTarget is checking the unmanged
                                 // code permission.

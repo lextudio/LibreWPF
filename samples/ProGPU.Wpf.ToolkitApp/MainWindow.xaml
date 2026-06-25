@@ -677,6 +677,44 @@
                     </xctk:WrapPanel>
                   </Grid>
 
+                  <TextBlock Text="CollectionControl"
+                             Margin="0,12,0,0" />
+                  <Grid Margin="0,4,0,12">
+                    <Grid.RowDefinitions>
+                      <RowDefinition Height="Auto" />
+                      <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <WrapPanel Margin="0,0,0,6">
+                      <Button x:Name="AddCollectionEntryButton"
+                              Content="Add entry"
+                              MinWidth="88"
+                              Margin="0,0,6,0"
+                              Padding="8,4"
+                              Click="AddCollectionEntryButton_Click" />
+                      <Button x:Name="SelectCollectionEntryButton"
+                              Content="Select second"
+                              MinWidth="104"
+                              Margin="0,0,6,0"
+                              Padding="8,4"
+                              Click="SelectCollectionEntryButton_Click" />
+                      <TextBlock x:Name="CollectionControlStatusText"
+                                 VerticalAlignment="Center"
+                                 Foreground="#5E6A73"
+                                 Text="{Binding CollectionControlStatus}" />
+                    </WrapPanel>
+                    <xctk:CollectionControl x:Name="ToolkitCollectionControl"
+                                            Grid.Row="1"
+                                            Height="220"
+                                            Background="{StaticResource ToolkitSubtleBrush}"
+                                            ItemsSource="{Binding CollectionEntries}"
+                                            ItemsSourceType="{x:Type local:ToolkitCollectionEntry}"
+                                            NewItemTypes="{Binding CollectionEntryTypes}"
+                                            SelectedItem="{Binding SelectedCollectionEntry, Mode=TwoWay}"
+                                            PropertiesLabel="Entry properties"
+                                            TypeSelectionLabel="Entry type"
+                                            IsReadOnly="False" />
+                  </Grid>
+
                   <TextBlock Text="AvalonDock MVVM sources"
                              Margin="0,12,0,0" />
                   <WrapPanel Margin="0,4,0,4">

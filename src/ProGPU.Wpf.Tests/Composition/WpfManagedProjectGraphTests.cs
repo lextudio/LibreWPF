@@ -5998,6 +5998,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<xctkz:Zoombox x:Name=\"ToolkitZoombox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:Magnifier x:Key=\"ToolkitMagnifierResource\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:WrapPanel x:Name=\"ToolkitWrapPanel\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xctk:CollectionControl x:Name=\"ToolkitCollectionControl\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding CollectionEntries}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("NewItemTypes=\"{Binding CollectionEntryTypes}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ShowChildWindowButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ShowToolkitMessageBoxButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ZoomInButton", mainWindowXaml, StringComparison.Ordinal);
@@ -6063,6 +6066,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Require<Button>(window, \"FitZoomboxButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<Button>(window, \"BackZoomboxButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<ToolkitWrapPanel>(window, \"ToolkitWrapPanel\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<CollectionControl>(window, \"ToolkitCollectionControl\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<Button>(window, \"AddCollectionEntryButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<Button>(window, \"SelectCollectionEntryButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<PropertyGrid>(window, \"DocumentPropertyGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<DockingManager>(window, \"SourceDockManager\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<LayoutDocumentPane>(window, \"SourceDocumentPane\")", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6104,6 +6110,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Toolkit zoombox and magnifier", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitPanelState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Toolkit panels", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateToolkitCollectionControlState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ExerciseToolkitCollectionControl", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLiveToolkitCollectionControlAsync", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Toolkit collection control", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("CollectionEntries", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("CollectionEntryTypes", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateSourceBackedAvalonDockState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveSourceBackedAvalonDockAsync", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateAvalonDockThemeState", mainWindowCodeBehind, StringComparison.Ordinal);

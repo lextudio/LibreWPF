@@ -6081,6 +6081,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AutomationProperties.AutomationId=\"ToolkitDockManagerAutomation\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.AutomationId=\"ToolkitDocumentListAutomation\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.AutomationId=\"ToolkitEditorTextBoxAutomation\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"DataGridDocument\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ToolkitDataGrid\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.AutomationId=\"ToolkitDataGridAutomation\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding DataGridItems}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("EnableRowVirtualization=\"True\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("EnableColumnVirtualization=\"True\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("VirtualizingPanel.VirtualizationMode=\"Recycling\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("VirtualizingPanel.ScrollUnit=\"Pixel\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DockContextCancelNextCloseMenuItem", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DockAnchorableContextMenu", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DockAnchorContextActivateToolkitMenuItem", mainWindowXaml, StringComparison.Ordinal);
@@ -6164,6 +6172,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Require<Button>(window, \"SelectCollectionEntryButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<CollectionControlButton>(window, \"OpenCollectionDialogButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<PropertyGrid>(window, \"DocumentPropertyGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<LayoutDocument>(window, \"DataGridDocument\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<DataGrid>(window, \"ToolkitDataGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<DockingManager>(window, \"SourceDockManager\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<LayoutDocumentPane>(window, \"SourceDocumentPane\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<LayoutAnchorablePane>(window, \"SourceAnchorablePane\")", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6257,6 +6267,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CollectionEntries", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("CollectionEntryTypes", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("CollectionDialogUpdateCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DataGridItems = CreateDataGridItems(100_000)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class ToolkitDataGridItem", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateToolkitDataGridState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("VirtualizingPanel.GetVirtualizationMode(ToolkitDataGrid)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ScrollViewer.GetCanContentScroll(ToolkitDataGrid)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Toolkit DataGrid 100k virtualization", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateSourceBackedAvalonDockState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ExerciseSourceBackedAvalonDockTabGroupCommands", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ExecuteSourceDocumentTabGroupRoundTrip", mainWindowCodeBehind, StringComparison.Ordinal);

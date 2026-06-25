@@ -1753,6 +1753,48 @@ public partial class MainWindow : Window
         }
     }
 
+    internal void ValidateToolkitDataGridState(bool expectLoaded)
+    {
+        AssertEqual(100_000, ViewModel.DataGridItemCount, "Toolkit DataGrid item count");
+        AssertEqual(ViewModel.DataGridItems, ToolkitDataGrid.ItemsSource, "Toolkit DataGrid items source");
+        AssertEqual(ViewModel.DataGridItems.Count, ToolkitDataGrid.Items.Count, "Toolkit DataGrid realized item view count");
+        AssertEqual(ViewModel.DataGridItems[0], ToolkitDataGrid.Items[0], "Toolkit DataGrid first row");
+        AssertEqual(ViewModel.DataGridItems[ViewModel.DataGridItems.Count - 1], ToolkitDataGrid.Items[ViewModel.DataGridItems.Count - 1], "Toolkit DataGrid last row");
+        AssertEqual(ViewModel.SelectedDataGridItem, ToolkitDataGrid.SelectedItem, "Toolkit DataGrid selected item binding");
+        AssertEqual(false, ToolkitDataGrid.AutoGenerateColumns, "Toolkit DataGrid generated-column mode");
+        AssertEqual(true, ToolkitDataGrid.IsReadOnly, "Toolkit DataGrid read-only state");
+        AssertEqual(true, ToolkitDataGrid.EnableRowVirtualization, "Toolkit DataGrid row virtualization");
+        AssertEqual(true, ToolkitDataGrid.EnableColumnVirtualization, "Toolkit DataGrid column virtualization");
+        AssertEqual(true, VirtualizingPanel.GetIsVirtualizing(ToolkitDataGrid), "Toolkit DataGrid virtualizing panel flag");
+        AssertEqual(VirtualizationMode.Recycling, VirtualizingPanel.GetVirtualizationMode(ToolkitDataGrid), "Toolkit DataGrid virtualization mode");
+        AssertEqual(ScrollUnit.Pixel, VirtualizingPanel.GetScrollUnit(ToolkitDataGrid), "Toolkit DataGrid scroll unit");
+        AssertEqual(true, ScrollViewer.GetCanContentScroll(ToolkitDataGrid), "Toolkit DataGrid content scrolling");
+        AssertEqual(6, ToolkitDataGrid.Columns.Count, "Toolkit DataGrid column count");
+
+        if (BindingOperations.GetBindingExpression(ToolkitDataGrid, ItemsControl.ItemsSourceProperty) is null)
+        {
+            throw new InvalidOperationException("Expected Toolkit DataGrid ItemsSource binding expression.");
+        }
+
+        if (BindingOperations.GetBindingExpression(ToolkitDataGrid, System.Windows.Controls.Primitives.Selector.SelectedItemProperty) is null)
+        {
+            throw new InvalidOperationException("Expected Toolkit DataGrid SelectedItem binding expression.");
+        }
+
+        if (expectLoaded)
+        {
+            DataGridDocument.IsSelected = true;
+            DataGridDocument.IsActive = true;
+            DockManager.UpdateLayout();
+            ToolkitDataGrid.UpdateLayout();
+            if (ToolkitDataGrid.ActualWidth <= 0 ||
+                ToolkitDataGrid.ActualHeight <= 0)
+            {
+                throw new InvalidOperationException("Expected loaded Toolkit DataGrid document to participate in layout.");
+            }
+        }
+    }
+
     internal void ExerciseToolkitCollectionDialogButton()
     {
         ValidateToolkitCollectionDialogButtonState(expectLoaded: true);
@@ -3726,6 +3768,10 @@ public partial class MainWindow : Window
             liveHost,
             () => ValidateToolkitAutomationState(expectLoaded: true),
             DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => ValidateToolkitDataGridState(expectLoaded: true),
+            DispatcherPriority.Send);
         await ValidateLiveToolkitCollectionControlAsync(liveHost);
         await ValidateLiveSourceBackedAvalonDockAsync(liveHost);
         await ValidateLiveAvalonDockThemeSwitchingAsync(liveHost);
@@ -3885,7 +3931,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit resource theme updates, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit/AvalonDock automation peers, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock manager options, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock keyboard navigation, AvalonDock anchorable keyboard navigation, AvalonDock auto-hide overlay keyboard navigation, AvalonDock theme switching, AvalonDock document context menu commands and close cancellation, AvalonDock anchorable context menu commands, AvalonDock anchorable lifecycle events, AvalonDock anchorable close/reopen, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit resource theme updates, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit DataGrid 100k virtualization, Toolkit/AvalonDock automation peers, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock manager options, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock keyboard navigation, AvalonDock anchorable keyboard navigation, AvalonDock auto-hide overlay keyboard navigation, AvalonDock theme switching, AvalonDock document context menu commands and close cancellation, AvalonDock anchorable context menu commands, AvalonDock anchorable lifecycle events, AvalonDock anchorable close/reopen, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -5009,6 +5055,7 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private int _lastZoomboxViewStackIndex = -1;
     private double _lastZoomboxScale = 1.0;
     private string _zoomboxStatus = "Zoombox idle";
+    private ToolkitDataGridItem _selectedDataGridItem = null!;
     private ToolkitCollectionEntry _selectedCollectionEntry = null!;
     private string _collectionControlStatus = "CollectionControl idle";
     private int _collectionDialogUpdateCount;
@@ -5065,8 +5112,10 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         Documents =
         [
             new("Overview", "WPF", DateTime.Today, "No-source-change SDK app consuming Extended WPF Toolkit."),
-            new("AvalonDock", "Xceed", DateTime.Today.AddDays(-1), "DockingManager layout with documents and anchorables.")
+            new("AvalonDock", "Xceed", DateTime.Today.AddDays(-1), "DockingManager layout with documents and anchorables."),
+            new("DataGrid 100k", "WPF Toolkit", DateTime.Today.AddDays(-2), "Virtualized 100,000-row DataGrid performance document.")
         ];
+        DataGridItems = CreateDataGridItems(100_000);
         SourceDocuments =
         [
             new("Source Overview", "source-overview", "Generated from DockingManager.DocumentsSource.", canClose: true),
@@ -5089,6 +5138,7 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         SelectedFlags = ["Pinned"];
         Activity = ["Toolkit package loaded", "AvalonDock layout loaded"];
         _selectedDocument = Documents[0];
+        _selectedDataGridItem = DataGridItems[0];
         _sourceActiveContent = SourceDocuments[0];
         _selectedCollectionEntry = CollectionEntries[0];
         Documents.CollectionChanged += (_, _) => OnPropertyChanged(nameof(DocumentCount));
@@ -5106,6 +5156,8 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     public ObservableCollection<ToolkitDockItem> SourceAnchorables { get; }
 
     public ObservableCollection<ToolkitCollectionEntry> CollectionEntries { get; }
+
+    public IReadOnlyList<ToolkitDataGridItem> DataGridItems { get; }
 
     public ObservableCollection<Type> CollectionEntryTypes { get; }
 
@@ -5143,6 +5195,21 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     public int SourceAnchorableCount => SourceAnchorables.Count;
 
     public int CollectionEntryCount => CollectionEntries.Count;
+
+    public int DataGridItemCount => DataGridItems.Count;
+
+    public ToolkitDataGridItem SelectedDataGridItem
+    {
+        get => _selectedDataGridItem;
+        set
+        {
+            if (!ReferenceEquals(_selectedDataGridItem, value))
+            {
+                _selectedDataGridItem = value;
+                OnPropertyChanged();
+            }
+        }
+    }
 
     public ToolkitDockItem AddSourceDocument()
     {
@@ -6552,6 +6619,27 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
+
+    private static IReadOnlyList<ToolkitDataGridItem> CreateDataGridItems(int count)
+    {
+        var items = new List<ToolkitDataGridItem>(count);
+        string[] owners = ["WPF", "ProGPU", "Xceed", "SDK"];
+        string[] categories = ["Framework", "Rendering", "Toolkit", "AvalonDock"];
+        DateTime baseline = DateTime.Today;
+
+        for (int i = 0; i < count; i++)
+        {
+            items.Add(new ToolkitDataGridItem(
+                i + 1,
+                $"Row {i + 1:000000}",
+                owners[i % owners.Length],
+                categories[(i / owners.Length) % categories.Length],
+                (i * 17) % 100,
+                baseline.AddDays(-(i % 365))));
+        }
+
+        return items;
+    }
 }
 
 internal sealed class ToolkitDockItem : INotifyPropertyChanged
@@ -6615,6 +6703,31 @@ internal sealed class ToolkitDockItem : INotifyPropertyChanged
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
+}
+
+public sealed class ToolkitDataGridItem
+{
+    public ToolkitDataGridItem(int id, string title, string owner, string category, int score, DateTime updated)
+    {
+        Id = id;
+        Title = title;
+        Owner = owner;
+        Category = category;
+        Score = score;
+        Updated = updated;
+    }
+
+    public int Id { get; }
+
+    public string Title { get; }
+
+    public string Owner { get; }
+
+    public string Category { get; }
+
+    public int Score { get; }
+
+    public DateTime Updated { get; }
 }
 
 public sealed class ToolkitCollectionEntry : INotifyPropertyChanged
@@ -6941,6 +7054,8 @@ internal static class ToolkitSelfTest
         Require<CollectionControlButton>(window, "OpenCollectionDialogButton");
         Require<TextBlock>(window, "CollectionControlStatusText");
         Require<PropertyGrid>(window, "DocumentPropertyGrid");
+        Require<LayoutDocument>(window, "DataGridDocument");
+        Require<DataGrid>(window, "ToolkitDataGrid");
         Require<Button>(window, "AddSourceDocumentButton");
         Require<Button>(window, "ActivateSourceToolButton");
         Require<Button>(window, "ExerciseSourceTabGroupsButton");
@@ -6987,13 +7102,14 @@ internal static class ToolkitSelfTest
             throw new InvalidOperationException("Expected startup AvalonDock side anchorables to be auto-hidden on the left side.");
         }
 
-        if (window.DocumentPane.ChildrenCount != 2)
+        if (window.DocumentPane.ChildrenCount != 3)
         {
-            throw new InvalidOperationException($"Expected two startup AvalonDock documents, got {window.DocumentPane.ChildrenCount}.");
+            throw new InvalidOperationException($"Expected three startup AvalonDock documents, got {window.DocumentPane.ChildrenCount}.");
         }
 
         if (window.OverviewDocument.IconSource is null ||
             window.EditorDocument.IconSource is null ||
+            window.DataGridDocument.IconSource is null ||
             window.ToolkitPane.IconSource is null)
         {
             throw new InvalidOperationException("Expected AvalonDock icon resources to bind into documents and anchorables.");
@@ -7015,7 +7131,8 @@ internal static class ToolkitSelfTest
             throw new InvalidOperationException("Expected toolkit PropertyGrid SelectedObject binding expression.");
         }
 
-        if (window.ViewModel.Documents.Count != 2 ||
+        if (window.ViewModel.Documents.Count != 3 ||
+            window.ViewModel.DataGridItems.Count != 100_000 ||
             window.ViewModel.Owners.Count != 4 ||
             window.ViewModel.Categories.Count != 4 ||
             window.ViewModel.SelectedCategories.Count != 2 ||
@@ -7046,6 +7163,7 @@ internal static class ToolkitSelfTest
         window.ValidateToolkitScrollClipState(expectLoaded);
         window.ValidateToolkitPanelState(expectLoaded);
         window.ValidateToolkitCollectionControlState(expectLoaded);
+        window.ValidateToolkitDataGridState(expectLoaded);
         window.ValidateToolkitCollectionDialogButtonState(expectLoaded);
         window.ValidateToolkitResourceThemeState(expectLoaded);
         window.ValidateSourceBackedAvalonDockState(mutateSources: true);
@@ -7231,14 +7349,16 @@ internal static class ToolkitSelfTest
             throw new InvalidOperationException("Expected AvalonDock theme switch count to advance for all package themes.");
         }
 
+        int documentsBeforeAdd = window.ViewModel.DocumentCount;
         window.AddDocumentButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
 
-        if (window.DocumentPane.ChildrenCount != 3 || window.ViewModel.Documents.Count != 3)
+        if (window.DocumentPane.ChildrenCount != documentsBeforeAdd + 1 ||
+            window.ViewModel.Documents.Count != documentsBeforeAdd + 1)
         {
             throw new InvalidOperationException("Expected AvalonDock document insertion to update model and layout.");
         }
 
-        if (!string.Equals(window.ViewModel.Status, "Added Generated 3", StringComparison.Ordinal))
+        if (!string.Equals(window.ViewModel.Status, $"Added Generated {documentsBeforeAdd + 1}", StringComparison.Ordinal))
         {
             throw new InvalidOperationException("Expected Add document command to update sample status.");
         }

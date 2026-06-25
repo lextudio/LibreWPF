@@ -987,6 +987,68 @@
                            Text="{Binding SelectedDocument.Body, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
               </xcad:LayoutDocument>
+
+              <xcad:LayoutDocument x:Name="DataGridDocument"
+                                   ContentId="datagrid-100k"
+                                   Title="DataGrid 100k"
+                                   IconSource="{StaticResource DocumentIcon}">
+                <Grid Margin="16">
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                  </Grid.RowDefinitions>
+                  <DockPanel>
+                    <TextBlock FontSize="18"
+                               FontWeight="SemiBold"
+                               Text="DataGrid 100k" />
+                    <TextBlock Margin="12,4,0,0"
+                               Foreground="#5E6A73"
+                               Text="{Binding DataGridItemCount, StringFormat=Items: {0:N0}}" />
+                  </DockPanel>
+                  <DataGrid x:Name="ToolkitDataGrid"
+                            AutomationProperties.AutomationId="ToolkitDataGridAutomation"
+                            AutomationProperties.Name="Toolkit DataGrid 100k"
+                            Grid.Row="1"
+                            Margin="0,12,0,0"
+                            ItemsSource="{Binding DataGridItems}"
+                            SelectedItem="{Binding SelectedDataGridItem}"
+                            AutoGenerateColumns="False"
+                            IsReadOnly="True"
+                            EnableRowVirtualization="True"
+                            EnableColumnVirtualization="True"
+                            VirtualizingPanel.IsVirtualizing="True"
+                            VirtualizingPanel.VirtualizationMode="Recycling"
+                            VirtualizingPanel.ScrollUnit="Pixel"
+                            ScrollViewer.CanContentScroll="True"
+                            ScrollViewer.VerticalScrollBarVisibility="Auto"
+                            ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                            HeadersVisibility="Column"
+                            RowHeight="24"
+                            SelectionMode="Single"
+                            SelectionUnit="FullRow">
+                    <DataGrid.Columns>
+                      <DataGridTextColumn Header="Id"
+                                          Binding="{Binding Id}"
+                                          Width="64" />
+                      <DataGridTextColumn Header="Title"
+                                          Binding="{Binding Title}"
+                                          Width="*" />
+                      <DataGridTextColumn Header="Owner"
+                                          Binding="{Binding Owner}"
+                                          Width="120" />
+                      <DataGridTextColumn Header="Category"
+                                          Binding="{Binding Category}"
+                                          Width="130" />
+                      <DataGridTextColumn Header="Score"
+                                          Binding="{Binding Score}"
+                                          Width="80" />
+                      <DataGridTextColumn Header="Updated"
+                                          Binding="{Binding Updated, StringFormat={}{0:yyyy-MM-dd}}"
+                                          Width="120" />
+                    </DataGrid.Columns>
+                  </DataGrid>
+                </Grid>
+              </xcad:LayoutDocument>
             </xcad:LayoutDocumentPane>
           </xcad:LayoutDocumentPaneGroup>
 

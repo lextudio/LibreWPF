@@ -23,11 +23,13 @@ using Xceed.Wpf.Toolkit;
 using Xceed.Wpf.Toolkit.Core;
 using Xceed.Wpf.Toolkit.Primitives;
 using Xceed.Wpf.Toolkit.PropertyGrid;
+using Xceed.Wpf.Toolkit.Zoombox;
 using AvalonDockAnchorableItem = Xceed.Wpf.AvalonDock.Controls.LayoutAnchorableItem;
 using AvalonDockDocumentItem = Xceed.Wpf.AvalonDock.Controls.LayoutDocumentItem;
 using AvalonDockLayoutItem = Xceed.Wpf.AvalonDock.Controls.LayoutItem;
 using ToolkitMessageBoxControl = Xceed.Wpf.Toolkit.MessageBox;
 using ToolkitRichTextBox = Xceed.Wpf.Toolkit.RichTextBox;
+using ToolkitZoomboxControl = Xceed.Wpf.Toolkit.Zoombox.Zoombox;
 
 namespace ProGPU.Wpf.ToolkitApp;
 
@@ -46,6 +48,7 @@ public partial class MainWindow : Window
         DataContext = _viewModel;
         InitializeComponent();
         ToolkitChildWindow.FocusedElement = ChildWindowInputTextBox;
+        MagnifierManager.SetMagnifier(ZoomboxContentRoot, ToolkitMagnifier);
         SetAvalonDockTheme(AvalonDockThemeNames[_avalonDockThemeIndex], recordSwitch: false);
         DockManager.ActiveContentChanged += DockManager_ActiveContentChanged;
         DockManager.DocumentClosing += DockManager_DocumentClosing;
@@ -472,6 +475,172 @@ public partial class MainWindow : Window
         AssertEqual("MessageBox OK", ViewModel.ToolkitMessageBoxStatus, "Toolkit MessageBox OK status");
     }
 
+    private void ZoomInButton_Click(object sender, RoutedEventArgs e)
+    {
+        ApplyZoomboxZoomIn();
+    }
+
+    private void FitZoomboxButton_Click(object sender, RoutedEventArgs e)
+    {
+        ApplyZoomboxFit();
+    }
+
+    private void BackZoomboxButton_Click(object sender, RoutedEventArgs e)
+    {
+        ApplyZoomboxBack();
+    }
+
+    private void ToolkitZoombox_CurrentViewChanged(object sender, ZoomboxViewChangedEventArgs e)
+    {
+        _viewModel.ZoomboxViewChangedCount++;
+        _viewModel.LastZoomboxScale = ToolkitZoombox.Scale;
+        _viewModel.ZoomboxStatus = FormatZoomboxStatus("View changed");
+        _viewModel.Status = _viewModel.ZoomboxStatus;
+        _viewModel.Activity.Add(_viewModel.ZoomboxStatus);
+    }
+
+    private void ToolkitZoombox_ViewStackIndexChanged(object sender, IndexChangedEventArgs e)
+    {
+        _viewModel.ZoomboxViewStackIndexChangedCount++;
+        _viewModel.LastZoomboxViewStackIndex = ToolkitZoombox.ViewStackIndex;
+        _viewModel.ZoomboxStatus = FormatZoomboxStatus("View stack changed");
+        _viewModel.Status = _viewModel.ZoomboxStatus;
+        _viewModel.Activity.Add(_viewModel.ZoomboxStatus);
+    }
+
+    internal void ApplyZoomboxZoomIn()
+    {
+        _viewModel.ZoomboxCommandCount++;
+        ToolkitZoombox.Zoom(25.0);
+        UpdateZoomboxStatus("Zoomed in");
+    }
+
+    internal void ApplyZoomboxFit()
+    {
+        _viewModel.ZoomboxCommandCount++;
+        ToolkitZoombox.FitToBounds();
+        UpdateZoomboxStatus("Fit content");
+    }
+
+    internal void ApplyZoomboxBack()
+    {
+        _viewModel.ZoomboxCommandCount++;
+        if (ToolkitZoombox.HasBackStack)
+        {
+            ToolkitZoombox.GoBack();
+            UpdateZoomboxStatus("Back");
+            return;
+        }
+
+        UpdateZoomboxStatus("Back unavailable");
+    }
+
+    internal void ExerciseToolkitZoomboxAndMagnifier()
+    {
+        ValidateToolkitZoomboxAndMagnifierState(expectLoaded: true);
+
+        int commandCountBefore = ViewModel.ZoomboxCommandCount;
+        int viewChangedCountBefore = ViewModel.ZoomboxViewChangedCount;
+        double scaleBefore = ToolkitZoombox.Scale;
+
+        ApplyZoomboxZoomIn();
+        PumpDispatcherUntil(
+            this,
+            () => ViewModel.ZoomboxViewChangedCount > viewChangedCountBefore ||
+                  !Equals(ToolkitZoombox.Scale, scaleBefore),
+            TimeSpan.FromSeconds(2),
+            "Toolkit Zoombox zoom-in view change");
+        if (ViewModel.ZoomboxCommandCount <= commandCountBefore)
+        {
+            throw new InvalidOperationException("Expected Toolkit Zoombox zoom command count to advance.");
+        }
+
+        int stackChangedCountBefore = ViewModel.ZoomboxViewStackIndexChangedCount;
+        ToolkitZoombox.ZoomTo(new Rect(32, 24, 128, 72));
+        PumpDispatcherUntil(
+            this,
+            () => ViewModel.ZoomboxViewChangedCount > viewChangedCountBefore + 1 ||
+                  ToolkitZoombox.CurrentView.ViewKind == ZoomboxViewKind.Region,
+            TimeSpan.FromSeconds(2),
+            "Toolkit Zoombox region view");
+        AssertEqual(ZoomboxViewKind.Region, ToolkitZoombox.CurrentView.ViewKind, "Toolkit Zoombox region view kind");
+
+        ApplyZoomboxFit();
+        PumpDispatcherUntil(
+            this,
+            () => ToolkitZoombox.CurrentView.ViewKind == ZoomboxViewKind.Fit,
+            TimeSpan.FromSeconds(2),
+            "Toolkit Zoombox fit view");
+        AssertEqual(ZoomboxViewKind.Fit, ToolkitZoombox.CurrentView.ViewKind, "Toolkit Zoombox fit view kind");
+
+        ApplyZoomboxBack();
+        if (ToolkitZoombox.ViewStackCount > 1 &&
+            ViewModel.ZoomboxViewStackIndexChangedCount <= stackChangedCountBefore)
+        {
+            throw new InvalidOperationException("Expected Toolkit Zoombox view-stack change event to fire.");
+        }
+
+        ToolkitMagnifier.Freeze(true);
+        AssertEqual(true, ToolkitMagnifier.IsFrozen, "Toolkit Magnifier frozen state");
+        ToolkitMagnifier.Freeze(false);
+        AssertEqual(false, ToolkitMagnifier.IsFrozen, "Toolkit Magnifier unfrozen state");
+        ValidateToolkitZoomboxAndMagnifierState(expectLoaded: true);
+    }
+
+    internal void ValidateToolkitZoomboxAndMagnifierState(bool expectLoaded)
+    {
+        AssertEqual(false, ToolkitZoombox.IsAnimated, "Toolkit Zoombox animation state");
+        AssertEqual(true, ToolkitZoombox.IsUsingScrollBars, "Toolkit Zoombox scrollbar state");
+        AssertEqual(false, ToolkitZoombox.AutoWrapContentWithViewbox, "Toolkit Zoombox viewbox wrapping state");
+        AssertEqual(true, ToolkitZoombox.KeepContentInBounds, "Toolkit Zoombox content bounds state");
+        AssertEqual(0.25, ToolkitZoombox.MinScale, "Toolkit Zoombox minimum scale");
+        AssertEqual(4.0, ToolkitZoombox.MaxScale, "Toolkit Zoombox maximum scale");
+        AssertEqual(32.0, ToolkitZoombox.PanDistance, "Toolkit Zoombox pan distance");
+        AssertEqual(25.0, ToolkitZoombox.ZoomPercentage, "Toolkit Zoombox zoom percentage");
+        AssertEqual(ZoomboxContentRoot, ToolkitZoombox.Content, "Toolkit Zoombox content");
+        AssertEqual(ZoomboxContentRoot, ToolkitMagnifier.Target, "Toolkit Magnifier target");
+        AssertEqual(ToolkitMagnifier, MagnifierManager.GetMagnifier(ZoomboxContentRoot), "Toolkit Magnifier manager attachment");
+        AssertEqual(FrameType.Circle, ToolkitMagnifier.FrameType, "Toolkit Magnifier frame type");
+        AssertEqual(36.0, ToolkitMagnifier.Radius, "Toolkit Magnifier radius");
+        AssertEqual(1.6, ToolkitMagnifier.ZoomFactor, "Toolkit Magnifier zoom factor");
+        AssertEqual(true, ToolkitMagnifier.IsUsingZoomOnMouseWheel, "Toolkit Magnifier mouse wheel zoom state");
+        AssertEqual(0.15, ToolkitMagnifier.ZoomFactorOnMouseWheel, "Toolkit Magnifier mouse wheel zoom factor");
+
+        if (expectLoaded)
+        {
+            ToolkitZoombox.ApplyTemplate();
+            ToolkitZoombox.UpdateLayout();
+            if (ToolkitZoombox.ActualWidth <= 0 ||
+                ToolkitZoombox.ActualHeight <= 0 ||
+                ZoomboxContentRoot.ActualWidth <= 0 ||
+                ZoomboxContentRoot.ActualHeight <= 0)
+            {
+                throw new InvalidOperationException("Expected loaded Toolkit Zoombox and content to participate in layout.");
+            }
+        }
+    }
+
+    private void UpdateZoomboxStatus(string prefix)
+    {
+        _viewModel.LastZoomboxScale = ToolkitZoombox.Scale;
+        _viewModel.LastZoomboxViewStackIndex = ToolkitZoombox.ViewStackIndex;
+        _viewModel.ZoomboxStatus = FormatZoomboxStatus(prefix);
+        _viewModel.Status = _viewModel.ZoomboxStatus;
+        _viewModel.Activity.Add(_viewModel.ZoomboxStatus);
+    }
+
+    private string FormatZoomboxStatus(string prefix)
+    {
+        return string.Format(
+            CultureInfo.InvariantCulture,
+            "{0}: scale {1:0.##}, view {2}, stack {3}/{4}",
+            prefix,
+            ToolkitZoombox.Scale,
+            ToolkitZoombox.CurrentView.ViewKind,
+            ToolkitZoombox.ViewStackIndex,
+            ToolkitZoombox.ViewStackCount);
+    }
+
     private void SerializeLayoutButton_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.LastSerializedLayout = SerializeCurrentLayout();
@@ -508,6 +677,8 @@ public partial class MainWindow : Window
     }
 
     internal ToolkitViewModel ViewModel => _viewModel;
+
+    internal Magnifier ToolkitMagnifier => (Magnifier)FindResource("ToolkitMagnifierResource");
 
     internal void ValidateEditorFloatingState(bool expectedFloating)
     {
@@ -1325,6 +1496,7 @@ public partial class MainWindow : Window
         await ValidateLiveWizardAsync(liveHost);
         await ValidateLiveToolkitChildWindowAsync(liveHost);
         await ValidateLiveToolkitMessageBoxAsync(liveHost);
+        await ValidateLiveToolkitZoomboxAndMagnifierAsync(liveHost);
         await ValidateLiveSourceBackedAvalonDockAsync(liveHost);
         await ValidateLiveAvalonDockThemeSwitchingAsync(liveHost);
 
@@ -1445,7 +1617,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit zoombox and magnifier, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -1743,6 +1915,49 @@ public partial class MainWindow : Window
                 AssertEqual(closedCountBefore + 1, ViewModel.ToolkitMessageBoxClosedCount, "Toolkit live MessageBox closed count");
                 AssertEqual(MessageBoxResult.OK, ViewModel.LastToolkitMessageBoxResult, "Toolkit live MessageBox result");
                 AssertEqual("MessageBox OK", ViewModel.ToolkitMessageBoxStatus, "Toolkit live MessageBox OK status");
+            },
+            DispatcherPriority.Send);
+    }
+
+    private async Task ValidateLiveToolkitZoomboxAndMagnifierAsync(object liveHost)
+    {
+        int commandCountBefore = ViewModel.ZoomboxCommandCount;
+        int viewChangedCountBefore = ViewModel.ZoomboxViewChangedCount;
+
+        await ClickLiveControlAsync(liveHost, ZoomInButton, "ZoomInButton");
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => ViewModel.ZoomboxCommandCount > commandCountBefore &&
+                  ViewModel.ZoomboxViewChangedCount > viewChangedCountBefore,
+            "Toolkit live Zoombox zoom input");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                ValidateToolkitZoomboxAndMagnifierState(expectLoaded: true);
+                if (string.Equals(ViewModel.ZoomboxStatus, "Zoombox idle", StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException("Expected Toolkit live Zoombox status to update after zoom input.");
+                }
+            },
+            DispatcherPriority.Send);
+
+        await ClickLiveControlAsync(liveHost, FitZoomboxButton, "FitZoomboxButton");
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => ToolkitZoombox.CurrentView.ViewKind == ZoomboxViewKind.Fit,
+            "Toolkit live Zoombox fit view");
+
+        await ClickLiveControlAsync(liveHost, BackZoomboxButton, "BackZoomboxButton");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                ToolkitMagnifier.Freeze(true);
+                AssertEqual(true, ToolkitMagnifier.IsFrozen, "Toolkit live Magnifier frozen state");
+                ToolkitMagnifier.Freeze(false);
+                AssertEqual(false, ToolkitMagnifier.IsFrozen, "Toolkit live Magnifier unfrozen state");
+                ValidateToolkitZoomboxAndMagnifierState(expectLoaded: true);
             },
             DispatcherPriority.Send);
     }
@@ -2152,6 +2367,12 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private MessageBoxResult _lastToolkitMessageBoxResult = MessageBoxResult.None;
     private string _toolkitMessageBoxStatus = "MessageBox idle";
     private string _windowContainerStatus = "WindowContainer idle";
+    private int _zoomboxCommandCount;
+    private int _zoomboxViewChangedCount;
+    private int _zoomboxViewStackIndexChangedCount;
+    private int _lastZoomboxViewStackIndex = -1;
+    private double _lastZoomboxScale = 1.0;
+    private string _zoomboxStatus = "Zoombox idle";
     private int _wizardPageChanges;
     private int _wizardFinishes;
     private int _wizardCancels;
@@ -2684,6 +2905,84 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
             if (!string.Equals(_windowContainerStatus, value, StringComparison.Ordinal))
             {
                 _windowContainerStatus = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int ZoomboxCommandCount
+    {
+        get => _zoomboxCommandCount;
+        set
+        {
+            if (_zoomboxCommandCount != value)
+            {
+                _zoomboxCommandCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int ZoomboxViewChangedCount
+    {
+        get => _zoomboxViewChangedCount;
+        set
+        {
+            if (_zoomboxViewChangedCount != value)
+            {
+                _zoomboxViewChangedCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int ZoomboxViewStackIndexChangedCount
+    {
+        get => _zoomboxViewStackIndexChangedCount;
+        set
+        {
+            if (_zoomboxViewStackIndexChangedCount != value)
+            {
+                _zoomboxViewStackIndexChangedCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int LastZoomboxViewStackIndex
+    {
+        get => _lastZoomboxViewStackIndex;
+        set
+        {
+            if (_lastZoomboxViewStackIndex != value)
+            {
+                _lastZoomboxViewStackIndex = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public double LastZoomboxScale
+    {
+        get => _lastZoomboxScale;
+        set
+        {
+            if (!Equals(_lastZoomboxScale, value))
+            {
+                _lastZoomboxScale = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string ZoomboxStatus
+    {
+        get => _zoomboxStatus;
+        set
+        {
+            if (!string.Equals(_zoomboxStatus, value, StringComparison.Ordinal))
+            {
+                _zoomboxStatus = value;
                 OnPropertyChanged();
             }
         }
@@ -3279,6 +3578,16 @@ internal static class ToolkitSelfTest
         Require<TextBox>(window, "ChildWindowInputTextBox");
         Require<Button>(window, "AcceptChildWindowButton");
         Require<ToolkitMessageBoxControl>(window, "ToolkitMessageBox");
+        Require<ToolkitZoomboxControl>(window, "ToolkitZoombox");
+        Require<Grid>(window, "ZoomboxContentRoot");
+        Require<Button>(window, "ZoomInButton");
+        Require<Button>(window, "FitZoomboxButton");
+        Require<Button>(window, "BackZoomboxButton");
+        Require<TextBlock>(window, "ZoomboxStatusText");
+        if (window.FindResource("ToolkitMagnifierResource") is not Magnifier)
+        {
+            throw new InvalidOperationException("Expected Toolkit Magnifier resource to be available for manager attachment.");
+        }
         Require<PropertyGrid>(window, "DocumentPropertyGrid");
         Require<Button>(window, "AddSourceDocumentButton");
         Require<Button>(window, "ActivateSourceToolButton");
@@ -3371,6 +3680,7 @@ internal static class ToolkitSelfTest
         window.ValidateToolkitWizardState(expectLoaded);
         window.ValidateToolkitChildWindowState(expectedOpen: false);
         window.ValidateToolkitMessageBoxState(expectedOpen: false);
+        window.ValidateToolkitZoomboxAndMagnifierState(expectLoaded);
         window.ValidateSourceBackedAvalonDockState(mutateSources: true);
 
         if (expectLoaded)
@@ -3511,6 +3821,7 @@ internal static class ToolkitSelfTest
 
             window.ExerciseToolkitChildWindow();
             window.ExerciseToolkitMessageBox();
+            window.ExerciseToolkitZoomboxAndMagnifier();
         }
 
         int themeSwitchCountBefore = window.ViewModel.DockThemeSwitchCount;

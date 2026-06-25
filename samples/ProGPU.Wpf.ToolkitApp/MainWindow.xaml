@@ -4,6 +4,7 @@
         xmlns:sys="clr-namespace:System;assembly=System.Private.CoreLib"
         xmlns:local="clr-namespace:ProGPU.Wpf.ToolkitApp"
         xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+        xmlns:xctkz="clr-namespace:Xceed.Wpf.Toolkit.Zoombox;assembly=Xceed.Wpf.Toolkit"
         xmlns:xcad="http://schemas.xceed.com/wpf/xaml/avalondock"
         xmlns:xcadc="clr-namespace:Xceed.Wpf.AvalonDock.Controls;assembly=Xceed.Wpf.AvalonDock"
         Title="ProGPU WPF Toolkit + AvalonDock"
@@ -13,6 +14,12 @@
         MinHeight="460"
         Background="#F6F8FA">
   <Window.Resources>
+    <xctk:Magnifier x:Key="ToolkitMagnifierResource"
+                    Radius="36"
+                    ZoomFactor="1.6"
+                    FrameType="Circle"
+                    IsUsingZoomOnMouseWheel="True"
+                    ZoomFactorOnMouseWheel="0.15" />
     <DrawingImage x:Key="DocumentIcon">
       <DrawingImage.Drawing>
         <DrawingGroup>
@@ -521,6 +528,111 @@
                                        OkButtonContent="OK"
                                        Closed="ToolkitMessageBox_Closed" />
                     </xctk:WindowContainer>
+                  </Grid>
+
+                  <TextBlock Text="Zoombox and Magnifier"
+                             Margin="0,12,0,0" />
+                  <Grid Margin="0,4,0,12">
+                    <Grid.RowDefinitions>
+                      <RowDefinition Height="Auto" />
+                      <RowDefinition Height="Auto" />
+                      <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <WrapPanel Margin="0,0,0,6">
+                      <Button x:Name="ZoomInButton"
+                              Content="Zoom in"
+                              MinWidth="80"
+                              Margin="0,0,6,0"
+                              Padding="8,4"
+                              Click="ZoomInButton_Click" />
+                      <Button x:Name="FitZoomboxButton"
+                              Content="Fit"
+                              MinWidth="64"
+                              Margin="0,0,6,0"
+                              Padding="8,4"
+                              Click="FitZoomboxButton_Click" />
+                      <Button x:Name="BackZoomboxButton"
+                              Content="Back"
+                              MinWidth="64"
+                              Margin="0,0,6,0"
+                              Padding="8,4"
+                              Click="BackZoomboxButton_Click" />
+                      <TextBlock x:Name="ZoomboxStatusText"
+                                 VerticalAlignment="Center"
+                                 Foreground="#5E6A73"
+                                 Text="{Binding ZoomboxStatus}" />
+                    </WrapPanel>
+                    <xctkz:Zoombox x:Name="ToolkitZoombox"
+                                   Grid.Row="1"
+                                   Height="180"
+                                   Background="{StaticResource ToolkitSubtleBrush}"
+                                   IsAnimated="False"
+                                   IsUsingScrollBars="True"
+                                   AutoWrapContentWithViewbox="False"
+                                   KeepContentInBounds="True"
+                                   MinScale="0.25"
+                                   MaxScale="4"
+                                   PanDistance="32"
+                                   ZoomPercentage="25"
+                                   CurrentViewChanged="ToolkitZoombox_CurrentViewChanged"
+                                   ViewStackIndexChanged="ToolkitZoombox_ViewStackIndexChanged">
+                      <Grid x:Name="ZoomboxContentRoot"
+                            Width="320"
+                            Height="190"
+                            Background="#FFFFFF">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition />
+                          <ColumnDefinition />
+                          <ColumnDefinition />
+                          <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                          <RowDefinition />
+                          <RowDefinition />
+                          <RowDefinition />
+                        </Grid.RowDefinitions>
+                        <Border Grid.RowSpan="3"
+                                Grid.ColumnSpan="4"
+                                BorderBrush="#B8C2CC"
+                                BorderThickness="1" />
+                        <Rectangle Grid.ColumnSpan="4"
+                                   Fill="#EDF2F7" />
+                        <TextBlock Grid.ColumnSpan="4"
+                                   Margin="12,8"
+                                   FontWeight="SemiBold"
+                                   Text="Toolkit viewport" />
+                        <Ellipse Grid.Row="1"
+                                 Grid.Column="0"
+                                 Margin="16"
+                                 Fill="#5B8DEF" />
+                        <Rectangle Grid.Row="1"
+                                   Grid.Column="1"
+                                   Margin="16"
+                                   Fill="#20A67A" />
+                        <Polygon Grid.Row="1"
+                                 Grid.Column="2"
+                                 Margin="16"
+                                 Fill="#F5B849"
+                                 Points="28,4 52,52 4,52" />
+                        <Path Grid.Row="1"
+                              Grid.Column="3"
+                              Margin="16"
+                              Fill="#D94C4C"
+                              Data="M4,4 L52,4 L52,52 L4,52 Z M16,16 L40,40 M40,16 L16,40" />
+                        <TextBlock Grid.Row="2"
+                                   Grid.ColumnSpan="4"
+                                   Margin="12,8"
+                                   Text="Zoombox drives scale, viewport, and view-stack history through managed Xceed code." />
+                      </Grid>
+                    </xctkz:Zoombox>
+                    <Border Grid.Row="2"
+                            Margin="0,6,0,0"
+                            Padding="8"
+                            Background="{StaticResource ToolkitSubtleBrush}"
+                            BorderBrush="#D7DEE7"
+                            BorderThickness="1">
+                      <TextBlock Text="Magnifier is attached to the Zoombox content through Xceed MagnifierManager." />
+                    </Border>
                   </Grid>
 
                   <TextBlock Text="AvalonDock MVVM sources"

@@ -231,6 +231,16 @@
                                    FormatString="HH:mm"
                                    Margin="0,4,0,12" />
 
+                  <TextBlock Text="DateTimeUpDown" />
+                  <xctk:DateTimeUpDown x:Name="ReviewedAtEditor"
+                                       Value="{Binding ReviewedAt}"
+                                       Margin="0,4,0,12" />
+
+                  <TextBlock Text="TimeSpanUpDown" />
+                  <xctk:TimeSpanUpDown x:Name="EffortEditor"
+                                       Value="{Binding Effort}"
+                                       Margin="0,4,0,12" />
+
                   <TextBlock Text="MaskedTextBox" />
                   <xctk:MaskedTextBox x:Name="ReferenceMaskTextBox"
                                       Mask="LL-0000"
@@ -360,6 +370,24 @@
                       <xctk:PlainTextFormatter />
                     </xctk:RichTextBox.TextFormatter>
                   </xctk:RichTextBox>
+
+                  <TextBlock Text="MultiLineTextEditor" />
+                  <xctk:MultiLineTextEditor x:Name="MultiLineNotesEditor"
+                                            Text="{Binding MultiLineNotes, UpdateSourceTrigger=PropertyChanged}"
+                                            Height="84"
+                                            Margin="0,4,0,12" />
+
+                  <TextBlock Text="ButtonSpinner" />
+                  <xctk:ButtonSpinner x:Name="DocumentCountSpinner"
+                                      ShowSpinner="True"
+                                      SpinnerLocation="Right"
+                                      Spin="DocumentCountSpinner_Spin"
+                                      Margin="0,4,0,12">
+                    <Border Padding="8"
+                            Background="{StaticResource ToolkitSubtleBrush}">
+                      <TextBlock Text="{Binding SpinnerCount, StringFormat=Spinner count: {0}}" />
+                    </Border>
+                  </xctk:ButtonSpinner>
 
                   <xctk:BusyIndicator x:Name="BusyIndicator"
                                       IsBusy="{Binding IsBusy}"

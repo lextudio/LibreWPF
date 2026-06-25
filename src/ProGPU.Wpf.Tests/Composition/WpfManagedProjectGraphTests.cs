@@ -5962,6 +5962,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<xctk:WatermarkComboBox x:Name=\"OwnerComboBox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:RangeSlider x:Name=\"PriorityRangeSlider\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:TimePicker x:Name=\"ReminderTimePicker\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xctk:DateTimeUpDown x:Name=\"ReviewedAtEditor\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xctk:TimeSpanUpDown x:Name=\"EffortEditor\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:MaskedTextBox x:Name=\"ReferenceMaskTextBox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:CheckListBox x:Name=\"FlagListBox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:ColorPicker x:Name=\"AccentColorPicker\"", mainWindowXaml, StringComparison.Ordinal);
@@ -5973,6 +5975,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<xctk:WizardPage x:Name=\"WizardReviewPage\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:RichTextBox x:Name=\"ToolkitRichTextBox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:PlainTextFormatter />", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xctk:MultiLineTextEditor x:Name=\"MultiLineNotesEditor\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xctk:ButtonSpinner x:Name=\"DocumentCountSpinner\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:PropertyGrid x:Name=\"DocumentPropertyGrid\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("MarkReviewedButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("AssignSdkOwnerButton", mainWindowXaml, StringComparison.Ordinal);
@@ -5997,6 +6001,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Require<WatermarkComboBox>(window, \"OwnerComboBox\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<RangeSlider>(window, \"PriorityRangeSlider\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<TimePicker>(window, \"ReminderTimePicker\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<DateTimeUpDown>(window, \"ReviewedAtEditor\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<TimeSpanUpDown>(window, \"EffortEditor\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<MaskedTextBox>(window, \"ReferenceMaskTextBox\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<CheckListBox>(window, \"FlagListBox\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<ColorPicker>(window, \"AccentColorPicker\")", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6006,6 +6012,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Require<Wizard>(window, \"ToolkitWizard\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<WizardPage>(window, \"WizardScopePage\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<ToolkitRichTextBox>(window, \"ToolkitRichTextBox\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<MultiLineTextEditor>(window, \"MultiLineNotesEditor\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<ButtonSpinner>(window, \"DocumentCountSpinner\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<PropertyGrid>(window, \"DocumentPropertyGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<DockingManager>(window, \"SourceDockManager\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<LayoutDocumentPane>(window, \"SourceDocumentPane\")", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6041,9 +6049,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AccentColorPicker.IsOpen", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("EstimateEditor.IsOpen", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Toolkit popup/dropdown editors", mainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("Toolkit masked/time/checklist/rich editors", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Toolkit masked/time/updown/checklist/rich/multiline/spinner editors", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Toolkit selector/range/split controls", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Toolkit wizard navigation", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ExerciseDocumentCountSpinner", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("MultiLineNotes", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ReviewedAtEditor.Value", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("EffortEditor.Value", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("target.BringIntoView()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("XmlLayoutSerializer", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PropertyPane.Hide(false)", mainWindowCodeBehind, StringComparison.Ordinal);

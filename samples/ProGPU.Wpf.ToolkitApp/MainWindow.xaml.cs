@@ -340,6 +340,27 @@ public partial class MainWindow : Window
         _viewModel.Activity.Add(_viewModel.Status);
     }
 
+    private void DocumentCountSpinner_Spin(object sender, SpinEventArgs e)
+    {
+        ApplyDocumentSpinnerDelta(e.Direction == SpinDirection.Increase ? 1 : -1);
+    }
+
+    private void ApplyDocumentSpinnerDelta(int delta)
+    {
+        _viewModel.SpinnerCount += delta;
+        _viewModel.Status = $"Spinner count {_viewModel.SpinnerCount}";
+        _viewModel.Activity.Add(_viewModel.Status);
+    }
+
+    internal void ExerciseDocumentCountSpinner()
+    {
+        int spinnerCountBefore = ViewModel.SpinnerCount;
+        ApplyDocumentSpinnerDelta(1);
+        AssertEqual(spinnerCountBefore + 1, ViewModel.SpinnerCount, "Toolkit ButtonSpinner increased count");
+        ApplyDocumentSpinnerDelta(-1);
+        AssertEqual(spinnerCountBefore, ViewModel.SpinnerCount, "Toolkit ButtonSpinner restored count");
+    }
+
     private void SerializeLayoutButton_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.LastSerializedLayout = SerializeCurrentLayout();
@@ -685,10 +706,15 @@ public partial class MainWindow : Window
         AssertEqual(ViewModel.ReferenceCode, ReferenceMaskTextBox.Text, "Toolkit MaskedTextBox text binding target");
         AssertEqual("LL-0000", ReferenceMaskTextBox.Mask, "Toolkit MaskedTextBox mask");
         AssertEqual(ViewModel.ReminderTime, ReminderTimePicker.Value, "Toolkit TimePicker value binding target");
+        AssertEqual(ViewModel.ReviewedAt, ReviewedAtEditor.Value, "Toolkit DateTimeUpDown value binding target");
+        AssertEqual(ViewModel.Effort, EffortEditor.Value, "Toolkit TimeSpanUpDown value binding target");
         AssertEqual(ViewModel.RichNotes, ToolkitRichTextBox.Text, "Toolkit RichTextBox text binding target");
+        AssertEqual(ViewModel.MultiLineNotes, MultiLineNotesEditor.Text, "Toolkit MultiLineTextEditor text binding target");
         AssertEqual(ViewModel.SelectedOwner, OwnerComboBox.SelectedItem as string, "Toolkit WatermarkComboBox selected item binding target");
         AssertEqual(ViewModel.PriorityRangeStart, PriorityRangeSlider.LowerValue, "Toolkit RangeSlider lower value binding target");
         AssertEqual(ViewModel.PriorityRangeEnd, PriorityRangeSlider.HigherValue, "Toolkit RangeSlider higher value binding target");
+        AssertEqual(true, DocumentCountSpinner.ShowSpinner, "Toolkit ButtonSpinner spinner visibility");
+        AssertEqual("Right", Convert.ToString(DocumentCountSpinner.SpinnerLocation, CultureInfo.InvariantCulture), "Toolkit ButtonSpinner spinner location");
 
         if (ToolkitRichTextBox.TextFormatter is not PlainTextFormatter)
         {
@@ -1020,7 +1046,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/checklist/rich editors, Toolkit selector/range/split controls, Toolkit wizard navigation, AvalonDock source-backed documents/anchorables, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit selector/range/split controls, Toolkit wizard navigation, AvalonDock source-backed documents/anchorables, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -1164,6 +1190,8 @@ public partial class MainWindow : Window
                 ReferenceMaskTextBox.GetBindingExpression(MaskedTextBox.TextProperty)?.UpdateSource();
 
                 ReminderTimePicker.Value = DateTime.Today.AddHours(15).AddMinutes(45);
+                ReviewedAtEditor.Value = DateTime.Today.AddHours(16).AddMinutes(30);
+                EffortEditor.Value = TimeSpan.FromMinutes(135);
 
                 OwnerComboBox.SelectedItem = "ProGPU";
                 OwnerComboBox.GetBindingExpression(ComboBox.SelectedItemProperty)?.UpdateSource();
@@ -1180,6 +1208,10 @@ public partial class MainWindow : Window
 
                 ToolkitRichTextBox.Text = "Live rich notes from Toolkit RichTextBox";
                 ToolkitRichTextBox.GetBindingExpression(ToolkitRichTextBox.TextProperty)?.UpdateSource();
+                MultiLineNotesEditor.Text = "Live multiline notes from Toolkit MultiLineTextEditor";
+                MultiLineNotesEditor.GetBindingExpression(MultiLineTextEditor.TextProperty)?.UpdateSource();
+
+                ExerciseDocumentCountSpinner();
             },
             DispatcherPriority.Send);
 
@@ -1191,7 +1223,10 @@ public partial class MainWindow : Window
                 ValidateToolkitInputEditorState();
                 AssertEqual("AB-1234", ViewModel.ReferenceCode, "Toolkit live MaskedTextBox binding source");
                 AssertEqual(DateTime.Today.AddHours(15).AddMinutes(45), ViewModel.ReminderTime, "Toolkit live TimePicker binding source");
+                AssertEqual(DateTime.Today.AddHours(16).AddMinutes(30), ViewModel.ReviewedAt, "Toolkit live DateTimeUpDown binding source");
+                AssertEqual(TimeSpan.FromMinutes(135), ViewModel.Effort, "Toolkit live TimeSpanUpDown binding source");
                 AssertEqual("Live rich notes from Toolkit RichTextBox", ViewModel.RichNotes, "Toolkit live RichTextBox binding source");
+                AssertEqual("Live multiline notes from Toolkit MultiLineTextEditor", ViewModel.MultiLineNotes, "Toolkit live MultiLineTextEditor binding source");
                 AssertEqual("ProGPU", ViewModel.SelectedOwner, "Toolkit live WatermarkComboBox binding source");
                 AssertEqual(3.0, ViewModel.PriorityRangeStart, "Toolkit live RangeSlider lower binding source");
                 AssertEqual(7.0, ViewModel.PriorityRangeEnd, "Toolkit live RangeSlider higher binding source");
@@ -1597,10 +1632,14 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private double _priorityRangeEnd = 8.0;
     private DateTime? _dueDate = DateTime.Today.AddDays(7).AddHours(9);
     private DateTime? _reminderTime = DateTime.Today.AddHours(10).AddMinutes(15);
+    private DateTime? _reviewedAt = DateTime.Today.AddHours(11);
+    private TimeSpan? _effort = TimeSpan.FromMinutes(90);
     private string _referenceCode = "PR-2048";
     private Color? _accentColor = Colors.SteelBlue;
     private decimal? _estimate = 12.5m;
     private string _richNotes = "Toolkit rich notes";
+    private string _multiLineNotes = "Toolkit multiline notes";
+    private int _spinnerCount = 2;
     private bool _isBusy;
     private int _wizardPageChanges;
     private int _wizardFinishes;
@@ -1812,6 +1851,32 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         }
     }
 
+    public DateTime? ReviewedAt
+    {
+        get => _reviewedAt;
+        set
+        {
+            if (_reviewedAt != value)
+            {
+                _reviewedAt = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public TimeSpan? Effort
+    {
+        get => _effort;
+        set
+        {
+            if (_effort != value)
+            {
+                _effort = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public Color? AccentColor
     {
         get => _accentColor;
@@ -1846,6 +1911,32 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
             if (!string.Equals(_richNotes, value, StringComparison.Ordinal))
             {
                 _richNotes = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string MultiLineNotes
+    {
+        get => _multiLineNotes;
+        set
+        {
+            if (!string.Equals(_multiLineNotes, value, StringComparison.Ordinal))
+            {
+                _multiLineNotes = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int SpinnerCount
+    {
+        get => _spinnerCount;
+        set
+        {
+            if (_spinnerCount != value)
+            {
+                _spinnerCount = value;
                 OnPropertyChanged();
             }
         }
@@ -2264,6 +2355,8 @@ internal static class ToolkitSelfTest
         Require<RangeSlider>(window, "PriorityRangeSlider");
         Require<DateTimePicker>(window, "DueDatePicker");
         Require<TimePicker>(window, "ReminderTimePicker");
+        Require<DateTimeUpDown>(window, "ReviewedAtEditor");
+        Require<TimeSpanUpDown>(window, "EffortEditor");
         Require<MaskedTextBox>(window, "ReferenceMaskTextBox");
         Require<CheckComboBox>(window, "CategoryPicker");
         Require<CheckListBox>(window, "FlagListBox");
@@ -2278,6 +2371,8 @@ internal static class ToolkitSelfTest
         Require<WizardPage>(window, "WizardScopePage");
         Require<WizardPage>(window, "WizardReviewPage");
         Require<ToolkitRichTextBox>(window, "ToolkitRichTextBox");
+        Require<MultiLineTextEditor>(window, "MultiLineNotesEditor");
+        Require<ButtonSpinner>(window, "DocumentCountSpinner");
         Require<BusyIndicator>(window, "BusyIndicator");
         Require<PropertyGrid>(window, "DocumentPropertyGrid");
         Require<Button>(window, "AddSourceDocumentButton");
@@ -2456,6 +2551,8 @@ internal static class ToolkitSelfTest
             window.ReferenceMaskTextBox.Text = "ZX-9876";
             window.ReferenceMaskTextBox.GetBindingExpression(MaskedTextBox.TextProperty)?.UpdateSource();
             window.ReminderTimePicker.Value = DateTime.Today.AddHours(16);
+            window.ReviewedAtEditor.Value = DateTime.Today.AddHours(17);
+            window.EffortEditor.Value = TimeSpan.FromHours(3);
             window.OwnerComboBox.SelectedItem = "ProGPU";
             window.OwnerComboBox.GetBindingExpression(ComboBox.SelectedItemProperty)?.UpdateSource();
             window.PriorityRangeSlider.LowerValue = 3.0;
@@ -2464,6 +2561,10 @@ internal static class ToolkitSelfTest
             window.PriorityRangeSlider.GetBindingExpression(RangeSlider.HigherValueProperty)?.UpdateSource();
             window.ToolkitRichTextBox.Text = "Application.Run rich notes";
             window.ToolkitRichTextBox.GetBindingExpression(ToolkitRichTextBox.TextProperty)?.UpdateSource();
+            window.MultiLineNotesEditor.Text = "Application.Run multiline notes";
+            window.MultiLineNotesEditor.GetBindingExpression(MultiLineTextEditor.TextProperty)?.UpdateSource();
+            int spinnerCountBefore = window.ViewModel.SpinnerCount;
+            window.ExerciseDocumentCountSpinner();
             if (!window.ViewModel.SelectedFlags.Contains("Urgent"))
             {
                 window.ViewModel.SelectedFlags.Add("Urgent");
@@ -2472,10 +2573,14 @@ internal static class ToolkitSelfTest
             window.ValidateToolkitInputEditorState();
             if (!string.Equals(window.ViewModel.ReferenceCode, "ZX-9876", StringComparison.Ordinal) ||
                 window.ViewModel.ReminderTime != DateTime.Today.AddHours(16) ||
+                window.ViewModel.ReviewedAt != DateTime.Today.AddHours(17) ||
+                window.ViewModel.Effort != TimeSpan.FromHours(3) ||
                 !string.Equals(window.ViewModel.SelectedOwner, "ProGPU", StringComparison.Ordinal) ||
                 window.ViewModel.PriorityRangeStart != 3.0 ||
                 window.ViewModel.PriorityRangeEnd != 7.0 ||
                 !string.Equals(window.ViewModel.RichNotes, "Application.Run rich notes", StringComparison.Ordinal) ||
+                !string.Equals(window.ViewModel.MultiLineNotes, "Application.Run multiline notes", StringComparison.Ordinal) ||
+                window.ViewModel.SpinnerCount != spinnerCountBefore ||
                 !window.FlagListBox.SelectedItems.Contains("Urgent"))
             {
                 throw new InvalidOperationException("Expected Toolkit input editor changes to update bindings and selection state.");

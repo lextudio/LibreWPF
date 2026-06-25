@@ -13654,6 +13654,40 @@ internal static class Program
                                 Binding="{Binding IsActive}" />
                         </DataGrid.Columns>
                     </DataGrid>
+                    <DataGrid
+                        x:Name="DefaultItemsLargeDataGrid"
+                        Height="180"
+                        AutoGenerateColumns="False"
+                        CanUserAddRows="False"
+                        EnableColumnVirtualization="True"
+                        EnableRowVirtualization="True"
+                        ItemsSource="{Binding LargeItems}"
+                        SelectedItem="{Binding SelectedLargeItem, Mode=TwoWay}"
+                        ScrollViewer.CanContentScroll="True"
+                        ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                        ScrollViewer.VerticalScrollBarVisibility="Auto"
+                        VirtualizingPanel.IsVirtualizing="True"
+                        VirtualizingPanel.ScrollUnit="Pixel"
+                        VirtualizingPanel.VirtualizationMode="Recycling">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn
+                                Header="Index"
+                                Width="80"
+                                Binding="{Binding Index}" />
+                            <DataGridTextColumn
+                                Header="Name"
+                                Width="160"
+                                Binding="{Binding Name}" />
+                            <DataGridTextColumn
+                                Header="Kind"
+                                Width="140"
+                                Binding="{Binding Kind}" />
+                            <DataGridCheckBoxColumn
+                                Header="Active"
+                                Width="80"
+                                Binding="{Binding IsActive}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
                     <ListBox
                         x:Name="DefaultItemsGroupedListBox"
                         DisplayMemberPath="Name"
@@ -13744,6 +13778,25 @@ internal static class Program
                 public bool IsActive { get; set; }
             }
 
+            public sealed class DefaultItemsLargeItem
+            {
+                public DefaultItemsLargeItem(int index, string name, string kind, bool isActive)
+                {
+                    Index = index;
+                    Name = name;
+                    Kind = kind;
+                    IsActive = isActive;
+                }
+
+                public int Index { get; set; }
+
+                public string Name { get; set; }
+
+                public string Kind { get; set; }
+
+                public bool IsActive { get; set; }
+            }
+
             public sealed class DefaultItemsNode
             {
                 public string Name { get; set; } = string.Empty;
@@ -13778,6 +13831,7 @@ internal static class Program
                 private double _formProgress = 25.0;
                 private DateTime? _selectedDate = new DateTime(2026, 6, 24);
                 private DefaultItemsItem _selectedItem;
+                private DefaultItemsLargeItem _selectedLargeItem;
 
                 public event PropertyChangedEventHandler PropertyChanged = delegate { };
 
@@ -13798,6 +13852,9 @@ internal static class Program
                         },
                     };
 
+                public ObservableCollection<DefaultItemsLargeItem> LargeItems { get; } =
+                    CreateLargeItems();
+
                 public ObservableCollection<DefaultItemsNode> Nodes { get; } =
                     new ObservableCollection<DefaultItemsNode>
                     {
@@ -13814,6 +13871,7 @@ internal static class Program
                 public DefaultItemsViewModel()
                 {
                     _selectedItem = Items[0];
+                    _selectedLargeItem = LargeItems[0];
                 }
 
                 public string Status
@@ -13842,6 +13900,21 @@ internal static class Program
                         }
 
                         _selectedItem = value;
+                        OnPropertyChanged();
+                    }
+                }
+
+                public DefaultItemsLargeItem SelectedLargeItem
+                {
+                    get => _selectedLargeItem;
+                    set
+                    {
+                        if (ReferenceEquals(_selectedLargeItem, value))
+                        {
+                            return;
+                        }
+
+                        _selectedLargeItem = value;
                         OnPropertyChanged();
                     }
                 }
@@ -13909,6 +13982,31 @@ internal static class Program
                 private void OnPropertyChanged([CallerMemberName] string propertyName = "")
                 {
                     PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
+                }
+
+                private static ObservableCollection<DefaultItemsLargeItem> CreateLargeItems()
+                {
+                    var items = new ObservableCollection<DefaultItemsLargeItem>();
+                    string[] kinds =
+                    {
+                        "Framework",
+                        "Rendering",
+                        "Toolkit",
+                        "SDK",
+                    };
+
+                    for (int i = 0; i < 100_000; i++)
+                    {
+                        int index = i + 1;
+                        items.Add(
+                            new DefaultItemsLargeItem(
+                                index,
+                                $"External default row {index:000000}",
+                                kinds[i % kinds.Length],
+                                i % 2 == 0));
+                    }
+
+                    return items;
                 }
             }
 
@@ -15106,6 +15204,7 @@ internal static class Program
                     Require(
                         ReferenceEquals(DefaultItemsDataGrid.SelectedItem, ViewModel.Items[0]),
                         "Expected default-item DataGrid selected item.");
+                    ValidateDefaultItemsLargeDataGrid();
                     var groupedItems = RequireType<CollectionViewSource>(
                         FindResource("DefaultItemsGroupedItems"),
                         "default-item grouped CollectionViewSource");
@@ -15446,6 +15545,111 @@ internal static class Program
                         "Expected default-item click handler to update button state.");
                 }
 
+                private void ValidateDefaultItemsLargeDataGrid()
+                {
+                    Require(
+                        !DefaultItemsLargeDataGrid.AutoGenerateColumns,
+                        "Expected default-item large DataGrid explicit columns.");
+                    Require(
+                        DefaultItemsLargeDataGrid.EnableRowVirtualization
+                            && DefaultItemsLargeDataGrid.EnableColumnVirtualization
+                            && VirtualizingPanel.GetIsVirtualizing(DefaultItemsLargeDataGrid)
+                            && VirtualizingPanel.GetVirtualizationMode(DefaultItemsLargeDataGrid) == VirtualizationMode.Recycling
+                            && VirtualizingPanel.GetScrollUnit(DefaultItemsLargeDataGrid) == ScrollUnit.Pixel
+                            && ScrollViewer.GetCanContentScroll(DefaultItemsLargeDataGrid),
+                        "Expected default-item large DataGrid virtualization metadata.");
+                    Require(
+                        ReferenceEquals(DefaultItemsLargeDataGrid.ItemsSource, ViewModel.LargeItems),
+                        "Expected default-item large DataGrid item source.");
+                    Require(
+                        DefaultItemsLargeDataGrid.Items.Count == 100_000,
+                        "Expected default-item large DataGrid item count.");
+                    Require(
+                        ReferenceEquals(DefaultItemsLargeDataGrid.SelectedItem, ViewModel.LargeItems[0]),
+                        "Expected default-item large DataGrid selected item.");
+                    Require(
+                        DefaultItemsLargeDataGrid.Columns.Count == 4,
+                        "Expected default-item large DataGrid column count.");
+                    var indexColumn = RequireType<DataGridTextColumn>(
+                        DefaultItemsLargeDataGrid.Columns[0],
+                        "default-item large DataGrid index column");
+                    var nameColumn = RequireType<DataGridTextColumn>(
+                        DefaultItemsLargeDataGrid.Columns[1],
+                        "default-item large DataGrid name column");
+                    var kindColumn = RequireType<DataGridTextColumn>(
+                        DefaultItemsLargeDataGrid.Columns[2],
+                        "default-item large DataGrid kind column");
+                    var activeColumn = RequireType<DataGridCheckBoxColumn>(
+                        DefaultItemsLargeDataGrid.Columns[3],
+                        "default-item large DataGrid active column");
+                    var indexBinding = RequireType<Binding>(
+                        indexColumn.Binding,
+                        "default-item large DataGrid index binding");
+                    var nameBinding = RequireType<Binding>(
+                        nameColumn.Binding,
+                        "default-item large DataGrid name binding");
+                    var kindBinding = RequireType<Binding>(
+                        kindColumn.Binding,
+                        "default-item large DataGrid kind binding");
+                    var activeBinding = RequireType<Binding>(
+                        activeColumn.Binding,
+                        "default-item large DataGrid active binding");
+                    Require(
+                        Equals(indexColumn.Header, "Index")
+                            && indexBinding.Path.Path == "Index",
+                        "Expected default-item large DataGrid index column binding.");
+                    Require(
+                        Equals(nameColumn.Header, "Name")
+                            && nameBinding.Path.Path == "Name",
+                        "Expected default-item large DataGrid name column binding.");
+                    Require(
+                        Equals(kindColumn.Header, "Kind")
+                            && kindBinding.Path.Path == "Kind",
+                        "Expected default-item large DataGrid kind column binding.");
+                    Require(
+                        Equals(activeColumn.Header, "Active")
+                            && activeBinding.Path.Path == "IsActive",
+                        "Expected default-item large DataGrid active column binding.");
+
+                    DefaultItemsLargeDataGrid.ApplyTemplate();
+                    DefaultItemsLargeDataGrid.UpdateLayout();
+                    DrainDispatcher();
+                    var scrollViewer = RequireType<ScrollViewer>(
+                        FindVisualDescendant<ScrollViewer>(DefaultItemsLargeDataGrid),
+                        "default-item large DataGrid ScrollViewer");
+                    Require(
+                        scrollViewer.ScrollableHeight > 0,
+                        "Expected default-item large DataGrid scrollable height.");
+                    ValidateDefaultItemsLargeDataGridRealizedRows("initial");
+
+                    DefaultItemsLargeDataGrid.ScrollIntoView(ViewModel.LargeItems[ViewModel.LargeItems.Count - 1]);
+                    DrainDispatcher();
+                    DefaultItemsLargeDataGrid.UpdateLayout();
+                    scrollViewer.UpdateLayout();
+                    Require(
+                        scrollViewer.VerticalOffset > 0,
+                        "Expected default-item large DataGrid vertical offset after large scroll.");
+                    ValidateDefaultItemsLargeDataGridRealizedRows("after large scroll");
+                    Require(
+                        ReferenceEquals(DefaultItemsLargeDataGrid.SelectedItem, ViewModel.LargeItems[0]),
+                        "Expected default-item large DataGrid selection to remain stable after large scroll.");
+
+                    DefaultItemsLargeDataGrid.ScrollIntoView(ViewModel.LargeItems[0]);
+                    DrainDispatcher();
+                    DefaultItemsLargeDataGrid.UpdateLayout();
+                }
+
+                private void ValidateDefaultItemsLargeDataGridRealizedRows(string phase)
+                {
+                    int realizedRows = CountVisualDescendants<DataGridRow>(DefaultItemsLargeDataGrid);
+                    Require(
+                        realizedRows > 0,
+                        $"Expected default-item large DataGrid realized rows during {phase}.");
+                    Require(
+                        realizedRows < 500,
+                        $"Expected default-item large DataGrid realized rows to stay virtualized during {phase}, found {realizedRows}.");
+                }
+
                 private void OnDefaultItemsWindowLoaded(object sender, RoutedEventArgs e)
                 {
                     LoadedCount++;
@@ -15591,6 +15795,47 @@ internal static class Program
                     }
 
                     return null;
+                }
+
+                private static T? FindVisualDescendant<T>(DependencyObject root)
+                    where T : DependencyObject
+                {
+                    int childCount = VisualTreeHelper.GetChildrenCount(root);
+                    for (int i = 0; i < childCount; i++)
+                    {
+                        DependencyObject child = VisualTreeHelper.GetChild(root, i);
+                        if (child is T typed)
+                        {
+                            return typed;
+                        }
+
+                        T? nested = FindVisualDescendant<T>(child);
+                        if (nested is not null)
+                        {
+                            return nested;
+                        }
+                    }
+
+                    return null;
+                }
+
+                private static int CountVisualDescendants<T>(DependencyObject root)
+                    where T : DependencyObject
+                {
+                    int count = 0;
+                    int childCount = VisualTreeHelper.GetChildrenCount(root);
+                    for (int i = 0; i < childCount; i++)
+                    {
+                        DependencyObject child = VisualTreeHelper.GetChild(root, i);
+                        if (child is T)
+                        {
+                            count++;
+                        }
+
+                        count += CountVisualDescendants<T>(child);
+                    }
+
+                    return count;
                 }
 
                 private static T RequireType<T>(object? value, string description)

@@ -9242,6 +9242,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Binding=\"{Binding IsActive}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item DataGrid active column binding", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item DataGrid collection update", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsLargeDataGrid", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding LargeItems}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("SelectedItem=\"{Binding SelectedLargeItem, Mode=TwoWay}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("EnableRowVirtualization=\"True\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("VirtualizingPanel.VirtualizationMode=\"Recycling\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("VirtualizingPanel.ScrollUnit=\"Pixel\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("DefaultItemsLargeItem", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CreateLargeItems()", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("100_000", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item large DataGrid item count", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item large DataGrid vertical offset after large scroll", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateDefaultItemsLargeDataGridRealizedRows", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsGroupHeaderTemplate", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsGroupedItems", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("<PropertyGroupDescription PropertyName=\"Kind\" />", externalSdkHarnessProgram, StringComparison.Ordinal);

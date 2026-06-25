@@ -5864,6 +5864,52 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void ProGpuShaderReviewRegressionsStayInNativeBackend()
+    {
+        var shaderParams = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Scene",
+            "WpfShaderEffectParams.cs"));
+        var shaderPipeline = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Scene",
+            "Extensions",
+            "WpfShaderEffectExtensionPipeline.cs"));
+        var shaderToyTranspiler = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Transpiler",
+            "ShaderToyTranspiler.cs"));
+        var compositorReviewTests = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Tests",
+            "CompositorReviewRegressionTests.cs"));
+        var wpfShaderTests = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Tests",
+            "WpfShaderEffectRenderTests.cs"));
+
+        Assert.Contains("GetStableShaderSourceKey", shaderParams, StringComparison.Ordinal);
+        Assert.Contains("_src_{p.GetStableShaderSourceKey()}", shaderPipeline, StringComparison.Ordinal);
+        Assert.Contains("ParseForInitializerExpressions", shaderToyTranspiler, StringComparison.Ordinal);
+        Assert.Contains("new BlockStatement(initializers.Select", shaderToyTranspiler, StringComparison.Ordinal);
+        Assert.Contains("wgsl_mod_fv2", shaderToyTranspiler, StringComparison.Ordinal);
+        Assert.Contains("t0 == \"float\" && t1 == \"vec2\"", shaderToyTranspiler, StringComparison.Ordinal);
+        Assert.Contains("ShaderToyForLoopLowersCommaSeparatedInitializerExpressions", compositorReviewTests, StringComparison.Ordinal);
+        Assert.Contains("ShaderToyModBroadcastsScalarFirstVectorDivisor", compositorReviewTests, StringComparison.Ordinal);
+        Assert.Contains("WpfShaderEffectShaderModuleCacheTracksSourceWithExplicitShaderKey", wpfShaderTests, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ProGpuWpfToolkitSampleExercisesXceedToolkitAndAvalonDock()
     {
         var project = XDocument.Load(FindRepoPath(

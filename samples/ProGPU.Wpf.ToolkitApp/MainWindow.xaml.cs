@@ -22,6 +22,9 @@ using Xceed.Wpf.AvalonDock.Themes;
 using Xceed.Wpf.Toolkit;
 using Xceed.Wpf.Toolkit.Core;
 using Xceed.Wpf.Toolkit.PropertyGrid;
+using AvalonDockAnchorableItem = Xceed.Wpf.AvalonDock.Controls.LayoutAnchorableItem;
+using AvalonDockDocumentItem = Xceed.Wpf.AvalonDock.Controls.LayoutDocumentItem;
+using AvalonDockLayoutItem = Xceed.Wpf.AvalonDock.Controls.LayoutItem;
 using ToolkitRichTextBox = Xceed.Wpf.Toolkit.RichTextBox;
 
 namespace ProGPU.Wpf.ToolkitApp;
@@ -589,12 +592,24 @@ public partial class MainWindow : Window
         AssertEqual(firstAnchorable.Title, generatedAnchorable.Title, "AvalonDock source anchorable title");
         AssertEqual(firstAnchorable.ContentId, generatedAnchorable.ContentId, "AvalonDock source anchorable content id");
 
-        if (SourceDockManager.GetLayoutItemFromModel(generatedDocument) == null ||
-            SourceDockManager.GetLayoutItemFromModel(generatedAnchorable) == null)
+        var generatedDocumentItem = SourceDockManager.GetLayoutItemFromModel(generatedDocument);
+        var generatedAnchorableItem = SourceDockManager.GetLayoutItemFromModel(generatedAnchorable);
+        if (generatedDocumentItem == null ||
+            generatedAnchorableItem == null)
         {
             throw new InvalidOperationException("Expected source-backed AvalonDock layout items to be discoverable from their generated layout models.");
         }
 
+        ValidateSourceDockTitleTemplateSelectorState(
+            firstDocument,
+            generatedDocument,
+            firstAnchorable,
+            generatedAnchorable);
+        ValidateSourceBackedAvalonDockLayoutItemCommands(
+            generatedDocument,
+            generatedDocumentItem,
+            generatedAnchorable,
+            generatedAnchorableItem);
         ValidateSourceLayoutUpdateStrategyState(requireInsertedCallbacks: false);
         ValidateSourceBackedAvalonDockDynamicMetadata(
             firstDocument,
@@ -637,6 +652,10 @@ public partial class MainWindow : Window
             var generatedAddedDocument = FindGeneratedDocument(addedDocument);
             AssertEqual(addedDocument.Title, generatedAddedDocument.Title, "AvalonDock added source document title");
             AssertEqual(addedDocument.ContentId, generatedAddedDocument.ContentId, "AvalonDock added source document content id");
+            if (SourceDockManager.GetLayoutItemFromModel(generatedAddedDocument) == null)
+            {
+                throw new InvalidOperationException("Expected added source document to have a generated AvalonDock LayoutItem.");
+            }
 
             SourceDockManager.ActiveContent = addedDocument;
             AssertEqual(addedDocument, ViewModel.SourceActiveContent, "AvalonDock added source active document binding");
@@ -651,6 +670,10 @@ public partial class MainWindow : Window
             var generatedAddedAnchorable = FindGeneratedAnchorable(addedAnchorable);
             AssertEqual(addedAnchorable.Title, generatedAddedAnchorable.Title, "AvalonDock added source anchorable title");
             AssertEqual(addedAnchorable.ContentId, generatedAddedAnchorable.ContentId, "AvalonDock added source anchorable content id");
+            if (SourceDockManager.GetLayoutItemFromModel(generatedAddedAnchorable) == null)
+            {
+                throw new InvalidOperationException("Expected added source anchorable to have a generated AvalonDock LayoutItem.");
+            }
 
             SourceDockManager.ActiveContent = addedAnchorable;
             AssertEqual(addedAnchorable, ViewModel.SourceActiveContent, "AvalonDock added source active anchorable binding");
@@ -700,6 +723,76 @@ public partial class MainWindow : Window
         {
             throw new InvalidOperationException("Expected AvalonDock layout update strategy to record inserted content ids.");
         }
+    }
+
+    internal void ValidateSourceDockTitleTemplateSelectorState(
+        ToolkitDockItem sourceDocument,
+        LayoutDocument generatedDocument,
+        ToolkitDockItem sourceAnchorable,
+        LayoutAnchorable generatedAnchorable)
+    {
+        if (SourceDockManager.DocumentTitleTemplateSelector is not ToolkitDockTitleTemplateSelector selector ||
+            !ReferenceEquals(SourceDockManager.AnchorableTitleTemplateSelector, selector))
+        {
+            throw new InvalidOperationException("Expected source-backed AvalonDock title template selectors to use the sample selector.");
+        }
+
+        if (!ReferenceEquals(selector.DocumentTemplate, TryFindResource("SourceDocumentTitleTemplate")) ||
+            !ReferenceEquals(selector.AnchorableTemplate, TryFindResource("SourceAnchorableTitleTemplate")))
+        {
+            throw new InvalidOperationException("Expected source-backed AvalonDock title selector templates to resolve from app resources.");
+        }
+
+        AssertEqual(selector.DocumentTemplate, selector.SelectTemplate(sourceDocument, SourceDockManager), "AvalonDock source document title template");
+        AssertEqual(selector.DocumentTemplate, selector.SelectTemplate(generatedDocument, SourceDockManager), "AvalonDock generated document title template");
+        AssertEqual(selector.AnchorableTemplate, selector.SelectTemplate(sourceAnchorable, SourceDockManager), "AvalonDock source anchorable title template");
+        AssertEqual(selector.AnchorableTemplate, selector.SelectTemplate(generatedAnchorable, SourceDockManager), "AvalonDock generated anchorable title template");
+    }
+
+    internal void ValidateSourceBackedAvalonDockLayoutItemCommands(
+        LayoutDocument generatedDocument,
+        AvalonDockLayoutItem generatedDocumentItem,
+        LayoutAnchorable generatedAnchorable,
+        AvalonDockLayoutItem generatedAnchorableItem)
+    {
+        AssertEqual(generatedDocument.Title, generatedDocumentItem.Title, "AvalonDock source document LayoutItem title");
+        AssertEqual(generatedDocument.ContentId, generatedDocumentItem.ContentId, "AvalonDock source document LayoutItem content id");
+        AssertEqual(generatedDocument, generatedDocumentItem.LayoutElement, "AvalonDock source document LayoutItem layout element");
+        AssertEqual(true, generatedDocumentItem.CanClose, "AvalonDock source document LayoutItem close capability");
+
+        if (generatedDocumentItem is not AvalonDockDocumentItem documentItem ||
+            documentItem.ActivateCommand == null ||
+            documentItem.CloseCommand == null ||
+            documentItem.CloseAllButThisCommand == null ||
+            documentItem.FloatCommand == null ||
+            documentItem.NewHorizontalTabGroupCommand == null ||
+            documentItem.NewVerticalTabGroupCommand == null ||
+            documentItem.MoveToNextTabGroupCommand == null ||
+            documentItem.MoveToPreviousTabGroupCommand == null)
+        {
+            throw new InvalidOperationException("Expected generated AvalonDock document LayoutItem to expose default document commands.");
+        }
+
+        documentItem.ActivateCommand.Execute(null);
+        AssertEqual(true, generatedDocument.IsActive, "AvalonDock source document LayoutItem activate command");
+
+        AssertEqual(generatedAnchorable.Title, generatedAnchorableItem.Title, "AvalonDock source anchorable LayoutItem title");
+        AssertEqual(generatedAnchorable.ContentId, generatedAnchorableItem.ContentId, "AvalonDock source anchorable LayoutItem content id");
+        AssertEqual(generatedAnchorable, generatedAnchorableItem.LayoutElement, "AvalonDock source anchorable LayoutItem layout element");
+
+        if (generatedAnchorableItem is not AvalonDockAnchorableItem anchorableItem ||
+            anchorableItem.ActivateCommand == null ||
+            anchorableItem.HideCommand == null ||
+            anchorableItem.AutoHideCommand == null ||
+            anchorableItem.DockCommand == null ||
+            anchorableItem.FloatCommand == null ||
+            anchorableItem.DockAsDocumentCommand == null)
+        {
+            throw new InvalidOperationException("Expected generated AvalonDock anchorable LayoutItem to expose default anchorable commands.");
+        }
+
+        anchorableItem.ActivateCommand.Execute(null);
+        AssertEqual(true, generatedAnchorable.IsActive, "AvalonDock source anchorable LayoutItem activate command");
     }
 
     private void ValidateSourceBackedAvalonDockDynamicMetadata(
@@ -1170,7 +1263,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -2674,6 +2767,32 @@ internal sealed class ToolkitLayoutUpdateStrategy : ILayoutUpdateStrategy
         }
 
         return null;
+    }
+}
+
+public sealed class ToolkitDockTitleTemplateSelector : DataTemplateSelector
+{
+    public DataTemplate? DocumentTemplate { get; set; }
+
+    public DataTemplate? AnchorableTemplate { get; set; }
+
+    public override DataTemplate? SelectTemplate(object item, DependencyObject container)
+    {
+        return item switch
+        {
+            LayoutDocument => DocumentTemplate,
+            LayoutAnchorable => AnchorableTemplate,
+            AvalonDockLayoutItem { LayoutElement: LayoutDocument } => DocumentTemplate,
+            AvalonDockLayoutItem { LayoutElement: LayoutAnchorable } => AnchorableTemplate,
+            ToolkitDockItem dockItem when IsAnchorable(dockItem) => AnchorableTemplate,
+            ToolkitDockItem => DocumentTemplate,
+            _ => base.SelectTemplate(item, container)
+        };
+    }
+
+    private static bool IsAnchorable(ToolkitDockItem dockItem)
+    {
+        return dockItem.ContentId.Contains("tool", StringComparison.OrdinalIgnoreCase);
     }
 }
 

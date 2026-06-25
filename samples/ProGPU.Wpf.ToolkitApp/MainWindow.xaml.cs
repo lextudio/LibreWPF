@@ -703,11 +703,19 @@ public partial class MainWindow : Window
 
     internal void ValidateToolkitInputEditorState()
     {
+        AssertEqual(ViewModel.QuickSearchText, QuickSearchTextBox.Text, "Toolkit AutoSelectTextBox text binding target");
+        AssertEqual(AutoSelectBehavior.OnFocus, QuickSearchTextBox.AutoSelectBehavior, "Toolkit AutoSelectTextBox behavior");
+        AssertEqual(ViewModel.AccessCode, AccessCodeBox.Password, "Toolkit WatermarkPasswordBox password state");
         AssertEqual(ViewModel.ReferenceCode, ReferenceMaskTextBox.Text, "Toolkit MaskedTextBox text binding target");
         AssertEqual("LL-0000", ReferenceMaskTextBox.Mask, "Toolkit MaskedTextBox mask");
         AssertEqual(ViewModel.ReminderTime, ReminderTimePicker.Value, "Toolkit TimePicker value binding target");
         AssertEqual(ViewModel.ReviewedAt, ReviewedAtEditor.Value, "Toolkit DateTimeUpDown value binding target");
         AssertEqual(ViewModel.Effort, EffortEditor.Value, "Toolkit TimeSpanUpDown value binding target");
+        AssertEqual(ViewModel.ByteScore, ByteScoreEditor.Value, "Toolkit ByteUpDown value binding target");
+        AssertEqual(ViewModel.DoubleScale, DoubleScaleEditor.Value, "Toolkit DoubleUpDown value binding target");
+        AssertEqual(ViewModel.WorkItemId, WorkItemIdEditor.Value, "Toolkit LongUpDown value binding target");
+        AssertEqual(ViewModel.Budget, BudgetEditor.Value, "Toolkit DecimalUpDown value binding target");
+        AssertEqual(ViewModel.AccentColor, AccentColorCanvas.SelectedColor, "Toolkit ColorCanvas selected color binding target");
         AssertEqual(ViewModel.RichNotes, ToolkitRichTextBox.Text, "Toolkit RichTextBox text binding target");
         AssertEqual(ViewModel.MultiLineNotes, MultiLineNotesEditor.Text, "Toolkit MultiLineTextEditor text binding target");
         AssertEqual(ViewModel.SelectedOwner, OwnerComboBox.SelectedItem as string, "Toolkit WatermarkComboBox selected item binding target");
@@ -1046,7 +1054,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit selector/range/split controls, Toolkit wizard navigation, AvalonDock source-backed documents/anchorables, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, AvalonDock source-backed documents/anchorables, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -1186,12 +1194,21 @@ public partial class MainWindow : Window
             liveHost,
             () =>
             {
+                QuickSearchTextBox.Text = "Live quick search";
+                QuickSearchTextBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+                AccessCodeBox.Password = "live-code";
+                ViewModel.AccessCode = AccessCodeBox.Password;
                 ReferenceMaskTextBox.Text = "AB-1234";
                 ReferenceMaskTextBox.GetBindingExpression(MaskedTextBox.TextProperty)?.UpdateSource();
 
                 ReminderTimePicker.Value = DateTime.Today.AddHours(15).AddMinutes(45);
                 ReviewedAtEditor.Value = DateTime.Today.AddHours(16).AddMinutes(30);
                 EffortEditor.Value = TimeSpan.FromMinutes(135);
+                ByteScoreEditor.Value = 72;
+                DoubleScaleEditor.Value = 4.5;
+                WorkItemIdEditor.Value = 16384L;
+                BudgetEditor.Value = 256.50m;
+                AccentColorCanvas.SelectedColor = Colors.DarkCyan;
 
                 OwnerComboBox.SelectedItem = "ProGPU";
                 OwnerComboBox.GetBindingExpression(ComboBox.SelectedItemProperty)?.UpdateSource();
@@ -1221,10 +1238,17 @@ public partial class MainWindow : Window
             () =>
             {
                 ValidateToolkitInputEditorState();
+                AssertEqual("Live quick search", ViewModel.QuickSearchText, "Toolkit live AutoSelectTextBox binding source");
+                AssertEqual("live-code", ViewModel.AccessCode, "Toolkit live WatermarkPasswordBox password state");
                 AssertEqual("AB-1234", ViewModel.ReferenceCode, "Toolkit live MaskedTextBox binding source");
                 AssertEqual(DateTime.Today.AddHours(15).AddMinutes(45), ViewModel.ReminderTime, "Toolkit live TimePicker binding source");
                 AssertEqual(DateTime.Today.AddHours(16).AddMinutes(30), ViewModel.ReviewedAt, "Toolkit live DateTimeUpDown binding source");
                 AssertEqual(TimeSpan.FromMinutes(135), ViewModel.Effort, "Toolkit live TimeSpanUpDown binding source");
+                AssertEqual((byte)72, ViewModel.ByteScore.GetValueOrDefault(), "Toolkit live ByteUpDown binding source");
+                AssertEqual(4.5, ViewModel.DoubleScale.GetValueOrDefault(), "Toolkit live DoubleUpDown binding source");
+                AssertEqual(16384L, ViewModel.WorkItemId.GetValueOrDefault(), "Toolkit live LongUpDown binding source");
+                AssertEqual(256.50m, ViewModel.Budget.GetValueOrDefault(), "Toolkit live DecimalUpDown binding source");
+                AssertEqual(Colors.DarkCyan, ViewModel.AccentColor.GetValueOrDefault(), "Toolkit live ColorCanvas binding source");
                 AssertEqual("Live rich notes from Toolkit RichTextBox", ViewModel.RichNotes, "Toolkit live RichTextBox binding source");
                 AssertEqual("Live multiline notes from Toolkit MultiLineTextEditor", ViewModel.MultiLineNotes, "Toolkit live MultiLineTextEditor binding source");
                 AssertEqual("ProGPU", ViewModel.SelectedOwner, "Toolkit live WatermarkComboBox binding source");
@@ -1627,6 +1651,8 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private ToolkitDocument _selectedDocument;
     private int _priority = 4;
     private string _filterText = string.Empty;
+    private string _quickSearchText = "Search";
+    private string _accessCode = "sdk";
     private string _selectedOwner = "WPF";
     private double _priorityRangeStart = 2.0;
     private double _priorityRangeEnd = 8.0;
@@ -1637,6 +1663,10 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private string _referenceCode = "PR-2048";
     private Color? _accentColor = Colors.SteelBlue;
     private decimal? _estimate = 12.5m;
+    private byte? _byteScore = 12;
+    private double? _doubleScale = 1.5;
+    private long? _workItemId = 4096L;
+    private decimal? _budget = 64.25m;
     private string _richNotes = "Toolkit rich notes";
     private string _multiLineNotes = "Toolkit multiline notes";
     private int _spinnerCount = 2;
@@ -1773,6 +1803,32 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         }
     }
 
+    public string QuickSearchText
+    {
+        get => _quickSearchText;
+        set
+        {
+            if (!string.Equals(_quickSearchText, value, StringComparison.Ordinal))
+            {
+                _quickSearchText = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string AccessCode
+    {
+        get => _accessCode;
+        set
+        {
+            if (!string.Equals(_accessCode, value, StringComparison.Ordinal))
+            {
+                _accessCode = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public string SelectedOwner
     {
         get => _selectedOwner;
@@ -1898,6 +1954,58 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
             if (_estimate != value)
             {
                 _estimate = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public byte? ByteScore
+    {
+        get => _byteScore;
+        set
+        {
+            if (_byteScore != value)
+            {
+                _byteScore = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public double? DoubleScale
+    {
+        get => _doubleScale;
+        set
+        {
+            if (_doubleScale != value)
+            {
+                _doubleScale = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public long? WorkItemId
+    {
+        get => _workItemId;
+        set
+        {
+            if (_workItemId != value)
+            {
+                _workItemId = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public decimal? Budget
+    {
+        get => _budget;
+        set
+        {
+            if (_budget != value)
+            {
+                _budget = value;
                 OnPropertyChanged();
             }
         }
@@ -2351,6 +2459,8 @@ internal static class ToolkitSelfTest
         Require<DockingManager>(window, "DockManager");
         Require<IntegerUpDown>(window, "PriorityEditor");
         Require<WatermarkTextBox>(window, "FilterTextBox");
+        Require<AutoSelectTextBox>(window, "QuickSearchTextBox");
+        Require<WatermarkPasswordBox>(window, "AccessCodeBox");
         Require<WatermarkComboBox>(window, "OwnerComboBox");
         Require<RangeSlider>(window, "PriorityRangeSlider");
         Require<DateTimePicker>(window, "DueDatePicker");
@@ -2362,6 +2472,11 @@ internal static class ToolkitSelfTest
         Require<CheckListBox>(window, "FlagListBox");
         Require<ColorPicker>(window, "AccentColorPicker");
         Require<CalculatorUpDown>(window, "EstimateEditor");
+        Require<ByteUpDown>(window, "ByteScoreEditor");
+        Require<DoubleUpDown>(window, "DoubleScaleEditor");
+        Require<LongUpDown>(window, "WorkItemIdEditor");
+        Require<DecimalUpDown>(window, "BudgetEditor");
+        Require<ColorCanvas>(window, "AccentColorCanvas");
         Require<DropDownButton>(window, "ActionDropDownButton");
         Require<Button>(window, "MarkReviewedButton");
         Require<SplitButton>(window, "SplitActionButton");
@@ -2548,11 +2663,20 @@ internal static class ToolkitSelfTest
                 throw new InvalidOperationException("Expected Toolkit popup editor changes to update bindings.");
             }
 
+            window.QuickSearchTextBox.Text = "Application.Run quick search";
+            window.QuickSearchTextBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+            window.AccessCodeBox.Password = "run-code";
+            window.ViewModel.AccessCode = window.AccessCodeBox.Password;
             window.ReferenceMaskTextBox.Text = "ZX-9876";
             window.ReferenceMaskTextBox.GetBindingExpression(MaskedTextBox.TextProperty)?.UpdateSource();
             window.ReminderTimePicker.Value = DateTime.Today.AddHours(16);
             window.ReviewedAtEditor.Value = DateTime.Today.AddHours(17);
             window.EffortEditor.Value = TimeSpan.FromHours(3);
+            window.ByteScoreEditor.Value = 64;
+            window.DoubleScaleEditor.Value = 2.5;
+            window.WorkItemIdEditor.Value = 8192L;
+            window.BudgetEditor.Value = 128.75m;
+            window.AccentColorCanvas.SelectedColor = Colors.CadetBlue;
             window.OwnerComboBox.SelectedItem = "ProGPU";
             window.OwnerComboBox.GetBindingExpression(ComboBox.SelectedItemProperty)?.UpdateSource();
             window.PriorityRangeSlider.LowerValue = 3.0;
@@ -2571,10 +2695,17 @@ internal static class ToolkitSelfTest
             }
 
             window.ValidateToolkitInputEditorState();
-            if (!string.Equals(window.ViewModel.ReferenceCode, "ZX-9876", StringComparison.Ordinal) ||
+            if (!string.Equals(window.ViewModel.QuickSearchText, "Application.Run quick search", StringComparison.Ordinal) ||
+                !string.Equals(window.ViewModel.AccessCode, "run-code", StringComparison.Ordinal) ||
+                !string.Equals(window.ViewModel.ReferenceCode, "ZX-9876", StringComparison.Ordinal) ||
                 window.ViewModel.ReminderTime != DateTime.Today.AddHours(16) ||
                 window.ViewModel.ReviewedAt != DateTime.Today.AddHours(17) ||
                 window.ViewModel.Effort != TimeSpan.FromHours(3) ||
+                window.ViewModel.ByteScore != 64 ||
+                window.ViewModel.DoubleScale != 2.5 ||
+                window.ViewModel.WorkItemId != 8192L ||
+                window.ViewModel.Budget != 128.75m ||
+                window.ViewModel.AccentColor != Colors.CadetBlue ||
                 !string.Equals(window.ViewModel.SelectedOwner, "ProGPU", StringComparison.Ordinal) ||
                 window.ViewModel.PriorityRangeStart != 3.0 ||
                 window.ViewModel.PriorityRangeEnd != 7.0 ||

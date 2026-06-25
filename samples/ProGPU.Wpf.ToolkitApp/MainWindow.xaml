@@ -202,6 +202,18 @@
                                          Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
                                          Margin="0,4,0,12" />
 
+                  <TextBlock Text="AutoSelectTextBox" />
+                  <xctk:AutoSelectTextBox x:Name="QuickSearchTextBox"
+                                          Text="{Binding QuickSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                          AutoSelectBehavior="OnFocus"
+                                          Margin="0,4,0,12" />
+
+                  <TextBlock Text="WatermarkPasswordBox" />
+                  <xctk:WatermarkPasswordBox x:Name="AccessCodeBox"
+                                             Watermark="Access code"
+                                             Password="sdk"
+                                             Margin="0,4,0,12" />
+
                   <TextBlock Text="WatermarkComboBox" />
                   <xctk:WatermarkComboBox x:Name="OwnerComboBox"
                                           Watermark="Owner"
@@ -279,6 +291,41 @@
                                          FormatString="F2"
                                          Value="{Binding Estimate}"
                                          Margin="0,4,0,12" />
+
+                  <TextBlock Text="NumericUpDown variants" />
+                  <UniformGrid Columns="2"
+                               Margin="0,4,0,12">
+                    <xctk:ByteUpDown x:Name="ByteScoreEditor"
+                                     Minimum="0"
+                                     Maximum="100"
+                                     Value="{Binding ByteScore}"
+                                     Margin="0,0,6,6" />
+                    <xctk:DoubleUpDown x:Name="DoubleScaleEditor"
+                                       Minimum="0"
+                                       Maximum="10"
+                                       Increment="0.5"
+                                       FormatString="F1"
+                                       Value="{Binding DoubleScale}"
+                                       Margin="0,0,0,6" />
+                    <xctk:LongUpDown x:Name="WorkItemIdEditor"
+                                     Minimum="0"
+                                     Maximum="999999"
+                                     Value="{Binding WorkItemId}"
+                                     Margin="0,0,6,0" />
+                    <xctk:DecimalUpDown x:Name="BudgetEditor"
+                                        Minimum="0"
+                                        Maximum="1000"
+                                        Increment="1"
+                                        FormatString="F2"
+                                        Value="{Binding Budget}" />
+                  </UniformGrid>
+
+                  <TextBlock Text="ColorCanvas" />
+                  <xctk:ColorCanvas x:Name="AccentColorCanvas"
+                                    SelectedColor="{Binding AccentColor}"
+                                    UsingAlphaChannel="False"
+                                    Height="148"
+                                    Margin="0,4,0,12" />
 
                   <TextBlock Text="DropDownButton" />
                   <xctk:DropDownButton x:Name="ActionDropDownButton"

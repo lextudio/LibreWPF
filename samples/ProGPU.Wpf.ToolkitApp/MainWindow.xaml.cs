@@ -35,6 +35,19 @@ using ToolkitZoomboxControl = Xceed.Wpf.Toolkit.Zoombox.Zoombox;
 
 namespace ProGPU.Wpf.ToolkitApp;
 
+public static class ToolkitDockCommands
+{
+    public static readonly RoutedUICommand ActivateEditor = new(
+        "Activate editor",
+        nameof(ActivateEditor),
+        typeof(ToolkitDockCommands));
+
+    public static readonly RoutedUICommand CloseOverview = new(
+        "Close overview",
+        nameof(CloseOverview),
+        typeof(ToolkitDockCommands));
+}
+
 public partial class MainWindow : Window
 {
     private const string LiveValidationEnvironmentVariable = "PROGPU_WPF_TOOLKIT_LIVE_VALIDATE";
@@ -118,6 +131,25 @@ public partial class MainWindow : Window
 
     private void ActivateEditorButton_Click(object sender, RoutedEventArgs e)
     {
+        ActivateEditorDocument();
+    }
+
+    private void ActivateEditorCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+        ViewModel.AvalonDockContextMenuCommandCanExecuteCount++;
+        e.CanExecute = DocumentPane.Children.Contains(EditorDocument);
+        e.Handled = true;
+    }
+
+    private void ActivateEditorCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        ActivateEditorDocument();
+        RecordAvalonDockContextMenuCommand("ActivateEditor");
+        e.Handled = true;
+    }
+
+    private void ActivateEditorDocument()
+    {
         EditorDocument.IsSelected = true;
         EditorDocument.IsActive = true;
         _viewModel.Status = "Editor document activated";
@@ -125,6 +157,25 @@ public partial class MainWindow : Window
     }
 
     private void CloseOverviewDocumentButton_Click(object sender, RoutedEventArgs e)
+    {
+        CloseOverviewDocument();
+    }
+
+    private void CloseOverviewCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+        ViewModel.AvalonDockContextMenuCommandCanExecuteCount++;
+        e.CanExecute = DocumentPane.Children.Contains(OverviewDocument);
+        e.Handled = true;
+    }
+
+    private void CloseOverviewCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        CloseOverviewDocument();
+        RecordAvalonDockContextMenuCommand("CloseOverview");
+        e.Handled = true;
+    }
+
+    private void CloseOverviewDocument()
     {
         if (!DocumentPane.Children.Contains(OverviewDocument))
         {
@@ -141,6 +192,12 @@ public partial class MainWindow : Window
 
         _viewModel.Status = "Overview document closed";
         _viewModel.Activity.Add(_viewModel.Status);
+    }
+
+    private void RecordAvalonDockContextMenuCommand(string commandName)
+    {
+        _viewModel.AvalonDockContextMenuCommandExecutedCount++;
+        _viewModel.LastAvalonDockContextMenuCommand = commandName;
     }
 
     private void ReopenOverviewDocumentButton_Click(object sender, RoutedEventArgs e)
@@ -1516,7 +1573,74 @@ public partial class MainWindow : Window
                 throw new InvalidOperationException(
                     "Expected AvalonDock document context menu to be rooted in the portable public HwndSource facade while open.");
             }
+
+            DockContextActivateEditorMenuItem.GetBindingExpression(MenuItem.CommandTargetProperty)?.UpdateTarget();
+            DockContextCloseOverviewMenuItem.GetBindingExpression(MenuItem.CommandTargetProperty)?.UpdateTarget();
+            AssertEqual((ICommand)ToolkitDockCommands.ActivateEditor, DockContextActivateEditorMenuItem.Command, "AvalonDock context menu activate command");
+            AssertEqual((ICommand)ToolkitDockCommands.CloseOverview, DockContextCloseOverviewMenuItem.Command, "AvalonDock context menu close command");
+            AssertEqual((IInputElement)DockManager, DockContextActivateEditorMenuItem.CommandTarget, "AvalonDock context menu activate command target");
+            AssertEqual((IInputElement)DockManager, DockContextCloseOverviewMenuItem.CommandTarget, "AvalonDock context menu close command target");
+
+            int canExecuteCountBefore = ViewModel.AvalonDockContextMenuCommandCanExecuteCount;
+            if (!CanExecuteDockContextCommand(DockContextActivateEditorMenuItem) ||
+                !CanExecuteDockContextCommand(DockContextCloseOverviewMenuItem))
+            {
+                throw new InvalidOperationException("Expected AvalonDock document context menu commands to be executable while startup documents are open.");
+            }
+
+            if (ViewModel.AvalonDockContextMenuCommandCanExecuteCount <= canExecuteCountBefore)
+            {
+                throw new InvalidOperationException("Expected AvalonDock document context menu commands to route CanExecute through the window command bindings.");
+            }
         }
+    }
+
+    internal void ExerciseAvalonDockDocumentContextMenuCommands()
+    {
+        bool closeMenuAfterExercise = false;
+        if (!DockDocumentContextMenu.IsOpen)
+        {
+            DockDocumentContextMenu.PlacementTarget = DockManager;
+            DockDocumentContextMenu.IsOpen = true;
+            closeMenuAfterExercise = true;
+        }
+
+        ValidateAvalonDockDocumentContextMenuState(expectedOpen: true);
+
+        int executedCountBefore = ViewModel.AvalonDockContextMenuCommandExecutedCount;
+        ExecuteDockContextCommand(DockContextActivateEditorMenuItem);
+        AssertEqual(executedCountBefore + 1, ViewModel.AvalonDockContextMenuCommandExecutedCount, "AvalonDock context menu command executed count");
+        AssertEqual("ActivateEditor", ViewModel.LastAvalonDockContextMenuCommand, "AvalonDock last context menu command");
+        AssertEqual(true, EditorDocument.IsSelected, "AvalonDock context menu activate command selected editor");
+        AssertEqual(true, EditorDocument.IsActive, "AvalonDock context menu activate command activated editor");
+        AssertEqual("Editor document activated", ViewModel.Status, "AvalonDock context menu activate command status");
+
+        if (closeMenuAfterExercise)
+        {
+            DockDocumentContextMenu.IsOpen = false;
+        }
+    }
+
+    private static bool CanExecuteDockContextCommand(MenuItem menuItem)
+    {
+        if (menuItem.Command is not RoutedCommand command ||
+            menuItem.CommandTarget is not IInputElement target)
+        {
+            throw new InvalidOperationException($"Expected AvalonDock context menu item '{menuItem.Name}' to use a routed command target.");
+        }
+
+        return command.CanExecute(menuItem.CommandParameter, target);
+    }
+
+    private static void ExecuteDockContextCommand(MenuItem menuItem)
+    {
+        if (menuItem.Command is not RoutedCommand command ||
+            menuItem.CommandTarget is not IInputElement target)
+        {
+            throw new InvalidOperationException($"Expected AvalonDock context menu item '{menuItem.Name}' to execute through a routed command target.");
+        }
+
+        command.Execute(menuItem.CommandParameter, target);
     }
 
     internal void ValidateAvalonDockLayoutReplacementEvents(string layoutXml)
@@ -2346,7 +2470,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock theme switching, AvalonDock document context menu commands and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -2463,6 +2587,7 @@ public partial class MainWindow : Window
                 DockContextCancelNextCloseMenuItem.IsChecked = true;
                 DockContextCancelNextCloseMenuItem.GetBindingExpression(MenuItem.IsCheckedProperty)?.UpdateSource();
                 AssertEqual(true, ViewModel.CancelNextOverviewClose, "Toolkit live AvalonDock context menu cancellation binding");
+                ExerciseAvalonDockDocumentContextMenuCommands();
             },
             DispatcherPriority.Send);
 
@@ -3283,6 +3408,9 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private int _avalonDockDockedCount;
     private int _avalonDockLayoutChangingCount;
     private int _avalonDockLayoutChangedCount;
+    private int _avalonDockContextMenuCommandCanExecuteCount;
+    private int _avalonDockContextMenuCommandExecutedCount;
+    private string _lastAvalonDockContextMenuCommand = string.Empty;
     private bool _cancelNextOverviewClose;
     private string _lastClosingDocumentContentId = string.Empty;
     private string _lastClosedDocumentContentId = string.Empty;
@@ -4224,6 +4352,45 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         }
     }
 
+    public int AvalonDockContextMenuCommandCanExecuteCount
+    {
+        get => _avalonDockContextMenuCommandCanExecuteCount;
+        set
+        {
+            if (_avalonDockContextMenuCommandCanExecuteCount != value)
+            {
+                _avalonDockContextMenuCommandCanExecuteCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int AvalonDockContextMenuCommandExecutedCount
+    {
+        get => _avalonDockContextMenuCommandExecutedCount;
+        set
+        {
+            if (_avalonDockContextMenuCommandExecutedCount != value)
+            {
+                _avalonDockContextMenuCommandExecutedCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string LastAvalonDockContextMenuCommand
+    {
+        get => _lastAvalonDockContextMenuCommand;
+        set
+        {
+            if (!string.Equals(_lastAvalonDockContextMenuCommand, value, StringComparison.Ordinal))
+            {
+                _lastAvalonDockContextMenuCommand = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public bool CancelNextOverviewClose
     {
         get => _cancelNextOverviewClose;
@@ -4922,6 +5089,8 @@ internal static class ToolkitSelfTest
             {
                 throw new InvalidOperationException("Expected AvalonDock context menu checkable item to update close-cancellation binding.");
             }
+
+            window.ExerciseAvalonDockDocumentContextMenuCommands();
 
             window.DockDocumentContextMenu.IsOpen = false;
             PumpDispatcherUntil(

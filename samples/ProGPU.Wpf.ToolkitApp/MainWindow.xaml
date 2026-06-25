@@ -63,6 +63,15 @@
                                             AnchorableTemplate="{StaticResource SourceAnchorableTitleTemplate}" />
   </Window.Resources>
 
+  <Window.CommandBindings>
+    <CommandBinding Command="{x:Static local:ToolkitDockCommands.ActivateEditor}"
+                    CanExecute="ActivateEditorCommand_CanExecute"
+                    Executed="ActivateEditorCommand_Executed" />
+    <CommandBinding Command="{x:Static local:ToolkitDockCommands.CloseOverview}"
+                    CanExecute="CloseOverviewCommand_CanExecute"
+                    Executed="CloseOverviewCommand_Executed" />
+  </Window.CommandBindings>
+
   <DockPanel LastChildFill="True">
     <Border DockPanel.Dock="Top"
             Background="{StaticResource ToolkitAccentBrush}"
@@ -167,10 +176,12 @@
         <ContextMenu x:Name="DockDocumentContextMenu">
           <MenuItem x:Name="DockContextActivateEditorMenuItem"
                     Header="Activate editor"
-                    Click="ActivateEditorButton_Click" />
+                    Command="{x:Static local:ToolkitDockCommands.ActivateEditor}"
+                    CommandTarget="{Binding PlacementTarget, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
           <MenuItem x:Name="DockContextCloseOverviewMenuItem"
                     Header="Close overview"
-                    Click="CloseOverviewDocumentButton_Click" />
+                    Command="{x:Static local:ToolkitDockCommands.CloseOverview}"
+                    CommandTarget="{Binding PlacementTarget, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
           <Separator />
           <MenuItem x:Name="DockContextCancelNextCloseMenuItem"
                     Header="Cancel next overview close"

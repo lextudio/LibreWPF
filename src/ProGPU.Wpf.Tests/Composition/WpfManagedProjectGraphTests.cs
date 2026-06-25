@@ -11239,6 +11239,14 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "PresentationCore",
             "PresentationCore.csproj");
+        var portableSourceBridgePath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "WpfPortablePresentationSourceBridge.cs");
+        var proGpuHostPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "ProGpuWpfWindowHost.cs");
 
         var compositionTarget = File.ReadAllText(compositionTargetPath);
         var portableTarget = File.ReadAllText(portableTargetPath);
@@ -11247,6 +11255,8 @@ public sealed class WpfManagedProjectGraphTests
         var hwndSource = File.ReadAllText(hwndSourcePath);
         var hwndTarget = File.ReadAllText(hwndTargetPath);
         var project = File.ReadAllText(projectPath);
+        var portableSourceBridge = File.ReadAllText(portableSourceBridgePath);
+        var proGpuHost = File.ReadAllText(proGpuHostPath);
 
         Assert.Contains("internal virtual bool UsesDuceComposition", compositionTarget, StringComparison.Ordinal);
         Assert.Contains("internal virtual void OnRootVisualChanged", compositionTarget, StringComparison.Ordinal);
@@ -11284,8 +11294,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RootChanged(oldRootVisual, _rootVisual)", portableSource, StringComparison.Ordinal);
         Assert.Contains("_keyboardInputProvider.OnRootChanged(oldRootVisual, _rootVisual)", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal event EventHandler RenderRequested", portableSource, StringComparison.Ordinal);
+        Assert.Contains("internal event EventHandler CursorRequested", portableSource, StringComparison.Ordinal);
+        Assert.Contains("internal Cursor RequestedCursor { get; private set; }", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal void SetDeviceScale(double dpiScaleX, double dpiScaleY)", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal void SetClientSize(double width, double height)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("private bool RequestCursor(Cursor cursor)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("RequestedCursor = cursor ?? Cursors.None;", portableSource, StringComparison.Ordinal);
+        Assert.Contains("CursorRequested?.Invoke(this, EventArgs.Empty);", portableSource, StringComparison.Ordinal);
         Assert.Contains("private void ApplyRootVisualLayout()", portableSource, StringComparison.Ordinal);
         Assert.Contains("rootUIElement.Measure(_clientSize);", portableSource, StringComparison.Ordinal);
         Assert.Contains("rootUIElement.Arrange(new Rect(new Point(), _clientSize));", portableSource, StringComparison.Ordinal);
@@ -11299,6 +11314,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("InputManager.Current.RegisterInputProvider(this)", portableSource, StringComparison.Ordinal);
         Assert.Contains("Keyboard.Focus(null)", portableSource, StringComparison.Ordinal);
         Assert.Contains("void IInputProvider.NotifyDeactivate()\n            {\n                ReleaseMouseCapture(reportInput: true);\n            }", portableSource, StringComparison.Ordinal);
+        Assert.Contains("return _source.RequestCursor(cursor);", portableSource, StringComparison.Ordinal);
         Assert.Contains("RawMouseActions.Activate | RawMouseActions.CancelCapture", portableSource, StringComparison.Ordinal);
         Assert.Contains("_site.ReportInput(report)", portableSource, StringComparison.Ordinal);
         Assert.Contains(@"<Compile Include=""System\Windows\PortablePresentationSource.cs"" />", project, StringComparison.Ordinal);
@@ -11318,6 +11334,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("return _portableOwner.RootVisual;", hwndSource, StringComparison.Ordinal);
         Assert.Contains("_portableOwner.RootVisual = value;", hwndSource, StringComparison.Ordinal);
         Assert.Contains("internal bool IsPortable", hwndSource, StringComparison.Ordinal);
+
+        Assert.Contains("private const string CursorRequestedEventName = \"CursorRequested\";", portableSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("private const string RequestedCursorPropertyName = \"RequestedCursor\";", portableSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("bridge.TrySubscribeToCursorRequested(cursorRequestedEvent);", portableSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("private void OnSourceCursorRequested(object? sender, EventArgs e)", portableSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("_host.ApplyPortableCursor(ToWpfCursor(cursor));", portableSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("\"Hand\" => WpfCursor.Hand", portableSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("internal WpfCursor? LastPortableCursor { get; private set; }", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("internal bool ApplyPortableCursor(WpfCursor cursor)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("LastPortableCursor = cursor;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("get { return _portableOwner != null; }", hwndSource, StringComparison.Ordinal);
         Assert.Contains("internal PresentationSource PortableOwner", hwndSource, StringComparison.Ordinal);
         Assert.Contains("get { return _portableOwner; }", hwndSource, StringComparison.Ordinal);

@@ -156,6 +156,41 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeLowersLayoutClipIntoRetainedOwnerScopes()
+    {
+        var root = new FakeVisual
+        {
+            LayoutClip = new FakeRectangleGeometry(new FakeRect(4, 5, 60, 70))
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(2, sink.RetainedVisualStates.Count);
+        AssertReplayRect(4, 5, 60, 70, sink.RetainedVisualStates[0].ClipBounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
+    public void ReplaySubtreeIntersectsLayoutAndExplicitClipsForRetainedOwnerScopes()
+    {
+        var root = new FakeVisual
+        {
+            Clip = new FakeRectangleGeometry(new FakeRect(0, 0, 50, 50)),
+            LayoutClip = new FakeRectangleGeometry(new FakeRect(10, 12, 60, 70))
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(2, sink.RetainedVisualStates.Count);
+        AssertReplayRect(10, 12, 40, 38, sink.RetainedVisualStates[0].ClipBounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
     public void ReplaySubtreeLowersVisualScrollableAreaClipIntoRetainedOwnerScopes()
     {
         var root = new FakeVisual
@@ -987,6 +1022,25 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreeAppliesLayoutClipAsRectangleClip()
+    {
+        var root = new FakeVisual
+        {
+            LayoutClip = new FakeRectangleGeometry(new FakeRect(2, 3, 40, 50))
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushNativeClip", "DrawRectangle", "Pop" }, sink.Operations);
+        var clip = Assert.Single(sink.NativeClips);
+        AssertReplayRect(2, 3, 40, 50, clip);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
     public void ReplaySubtreeProjectsScrollableAreaClipOutsideVisualOffsetForFallbackRendering()
     {
         var root = new FakeVisual
@@ -1580,6 +1634,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         public object? VisualClip { get; init; }
 
+        public object? LayoutClip { get; init; }
+
         public object? Bounds { get; init; }
 
         public object? OpacityMask { get; init; }
@@ -1605,6 +1661,11 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public object? TextRenderingMode { get; init; }
 
         public object? TextHintingMode { get; init; }
+
+        public object? GetLayoutClipInternal()
+        {
+            return LayoutClip;
+        }
     }
 
     private sealed class FakeDrawingVisual : FakeVisual

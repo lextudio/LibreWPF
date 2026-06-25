@@ -45,10 +45,14 @@ namespace System.Windows
 
         internal event EventHandler Disposed;
 
+        internal event EventHandler CursorRequested;
+
         internal IntPtr Handle
         {
             get { return _isDisposed ? IntPtr.Zero : _handle; }
         }
+
+        internal Cursor RequestedCursor { get; private set; }
 
         internal HwndSource HwndSource
         {
@@ -132,6 +136,7 @@ namespace System.Windows
             finally
             {
                 RenderRequested = null;
+                CursorRequested = null;
                 Disposed = null;
                 _isDisposed = true;
                 GC.SuppressFinalize(this);
@@ -254,6 +259,18 @@ namespace System.Windows
             RenderRequested?.Invoke(this, EventArgs.Empty);
         }
 
+        private bool RequestCursor(Cursor cursor)
+        {
+            if (_isDisposed || !HasRootVisual)
+            {
+                return false;
+            }
+
+            RequestedCursor = cursor ?? Cursors.None;
+            CursorRequested?.Invoke(this, EventArgs.Empty);
+            return true;
+        }
+
         private void VerifyNotDisposed()
         {
             ObjectDisposedException.ThrowIf(_isDisposed, this);
@@ -350,7 +367,7 @@ namespace System.Windows
 
             bool IMouseInputProvider.SetCursor(Cursor cursor)
             {
-                return _source.HasRootVisual;
+                return _source.RequestCursor(cursor);
             }
 
             bool IMouseInputProvider.CaptureMouse()

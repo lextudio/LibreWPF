@@ -133,6 +133,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     public WpfPortablePresentationSourceBridge? PortablePresentationSourceBridge => _portablePresentationSourceBridge;
 
+    internal WpfCursor? LastPortableCursor { get; private set; }
+
     public IWpfPlatformServices PlatformServices
     {
         get => _platformServices;
@@ -380,6 +382,19 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     {
         ThrowIfDisposed();
 
+        return SetCursorCore(cursor);
+    }
+
+    internal bool ApplyPortableCursor(WpfCursor cursor)
+    {
+        ThrowIfDisposed();
+
+        LastPortableCursor = cursor;
+        return SetCursorCore(cursor);
+    }
+
+    private bool SetCursorCore(WpfCursor cursor)
+    {
         return _window != null && PlatformServices.Cursors.SetCursor(_window, cursor);
     }
 

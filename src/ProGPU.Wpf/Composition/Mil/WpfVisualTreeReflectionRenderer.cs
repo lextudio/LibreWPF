@@ -1332,7 +1332,66 @@ public sealed class WpfVisualTreeReflectionRenderer
             return true;
         }
 
-        return TryGetPropertyValue(visual, "Clip", out clip);
+        var hasExplicitClip = TryGetPropertyValue(visual, "Clip", out var explicitClip) && explicitClip != null;
+        if (TryGetLayoutClip(visual, out var layoutClip) && layoutClip != null)
+        {
+            if (hasExplicitClip)
+            {
+                return TryCreateIntersectedClip(layoutClip, explicitClip!, out clip);
+            }
+
+            clip = layoutClip;
+            return true;
+        }
+
+        clip = explicitClip;
+        return hasExplicitClip;
+    }
+
+    private static bool TryGetLayoutClip(object visual, out object? clip)
+    {
+        clip = null;
+        var method = FindParameterlessMethod(visual.GetType(), "GetLayoutClipInternal");
+        if (method == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            clip = method.Invoke(visual, null);
+            return true;
+        }
+        catch (TargetInvocationException)
+        {
+            clip = null;
+            return false;
+        }
+    }
+
+    private static bool TryCreateIntersectedClip(object first, object second, out object? clip)
+    {
+        if (TryReadRectangleClipBounds(first, out var firstBounds)
+            && TryReadRectangleClipBounds(second, out var secondBounds))
+        {
+            var combined = CombineClipBounds(firstBounds, secondBounds);
+            clip = new System.Windows.Media.RectangleGeometry(ToMediaRect(combined));
+            return true;
+        }
+
+        var firstGeometry = WpfReflectionResourceResolver.AdaptGeometry(first);
+        var secondGeometry = WpfReflectionResourceResolver.AdaptGeometry(second);
+        if (firstGeometry == null || secondGeometry == null)
+        {
+            clip = null;
+            return false;
+        }
+
+        clip = new System.Windows.Media.CombinedGeometry(
+            System.Windows.Media.GeometryCombineMode.Intersect,
+            firstGeometry,
+            secondGeometry);
+        return true;
     }
 
     private static bool TryReadSize(object sizeValue, out double width, out double height)
@@ -1509,6 +1568,25 @@ public sealed class WpfVisualTreeReflectionRenderer
             if (property != null)
             {
                 return property;
+            }
+        }
+
+        return null;
+    }
+
+    private static MethodInfo? FindParameterlessMethod(Type type, string name)
+    {
+        for (var current = type; current != null; current = current.BaseType)
+        {
+            var method = current.GetMethod(
+                name,
+                MemberFlags,
+                binder: null,
+                types: Type.EmptyTypes,
+                modifiers: null);
+            if (method != null)
+            {
+                return method;
             }
         }
 

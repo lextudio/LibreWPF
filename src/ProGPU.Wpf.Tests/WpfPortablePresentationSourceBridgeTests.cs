@@ -132,6 +132,38 @@ public sealed class WpfPortablePresentationSourceBridgeTests
     }
 
     [Fact]
+    public void SourceCursorRequestForwardsWpfCursorToHost()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var source = new FakePortablePresentationSource();
+
+        var bound = WpfPortablePresentationSourceBridge.TryBind(host, source, out var bridge);
+        Assert.True(bound);
+        Assert.NotNull(bridge);
+
+        source.RequestCursor(new FakeCursor("Hand"));
+
+        Assert.Equal(WpfCursor.Hand, host.LastPortableCursor);
+    }
+
+    [Fact]
+    public void DisposeUnsubscribesFromSourceCursorRequests()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var source = new FakePortablePresentationSource();
+
+        var bound = WpfPortablePresentationSourceBridge.TryBind(host, source, out var bridge);
+        Assert.True(bound);
+        source.RequestCursor(new FakeCursor("IBeam"));
+        Assert.Equal(WpfCursor.IBeam, host.LastPortableCursor);
+
+        bridge!.Dispose();
+        source.RequestCursor(new FakeCursor("Hand"));
+
+        Assert.Equal(WpfCursor.IBeam, host.LastPortableCursor);
+    }
+
+    [Fact]
     public void TryBindReturnsFalseWhenSourceShapeIsMissing()
     {
         using var host = new ProGpuWpfWindowHost();
@@ -148,9 +180,13 @@ public sealed class WpfPortablePresentationSourceBridgeTests
 
         internal event EventHandler? RenderRequested;
 
+        internal event EventHandler? CursorRequested;
+
         public object CompositionTarget { get; } = new();
 
         public IntPtr Handle { get; init; }
+
+        internal object? RequestedCursor { get; private set; }
 
         public object? RootVisual
         {
@@ -186,10 +222,26 @@ public sealed class WpfPortablePresentationSourceBridgeTests
             RenderRequested?.Invoke(this, EventArgs.Empty);
         }
 
+        internal void RequestCursor(object cursor)
+        {
+            RequestedCursor = cursor;
+            CursorRequested?.Invoke(this, EventArgs.Empty);
+        }
+
         public void Dispose()
         {
             IsDisposed = true;
         }
+    }
+
+    private sealed class FakeCursor
+    {
+        public FakeCursor(string cursorType)
+        {
+            CursorType = cursorType;
+        }
+
+        public string CursorType { get; }
     }
 
     private sealed class TestRenderScheduler : IWpfRenderScheduler

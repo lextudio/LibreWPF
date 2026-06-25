@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using System.Windows.Media.ProGPU.Platform;
 
 namespace System.Windows.Media.ProGPU;
 
@@ -10,6 +11,8 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     private const string CompositionTargetPropertyName = "CompositionTarget";
     private const string HandlePropertyName = "Handle";
     private const string RenderRequestedEventName = "RenderRequested";
+    private const string CursorRequestedEventName = "CursorRequested";
+    private const string RequestedCursorPropertyName = "RequestedCursor";
     private const string SetDeviceScaleMethodName = "SetDeviceScale";
     private const string SetClientSizeMethodName = "SetClientSize";
 
@@ -17,12 +20,15 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     private readonly PropertyInfo _rootVisualProperty;
     private readonly PropertyInfo _compositionTargetProperty;
     private readonly PropertyInfo? _handleProperty;
+    private readonly PropertyInfo? _requestedCursorProperty;
     private readonly MethodInfo? _setDeviceScaleMethod;
     private readonly MethodInfo? _setClientSizeMethod;
     private readonly MethodInfo? _disposeMethod;
     private readonly bool _ownsSource;
     private MethodInfo? _removeRenderRequestedMethod;
+    private MethodInfo? _removeCursorRequestedMethod;
     private Delegate? _renderRequestedHandler;
+    private Delegate? _cursorRequestedHandler;
     private bool _isDisposed;
 
     private WpfPortablePresentationSourceBridge(
@@ -31,6 +37,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         PropertyInfo rootVisualProperty,
         PropertyInfo compositionTargetProperty,
         PropertyInfo? handleProperty,
+        PropertyInfo? requestedCursorProperty,
         MethodInfo? setDeviceScaleMethod,
         MethodInfo? setClientSizeMethod,
         MethodInfo? disposeMethod,
@@ -41,6 +48,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         _rootVisualProperty = rootVisualProperty;
         _compositionTargetProperty = compositionTargetProperty;
         _handleProperty = handleProperty;
+        _requestedCursorProperty = requestedCursorProperty;
         _setDeviceScaleMethod = setDeviceScaleMethod;
         _setClientSizeMethod = setClientSizeMethod;
         _disposeMethod = disposeMethod;
@@ -187,6 +195,11 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
             _removeRenderRequestedMethod.Invoke(Source, new object[] { _renderRequestedHandler });
         }
 
+        if (_removeCursorRequestedMethod != null && _cursorRequestedHandler != null)
+        {
+            _removeCursorRequestedMethod.Invoke(Source, new object[] { _cursorRequestedHandler });
+        }
+
         object? rootVisual = _rootVisualProperty.GetValue(Source);
         if (ReferenceEquals(_host.WpfRootVisual, rootVisual))
         {
@@ -215,6 +228,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         PropertyInfo? rootVisualProperty = FindProperty(sourceType, RootVisualPropertyName);
         PropertyInfo? compositionTargetProperty = FindProperty(sourceType, CompositionTargetPropertyName);
         PropertyInfo? handleProperty = FindProperty(sourceType, HandlePropertyName);
+        PropertyInfo? requestedCursorProperty = FindProperty(sourceType, RequestedCursorPropertyName);
         if (rootVisualProperty == null ||
             !rootVisualProperty.CanRead ||
             !rootVisualProperty.CanWrite ||
@@ -245,6 +259,9 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         EventInfo? renderRequestedEvent = sourceType.GetEvent(
             RenderRequestedEventName,
             BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        EventInfo? cursorRequestedEvent = sourceType.GetEvent(
+            CursorRequestedEventName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
         bridge = new WpfPortablePresentationSourceBridge(
             host,
@@ -252,11 +269,13 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
             rootVisualProperty,
             compositionTargetProperty,
             handleProperty,
+            requestedCursorProperty,
             setDeviceScaleMethod,
             setClientSizeMethod,
             disposeMethod,
             ownsSource);
         bridge.TrySubscribeToRenderRequested(renderRequestedEvent);
+        bridge.TrySubscribeToCursorRequested(cursorRequestedEvent);
 
         bridge.SyncHostRootVisual();
         return true;
@@ -317,6 +336,68 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         {
             _host.RequestRenderAndWakeNativeLoop();
         }
+    }
+
+    private bool TrySubscribeToCursorRequested(EventInfo? cursorRequestedEvent)
+    {
+        if (cursorRequestedEvent == null || _requestedCursorProperty == null)
+        {
+            return false;
+        }
+
+        MethodInfo? addMethod = cursorRequestedEvent.GetAddMethod(nonPublic: true);
+        MethodInfo? removeMethod = cursorRequestedEvent.GetRemoveMethod(nonPublic: true);
+        Type? eventHandlerType = cursorRequestedEvent.EventHandlerType;
+        if (addMethod == null || removeMethod == null || eventHandlerType == null)
+        {
+            return false;
+        }
+
+        Delegate handler = Delegate.CreateDelegate(
+            eventHandlerType,
+            this,
+            nameof(OnSourceCursorRequested));
+        addMethod.Invoke(Source, new object[] { handler });
+        _removeCursorRequestedMethod = removeMethod;
+        _cursorRequestedHandler = handler;
+        return true;
+    }
+
+    private void OnSourceCursorRequested(object? sender, EventArgs e)
+    {
+        if (_isDisposed || _requestedCursorProperty == null)
+        {
+            return;
+        }
+
+        object? cursor = _requestedCursorProperty.GetValue(Source);
+        _host.ApplyPortableCursor(ToWpfCursor(cursor));
+    }
+
+    private static WpfCursor ToWpfCursor(object? cursor)
+    {
+        string? cursorTypeName = cursor?.GetType()
+            .GetProperty("CursorType", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?.GetValue(cursor)
+            ?.ToString();
+
+        cursorTypeName ??= cursor?.ToString();
+        return cursorTypeName switch
+        {
+            "No" => WpfCursor.No,
+            "Arrow" => WpfCursor.Arrow,
+            "AppStarting" => WpfCursor.AppStarting,
+            "Cross" => WpfCursor.Crosshair,
+            "IBeam" => WpfCursor.IBeam,
+            "SizeAll" => WpfCursor.SizeAll,
+            "SizeNESW" => WpfCursor.SizeNESW,
+            "SizeNS" => WpfCursor.SizeNS,
+            "SizeNWSE" => WpfCursor.SizeNWSE,
+            "SizeWE" => WpfCursor.SizeWE,
+            "Wait" => WpfCursor.Wait,
+            "Hand" => WpfCursor.Hand,
+            _ => WpfCursor.Default
+        };
     }
 
     private void ThrowIfDisposed()

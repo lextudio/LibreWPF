@@ -26,6 +26,7 @@ using Xceed.Wpf.Toolkit.PropertyGrid;
 using AvalonDockAnchorableItem = Xceed.Wpf.AvalonDock.Controls.LayoutAnchorableItem;
 using AvalonDockDocumentItem = Xceed.Wpf.AvalonDock.Controls.LayoutDocumentItem;
 using AvalonDockLayoutItem = Xceed.Wpf.AvalonDock.Controls.LayoutItem;
+using ToolkitMessageBoxControl = Xceed.Wpf.Toolkit.MessageBox;
 using ToolkitRichTextBox = Xceed.Wpf.Toolkit.RichTextBox;
 
 namespace ProGPU.Wpf.ToolkitApp;
@@ -389,16 +390,18 @@ public partial class MainWindow : Window
         _viewModel.ChildWindowStatus = ToolkitChildWindow.DialogResult == true
             ? "ChildWindow accepted"
             : "ChildWindow closed";
-        _viewModel.Status = _viewModel.ChildWindowStatus;
-        _viewModel.Activity.Add(_viewModel.ChildWindowStatus);
+        _viewModel.WindowContainerStatus = _viewModel.ChildWindowStatus;
+        _viewModel.Status = _viewModel.WindowContainerStatus;
+        _viewModel.Activity.Add(_viewModel.WindowContainerStatus);
     }
 
     internal void ShowToolkitChildWindow()
     {
         _viewModel.ChildWindowShowCount++;
         _viewModel.ChildWindowStatus = "ChildWindow open";
-        _viewModel.Status = "ChildWindow open";
-        _viewModel.Activity.Add(_viewModel.ChildWindowStatus);
+        _viewModel.WindowContainerStatus = _viewModel.ChildWindowStatus;
+        _viewModel.Status = _viewModel.WindowContainerStatus;
+        _viewModel.Activity.Add(_viewModel.WindowContainerStatus);
         ChildWindowInputTextBox.Text = $"Child input {_viewModel.ChildWindowShowCount}";
         ToolkitChildWindow.FocusedElement = ChildWindowInputTextBox;
         ToolkitChildWindow.Show();
@@ -420,6 +423,53 @@ public partial class MainWindow : Window
         AssertEqual(closedCountBefore + 1, ViewModel.ChildWindowClosedCount, "Toolkit ChildWindow closed count");
         AssertEqual(true, ViewModel.LastChildWindowDialogResult, "Toolkit ChildWindow dialog result");
         AssertEqual("ChildWindow accepted", ViewModel.ChildWindowStatus, "Toolkit ChildWindow accepted status");
+    }
+
+    private void ShowToolkitMessageBoxButton_Click(object sender, RoutedEventArgs e)
+    {
+        ShowToolkitMessageBox();
+    }
+
+    private void ToolkitMessageBox_Closed(object? sender, EventArgs e)
+    {
+        _viewModel.ToolkitMessageBoxClosedCount++;
+        _viewModel.LastToolkitMessageBoxResult = ToolkitMessageBox.MessageBoxResult;
+        _viewModel.ToolkitMessageBoxStatus = $"MessageBox {ToolkitMessageBox.MessageBoxResult}";
+        _viewModel.WindowContainerStatus = _viewModel.ToolkitMessageBoxStatus;
+        _viewModel.Status = _viewModel.WindowContainerStatus;
+        _viewModel.Activity.Add(_viewModel.WindowContainerStatus);
+    }
+
+    internal void ShowToolkitMessageBox()
+    {
+        _viewModel.ToolkitMessageBoxShowCount++;
+        _viewModel.ToolkitMessageBoxStatus = "MessageBox open";
+        _viewModel.WindowContainerStatus = _viewModel.ToolkitMessageBoxStatus;
+        _viewModel.Status = _viewModel.WindowContainerStatus;
+        _viewModel.Activity.Add(_viewModel.WindowContainerStatus);
+        ToolkitMessageBox.ShowMessageBox(
+            "MessageBox inside Xceed WindowContainer",
+            "Toolkit message",
+            MessageBoxButton.OK,
+            MessageBoxImage.None,
+            MessageBoxResult.OK);
+    }
+
+    internal void ExerciseToolkitMessageBox()
+    {
+        int showCountBefore = ViewModel.ToolkitMessageBoxShowCount;
+        int closedCountBefore = ViewModel.ToolkitMessageBoxClosedCount;
+
+        ShowToolkitMessageBox();
+        ValidateToolkitMessageBoxState(expectedOpen: true);
+        AssertEqual(showCountBefore + 1, ViewModel.ToolkitMessageBoxShowCount, "Toolkit MessageBox show count");
+
+        Button okButton = GetToolkitMessageBoxButton("PART_OkButton");
+        okButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, okButton));
+        ValidateToolkitMessageBoxState(expectedOpen: false);
+        AssertEqual(closedCountBefore + 1, ViewModel.ToolkitMessageBoxClosedCount, "Toolkit MessageBox closed count");
+        AssertEqual(MessageBoxResult.OK, ViewModel.LastToolkitMessageBoxResult, "Toolkit MessageBox result");
+        AssertEqual("MessageBox OK", ViewModel.ToolkitMessageBoxStatus, "Toolkit MessageBox OK status");
     }
 
     private void SerializeLayoutButton_Click(object sender, RoutedEventArgs e)
@@ -612,6 +662,42 @@ public partial class MainWindow : Window
                 throw new InvalidOperationException("Expected Toolkit ChildWindow closing and closed events to fire.");
             }
         }
+    }
+
+    internal void ValidateToolkitMessageBoxState(bool expectedOpen)
+    {
+        AssertEqual(true, ToolkitChildWindowContainer.Children.Contains(ToolkitMessageBox), "Toolkit MessageBox WindowContainer membership");
+        AssertEqual("OK", Convert.ToString(ToolkitMessageBox.OkButtonContent, CultureInfo.InvariantCulture), "Toolkit MessageBox OK button content");
+
+        if (expectedOpen)
+        {
+            AssertEqual(Visibility.Visible, ToolkitMessageBox.Visibility, "Toolkit MessageBox open visibility");
+            AssertEqual("Toolkit message", Convert.ToString(ToolkitMessageBox.Caption, CultureInfo.InvariantCulture), "Toolkit MessageBox caption");
+            AssertEqual("MessageBox inside Xceed WindowContainer", ToolkitMessageBox.Text, "Toolkit MessageBox text");
+            AssertEqual(MessageBoxResult.None, ToolkitMessageBox.MessageBoxResult, "Toolkit MessageBox result while open");
+            AssertEqual("MessageBox open", ViewModel.ToolkitMessageBoxStatus, "Toolkit MessageBox open status");
+            if (GetToolkitMessageBoxButton("PART_OkButton") is not { IsDefault: true })
+            {
+                throw new InvalidOperationException("Expected Toolkit MessageBox OK button to be the default button.");
+            }
+        }
+        else
+        {
+            AssertEqual(Visibility.Collapsed, ToolkitMessageBox.Visibility, "Toolkit MessageBox closed visibility");
+            if (ViewModel.ToolkitMessageBoxShowCount > 0 &&
+                ViewModel.ToolkitMessageBoxClosedCount <= 0)
+            {
+                throw new InvalidOperationException("Expected Toolkit MessageBox Closed event to fire.");
+            }
+        }
+    }
+
+    internal Button GetToolkitMessageBoxButton(string partName)
+    {
+        ToolkitMessageBox.ApplyTemplate();
+        ToolkitMessageBox.UpdateLayout();
+        return ToolkitMessageBox.Template?.FindName(partName, ToolkitMessageBox) as Button
+            ?? throw new InvalidOperationException($"Expected Toolkit MessageBox template button '{partName}'.");
     }
 
     internal void ValidateAvalonDockDocumentContextMenuState(bool expectedOpen)
@@ -1238,6 +1324,7 @@ public partial class MainWindow : Window
         await ValidateLiveInputEditorsAsync(liveHost);
         await ValidateLiveWizardAsync(liveHost);
         await ValidateLiveToolkitChildWindowAsync(liveHost);
+        await ValidateLiveToolkitMessageBoxAsync(liveHost);
         await ValidateLiveSourceBackedAvalonDockAsync(liveHost);
         await ValidateLiveAvalonDockThemeSwitchingAsync(liveHost);
 
@@ -1358,7 +1445,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, Toolkit child window lifecycle, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -1619,6 +1706,43 @@ public partial class MainWindow : Window
                 AssertEqual(closedCountBefore + 1, ViewModel.ChildWindowClosedCount, "Toolkit live ChildWindow closed count");
                 AssertEqual(true, ViewModel.LastChildWindowDialogResult, "Toolkit live ChildWindow dialog result");
                 AssertEqual("ChildWindow accepted", ViewModel.ChildWindowStatus, "Toolkit live ChildWindow accepted status");
+            },
+            DispatcherPriority.Send);
+    }
+
+    private async Task ValidateLiveToolkitMessageBoxAsync(object liveHost)
+    {
+        int showCountBefore = ViewModel.ToolkitMessageBoxShowCount;
+        int closedCountBefore = ViewModel.ToolkitMessageBoxClosedCount;
+
+        await ClickLiveControlAsync(liveHost, ShowToolkitMessageBoxButton, "ShowToolkitMessageBoxButton");
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => ToolkitMessageBox.Visibility == Visibility.Visible,
+            "Toolkit live MessageBox open state");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                ValidateToolkitMessageBoxState(expectedOpen: true);
+                AssertEqual(showCountBefore + 1, ViewModel.ToolkitMessageBoxShowCount, "Toolkit live MessageBox show count");
+                Button okButton = GetToolkitMessageBoxButton("PART_OkButton");
+                okButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, okButton));
+            },
+            DispatcherPriority.Send);
+
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => ToolkitMessageBox.Visibility == Visibility.Collapsed,
+            "Toolkit live MessageBox closed state");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                ValidateToolkitMessageBoxState(expectedOpen: false);
+                AssertEqual(closedCountBefore + 1, ViewModel.ToolkitMessageBoxClosedCount, "Toolkit live MessageBox closed count");
+                AssertEqual(MessageBoxResult.OK, ViewModel.LastToolkitMessageBoxResult, "Toolkit live MessageBox result");
+                AssertEqual("MessageBox OK", ViewModel.ToolkitMessageBoxStatus, "Toolkit live MessageBox OK status");
             },
             DispatcherPriority.Send);
     }
@@ -2023,6 +2147,11 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private int _childWindowClosedCount;
     private bool? _lastChildWindowDialogResult;
     private string _childWindowStatus = "ChildWindow idle";
+    private int _toolkitMessageBoxShowCount;
+    private int _toolkitMessageBoxClosedCount;
+    private MessageBoxResult _lastToolkitMessageBoxResult = MessageBoxResult.None;
+    private string _toolkitMessageBoxStatus = "MessageBox idle";
+    private string _windowContainerStatus = "WindowContainer idle";
     private int _wizardPageChanges;
     private int _wizardFinishes;
     private int _wizardCancels;
@@ -2490,6 +2619,71 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
             if (!string.Equals(_childWindowStatus, value, StringComparison.Ordinal))
             {
                 _childWindowStatus = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int ToolkitMessageBoxShowCount
+    {
+        get => _toolkitMessageBoxShowCount;
+        set
+        {
+            if (_toolkitMessageBoxShowCount != value)
+            {
+                _toolkitMessageBoxShowCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int ToolkitMessageBoxClosedCount
+    {
+        get => _toolkitMessageBoxClosedCount;
+        set
+        {
+            if (_toolkitMessageBoxClosedCount != value)
+            {
+                _toolkitMessageBoxClosedCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public MessageBoxResult LastToolkitMessageBoxResult
+    {
+        get => _lastToolkitMessageBoxResult;
+        set
+        {
+            if (_lastToolkitMessageBoxResult != value)
+            {
+                _lastToolkitMessageBoxResult = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string ToolkitMessageBoxStatus
+    {
+        get => _toolkitMessageBoxStatus;
+        set
+        {
+            if (!string.Equals(_toolkitMessageBoxStatus, value, StringComparison.Ordinal))
+            {
+                _toolkitMessageBoxStatus = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string WindowContainerStatus
+    {
+        get => _windowContainerStatus;
+        set
+        {
+            if (!string.Equals(_windowContainerStatus, value, StringComparison.Ordinal))
+            {
+                _windowContainerStatus = value;
                 OnPropertyChanged();
             }
         }
@@ -3081,8 +3275,10 @@ internal static class ToolkitSelfTest
         Require<WindowContainer>(window, "ToolkitChildWindowContainer");
         Require<ChildWindow>(window, "ToolkitChildWindow");
         Require<Button>(window, "ShowChildWindowButton");
+        Require<Button>(window, "ShowToolkitMessageBoxButton");
         Require<TextBox>(window, "ChildWindowInputTextBox");
         Require<Button>(window, "AcceptChildWindowButton");
+        Require<ToolkitMessageBoxControl>(window, "ToolkitMessageBox");
         Require<PropertyGrid>(window, "DocumentPropertyGrid");
         Require<Button>(window, "AddSourceDocumentButton");
         Require<Button>(window, "ActivateSourceToolButton");
@@ -3174,6 +3370,7 @@ internal static class ToolkitSelfTest
         window.ValidateToolkitInputEditorState();
         window.ValidateToolkitWizardState(expectLoaded);
         window.ValidateToolkitChildWindowState(expectedOpen: false);
+        window.ValidateToolkitMessageBoxState(expectedOpen: false);
         window.ValidateSourceBackedAvalonDockState(mutateSources: true);
 
         if (expectLoaded)
@@ -3313,6 +3510,7 @@ internal static class ToolkitSelfTest
             }
 
             window.ExerciseToolkitChildWindow();
+            window.ExerciseToolkitMessageBox();
         }
 
         int themeSwitchCountBefore = window.ViewModel.DockThemeSwitchCount;

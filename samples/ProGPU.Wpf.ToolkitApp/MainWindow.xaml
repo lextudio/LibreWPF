@@ -472,10 +472,16 @@
                               Margin="0,0,6,0"
                               Padding="8,4"
                               Click="ShowChildWindowButton_Click" />
+                      <Button x:Name="ShowToolkitMessageBoxButton"
+                              Content="Show message"
+                              MinWidth="104"
+                              Margin="0,0,6,0"
+                              Padding="8,4"
+                              Click="ShowToolkitMessageBoxButton_Click" />
                       <TextBlock x:Name="ChildWindowStatusText"
                                  VerticalAlignment="Center"
                                  Foreground="#5E6A73"
-                                 Text="{Binding ChildWindowStatus}" />
+                                 Text="{Binding WindowContainerStatus}" />
                     </WrapPanel>
                     <xctk:WindowContainer x:Name="ToolkitChildWindowContainer"
                                           Grid.Row="1"
@@ -506,6 +512,14 @@
                                   Click="AcceptChildWindowButton_Click" />
                         </StackPanel>
                       </xctk:ChildWindow>
+                      <xctk:MessageBox x:Name="ToolkitMessageBox"
+                                       Caption="Toolkit message"
+                                       Text="MessageBox inside Xceed WindowContainer"
+                                       Width="230"
+                                       Left="12"
+                                       Top="36"
+                                       OkButtonContent="OK"
+                                       Closed="ToolkitMessageBox_Closed" />
                     </xctk:WindowContainer>
                   </Grid>
 

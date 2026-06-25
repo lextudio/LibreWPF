@@ -107,6 +107,8 @@ public partial class MainWindow : Window
         DockManager.LayoutChanged += DockManager_LayoutChanged;
         SourceDockManager.ActiveContentChanged += SourceDockManager_ActiveContentChanged;
         OverviewDocument.Closed += OverviewDocument_Closed;
+        PropertyPane.Hiding += PropertyPane_Hiding;
+        PropertyPane.IsVisibleChanged += PropertyPane_IsVisibleChanged;
         Loaded += OnToolkitWindowLoaded;
         StartLiveValidationIfRequired();
     }
@@ -636,6 +638,18 @@ public partial class MainWindow : Window
         _viewModel.OverviewDocumentClosedCount++;
     }
 
+    private void PropertyPane_Hiding(object? sender, CancelEventArgs e)
+    {
+        _viewModel.AvalonDockAnchorableHidingCount++;
+        _viewModel.LastAvalonDockAnchorableLifecycleTarget = PropertyPane.ContentId ?? PropertyPane.Title;
+    }
+
+    private void PropertyPane_IsVisibleChanged(object? sender, EventArgs e)
+    {
+        _viewModel.AvalonDockAnchorableIsVisibleChangedCount++;
+        _viewModel.LastAvalonDockAnchorableLifecycleTarget = PropertyPane.ContentId ?? PropertyPane.Title;
+    }
+
     private void ToggleEditorFloatButton_Click(object sender, RoutedEventArgs e)
     {
         if (EditorDocument.IsFloating)
@@ -669,7 +683,7 @@ public partial class MainWindow : Window
         }
         else
         {
-            PropertyPane.Hide(false);
+            PropertyPane.Hide();
             _viewModel.Status = "Property pane hidden";
             _viewModel.Activity.Add("Hidden property pane");
         }
@@ -2035,6 +2049,47 @@ public partial class MainWindow : Window
             if (ViewModel.AvalonDockDockedCount <= 0)
             {
                 throw new InvalidOperationException("Expected AvalonDock Docked event to fire for the editor document.");
+            }
+        }
+    }
+
+    internal void ValidatePropertyPaneAnchorableLifecycle(
+        int hidingCountBefore,
+        int visibleChangedCountBefore,
+        bool expectedHidden)
+    {
+        AssertEqual(expectedHidden, PropertyPane.IsHidden, "AvalonDock property pane hidden state");
+        AssertEqual(
+            PropertyPane.ContentId ?? PropertyPane.Title,
+            ViewModel.LastAvalonDockAnchorableLifecycleTarget,
+            "AvalonDock anchorable lifecycle target");
+
+        if (expectedHidden)
+        {
+            if (!DockLayoutRoot.Hidden.Contains(PropertyPane))
+            {
+                throw new InvalidOperationException("Expected AvalonDock property pane to be in the hidden collection.");
+            }
+
+            AssertEqual(
+                hidingCountBefore + 1,
+                ViewModel.AvalonDockAnchorableHidingCount,
+                "AvalonDock property pane Hiding event count");
+            if (ViewModel.AvalonDockAnchorableIsVisibleChangedCount <= visibleChangedCountBefore)
+            {
+                throw new InvalidOperationException("Expected AvalonDock property pane IsVisibleChanged event to fire while hiding.");
+            }
+        }
+        else
+        {
+            if (DockLayoutRoot.Hidden.Contains(PropertyPane))
+            {
+                throw new InvalidOperationException("Expected AvalonDock property pane to leave the hidden collection.");
+            }
+
+            if (ViewModel.AvalonDockAnchorableIsVisibleChangedCount <= visibleChangedCountBefore)
+            {
+                throw new InvalidOperationException("Expected AvalonDock property pane IsVisibleChanged event to fire while showing.");
             }
         }
     }
@@ -3572,23 +3627,28 @@ public partial class MainWindow : Window
             () => ValidateEditorFloatingState(expectedFloating: false),
             DispatcherPriority.Send);
 
+        int propertyPaneHidingCountBefore = ViewModel.AvalonDockAnchorableHidingCount;
+        int propertyPaneVisibleChangedCountBefore = ViewModel.AvalonDockAnchorableIsVisibleChangedCount;
         await ClickLiveControlAsync(liveHost, TogglePropertyPaneButton, "TogglePropertyPaneButton");
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () =>
             {
-                AssertEqual(true, PropertyPane.IsHidden, "Toolkit live property pane hidden state");
-                if (!DockLayoutRoot.Hidden.Contains(PropertyPane))
-                {
-                    throw new InvalidOperationException("Expected Toolkit live property pane to be in AvalonDock hidden collection.");
-                }
+                ValidatePropertyPaneAnchorableLifecycle(
+                    propertyPaneHidingCountBefore,
+                    propertyPaneVisibleChangedCountBefore,
+                    expectedHidden: true);
             },
             DispatcherPriority.Send);
 
+        propertyPaneVisibleChangedCountBefore = ViewModel.AvalonDockAnchorableIsVisibleChangedCount;
         await ClickLiveControlAsync(liveHost, TogglePropertyPaneButton, "TogglePropertyPaneButton");
         await InvokeWithLiveHostWakeAsync(
             liveHost,
-            () => AssertEqual(false, PropertyPane.IsHidden, "Toolkit live property pane restored state"),
+            () => ValidatePropertyPaneAnchorableLifecycle(
+                ViewModel.AvalonDockAnchorableHidingCount,
+                propertyPaneVisibleChangedCountBefore,
+                expectedHidden: false),
             DispatcherPriority.Send);
 
         await ClickLiveControlAsync(liveHost, ToggleActivityAutoHideButton, "ToggleActivityAutoHideButton");
@@ -3641,7 +3701,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit resource theme updates, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit/AvalonDock automation peers, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock keyboard navigation, AvalonDock anchorable keyboard navigation, AvalonDock auto-hide overlay keyboard navigation, AvalonDock theme switching, AvalonDock document context menu commands and close cancellation, AvalonDock anchorable context menu commands, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit resource theme updates, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit/AvalonDock automation peers, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock keyboard navigation, AvalonDock anchorable keyboard navigation, AvalonDock auto-hide overlay keyboard navigation, AvalonDock theme switching, AvalonDock document context menu commands and close cancellation, AvalonDock anchorable context menu commands, AvalonDock anchorable lifecycle events, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -4782,6 +4842,9 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private int _avalonDockDockedCount;
     private int _avalonDockLayoutChangingCount;
     private int _avalonDockLayoutChangedCount;
+    private int _avalonDockAnchorableHidingCount;
+    private int _avalonDockAnchorableIsVisibleChangedCount;
+    private string _lastAvalonDockAnchorableLifecycleTarget = string.Empty;
     private int _avalonDockContextMenuCommandCanExecuteCount;
     private int _avalonDockContextMenuCommandExecutedCount;
     private string _lastAvalonDockContextMenuCommand = string.Empty;
@@ -5863,6 +5926,45 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
             if (_avalonDockLayoutChangedCount != value)
             {
                 _avalonDockLayoutChangedCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int AvalonDockAnchorableHidingCount
+    {
+        get => _avalonDockAnchorableHidingCount;
+        set
+        {
+            if (_avalonDockAnchorableHidingCount != value)
+            {
+                _avalonDockAnchorableHidingCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int AvalonDockAnchorableIsVisibleChangedCount
+    {
+        get => _avalonDockAnchorableIsVisibleChangedCount;
+        set
+        {
+            if (_avalonDockAnchorableIsVisibleChangedCount != value)
+            {
+                _avalonDockAnchorableIsVisibleChangedCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string LastAvalonDockAnchorableLifecycleTarget
+    {
+        get => _lastAvalonDockAnchorableLifecycleTarget;
+        set
+        {
+            if (!string.Equals(_lastAvalonDockAnchorableLifecycleTarget, value, StringComparison.Ordinal))
+            {
+                _lastAvalonDockAnchorableLifecycleTarget = value;
                 OnPropertyChanged();
             }
         }
@@ -6982,19 +7084,20 @@ internal static class ToolkitSelfTest
             window.ValidateEditorFloatingState(expectedFloating: false);
         }
 
+        int propertyPaneHidingCountBefore = window.ViewModel.AvalonDockAnchorableHidingCount;
+        int propertyPaneVisibleChangedCountBefore = window.ViewModel.AvalonDockAnchorableIsVisibleChangedCount;
         window.TogglePropertyPaneButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+        window.ValidatePropertyPaneAnchorableLifecycle(
+            propertyPaneHidingCountBefore,
+            propertyPaneVisibleChangedCountBefore,
+            expectedHidden: true);
 
-        if (!window.PropertyPane.IsHidden || !window.DockLayoutRoot.Hidden.Contains(window.PropertyPane))
-        {
-            throw new InvalidOperationException("Expected AvalonDock property anchorable to hide into the layout hidden collection.");
-        }
-
+        propertyPaneVisibleChangedCountBefore = window.ViewModel.AvalonDockAnchorableIsVisibleChangedCount;
         window.TogglePropertyPaneButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-
-        if (window.PropertyPane.IsHidden)
-        {
-            throw new InvalidOperationException("Expected AvalonDock property anchorable to show from the hidden collection.");
-        }
+        window.ValidatePropertyPaneAnchorableLifecycle(
+            window.ViewModel.AvalonDockAnchorableHidingCount,
+            propertyPaneVisibleChangedCountBefore,
+            expectedHidden: false);
 
         window.ToggleActivityAutoHideButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
 

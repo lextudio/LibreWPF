@@ -6305,8 +6305,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AccentColorCanvas.SelectedColor", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("target.BringIntoView()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("XmlLayoutSerializer", mainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("PropertyPane.Hide(false)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PropertyPane.Hide()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PropertyPane.Show()", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PropertyPane.Hiding += PropertyPane_Hiding", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PropertyPane.IsVisibleChanged += PropertyPane_IsVisibleChanged", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidatePropertyPaneAnchorableLifecycle", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AvalonDockAnchorableHidingCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AvalonDockAnchorableIsVisibleChangedCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastAvalonDockAnchorableLifecycleTarget", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("EditorDocument.Float()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("EditorDocument.DockAsDocument()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DockManager.DocumentClosed", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6382,6 +6388,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AvalonDock theme switching", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock document context menu commands and close cancellation", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock anchorable context menu commands", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AvalonDock anchorable lifecycle events", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("layout replacement events", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("document close/reopen", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PumpDispatcherUntil", mainWindowCodeBehind, StringComparison.Ordinal);

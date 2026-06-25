@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
@@ -970,7 +971,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        bool sawDialog = false;
+        bool sawCanceledDialog = false;
         var closeTimer = new DispatcherTimer(DispatcherPriority.Send, Dispatcher)
         {
             Interval = TimeSpan.FromMilliseconds(16)
@@ -980,13 +981,13 @@ public partial class MainWindow : Window
         {
             var dialog = Application.Current.Windows
                 .OfType<CollectionControlDialog>()
-                .FirstOrDefault(window => !ReferenceEquals(window, this));
+                .FirstOrDefault(window => !ReferenceEquals(window, this) && window.IsVisible);
             if (dialog is null)
             {
                 return;
             }
 
-            sawDialog = true;
+            sawCanceledDialog = true;
             ValidateToolkitCollectionDialogInstance(dialog, expectLoaded: true);
             dialog.Close();
             closeTimer.Stop();
@@ -1002,12 +1003,75 @@ public partial class MainWindow : Window
             closeTimer.Stop();
         }
 
-        if (!sawDialog)
+        if (!sawCanceledDialog)
         {
             throw new InvalidOperationException("Expected Toolkit CollectionControlButton click to open a CollectionControlDialog.");
         }
 
         AssertEqual(updateCountBefore + 1, ViewModel.CollectionDialogUpdateCount, "Toolkit CollectionControlButton canceled dialog update count");
+
+        ExerciseToolkitCollectionDialogOkPersistence(updateCountBefore + 1);
+    }
+
+    internal void ExerciseToolkitCollectionDialogOkPersistence(int updateCountBefore)
+    {
+        int countBefore = ViewModel.CollectionEntries.Count;
+        bool acceptedDialog = false;
+        var acceptTimer = new DispatcherTimer(DispatcherPriority.Send, Dispatcher)
+        {
+            Interval = TimeSpan.FromMilliseconds(16)
+        };
+
+        acceptTimer.Tick += (_, _) =>
+        {
+            var dialog = Application.Current.Windows
+                .OfType<CollectionControlDialog>()
+                .FirstOrDefault(window => !ReferenceEquals(window, this) && window.IsVisible);
+            if (dialog is null)
+            {
+                return;
+            }
+
+            acceptedDialog = true;
+            ValidateToolkitCollectionDialogInstance(dialog, expectLoaded: true);
+
+            var innerControl = dialog.CollectionControl;
+            ApplicationCommands.New.Execute(typeof(ToolkitCollectionEntry), innerControl);
+            var addedEntry = innerControl.Items.OfType<ToolkitCollectionEntry>().Last();
+            addedEntry.Name = $"Dialog Entry {countBefore + 1}";
+            addedEntry.Category = "Dialog";
+            addedEntry.Weight = 100 + countBefore;
+            innerControl.SelectedItem = addedEntry;
+
+            Button okButton = FindCollectionDialogButton(dialog, "OK", isDefault: true);
+            okButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, okButton));
+            acceptTimer.Stop();
+        };
+
+        acceptTimer.Start();
+        try
+        {
+            OpenCollectionDialogButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, OpenCollectionDialogButton));
+        }
+        finally
+        {
+            acceptTimer.Stop();
+        }
+
+        if (!acceptedDialog)
+        {
+            throw new InvalidOperationException("Expected Toolkit CollectionControlButton OK path to open a CollectionControlDialog.");
+        }
+
+        AssertEqual(updateCountBefore + 1, ViewModel.CollectionDialogUpdateCount, "Toolkit CollectionControlButton accepted dialog update count");
+        AssertEqual(countBefore + 1, ViewModel.CollectionEntries.Count, "Toolkit CollectionControlDialog persisted entry count");
+        var persistedEntry = ViewModel.CollectionEntries[^1];
+        AssertEqual($"Dialog Entry {countBefore + 1}", persistedEntry.Name, "Toolkit CollectionControlDialog persisted entry name");
+        AssertEqual("Dialog", persistedEntry.Category, "Toolkit CollectionControlDialog persisted entry category");
+        AssertEqual(100 + countBefore, persistedEntry.Weight, "Toolkit CollectionControlDialog persisted entry weight");
+        AssertEqual($"Dialog updated {ViewModel.CollectionEntries.Count} entries", ViewModel.CollectionControlStatus, "Toolkit CollectionControlDialog accepted status");
+        ValidateToolkitCollectionControlState(expectLoaded: true);
+        ValidateToolkitCollectionDialogButtonState(expectLoaded: true);
     }
 
     internal void ValidateToolkitCollectionDialogButtonState(bool expectLoaded)
@@ -1094,6 +1158,36 @@ public partial class MainWindow : Window
             !innerControl.NewItemTypes.OfType<Type>().Contains(typeof(ToolkitCollectionEntry)))
         {
             throw new InvalidOperationException("Expected Toolkit CollectionControlDialog embedded NewItemTypes to include the sample entry type.");
+        }
+    }
+
+    private static Button FindCollectionDialogButton(CollectionControlDialog dialog, string content, bool isDefault)
+    {
+        dialog.ApplyTemplate();
+        dialog.UpdateLayout();
+
+        return EnumerateVisualDescendants<Button>(dialog)
+            .FirstOrDefault(button =>
+                button.IsDefault == isDefault &&
+                string.Equals(Convert.ToString(button.Content, CultureInfo.InvariantCulture), content, StringComparison.Ordinal))
+            ?? throw new InvalidOperationException($"Expected Toolkit CollectionControlDialog '{content}' button.");
+    }
+
+    private static IEnumerable<T> EnumerateVisualDescendants<T>(DependencyObject root)
+        where T : DependencyObject
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(root, i);
+            if (child is T match)
+            {
+                yield return match;
+            }
+
+            foreach (T descendant in EnumerateVisualDescendants<T>(child))
+            {
+                yield return descendant;
+            }
         }
     }
 
@@ -4269,6 +4363,11 @@ public sealed class ToolkitCollectionEntry : INotifyPropertyChanged
     private string _name;
     private string _category;
     private int _weight;
+
+    public ToolkitCollectionEntry()
+        : this("Entry", "Generated", 0)
+    {
+    }
 
     public ToolkitCollectionEntry(string name, string category, int weight)
     {

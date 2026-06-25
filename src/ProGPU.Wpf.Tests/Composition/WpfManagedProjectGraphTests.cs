@@ -6141,7 +6141,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExerciseToolkitCollectionControl", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitCollectionDialogButtonState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ExerciseToolkitCollectionDialogButton", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ExerciseToolkitCollectionDialogOkPersistence", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("CollectionControlButton.CollectionUpdatedEvent", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ApplicationCommands.New.Execute(typeof(ToolkitCollectionEntry)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("FindCollectionDialogButton(dialog, \"OK\", isDefault: true)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Dialog Entry", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public ToolkitCollectionEntry()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("new CollectionControlDialog", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveToolkitCollectionControlAsync", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Toolkit collection control and dialog button", mainWindowCodeBehind, StringComparison.Ordinal);

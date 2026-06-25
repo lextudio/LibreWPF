@@ -13183,6 +13183,9 @@ internal static class Program
         File.WriteAllBytes(
             Path.Combine(appRoot, "Assets", "DefaultItemsImage.png"),
             Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAE0lEQVR4nGP4z8DwHwwZGP6DAQBJyAn3FGMynQAAAABJRU5ErkJggg=="));
+        File.WriteAllBytes(
+            Path.Combine(appRoot, "Assets", "DefaultItemsCursor.cur"),
+            Convert.FromBase64String("AAACAAEAAQEAAAAAAAAwAAAAFgAAACgAAAABAAAAAgAAAAEAIAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/AAAAAA=="));
 
         WriteFile(
             Path.Combine(appRoot, "Resources", "DefaultItemsAppResources.xaml"),
@@ -13515,6 +13518,11 @@ internal static class Program
                             <ImageBrush ImageSource="pack://application:,,,/Assets/DefaultItemsImage.png" />
                         </Rectangle.Fill>
                     </Rectangle>
+                    <Border
+                        x:Name="DefaultItemsCursorTarget"
+                        Width="4"
+                        Height="4"
+                        Cursor="Assets/DefaultItemsCursor.cur" />
                     <RichTextBox
                         x:Name="DefaultItemsRichTextBox"
                         IsReadOnly="False">
@@ -14532,6 +14540,19 @@ internal static class Program
                     Require(
                         imageBrushPixels[5] == 0xFF && imageBrushPixels[15] == 0xFF,
                         "Expected default-item ImageBrush image pixels.");
+                    Require(
+                        DefaultItemsCursorTarget.Cursor is not null,
+                        "Expected default-item XAML cursor resource.");
+                    var cursorResourceInfo = Application.GetResourceStream(
+                        new Uri("Assets/DefaultItemsCursor.cur", UriKind.Relative));
+                    Require(
+                        cursorResourceInfo?.Stream is not null,
+                        "Expected default-item cursor pack resource stream.");
+                    using (cursorResourceInfo.Stream)
+                    using (var cursor = new Cursor(cursorResourceInfo.Stream))
+                    {
+                        Require(cursor is not null, "Expected default-item cursor stream load.");
+                    }
                     Require(
                         !DefaultItemsRichTextBox.IsReadOnly,
                         "Expected default-item RichTextBox metadata.");
@@ -16282,6 +16303,7 @@ internal static class Program
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "Resources", "DefaultItemsAppResources.xaml"), "external SDK default-item app resource dictionary source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "MainWindow.xaml"), "external SDK default-item MainWindow.xaml source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "MainWindow.xaml.cs"), "external SDK default-item MainWindow.xaml.cs source");
+        RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "Assets", "DefaultItemsCursor.cur"), "external SDK default-item cursor resource source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "DefaultItemsPanel.xaml"), "external SDK default-item UserControl XAML source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "DefaultItemsPanel.xaml.cs"), "external SDK default-item UserControl code source");
         RequireFile(Path.Combine(workRoot, DefaultItemsAssemblyName, "DefaultItemsPage.xaml"), "external SDK default-item Page XAML source");

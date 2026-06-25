@@ -9192,6 +9192,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ImageBrush ImageSource=\"pack://application:,,,/Assets/DefaultItemsImage.png\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item XAML resource image pixels", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("default-item ImageBrush image pixels", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Assets/DefaultItemsCursor.cur", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Cursor=\"Assets/DefaultItemsCursor.cur\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item XAML cursor resource", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("default-item cursor pack resource stream", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("DefaultItemsRichTextBox", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Default item list entry", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("rich text", externalSdkHarnessProgram, StringComparison.Ordinal);

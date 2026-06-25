@@ -413,6 +413,8 @@ Small third-party Win32 probes should be handled at the SDK/platform boundary un
 
 The portable text formatter still has a transitional managed fallback for simple text, including collapsed/truncated simple lines. Non-Windows `SimpleTextLine.Collapse(...)` must not instantiate `FullTextLine` while LineServices is native-only, because third-party templates frequently use text trimming and would otherwise load `PresentationNative_cor3.dll`. The fallback preserves app startup and common control templates, but full fidelity still belongs in the planned ProGPU-backed or cross-platform shaping/line-formatting layer.
 
+Default-discovered SDK resources are an SDK/MSBuild and managed WPF loading boundary. Image and cursor files under ordinary project folders should become WPF `Resource` items without explicit project entries, and BAML/pack URI resolution should create normal `BitmapSource`, `ImageBrush`, or `Cursor` instances before ProGPU sees rendering or cursor-service state. The current non-Windows custom cursor constructor deliberately falls back to a stock WPF cursor object after the resource stream is resolved; native `.cur`/`.ani` decoding and platform cursor presentation should be added behind the cursor service, not by requiring app-side project item changes or renderer-specific cursor APIs.
+
 ## Win32 Abstraction Strategy
 
 Win32 usage should be split into three groups:

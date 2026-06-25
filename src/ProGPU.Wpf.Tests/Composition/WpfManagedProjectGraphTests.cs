@@ -6270,6 +6270,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DataGridItems = CreateDataGridItems(100_000)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class ToolkitDataGridItem", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitDataGridState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateToolkitDataGridVirtualizingScroll", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("GetRequiredToolkitDataGridScrollViewer", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateToolkitDataGridRealizedRowCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ToolkitDataGrid.ScrollIntoView(ViewModel.DataGridItems[ViewModel.DataGridItems.Count - 1])", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("VirtualizingPanel.GetVirtualizationMode(ToolkitDataGrid)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ScrollViewer.GetCanContentScroll(ToolkitDataGrid)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Toolkit DataGrid 100k virtualization", mainWindowCodeBehind, StringComparison.Ordinal);

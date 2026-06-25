@@ -1792,6 +1792,59 @@ public partial class MainWindow : Window
             {
                 throw new InvalidOperationException("Expected loaded Toolkit DataGrid document to participate in layout.");
             }
+
+            ValidateToolkitDataGridVirtualizingScroll();
+        }
+    }
+
+    private void ValidateToolkitDataGridVirtualizingScroll()
+    {
+        ScrollViewer scrollViewer = GetRequiredToolkitDataGridScrollViewer();
+        if (scrollViewer.ViewportHeight <= 0 ||
+            scrollViewer.ScrollableHeight <= 0)
+        {
+            throw new InvalidOperationException("Expected Toolkit DataGrid to expose a clipped scrollable viewport for the 100k-row document.");
+        }
+
+        ValidateToolkitDataGridRealizedRowCount("initial");
+
+        ToolkitDataGrid.ScrollIntoView(ViewModel.DataGridItems[ViewModel.DataGridItems.Count - 1]);
+        Dispatcher.Invoke(DispatcherPriority.Background, new Action(() => { }));
+        ToolkitDataGrid.UpdateLayout();
+        scrollViewer.UpdateLayout();
+
+        if (scrollViewer.VerticalOffset <= 0)
+        {
+            throw new InvalidOperationException("Expected Toolkit DataGrid ScrollIntoView to apply a non-zero vertical offset.");
+        }
+
+        ValidateToolkitDataGridRealizedRowCount("after large scroll");
+
+        ToolkitDataGrid.ScrollIntoView(ViewModel.DataGridItems[0]);
+        Dispatcher.Invoke(DispatcherPriority.Background, new Action(() => { }));
+        ToolkitDataGrid.UpdateLayout();
+        scrollViewer.UpdateLayout();
+    }
+
+    private ScrollViewer GetRequiredToolkitDataGridScrollViewer()
+    {
+        ToolkitDataGrid.ApplyTemplate();
+        ToolkitDataGrid.UpdateLayout();
+        return EnumerateVisualDescendants<ScrollViewer>(ToolkitDataGrid).FirstOrDefault()
+            ?? throw new InvalidOperationException("Expected Toolkit DataGrid template to expose a ScrollViewer.");
+    }
+
+    private void ValidateToolkitDataGridRealizedRowCount(string phase)
+    {
+        int realizedRows = EnumerateVisualDescendants<DataGridRow>(ToolkitDataGrid).Count();
+        if (realizedRows <= 0)
+        {
+            throw new InvalidOperationException($"Expected Toolkit DataGrid to realize visible rows during {phase} validation.");
+        }
+
+        if (realizedRows >= 500)
+        {
+            throw new InvalidOperationException($"Expected Toolkit DataGrid virtualization to keep realized rows bounded during {phase} validation, got {realizedRows}.");
         }
     }
 

@@ -5990,6 +5990,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TogglePropertyPaneButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ToggleActivityAutoHideButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ToggleAgendaAutoHideButton", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CycleDockThemeButton", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ActiveDockThemeName", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SerializeLayoutButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Require<DockingManager>(window, \"DockManager\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<WatermarkComboBox>(window, \"OwnerComboBox\")", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6012,12 +6014,19 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Require<MenuItem>(window, \"DockContextCancelNextCloseMenuItem\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<Button>(window, \"CloseOverviewDocumentButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<Button>(window, \"ReopenOverviewDocumentButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<Button>(window, \"CycleDockThemeButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitPopupState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitInputEditorState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitWizardState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ExerciseToolkitWizard", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateSourceBackedAvalonDockState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveSourceBackedAvalonDockAsync", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateAvalonDockThemeState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLiveAvalonDockThemeSwitchingAsync", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("new MetroTheme()", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("new VS2010Theme()", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("GetResourceUri", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DockThemeSwitchCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SourceDockManager.ActiveContentChanged", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ViewModel.SourceDocuments", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SourceDockManager.GetLayoutItemFromModel", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6068,6 +6077,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ResolveCurrentRenderSurfaceGeometry", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("floating document window", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock source-backed documents/anchorables", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AvalonDock theme switching", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock document context menu and close cancellation", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("layout replacement events", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("document close/reopen", mainWindowCodeBehind, StringComparison.Ordinal);

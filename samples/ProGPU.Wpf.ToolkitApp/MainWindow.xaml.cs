@@ -31,13 +31,16 @@ public partial class MainWindow : Window
     private const string LiveValidationEnvironmentVariable = "PROGPU_WPF_TOOLKIT_LIVE_VALIDATE";
     private const int LiveValidationMaxAttempts = 400;
     private static readonly TimeSpan LiveValidationRetryDelay = TimeSpan.FromMilliseconds(16);
+    private static readonly string[] AvalonDockThemeNames = ["Aero", "Metro", "VS2010"];
     private readonly ToolkitViewModel _viewModel = new();
+    private int _avalonDockThemeIndex;
     private bool _liveValidationStarted;
 
     public MainWindow()
     {
         DataContext = _viewModel;
         InitializeComponent();
+        SetAvalonDockTheme(AvalonDockThemeNames[_avalonDockThemeIndex], recordSwitch: false);
         DockManager.ActiveContentChanged += DockManager_ActiveContentChanged;
         DockManager.DocumentClosing += DockManager_DocumentClosing;
         DockManager.DocumentClosed += DockManager_DocumentClosed;
@@ -247,6 +250,49 @@ public partial class MainWindow : Window
         AgendaPane.ToggleAutoHide();
         _viewModel.Status = AgendaPane.IsAutoHidden ? "Agenda pane auto-hidden" : "Agenda pane docked";
         _viewModel.Activity.Add(_viewModel.Status);
+    }
+
+    private void CycleDockThemeButton_Click(object sender, RoutedEventArgs e)
+    {
+        CycleAvalonDockTheme();
+    }
+
+    internal void CycleAvalonDockTheme()
+    {
+        int nextIndex = (_avalonDockThemeIndex + 1) % AvalonDockThemeNames.Length;
+        SetAvalonDockTheme(AvalonDockThemeNames[nextIndex], recordSwitch: true);
+    }
+
+    private void SetAvalonDockTheme(string themeName, bool recordSwitch)
+    {
+        int nextIndex = Array.IndexOf(AvalonDockThemeNames, themeName);
+        if (nextIndex < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(themeName), themeName, "Unknown AvalonDock theme.");
+        }
+
+        _avalonDockThemeIndex = nextIndex;
+        DockManager.Theme = CreateAvalonDockTheme(themeName);
+        SourceDockManager.Theme = CreateAvalonDockTheme(themeName);
+        _viewModel.ActiveDockThemeName = themeName;
+
+        if (recordSwitch)
+        {
+            _viewModel.DockThemeSwitchCount++;
+            _viewModel.Status = $"AvalonDock theme switched to {themeName}";
+            _viewModel.Activity.Add(_viewModel.Status);
+        }
+    }
+
+    private static Theme CreateAvalonDockTheme(string themeName)
+    {
+        return themeName switch
+        {
+            "Aero" => new AeroTheme(),
+            "Metro" => new MetroTheme(),
+            "VS2010" => new VS2010Theme(),
+            _ => throw new ArgumentOutOfRangeException(nameof(themeName), themeName, "Unknown AvalonDock theme.")
+        };
     }
 
     private void MarkReviewedButton_Click(object sender, RoutedEventArgs e)
@@ -564,6 +610,60 @@ public partial class MainWindow : Window
         }
     }
 
+    internal void ValidateAvalonDockThemeState(string expectedThemeName)
+    {
+        AssertEqual(expectedThemeName, ViewModel.ActiveDockThemeName, "AvalonDock active theme name");
+        AssertAvalonDockTheme(DockManager.Theme, expectedThemeName, "primary DockingManager");
+        AssertAvalonDockTheme(SourceDockManager.Theme, expectedThemeName, "source-backed DockingManager");
+
+        if (TryFindResource("ToolkitAccentBrush") is not SolidColorBrush ||
+            TryFindResource("ToolkitSubtleBrush") is not SolidColorBrush)
+        {
+            throw new InvalidOperationException("Expected Toolkit application theme brushes to resolve after AvalonDock theme switching.");
+        }
+
+        if (DockManager.DocumentHeaderTemplate is null ||
+            SourceDockManager.LayoutItemTemplate is null ||
+            SourceDockManager.LayoutItemContainerStyle is null)
+        {
+            throw new InvalidOperationException("Expected AvalonDock templates and layout-item styles to remain loaded after theme switching.");
+        }
+    }
+
+    private static void AssertAvalonDockTheme(Theme theme, string expectedThemeName, string managerName)
+    {
+        string expectedTypeName = expectedThemeName switch
+        {
+            "Aero" => nameof(AeroTheme),
+            "Metro" => nameof(MetroTheme),
+            "VS2010" => nameof(VS2010Theme),
+            _ => throw new ArgumentOutOfRangeException(nameof(expectedThemeName), expectedThemeName, "Unknown AvalonDock theme.")
+        };
+        string expectedAssemblyName = expectedThemeName switch
+        {
+            "Aero" => "Xceed.Wpf.AvalonDock.Themes.Aero",
+            "Metro" => "Xceed.Wpf.AvalonDock.Themes.Metro",
+            "VS2010" => "Xceed.Wpf.AvalonDock.Themes.VS2010",
+            _ => throw new ArgumentOutOfRangeException(nameof(expectedThemeName), expectedThemeName, "Unknown AvalonDock theme.")
+        };
+
+        Type themeType = theme.GetType();
+        AssertEqual(expectedTypeName, themeType.Name, $"{managerName} AvalonDock theme type");
+        AssertEqual(expectedAssemblyName, themeType.Assembly.GetName().Name ?? string.Empty, $"{managerName} AvalonDock theme assembly");
+
+        MethodInfo getResourceUri = themeType.GetMethod(
+            "GetResourceUri",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMethodException(themeType.FullName, "GetResourceUri");
+        var resourceUri = Convert.ToString(getResourceUri.Invoke(theme, null), CultureInfo.InvariantCulture);
+        if (string.IsNullOrWhiteSpace(resourceUri) ||
+            !resourceUri.Contains(expectedAssemblyName, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Expected {managerName} AvalonDock theme resource URI to come from {expectedAssemblyName}, got '{resourceUri}'.");
+        }
+    }
+
     private LayoutDocument FindGeneratedDocument(ToolkitDockItem sourceDocument)
     {
         return SourceDocumentPane.Children
@@ -801,6 +901,7 @@ public partial class MainWindow : Window
         await ValidateLiveInputEditorsAsync(liveHost);
         await ValidateLiveWizardAsync(liveHost);
         await ValidateLiveSourceBackedAvalonDockAsync(liveHost);
+        await ValidateLiveAvalonDockThemeSwitchingAsync(liveHost);
 
         int documentsBeforeAdd = ViewModel.DocumentCount;
         await ClickLiveControlAsync(liveHost, AddDocumentButton, "AddDocumentButton");
@@ -919,7 +1020,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/checklist/rich editors, Toolkit selector/range/split controls, Toolkit wizard navigation, AvalonDock source-backed documents/anchorables, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/checklist/rich editors, Toolkit selector/range/split controls, Toolkit wizard navigation, AvalonDock source-backed documents/anchorables, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -1122,6 +1223,32 @@ public partial class MainWindow : Window
             liveHost,
             () => ValidateSourceBackedAvalonDockState(mutateSources: true),
             DispatcherPriority.Send);
+    }
+
+    private async Task ValidateLiveAvalonDockThemeSwitchingAsync(object liveHost)
+    {
+        int themeSwitchCountBefore = ViewModel.DockThemeSwitchCount;
+        string[] expectedThemes = ["Metro", "VS2010", "Aero"];
+        foreach (string expectedTheme in expectedThemes)
+        {
+            await ClickLiveControlAsync(liveHost, CycleDockThemeButton, "CycleDockThemeButton");
+            await InvokeWithLiveHostWakeAsync(
+                liveHost,
+                () =>
+                {
+                    ValidateAvalonDockThemeState(expectedTheme);
+                    AssertEqual(
+                        $"AvalonDock theme switched to {expectedTheme}",
+                        ViewModel.Status,
+                        "Toolkit live AvalonDock theme switch status");
+                },
+                DispatcherPriority.Send);
+        }
+
+        if (ViewModel.DockThemeSwitchCount < themeSwitchCountBefore + expectedThemes.Length)
+        {
+            throw new InvalidOperationException("Expected live AvalonDock theme switch count to advance for each theme.");
+        }
     }
 
     private async Task ValidateLiveOverviewDocumentLifecycleAsync(object liveHost)
@@ -1495,6 +1622,8 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private object? _sourceActiveContent;
     private int _sourceActiveContentChangedCount;
     private string _lastSourceActiveTitle = string.Empty;
+    private string _activeDockThemeName = "Aero";
+    private int _dockThemeSwitchCount;
     private string _status = "Toolkit sample ready";
     private string _lastSerializedLayout = string.Empty;
 
@@ -1995,6 +2124,32 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         }
     }
 
+    public string ActiveDockThemeName
+    {
+        get => _activeDockThemeName;
+        set
+        {
+            if (!string.Equals(_activeDockThemeName, value, StringComparison.Ordinal))
+            {
+                _activeDockThemeName = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int DockThemeSwitchCount
+    {
+        get => _dockThemeSwitchCount;
+        set
+        {
+            if (_dockThemeSwitchCount != value)
+            {
+                _dockThemeSwitchCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public string Status
     {
         get => _status;
@@ -2141,12 +2296,10 @@ internal static class ToolkitSelfTest
         Require<Button>(window, "TogglePropertyPaneButton");
         Require<Button>(window, "ToggleActivityAutoHideButton");
         Require<Button>(window, "ToggleAgendaAutoHideButton");
+        Require<Button>(window, "CycleDockThemeButton");
         Require<Button>(window, "SerializeLayoutButton");
 
-        if (window.DockManager.Theme is not AeroTheme)
-        {
-            throw new InvalidOperationException("Expected AvalonDock AeroTheme from Extended.Wpf.Toolkit package.");
-        }
+        window.ValidateAvalonDockThemeState("Aero");
 
         if (window.DockManager.DocumentHeaderTemplate is null)
         {
@@ -2327,6 +2480,18 @@ internal static class ToolkitSelfTest
             {
                 throw new InvalidOperationException("Expected Toolkit input editor changes to update bindings and selection state.");
             }
+        }
+
+        int themeSwitchCountBefore = window.ViewModel.DockThemeSwitchCount;
+        window.CycleDockThemeButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+        window.ValidateAvalonDockThemeState("Metro");
+        window.CycleDockThemeButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+        window.ValidateAvalonDockThemeState("VS2010");
+        window.CycleDockThemeButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+        window.ValidateAvalonDockThemeState("Aero");
+        if (window.ViewModel.DockThemeSwitchCount < themeSwitchCountBefore + 3)
+        {
+            throw new InvalidOperationException("Expected AvalonDock theme switch count to advance for all package themes.");
         }
 
         window.AddDocumentButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));

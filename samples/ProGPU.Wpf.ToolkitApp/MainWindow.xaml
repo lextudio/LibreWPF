@@ -109,6 +109,12 @@
                   Padding="10,4"
                   Content="Dock agenda"
                   Click="ToggleAgendaAutoHideButton_Click" />
+          <Button x:Name="CycleDockThemeButton"
+                  MinWidth="104"
+                  Margin="0,0,6,0"
+                  Padding="10,4"
+                  Content="{Binding ActiveDockThemeName, StringFormat=Theme: {0}}"
+                  Click="CycleDockThemeButton_Click" />
           <Button x:Name="SerializeLayoutButton"
                   MinWidth="96"
                   Padding="10,4"

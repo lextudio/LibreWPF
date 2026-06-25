@@ -137,6 +137,21 @@
                          AllowMixedOrientation="True"
                          BorderBrush="#708090"
                          BorderThickness="1">
+      <xcad:DockingManager.DocumentContextMenu>
+        <ContextMenu x:Name="DockDocumentContextMenu">
+          <MenuItem x:Name="DockContextActivateEditorMenuItem"
+                    Header="Activate editor"
+                    Click="ActivateEditorButton_Click" />
+          <MenuItem x:Name="DockContextCloseOverviewMenuItem"
+                    Header="Close overview"
+                    Click="CloseOverviewDocumentButton_Click" />
+          <Separator />
+          <MenuItem x:Name="DockContextCancelNextCloseMenuItem"
+                    Header="Cancel next overview close"
+                    IsCheckable="True"
+                    IsChecked="{Binding CancelNextOverviewClose, Mode=TwoWay}" />
+        </ContextMenu>
+      </xcad:DockingManager.DocumentContextMenu>
       <xcad:DockingManager.DocumentHeaderTemplate>
         <DataTemplate>
           <StackPanel Orientation="Horizontal">

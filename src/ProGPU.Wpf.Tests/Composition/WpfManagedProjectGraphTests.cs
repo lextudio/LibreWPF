@@ -5947,6 +5947,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("xmlns:xctk=\"http://schemas.xceed.com/wpf/xaml/toolkit\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:xcad=\"http://schemas.xceed.com/wpf/xaml/avalondock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcad:DockingManager x:Name=\"DockManager\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcad:DockingManager.DocumentContextMenu>", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcad:DockingManager.DocumentHeaderTemplate>", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcad:AeroTheme />", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcad:LayoutRoot.LeftSide>", mainWindowXaml, StringComparison.Ordinal);
@@ -5973,6 +5974,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ActivateEditorButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<WrapPanel Grid.Row=\"1\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CloseOverviewDocumentButton", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DockDocumentContextMenu", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("DockContextCancelNextCloseMenuItem", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ReopenOverviewDocumentButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ToggleEditorFloatButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("TogglePropertyPaneButton", mainWindowXaml, StringComparison.Ordinal);
@@ -5993,6 +5996,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Require<WizardPage>(window, \"WizardScopePage\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<ToolkitRichTextBox>(window, \"ToolkitRichTextBox\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<PropertyGrid>(window, \"DocumentPropertyGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<ContextMenu>(window, \"DockDocumentContextMenu\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<MenuItem>(window, \"DockContextCancelNextCloseMenuItem\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<Button>(window, \"CloseOverviewDocumentButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<Button>(window, \"ReopenOverviewDocumentButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitPopupState", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6019,10 +6024,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("EditorDocument.Float()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("EditorDocument.DockAsDocument()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DockManager.DocumentClosed", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DockManager.DocumentClosing", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DockManager.ActiveContentChanged", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DockManager.LayoutChanging", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DockManager.LayoutChanged", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OverviewDocument.Closed", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OverviewDocument.Close()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DocumentPane.Children.Insert(0, OverviewDocument)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateOverviewDocumentLifecycleState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateOverviewCloseCanceledState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateAvalonDockDocumentContextMenuState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateAvalonDockLayoutReplacementEvents", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveOverviewDocumentLifecycleAsync", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ContentId=\\\"overview\\\"", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateEditorFloatingState", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6037,6 +6049,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("OnPlatformInputReceived", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ResolveCurrentRenderSurfaceGeometry", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("floating document window", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AvalonDock document context menu and close cancellation", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("layout replacement events", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("document close/reopen", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PumpDispatcherUntil", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF Toolkit Application.Run validation succeeded.", appCodeBehind, StringComparison.Ordinal);

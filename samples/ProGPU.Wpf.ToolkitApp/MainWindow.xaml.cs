@@ -38,7 +38,13 @@ public partial class MainWindow : Window
     {
         DataContext = _viewModel;
         InitializeComponent();
+        DockManager.ActiveContentChanged += DockManager_ActiveContentChanged;
+        DockManager.DocumentClosing += DockManager_DocumentClosing;
         DockManager.DocumentClosed += DockManager_DocumentClosed;
+        DockManager.Floated += DockManager_Floated;
+        DockManager.Docked += DockManager_Docked;
+        DockManager.LayoutChanging += DockManager_LayoutChanging;
+        DockManager.LayoutChanged += DockManager_LayoutChanged;
         OverviewDocument.Closed += OverviewDocument_Closed;
         Loaded += OnToolkitWindowLoaded;
         StartLiveValidationIfRequired();
@@ -92,6 +98,11 @@ public partial class MainWindow : Window
         }
 
         OverviewDocument.Close();
+        if (DocumentPane.Children.Contains(OverviewDocument))
+        {
+            return;
+        }
+
         _viewModel.Status = "Overview document closed";
         _viewModel.Activity.Add(_viewModel.Status);
     }
@@ -109,10 +120,54 @@ public partial class MainWindow : Window
         _viewModel.Activity.Add(_viewModel.Status);
     }
 
+    private void DockManager_ActiveContentChanged(object? sender, EventArgs e)
+    {
+        _viewModel.AvalonDockActiveContentChangedCount++;
+        _viewModel.LastActiveContentTitle = DockLayoutRoot.LastFocusedDocument?.Title ??
+            Convert.ToString(DockManager.ActiveContent, CultureInfo.InvariantCulture) ??
+            string.Empty;
+    }
+
+    private void DockManager_DocumentClosing(object? sender, DocumentClosingEventArgs e)
+    {
+        _viewModel.AvalonDockDocumentClosingCount++;
+        _viewModel.LastClosingDocumentContentId = e.Document?.ContentId ?? string.Empty;
+
+        if (ReferenceEquals(e.Document, OverviewDocument) &&
+            _viewModel.CancelNextOverviewClose)
+        {
+            e.Cancel = true;
+            _viewModel.CancelNextOverviewClose = false;
+            _viewModel.AvalonDockDocumentCloseCanceledCount++;
+            _viewModel.Status = "Overview document close canceled";
+            _viewModel.Activity.Add(_viewModel.Status);
+        }
+    }
+
     private void DockManager_DocumentClosed(object? sender, DocumentClosedEventArgs e)
     {
         _viewModel.AvalonDockDocumentClosedCount++;
         _viewModel.LastClosedDocumentContentId = e.Document?.ContentId ?? string.Empty;
+    }
+
+    private void DockManager_Floated(object? sender, EventArgs e)
+    {
+        _viewModel.AvalonDockFloatedCount++;
+    }
+
+    private void DockManager_Docked(object? sender, EventArgs e)
+    {
+        _viewModel.AvalonDockDockedCount++;
+    }
+
+    private void DockManager_LayoutChanging(object? sender, EventArgs e)
+    {
+        _viewModel.AvalonDockLayoutChangingCount++;
+    }
+
+    private void DockManager_LayoutChanged(object? sender, EventArgs e)
+    {
+        _viewModel.AvalonDockLayoutChangedCount++;
     }
 
     private void OverviewDocument_Closed(object? sender, EventArgs e)
@@ -264,6 +319,10 @@ public partial class MainWindow : Window
             }
 
             AssertEqual("Dock editor", Convert.ToString(ToggleEditorFloatButton.Content, CultureInfo.InvariantCulture), "AvalonDock float toggle content");
+            if (ViewModel.AvalonDockFloatedCount <= 0)
+            {
+                throw new InvalidOperationException("Expected AvalonDock Floated event to fire for the editor document.");
+            }
         }
         else
         {
@@ -276,6 +335,10 @@ public partial class MainWindow : Window
             }
 
             AssertEqual("Float editor", Convert.ToString(ToggleEditorFloatButton.Content, CultureInfo.InvariantCulture), "AvalonDock float toggle content");
+            if (ViewModel.AvalonDockDockedCount <= 0)
+            {
+                throw new InvalidOperationException("Expected AvalonDock Docked event to fire for the editor document.");
+            }
         }
     }
 
@@ -298,6 +361,26 @@ public partial class MainWindow : Window
                 throw new InvalidOperationException("Expected AvalonDock document closed events to fire for the overview document.");
             }
         }
+    }
+
+    internal void ValidateOverviewCloseCanceledState(int expectedDocumentCount, int expectedClosedCount)
+    {
+        if (!DocumentPane.Children.Contains(OverviewDocument))
+        {
+            throw new InvalidOperationException("Expected canceled AvalonDock overview close to keep the document in the pane.");
+        }
+
+        AssertEqual(expectedDocumentCount, DocumentPane.ChildrenCount, "AvalonDock document count after canceled overview close");
+        AssertEqual(expectedClosedCount, ViewModel.OverviewDocumentClosedCount, "AvalonDock overview closed count after canceled close");
+        AssertEqual("overview", ViewModel.LastClosingDocumentContentId, "AvalonDock last closing document content id");
+        if (ViewModel.AvalonDockDocumentClosingCount <= 0 ||
+            ViewModel.AvalonDockDocumentCloseCanceledCount <= 0)
+        {
+            throw new InvalidOperationException("Expected AvalonDock document closing and cancellation events to fire for the overview document.");
+        }
+
+        AssertEqual(false, ViewModel.CancelNextOverviewClose, "AvalonDock cancel next close reset state");
+        AssertEqual("Overview document close canceled", ViewModel.Status, "AvalonDock canceled close status");
     }
 
     internal void ValidateToolkitPopupState(bool expectedOpen)
@@ -338,6 +421,53 @@ public partial class MainWindow : Window
             {
                 throw new InvalidOperationException("Expected Toolkit SplitButton list content to bind all owners while open.");
             }
+        }
+    }
+
+    internal void ValidateAvalonDockDocumentContextMenuState(bool expectedOpen)
+    {
+        AssertEqual(expectedOpen, DockDocumentContextMenu.IsOpen, "AvalonDock document context menu open state");
+        if (DockManager.DocumentContextMenu != DockDocumentContextMenu)
+        {
+            throw new InvalidOperationException("Expected AvalonDock DockingManager to expose the sample document context menu.");
+        }
+
+        if (expectedOpen)
+        {
+            var menuSource = PresentationSource.FromVisual(DockContextActivateEditorMenuItem);
+            if (menuSource is not HwndSource ||
+                menuSource.CompositionTarget == null)
+            {
+                throw new InvalidOperationException(
+                    "Expected AvalonDock document context menu to be rooted in the portable public HwndSource facade while open.");
+            }
+        }
+    }
+
+    internal void ValidateAvalonDockLayoutReplacementEvents(string layoutXml)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(layoutXml);
+
+        int layoutChangingCountBefore = ViewModel.AvalonDockLayoutChangingCount;
+        int layoutChangedCountBefore = ViewModel.AvalonDockLayoutChangedCount;
+
+        var serializer = new XmlLayoutSerializer(DockManager);
+        serializer.LayoutSerializationCallback += (_, args) =>
+        {
+            args.Content ??= new TextBlock
+            {
+                Text = args.Model.ContentId,
+                Margin = new Thickness(8)
+            };
+        };
+
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(layoutXml));
+        serializer.Deserialize(stream);
+
+        if (ViewModel.AvalonDockLayoutChangingCount <= layoutChangingCountBefore ||
+            ViewModel.AvalonDockLayoutChangedCount <= layoutChangedCountBefore)
+        {
+            throw new InvalidOperationException("Expected AvalonDock layout changing/changed events to fire when DockingManager.Layout changes.");
         }
     }
 
@@ -558,6 +688,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
 
         await ValidateLivePopupControlsAsync(liveHost);
+        await ValidateLiveAvalonDockDocumentContextMenuAsync(liveHost);
         await ValidateLiveInputEditorsAsync(liveHost);
         await ValidateLiveWizardAsync(liveHost);
 
@@ -580,6 +711,10 @@ public partial class MainWindow : Window
             {
                 AssertEqual(true, EditorDocument.IsSelected, "Toolkit live editor document selected state");
                 AssertEqual(true, EditorDocument.IsActive, "Toolkit live editor document active state");
+                if (ViewModel.AvalonDockActiveContentChangedCount <= 0)
+                {
+                    throw new InvalidOperationException("Expected Toolkit live AvalonDock active content event to fire.");
+                }
             },
             DispatcherPriority.Send);
 
@@ -672,7 +807,9 @@ public partial class MainWindow : Window
                     throw new InvalidOperationException("Expected Toolkit live AvalonDock deserialization to restore root panel shape.");
                 }
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/checklist/rich editors, Toolkit selector/range/split controls, Toolkit wizard navigation, AvalonDock document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, and layout serialization updated";
+                ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
+
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/checklist/rich editors, Toolkit selector/range/split controls, Toolkit wizard navigation, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -767,6 +904,45 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
     }
 
+    private async Task ValidateLiveAvalonDockDocumentContextMenuAsync(object liveHost)
+    {
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                DockDocumentContextMenu.PlacementTarget = DockManager;
+                DockDocumentContextMenu.IsOpen = true;
+            },
+            DispatcherPriority.Send);
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => DockDocumentContextMenu.IsOpen,
+            "Toolkit live AvalonDock document context menu open state");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                ValidateAvalonDockDocumentContextMenuState(expectedOpen: true);
+                DockContextCancelNextCloseMenuItem.IsChecked = true;
+                DockContextCancelNextCloseMenuItem.GetBindingExpression(MenuItem.IsCheckedProperty)?.UpdateSource();
+                AssertEqual(true, ViewModel.CancelNextOverviewClose, "Toolkit live AvalonDock context menu cancellation binding");
+            },
+            DispatcherPriority.Send);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => DockDocumentContextMenu.IsOpen = false,
+            DispatcherPriority.Send);
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => !DockDocumentContextMenu.IsOpen,
+            "Toolkit live AvalonDock document context menu closed state");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => ValidateAvalonDockDocumentContextMenuState(expectedOpen: false),
+            DispatcherPriority.Send);
+    }
+
     private async Task ValidateLiveInputEditorsAsync(object liveHost)
     {
         await InvokeWithLiveHostWakeAsync(
@@ -832,6 +1008,18 @@ public partial class MainWindow : Window
 
     private async Task ValidateLiveOverviewDocumentLifecycleAsync(object liveHost)
     {
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                int documentCountBeforeCanceledClose = DocumentPane.ChildrenCount;
+                int closedCountBeforeCanceledClose = ViewModel.OverviewDocumentClosedCount;
+                ViewModel.CancelNextOverviewClose = true;
+                CloseOverviewDocumentButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                ValidateOverviewCloseCanceledState(documentCountBeforeCanceledClose, closedCountBeforeCanceledClose);
+            },
+            DispatcherPriority.Send);
+
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () =>
@@ -1146,8 +1334,18 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private int _wizardFinishes;
     private int _wizardCancels;
     private string _wizardStatus = "Wizard idle";
+    private int _avalonDockActiveContentChangedCount;
+    private string _lastActiveContentTitle = string.Empty;
+    private int _avalonDockDocumentClosingCount;
     private int _avalonDockDocumentClosedCount;
+    private int _avalonDockDocumentCloseCanceledCount;
     private int _overviewDocumentClosedCount;
+    private int _avalonDockFloatedCount;
+    private int _avalonDockDockedCount;
+    private int _avalonDockLayoutChangingCount;
+    private int _avalonDockLayoutChangedCount;
+    private bool _cancelNextOverviewClose;
+    private string _lastClosingDocumentContentId = string.Empty;
     private string _lastClosedDocumentContentId = string.Empty;
     private string _status = "Toolkit sample ready";
     private string _lastSerializedLayout = string.Empty;
@@ -1408,6 +1606,45 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         }
     }
 
+    public int AvalonDockActiveContentChangedCount
+    {
+        get => _avalonDockActiveContentChangedCount;
+        set
+        {
+            if (_avalonDockActiveContentChangedCount != value)
+            {
+                _avalonDockActiveContentChangedCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string LastActiveContentTitle
+    {
+        get => _lastActiveContentTitle;
+        set
+        {
+            if (!string.Equals(_lastActiveContentTitle, value, StringComparison.Ordinal))
+            {
+                _lastActiveContentTitle = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int AvalonDockDocumentClosingCount
+    {
+        get => _avalonDockDocumentClosingCount;
+        set
+        {
+            if (_avalonDockDocumentClosingCount != value)
+            {
+                _avalonDockDocumentClosingCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public int AvalonDockDocumentClosedCount
     {
         get => _avalonDockDocumentClosedCount;
@@ -1421,6 +1658,19 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         }
     }
 
+    public int AvalonDockDocumentCloseCanceledCount
+    {
+        get => _avalonDockDocumentCloseCanceledCount;
+        set
+        {
+            if (_avalonDockDocumentCloseCanceledCount != value)
+            {
+                _avalonDockDocumentCloseCanceledCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public int OverviewDocumentClosedCount
     {
         get => _overviewDocumentClosedCount;
@@ -1429,6 +1679,84 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
             if (_overviewDocumentClosedCount != value)
             {
                 _overviewDocumentClosedCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int AvalonDockFloatedCount
+    {
+        get => _avalonDockFloatedCount;
+        set
+        {
+            if (_avalonDockFloatedCount != value)
+            {
+                _avalonDockFloatedCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int AvalonDockDockedCount
+    {
+        get => _avalonDockDockedCount;
+        set
+        {
+            if (_avalonDockDockedCount != value)
+            {
+                _avalonDockDockedCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int AvalonDockLayoutChangingCount
+    {
+        get => _avalonDockLayoutChangingCount;
+        set
+        {
+            if (_avalonDockLayoutChangingCount != value)
+            {
+                _avalonDockLayoutChangingCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int AvalonDockLayoutChangedCount
+    {
+        get => _avalonDockLayoutChangedCount;
+        set
+        {
+            if (_avalonDockLayoutChangedCount != value)
+            {
+                _avalonDockLayoutChangedCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public bool CancelNextOverviewClose
+    {
+        get => _cancelNextOverviewClose;
+        set
+        {
+            if (_cancelNextOverviewClose != value)
+            {
+                _cancelNextOverviewClose = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string LastClosingDocumentContentId
+    {
+        get => _lastClosingDocumentContentId;
+        set
+        {
+            if (!string.Equals(_lastClosingDocumentContentId, value, StringComparison.Ordinal))
+            {
+                _lastClosingDocumentContentId = value;
                 OnPropertyChanged();
             }
         }
@@ -1543,6 +1871,10 @@ internal static class ToolkitSelfTest
         Require<ToolkitRichTextBox>(window, "ToolkitRichTextBox");
         Require<BusyIndicator>(window, "BusyIndicator");
         Require<PropertyGrid>(window, "DocumentPropertyGrid");
+        Require<ContextMenu>(window, "DockDocumentContextMenu");
+        Require<MenuItem>(window, "DockContextActivateEditorMenuItem");
+        Require<MenuItem>(window, "DockContextCloseOverviewMenuItem");
+        Require<MenuItem>(window, "DockContextCancelNextCloseMenuItem");
         Require<Button>(window, "ActivateEditorButton");
         Require<Button>(window, "CloseOverviewDocumentButton");
         Require<Button>(window, "ReopenOverviewDocumentButton");
@@ -1678,6 +2010,30 @@ internal static class ToolkitSelfTest
                 "Toolkit SplitButton dropdown closed state");
             window.ValidateToolkitSplitButtonPopupState(expectedOpen: false);
 
+            window.DockDocumentContextMenu.PlacementTarget = window.DockManager;
+            window.DockDocumentContextMenu.IsOpen = true;
+            PumpDispatcherUntil(
+                window,
+                () => window.DockDocumentContextMenu.IsOpen,
+                TimeSpan.FromSeconds(2),
+                "AvalonDock document context menu open state");
+            window.ValidateAvalonDockDocumentContextMenuState(expectedOpen: true);
+
+            window.DockContextCancelNextCloseMenuItem.IsChecked = true;
+            window.DockContextCancelNextCloseMenuItem.GetBindingExpression(MenuItem.IsCheckedProperty)?.UpdateSource();
+            if (!window.ViewModel.CancelNextOverviewClose)
+            {
+                throw new InvalidOperationException("Expected AvalonDock context menu checkable item to update close-cancellation binding.");
+            }
+
+            window.DockDocumentContextMenu.IsOpen = false;
+            PumpDispatcherUntil(
+                window,
+                () => !window.DockDocumentContextMenu.IsOpen,
+                TimeSpan.FromSeconds(2),
+                "AvalonDock document context menu closed state");
+            window.ValidateAvalonDockDocumentContextMenuState(expectedOpen: false);
+
             if (window.ViewModel.AccentColor != Colors.MediumSeaGreen ||
                 window.ViewModel.Estimate != 42.25m)
             {
@@ -1731,6 +2087,19 @@ internal static class ToolkitSelfTest
         {
             throw new InvalidOperationException("Expected AvalonDock document activation to update selected/active document state.");
         }
+
+        if (window.ViewModel.AvalonDockActiveContentChangedCount <= 0)
+        {
+            throw new InvalidOperationException("Expected AvalonDock ActiveContentChanged event to fire after document activation.");
+        }
+
+        int documentCountBeforeCanceledOverviewClose = window.DocumentPane.ChildrenCount;
+        int overviewClosedCountBeforeCanceledClose = window.ViewModel.OverviewDocumentClosedCount;
+        window.ViewModel.CancelNextOverviewClose = true;
+        window.CloseOverviewDocumentButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+        window.ValidateOverviewCloseCanceledState(
+            documentCountBeforeCanceledOverviewClose,
+            overviewClosedCountBeforeCanceledClose);
 
         int documentCountBeforeOverviewClose = window.DocumentPane.ChildrenCount;
         window.CloseOverviewDocumentButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
@@ -1845,6 +2214,8 @@ internal static class ToolkitSelfTest
         {
             throw new InvalidOperationException("Expected AvalonDock layout deserialization to restore the root panel shape.");
         }
+
+        window.ValidateAvalonDockLayoutReplacementEvents(window.ViewModel.LastSerializedLayout);
 
         if (expectLoaded && !window.IsLoaded)
         {

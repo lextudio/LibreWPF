@@ -163,6 +163,21 @@
                                          Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
                                          Margin="0,4,0,12" />
 
+                  <TextBlock Text="WatermarkComboBox" />
+                  <xctk:WatermarkComboBox x:Name="OwnerComboBox"
+                                          Watermark="Owner"
+                                          ItemsSource="{Binding Owners}"
+                                          SelectedItem="{Binding SelectedOwner}"
+                                          Margin="0,4,0,12" />
+
+                  <TextBlock Text="RangeSlider" />
+                  <xctk:RangeSlider x:Name="PriorityRangeSlider"
+                                    Minimum="0"
+                                    Maximum="10"
+                                    LowerValue="{Binding PriorityRangeStart}"
+                                    HigherValue="{Binding PriorityRangeEnd}"
+                                    Margin="0,4,0,12" />
+
                   <TextBlock Text="DateTimePicker" />
                   <xctk:DateTimePicker x:Name="DueDatePicker"
                                        Value="{Binding DueDate}"
@@ -234,6 +249,28 @@
                       </StackPanel>
                     </xctk:DropDownButton.DropDownContent>
                   </xctk:DropDownButton>
+
+                  <TextBlock Text="SplitButton" />
+                  <xctk:SplitButton x:Name="SplitActionButton"
+                                    Content="Apply owner"
+                                    Click="SplitActionButton_Click"
+                                    Margin="0,4,0,12">
+                    <xctk:SplitButton.DropDownContent>
+                      <StackPanel x:Name="SplitActionDropDownContentRoot"
+                                  MinWidth="180"
+                                  Margin="8">
+                        <ListBox x:Name="OwnerPickerList"
+                                 ItemsSource="{Binding Owners}"
+                                 SelectedItem="{Binding SelectedOwner}"
+                                 Height="72" />
+                        <Button x:Name="AssignSdkOwnerButton"
+                                Content="Assign SDK owner"
+                                Margin="0,8,0,0"
+                                Padding="8,4"
+                                Click="AssignSdkOwnerButton_Click" />
+                      </StackPanel>
+                    </xctk:SplitButton.DropDownContent>
+                  </xctk:SplitButton>
 
                   <TextBlock Text="RichTextBox" />
                   <xctk:RichTextBox x:Name="ToolkitRichTextBox"

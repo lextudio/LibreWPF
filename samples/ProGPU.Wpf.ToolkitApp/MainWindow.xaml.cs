@@ -135,6 +135,21 @@ public partial class MainWindow : Window
         ActionDropDownButton.IsOpen = false;
     }
 
+    private void SplitActionButton_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.Status = $"Applied owner {_viewModel.SelectedOwner}";
+        _viewModel.Activity.Add(_viewModel.Status);
+        SplitActionButton.IsOpen = false;
+    }
+
+    private void AssignSdkOwnerButton_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.SelectedOwner = "SDK";
+        _viewModel.Status = "Owner set to SDK";
+        _viewModel.Activity.Add(_viewModel.Status);
+        SplitActionButton.IsOpen = false;
+    }
+
     private void SerializeLayoutButton_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.LastSerializedLayout = SerializeCurrentLayout();
@@ -212,10 +227,32 @@ public partial class MainWindow : Window
         if (expectedOpen)
         {
             var popupSource = PresentationSource.FromVisual(ActionDropDownContentRoot);
-            if (popupSource is not HwndSource || popupSource.CompositionTarget == null)
+            if (popupSource is not HwndSource ||
+                popupSource.CompositionTarget == null)
             {
                 throw new InvalidOperationException(
-                    "Expected Xceed DropDownButton content to be rooted in the portable public HwndSource facade while open.");
+                    "Expected Xceed dropdown content to be rooted in the portable public HwndSource facade while open.");
+            }
+        }
+    }
+
+    internal void ValidateToolkitSplitButtonPopupState(bool expectedOpen)
+    {
+        AssertEqual(expectedOpen, SplitActionButton.IsOpen, "Toolkit SplitButton popup state");
+
+        if (expectedOpen)
+        {
+            var splitPopupSource = PresentationSource.FromVisual(SplitActionDropDownContentRoot);
+            if (splitPopupSource is not HwndSource ||
+                splitPopupSource.CompositionTarget == null)
+            {
+                throw new InvalidOperationException(
+                    "Expected Xceed SplitButton dropdown content to be rooted in the portable public HwndSource facade while open.");
+            }
+
+            if (OwnerPickerList.Items.Count != ViewModel.Owners.Count)
+            {
+                throw new InvalidOperationException("Expected Toolkit SplitButton list content to bind all owners while open.");
             }
         }
     }
@@ -226,10 +263,18 @@ public partial class MainWindow : Window
         AssertEqual("LL-0000", ReferenceMaskTextBox.Mask, "Toolkit MaskedTextBox mask");
         AssertEqual(ViewModel.ReminderTime, ReminderTimePicker.Value, "Toolkit TimePicker value binding target");
         AssertEqual(ViewModel.RichNotes, ToolkitRichTextBox.Text, "Toolkit RichTextBox text binding target");
+        AssertEqual(ViewModel.SelectedOwner, OwnerComboBox.SelectedItem as string, "Toolkit WatermarkComboBox selected item binding target");
+        AssertEqual(ViewModel.PriorityRangeStart, PriorityRangeSlider.LowerValue, "Toolkit RangeSlider lower value binding target");
+        AssertEqual(ViewModel.PriorityRangeEnd, PriorityRangeSlider.HigherValue, "Toolkit RangeSlider higher value binding target");
 
         if (ToolkitRichTextBox.TextFormatter is not PlainTextFormatter)
         {
             throw new InvalidOperationException("Expected Toolkit RichTextBox to use PlainTextFormatter.");
+        }
+
+        if (OwnerComboBox.Items.Count != ViewModel.Owners.Count)
+        {
+            throw new InvalidOperationException("Expected Toolkit WatermarkComboBox to bind all owners.");
         }
 
         if (FlagListBox.Items.Count != ViewModel.Flags.Count)
@@ -484,7 +529,7 @@ public partial class MainWindow : Window
                     throw new InvalidOperationException("Expected Toolkit live AvalonDock deserialization to restore root panel shape.");
                 }
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/checklist/rich editors, AvalonDock document activation, floating document window, anchorable hide/show, auto-hide side groups, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/checklist/rich editors, Toolkit selector/range/split controls, AvalonDock document activation, floating document window, anchorable hide/show, auto-hide side groups, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -552,6 +597,31 @@ public partial class MainWindow : Window
                 AssertEqual(42.25m, ViewModel.Estimate, "Toolkit live CalculatorUpDown value binding source");
             },
             DispatcherPriority.Send);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => SplitActionButton.IsOpen = true,
+            DispatcherPriority.Send);
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => SplitActionButton.IsOpen,
+            "Toolkit live SplitButton dropdown open state");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => ValidateToolkitSplitButtonPopupState(expectedOpen: true),
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => SplitActionButton.IsOpen = false,
+            DispatcherPriority.Send);
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => !SplitActionButton.IsOpen,
+            "Toolkit live SplitButton dropdown closed state");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => ValidateToolkitSplitButtonPopupState(expectedOpen: false),
+            DispatcherPriority.Send);
     }
 
     private async Task ValidateLiveInputEditorsAsync(object liveHost)
@@ -564,6 +634,14 @@ public partial class MainWindow : Window
                 ReferenceMaskTextBox.GetBindingExpression(MaskedTextBox.TextProperty)?.UpdateSource();
 
                 ReminderTimePicker.Value = DateTime.Today.AddHours(15).AddMinutes(45);
+
+                OwnerComboBox.SelectedItem = "ProGPU";
+                OwnerComboBox.GetBindingExpression(ComboBox.SelectedItemProperty)?.UpdateSource();
+
+                PriorityRangeSlider.LowerValue = 3.0;
+                PriorityRangeSlider.HigherValue = 7.0;
+                PriorityRangeSlider.GetBindingExpression(RangeSlider.LowerValueProperty)?.UpdateSource();
+                PriorityRangeSlider.GetBindingExpression(RangeSlider.HigherValueProperty)?.UpdateSource();
 
                 if (!ViewModel.SelectedFlags.Contains("Reviewed"))
                 {
@@ -584,11 +662,20 @@ public partial class MainWindow : Window
                 AssertEqual("AB-1234", ViewModel.ReferenceCode, "Toolkit live MaskedTextBox binding source");
                 AssertEqual(DateTime.Today.AddHours(15).AddMinutes(45), ViewModel.ReminderTime, "Toolkit live TimePicker binding source");
                 AssertEqual("Live rich notes from Toolkit RichTextBox", ViewModel.RichNotes, "Toolkit live RichTextBox binding source");
+                AssertEqual("ProGPU", ViewModel.SelectedOwner, "Toolkit live WatermarkComboBox binding source");
+                AssertEqual(3.0, ViewModel.PriorityRangeStart, "Toolkit live RangeSlider lower binding source");
+                AssertEqual(7.0, ViewModel.PriorityRangeEnd, "Toolkit live RangeSlider higher binding source");
                 if (!FlagListBox.SelectedItems.Contains("Reviewed"))
                 {
                     throw new InvalidOperationException("Expected Toolkit live CheckListBox to select the added flag.");
                 }
             },
+            DispatcherPriority.Send);
+
+        await ClickLiveControlAsync(liveHost, SplitActionButton, "SplitActionButton");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => AssertEqual("Applied owner ProGPU", ViewModel.Status, "Toolkit live SplitButton click status"),
             DispatcherPriority.Send);
     }
 
@@ -867,6 +954,9 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private ToolkitDocument _selectedDocument;
     private int _priority = 4;
     private string _filterText = string.Empty;
+    private string _selectedOwner = "WPF";
+    private double _priorityRangeStart = 2.0;
+    private double _priorityRangeEnd = 8.0;
     private DateTime? _dueDate = DateTime.Today.AddDays(7).AddHours(9);
     private DateTime? _reminderTime = DateTime.Today.AddHours(10).AddMinutes(15);
     private string _referenceCode = "PR-2048";
@@ -884,6 +974,7 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
             new("Overview", "WPF", DateTime.Today, "No-source-change SDK app consuming Extended WPF Toolkit."),
             new("AvalonDock", "Xceed", DateTime.Today.AddDays(-1), "DockingManager layout with documents and anchorables.")
         ];
+        Owners = ["WPF", "ProGPU", "SDK", "Xceed"];
         Categories = ["Framework", "Toolkit", "AvalonDock", "Rendering"];
         SelectedCategories = ["Toolkit", "AvalonDock"];
         Flags = ["Pinned", "Reviewed", "Blocked", "Urgent"];
@@ -898,6 +989,8 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     public ObservableCollection<ToolkitDocument> Documents { get; }
 
     public ObservableCollection<string> Categories { get; }
+
+    public ObservableCollection<string> Owners { get; }
 
     public ObservableCollection<string> SelectedCategories { get; }
 
@@ -943,6 +1036,45 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
             if (_filterText != value)
             {
                 _filterText = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string SelectedOwner
+    {
+        get => _selectedOwner;
+        set
+        {
+            if (!string.Equals(_selectedOwner, value, StringComparison.Ordinal))
+            {
+                _selectedOwner = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public double PriorityRangeStart
+    {
+        get => _priorityRangeStart;
+        set
+        {
+            if (!Equals(_priorityRangeStart, value))
+            {
+                _priorityRangeStart = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public double PriorityRangeEnd
+    {
+        get => _priorityRangeEnd;
+        set
+        {
+            if (!Equals(_priorityRangeEnd, value))
+            {
+                _priorityRangeEnd = value;
                 OnPropertyChanged();
             }
         }
@@ -1115,6 +1247,8 @@ internal static class ToolkitSelfTest
         Require<DockingManager>(window, "DockManager");
         Require<IntegerUpDown>(window, "PriorityEditor");
         Require<WatermarkTextBox>(window, "FilterTextBox");
+        Require<WatermarkComboBox>(window, "OwnerComboBox");
+        Require<RangeSlider>(window, "PriorityRangeSlider");
         Require<DateTimePicker>(window, "DueDatePicker");
         Require<TimePicker>(window, "ReminderTimePicker");
         Require<MaskedTextBox>(window, "ReferenceMaskTextBox");
@@ -1124,6 +1258,9 @@ internal static class ToolkitSelfTest
         Require<CalculatorUpDown>(window, "EstimateEditor");
         Require<DropDownButton>(window, "ActionDropDownButton");
         Require<Button>(window, "MarkReviewedButton");
+        Require<SplitButton>(window, "SplitActionButton");
+        Require<ListBox>(window, "OwnerPickerList");
+        Require<Button>(window, "AssignSdkOwnerButton");
         Require<ToolkitRichTextBox>(window, "ToolkitRichTextBox");
         Require<BusyIndicator>(window, "BusyIndicator");
         Require<PropertyGrid>(window, "DocumentPropertyGrid");
@@ -1185,6 +1322,7 @@ internal static class ToolkitSelfTest
         }
 
         if (window.ViewModel.Documents.Count != 2 ||
+            window.ViewModel.Owners.Count != 4 ||
             window.ViewModel.Categories.Count != 4 ||
             window.ViewModel.SelectedCategories.Count != 2 ||
             window.ViewModel.Flags.Count != 4 ||
@@ -1242,6 +1380,22 @@ internal static class ToolkitSelfTest
                 "Toolkit popup-backed controls closed state");
             window.ValidateToolkitPopupState(expectedOpen: false);
 
+            window.SplitActionButton.IsOpen = true;
+            PumpDispatcherUntil(
+                window,
+                () => window.SplitActionButton.IsOpen,
+                TimeSpan.FromSeconds(2),
+                "Toolkit SplitButton dropdown open state");
+            window.ValidateToolkitSplitButtonPopupState(expectedOpen: true);
+
+            window.SplitActionButton.IsOpen = false;
+            PumpDispatcherUntil(
+                window,
+                () => !window.SplitActionButton.IsOpen,
+                TimeSpan.FromSeconds(2),
+                "Toolkit SplitButton dropdown closed state");
+            window.ValidateToolkitSplitButtonPopupState(expectedOpen: false);
+
             if (window.ViewModel.AccentColor != Colors.MediumSeaGreen ||
                 window.ViewModel.Estimate != 42.25m)
             {
@@ -1251,6 +1405,12 @@ internal static class ToolkitSelfTest
             window.ReferenceMaskTextBox.Text = "ZX-9876";
             window.ReferenceMaskTextBox.GetBindingExpression(MaskedTextBox.TextProperty)?.UpdateSource();
             window.ReminderTimePicker.Value = DateTime.Today.AddHours(16);
+            window.OwnerComboBox.SelectedItem = "ProGPU";
+            window.OwnerComboBox.GetBindingExpression(ComboBox.SelectedItemProperty)?.UpdateSource();
+            window.PriorityRangeSlider.LowerValue = 3.0;
+            window.PriorityRangeSlider.HigherValue = 7.0;
+            window.PriorityRangeSlider.GetBindingExpression(RangeSlider.LowerValueProperty)?.UpdateSource();
+            window.PriorityRangeSlider.GetBindingExpression(RangeSlider.HigherValueProperty)?.UpdateSource();
             window.ToolkitRichTextBox.Text = "Application.Run rich notes";
             window.ToolkitRichTextBox.GetBindingExpression(ToolkitRichTextBox.TextProperty)?.UpdateSource();
             if (!window.ViewModel.SelectedFlags.Contains("Urgent"))
@@ -1261,6 +1421,9 @@ internal static class ToolkitSelfTest
             window.ValidateToolkitInputEditorState();
             if (!string.Equals(window.ViewModel.ReferenceCode, "ZX-9876", StringComparison.Ordinal) ||
                 window.ViewModel.ReminderTime != DateTime.Today.AddHours(16) ||
+                !string.Equals(window.ViewModel.SelectedOwner, "ProGPU", StringComparison.Ordinal) ||
+                window.ViewModel.PriorityRangeStart != 3.0 ||
+                window.ViewModel.PriorityRangeEnd != 7.0 ||
                 !string.Equals(window.ViewModel.RichNotes, "Application.Run rich notes", StringComparison.Ordinal) ||
                 !window.FlagListBox.SelectedItems.Contains("Urgent"))
             {
@@ -1296,6 +1459,21 @@ internal static class ToolkitSelfTest
             !string.Equals(window.ViewModel.Status, "Document marked reviewed", StringComparison.Ordinal))
         {
             throw new InvalidOperationException("Expected Toolkit DropDownButton command to update the selected document and close the dropdown.");
+        }
+
+        window.SplitActionButton.IsOpen = true;
+        window.AssignSdkOwnerButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+        if (window.SplitActionButton.IsOpen ||
+            !string.Equals(window.ViewModel.SelectedOwner, "SDK", StringComparison.Ordinal) ||
+            !string.Equals(window.ViewModel.Status, "Owner set to SDK", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Expected Toolkit SplitButton dropdown command to update owner selection and close the dropdown.");
+        }
+
+        window.SplitActionButton.RaiseEvent(new RoutedEventArgs(SplitButton.ClickEvent));
+        if (!string.Equals(window.ViewModel.Status, "Applied owner SDK", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Expected Toolkit SplitButton primary command to update sample status.");
         }
 
         if (expectLoaded)

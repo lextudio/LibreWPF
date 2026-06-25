@@ -4951,6 +4951,87 @@ internal static class Program
                     AssertEqual("external-toolkit", anchorable.ContentId, "external SDK AvalonDock anchorable content id");
                     AssertEqual("Toolkit", anchorable.Title, "external SDK AvalonDock anchorable title");
                     AssertEqual(false, anchorable.CanClose, "external SDK AvalonDock anchorable close policy");
+
+                    if (expectLoaded)
+                    {
+                        ValidateExternalAvalonDockRuntimeActions(
+                            dockManager,
+                            dockRoot,
+                            documentPane,
+                            anchorablePane,
+                            document,
+                            anchorable);
+                    }
+                }
+
+                private static void ValidateExternalAvalonDockRuntimeActions(
+                    Xceed.Wpf.AvalonDock.DockingManager dockManager,
+                    Xceed.Wpf.AvalonDock.Layout.LayoutRoot dockRoot,
+                    Xceed.Wpf.AvalonDock.Layout.LayoutDocumentPane documentPane,
+                    Xceed.Wpf.AvalonDock.Layout.LayoutAnchorablePane anchorablePane,
+                    Xceed.Wpf.AvalonDock.Layout.LayoutDocument document,
+                    Xceed.Wpf.AvalonDock.Layout.LayoutAnchorable anchorable)
+                {
+                    document.IsSelected = true;
+                    document.IsActive = true;
+                    DrainDispatcher();
+                    AssertEqual(true, document.IsSelected, "external SDK AvalonDock document selected state");
+                    AssertEqual(true, document.IsActive, "external SDK AvalonDock document active state");
+
+                    anchorable.Hide();
+                    DrainDispatcher();
+                    AssertEqual(true, anchorable.IsHidden, "external SDK AvalonDock anchorable hidden state");
+                    AssertEqual(true, dockRoot.Hidden.Contains(anchorable), "external SDK AvalonDock hidden collection membership");
+
+                    anchorable.Show();
+                    DrainDispatcher();
+                    AssertEqual(false, anchorable.IsHidden, "external SDK AvalonDock anchorable restored state");
+                    AssertEqual(false, dockRoot.Hidden.Contains(anchorable), "external SDK AvalonDock hidden collection restore");
+                    AssertEqual(1, anchorablePane.ChildrenCount, "external SDK AvalonDock restored anchorable pane child count");
+
+                    string layoutXml = SerializeExternalAvalonDockLayout(dockManager);
+                    if (!layoutXml.Contains("<LayoutRoot", StringComparison.Ordinal)
+                        || !layoutXml.Contains("ContentId=\"external-document\"", StringComparison.Ordinal)
+                        || !layoutXml.Contains("ContentId=\"external-toolkit\"", StringComparison.Ordinal))
+                    {
+                        throw new InvalidOperationException("Expected external SDK AvalonDock layout serialization to include content ids.");
+                    }
+
+                    var roundTripped = DeserializeExternalAvalonDockLayout(layoutXml);
+                    if (roundTripped.Layout.RootPanel is null
+                        || roundTripped.Layout.RootPanel.ChildrenCount != dockRoot.RootPanel.ChildrenCount)
+                    {
+                        throw new InvalidOperationException("Expected external SDK AvalonDock layout deserialization to restore the root panel shape.");
+                    }
+
+                    AssertEqual(1, documentPane.ChildrenCount, "external SDK AvalonDock document pane preserved child count");
+                }
+
+                private static string SerializeExternalAvalonDockLayout(
+                    Xceed.Wpf.AvalonDock.DockingManager dockManager)
+                {
+                    using var stream = new MemoryStream();
+                    var serializer = new Xceed.Wpf.AvalonDock.Layout.Serialization.XmlLayoutSerializer(dockManager);
+                    serializer.Serialize(stream);
+                    return Encoding.UTF8.GetString(stream.ToArray());
+                }
+
+                private static Xceed.Wpf.AvalonDock.DockingManager DeserializeExternalAvalonDockLayout(
+                    string layoutXml)
+                {
+                    var manager = new Xceed.Wpf.AvalonDock.DockingManager();
+                    var serializer = new Xceed.Wpf.AvalonDock.Layout.Serialization.XmlLayoutSerializer(manager);
+                    serializer.LayoutSerializationCallback += (_, args) =>
+                    {
+                        args.Content ??= new TextBlock
+                        {
+                            Text = args.Model.ContentId,
+                        };
+                    };
+
+                    using var stream = new MemoryStream(Encoding.UTF8.GetBytes(layoutXml));
+                    serializer.Deserialize(stream);
+                    return manager;
                 }
 
                 private static void ValidateExternalToolkitDropDownButton(

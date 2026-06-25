@@ -8,6 +8,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     internal const string SourceTypeName = "System.Windows.PortablePresentationSource";
     private const string RootVisualPropertyName = "RootVisual";
     private const string CompositionTargetPropertyName = "CompositionTarget";
+    private const string HandlePropertyName = "Handle";
     private const string RenderRequestedEventName = "RenderRequested";
     private const string SetDeviceScaleMethodName = "SetDeviceScale";
     private const string SetClientSizeMethodName = "SetClientSize";
@@ -15,6 +16,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     private readonly ProGpuWpfWindowHost _host;
     private readonly PropertyInfo _rootVisualProperty;
     private readonly PropertyInfo _compositionTargetProperty;
+    private readonly PropertyInfo? _handleProperty;
     private readonly MethodInfo? _setDeviceScaleMethod;
     private readonly MethodInfo? _setClientSizeMethod;
     private readonly MethodInfo? _disposeMethod;
@@ -28,6 +30,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         object source,
         PropertyInfo rootVisualProperty,
         PropertyInfo compositionTargetProperty,
+        PropertyInfo? handleProperty,
         MethodInfo? setDeviceScaleMethod,
         MethodInfo? setClientSizeMethod,
         MethodInfo? disposeMethod,
@@ -37,6 +40,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         Source = source;
         _rootVisualProperty = rootVisualProperty;
         _compositionTargetProperty = compositionTargetProperty;
+        _handleProperty = handleProperty;
         _setDeviceScaleMethod = setDeviceScaleMethod;
         _setClientSizeMethod = setClientSizeMethod;
         _disposeMethod = disposeMethod;
@@ -46,6 +50,21 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     public object Source { get; }
 
     public object? CompositionTarget => _compositionTargetProperty.GetValue(Source);
+
+    public IntPtr Handle
+    {
+        get
+        {
+            if (_handleProperty == null ||
+                _handleProperty.PropertyType != typeof(IntPtr) ||
+                !_handleProperty.CanRead)
+            {
+                return IntPtr.Zero;
+            }
+
+            return (IntPtr)_handleProperty.GetValue(Source)!;
+        }
+    }
 
     public object? RootVisual
     {
@@ -195,6 +214,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         Type sourceType = presentationSource.GetType();
         PropertyInfo? rootVisualProperty = FindProperty(sourceType, RootVisualPropertyName);
         PropertyInfo? compositionTargetProperty = FindProperty(sourceType, CompositionTargetPropertyName);
+        PropertyInfo? handleProperty = FindProperty(sourceType, HandlePropertyName);
         if (rootVisualProperty == null ||
             !rootVisualProperty.CanRead ||
             !rootVisualProperty.CanWrite ||
@@ -231,6 +251,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
             presentationSource,
             rootVisualProperty,
             compositionTargetProperty,
+            handleProperty,
             setDeviceScaleMethod,
             setClientSizeMethod,
             disposeMethod,

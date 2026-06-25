@@ -378,6 +378,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public void SetTopmost(bool topmost)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.SetTopmost(topmost)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("typeof(Action<object, object, object>)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("typeof(Func<object, IntPtr>)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("Func<object, IntPtr> getHandle", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("PortablePresentationSourceBridge?.Handle", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("14 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, setPosition, setTopmost, setWindowBorder, close, run, dispose, dragMove, getHandle }", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("13 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, setPosition, setTopmost, setWindowBorder, close, run, dispose, dragMove }", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("public void SetWindowBorder(object? resizeMode, object? windowStyle)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("Host.SetWindowBorder(ResolveWindowBorder(resizeMode, windowStyle, Host.WindowBorder))", proGpuActivation, StringComparison.Ordinal);
@@ -816,6 +820,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static void SetWindowBorder(object activation, ResizeMode resizeMode, WindowStyle windowStyle)", activationService, StringComparison.Ordinal);
         Assert.Contains("Func<object, bool> dragMove", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static bool TryDragMove(object activation)", activationService, StringComparison.Ordinal);
+        Assert.Contains("Func<object, IntPtr> getHandle = null", activationService, StringComparison.Ordinal);
+        Assert.Contains("internal static IntPtr GetHandle(object activation)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void SetActivationState(Window window, bool isActive)", activationService, StringComparison.Ordinal);
         Assert.Contains("NotifyPortableInputProvidersDeactivated(window)", activationService, StringComparison.Ordinal);
         Assert.Contains("source.GetInputProvider(typeof(KeyboardDevice))?.NotifyDeactivate()", activationService, StringComparison.Ordinal);
@@ -860,6 +866,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableWindowActivationService.SetTopmost(_portableWindowActivation, topmost)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.SetWindowBorder(_portableWindowActivation, ResizeMode, windowStyle)", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.SetWindowBorder(_portableWindowActivation, ResizeMode, WindowStyle)", window, StringComparison.Ordinal);
+        Assert.Contains("PortableWindowActivationService.GetHandle(_portableWindowActivation)", window, StringComparison.Ordinal);
         Assert.Contains("&& !w.IsPortableWindowActive", window, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.TryDragMove(_portableWindowActivation)", window, StringComparison.Ordinal);
         Assert.Contains("if (PortableWindowActivationService.IsEnabled)", window, StringComparison.Ordinal);
@@ -3549,6 +3556,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("new Func<object, object>(recorder.Activate)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("new Action<object, object, object>(recorder.SetWindowBorder)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("public void SetWindowBorder(object activation, object resizeMode, object windowStyle)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new Func<object, IntPtr>(recorder.GetHandle)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("public IntPtr GetHandle(object activation)", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetProperty(typedActivation.PresentationSource, \"Handle\")", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("method.GetParameters().Length == 2", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("new Action<object>(recorder.Run)", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateMainWindow(_presentationCore, window, _application)", harnessProgram, StringComparison.Ordinal);
@@ -5458,6 +5468,11 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(accessKeyManager, "if (!global::System.OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetActiveWindow()");
         Assert.Contains("PresentationSource.CriticalCurrentSources", accessKeyManager, StringComparison.Ordinal);
         Assert.Contains("GetPortableActiveSource()", accessKeyManager, StringComparison.Ordinal);
+        Assert.Contains("scope = NormalizePortableScope(scope);", accessKeyManager, StringComparison.Ordinal);
+        Assert.Contains("NormalizePortableScope(elementInfo.Scope)", accessKeyManager, StringComparison.Ordinal);
+        Assert.Contains("private static object NormalizePortableScope(object scope)", accessKeyManager, StringComparison.Ordinal);
+        Assert.Contains("scope is HwndSource { IsPortable: true } hwndSource", accessKeyManager, StringComparison.Ordinal);
+        Assert.Contains("return hwndSource.PortableOwner;", accessKeyManager, StringComparison.Ordinal);
         Assert.Contains("_portableCurrentInputLanguage = CultureInfo.CurrentCulture", inputLanguageSource, StringComparison.Ordinal);
         Assert.Contains("return new CultureInfo[1] { CurrentInputLanguage }", inputLanguageSource, StringComparison.Ordinal);
         AssertGuardBefore(inputLanguageSource, "if (!OperatingSystem.IsWindows())", "SafeNativeMethods.GetKeyboardLayout(0)");
@@ -5700,6 +5715,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal static Rect ClientToScreen(Rect rectClient, PresentationSource presentationSource)", pointUtil, StringComparison.Ordinal);
         Assert.Contains("Point corner1 = ClientToScreen(rectClient.TopLeft, presentationSource);", pointUtil, StringComparison.Ordinal);
         Assert.DoesNotContain("ClientToScreen(Rect rectClient, HwndSource hwndSource)", pointUtil, StringComparison.Ordinal);
+        Assert.Contains("inputSource == null || inputSource.IsPortable", pointUtil, StringComparison.Ordinal);
         Assert.Contains("PresentationSource sourceFrom = PresentationSource.CriticalFromVisual(rootFrom);", inputElement, StringComparison.Ordinal);
         Assert.Contains("PresentationSource sourceTo = PresentationSource.CriticalFromVisual(rootTo);", inputElement, StringComparison.Ordinal);
         Assert.Contains("PointUtil.ClientToScreen(ptTranslated, sourceFrom)", inputElement, StringComparison.Ordinal);
@@ -5793,9 +5809,58 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<MakeDir Directories=\"$(_ProGpuWpfWin32CompatIntermediateDirectory)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<TargetPath>$(TargetDir)kernel32.dll</TargetPath>", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<TargetPath>$(TargetDir)user32.dll</TargetPath>", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<TargetPath>$(TargetDir)gdi32.dll</TargetPath>", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<TargetPath>$(TargetDir)dwmapi.dll</TargetPath>", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<TargetPath>$(TargetDir)uxtheme.dll</TargetPath>", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<TargetPath>$(TargetDir)shell32.dll</TargetPath>", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<TargetPath>$(TargetDir)gdiplus.dll</TargetPath>", portableTargets, StringComparison.Ordinal);
         Assert.Contains("GetCurrentThreadId", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("GetModuleHandleW", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("RegisterClassExW", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("UnregisterClassW", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("DefWindowProcW", win32Compat, StringComparison.Ordinal);
         Assert.Contains("SetWindowsHookEx", win32Compat, StringComparison.Ordinal);
         Assert.Contains("GetClientRect", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("GetStockObject", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("DwmIsCompositionEnabled", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("IsThemeActive", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("SystemParametersInfoW", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_DEFAULT_STYLE", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("progpu_window_state", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("progpu_get_window_long_value", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("progpu_set_window_long_value", win32Compat, StringComparison.Ordinal);
+        Assert.Contains("return progpu_get_window_long_value(window, index);", win32Compat, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ProGpuTextureInteropRejectsForeignOrDisposedTextureViews()
+    {
+        var adapter = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfBitmapSourceImageAdapter.cs"));
+        var compositor = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Scene",
+            "Compositor.cs"));
+
+        Assert.Contains("ConditionalWeakTable<MediaImageSource, AdaptedTextureCache>", adapter, StringComparison.Ordinal);
+        Assert.Contains("s_adaptedTextures.GetValue(mediaSource, static _ => new AdaptedTextureCache())", adapter, StringComparison.Ordinal);
+        Assert.Contains("private static WgpuContext? ResolveCurrentGpuContext()", adapter, StringComparison.Ordinal);
+        Assert.Contains("private static bool IsUsableInContext(GpuTexture texture, WgpuContext? context)", adapter, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(texture.Context, context)", adapter, StringComparison.Ordinal);
+        Assert.Contains("private sealed class AdaptedTextureCache", adapter, StringComparison.Ordinal);
+        Assert.Contains("private readonly Dictionary<WgpuContext, GpuTexture> _texturesByContext", adapter, StringComparison.Ordinal);
+
+        Assert.Contains("private bool IsTextureBindable(GpuTexture? texture)", compositor, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(texture.Context, _context)", compositor, StringComparison.Ordinal);
+        Assert.Contains("texture.TexturePtr != null", compositor, StringComparison.Ordinal);
+        Assert.Contains("texture.ViewPtr != null", compositor, StringComparison.Ordinal);
+        Assert.Contains("dc.Type == DrawCallType.Texture && IsTextureBindable(dc.Texture)", compositor, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -5834,6 +5899,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<xctk:IntegerUpDown x:Name=\"PriorityEditor\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:PropertyGrid x:Name=\"DocumentPropertyGrid\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ActivateEditorButton", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ToggleEditorFloatButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("TogglePropertyPaneButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ToggleActivityAutoHideButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ToggleAgendaAutoHideButton", mainWindowXaml, StringComparison.Ordinal);
@@ -5843,6 +5909,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("XmlLayoutSerializer", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PropertyPane.Hide(false)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PropertyPane.Show()", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("EditorDocument.Float()", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("EditorDocument.DockAsDocument()", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateEditorFloatingState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DockLayoutRoot.FloatingWindows.Count", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ActivityPane.ToggleAutoHide()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AgendaPane.ToggleAutoHide()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DockLayoutRoot.RightSide.ChildrenCount", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -5852,6 +5922,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGPU WPF Toolkit live input validation succeeded:", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("OnPlatformInputReceived", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ResolveCurrentRenderSurfaceGeometry", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("floating document window", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PumpDispatcherUntil", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF Toolkit Application.Run validation succeeded.", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_TOOLKIT_RUN_VALIDATE", runScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_TOOLKIT_LIVE_VALIDATE", runScript, StringComparison.Ordinal);
@@ -10035,6 +10107,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SDK ProGPU WPF host window border property", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK ProGPU WPF host window border method parameter count", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new Action<object, object, object>(recorder.SetWindowBorder)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new Func<object, IntPtr>(recorder.GetHandle)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("public IntPtr GetHandle(object activation)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetProperty(typedActivation.PresentationSource, \"Handle\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("activated SDK window live resize mode", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("activated SDK window live window style", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK portable activation recorder window border target", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -10568,6 +10643,32 @@ public sealed class WpfManagedProjectGraphTests
             "System",
             "Windows",
             "PortablePresentationSource.cs");
+        var presentationSourcePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "PresentationSource.cs");
+        var hwndSourcePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "InterOp",
+            "HwndSource.cs");
+        var hwndTargetPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "InterOp",
+            "HwndTarget.cs");
         var projectPath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -10578,6 +10679,9 @@ public sealed class WpfManagedProjectGraphTests
         var compositionTarget = File.ReadAllText(compositionTargetPath);
         var portableTarget = File.ReadAllText(portableTargetPath);
         var portableSource = File.ReadAllText(portableSourcePath);
+        var presentationSource = File.ReadAllText(presentationSourcePath);
+        var hwndSource = File.ReadAllText(hwndSourcePath);
+        var hwndTarget = File.ReadAllText(hwndTargetPath);
         var project = File.ReadAllText(projectPath);
 
         Assert.Contains("internal virtual bool UsesDuceComposition", compositionTarget, StringComparison.Ordinal);
@@ -10606,6 +10710,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private readonly PortableCompositionTarget _compositionTarget", portableSource, StringComparison.Ordinal);
         Assert.Contains("private readonly PortableKeyboardInputProvider _keyboardInputProvider", portableSource, StringComparison.Ordinal);
         Assert.Contains("private readonly PortableMouseInputProvider _mouseInputProvider", portableSource, StringComparison.Ordinal);
+        Assert.Contains("private readonly HwndSource _portableHwndSource", portableSource, StringComparison.Ordinal);
+        Assert.Contains("internal IntPtr Handle", portableSource, StringComparison.Ordinal);
+        Assert.Contains("internal HwndSource HwndSource", portableSource, StringComparison.Ordinal);
+        Assert.Contains("HwndSource.CreatePortable(this, _handle, dpiScaleX, dpiScaleY)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("_portableHwndSource.Dispose();", portableSource, StringComparison.Ordinal);
         Assert.Contains("AddSource();", portableSource, StringComparison.Ordinal);
         Assert.Contains("RemoveSource();", portableSource, StringComparison.Ordinal);
         Assert.Contains("RootChanged(oldRootVisual, _rootVisual)", portableSource, StringComparison.Ordinal);
@@ -10629,6 +10738,36 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RawMouseActions.Activate | RawMouseActions.CancelCapture", portableSource, StringComparison.Ordinal);
         Assert.Contains("_site.ReportInput(report)", portableSource, StringComparison.Ordinal);
         Assert.Contains(@"<Compile Include=""System\Windows\PortablePresentationSource.cs"" />", project, StringComparison.Ordinal);
+
+        Assert.Contains("return ToPublicPresentationSource(CriticalFromVisual(visual));", presentationSource, StringComparison.Ordinal);
+        Assert.Contains("return ToPublicPresentationSource(CriticalFromVisual(dependencyObject));", presentationSource, StringComparison.Ordinal);
+        Assert.Contains("private static PresentationSource ToPublicPresentationSource(PresentationSource source)", presentationSource, StringComparison.Ordinal);
+        Assert.Contains("if (source is PortablePresentationSource portableSource)", presentationSource, StringComparison.Ordinal);
+        Assert.Contains("return portableSource.HwndSource;", presentationSource, StringComparison.Ordinal);
+
+        Assert.Contains("internal static HwndSource CreatePortable(PortablePresentationSource owner, IntPtr handle, double dpiScaleX, double dpiScaleY)", hwndSource, StringComparison.Ordinal);
+        Assert.Contains("private HwndSource(PortablePresentationSource portableOwner, IntPtr portableHandle, double dpiScaleX, double dpiScaleY)", hwndSource, StringComparison.Ordinal);
+        Assert.Contains("_portableOwner = portableOwner;", hwndSource, StringComparison.Ordinal);
+        Assert.Contains("_portableHandle = portableHandle;", hwndSource, StringComparison.Ordinal);
+        Assert.Contains("HwndTarget.CreatePortable(portableHandle, dpiScaleX, dpiScaleY)", hwndSource, StringComparison.Ordinal);
+        Assert.Contains("return _portableOwner.GetInputProvider(inputDevice);", hwndSource, StringComparison.Ordinal);
+        Assert.Contains("return _portableOwner.RootVisual;", hwndSource, StringComparison.Ordinal);
+        Assert.Contains("_portableOwner.RootVisual = value;", hwndSource, StringComparison.Ordinal);
+        Assert.Contains("internal bool IsPortable", hwndSource, StringComparison.Ordinal);
+        Assert.Contains("get { return _portableOwner != null; }", hwndSource, StringComparison.Ordinal);
+        Assert.Contains("internal PresentationSource PortableOwner", hwndSource, StringComparison.Ordinal);
+        Assert.Contains("get { return _portableOwner; }", hwndSource, StringComparison.Ordinal);
+        Assert.Contains("if(_hooks == null && _hwndWrapper != null)", hwndSource, StringComparison.Ordinal);
+        Assert.Contains("return _portableHandle;", hwndSource, StringComparison.Ordinal);
+        Assert.Contains("return Handle == IntPtr.Zero", hwndSource, StringComparison.Ordinal);
+        Assert.Contains("private PortablePresentationSource  _portableOwner", hwndSource, StringComparison.Ordinal);
+        Assert.Contains("private IntPtr                      _portableHandle", hwndSource, StringComparison.Ordinal);
+
+        Assert.Contains("internal static HwndTarget CreatePortable(IntPtr hwnd, double dpiScaleX, double dpiScaleY)", hwndTarget, StringComparison.Ordinal);
+        Assert.Contains("private HwndTarget(IntPtr hwnd, double dpiScaleX, double dpiScaleY)", hwndTarget, StringComparison.Ordinal);
+        Assert.Contains("_isPortable = true;", hwndTarget, StringComparison.Ordinal);
+        Assert.Contains("CurrentDpiScale = DpiScale2.FromPixelsPerInch", hwndTarget, StringComparison.Ordinal);
+        Assert.Contains("if (_isPortable)\n                    {\n                        return;", hwndTarget, StringComparison.Ordinal);
     }
 
     [Fact]

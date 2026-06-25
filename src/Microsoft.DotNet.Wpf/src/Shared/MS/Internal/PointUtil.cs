@@ -164,7 +164,7 @@ namespace MS.Internal
         {
             // For now we only know how to use HwndSource.
             HwndSource inputSource = presentationSource as HwndSource;
-            if(inputSource == null)
+            if(inputSource == null || inputSource.IsPortable)
             {
                 return pointClient;
             }
@@ -186,7 +186,7 @@ namespace MS.Internal
         {
             // For now we only know how to use HwndSource.
             HwndSource inputSource = presentationSource as HwndSource;
-            if(inputSource == null)
+            if(inputSource == null || inputSource.IsPortable)
             {
                 return pointScreen;
             }
@@ -434,4 +434,3 @@ namespace MS.Internal
 
     }
 }
-

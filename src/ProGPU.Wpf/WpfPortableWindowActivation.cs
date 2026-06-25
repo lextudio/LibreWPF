@@ -81,9 +81,34 @@ public sealed class WpfPortableWindowActivation : IDisposable
                 typeof(Action<object>),
                 typeof(Action<object>),
                 typeof(Action<object>),
+                typeof(Func<object, bool>),
+                typeof(Func<object, IntPtr>)
+            },
+            modifiers: null);
+        if (registerMethod == null)
+        {
+            registerMethod = serviceType.GetMethod(
+                "Register",
+                BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                types: new[]
+            {
+                typeof(Func<object, object?>),
+                typeof(Action<object>),
+                typeof(Action<object>),
+                typeof(Action<object, object>),
+                typeof(Action<object, string>),
+                typeof(Action<object, double, double>),
+                typeof(Action<object, double, double>),
+                typeof(Action<object, bool>),
+                typeof(Action<object, object, object>),
+                typeof(Action<object>),
+                typeof(Action<object>),
+                typeof(Action<object>),
                 typeof(Func<object, bool>)
             },
             modifiers: null);
+        }
         if (registerMethod == null)
         {
             registerMethod = serviceType.GetMethod(
@@ -205,9 +230,12 @@ public sealed class WpfPortableWindowActivation : IDisposable
             ((WpfPortableWindowActivation)activation).Dispose();
         Func<object, bool> dragMove = activation =>
             ((WpfPortableWindowActivation)activation).TryDragMove();
+        Func<object, IntPtr> getHandle = activation =>
+            ((WpfPortableWindowActivation)activation).Host.PortablePresentationSourceBridge?.Handle ?? IntPtr.Zero;
 
         var parameters = registerMethod.GetParameters().Length switch
         {
+            14 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, setPosition, setTopmost, setWindowBorder, close, run, dispose, dragMove, getHandle },
             13 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, setPosition, setTopmost, setWindowBorder, close, run, dispose, dragMove },
             12 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, setPosition, setTopmost, close, run, dispose, dragMove },
             11 => new object[] { activate, show, hide, setWindowState, setTitle, setClientSize, setPosition, close, run, dispose, dragMove },

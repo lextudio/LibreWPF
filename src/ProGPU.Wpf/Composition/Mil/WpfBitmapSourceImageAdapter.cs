@@ -14,7 +14,7 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
 {
     private const BindingFlags MemberFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
     private static readonly ConcurrentDictionary<Type, PropertyInfo?> s_bitmapSourceTextureProperties = new();
-    private static readonly ConditionalWeakTable<MediaImageSource, AdaptedTextureEntry> s_adaptedTextures = new();
+    private static readonly ConditionalWeakTable<MediaImageSource, AdaptedTextureCache> s_adaptedTextures = new();
 
     public MediaImageSource? AdaptImageSource(object? imageSource)
     {
@@ -40,11 +40,12 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
 
         var dpiX = TryReadDoubleProperty(imageSource, "DpiX", out var readDpiX) ? readDpiX : 96;
         var dpiY = TryReadDoubleProperty(imageSource, "DpiY", out var readDpiY) ? readDpiY : 96;
+        var context = ResolveGpuContext();
         if (imageSource is MediaImageSource mediaSource
-            && TryCreateGpuTexture(width, height, pixelBuffer, out var adaptedTexture))
+            && TryCreateGpuTexture(context, width, height, pixelBuffer, out var adaptedTexture))
         {
-            s_adaptedTextures.Remove(mediaSource);
-            s_adaptedTextures.Add(mediaSource, new AdaptedTextureEntry(adaptedTexture));
+            s_adaptedTextures.GetValue(mediaSource, static _ => new AdaptedTextureCache())
+                .Set(context, adaptedTexture);
             return mediaSource;
         }
 
@@ -59,13 +60,15 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
     internal static bool TryGetGpuTexture(MediaImageSource imageSource, out GpuTexture texture)
     {
         texture = null!;
+        var currentContext = ResolveCurrentGpuContext();
 
         var property = s_bitmapSourceTextureProperties.GetOrAdd(imageSource.GetType(), ResolveGpuTextureProperty);
         if (property != null)
         {
             try
             {
-                if (property.GetValue(imageSource) is GpuTexture resolvedTexture)
+                if (property.GetValue(imageSource) is GpuTexture resolvedTexture
+                    && IsUsableInContext(resolvedTexture, currentContext))
                 {
                     texture = resolvedTexture;
                     return true;
@@ -80,9 +83,8 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
         }
 
         if (s_adaptedTextures.TryGetValue(imageSource, out var adapted)
-            && !adapted.Texture.IsDisposed)
+            && adapted.TryGet(currentContext, out texture))
         {
-            texture = adapted.Texture;
             return true;
         }
 
@@ -102,6 +104,7 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
     }
 
     private static bool TryCreateGpuTexture(
+        WgpuContext context,
         int width,
         int height,
         Pbgra32PixelBuffer pixelBuffer,
@@ -112,7 +115,7 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
         try
         {
             texture = new GpuTexture(
-                ResolveGpuContext(),
+                context,
                 (uint)width,
                 (uint)height,
                 TextureFormat.Bgra8Unorm,
@@ -132,6 +135,25 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
         texture?.Dispose();
         texture = null!;
         return false;
+    }
+
+    private static WgpuContext? ResolveCurrentGpuContext()
+    {
+        var current = WgpuContext.Current;
+        if (current != null && !current.IsDisposed)
+        {
+            return current;
+        }
+
+        foreach (var active in WgpuContext.ActiveContexts)
+        {
+            if (!active.IsDisposed)
+            {
+                return active;
+            }
+        }
+
+        return null;
     }
 
     private static WgpuContext ResolveGpuContext()
@@ -223,14 +245,75 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
         return null;
     }
 
-    private sealed class AdaptedTextureEntry
+    private static bool IsUsableInContext(GpuTexture texture, WgpuContext? context)
     {
-        public AdaptedTextureEntry(GpuTexture texture)
+        return !texture.IsDisposed
+            && !texture.Context.IsDisposed
+            && (context == null || ReferenceEquals(texture.Context, context));
+    }
+
+    private sealed class AdaptedTextureCache
+    {
+        private readonly object _gate = new();
+        private readonly Dictionary<WgpuContext, GpuTexture> _texturesByContext = new();
+
+        public void Set(WgpuContext context, GpuTexture texture)
         {
-            Texture = texture;
+            lock (_gate)
+            {
+                RemoveDisposedNoLock();
+                _texturesByContext[context] = texture;
+            }
         }
 
-        public GpuTexture Texture { get; }
+        public bool TryGet(WgpuContext? context, out GpuTexture texture)
+        {
+            lock (_gate)
+            {
+                RemoveDisposedNoLock();
+
+                if (context != null)
+                {
+                    return _texturesByContext.TryGetValue(context, out texture!)
+                        && IsUsableInContext(texture, context);
+                }
+
+                foreach (var candidate in _texturesByContext.Values)
+                {
+                    if (IsUsableInContext(candidate, context))
+                    {
+                        texture = candidate;
+                        return true;
+                    }
+                }
+            }
+
+            texture = null!;
+            return false;
+        }
+
+        private void RemoveDisposedNoLock()
+        {
+            List<WgpuContext>? staleContexts = null;
+            foreach (var entry in _texturesByContext)
+            {
+                if (entry.Key.IsDisposed || entry.Value.IsDisposed)
+                {
+                    staleContexts ??= new List<WgpuContext>();
+                    staleContexts.Add(entry.Key);
+                }
+            }
+
+            if (staleContexts == null)
+            {
+                return;
+            }
+
+            foreach (var context in staleContexts)
+            {
+                _texturesByContext.Remove(context);
+            }
+        }
     }
 
     internal static bool TryCopyPixelsAsPbgra32(

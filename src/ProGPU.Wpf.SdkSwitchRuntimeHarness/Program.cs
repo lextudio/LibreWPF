@@ -3211,7 +3211,8 @@ internal static class Program
                 new Action<object>(recorder.Close),
                 new Action<object>(recorder.Run),
                 new Action<object>(recorder.Dispose),
-                new Func<object, bool>(_ => false)
+                new Func<object, bool>(_ => false),
+                new Func<object, IntPtr>(recorder.GetHandle)
             });
 
         AssertEqual(true, GetStaticProperty(activationServiceType, "IsEnabled"), "portable activation enabled");
@@ -4477,6 +4478,12 @@ internal static class Program
             var typedActivation = AssertSameActivation(activation);
             DisposeCount++;
             typedActivation.DisposePresentationSource();
+        }
+
+        public IntPtr GetHandle(object activation)
+        {
+            var typedActivation = AssertSameActivation(activation);
+            return (IntPtr)GetProperty(typedActivation.PresentationSource, "Handle");
         }
 
         public void ValidateAfterRun()

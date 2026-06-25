@@ -92,6 +92,22 @@ public sealed class WpfPortablePresentationSourceBridgeTests
     }
 
     [Fact]
+    public void TryBindExposesPortableSourceHandle()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var source = new FakePortablePresentationSource
+        {
+            Handle = new IntPtr(0x50575046)
+        };
+
+        var bound = WpfPortablePresentationSourceBridge.TryBind(host, source, out var bridge);
+
+        Assert.True(bound);
+        Assert.NotNull(bridge);
+        Assert.Equal(source.Handle, bridge.Handle);
+    }
+
+    [Fact]
     public void DisposeUnsubscribesFromSourceRenderRequests()
     {
         var scheduler = new TestRenderScheduler();
@@ -133,6 +149,8 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         internal event EventHandler? RenderRequested;
 
         public object CompositionTarget { get; } = new();
+
+        public IntPtr Handle { get; init; }
 
         public object? RootVisual
         {

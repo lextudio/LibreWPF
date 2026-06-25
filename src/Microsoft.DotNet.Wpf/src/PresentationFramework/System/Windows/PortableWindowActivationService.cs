@@ -25,6 +25,7 @@ namespace System.Windows
         private static Action<object> _run;
         private static Action<object> _dispose;
         private static Func<object, bool> _dragMove;
+        private static Func<object, IntPtr> _getHandle;
 
         internal static bool IsEnabled
         {
@@ -47,7 +48,8 @@ namespace System.Windows
             Action<object> close = null,
             Action<object> run = null,
             Action<object> dispose = null,
-            Func<object, bool> dragMove = null)
+            Func<object, bool> dragMove = null,
+            Func<object, IntPtr> getHandle = null)
         {
             ArgumentNullException.ThrowIfNull(activate);
 
@@ -64,6 +66,7 @@ namespace System.Windows
             Volatile.Write(ref _run, run);
             Volatile.Write(ref _dispose, dispose);
             Volatile.Write(ref _dragMove, dragMove);
+            Volatile.Write(ref _getHandle, getHandle);
         }
 
         internal static void Clear()
@@ -81,6 +84,7 @@ namespace System.Windows
             Volatile.Write(ref _run, null);
             Volatile.Write(ref _dispose, null);
             Volatile.Write(ref _dragMove, null);
+            Volatile.Write(ref _getHandle, null);
         }
 
         internal static bool TryActivate(Window window, out object activation)
@@ -151,6 +155,17 @@ namespace System.Windows
 
             Func<object, bool> dragMove = Volatile.Read(ref _dragMove);
             return dragMove != null && dragMove(activation);
+        }
+
+        internal static IntPtr GetHandle(object activation)
+        {
+            if (OperatingSystem.IsWindows() || activation == null)
+            {
+                return IntPtr.Zero;
+            }
+
+            Func<object, IntPtr> getHandle = Volatile.Read(ref _getHandle);
+            return getHandle != null ? getHandle(activation) : IntPtr.Zero;
         }
 
         internal static void SetActivationState(Window window, bool isActive)

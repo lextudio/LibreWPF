@@ -4716,7 +4716,7 @@ namespace System.Windows.Media
         {
             VerifyAPIReadOnly();
 
-            PresentationSource inputSource = PresentationSource.FromVisual(this);
+            PresentationSource inputSource = PresentationSource.CriticalFromVisual(this);
 
             if (inputSource == null)
             {
@@ -4745,7 +4745,7 @@ namespace System.Windows.Media
         {
             VerifyAPIReadOnly();
 
-            PresentationSource inputSource = PresentationSource.FromVisual(this);
+            PresentationSource inputSource = PresentationSource.CriticalFromVisual(this);
 
             if (inputSource == null)
             {
@@ -5363,7 +5363,6 @@ namespace System.Windows.Media
         #endregion Private Fields
     }
 }
-
 
 
 

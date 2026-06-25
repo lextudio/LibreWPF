@@ -62,6 +62,12 @@
                   Padding="10,4"
                   Content="Activate editor"
                   Click="ActivateEditorButton_Click" />
+          <Button x:Name="ToggleEditorFloatButton"
+                  MinWidth="104"
+                  Margin="0,0,6,0"
+                  Padding="10,4"
+                  Content="Float editor"
+                  Click="ToggleEditorFloatButton_Click" />
           <Button x:Name="TogglePropertyPaneButton"
                   MinWidth="112"
                   Margin="0,0,6,0"

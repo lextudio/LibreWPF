@@ -201,6 +201,7 @@ namespace System.Windows.Interop
         private const double _allowedPresentFailureDelay = 10.0;
 
         private DispatcherTimer _restoreDT;
+        private bool _isPortable;
 
         /// <summary>
         /// Initializes static variables for this class.
@@ -306,6 +307,35 @@ namespace System.Windows.Interop
                     VisualTarget_DetachFromHwnd(hwnd);
                 }
             }
+        }
+
+        internal static HwndTarget CreatePortable(IntPtr hwnd, double dpiScaleX, double dpiScaleY)
+        {
+            return new HwndTarget(hwnd, dpiScaleX, dpiScaleY);
+        }
+
+        private HwndTarget(IntPtr hwnd, double dpiScaleX, double dpiScaleY)
+        {
+            if (hwnd == IntPtr.Zero)
+            {
+                throw new ArgumentException(SR.HwndTarget_InvalidWindowHandle, nameof(hwnd));
+            }
+
+            _isPortable = true;
+            _hWnd = NativeMethods.HWND.Cast(hwnd);
+            double pixelsPerInchX = ToPositiveFiniteScale(dpiScaleX) * DpiUtil.DefaultPixelsPerInch;
+            double pixelsPerInchY = ToPositiveFiniteScale(dpiScaleY) * DpiUtil.DefaultPixelsPerInch;
+            CurrentDpiScale = DpiScale2.FromPixelsPerInch(pixelsPerInchX, pixelsPerInchY);
+            _worldTransform = new MatrixTransform(
+                new Matrix(
+                    CurrentDpiScale.DpiScaleX, 0,
+                    0, CurrentDpiScale.DpiScaleY,
+                    0, 0));
+        }
+
+        private static double ToPositiveFiniteScale(double value)
+        {
+            return double.IsFinite(value) && value > 0.0 ? value : 1.0;
         }
 
         /// <summary>
@@ -693,6 +723,11 @@ namespace System.Windows.Interop
                 // the hwndsrc.
                 if (!IsDisposed)
                 {
+                    if (_isPortable)
+                    {
+                        return;
+                    }
+
                     RootVisual = null;
 
                     HRESULT.Check(VisualTarget_DetachFromHwnd(_hWnd));
@@ -2376,6 +2411,11 @@ namespace System.Windows.Interop
                 if (_backgroundColor != value)
                 {
                     _backgroundColor = value;
+                    if (_isPortable)
+                    {
+                        return;
+                    }
+
                     MediaContext mctx = MediaContext.From(Dispatcher);
 
                     DUCE.ChannelSet channelSet = mctx.GetChannels();

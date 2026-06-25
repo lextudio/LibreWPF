@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -76,6 +77,24 @@ public partial class MainWindow : Window
         _viewModel.Activity.Add("Activated editor document");
     }
 
+    private void ToggleEditorFloatButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (EditorDocument.IsFloating)
+        {
+            EditorDocument.DockAsDocument();
+            ToggleEditorFloatButton.Content = "Float editor";
+            _viewModel.Status = "Editor document docked";
+            _viewModel.Activity.Add("Docked editor document");
+        }
+        else
+        {
+            EditorDocument.Float();
+            ToggleEditorFloatButton.Content = "Dock editor";
+            _viewModel.Status = "Editor document floated";
+            _viewModel.Activity.Add("Floated editor document");
+        }
+    }
+
     private void TogglePropertyPaneButton_Click(object sender, RoutedEventArgs e)
     {
         if (PropertyPane.IsHidden)
@@ -142,6 +161,35 @@ public partial class MainWindow : Window
     }
 
     internal ToolkitViewModel ViewModel => _viewModel;
+
+    internal void ValidateEditorFloatingState(bool expectedFloating)
+    {
+        bool documentPaneContainsEditor = DocumentPane.Children.Any(document => ReferenceEquals(document, EditorDocument));
+        if (expectedFloating)
+        {
+            AssertEqual(true, EditorDocument.IsFloating, "AvalonDock editor document floating state");
+            AssertEqual(false, documentPaneContainsEditor, "AvalonDock editor document pane membership while floating");
+            if (DockLayoutRoot.FloatingWindows.Count != 1)
+            {
+                throw new InvalidOperationException(
+                    $"Expected one AvalonDock floating window model, got {DockLayoutRoot.FloatingWindows.Count}.");
+            }
+
+            AssertEqual("Dock editor", Convert.ToString(ToggleEditorFloatButton.Content, CultureInfo.InvariantCulture), "AvalonDock float toggle content");
+        }
+        else
+        {
+            AssertEqual(false, EditorDocument.IsFloating, "AvalonDock editor document floating state");
+            AssertEqual(true, documentPaneContainsEditor, "AvalonDock editor document pane membership after docking");
+            if (DockLayoutRoot.FloatingWindows.Count != 0)
+            {
+                throw new InvalidOperationException(
+                    $"Expected no AvalonDock floating window models after docking, got {DockLayoutRoot.FloatingWindows.Count}.");
+            }
+
+            AssertEqual("Float editor", Convert.ToString(ToggleEditorFloatButton.Content, CultureInfo.InvariantCulture), "AvalonDock float toggle content");
+        }
+    }
 
     private void OnToolkitWindowLoaded(object sender, RoutedEventArgs e)
     {
@@ -292,6 +340,26 @@ public partial class MainWindow : Window
             },
             DispatcherPriority.Send);
 
+        await ClickLiveControlAsync(liveHost, ToggleEditorFloatButton, "ToggleEditorFloatButton");
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => EditorDocument.IsFloating && DockLayoutRoot.FloatingWindows.Count == 1,
+            "Toolkit live editor document floating window model");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => ValidateEditorFloatingState(expectedFloating: true),
+            DispatcherPriority.Send);
+
+        await ClickLiveControlAsync(liveHost, ToggleEditorFloatButton, "ToggleEditorFloatButton");
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => !EditorDocument.IsFloating && DockLayoutRoot.FloatingWindows.Count == 0,
+            "Toolkit live editor document docked model");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => ValidateEditorFloatingState(expectedFloating: false),
+            DispatcherPriority.Send);
+
         await ClickLiveControlAsync(liveHost, TogglePropertyPaneButton, "TogglePropertyPaneButton");
         await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -358,9 +426,24 @@ public partial class MainWindow : Window
                     throw new InvalidOperationException("Expected Toolkit live AvalonDock deserialization to restore root panel shape.");
                 }
 
-                return "host mouse/text input, binding update, AvalonDock document activation, anchorable hide/show, auto-hide side groups, and layout serialization updated";
+                return "host mouse/text input, binding update, AvalonDock document activation, floating document window, anchorable hide/show, auto-hide side groups, and layout serialization updated";
             },
             DispatcherPriority.Send);
+    }
+
+    private async Task WaitForLiveConditionAsync(object liveHost, Func<bool> condition, string description)
+    {
+        for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
+        {
+            if (await InvokeWithLiveHostWakeAsync(liveHost, condition, DispatcherPriority.Background))
+            {
+                return;
+            }
+
+            await Task.Delay(LiveValidationRetryDelay);
+        }
+
+        throw new InvalidOperationException($"Timed out waiting for {description}.");
     }
 
     private async Task ClickLiveControlAsync(object liveHost, FrameworkElement target, string targetName)
@@ -797,6 +880,7 @@ internal static class ToolkitSelfTest
         Require<BusyIndicator>(window, "BusyIndicator");
         Require<PropertyGrid>(window, "DocumentPropertyGrid");
         Require<Button>(window, "ActivateEditorButton");
+        Require<Button>(window, "ToggleEditorFloatButton");
         Require<Button>(window, "TogglePropertyPaneButton");
         Require<Button>(window, "ToggleActivityAutoHideButton");
         Require<Button>(window, "ToggleAgendaAutoHideButton");
@@ -883,6 +967,25 @@ internal static class ToolkitSelfTest
             throw new InvalidOperationException("Expected AvalonDock document activation to update selected/active document state.");
         }
 
+        if (expectLoaded)
+        {
+            window.ToggleEditorFloatButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            PumpDispatcherUntil(
+                window,
+                () => window.EditorDocument.IsFloating && window.DockLayoutRoot.FloatingWindows.Count == 1,
+                TimeSpan.FromSeconds(2),
+                "AvalonDock editor document floating window model");
+            window.ValidateEditorFloatingState(expectedFloating: true);
+
+            window.ToggleEditorFloatButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            PumpDispatcherUntil(
+                window,
+                () => !window.EditorDocument.IsFloating && window.DockLayoutRoot.FloatingWindows.Count == 0,
+                TimeSpan.FromSeconds(2),
+                "AvalonDock editor document docked model");
+            window.ValidateEditorFloatingState(expectedFloating: false);
+        }
+
         window.TogglePropertyPaneButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
 
         if (!window.PropertyPane.IsHidden || !window.DockLayoutRoot.Hidden.Contains(window.PropertyPane))
@@ -939,5 +1042,32 @@ internal static class ToolkitSelfTest
     {
         return root.FindName(name) as T
             ?? throw new InvalidOperationException($"Expected {typeof(T).FullName} named {name}.");
+    }
+
+    private static void PumpDispatcherUntil(
+        DispatcherObject dispatcherObject,
+        Func<bool> condition,
+        TimeSpan timeout,
+        string description)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (!condition())
+        {
+            dispatcherObject.Dispatcher.Invoke(
+                static () => { },
+                DispatcherPriority.Background);
+
+            if (condition())
+            {
+                return;
+            }
+
+            if (DateTime.UtcNow >= deadline)
+            {
+                throw new InvalidOperationException($"Timed out waiting for {description}.");
+            }
+
+            System.Threading.Thread.Sleep(1);
+        }
     }
 }

@@ -3,7 +3,9 @@
 
 using System.Windows.Media;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Threading;
+using System.Threading;
 
 namespace System.Windows
 {
@@ -15,11 +17,14 @@ namespace System.Windows
         private readonly PortableCompositionTarget _compositionTarget;
         private readonly PortableKeyboardInputProvider _keyboardInputProvider;
         private readonly PortableMouseInputProvider _mouseInputProvider;
+        private readonly HwndSource _portableHwndSource;
+        private readonly IntPtr _handle;
         private Visual _rootVisual;
         private Size _clientSize;
         private bool _hasClientSize;
         private bool _contentRenderedQueued;
         private bool _isDisposed;
+        private static long s_nextPortableHandle = 0x505750460000;
 
         internal PortablePresentationSource()
             : this(1.0, 1.0)
@@ -28,7 +33,9 @@ namespace System.Windows
 
         internal PortablePresentationSource(double dpiScaleX, double dpiScaleY)
         {
+            _handle = new IntPtr(Interlocked.Increment(ref s_nextPortableHandle));
             _compositionTarget = new PortableCompositionTarget(dpiScaleX, dpiScaleY);
+            _portableHwndSource = HwndSource.CreatePortable(this, _handle, dpiScaleX, dpiScaleY);
             _keyboardInputProvider = new PortableKeyboardInputProvider(this);
             _mouseInputProvider = new PortableMouseInputProvider(this);
             AddSource();
@@ -37,6 +44,16 @@ namespace System.Windows
         internal event EventHandler RenderRequested;
 
         internal event EventHandler Disposed;
+
+        internal IntPtr Handle
+        {
+            get { return _isDisposed ? IntPtr.Zero : _handle; }
+        }
+
+        internal HwndSource HwndSource
+        {
+            get { return _isDisposed ? null : _portableHwndSource; }
+        }
 
         public override bool IsDisposed
         {
@@ -105,6 +122,7 @@ namespace System.Windows
                 VerifyAccess();
                 SetRootVisual(null);
                 RemoveSource();
+                _portableHwndSource.Dispose();
                 _mouseInputProvider.Dispose();
                 _keyboardInputProvider.Dispose();
                 _compositionTarget.Dispose();

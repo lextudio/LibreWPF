@@ -352,6 +352,8 @@ namespace System.Windows.Input
                 }
             }
 
+            scope = NormalizePortableScope(scope);
+
             if (CoreCompatibilityPreferences.GetIsAltKeyRequiredInAccessKeyDefaultScope() && 
                 (scope is PresentationSource) && (Keyboard.Modifiers & ModifierKeys.Alt) != ModifierKeys.Alt)
             {
@@ -388,7 +390,7 @@ namespace System.Windows.Input
 
                         if (elementInfo.target == null) continue;
 
-                        if (scope == elementInfo.Scope)
+                        if (scope == NormalizePortableScope(elementInfo.Scope))
                         {
                             finalTargets.Add(elementInfo.target);
                         }
@@ -406,6 +408,16 @@ namespace System.Windows.Input
             }
 
             return finalTargets;
+        }
+
+        private static object NormalizePortableScope(object scope)
+        {
+            if (scope is HwndSource { IsPortable: true } hwndSource)
+            {
+                return hwndSource.PortableOwner;
+            }
+
+            return scope;
         }
         
         /// <summary>

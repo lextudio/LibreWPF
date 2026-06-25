@@ -203,6 +203,26 @@ namespace System.Windows.Interop
             Initialize(parameters);
         }
 
+        internal static HwndSource CreatePortable(PortablePresentationSource owner, IntPtr handle, double dpiScaleX, double dpiScaleY)
+        {
+            return new HwndSource(owner, handle, dpiScaleX, dpiScaleY);
+        }
+
+        private HwndSource(PortablePresentationSource portableOwner, IntPtr portableHandle, double dpiScaleX, double dpiScaleY)
+        {
+            ArgumentNullException.ThrowIfNull(portableOwner);
+
+            if (portableHandle == IntPtr.Zero)
+            {
+                throw new ArgumentException(SR.NullHwnd, nameof(portableHandle));
+            }
+
+            _portableOwner = portableOwner;
+            _portableHandle = portableHandle;
+            _hwndTarget = HwndTarget.CreatePortable(portableHandle, dpiScaleX, dpiScaleY);
+            AddSource();
+        }
+
         /// <summary>
         ///    HwndSource Ctor
         /// </summary>
@@ -363,7 +383,7 @@ namespace System.Windows.Interop
 
             CheckDisposed(true);
 
-            if(_hooks == null)
+            if(_hooks == null && _hwndWrapper != null)
             {
                 _hwndWrapper.AddHook(_publicHook);
             }
@@ -385,7 +405,7 @@ namespace System.Windows.Interop
             //this.VerifyAccess();
 
             EventHelper.RemoveHandler(ref _hooks, hook);
-            if(_hooks == null)
+            if(_hooks == null && _hwndWrapper != null)
             {
                 _hwndWrapper.RemoveHook(_publicHook);
             }
@@ -401,6 +421,11 @@ namespace System.Windows.Interop
         ///</remarks>
         internal override IInputProvider GetInputProvider(Type inputDevice)
         {
+            if (_portableOwner != null)
+            {
+                return _portableOwner.GetInputProvider(inputDevice);
+            }
+
             if (inputDevice == typeof(MouseDevice))
                 return _mouse;
 
@@ -549,11 +574,19 @@ namespace System.Windows.Interop
             {
                 if (_isDisposed)
                     return null;
+                if (_portableOwner != null)
+                    return _portableOwner.RootVisual;
                 return (_rootVisual);
             }
             set
             {
                 CheckDisposed(true);
+
+                if (_portableOwner != null)
+                {
+                    _portableOwner.RootVisual = value;
+                    return;
+                }
 
                 RootVisualInternal = value;
             }
@@ -685,6 +718,16 @@ namespace System.Windows.Interop
                 }
             }
             return hwndSource;
+        }
+
+        internal bool IsPortable
+        {
+            get { return _portableOwner != null; }
+        }
+
+        internal PresentationSource PortableOwner
+        {
+            get { return _portableOwner; }
         }
 
 
@@ -920,7 +963,7 @@ namespace System.Windows.Interop
             {
                 if (null != _hwndWrapper)
                     return _hwndWrapper.Handle;
-                return IntPtr.Zero;
+                return _portableHandle;
             }
         }
 
@@ -944,7 +987,7 @@ namespace System.Windows.Interop
         {
             get
             {
-                return _hwndWrapper.Handle == IntPtr.Zero ;
+                return Handle == IntPtr.Zero ;
             }
         }
 
@@ -2780,6 +2823,8 @@ namespace System.Windows.Interop
         private Size?                       _previousSize;
 
         private HwndWrapper                 _hwndWrapper;
+        private PortablePresentationSource  _portableOwner;
+        private IntPtr                      _portableHandle;
 
         private HwndTarget                  _hwndTarget;
 

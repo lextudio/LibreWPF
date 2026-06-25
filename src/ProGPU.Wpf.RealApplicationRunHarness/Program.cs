@@ -5400,7 +5400,8 @@ internal static class Program
                 new Action<object>(recorder.Close),
                 new Action<object>(recorder.Run),
                 new Action<object>(recorder.Dispose),
-                new Func<object, bool>(_ => false)
+                new Func<object, bool>(_ => false),
+                new Func<object, IntPtr>(recorder.GetHandle)
             });
 
         RegisterPortableMessageBox(presentationFramework);
@@ -6515,6 +6516,13 @@ internal static class Program
                 typedActivation.DisposePresentationSource();
                 typedActivation.IsDisposed = true;
             }
+        }
+
+        public IntPtr GetHandle(object activation)
+        {
+            AssertSameActivation(activation);
+            var typedActivation = (RecordingActivation)activation;
+            return (IntPtr)GetProperty(typedActivation.PresentationSource, "Handle");
         }
 
         public void ValidateAfterRun()

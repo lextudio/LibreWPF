@@ -3261,7 +3261,12 @@ namespace System.Windows
                 {
                     return _swh.Handle;
                 }
-                else
+
+                if (_portableWindowActivation != null)
+                {
+                    return PortableWindowActivationService.GetHandle(_portableWindowActivation);
+                }
+
                 return IntPtr.Zero;
             }
         }

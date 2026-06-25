@@ -5915,6 +5915,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("MarkReviewedButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("AssignSdkOwnerButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ActivateEditorButton", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<WrapPanel Grid.Row=\"1\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CloseOverviewDocumentButton", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ReopenOverviewDocumentButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ToggleEditorFloatButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("TogglePropertyPaneButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ToggleActivityAutoHideButton", mainWindowXaml, StringComparison.Ordinal);
@@ -5934,6 +5937,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Require<WizardPage>(window, \"WizardScopePage\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<ToolkitRichTextBox>(window, \"ToolkitRichTextBox\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<PropertyGrid>(window, \"DocumentPropertyGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<Button>(window, \"CloseOverviewDocumentButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<Button>(window, \"ReopenOverviewDocumentButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitPopupState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitInputEditorState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitWizardState", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -5957,6 +5962,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PropertyPane.Show()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("EditorDocument.Float()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("EditorDocument.DockAsDocument()", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DockManager.DocumentClosed", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("OverviewDocument.Closed", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("OverviewDocument.Close()", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DocumentPane.Children.Insert(0, OverviewDocument)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateOverviewDocumentLifecycleState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLiveOverviewDocumentLifecycleAsync", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ContentId=\\\"overview\\\"", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateEditorFloatingState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DockLayoutRoot.FloatingWindows.Count", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ActivityPane.ToggleAutoHide()", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -5969,6 +5981,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("OnPlatformInputReceived", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ResolveCurrentRenderSurfaceGeometry", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("floating document window", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("document close/reopen", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PumpDispatcherUntil", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF Toolkit Application.Run validation succeeded.", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_TOOLKIT_RUN_VALIDATE", runScript, StringComparison.Ordinal);

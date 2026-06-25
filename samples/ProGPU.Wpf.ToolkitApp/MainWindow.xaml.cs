@@ -38,6 +38,8 @@ public partial class MainWindow : Window
     {
         DataContext = _viewModel;
         InitializeComponent();
+        DockManager.DocumentClosed += DockManager_DocumentClosed;
+        OverviewDocument.Closed += OverviewDocument_Closed;
         Loaded += OnToolkitWindowLoaded;
         StartLiveValidationIfRequired();
     }
@@ -78,6 +80,44 @@ public partial class MainWindow : Window
         EditorDocument.IsActive = true;
         _viewModel.Status = "Editor document activated";
         _viewModel.Activity.Add("Activated editor document");
+    }
+
+    private void CloseOverviewDocumentButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!DocumentPane.Children.Contains(OverviewDocument))
+        {
+            _viewModel.Status = "Overview document already closed";
+            _viewModel.Activity.Add(_viewModel.Status);
+            return;
+        }
+
+        OverviewDocument.Close();
+        _viewModel.Status = "Overview document closed";
+        _viewModel.Activity.Add(_viewModel.Status);
+    }
+
+    private void ReopenOverviewDocumentButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!DocumentPane.Children.Contains(OverviewDocument))
+        {
+            DocumentPane.Children.Insert(0, OverviewDocument);
+        }
+
+        OverviewDocument.IsSelected = true;
+        OverviewDocument.IsActive = true;
+        _viewModel.Status = "Overview document reopened";
+        _viewModel.Activity.Add(_viewModel.Status);
+    }
+
+    private void DockManager_DocumentClosed(object? sender, DocumentClosedEventArgs e)
+    {
+        _viewModel.AvalonDockDocumentClosedCount++;
+        _viewModel.LastClosedDocumentContentId = e.Document?.ContentId ?? string.Empty;
+    }
+
+    private void OverviewDocument_Closed(object? sender, EventArgs e)
+    {
+        _viewModel.OverviewDocumentClosedCount++;
     }
 
     private void ToggleEditorFloatButton_Click(object sender, RoutedEventArgs e)
@@ -236,6 +276,27 @@ public partial class MainWindow : Window
             }
 
             AssertEqual("Float editor", Convert.ToString(ToggleEditorFloatButton.Content, CultureInfo.InvariantCulture), "AvalonDock float toggle content");
+        }
+    }
+
+    internal void ValidateOverviewDocumentLifecycleState(bool expectedOpen)
+    {
+        bool documentPaneContainsOverview = DocumentPane.Children.Any(document => ReferenceEquals(document, OverviewDocument));
+        AssertEqual(expectedOpen, documentPaneContainsOverview, "AvalonDock overview document pane membership");
+
+        if (expectedOpen)
+        {
+            AssertEqual(true, OverviewDocument.IsSelected, "AvalonDock overview document selected state after reopen");
+            AssertEqual(true, OverviewDocument.IsActive, "AvalonDock overview document active state after reopen");
+        }
+        else
+        {
+            AssertEqual("overview", ViewModel.LastClosedDocumentContentId, "AvalonDock last closed document content id");
+            if (ViewModel.AvalonDockDocumentClosedCount <= 0 ||
+                ViewModel.OverviewDocumentClosedCount <= 0)
+            {
+                throw new InvalidOperationException("Expected AvalonDock document closed events to fire for the overview document.");
+            }
         }
     }
 
@@ -522,6 +583,8 @@ public partial class MainWindow : Window
             },
             DispatcherPriority.Send);
 
+        await ValidateLiveOverviewDocumentLifecycleAsync(liveHost);
+
         await ClickLiveControlAsync(liveHost, ToggleEditorFloatButton, "ToggleEditorFloatButton");
         await WaitForLiveConditionAsync(
             liveHost,
@@ -594,6 +657,7 @@ public partial class MainWindow : Window
             () =>
             {
                 if (!ViewModel.LastSerializedLayout.Contains("<LayoutRoot", StringComparison.Ordinal) ||
+                    !ViewModel.LastSerializedLayout.Contains("ContentId=\"overview\"", StringComparison.Ordinal) ||
                     !ViewModel.LastSerializedLayout.Contains("ContentId=\"editor\"", StringComparison.Ordinal) ||
                     !ViewModel.LastSerializedLayout.Contains("ContentId=\"activity\"", StringComparison.Ordinal) ||
                     !ViewModel.LastSerializedLayout.Contains("ContentId=\"agenda\"", StringComparison.Ordinal))
@@ -608,7 +672,7 @@ public partial class MainWindow : Window
                     throw new InvalidOperationException("Expected Toolkit live AvalonDock deserialization to restore root panel shape.");
                 }
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/checklist/rich editors, Toolkit selector/range/split controls, Toolkit wizard navigation, AvalonDock document activation, floating document window, anchorable hide/show, auto-hide side groups, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/checklist/rich editors, Toolkit selector/range/split controls, Toolkit wizard navigation, AvalonDock document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -763,6 +827,33 @@ public partial class MainWindow : Window
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () => ExerciseToolkitWizard(),
+            DispatcherPriority.Send);
+    }
+
+    private async Task ValidateLiveOverviewDocumentLifecycleAsync(object liveHost)
+    {
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                int documentCountBeforeClose = DocumentPane.ChildrenCount;
+                CloseOverviewDocumentButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                ValidateOverviewDocumentLifecycleState(expectedOpen: false);
+                AssertEqual(documentCountBeforeClose - 1, DocumentPane.ChildrenCount, "Toolkit live AvalonDock document count after overview close");
+                AssertEqual("Overview document closed", ViewModel.Status, "Toolkit live overview close status");
+            },
+            DispatcherPriority.Send);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                int documentCountBeforeReopen = DocumentPane.ChildrenCount;
+                ReopenOverviewDocumentButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                ValidateOverviewDocumentLifecycleState(expectedOpen: true);
+                AssertEqual(documentCountBeforeReopen + 1, DocumentPane.ChildrenCount, "Toolkit live AvalonDock document count after overview reopen");
+                AssertEqual("Overview document reopened", ViewModel.Status, "Toolkit live overview reopen status");
+            },
             DispatcherPriority.Send);
     }
 
@@ -1055,6 +1146,9 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private int _wizardFinishes;
     private int _wizardCancels;
     private string _wizardStatus = "Wizard idle";
+    private int _avalonDockDocumentClosedCount;
+    private int _overviewDocumentClosedCount;
+    private string _lastClosedDocumentContentId = string.Empty;
     private string _status = "Toolkit sample ready";
     private string _lastSerializedLayout = string.Empty;
 
@@ -1314,6 +1408,45 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         }
     }
 
+    public int AvalonDockDocumentClosedCount
+    {
+        get => _avalonDockDocumentClosedCount;
+        set
+        {
+            if (_avalonDockDocumentClosedCount != value)
+            {
+                _avalonDockDocumentClosedCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int OverviewDocumentClosedCount
+    {
+        get => _overviewDocumentClosedCount;
+        set
+        {
+            if (_overviewDocumentClosedCount != value)
+            {
+                _overviewDocumentClosedCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string LastClosedDocumentContentId
+    {
+        get => _lastClosedDocumentContentId;
+        set
+        {
+            if (!string.Equals(_lastClosedDocumentContentId, value, StringComparison.Ordinal))
+            {
+                _lastClosedDocumentContentId = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public string Status
     {
         get => _status;
@@ -1411,6 +1544,8 @@ internal static class ToolkitSelfTest
         Require<BusyIndicator>(window, "BusyIndicator");
         Require<PropertyGrid>(window, "DocumentPropertyGrid");
         Require<Button>(window, "ActivateEditorButton");
+        Require<Button>(window, "CloseOverviewDocumentButton");
+        Require<Button>(window, "ReopenOverviewDocumentButton");
         Require<Button>(window, "ToggleEditorFloatButton");
         Require<Button>(window, "TogglePropertyPaneButton");
         Require<Button>(window, "ToggleActivityAutoHideButton");
@@ -1597,6 +1732,24 @@ internal static class ToolkitSelfTest
             throw new InvalidOperationException("Expected AvalonDock document activation to update selected/active document state.");
         }
 
+        int documentCountBeforeOverviewClose = window.DocumentPane.ChildrenCount;
+        window.CloseOverviewDocumentButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+        window.ValidateOverviewDocumentLifecycleState(expectedOpen: false);
+        if (window.DocumentPane.ChildrenCount != documentCountBeforeOverviewClose - 1 ||
+            !string.Equals(window.ViewModel.Status, "Overview document closed", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Expected AvalonDock overview close command to remove the document and update status.");
+        }
+
+        int documentCountBeforeOverviewReopen = window.DocumentPane.ChildrenCount;
+        window.ReopenOverviewDocumentButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+        window.ValidateOverviewDocumentLifecycleState(expectedOpen: true);
+        if (window.DocumentPane.ChildrenCount != documentCountBeforeOverviewReopen + 1 ||
+            !string.Equals(window.ViewModel.Status, "Overview document reopened", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Expected AvalonDock overview reopen command to restore the document and update status.");
+        }
+
         string bodyBeforeReview = window.ViewModel.SelectedDocument.Body;
         window.ActionDropDownButton.IsOpen = true;
         window.MarkReviewedButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
@@ -1678,6 +1831,7 @@ internal static class ToolkitSelfTest
         window.SerializeLayoutButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
 
         if (!window.ViewModel.LastSerializedLayout.Contains("<LayoutRoot", StringComparison.Ordinal) ||
+            !window.ViewModel.LastSerializedLayout.Contains("ContentId=\"overview\"", StringComparison.Ordinal) ||
             !window.ViewModel.LastSerializedLayout.Contains("ContentId=\"editor\"", StringComparison.Ordinal) ||
             !window.ViewModel.LastSerializedLayout.Contains("ContentId=\"activity\"", StringComparison.Ordinal) ||
             !window.ViewModel.LastSerializedLayout.Contains("ContentId=\"agenda\"", StringComparison.Ordinal))

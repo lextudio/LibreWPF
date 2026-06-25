@@ -21,6 +21,7 @@ using Xceed.Wpf.AvalonDock.Layout.Serialization;
 using Xceed.Wpf.AvalonDock.Themes;
 using Xceed.Wpf.Toolkit;
 using Xceed.Wpf.Toolkit.Core;
+using Xceed.Wpf.Toolkit.Primitives;
 using Xceed.Wpf.Toolkit.PropertyGrid;
 using AvalonDockAnchorableItem = Xceed.Wpf.AvalonDock.Controls.LayoutAnchorableItem;
 using AvalonDockDocumentItem = Xceed.Wpf.AvalonDock.Controls.LayoutDocumentItem;
@@ -43,6 +44,7 @@ public partial class MainWindow : Window
     {
         DataContext = _viewModel;
         InitializeComponent();
+        ToolkitChildWindow.FocusedElement = ChildWindowInputTextBox;
         SetAvalonDockTheme(AvalonDockThemeNames[_avalonDockThemeIndex], recordSwitch: false);
         DockManager.ActiveContentChanged += DockManager_ActiveContentChanged;
         DockManager.DocumentClosing += DockManager_DocumentClosing;
@@ -364,6 +366,62 @@ public partial class MainWindow : Window
         AssertEqual(spinnerCountBefore, ViewModel.SpinnerCount, "Toolkit ButtonSpinner restored count");
     }
 
+    private void ShowChildWindowButton_Click(object sender, RoutedEventArgs e)
+    {
+        ShowToolkitChildWindow();
+    }
+
+    private void AcceptChildWindowButton_Click(object sender, RoutedEventArgs e)
+    {
+        ChildWindowInputTextBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+        ToolkitChildWindow.DialogResult = true;
+    }
+
+    private void ToolkitChildWindow_Closing(object? sender, EventArgs e)
+    {
+        _viewModel.ChildWindowClosingCount++;
+    }
+
+    private void ToolkitChildWindow_Closed(object? sender, EventArgs e)
+    {
+        _viewModel.ChildWindowClosedCount++;
+        _viewModel.LastChildWindowDialogResult = ToolkitChildWindow.DialogResult;
+        _viewModel.ChildWindowStatus = ToolkitChildWindow.DialogResult == true
+            ? "ChildWindow accepted"
+            : "ChildWindow closed";
+        _viewModel.Status = _viewModel.ChildWindowStatus;
+        _viewModel.Activity.Add(_viewModel.ChildWindowStatus);
+    }
+
+    internal void ShowToolkitChildWindow()
+    {
+        _viewModel.ChildWindowShowCount++;
+        _viewModel.ChildWindowStatus = "ChildWindow open";
+        _viewModel.Status = "ChildWindow open";
+        _viewModel.Activity.Add(_viewModel.ChildWindowStatus);
+        ChildWindowInputTextBox.Text = $"Child input {_viewModel.ChildWindowShowCount}";
+        ToolkitChildWindow.FocusedElement = ChildWindowInputTextBox;
+        ToolkitChildWindow.Show();
+    }
+
+    internal void ExerciseToolkitChildWindow()
+    {
+        int showCountBefore = ViewModel.ChildWindowShowCount;
+        int closingCountBefore = ViewModel.ChildWindowClosingCount;
+        int closedCountBefore = ViewModel.ChildWindowClosedCount;
+
+        ShowToolkitChildWindow();
+        ValidateToolkitChildWindowState(expectedOpen: true);
+        AssertEqual(showCountBefore + 1, ViewModel.ChildWindowShowCount, "Toolkit ChildWindow show count");
+
+        AcceptChildWindowButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+        ValidateToolkitChildWindowState(expectedOpen: false);
+        AssertEqual(closingCountBefore + 1, ViewModel.ChildWindowClosingCount, "Toolkit ChildWindow closing count");
+        AssertEqual(closedCountBefore + 1, ViewModel.ChildWindowClosedCount, "Toolkit ChildWindow closed count");
+        AssertEqual(true, ViewModel.LastChildWindowDialogResult, "Toolkit ChildWindow dialog result");
+        AssertEqual("ChildWindow accepted", ViewModel.ChildWindowStatus, "Toolkit ChildWindow accepted status");
+    }
+
     private void SerializeLayoutButton_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.LastSerializedLayout = SerializeCurrentLayout();
@@ -516,6 +574,42 @@ public partial class MainWindow : Window
             if (OwnerPickerList.Items.Count != ViewModel.Owners.Count)
             {
                 throw new InvalidOperationException("Expected Toolkit SplitButton list content to bind all owners while open.");
+            }
+        }
+    }
+
+    internal void ValidateToolkitChildWindowState(bool expectedOpen)
+    {
+        AssertEqual(true, ToolkitChildWindowContainer.Children.Contains(ToolkitChildWindow), "Toolkit WindowContainer child membership");
+        AssertEqual(true, ToolkitChildWindow.IsModal, "Toolkit ChildWindow modal state");
+        AssertEqual(Xceed.Wpf.Toolkit.WindowStartupLocation.Center, ToolkitChildWindow.WindowStartupLocation, "Toolkit ChildWindow startup location");
+        AssertEqual(ChildWindowInputTextBox, ToolkitChildWindow.FocusedElement, "Toolkit ChildWindow focused element");
+
+        if (ToolkitChildWindowContainer.ActualWidth > 0 &&
+            ToolkitChildWindowContainer.ActualHeight > 0 &&
+            (ToolkitChildWindow.ActualWidth <= 0 || ToolkitChildWindow.ActualHeight <= 0) &&
+            expectedOpen)
+        {
+            throw new InvalidOperationException("Expected open Toolkit ChildWindow to participate in layout.");
+        }
+
+        if (expectedOpen)
+        {
+            AssertEqual(Xceed.Wpf.Toolkit.WindowState.Open, ToolkitChildWindow.WindowState, "Toolkit ChildWindow open state");
+            AssertEqual("ChildWindow open", ViewModel.ChildWindowStatus, "Toolkit ChildWindow open status");
+            AssertEqual((bool?)null, ToolkitChildWindow.DialogResult, "Toolkit ChildWindow dialog result while open");
+            if (!ChildWindowInputTextBox.Text.Contains("Child input", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Expected Toolkit ChildWindow input content to be initialized.");
+            }
+        }
+        else
+        {
+            AssertEqual(Xceed.Wpf.Toolkit.WindowState.Closed, ToolkitChildWindow.WindowState, "Toolkit ChildWindow closed state");
+            if (ViewModel.ChildWindowShowCount > 0 &&
+                (ViewModel.ChildWindowClosingCount <= 0 || ViewModel.ChildWindowClosedCount <= 0))
+            {
+                throw new InvalidOperationException("Expected Toolkit ChildWindow closing and closed events to fire.");
             }
         }
     }
@@ -1143,6 +1237,7 @@ public partial class MainWindow : Window
         await ValidateLiveAvalonDockDocumentContextMenuAsync(liveHost);
         await ValidateLiveInputEditorsAsync(liveHost);
         await ValidateLiveWizardAsync(liveHost);
+        await ValidateLiveToolkitChildWindowAsync(liveHost);
         await ValidateLiveSourceBackedAvalonDockAsync(liveHost);
         await ValidateLiveAvalonDockThemeSwitchingAsync(liveHost);
 
@@ -1263,7 +1358,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, Toolkit child window lifecycle, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock theme switching, AvalonDock document context menu and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -1482,6 +1577,49 @@ public partial class MainWindow : Window
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () => ExerciseToolkitWizard(),
+            DispatcherPriority.Send);
+    }
+
+    private async Task ValidateLiveToolkitChildWindowAsync(object liveHost)
+    {
+        int showCountBefore = ViewModel.ChildWindowShowCount;
+        int closingCountBefore = ViewModel.ChildWindowClosingCount;
+        int closedCountBefore = ViewModel.ChildWindowClosedCount;
+
+        await ClickLiveControlAsync(liveHost, ShowChildWindowButton, "ShowChildWindowButton");
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => ToolkitChildWindow.WindowState == Xceed.Wpf.Toolkit.WindowState.Open,
+            "Toolkit live ChildWindow open state");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                ValidateToolkitChildWindowState(expectedOpen: true);
+                AssertEqual(showCountBefore + 1, ViewModel.ChildWindowShowCount, "Toolkit live ChildWindow show count");
+                if (!ToolkitChildWindow.IsKeyboardFocusWithin)
+                {
+                    throw new InvalidOperationException(
+                        $"Expected Toolkit live ChildWindow to receive focus, but focused '{DescribeInputElement(Keyboard.FocusedElement)}'.");
+                }
+            },
+            DispatcherPriority.Send);
+
+        await ClickLiveControlAsync(liveHost, AcceptChildWindowButton, "AcceptChildWindowButton");
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => ToolkitChildWindow.WindowState == Xceed.Wpf.Toolkit.WindowState.Closed,
+            "Toolkit live ChildWindow closed state");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                ValidateToolkitChildWindowState(expectedOpen: false);
+                AssertEqual(closingCountBefore + 1, ViewModel.ChildWindowClosingCount, "Toolkit live ChildWindow closing count");
+                AssertEqual(closedCountBefore + 1, ViewModel.ChildWindowClosedCount, "Toolkit live ChildWindow closed count");
+                AssertEqual(true, ViewModel.LastChildWindowDialogResult, "Toolkit live ChildWindow dialog result");
+                AssertEqual("ChildWindow accepted", ViewModel.ChildWindowStatus, "Toolkit live ChildWindow accepted status");
+            },
             DispatcherPriority.Send);
     }
 
@@ -1880,6 +2018,11 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private string _multiLineNotes = "Toolkit multiline notes";
     private int _spinnerCount = 2;
     private bool _isBusy;
+    private int _childWindowShowCount;
+    private int _childWindowClosingCount;
+    private int _childWindowClosedCount;
+    private bool? _lastChildWindowDialogResult;
+    private string _childWindowStatus = "ChildWindow idle";
     private int _wizardPageChanges;
     private int _wizardFinishes;
     private int _wizardCancels;
@@ -2282,6 +2425,71 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
             if (_isBusy != value)
             {
                 _isBusy = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int ChildWindowShowCount
+    {
+        get => _childWindowShowCount;
+        set
+        {
+            if (_childWindowShowCount != value)
+            {
+                _childWindowShowCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int ChildWindowClosingCount
+    {
+        get => _childWindowClosingCount;
+        set
+        {
+            if (_childWindowClosingCount != value)
+            {
+                _childWindowClosingCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int ChildWindowClosedCount
+    {
+        get => _childWindowClosedCount;
+        set
+        {
+            if (_childWindowClosedCount != value)
+            {
+                _childWindowClosedCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public bool? LastChildWindowDialogResult
+    {
+        get => _lastChildWindowDialogResult;
+        set
+        {
+            if (_lastChildWindowDialogResult != value)
+            {
+                _lastChildWindowDialogResult = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string ChildWindowStatus
+    {
+        get => _childWindowStatus;
+        set
+        {
+            if (!string.Equals(_childWindowStatus, value, StringComparison.Ordinal))
+            {
+                _childWindowStatus = value;
                 OnPropertyChanged();
             }
         }
@@ -2870,6 +3078,11 @@ internal static class ToolkitSelfTest
         Require<MultiLineTextEditor>(window, "MultiLineNotesEditor");
         Require<ButtonSpinner>(window, "DocumentCountSpinner");
         Require<BusyIndicator>(window, "BusyIndicator");
+        Require<WindowContainer>(window, "ToolkitChildWindowContainer");
+        Require<ChildWindow>(window, "ToolkitChildWindow");
+        Require<Button>(window, "ShowChildWindowButton");
+        Require<TextBox>(window, "ChildWindowInputTextBox");
+        Require<Button>(window, "AcceptChildWindowButton");
         Require<PropertyGrid>(window, "DocumentPropertyGrid");
         Require<Button>(window, "AddSourceDocumentButton");
         Require<Button>(window, "ActivateSourceToolButton");
@@ -2960,6 +3173,7 @@ internal static class ToolkitSelfTest
 
         window.ValidateToolkitInputEditorState();
         window.ValidateToolkitWizardState(expectLoaded);
+        window.ValidateToolkitChildWindowState(expectedOpen: false);
         window.ValidateSourceBackedAvalonDockState(mutateSources: true);
 
         if (expectLoaded)
@@ -3097,6 +3311,8 @@ internal static class ToolkitSelfTest
             {
                 throw new InvalidOperationException("Expected Toolkit input editor changes to update bindings and selection state.");
             }
+
+            window.ExerciseToolkitChildWindow();
         }
 
         int themeSwitchCountBefore = window.ViewModel.DockThemeSwitchCount;

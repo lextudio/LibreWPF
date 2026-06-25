@@ -5991,6 +5991,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<xctk:PlainTextFormatter />", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:MultiLineTextEditor x:Name=\"MultiLineNotesEditor\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:ButtonSpinner x:Name=\"DocumentCountSpinner\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xctk:WindowContainer x:Name=\"ToolkitChildWindowContainer\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xctk:ChildWindow x:Name=\"ToolkitChildWindow\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ShowChildWindowButton", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("AcceptChildWindowButton", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ChildWindowStatus", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:PropertyGrid x:Name=\"DocumentPropertyGrid\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("MarkReviewedButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("AssignSdkOwnerButton", mainWindowXaml, StringComparison.Ordinal);
@@ -6035,6 +6040,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Require<ToolkitRichTextBox>(window, \"ToolkitRichTextBox\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<MultiLineTextEditor>(window, \"MultiLineNotesEditor\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<ButtonSpinner>(window, \"DocumentCountSpinner\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<WindowContainer>(window, \"ToolkitChildWindowContainer\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<ChildWindow>(window, \"ToolkitChildWindow\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<Button>(window, \"ShowChildWindowButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<TextBox>(window, \"ChildWindowInputTextBox\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<Button>(window, \"AcceptChildWindowButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<PropertyGrid>(window, \"DocumentPropertyGrid\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<DockingManager>(window, \"SourceDockManager\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Require<LayoutDocumentPane>(window, \"SourceDocumentPane\")", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6048,6 +6058,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateToolkitInputEditorState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitWizardState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ExerciseToolkitWizard", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateToolkitChildWindowState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ExerciseToolkitChildWindow", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLiveToolkitChildWindowAsync", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Toolkit child window lifecycle", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ToolkitChildWindow.Show()", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ToolkitChildWindow.DialogResult = true", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ChildWindowClosingCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ChildWindowClosedCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateSourceBackedAvalonDockState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveSourceBackedAvalonDockAsync", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateAvalonDockThemeState", mainWindowCodeBehind, StringComparison.Ordinal);

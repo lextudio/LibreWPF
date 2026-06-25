@@ -458,6 +458,57 @@
                     </Border>
                   </xctk:BusyIndicator>
 
+                  <TextBlock Text="ChildWindow"
+                             Margin="0,12,0,0" />
+                  <Grid Margin="0,4,0,12">
+                    <Grid.RowDefinitions>
+                      <RowDefinition Height="Auto" />
+                      <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <WrapPanel Margin="0,0,0,6">
+                      <Button x:Name="ShowChildWindowButton"
+                              Content="Show child"
+                              MinWidth="96"
+                              Margin="0,0,6,0"
+                              Padding="8,4"
+                              Click="ShowChildWindowButton_Click" />
+                      <TextBlock x:Name="ChildWindowStatusText"
+                                 VerticalAlignment="Center"
+                                 Foreground="#5E6A73"
+                                 Text="{Binding ChildWindowStatus}" />
+                    </WrapPanel>
+                    <xctk:WindowContainer x:Name="ToolkitChildWindowContainer"
+                                          Grid.Row="1"
+                                          Height="168"
+                                          Background="{StaticResource ToolkitSubtleBrush}"
+                                          ModalBackgroundBrush="#33000000">
+                      <xctk:ChildWindow x:Name="ToolkitChildWindow"
+                                        Caption="Toolkit child window"
+                                        Width="220"
+                                        Height="120"
+                                        Left="18"
+                                        Top="24"
+                                        IsModal="True"
+                                        WindowStartupLocation="Center"
+                                        WindowState="Closed"
+                                        Closing="ToolkitChildWindow_Closing"
+                                        Closed="ToolkitChildWindow_Closed">
+                        <StackPanel Margin="10">
+                          <TextBlock Text="Hosted inside Xceed WindowContainer." />
+                          <TextBox x:Name="ChildWindowInputTextBox"
+                                   Margin="0,8,0,8"
+                                   Text="Child input" />
+                          <Button x:Name="AcceptChildWindowButton"
+                                  Content="Accept"
+                                  HorizontalAlignment="Right"
+                                  MinWidth="72"
+                                  Padding="8,3"
+                                  Click="AcceptChildWindowButton_Click" />
+                        </StackPanel>
+                      </xctk:ChildWindow>
+                    </xctk:WindowContainer>
+                  </Grid>
+
                   <TextBlock Text="AvalonDock MVVM sources"
                              Margin="0,12,0,0" />
                   <WrapPanel Margin="0,4,0,4">

@@ -239,7 +239,7 @@
 
                   <TextBlock Text="WatermarkTextBox" />
                   <xctk:WatermarkTextBox x:Name="FilterTextBox"
-                                         Watermark="Filter documents"
+                                         Watermark="{DynamicResource ToolkitFilterWatermark}"
                                          Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
                                          Margin="0,4,0,12" />
 
@@ -266,6 +266,9 @@
                   <xctk:RangeSlider x:Name="PriorityRangeSlider"
                                     Minimum="0"
                                     Maximum="10"
+                                    RangeBackground="{DynamicResource ToolkitSubtleBrush}"
+                                    LowerRangeBackground="{DynamicResource ToolkitRangeLowerBrush}"
+                                    HigherRangeBackground="{DynamicResource ToolkitRangeHigherBrush}"
                                     LowerValue="{Binding PriorityRangeStart}"
                                     HigherValue="{Binding PriorityRangeEnd}"
                                     Margin="0,4,0,12" />

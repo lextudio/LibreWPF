@@ -5930,6 +5930,10 @@ public sealed class WpfManagedProjectGraphTests
             "samples",
             "ProGPU.Wpf.ToolkitApp",
             "App.xaml.cs"));
+        var appXaml = File.ReadAllText(FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.ToolkitApp",
+            "App.xaml"));
         var mainWindowXaml = File.ReadAllText(FindRepoPath(
             "samples",
             "ProGPU.Wpf.ToolkitApp",
@@ -5944,6 +5948,10 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Equal("ProGPU.Wpf.Sdk/11.0.0-dev", project.Root?.Attribute("Sdk")?.Value);
         AssertPackageReference(project, "Extended.Wpf.Toolkit");
+        Assert.Contains("xmlns:sys=\"clr-namespace:System;assembly=System.Private.CoreLib\"", appXaml, StringComparison.Ordinal);
+        Assert.Contains("<sys:String x:Key=\"ToolkitFilterWatermark\">Filter documents</sys:String>", appXaml, StringComparison.Ordinal);
+        Assert.Contains("ToolkitRangeLowerBrush", appXaml, StringComparison.Ordinal);
+        Assert.Contains("ToolkitRangeHigherBrush", appXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:xctk=\"http://schemas.xceed.com/wpf/xaml/toolkit\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:xcad=\"http://schemas.xceed.com/wpf/xaml/avalondock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:local=\"clr-namespace:ProGPU.Wpf.ToolkitApp\"", mainWindowXaml, StringComparison.Ordinal);
@@ -5970,6 +5978,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<xctk:WatermarkPasswordBox x:Name=\"AccessCodeBox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:WatermarkComboBox x:Name=\"OwnerComboBox\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:RangeSlider x:Name=\"PriorityRangeSlider\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Watermark=\"{DynamicResource ToolkitFilterWatermark}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("LowerRangeBackground=\"{DynamicResource ToolkitRangeLowerBrush}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("HigherRangeBackground=\"{DynamicResource ToolkitRangeHigherBrush}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:TimePicker x:Name=\"ReminderTimePicker\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:DateTimeUpDown x:Name=\"ReviewedAtEditor\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:TimeSpanUpDown x:Name=\"EffortEditor\"", mainWindowXaml, StringComparison.Ordinal);
@@ -6203,6 +6214,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PresentationSource.FromVisual(SplitActionDropDownContentRoot)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ActionDropDownButton.IsOpen", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SplitActionButton.IsOpen", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateToolkitResourceThemeState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ExerciseToolkitResourceTheme", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLiveToolkitResourceThemeAsync", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ToolkitResourceThemeUpdateCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RequireResourceString", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Toolkit resource theme updates", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("CategoryPicker.IsDropDownOpen", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ReminderTimePicker.IsOpen", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AccentColorPicker.IsOpen", mainWindowCodeBehind, StringComparison.Ordinal);

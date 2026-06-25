@@ -1537,6 +1537,118 @@ public partial class MainWindow : Window
         }
     }
 
+    internal void ValidateToolkitResourceThemeState(bool expectLoaded)
+    {
+        string filterWatermark = RequireResourceString("ToolkitFilterWatermark", "Toolkit filter watermark");
+        SolidColorBrush rangeLowerBrush = RequireResourceBrush("ToolkitRangeLowerBrush", "Toolkit lower range brush");
+        SolidColorBrush rangeHigherBrush = RequireResourceBrush("ToolkitRangeHigherBrush", "Toolkit higher range brush");
+
+        AssertEqual(filterWatermark, Convert.ToString(FilterTextBox.Watermark, CultureInfo.InvariantCulture), "Toolkit WatermarkTextBox watermark resource");
+        AssertBrushColor(rangeLowerBrush, PriorityRangeSlider.LowerRangeBackground, "Toolkit RangeSlider lower range background");
+        AssertBrushColor(rangeHigherBrush, PriorityRangeSlider.HigherRangeBackground, "Toolkit RangeSlider higher range background");
+
+        if (expectLoaded)
+        {
+            FilterTextBox.ApplyTemplate();
+            ActionDropDownButton.ApplyTemplate();
+            SplitActionButton.ApplyTemplate();
+            PriorityRangeSlider.ApplyTemplate();
+            FilterTextBox.UpdateLayout();
+            ActionDropDownButton.UpdateLayout();
+            SplitActionButton.UpdateLayout();
+            PriorityRangeSlider.UpdateLayout();
+
+            if (FilterTextBox.ActualWidth <= 0 ||
+                ActionDropDownButton.ActualWidth <= 0 ||
+                SplitActionButton.ActualWidth <= 0 ||
+                PriorityRangeSlider.ActualWidth <= 0)
+            {
+                throw new InvalidOperationException("Expected loaded Toolkit resource-themed controls to participate in layout.");
+            }
+        }
+    }
+
+    internal void ExerciseToolkitResourceTheme()
+    {
+        ValidateToolkitResourceThemeState(expectLoaded: true);
+
+        System.Windows.ResourceDictionary resources = Application.Current?.Resources ?? Resources;
+        object originalFilterWatermark = resources["ToolkitFilterWatermark"];
+        object originalRangeLowerBrush = resources["ToolkitRangeLowerBrush"];
+        object originalRangeHigherBrush = resources["ToolkitRangeHigherBrush"];
+
+        const string updatedFilterWatermark = "Filter SDK documents";
+        var updatedRangeLowerBrush = new SolidColorBrush(Colors.LightSkyBlue);
+        var updatedRangeHigherBrush = new SolidColorBrush(Colors.PaleGreen);
+
+        try
+        {
+            resources["ToolkitFilterWatermark"] = updatedFilterWatermark;
+            resources["ToolkitRangeLowerBrush"] = updatedRangeLowerBrush;
+            resources["ToolkitRangeHigherBrush"] = updatedRangeHigherBrush;
+            PumpDispatcherUntil(
+                this,
+                () => string.Equals(
+                          updatedFilterWatermark,
+                          Convert.ToString(FilterTextBox.Watermark, CultureInfo.InvariantCulture),
+                          StringComparison.Ordinal) &&
+                      BrushColorEquals(updatedRangeLowerBrush, PriorityRangeSlider.LowerRangeBackground) &&
+                      BrushColorEquals(updatedRangeHigherBrush, PriorityRangeSlider.HigherRangeBackground),
+                TimeSpan.FromSeconds(2),
+                "Toolkit dynamic resource replacement");
+            ValidateToolkitResourceThemeState(expectLoaded: true);
+
+            ViewModel.ToolkitResourceThemeUpdateCount++;
+            ViewModel.Status = $"Toolkit resources updated {ViewModel.ToolkitResourceThemeUpdateCount}";
+            ViewModel.Activity.Add(ViewModel.Status);
+        }
+        finally
+        {
+            resources["ToolkitFilterWatermark"] = originalFilterWatermark;
+            resources["ToolkitRangeLowerBrush"] = originalRangeLowerBrush;
+            resources["ToolkitRangeHigherBrush"] = originalRangeHigherBrush;
+        }
+
+        PumpDispatcherUntil(
+            this,
+            () => string.Equals(
+                      Convert.ToString(originalFilterWatermark, CultureInfo.InvariantCulture),
+                      Convert.ToString(FilterTextBox.Watermark, CultureInfo.InvariantCulture),
+                      StringComparison.Ordinal) &&
+                  BrushColorEquals((SolidColorBrush)originalRangeLowerBrush, PriorityRangeSlider.LowerRangeBackground) &&
+                  BrushColorEquals((SolidColorBrush)originalRangeHigherBrush, PriorityRangeSlider.HigherRangeBackground),
+            TimeSpan.FromSeconds(2),
+            "Toolkit dynamic resource restore");
+        ValidateToolkitResourceThemeState(expectLoaded: true);
+    }
+
+    private SolidColorBrush RequireResourceBrush(string resourceKey, string description)
+    {
+        return TryFindResource(resourceKey) as SolidColorBrush
+            ?? throw new InvalidOperationException($"Expected {description} resource '{resourceKey}' to resolve to a SolidColorBrush.");
+    }
+
+    private string RequireResourceString(string resourceKey, string description)
+    {
+        return TryFindResource(resourceKey) as string
+            ?? throw new InvalidOperationException($"Expected {description} resource '{resourceKey}' to resolve to a string.");
+    }
+
+    private static void AssertBrushColor(SolidColorBrush expected, Brush? actual, string description)
+    {
+        if (actual is not SolidColorBrush actualBrush)
+        {
+            throw new InvalidOperationException($"Expected {description} to resolve to a SolidColorBrush.");
+        }
+
+        AssertEqual(expected.Color, actualBrush.Color, description);
+    }
+
+    private static bool BrushColorEquals(SolidColorBrush expected, Brush? actual)
+    {
+        return actual is SolidColorBrush actualBrush && actualBrush.Color == expected.Color;
+    }
+
     internal void ValidateToolkitChildWindowState(bool expectedOpen)
     {
         AssertEqual(true, ToolkitChildWindowContainer.Children.Contains(ToolkitChildWindow), "Toolkit WindowContainer child membership");
@@ -2495,6 +2607,7 @@ public partial class MainWindow : Window
         await ValidateLivePopupControlsAsync(liveHost);
         await ValidateLiveAvalonDockDocumentContextMenuAsync(liveHost);
         await ValidateLiveInputEditorsAsync(liveHost);
+        await ValidateLiveToolkitResourceThemeAsync(liveHost);
         await ValidateLiveWizardAsync(liveHost);
         await ValidateLiveToolkitChildWindowAsync(liveHost);
         await ValidateLiveToolkitMessageBoxAsync(liveHost);
@@ -2631,7 +2744,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit/AvalonDock automation peers, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock keyboard navigation, AvalonDock theme switching, AvalonDock document context menu commands and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit resource theme updates, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit/AvalonDock automation peers, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock keyboard navigation, AvalonDock theme switching, AvalonDock document context menu commands and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -2893,6 +3006,14 @@ public partial class MainWindow : Window
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () => ExerciseToolkitWizard(),
+            DispatcherPriority.Send);
+    }
+
+    private async Task ValidateLiveToolkitResourceThemeAsync(object liveHost)
+    {
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => ExerciseToolkitResourceTheme(),
             DispatcherPriority.Send);
     }
 
@@ -3569,6 +3690,7 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private string _richNotes = "Toolkit rich notes";
     private string _multiLineNotes = "Toolkit multiline notes";
     private int _spinnerCount = 2;
+    private int _toolkitResourceThemeUpdateCount;
     private bool _isBusy;
     private int _childWindowShowCount;
     private int _childWindowClosingCount;
@@ -4007,6 +4129,19 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
             if (_spinnerCount != value)
             {
                 _spinnerCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int ToolkitResourceThemeUpdateCount
+    {
+        get => _toolkitResourceThemeUpdateCount;
+        set
+        {
+            if (_toolkitResourceThemeUpdateCount != value)
+            {
+                _toolkitResourceThemeUpdateCount = value;
                 OnPropertyChanged();
             }
         }
@@ -5265,6 +5400,7 @@ internal static class ToolkitSelfTest
         window.ValidateToolkitPanelState(expectLoaded);
         window.ValidateToolkitCollectionControlState(expectLoaded);
         window.ValidateToolkitCollectionDialogButtonState(expectLoaded);
+        window.ValidateToolkitResourceThemeState(expectLoaded);
         window.ValidateSourceBackedAvalonDockState(mutateSources: true);
         window.ValidateToolkitAutomationState(expectLoaded);
 
@@ -5319,6 +5455,7 @@ internal static class ToolkitSelfTest
                 TimeSpan.FromSeconds(2),
                 "Toolkit SplitButton dropdown closed state");
             window.ValidateToolkitSplitButtonPopupState(expectedOpen: false);
+            window.ExerciseToolkitResourceTheme();
 
             window.DockDocumentContextMenu.PlacementTarget = window.DockManager;
             window.DockDocumentContextMenu.IsOpen = true;

@@ -978,6 +978,11 @@ public partial class MainWindow : Window
         ShowToolkitMessageBox();
     }
 
+    private void ShowStaticToolkitMessageBoxButton_Click(object sender, RoutedEventArgs e)
+    {
+        ShowStaticToolkitMessageBoxWithWindowOwner(autoCloseButtonPartName: null);
+    }
+
     private void ToolkitMessageBox_Closed(object? sender, EventArgs e)
     {
         _viewModel.ToolkitMessageBoxClosedCount++;
@@ -1018,6 +1023,201 @@ public partial class MainWindow : Window
         AssertEqual(closedCountBefore + 1, ViewModel.ToolkitMessageBoxClosedCount, "Toolkit MessageBox closed count");
         AssertEqual(MessageBoxResult.OK, ViewModel.LastToolkitMessageBoxResult, "Toolkit MessageBox result");
         AssertEqual("MessageBox OK", ViewModel.ToolkitMessageBoxStatus, "Toolkit MessageBox OK status");
+    }
+
+    internal void ExerciseStaticToolkitMessageBoxes()
+    {
+        int showCountBefore = ViewModel.StaticToolkitMessageBoxShowCount;
+        int closedCountBefore = ViewModel.StaticToolkitMessageBoxClosedCount;
+
+        MessageBoxResult windowOwnerResult = ShowStaticToolkitMessageBoxWithWindowOwner("PART_OkButton");
+        AssertEqual(MessageBoxResult.OK, windowOwnerResult, "Toolkit static MessageBox window-owner result");
+        AssertEqual(showCountBefore + 1, ViewModel.StaticToolkitMessageBoxShowCount, "Toolkit static MessageBox window-owner show count");
+        AssertEqual(closedCountBefore + 1, ViewModel.StaticToolkitMessageBoxClosedCount, "Toolkit static MessageBox window-owner closed count");
+
+        MessageBoxResult handleOwnerResult = ShowStaticToolkitMessageBoxWithOwnerHandle("PART_NoButton");
+        AssertEqual(MessageBoxResult.No, handleOwnerResult, "Toolkit static MessageBox handle-owner result");
+        AssertEqual(showCountBefore + 2, ViewModel.StaticToolkitMessageBoxShowCount, "Toolkit static MessageBox handle-owner show count");
+        AssertEqual(closedCountBefore + 2, ViewModel.StaticToolkitMessageBoxClosedCount, "Toolkit static MessageBox handle-owner closed count");
+        ValidateStaticToolkitMessageBoxState(expectedValidated: true);
+    }
+
+    internal MessageBoxResult ShowStaticToolkitMessageBoxWithWindowOwner(string? autoCloseButtonPartName)
+    {
+        return ShowStaticToolkitMessageBox(
+            "Window owner static MessageBox",
+            "Toolkit static owner message",
+            "Toolkit static owner",
+            autoCloseButtonPartName,
+            () => ToolkitMessageBoxControl.Show(
+                this,
+                "Toolkit static owner message",
+                "Toolkit static owner",
+                MessageBoxButton.OKCancel,
+                MessageBoxImage.Information,
+                MessageBoxResult.OK));
+    }
+
+    internal MessageBoxResult ShowStaticToolkitMessageBoxWithOwnerHandle(string? autoCloseButtonPartName)
+    {
+        IntPtr ownerHandle = new WindowInteropHelper(this).EnsureHandle();
+        if (ownerHandle == IntPtr.Zero)
+        {
+            throw new InvalidOperationException("Expected ProGPU portable WindowInteropHelper to expose a non-zero owner handle.");
+        }
+
+        ViewModel.LastStaticToolkitMessageBoxOwnerHandle = ownerHandle;
+        return ShowStaticToolkitMessageBox(
+            "Owner handle static MessageBox",
+            "Toolkit static handle message",
+            "Toolkit static handle",
+            autoCloseButtonPartName,
+            () => ToolkitMessageBoxControl.Show(
+                ownerHandle,
+                "Toolkit static handle message",
+                "Toolkit static handle",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question,
+                MessageBoxResult.No));
+    }
+
+    private MessageBoxResult ShowStaticToolkitMessageBox(
+        string label,
+        string expectedText,
+        string expectedCaption,
+        string? autoCloseButtonPartName,
+        Func<MessageBoxResult> show)
+    {
+        ViewModel.StaticToolkitMessageBoxShowCount++;
+        ViewModel.StaticToolkitMessageBoxStatus = $"{label} open";
+        ViewModel.WindowContainerStatus = ViewModel.StaticToolkitMessageBoxStatus;
+        ViewModel.Status = ViewModel.StaticToolkitMessageBoxStatus;
+        ViewModel.Activity.Add(ViewModel.StaticToolkitMessageBoxStatus);
+
+        DispatcherTimer? autoCloseTimer = null;
+        Exception? autoCloseError = null;
+        int autoCloseAttempts = 0;
+
+        if (!string.IsNullOrEmpty(autoCloseButtonPartName))
+        {
+            autoCloseTimer = new DispatcherTimer(DispatcherPriority.ApplicationIdle, Dispatcher)
+            {
+                Interval = TimeSpan.FromMilliseconds(10)
+            };
+            autoCloseTimer.Tick += (_, _) =>
+            {
+                autoCloseAttempts++;
+                if (TryClickStaticToolkitMessageBoxButton(expectedText, expectedCaption, autoCloseButtonPartName))
+                {
+                    autoCloseTimer.Stop();
+                    return;
+                }
+
+                if (autoCloseAttempts > 250)
+                {
+                    autoCloseTimer.Stop();
+                    autoCloseError = new TimeoutException(
+                        $"Timed out waiting for Toolkit static MessageBox '{expectedCaption}' button '{autoCloseButtonPartName}'.");
+                    CloseStaticToolkitMessageBoxWindow(expectedCaption);
+                }
+            };
+            autoCloseTimer.Start();
+        }
+
+        MessageBoxResult result;
+        try
+        {
+            result = show();
+        }
+        finally
+        {
+            autoCloseTimer?.Stop();
+        }
+
+        if (autoCloseError != null)
+        {
+            throw autoCloseError;
+        }
+
+        ViewModel.StaticToolkitMessageBoxClosedCount++;
+        ViewModel.LastStaticToolkitMessageBoxResult = result;
+        ViewModel.StaticToolkitMessageBoxStatus = $"{label} {result}";
+        ViewModel.WindowContainerStatus = ViewModel.StaticToolkitMessageBoxStatus;
+        ViewModel.Status = ViewModel.StaticToolkitMessageBoxStatus;
+        ViewModel.Activity.Add(ViewModel.StaticToolkitMessageBoxStatus);
+        return result;
+    }
+
+    private bool TryClickStaticToolkitMessageBoxButton(string expectedText, string expectedCaption, string buttonPartName)
+    {
+        ToolkitMessageBoxControl? messageBox = FindStaticToolkitMessageBox(expectedCaption);
+        if (messageBox == null)
+        {
+            return false;
+        }
+
+        AssertEqual(expectedText, messageBox.Text, "Toolkit static MessageBox text");
+        AssertEqual(expectedCaption, Convert.ToString(messageBox.Caption, CultureInfo.InvariantCulture), "Toolkit static MessageBox caption");
+        PresentationSource? source = PresentationSource.FromVisual(messageBox);
+        if (source is not HwndSource ||
+            source.CompositionTarget == null)
+        {
+            throw new InvalidOperationException("Expected Toolkit static MessageBox window to expose the portable public HwndSource facade.");
+        }
+
+        messageBox.ApplyTemplate();
+        messageBox.UpdateLayout();
+        if (messageBox.Template?.FindName(buttonPartName, messageBox) is not Button button ||
+            !button.IsEnabled)
+        {
+            return false;
+        }
+
+        button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, button));
+        return true;
+    }
+
+    private static ToolkitMessageBoxControl? FindStaticToolkitMessageBox(string expectedCaption)
+    {
+        if (Application.Current == null)
+        {
+            return null;
+        }
+
+        foreach (Window window in Application.Current.Windows)
+        {
+            if (window.Content is ToolkitMessageBoxControl messageBox &&
+                string.Equals(
+                    Convert.ToString(messageBox.Caption, CultureInfo.InvariantCulture),
+                    expectedCaption,
+                    StringComparison.Ordinal))
+            {
+                return messageBox;
+            }
+        }
+
+        return null;
+    }
+
+    private static void CloseStaticToolkitMessageBoxWindow(string expectedCaption)
+    {
+        if (Application.Current == null)
+        {
+            return;
+        }
+
+        foreach (Window window in Application.Current.Windows.OfType<Window>().ToArray())
+        {
+            if (window.Content is ToolkitMessageBoxControl messageBox &&
+                string.Equals(
+                    Convert.ToString(messageBox.Caption, CultureInfo.InvariantCulture),
+                    expectedCaption,
+                    StringComparison.Ordinal))
+            {
+                window.Close();
+                return;
+            }
+        }
     }
 
     private void ZoomInButton_Click(object sender, RoutedEventArgs e)
@@ -1962,6 +2162,31 @@ public partial class MainWindow : Window
         ToolkitMessageBox.UpdateLayout();
         return ToolkitMessageBox.Template?.FindName(partName, ToolkitMessageBox) as Button
             ?? throw new InvalidOperationException($"Expected Toolkit MessageBox template button '{partName}'.");
+    }
+
+    internal void ValidateStaticToolkitMessageBoxState(bool expectedValidated)
+    {
+        if (!expectedValidated)
+        {
+            AssertEqual(0, ViewModel.StaticToolkitMessageBoxShowCount, "Toolkit static MessageBox initial show count");
+            AssertEqual(0, ViewModel.StaticToolkitMessageBoxClosedCount, "Toolkit static MessageBox initial closed count");
+            AssertEqual(MessageBoxResult.None, ViewModel.LastStaticToolkitMessageBoxResult, "Toolkit static MessageBox initial result");
+            AssertEqual("Static message idle", ViewModel.StaticToolkitMessageBoxStatus, "Toolkit static MessageBox initial status");
+            return;
+        }
+
+        AssertEqual(ViewModel.StaticToolkitMessageBoxShowCount, ViewModel.StaticToolkitMessageBoxClosedCount, "Toolkit static MessageBox balanced lifecycle count");
+        if (ViewModel.StaticToolkitMessageBoxShowCount < 2)
+        {
+            throw new InvalidOperationException("Expected Toolkit static MessageBox validation to cover both Window owner and IntPtr owner overloads.");
+        }
+
+        AssertEqual(MessageBoxResult.No, ViewModel.LastStaticToolkitMessageBoxResult, "Toolkit static MessageBox final result");
+        AssertEqual("Owner handle static MessageBox No", ViewModel.StaticToolkitMessageBoxStatus, "Toolkit static MessageBox final status");
+        if (ViewModel.LastStaticToolkitMessageBoxOwnerHandle == IntPtr.Zero)
+        {
+            throw new InvalidOperationException("Expected Toolkit static MessageBox owner-handle overload to use a non-zero portable owner handle.");
+        }
     }
 
     internal void ValidateAvalonDockDocumentContextMenuState(bool expectedOpen)
@@ -4246,6 +4471,11 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private int _toolkitMessageBoxClosedCount;
     private MessageBoxResult _lastToolkitMessageBoxResult = MessageBoxResult.None;
     private string _toolkitMessageBoxStatus = "MessageBox idle";
+    private int _staticToolkitMessageBoxShowCount;
+    private int _staticToolkitMessageBoxClosedCount;
+    private MessageBoxResult _lastStaticToolkitMessageBoxResult = MessageBoxResult.None;
+    private string _staticToolkitMessageBoxStatus = "Static message idle";
+    private IntPtr _lastStaticToolkitMessageBoxOwnerHandle = IntPtr.Zero;
     private string _windowContainerStatus = "WindowContainer idle";
     private Visibility _toolkitWindowControlVisibility = Visibility.Visible;
     private string _windowControlStatus = "WindowControl visible";
@@ -4823,6 +5053,71 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
             if (!string.Equals(_toolkitMessageBoxStatus, value, StringComparison.Ordinal))
             {
                 _toolkitMessageBoxStatus = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int StaticToolkitMessageBoxShowCount
+    {
+        get => _staticToolkitMessageBoxShowCount;
+        set
+        {
+            if (_staticToolkitMessageBoxShowCount != value)
+            {
+                _staticToolkitMessageBoxShowCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int StaticToolkitMessageBoxClosedCount
+    {
+        get => _staticToolkitMessageBoxClosedCount;
+        set
+        {
+            if (_staticToolkitMessageBoxClosedCount != value)
+            {
+                _staticToolkitMessageBoxClosedCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public MessageBoxResult LastStaticToolkitMessageBoxResult
+    {
+        get => _lastStaticToolkitMessageBoxResult;
+        set
+        {
+            if (_lastStaticToolkitMessageBoxResult != value)
+            {
+                _lastStaticToolkitMessageBoxResult = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string StaticToolkitMessageBoxStatus
+    {
+        get => _staticToolkitMessageBoxStatus;
+        set
+        {
+            if (!string.Equals(_staticToolkitMessageBoxStatus, value, StringComparison.Ordinal))
+            {
+                _staticToolkitMessageBoxStatus = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public IntPtr LastStaticToolkitMessageBoxOwnerHandle
+    {
+        get => _lastStaticToolkitMessageBoxOwnerHandle;
+        set
+        {
+            if (_lastStaticToolkitMessageBoxOwnerHandle != value)
+            {
+                _lastStaticToolkitMessageBoxOwnerHandle = value;
                 OnPropertyChanged();
             }
         }
@@ -5906,6 +6201,7 @@ internal static class ToolkitSelfTest
         Require<ChildWindow>(window, "ToolkitChildWindow");
         Require<Button>(window, "ShowChildWindowButton");
         Require<Button>(window, "ShowToolkitMessageBoxButton");
+        Require<Button>(window, "ShowStaticToolkitMessageBoxButton");
         Require<Button>(window, "ToggleWindowControlButton");
         Require<TextBox>(window, "ChildWindowInputTextBox");
         Require<Button>(window, "AcceptChildWindowButton");
@@ -5915,6 +6211,7 @@ internal static class ToolkitSelfTest
         Require<TextBox>(window, "WindowControlInputTextBox");
         Require<Button>(window, "ActivateWindowControlButton");
         Require<TextBlock>(window, "WindowControlStatusText");
+        Require<TextBlock>(window, "StaticToolkitMessageBoxStatusText");
         Require<ToolkitZoomboxControl>(window, "ToolkitZoombox");
         Require<Grid>(window, "ZoomboxContentRoot");
         Require<Button>(window, "ZoomInButton");
@@ -6024,6 +6321,7 @@ internal static class ToolkitSelfTest
         window.ValidateToolkitWizardState(expectLoaded);
         window.ValidateToolkitChildWindowState(expectedOpen: false);
         window.ValidateToolkitMessageBoxState(expectedOpen: false);
+        window.ValidateStaticToolkitMessageBoxState(expectedValidated: false);
         window.ValidateToolkitWindowControlState(expectedVisible: true, expectLoaded);
         window.ValidateToolkitZoomboxAndMagnifierState(expectLoaded);
         window.ValidateToolkitPanelState(expectLoaded);
@@ -6177,6 +6475,7 @@ internal static class ToolkitSelfTest
 
             window.ExerciseToolkitChildWindow();
             window.ExerciseToolkitMessageBox();
+            window.ExerciseStaticToolkitMessageBoxes();
             window.ExerciseToolkitWindowControl();
             window.ExerciseToolkitZoomboxAndMagnifier();
             window.ExerciseToolkitCollectionControl();

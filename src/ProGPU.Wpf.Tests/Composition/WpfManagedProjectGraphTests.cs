@@ -6173,6 +6173,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GetToolkitMessageBoxButton(\"PART_OkButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ToolkitMessageBoxClosedCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastToolkitMessageBoxResult", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<Button>(window, \"ShowStaticToolkitMessageBoxButton\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Require<TextBlock>(window, \"StaticToolkitMessageBoxStatusText\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ExerciseStaticToolkitMessageBoxes", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ShowStaticToolkitMessageBoxWithWindowOwner", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ShowStaticToolkitMessageBoxWithOwnerHandle", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("new WindowInteropHelper(this).EnsureHandle()", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("TryClickStaticToolkitMessageBoxButton", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastStaticToolkitMessageBoxOwnerHandle", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateToolkitWindowControlState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ExerciseToolkitWindowControl", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveToolkitWindowControlAsync", mainWindowCodeBehind, StringComparison.Ordinal);

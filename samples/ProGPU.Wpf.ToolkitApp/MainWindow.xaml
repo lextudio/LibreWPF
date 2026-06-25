@@ -521,6 +521,12 @@
                               Margin="0,0,6,0"
                               Padding="8,4"
                               Click="ShowToolkitMessageBoxButton_Click" />
+                      <Button x:Name="ShowStaticToolkitMessageBoxButton"
+                              Content="Static message"
+                              MinWidth="112"
+                              Margin="0,0,6,0"
+                              Padding="8,4"
+                              Click="ShowStaticToolkitMessageBoxButton_Click" />
                       <Button x:Name="ToggleWindowControlButton"
                               Content="Toggle window"
                               MinWidth="112"
@@ -536,6 +542,11 @@
                                  Margin="10,0,0,0"
                                  Foreground="#5E6A73"
                                  Text="{Binding WindowControlStatus}" />
+                      <TextBlock x:Name="StaticToolkitMessageBoxStatusText"
+                                 VerticalAlignment="Center"
+                                 Margin="10,0,0,0"
+                                 Foreground="#5E6A73"
+                                 Text="{Binding StaticToolkitMessageBoxStatus}" />
                     </WrapPanel>
                     <xctk:WindowContainer x:Name="ToolkitChildWindowContainer"
                                           Grid.Row="1"

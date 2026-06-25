@@ -12,6 +12,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Xceed.Wpf.AvalonDock;
@@ -125,6 +126,14 @@ public partial class MainWindow : Window
         _viewModel.Activity.Add(_viewModel.Status);
     }
 
+    private void MarkReviewedButton_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.SelectedDocument.Body += Environment.NewLine + "Reviewed through Xceed DropDownButton.";
+        _viewModel.Status = "Document marked reviewed";
+        _viewModel.Activity.Add("Marked selected document reviewed");
+        ActionDropDownButton.IsOpen = false;
+    }
+
     private void SerializeLayoutButton_Click(object sender, RoutedEventArgs e)
     {
         _viewModel.LastSerializedLayout = SerializeCurrentLayout();
@@ -188,6 +197,24 @@ public partial class MainWindow : Window
             }
 
             AssertEqual("Float editor", Convert.ToString(ToggleEditorFloatButton.Content, CultureInfo.InvariantCulture), "AvalonDock float toggle content");
+        }
+    }
+
+    internal void ValidateToolkitPopupState(bool expectedOpen)
+    {
+        AssertEqual(expectedOpen, CategoryPicker.IsDropDownOpen, "Toolkit CheckComboBox dropdown state");
+        AssertEqual(expectedOpen, AccentColorPicker.IsOpen, "Toolkit ColorPicker popup state");
+        AssertEqual(expectedOpen, EstimateEditor.IsOpen, "Toolkit CalculatorUpDown popup state");
+        AssertEqual(expectedOpen, ActionDropDownButton.IsOpen, "Toolkit DropDownButton popup state");
+
+        if (expectedOpen)
+        {
+            var popupSource = PresentationSource.FromVisual(ActionDropDownContentRoot);
+            if (popupSource is not HwndSource || popupSource.CompositionTarget == null)
+            {
+                throw new InvalidOperationException(
+                    "Expected Xceed DropDownButton content to be rooted in the portable public HwndSource facade while open.");
+            }
         }
     }
 
@@ -318,6 +345,8 @@ public partial class MainWindow : Window
             },
             DispatcherPriority.Send);
 
+        await ValidateLivePopupControlsAsync(liveHost);
+
         int documentsBeforeAdd = ViewModel.DocumentCount;
         await ClickLiveControlAsync(liveHost, AddDocumentButton, "AddDocumentButton");
         await InvokeWithLiveHostWakeAsync(
@@ -426,7 +455,68 @@ public partial class MainWindow : Window
                     throw new InvalidOperationException("Expected Toolkit live AvalonDock deserialization to restore root panel shape.");
                 }
 
-                return "host mouse/text input, binding update, AvalonDock document activation, floating document window, anchorable hide/show, auto-hide side groups, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, AvalonDock document activation, floating document window, anchorable hide/show, auto-hide side groups, and layout serialization updated";
+            },
+            DispatcherPriority.Send);
+    }
+
+    private async Task ValidateLivePopupControlsAsync(object liveHost)
+    {
+        await ClickLiveControlAsync(liveHost, ActionDropDownButton, "ActionDropDownButton");
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => ActionDropDownButton.IsOpen,
+            "Toolkit live DropDownButton popup open state");
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                ActionDropDownButton.IsOpen = false;
+                CategoryPicker.IsDropDownOpen = true;
+                AccentColorPicker.IsOpen = true;
+                EstimateEditor.IsOpen = true;
+                ActionDropDownButton.IsOpen = true;
+            },
+            DispatcherPriority.Send);
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => CategoryPicker.IsDropDownOpen &&
+                  AccentColorPicker.IsOpen &&
+                  EstimateEditor.IsOpen &&
+                  ActionDropDownButton.IsOpen,
+            "Toolkit live popup-backed controls open state");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => ValidateToolkitPopupState(expectedOpen: true),
+            DispatcherPriority.Send);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                AccentColorPicker.SelectedColor = Colors.MediumSeaGreen;
+                EstimateEditor.Value = 42.25m;
+                CategoryPicker.IsDropDownOpen = false;
+                AccentColorPicker.IsOpen = false;
+                EstimateEditor.IsOpen = false;
+                ActionDropDownButton.IsOpen = false;
+            },
+            DispatcherPriority.Send);
+        await WaitForLiveConditionAsync(
+            liveHost,
+            () => !CategoryPicker.IsDropDownOpen &&
+                  !AccentColorPicker.IsOpen &&
+                  !EstimateEditor.IsOpen &&
+                  !ActionDropDownButton.IsOpen,
+            "Toolkit live popup-backed controls closed state");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                ValidateToolkitPopupState(expectedOpen: false);
+                AssertEqual(Colors.MediumSeaGreen, ViewModel.AccentColor, "Toolkit live ColorPicker selected color binding source");
+                AssertEqual(42.25m, ViewModel.Estimate, "Toolkit live CalculatorUpDown value binding source");
             },
             DispatcherPriority.Send);
     }
@@ -704,6 +794,8 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private int _priority = 4;
     private string _filterText = string.Empty;
     private DateTime? _dueDate = DateTime.Today.AddDays(7).AddHours(9);
+    private Color? _accentColor = Colors.SteelBlue;
+    private decimal? _estimate = 12.5m;
     private bool _isBusy;
     private string _status = "Toolkit sample ready";
     private string _lastSerializedLayout = string.Empty;
@@ -781,6 +873,32 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
             if (_dueDate != value)
             {
                 _dueDate = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public Color? AccentColor
+    {
+        get => _accentColor;
+        set
+        {
+            if (_accentColor != value)
+            {
+                _accentColor = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public decimal? Estimate
+    {
+        get => _estimate;
+        set
+        {
+            if (_estimate != value)
+            {
+                _estimate = value;
                 OnPropertyChanged();
             }
         }
@@ -877,6 +995,10 @@ internal static class ToolkitSelfTest
         Require<WatermarkTextBox>(window, "FilterTextBox");
         Require<DateTimePicker>(window, "DueDatePicker");
         Require<CheckComboBox>(window, "CategoryPicker");
+        Require<ColorPicker>(window, "AccentColorPicker");
+        Require<CalculatorUpDown>(window, "EstimateEditor");
+        Require<DropDownButton>(window, "ActionDropDownButton");
+        Require<Button>(window, "MarkReviewedButton");
         Require<BusyIndicator>(window, "BusyIndicator");
         Require<PropertyGrid>(window, "DocumentPropertyGrid");
         Require<Button>(window, "ActivateEditorButton");
@@ -948,6 +1070,51 @@ internal static class ToolkitSelfTest
             throw new InvalidOperationException("Expected IntegerUpDown value binding to initialize.");
         }
 
+        if (window.AccentColorPicker.SelectedColor != window.ViewModel.AccentColor ||
+            window.EstimateEditor.Value != window.ViewModel.Estimate)
+        {
+            throw new InvalidOperationException("Expected Toolkit popup editor bindings to initialize.");
+        }
+
+        if (expectLoaded)
+        {
+            window.CategoryPicker.IsDropDownOpen = true;
+            window.AccentColorPicker.IsOpen = true;
+            window.EstimateEditor.IsOpen = true;
+            window.ActionDropDownButton.IsOpen = true;
+            PumpDispatcherUntil(
+                window,
+                () => window.CategoryPicker.IsDropDownOpen &&
+                      window.AccentColorPicker.IsOpen &&
+                      window.EstimateEditor.IsOpen &&
+                      window.ActionDropDownButton.IsOpen,
+                TimeSpan.FromSeconds(2),
+                "Toolkit popup-backed controls open state");
+            window.ValidateToolkitPopupState(expectedOpen: true);
+
+            window.AccentColorPicker.SelectedColor = Colors.MediumSeaGreen;
+            window.EstimateEditor.Value = 42.25m;
+            window.CategoryPicker.IsDropDownOpen = false;
+            window.AccentColorPicker.IsOpen = false;
+            window.EstimateEditor.IsOpen = false;
+            window.ActionDropDownButton.IsOpen = false;
+            PumpDispatcherUntil(
+                window,
+                () => !window.CategoryPicker.IsDropDownOpen &&
+                      !window.AccentColorPicker.IsOpen &&
+                      !window.EstimateEditor.IsOpen &&
+                      !window.ActionDropDownButton.IsOpen,
+                TimeSpan.FromSeconds(2),
+                "Toolkit popup-backed controls closed state");
+            window.ValidateToolkitPopupState(expectedOpen: false);
+
+            if (window.ViewModel.AccentColor != Colors.MediumSeaGreen ||
+                window.ViewModel.Estimate != 42.25m)
+            {
+                throw new InvalidOperationException("Expected Toolkit popup editor changes to update bindings.");
+            }
+        }
+
         window.AddDocumentButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
 
         if (window.DocumentPane.ChildrenCount != 3 || window.ViewModel.Documents.Count != 3)
@@ -965,6 +1132,17 @@ internal static class ToolkitSelfTest
         if (!window.EditorDocument.IsSelected || !window.EditorDocument.IsActive)
         {
             throw new InvalidOperationException("Expected AvalonDock document activation to update selected/active document state.");
+        }
+
+        string bodyBeforeReview = window.ViewModel.SelectedDocument.Body;
+        window.ActionDropDownButton.IsOpen = true;
+        window.MarkReviewedButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+        if (window.ActionDropDownButton.IsOpen ||
+            string.Equals(window.ViewModel.SelectedDocument.Body, bodyBeforeReview, StringComparison.Ordinal) ||
+            !string.Equals(window.ViewModel.Status, "Document marked reviewed", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Expected Toolkit DropDownButton command to update the selected document and close the dropdown.");
         }
 
         if (expectLoaded)

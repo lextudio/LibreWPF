@@ -176,6 +176,43 @@
                                       SelectedItemsOverride="{Binding SelectedCategories}"
                                       Margin="0,4,0,12" />
 
+                  <TextBlock Text="ColorPicker" />
+                  <xctk:ColorPicker x:Name="AccentColorPicker"
+                                    SelectedColor="{Binding AccentColor}"
+                                    DisplayColorAndName="True"
+                                    ShowStandardColors="True"
+                                    ShowAvailableColors="True"
+                                    ShowRecentColors="True"
+                                    Margin="0,4,0,12" />
+
+                  <TextBlock Text="CalculatorUpDown" />
+                  <xctk:CalculatorUpDown x:Name="EstimateEditor"
+                                         Minimum="0"
+                                         Maximum="100"
+                                         Increment="0.25"
+                                         FormatString="F2"
+                                         Value="{Binding Estimate}"
+                                         Margin="0,4,0,12" />
+
+                  <TextBlock Text="DropDownButton" />
+                  <xctk:DropDownButton x:Name="ActionDropDownButton"
+                                       Content="Document actions"
+                                       Margin="0,4,0,12">
+                    <xctk:DropDownButton.DropDownContent>
+                      <StackPanel x:Name="ActionDropDownContentRoot"
+                                  MinWidth="180"
+                                  Margin="8">
+                        <Button x:Name="MarkReviewedButton"
+                                Content="Mark reviewed"
+                                Padding="8,4"
+                                Click="MarkReviewedButton_Click" />
+                        <TextBlock Margin="0,8,0,0"
+                                   Foreground="#5E6A73"
+                                   Text="{Binding SelectedDocument.Title, StringFormat=Selected: {0}}" />
+                      </StackPanel>
+                    </xctk:DropDownButton.DropDownContent>
+                  </xctk:DropDownButton>
+
                   <xctk:BusyIndicator x:Name="BusyIndicator"
                                       IsBusy="{Binding IsBusy}"
                                       BusyContent="Refreshing toolkit state"

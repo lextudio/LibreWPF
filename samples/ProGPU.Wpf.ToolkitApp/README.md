@@ -11,6 +11,8 @@ The XAML uses regular `http://schemas.xceed.com/wpf/xaml/toolkit` and `http://sc
 
 The AvalonDock floating-window path and Xceed popup-editor path intentionally exercise the SDK's portable `HwndSource` compatibility facade. Third-party WPF code can query `PresentationSource.FromVisual(...)`, install `HwndSourceHook` callbacks, and receive a stable synthetic handle, while the real root still runs through the ProGPU/Silk.NET portable presentation source.
 
+The AvalonDock auto-hide overlay path also exercises portable `HwndHost` and Win32 compatibility shims used by third-party docking controls. The sample drives the overlay through a normal `RoutedUICommand`/`KeyBinding` (`F11`) and validates the same path in the live ProGPU/Silk.NET apphost.
+
 Build and launch the SDK-produced apphost from the repository root:
 
 ```bash

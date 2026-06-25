@@ -21,6 +21,7 @@ using Xceed.Wpf.AvalonDock.Layout.Serialization;
 using Xceed.Wpf.AvalonDock.Themes;
 using Xceed.Wpf.Toolkit;
 using Xceed.Wpf.Toolkit.PropertyGrid;
+using ToolkitRichTextBox = Xceed.Wpf.Toolkit.RichTextBox;
 
 namespace ProGPU.Wpf.ToolkitApp;
 
@@ -203,6 +204,7 @@ public partial class MainWindow : Window
     internal void ValidateToolkitPopupState(bool expectedOpen)
     {
         AssertEqual(expectedOpen, CategoryPicker.IsDropDownOpen, "Toolkit CheckComboBox dropdown state");
+        AssertEqual(expectedOpen, ReminderTimePicker.IsOpen, "Toolkit TimePicker popup state");
         AssertEqual(expectedOpen, AccentColorPicker.IsOpen, "Toolkit ColorPicker popup state");
         AssertEqual(expectedOpen, EstimateEditor.IsOpen, "Toolkit CalculatorUpDown popup state");
         AssertEqual(expectedOpen, ActionDropDownButton.IsOpen, "Toolkit DropDownButton popup state");
@@ -214,6 +216,32 @@ public partial class MainWindow : Window
             {
                 throw new InvalidOperationException(
                     "Expected Xceed DropDownButton content to be rooted in the portable public HwndSource facade while open.");
+            }
+        }
+    }
+
+    internal void ValidateToolkitInputEditorState()
+    {
+        AssertEqual(ViewModel.ReferenceCode, ReferenceMaskTextBox.Text, "Toolkit MaskedTextBox text binding target");
+        AssertEqual("LL-0000", ReferenceMaskTextBox.Mask, "Toolkit MaskedTextBox mask");
+        AssertEqual(ViewModel.ReminderTime, ReminderTimePicker.Value, "Toolkit TimePicker value binding target");
+        AssertEqual(ViewModel.RichNotes, ToolkitRichTextBox.Text, "Toolkit RichTextBox text binding target");
+
+        if (ToolkitRichTextBox.TextFormatter is not PlainTextFormatter)
+        {
+            throw new InvalidOperationException("Expected Toolkit RichTextBox to use PlainTextFormatter.");
+        }
+
+        if (FlagListBox.Items.Count != ViewModel.Flags.Count)
+        {
+            throw new InvalidOperationException("Expected Toolkit CheckListBox to bind all flags.");
+        }
+
+        foreach (string selectedFlag in ViewModel.SelectedFlags)
+        {
+            if (!FlagListBox.SelectedItems.Contains(selectedFlag))
+            {
+                throw new InvalidOperationException($"Expected Toolkit CheckListBox selected item '{selectedFlag}'.");
             }
         }
     }
@@ -346,6 +374,7 @@ public partial class MainWindow : Window
             DispatcherPriority.Send);
 
         await ValidateLivePopupControlsAsync(liveHost);
+        await ValidateLiveInputEditorsAsync(liveHost);
 
         int documentsBeforeAdd = ViewModel.DocumentCount;
         await ClickLiveControlAsync(liveHost, AddDocumentButton, "AddDocumentButton");
@@ -455,7 +484,7 @@ public partial class MainWindow : Window
                     throw new InvalidOperationException("Expected Toolkit live AvalonDock deserialization to restore root panel shape.");
                 }
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, AvalonDock document activation, floating document window, anchorable hide/show, auto-hide side groups, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/checklist/rich editors, AvalonDock document activation, floating document window, anchorable hide/show, auto-hide side groups, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -474,6 +503,7 @@ public partial class MainWindow : Window
             {
                 ActionDropDownButton.IsOpen = false;
                 CategoryPicker.IsDropDownOpen = true;
+                ReminderTimePicker.IsOpen = true;
                 AccentColorPicker.IsOpen = true;
                 EstimateEditor.IsOpen = true;
                 ActionDropDownButton.IsOpen = true;
@@ -482,6 +512,7 @@ public partial class MainWindow : Window
         await WaitForLiveConditionAsync(
             liveHost,
             () => CategoryPicker.IsDropDownOpen &&
+                  ReminderTimePicker.IsOpen &&
                   AccentColorPicker.IsOpen &&
                   EstimateEditor.IsOpen &&
                   ActionDropDownButton.IsOpen,
@@ -498,6 +529,7 @@ public partial class MainWindow : Window
                 AccentColorPicker.SelectedColor = Colors.MediumSeaGreen;
                 EstimateEditor.Value = 42.25m;
                 CategoryPicker.IsDropDownOpen = false;
+                ReminderTimePicker.IsOpen = false;
                 AccentColorPicker.IsOpen = false;
                 EstimateEditor.IsOpen = false;
                 ActionDropDownButton.IsOpen = false;
@@ -506,6 +538,7 @@ public partial class MainWindow : Window
         await WaitForLiveConditionAsync(
             liveHost,
             () => !CategoryPicker.IsDropDownOpen &&
+                  !ReminderTimePicker.IsOpen &&
                   !AccentColorPicker.IsOpen &&
                   !EstimateEditor.IsOpen &&
                   !ActionDropDownButton.IsOpen,
@@ -517,6 +550,44 @@ public partial class MainWindow : Window
                 ValidateToolkitPopupState(expectedOpen: false);
                 AssertEqual(Colors.MediumSeaGreen, ViewModel.AccentColor, "Toolkit live ColorPicker selected color binding source");
                 AssertEqual(42.25m, ViewModel.Estimate, "Toolkit live CalculatorUpDown value binding source");
+            },
+            DispatcherPriority.Send);
+    }
+
+    private async Task ValidateLiveInputEditorsAsync(object liveHost)
+    {
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                ReferenceMaskTextBox.Text = "AB-1234";
+                ReferenceMaskTextBox.GetBindingExpression(MaskedTextBox.TextProperty)?.UpdateSource();
+
+                ReminderTimePicker.Value = DateTime.Today.AddHours(15).AddMinutes(45);
+
+                if (!ViewModel.SelectedFlags.Contains("Reviewed"))
+                {
+                    ViewModel.SelectedFlags.Add("Reviewed");
+                }
+
+                ToolkitRichTextBox.Text = "Live rich notes from Toolkit RichTextBox";
+                ToolkitRichTextBox.GetBindingExpression(ToolkitRichTextBox.TextProperty)?.UpdateSource();
+            },
+            DispatcherPriority.Send);
+
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                ValidateToolkitInputEditorState();
+                AssertEqual("AB-1234", ViewModel.ReferenceCode, "Toolkit live MaskedTextBox binding source");
+                AssertEqual(DateTime.Today.AddHours(15).AddMinutes(45), ViewModel.ReminderTime, "Toolkit live TimePicker binding source");
+                AssertEqual("Live rich notes from Toolkit RichTextBox", ViewModel.RichNotes, "Toolkit live RichTextBox binding source");
+                if (!FlagListBox.SelectedItems.Contains("Reviewed"))
+                {
+                    throw new InvalidOperationException("Expected Toolkit live CheckListBox to select the added flag.");
+                }
             },
             DispatcherPriority.Send);
     }
@@ -560,6 +631,9 @@ public partial class MainWindow : Window
 
     private bool TryRaiseLiveMouseClick(object liveHost, FrameworkElement target, string targetName, out string targetState)
     {
+        target.BringIntoView();
+        target.UpdateLayout();
+
         targetState =
             $"{targetName}.IsVisible={target.IsVisible}, " +
             $"{targetName}.ActualSize={target.ActualWidth:0.###}x{target.ActualHeight:0.###}, " +
@@ -794,8 +868,11 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private int _priority = 4;
     private string _filterText = string.Empty;
     private DateTime? _dueDate = DateTime.Today.AddDays(7).AddHours(9);
+    private DateTime? _reminderTime = DateTime.Today.AddHours(10).AddMinutes(15);
+    private string _referenceCode = "PR-2048";
     private Color? _accentColor = Colors.SteelBlue;
     private decimal? _estimate = 12.5m;
+    private string _richNotes = "Toolkit rich notes";
     private bool _isBusy;
     private string _status = "Toolkit sample ready";
     private string _lastSerializedLayout = string.Empty;
@@ -809,6 +886,8 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         ];
         Categories = ["Framework", "Toolkit", "AvalonDock", "Rendering"];
         SelectedCategories = ["Toolkit", "AvalonDock"];
+        Flags = ["Pinned", "Reviewed", "Blocked", "Urgent"];
+        SelectedFlags = ["Pinned"];
         Activity = ["Toolkit package loaded", "AvalonDock layout loaded"];
         _selectedDocument = Documents[0];
         Documents.CollectionChanged += (_, _) => OnPropertyChanged(nameof(DocumentCount));
@@ -821,6 +900,10 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     public ObservableCollection<string> Categories { get; }
 
     public ObservableCollection<string> SelectedCategories { get; }
+
+    public ObservableCollection<string> Flags { get; }
+
+    public ObservableCollection<string> SelectedFlags { get; }
 
     public ObservableCollection<string> Activity { get; }
 
@@ -878,6 +961,32 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         }
     }
 
+    public DateTime? ReminderTime
+    {
+        get => _reminderTime;
+        set
+        {
+            if (_reminderTime != value)
+            {
+                _reminderTime = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string ReferenceCode
+    {
+        get => _referenceCode;
+        set
+        {
+            if (!string.Equals(_referenceCode, value, StringComparison.Ordinal))
+            {
+                _referenceCode = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public Color? AccentColor
     {
         get => _accentColor;
@@ -899,6 +1008,19 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
             if (_estimate != value)
             {
                 _estimate = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string RichNotes
+    {
+        get => _richNotes;
+        set
+        {
+            if (!string.Equals(_richNotes, value, StringComparison.Ordinal))
+            {
+                _richNotes = value;
                 OnPropertyChanged();
             }
         }
@@ -994,11 +1116,15 @@ internal static class ToolkitSelfTest
         Require<IntegerUpDown>(window, "PriorityEditor");
         Require<WatermarkTextBox>(window, "FilterTextBox");
         Require<DateTimePicker>(window, "DueDatePicker");
+        Require<TimePicker>(window, "ReminderTimePicker");
+        Require<MaskedTextBox>(window, "ReferenceMaskTextBox");
         Require<CheckComboBox>(window, "CategoryPicker");
+        Require<CheckListBox>(window, "FlagListBox");
         Require<ColorPicker>(window, "AccentColorPicker");
         Require<CalculatorUpDown>(window, "EstimateEditor");
         Require<DropDownButton>(window, "ActionDropDownButton");
         Require<Button>(window, "MarkReviewedButton");
+        Require<ToolkitRichTextBox>(window, "ToolkitRichTextBox");
         Require<BusyIndicator>(window, "BusyIndicator");
         Require<PropertyGrid>(window, "DocumentPropertyGrid");
         Require<Button>(window, "ActivateEditorButton");
@@ -1060,7 +1186,9 @@ internal static class ToolkitSelfTest
 
         if (window.ViewModel.Documents.Count != 2 ||
             window.ViewModel.Categories.Count != 4 ||
-            window.ViewModel.SelectedCategories.Count != 2)
+            window.ViewModel.SelectedCategories.Count != 2 ||
+            window.ViewModel.Flags.Count != 4 ||
+            window.ViewModel.SelectedFlags.Count != 1)
         {
             throw new InvalidOperationException("Expected toolkit sample view-model collections to be initialized.");
         }
@@ -1076,15 +1204,19 @@ internal static class ToolkitSelfTest
             throw new InvalidOperationException("Expected Toolkit popup editor bindings to initialize.");
         }
 
+        window.ValidateToolkitInputEditorState();
+
         if (expectLoaded)
         {
             window.CategoryPicker.IsDropDownOpen = true;
+            window.ReminderTimePicker.IsOpen = true;
             window.AccentColorPicker.IsOpen = true;
             window.EstimateEditor.IsOpen = true;
             window.ActionDropDownButton.IsOpen = true;
             PumpDispatcherUntil(
                 window,
                 () => window.CategoryPicker.IsDropDownOpen &&
+                      window.ReminderTimePicker.IsOpen &&
                       window.AccentColorPicker.IsOpen &&
                       window.EstimateEditor.IsOpen &&
                       window.ActionDropDownButton.IsOpen,
@@ -1095,12 +1227,14 @@ internal static class ToolkitSelfTest
             window.AccentColorPicker.SelectedColor = Colors.MediumSeaGreen;
             window.EstimateEditor.Value = 42.25m;
             window.CategoryPicker.IsDropDownOpen = false;
+            window.ReminderTimePicker.IsOpen = false;
             window.AccentColorPicker.IsOpen = false;
             window.EstimateEditor.IsOpen = false;
             window.ActionDropDownButton.IsOpen = false;
             PumpDispatcherUntil(
                 window,
                 () => !window.CategoryPicker.IsDropDownOpen &&
+                      !window.ReminderTimePicker.IsOpen &&
                       !window.AccentColorPicker.IsOpen &&
                       !window.EstimateEditor.IsOpen &&
                       !window.ActionDropDownButton.IsOpen,
@@ -1112,6 +1246,25 @@ internal static class ToolkitSelfTest
                 window.ViewModel.Estimate != 42.25m)
             {
                 throw new InvalidOperationException("Expected Toolkit popup editor changes to update bindings.");
+            }
+
+            window.ReferenceMaskTextBox.Text = "ZX-9876";
+            window.ReferenceMaskTextBox.GetBindingExpression(MaskedTextBox.TextProperty)?.UpdateSource();
+            window.ReminderTimePicker.Value = DateTime.Today.AddHours(16);
+            window.ToolkitRichTextBox.Text = "Application.Run rich notes";
+            window.ToolkitRichTextBox.GetBindingExpression(ToolkitRichTextBox.TextProperty)?.UpdateSource();
+            if (!window.ViewModel.SelectedFlags.Contains("Urgent"))
+            {
+                window.ViewModel.SelectedFlags.Add("Urgent");
+            }
+
+            window.ValidateToolkitInputEditorState();
+            if (!string.Equals(window.ViewModel.ReferenceCode, "ZX-9876", StringComparison.Ordinal) ||
+                window.ViewModel.ReminderTime != DateTime.Today.AddHours(16) ||
+                !string.Equals(window.ViewModel.RichNotes, "Application.Run rich notes", StringComparison.Ordinal) ||
+                !window.FlagListBox.SelectedItems.Contains("Urgent"))
+            {
+                throw new InvalidOperationException("Expected Toolkit input editor changes to update bindings and selection state.");
             }
         }
 

@@ -170,11 +170,33 @@
                                        FormatString="yyyy-MM-dd HH:mm"
                                        Margin="0,4,0,12" />
 
+                  <TextBlock Text="TimePicker" />
+                  <xctk:TimePicker x:Name="ReminderTimePicker"
+                                   Value="{Binding ReminderTime}"
+                                   Format="Custom"
+                                   FormatString="HH:mm"
+                                   Margin="0,4,0,12" />
+
+                  <TextBlock Text="MaskedTextBox" />
+                  <xctk:MaskedTextBox x:Name="ReferenceMaskTextBox"
+                                      Mask="LL-0000"
+                                      Text="{Binding ReferenceCode, UpdateSourceTrigger=PropertyChanged}"
+                                      IncludeLiteralsInValue="True"
+                                      IncludePromptInValue="False"
+                                      Margin="0,4,0,12" />
+
                   <TextBlock Text="CheckComboBox" />
                   <xctk:CheckComboBox x:Name="CategoryPicker"
                                       ItemsSource="{Binding Categories}"
                                       SelectedItemsOverride="{Binding SelectedCategories}"
                                       Margin="0,4,0,12" />
+
+                  <TextBlock Text="CheckListBox" />
+                  <xctk:CheckListBox x:Name="FlagListBox"
+                                     ItemsSource="{Binding Flags}"
+                                     SelectedItemsOverride="{Binding SelectedFlags}"
+                                     Height="88"
+                                     Margin="0,4,0,12" />
 
                   <TextBlock Text="ColorPicker" />
                   <xctk:ColorPicker x:Name="AccentColorPicker"
@@ -212,6 +234,16 @@
                       </StackPanel>
                     </xctk:DropDownButton.DropDownContent>
                   </xctk:DropDownButton>
+
+                  <TextBlock Text="RichTextBox" />
+                  <xctk:RichTextBox x:Name="ToolkitRichTextBox"
+                                    Height="96"
+                                    Text="{Binding RichNotes, UpdateSourceTrigger=PropertyChanged}"
+                                    Margin="0,4,0,12">
+                    <xctk:RichTextBox.TextFormatter>
+                      <xctk:PlainTextFormatter />
+                    </xctk:RichTextBox.TextFormatter>
+                  </xctk:RichTextBox>
 
                   <xctk:BusyIndicator x:Name="BusyIndicator"
                                       IsBusy="{Binding IsBusy}"

@@ -581,6 +581,7 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         visual.CenterPoint = Vector3.Zero;
         visual.RenderTransformOrigin = new Vector2(0.5f, 0.5f);
         visual.ClipBounds = null;
+        visual.OuterClipBounds = null;
         visual.Effect = null;
     }
 

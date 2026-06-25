@@ -486,12 +486,14 @@ internal readonly struct WpfRetainedVisualState
         bool cacheAsLayer = false,
         WpfReplayRect? contentBounds = null,
         MediaBrush? opacityMask = null,
-        WpfReplayRect? opacityMaskBounds = null)
+        WpfReplayRect? opacityMaskBounds = null,
+        WpfReplayRect? outerClipBounds = null)
     {
         Offset = offset;
         Transform = transform;
         Opacity = opacity;
         ClipBounds = clipBounds;
+        OuterClipBounds = outerClipBounds;
         Size = size;
         Effect = effect;
         CacheAsLayer = cacheAsLayer;
@@ -509,6 +511,8 @@ internal readonly struct WpfRetainedVisualState
     public float Opacity { get; }
 
     public WpfReplayRect? ClipBounds { get; }
+
+    public WpfReplayRect? OuterClipBounds { get; }
 
     public global::ProGPU.Scene.EffectBase? Effect { get; }
 

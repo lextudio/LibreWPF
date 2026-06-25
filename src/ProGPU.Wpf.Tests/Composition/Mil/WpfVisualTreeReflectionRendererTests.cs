@@ -124,11 +124,13 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.Equal(3, rootState.Transform.M41);
         Assert.Equal(4, rootState.Transform.M42);
         AssertReplayRect(0, 0, 100, 50, rootState.ClipBounds);
+        Assert.Null(rootState.OuterClipBounds);
         var childState = sink.RetainedVisualStates[1];
         Assert.Equal(Vector2.Zero, childState.Offset);
         Assert.Equal(1f, childState.Opacity);
         Assert.Equal(Matrix4x4.Identity, childState.Transform);
         Assert.Null(childState.ClipBounds);
+        Assert.Null(childState.OuterClipBounds);
         Assert.Equal(2, result.VisualCount);
         Assert.Equal(1, result.ContentCount);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
@@ -150,12 +152,36 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.Equal(new[] { "PushVisualOwner", "ApplyVisualState", "PushVisualOwner", "ApplyVisualState", "DrawRectangle", "PopVisualOwner", "PopVisualOwner" }, sink.Operations);
         Assert.Equal(new object[] { root, root.Children[0] }, sink.VisualOwners);
         Assert.Equal(2, sink.RetainedVisualStates.Count);
-        AssertReplayRect(2, 3, 40, 50, sink.RetainedVisualStates[0].ClipBounds);
+        Assert.Null(sink.RetainedVisualStates[0].ClipBounds);
+        AssertReplayRect(2, 3, 40, 50, sink.RetainedVisualStates[0].OuterClipBounds);
         Assert.Null(sink.RetainedVisualStates[1].ClipBounds);
+        Assert.Null(sink.RetainedVisualStates[1].OuterClipBounds);
         Assert.Equal(2, result.VisualCount);
         Assert.Equal(1, result.ContentCount);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
         Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeLowersLocalAndScrollableClipsIntoSeparateRetainedState()
+    {
+        var root = new FakeVisual
+        {
+            Offset = new WpfVector(10, 20),
+            Clip = new FakeRectangleGeometry(new FakeRect(1, 2, 30, 40)),
+            VisualScrollableAreaClip = new FakeRect(10, 20, 80, 90)
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(2, sink.RetainedVisualStates.Count);
+        var rootState = sink.RetainedVisualStates[0];
+        Assert.Equal(new Vector2(10, 20), rootState.Offset);
+        AssertReplayRect(1, 2, 30, 40, rootState.ClipBounds);
+        AssertReplayRect(10, 20, 80, 90, rootState.OuterClipBounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
     }
 
     [Fact]
@@ -322,7 +348,8 @@ public sealed class WpfVisualTreeReflectionRendererTests
         Assert.True(state.CacheAsLayer);
         Assert.Equal(new Vector2(7, 9), state.Offset);
         Assert.Equal(new Vector2(70, 80), state.Size);
-        AssertReplayRect(5, 6, 20, 25, state.ClipBounds);
+        Assert.Null(state.ClipBounds);
+        AssertReplayRect(10, 12, 20, 25, state.OuterClipBounds);
         AssertReplayRect(5, 6, 70, 80, state.ContentBounds);
         var transform = Assert.Single(sink.NativeTransforms);
         Assert.Equal(-5, transform.M41);
@@ -935,6 +962,35 @@ public sealed class WpfVisualTreeReflectionRendererTests
         var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
 
         Assert.Equal(new[] { "PushClip", "DrawRectangle", "Pop" }, sink.Operations);
+        var clip = Assert.Single(sink.Clips);
+        Assert.Equal(new Rect(2, 3, 40, 50), clip.Bounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
+    public void ReplaySubtreeProjectsScrollableAreaClipOutsideVisualOffsetForFallbackRendering()
+    {
+        var root = new FakeVisual
+        {
+            Offset = new WpfVector(10, 20),
+            VisualScrollableAreaClip = new FakeRect(2, 3, 40, 50)
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink();
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(
+            new[] { "PushTransform", "PushTransform", "PushClip", "PushTransform", "DrawRectangle", "Pop", "Pop", "Pop", "Pop" },
+            sink.Operations);
+        Assert.Equal(3, sink.NativeTransforms.Count);
+        Assert.Equal(10, sink.NativeTransforms[0].M41);
+        Assert.Equal(20, sink.NativeTransforms[0].M42);
+        Assert.Equal(-10, sink.NativeTransforms[1].M41);
+        Assert.Equal(-20, sink.NativeTransforms[1].M42);
+        Assert.Equal(10, sink.NativeTransforms[2].M41);
+        Assert.Equal(20, sink.NativeTransforms[2].M42);
         var clip = Assert.Single(sink.Clips);
         Assert.Equal(new Rect(2, 3, 40, 50), clip.Bounds);
         Assert.Equal(0, result.UnsupportedVisualStateCount);

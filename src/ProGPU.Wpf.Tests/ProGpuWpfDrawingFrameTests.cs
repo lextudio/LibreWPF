@@ -475,7 +475,8 @@ public sealed class ProGpuWpfDrawingFrameTests
             new Vector2(10, 20),
             transform,
             0.5f,
-            new WpfReplayRect(1, 2, 30, 40)));
+            new WpfReplayRect(1, 2, 30, 40),
+            outerClipBounds: new WpfReplayRect(4, 5, 60, 70)));
         branchSink.PopVisualOwner();
 
         var retainedRootVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
@@ -488,6 +489,11 @@ public sealed class ProGpuWpfDrawingFrameTests
         Assert.Equal(2, clipBounds.Y);
         Assert.Equal(30, clipBounds.Width);
         Assert.Equal(40, clipBounds.Height);
+        var outerClipBounds = Assert.NotNull(ownerVisual.OuterClipBounds);
+        Assert.Equal(4, outerClipBounds.X);
+        Assert.Equal(5, outerClipBounds.Y);
+        Assert.Equal(60, outerClipBounds.Width);
+        Assert.Equal(70, outerClipBounds.Height);
         Assert.True(branchMap.TryGetVisuals(source, out var visuals));
         Assert.Same(ownerVisual, Assert.Single(visuals));
     }

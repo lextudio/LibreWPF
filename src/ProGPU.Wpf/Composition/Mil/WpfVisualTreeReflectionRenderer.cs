@@ -304,6 +304,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         var transform = Matrix4x4.Identity;
         var opacity = 1f;
         WpfReplayRect? clipBounds = null;
+        WpfReplayRect? outerClipBounds = null;
         if (!TryCreateRetainedOpacityMaskState(visual, out var opacityMask, out var opacityMaskBounds))
         {
             return false;
@@ -345,13 +346,7 @@ public sealed class WpfVisualTreeReflectionRenderer
                 return false;
             }
 
-            var combinedClipBounds = CombineClipBounds(clipBounds, scrollableClipBounds);
-            if (!IsUsableBounds(combinedClipBounds))
-            {
-                return false;
-            }
-
-            clipBounds = combinedClipBounds;
+            outerClipBounds = scrollableClipBounds;
         }
 
         if (TryGetPropertyValue(visual, "Opacity", out var opacityValue))
@@ -375,6 +370,7 @@ public sealed class WpfVisualTreeReflectionRenderer
                 transform,
                 opacity,
                 clipBounds,
+                outerClipBounds,
                 opacityMask,
                 opacityMaskBounds,
                 imageSourceAdapter,
@@ -394,7 +390,8 @@ public sealed class WpfVisualTreeReflectionRenderer
             opacity,
             clipBounds,
             opacityMask: opacityMask,
-            opacityMaskBounds: opacityMaskBounds);
+            opacityMaskBounds: opacityMaskBounds,
+            outerClipBounds: outerClipBounds);
         return true;
     }
 
@@ -482,6 +479,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         Matrix4x4 transform,
         float opacity,
         WpfReplayRect? clipBounds,
+        WpfReplayRect? outerClipBounds,
         MediaBrush? opacityMask,
         WpfReplayRect? opacityMaskBounds,
         IWpfImageSourceAdapter? imageSourceAdapter,
@@ -571,7 +569,8 @@ public sealed class WpfVisualTreeReflectionRenderer
             cacheAsLayer,
             contentBounds,
             opacityMask,
-            retainedOpacityMaskBounds);
+            retainedOpacityMaskBounds,
+            outerClipBounds);
         return true;
     }
 
@@ -718,6 +717,8 @@ public sealed class WpfVisualTreeReflectionRenderer
         ReplayStats stats)
     {
         var popCount = 0;
+        var localVisualTransform = Matrix4x4.Identity;
+        var canProjectScrollableClipToOuterSpace = true;
 
         if (TryReadVisualTransform(visual, out var transform))
         {
@@ -725,11 +726,13 @@ public sealed class WpfVisualTreeReflectionRenderer
                 && WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out var nativeTransform))
             {
                 nativeTransformSink.PushNativeTransform(nativeTransform);
+                localVisualTransform = nativeTransform * localVisualTransform;
                 popCount++;
             }
             else if (WpfReflectionResourceResolver.AdaptTransform(transform) is { } mediaTransform)
             {
                 sink.PushTransform(mediaTransform);
+                canProjectScrollableClipToOuterSpace = false;
                 popCount++;
             }
             else
@@ -742,11 +745,14 @@ public sealed class WpfVisualTreeReflectionRenderer
         {
             if (sink is IWpfNativeTransformCommandSink nativeTransformSink)
             {
-                nativeTransformSink.PushNativeTransform(Matrix4x4.CreateTranslation((float)offsetX, (float)offsetY, 0f));
+                var offsetTransform = Matrix4x4.CreateTranslation((float)offsetX, (float)offsetY, 0f);
+                nativeTransformSink.PushNativeTransform(offsetTransform);
+                localVisualTransform = offsetTransform * localVisualTransform;
             }
             else
             {
                 sink.PushNoOpScope();
+                canProjectScrollableClipToOuterSpace = false;
             }
 
             popCount++;
@@ -770,8 +776,23 @@ public sealed class WpfVisualTreeReflectionRenderer
         {
             if (TryReadRect(scrollableAreaClip, out var scrollableClipBounds) && IsUsableBounds(scrollableClipBounds))
             {
-                sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(scrollableClipBounds));
-                popCount++;
+                if (!localVisualTransform.IsIdentity
+                    && canProjectScrollableClipToOuterSpace
+                    && sink is IWpfNativeTransformCommandSink nativeTransformSink
+                    && Matrix4x4.Invert(localVisualTransform, out var inverseLocalTransform))
+                {
+                    nativeTransformSink.PushNativeTransform(inverseLocalTransform);
+                    popCount++;
+                    sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(scrollableClipBounds));
+                    popCount++;
+                    nativeTransformSink.PushNativeTransform(localVisualTransform);
+                    popCount++;
+                }
+                else
+                {
+                    sink.PushClip(WpfReflectionResourceResolver.CreateRectanglePath(scrollableClipBounds));
+                    popCount++;
+                }
             }
             else
             {
@@ -1218,6 +1239,16 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
 
         parentBounds = TransformBounds(clippedBounds, transform);
+        if (TryGetScrollableAreaClip(child, out var scrollableAreaClip) && scrollableAreaClip != null)
+        {
+            if (!TryReadRect(scrollableAreaClip, out var scrollableClipBounds) || !IsUsableBounds(scrollableClipBounds))
+            {
+                return false;
+            }
+
+            parentBounds = IntersectBounds(parentBounds, scrollableClipBounds);
+        }
+
         return IsUsableBounds(parentBounds);
     }
 
@@ -1238,18 +1269,6 @@ public sealed class WpfVisualTreeReflectionRenderer
             }
 
             clipBounds = childClipBounds;
-        }
-
-        if (TryGetScrollableAreaClip(child, out var scrollableAreaClip) && scrollableAreaClip != null)
-        {
-            if (!TryReadRect(scrollableAreaClip, out var scrollableClipBounds) || !IsUsableBounds(scrollableClipBounds))
-            {
-                return false;
-            }
-
-            clipBounds = clipBounds.HasValue
-                ? CombineClipBounds(clipBounds.Value, scrollableClipBounds)
-                : scrollableClipBounds;
         }
 
         if (!clipBounds.HasValue)

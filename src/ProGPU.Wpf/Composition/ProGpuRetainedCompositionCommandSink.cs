@@ -170,6 +170,9 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         visual.ClipBounds = state.ClipBounds.HasValue
             ? ToNativeRect(state.ClipBounds.Value)
             : null;
+        visual.OuterClipBounds = state.OuterClipBounds.HasValue
+            ? ToNativeRect(state.OuterClipBounds.Value)
+            : null;
         visual.OpacityMask = state.OpacityMask != null && state.OpacityMaskBounds.HasValue
             ? ToNativeBrush(state.OpacityMask, state.OpacityMaskBounds.Value)
             : null;

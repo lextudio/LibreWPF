@@ -1638,6 +1638,8 @@ public partial class MainWindow : Window
             throw new InvalidOperationException("Expected Toolkit pane ScrollViewer to expose a clipped scrollable viewport.");
         }
 
+        ValidateRequiredScrollContentPresenterClip(ToolkitPaneScrollViewer, "Toolkit pane ScrollViewer");
+
         double targetOffset = Math.Min(120.0, ToolkitPaneScrollViewer.ScrollableHeight);
         ToolkitPaneScrollViewer.ScrollToVerticalOffset(targetOffset);
         ToolkitPaneScrollViewer.UpdateLayout();
@@ -1812,6 +1814,7 @@ public partial class MainWindow : Window
         Dispatcher.Invoke(DispatcherPriority.Background, new Action(() => { }));
         ToolkitDataGrid.UpdateLayout();
         scrollViewer.UpdateLayout();
+        ValidateRequiredScrollContentPresenterClip(scrollViewer, "Toolkit DataGrid ScrollViewer");
 
         if (scrollViewer.VerticalOffset <= 0)
         {
@@ -1832,6 +1835,40 @@ public partial class MainWindow : Window
         ToolkitDataGrid.UpdateLayout();
         return EnumerateVisualDescendants<ScrollViewer>(ToolkitDataGrid).FirstOrDefault()
             ?? throw new InvalidOperationException("Expected Toolkit DataGrid template to expose a ScrollViewer.");
+    }
+
+    private static void ValidateRequiredScrollContentPresenterClip(ScrollViewer scrollViewer, string description)
+    {
+        scrollViewer.ApplyTemplate();
+        scrollViewer.UpdateLayout();
+        var presenter = EnumerateVisualDescendants<ScrollContentPresenter>(scrollViewer)
+            .FirstOrDefault()
+            ?? throw new InvalidOperationException($"Expected {description} to expose a ScrollContentPresenter.");
+        ValidateRequiredVisualClip(presenter, $"{description} content presenter");
+    }
+
+    private static void ValidateRequiredVisualClip(Visual visual, string description)
+    {
+        PropertyInfo property = typeof(Visual).GetProperty(
+            "VisualClip",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new MissingMemberException(typeof(Visual).FullName, "VisualClip");
+        if (property.GetValue(visual) is not Geometry clip)
+        {
+            throw new InvalidOperationException($"Expected {description} to have a WPF internal VisualClip.");
+        }
+
+        Rect bounds = clip.Bounds;
+        if (bounds.IsEmpty ||
+            bounds.Width <= 0 ||
+            bounds.Height <= 0 ||
+            double.IsInfinity(bounds.Width) ||
+            double.IsInfinity(bounds.Height) ||
+            double.IsNaN(bounds.Width) ||
+            double.IsNaN(bounds.Height))
+        {
+            throw new InvalidOperationException($"Expected {description} to have a finite non-empty VisualClip, got {bounds}.");
+        }
     }
 
     private void ValidateToolkitDataGridRealizedRowCount(string phase)

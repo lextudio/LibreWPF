@@ -1,6 +1,7 @@
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition;
@@ -8,7 +9,10 @@ using MediaBrush = System.Windows.Media.Brush;
 using MediaGeometry = System.Windows.Media.Geometry;
 using MediaGlyphRun = System.Windows.Media.GlyphRun;
 using MediaImageSource = System.Windows.Media.ImageSource;
+using MediaLineSegment = System.Windows.Media.LineSegment;
+using MediaPathGeometry = System.Windows.Media.PathGeometry;
 using MediaPen = System.Windows.Media.Pen;
+using MediaRectangleGeometry = System.Windows.Media.RectangleGeometry;
 using MediaTransform = System.Windows.Media.Transform;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
@@ -201,9 +205,8 @@ public sealed class WpfMilRenderDataDecoder
                         pushStack.Push(true);
                         appliedCount++;
                     }
-                    else if (TryResolveGeometry(resources, clipToken, out var clipGeometry))
+                    else if (TryPushClip(resources, sink, clipToken))
                     {
-                        sink.PushClip(clipGeometry);
                         pushStack.Push(true);
                         appliedCount++;
                     }
@@ -526,9 +529,8 @@ public sealed class WpfMilRenderDataDecoder
                         pushStack.Push(true);
                         appliedCount++;
                     }
-                    else if (TryResolveGeometry(resources, clipToken, out var clipGeometry))
+                    else if (TryPushClip(resources, sink, clipToken))
                     {
-                        sink.PushClip(clipGeometry);
                         pushStack.Push(true);
                         appliedCount++;
                     }
@@ -774,6 +776,160 @@ public sealed class WpfMilRenderDataDecoder
 
         guidelineSet = guidelineSetResources.ResolveGuidelineSet(resourceToken)!;
         return guidelineSet != null;
+    }
+
+    private static bool TryPushClip(
+        IWpfMilResourceResolver resources,
+        IWpfCompositionCommandSink sink,
+        uint clipToken)
+    {
+        if (!TryResolveGeometry(resources, clipToken, out var clipGeometry))
+        {
+            return false;
+        }
+
+        if (sink is IWpfNativeClipCommandSink nativeClipSink
+            && TryGetRectangleClipBounds(clipGeometry, out var clipBounds))
+        {
+            nativeClipSink.PushNativeClip(clipBounds);
+            return true;
+        }
+
+        sink.PushClip(clipGeometry);
+        return true;
+    }
+
+    private static bool TryGetRectangleClipBounds(MediaGeometry geometry, out WpfReplayRect bounds)
+    {
+        bounds = default;
+        if (!HasIdentityGeometryTransform(geometry))
+        {
+            return false;
+        }
+
+        if (geometry is MediaRectangleGeometry rectangleGeometry)
+        {
+            return TryCreateUsableRect(rectangleGeometry.Rect, out bounds);
+        }
+
+        return geometry is MediaPathGeometry pathGeometry
+            && TryGetRectanglePathBounds(pathGeometry, out bounds);
+    }
+
+    private static bool HasIdentityGeometryTransform(MediaGeometry geometry)
+    {
+        var transform = geometry.Transform;
+        return transform == null
+            || (WpfReflectionResourceResolver.TryAdaptTransformMatrix(transform, out var matrix)
+                && WpfReflectionResourceResolver.IsIdentityMatrix(matrix));
+    }
+
+    private static bool TryGetRectanglePathBounds(MediaPathGeometry pathGeometry, out WpfReplayRect bounds)
+    {
+        bounds = default;
+        if (pathGeometry.Figures.Count != 1)
+        {
+            return false;
+        }
+
+        var figure = pathGeometry.Figures[0];
+        if (!figure.IsClosed || !figure.IsFilled)
+        {
+            return false;
+        }
+
+        var segmentCount = figure.Segments.Count;
+        if (segmentCount is not (3 or 4))
+        {
+            return false;
+        }
+
+        var points = new Point[4];
+        points[0] = figure.StartPoint;
+        for (var i = 0; i < 3; i++)
+        {
+            if (figure.Segments[i] is not MediaLineSegment lineSegment)
+            {
+                return false;
+            }
+
+            points[i + 1] = lineSegment.Point;
+        }
+
+        if (segmentCount == 4)
+        {
+            if (figure.Segments[3] is not MediaLineSegment closingSegment
+                || !NearlyEqual(closingSegment.Point.X, points[0].X)
+                || !NearlyEqual(closingSegment.Point.Y, points[0].Y))
+            {
+                return false;
+            }
+        }
+
+        return TryCreateRectangleFromPolygon(points, out bounds);
+    }
+
+    private static bool TryCreateRectangleFromPolygon(Point[] points, out WpfReplayRect bounds)
+    {
+        bounds = default;
+        var left = points.Min(point => point.X);
+        var top = points.Min(point => point.Y);
+        var right = points.Max(point => point.X);
+        var bottom = points.Max(point => point.Y);
+        var width = right - left;
+        var height = bottom - top;
+        if (!IsFinite(left)
+            || !IsFinite(top)
+            || !IsFinite(width)
+            || !IsFinite(height)
+            || width <= 0
+            || height <= 0)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < points.Length; i++)
+        {
+            var point = points[i];
+            var isOnVerticalEdge = NearlyEqual(point.X, left) || NearlyEqual(point.X, right);
+            var isOnHorizontalEdge = NearlyEqual(point.Y, top) || NearlyEqual(point.Y, bottom);
+            if (!isOnVerticalEdge || !isOnHorizontalEdge)
+            {
+                return false;
+            }
+
+            var next = points[(i + 1) % points.Length];
+            var sameX = NearlyEqual(point.X, next.X);
+            var sameY = NearlyEqual(point.Y, next.Y);
+            if (sameX == sameY)
+            {
+                return false;
+            }
+        }
+
+        bounds = new WpfReplayRect(left, top, width, height);
+        return true;
+    }
+
+    private static bool TryCreateUsableRect(Rect rect, out WpfReplayRect bounds)
+    {
+        bounds = new WpfReplayRect(rect.X, rect.Y, rect.Width, rect.Height);
+        return IsFinite(bounds.X)
+            && IsFinite(bounds.Y)
+            && IsFinite(bounds.Width)
+            && IsFinite(bounds.Height)
+            && bounds.Width > 0
+            && bounds.Height > 0;
+    }
+
+    private static bool NearlyEqual(double left, double right)
+    {
+        return Math.Abs(left - right) <= 0.000001;
+    }
+
+    private static bool IsFinite(double value)
+    {
+        return !double.IsNaN(value) && !double.IsInfinity(value);
     }
 
     private static WpfDrawingReplayStatus ReplayDrawing(

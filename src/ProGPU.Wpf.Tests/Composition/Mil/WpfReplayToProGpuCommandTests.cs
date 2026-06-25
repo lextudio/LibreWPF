@@ -1571,6 +1571,42 @@ public sealed class WpfReplayToProGpuCommandTests
     }
 
     [Fact]
+    public void DecodeRectangleClipThroughProGpuSinkEmitsNativeClipCommands()
+    {
+        var transform = new FakeMatrixTransform(new FakeMatrix(1, 0, 0, 1, 7, 9));
+        var clip = new RectangleGeometry(new System.Windows.Rect(2, 3, 40, 50));
+        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { transform, clip });
+        var nativeContext = new ProGpuDrawingContext();
+        using var sink = new ProGpuCompositionCommandSink(new MediaDrawingContext(nativeContext));
+
+        var transformPayload = new byte[8];
+        WriteUInt32(transformPayload, 0, 1);
+        var pushPayload = new byte[8];
+        WriteUInt32(pushPayload, 0, 2);
+        var renderData = CreateRecord(WpfMilCommandId.PushTransform, transformPayload)
+            .Concat(CreateRecord(WpfMilCommandId.PushClip, pushPayload))
+            .Concat(CreateRecord(WpfMilCommandId.Pop, Array.Empty<byte>()))
+            .Concat(CreateRecord(WpfMilCommandId.Pop, Array.Empty<byte>()))
+            .ToArray();
+
+        var result = new WpfMilRenderDataDecoder().Decode(renderData, sink, resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(4, 4, 0, 0), result);
+        Assert.Equal(new[]
+        {
+            RenderCommandType.PushClip,
+            RenderCommandType.PopClip
+        }, nativeContext.Commands.Select(command => command.Type).ToArray());
+        var clipCommand = nativeContext.Commands[0];
+        Assert.Equal(2, clipCommand.Rect.X);
+        Assert.Equal(3, clipCommand.Rect.Y);
+        Assert.Equal(40, clipCommand.Rect.Width);
+        Assert.Equal(50, clipCommand.Rect.Height);
+        Assert.Equal(7, clipCommand.Transform.M41);
+        Assert.Equal(9, clipCommand.Transform.M42);
+    }
+
+    [Fact]
     public void DecodeClipThroughProGpuSinkEmitsGeometryClipCommands()
     {
         var clip = new PathGeometry();

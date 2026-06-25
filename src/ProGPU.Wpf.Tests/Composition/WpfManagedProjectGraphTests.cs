@@ -6030,6 +6030,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DockContextCancelNextCloseMenuItem", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{x:Static local:ToolkitDockCommands.ActivateEditor}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{x:Static local:ToolkitDockCommands.CloseOverview}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Command=\"{x:Static local:ToolkitDockCommands.CycleDockContent}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<Window.InputBindings>", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Key=\"F9\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CommandTarget=\"{Binding PlacementTarget, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("AddSourceDocumentButton", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ActivateSourceToolButton", mainWindowXaml, StringComparison.Ordinal);
@@ -6240,6 +6243,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("CanExecuteDockContextCommand", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ExecuteDockContextCommand", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDockContextMenuCommandExecutedCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ExerciseAvalonDockKeyboardNavigation", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateLiveAvalonDockKeyboardNavigationAsync", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RaiseHostInput(liveHost, \"KeyDown\", key: \"F9\")", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AvalonDockKeyboardNavigationCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastAvalonDockKeyboardNavigationTarget", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateAvalonDockLayoutReplacementEvents", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveOverviewDocumentLifecycleAsync", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ContentId=\\\"overview\\\"", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6259,6 +6267,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AvalonDock layout update strategy and dynamic metadata", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock title selectors and layout item commands", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock tab group commands", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AvalonDock keyboard navigation", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock theme switching", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock document context menu commands and close cancellation", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("layout replacement events", mainWindowCodeBehind, StringComparison.Ordinal);

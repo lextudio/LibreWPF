@@ -46,6 +46,11 @@ public static class ToolkitDockCommands
         "Close overview",
         nameof(CloseOverview),
         typeof(ToolkitDockCommands));
+
+    public static readonly RoutedUICommand CycleDockContent = new(
+        "Cycle dock content",
+        nameof(CycleDockContent),
+        typeof(ToolkitDockCommands));
 }
 
 public partial class MainWindow : Window
@@ -56,6 +61,7 @@ public partial class MainWindow : Window
     private static readonly string[] AvalonDockThemeNames = ["Aero", "Metro", "VS2010"];
     private readonly ToolkitViewModel _viewModel = new();
     private int _avalonDockThemeIndex;
+    private int _avalonDockKeyboardNavigationIndex;
     private bool _liveValidationStarted;
 
     public MainWindow()
@@ -192,6 +198,50 @@ public partial class MainWindow : Window
 
         _viewModel.Status = "Overview document closed";
         _viewModel.Activity.Add(_viewModel.Status);
+    }
+
+    private void CycleDockContentCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+        ViewModel.AvalonDockKeyboardNavigationCanExecuteCount++;
+        e.CanExecute = DocumentPane.Children.Contains(EditorDocument) &&
+            DocumentPane.Children.Contains(OverviewDocument);
+        e.Handled = true;
+    }
+
+    private void CycleDockContentCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        CycleAvalonDockKeyboardNavigation();
+        e.Handled = true;
+    }
+
+    internal void CycleAvalonDockKeyboardNavigation()
+    {
+        LayoutContent[] cycle =
+        [
+            EditorDocument,
+            OverviewDocument
+        ];
+
+        int currentIndex = Array.FindIndex(
+            cycle,
+            content => ReferenceEquals(DockManager.ActiveContent, content.Content) ||
+                content.IsActive ||
+                content.IsSelected);
+        if (currentIndex >= 0)
+        {
+            _avalonDockKeyboardNavigationIndex = currentIndex;
+        }
+
+        _avalonDockKeyboardNavigationIndex = (_avalonDockKeyboardNavigationIndex + 1) % cycle.Length;
+        LayoutContent nextContent = cycle[_avalonDockKeyboardNavigationIndex];
+        DockManager.ActiveContent = nextContent.Content;
+        nextContent.IsSelected = true;
+        nextContent.IsActive = true;
+
+        ViewModel.AvalonDockKeyboardNavigationCount++;
+        ViewModel.LastAvalonDockKeyboardNavigationTarget = nextContent.ContentId ?? nextContent.Title;
+        ViewModel.Status = $"Keyboard dock navigation: {nextContent.Title}";
+        ViewModel.Activity.Add(ViewModel.Status);
     }
 
     private void RecordAvalonDockContextMenuCommand(string commandName)
@@ -1621,6 +1671,61 @@ public partial class MainWindow : Window
         }
     }
 
+    internal void ExerciseAvalonDockKeyboardNavigation()
+    {
+        var keyBinding = InputBindings
+            .OfType<KeyBinding>()
+            .SingleOrDefault(binding => ReferenceEquals(binding.Command, ToolkitDockCommands.CycleDockContent))
+            ?? throw new InvalidOperationException("Expected AvalonDock keyboard navigation KeyBinding.");
+        AssertEqual(Key.F9, keyBinding.Key, "AvalonDock keyboard navigation key");
+        AssertEqual(ModifierKeys.None, keyBinding.Modifiers, "AvalonDock keyboard navigation modifiers");
+
+        ActivateEditorDocument();
+        int canExecuteCountBefore = ViewModel.AvalonDockKeyboardNavigationCanExecuteCount;
+        if (!ToolkitDockCommands.CycleDockContent.CanExecute(null, this))
+        {
+            throw new InvalidOperationException("Expected AvalonDock keyboard navigation command to be executable.");
+        }
+
+        if (ViewModel.AvalonDockKeyboardNavigationCanExecuteCount <= canExecuteCountBefore)
+        {
+            throw new InvalidOperationException("Expected AvalonDock keyboard navigation command to route CanExecute.");
+        }
+
+        int navigationCountBefore = ViewModel.AvalonDockKeyboardNavigationCount;
+        ToolkitDockCommands.CycleDockContent.Execute(null, this);
+        ValidateAvalonDockKeyboardNavigationTarget(OverviewDocument, navigationCountBefore + 1);
+
+        ToolkitDockCommands.CycleDockContent.Execute(null, this);
+        ValidateAvalonDockKeyboardNavigationTarget(EditorDocument, navigationCountBefore + 2);
+    }
+
+    internal void ValidateAvalonDockKeyboardNavigationTarget(LayoutContent expectedContent, int expectedNavigationCount)
+    {
+        if (expectedContent is LayoutDocument)
+        {
+            AssertEqual(true, expectedContent.IsSelected, "AvalonDock keyboard navigation selected document target");
+        }
+
+        if (expectedContent.Parent is ILayoutContentSelector selector &&
+            !ReferenceEquals(selector.SelectedContent, expectedContent))
+        {
+            throw new InvalidOperationException(
+                $"Expected AvalonDock keyboard navigation to select '{expectedContent.Title}' in its pane.");
+        }
+
+        if (!ReferenceEquals(DockManager.ActiveContent, expectedContent.Content) &&
+            !expectedContent.IsActive)
+        {
+            throw new InvalidOperationException(
+                $"Expected AvalonDock keyboard navigation to activate '{expectedContent.Title}', but active content was '{DockManager.ActiveContent}'.");
+        }
+
+        AssertEqual(expectedNavigationCount, ViewModel.AvalonDockKeyboardNavigationCount, "AvalonDock keyboard navigation count");
+        AssertEqual(expectedContent.ContentId ?? expectedContent.Title, ViewModel.LastAvalonDockKeyboardNavigationTarget, "AvalonDock keyboard navigation last target");
+        AssertEqual($"Keyboard dock navigation: {expectedContent.Title}", ViewModel.Status, "AvalonDock keyboard navigation status");
+    }
+
     private static bool CanExecuteDockContextCommand(MenuItem menuItem)
     {
         if (menuItem.Command is not RoutedCommand command ||
@@ -2379,6 +2484,8 @@ public partial class MainWindow : Window
             },
             DispatcherPriority.Send);
 
+        await ValidateLiveAvalonDockKeyboardNavigationAsync(liveHost);
+
         await ValidateLiveOverviewDocumentLifecycleAsync(liveHost);
 
         await ClickLiveControlAsync(liveHost, ToggleEditorFloatButton, "ToggleEditorFloatButton");
@@ -2470,7 +2577,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock theme switching, AvalonDock document context menu commands and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock keyboard navigation, AvalonDock theme switching, AvalonDock document context menu commands and close cancellation, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -2602,6 +2709,48 @@ public partial class MainWindow : Window
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () => ValidateAvalonDockDocumentContextMenuState(expectedOpen: false),
+            DispatcherPriority.Send);
+    }
+
+    private async Task ValidateLiveAvalonDockKeyboardNavigationAsync(object liveHost)
+    {
+        int navigationCountBefore = await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                ActivateEditorDocument();
+                ActivateEditorButton.Focus();
+                Keyboard.Focus(ActivateEditorButton);
+                return ViewModel.AvalonDockKeyboardNavigationCount;
+            },
+            DispatcherPriority.Send);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                RaiseHostInput(liveHost, "KeyDown", key: "F9");
+                RaiseHostInput(liveHost, "KeyUp", key: "F9");
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => ValidateAvalonDockKeyboardNavigationTarget(OverviewDocument, navigationCountBefore + 1),
+            DispatcherPriority.Send);
+
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                RaiseHostInput(liveHost, "KeyDown", key: "F9");
+                RaiseHostInput(liveHost, "KeyUp", key: "F9");
+            },
+            DispatcherPriority.Send);
+        await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () => ValidateAvalonDockKeyboardNavigationTarget(EditorDocument, navigationCountBefore + 2),
             DispatcherPriority.Send);
     }
 
@@ -3411,6 +3560,9 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private int _avalonDockContextMenuCommandCanExecuteCount;
     private int _avalonDockContextMenuCommandExecutedCount;
     private string _lastAvalonDockContextMenuCommand = string.Empty;
+    private int _avalonDockKeyboardNavigationCanExecuteCount;
+    private int _avalonDockKeyboardNavigationCount;
+    private string _lastAvalonDockKeyboardNavigationTarget = string.Empty;
     private bool _cancelNextOverviewClose;
     private string _lastClosingDocumentContentId = string.Empty;
     private string _lastClosedDocumentContentId = string.Empty;
@@ -4391,6 +4543,45 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         }
     }
 
+    public int AvalonDockKeyboardNavigationCanExecuteCount
+    {
+        get => _avalonDockKeyboardNavigationCanExecuteCount;
+        set
+        {
+            if (_avalonDockKeyboardNavigationCanExecuteCount != value)
+            {
+                _avalonDockKeyboardNavigationCanExecuteCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int AvalonDockKeyboardNavigationCount
+    {
+        get => _avalonDockKeyboardNavigationCount;
+        set
+        {
+            if (_avalonDockKeyboardNavigationCount != value)
+            {
+                _avalonDockKeyboardNavigationCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string LastAvalonDockKeyboardNavigationTarget
+    {
+        get => _lastAvalonDockKeyboardNavigationTarget;
+        set
+        {
+            if (!string.Equals(_lastAvalonDockKeyboardNavigationTarget, value, StringComparison.Ordinal))
+            {
+                _lastAvalonDockKeyboardNavigationTarget = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public bool CancelNextOverviewClose
     {
         get => _cancelNextOverviewClose;
@@ -5099,6 +5290,7 @@ internal static class ToolkitSelfTest
                 TimeSpan.FromSeconds(2),
                 "AvalonDock document context menu closed state");
             window.ValidateAvalonDockDocumentContextMenuState(expectedOpen: false);
+            window.ExerciseAvalonDockKeyboardNavigation();
 
             if (window.ViewModel.AccentColor != Colors.MediumSeaGreen ||
                 window.ViewModel.Estimate != 42.25m)

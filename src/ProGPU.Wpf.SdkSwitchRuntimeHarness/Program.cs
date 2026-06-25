@@ -48,6 +48,7 @@ internal static class Program
     [
         "ProGPU.Wpf",
         "ProGPU.Backend",
+        "ProGPU.DirectX",
         "ProGPU.Scene",
         "ProGPU.Vector",
         "ProGPU.Text",
@@ -260,6 +261,7 @@ internal static class Program
         }
 
         RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, "ProGPU.Wpf", "ProGPU.Wpf", "net10.0");
+        RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, "ProGPU.DirectX", "ProGPU.DirectX", "net10.0");
         RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, "ProGPU.Scene", "ProGPU.Scene", "net10.0");
         foreach (string assemblyName in RequiredWpfRuntimeAssemblies)
         {
@@ -4676,7 +4678,7 @@ internal static class Program
                 SmokeAssemblyName => _smokeAssemblyPath,
                 "WindowsBase" or "System.Xaml" or "PresentationCore" or "PresentationFramework" or "PresentationUI" or "ReachFramework" or "System.Printing" or "UIAutomationTypes" or "UIAutomationProvider" or "System.Windows.Input.Manipulations" or "System.Windows.Primitives" or "PresentationFramework.Aero" or "PresentationFramework.Aero2" or "PresentationFramework.AeroLite" or "PresentationFramework.Classic" or "PresentationFramework.Fluent" or "PresentationFramework.Luna" or "PresentationFramework.Royale" or "System.Windows.Controls.Ribbon" =>
                     TryFindAssembly(_appOutputRoot, fileName) ?? TryFindAssembly(_wpfRoot, fileName),
-                "ProGPU.Wpf" or "ProGPU.Backend" or "ProGPU.Scene" or "ProGPU.Vector" or "ProGPU.Text" or "ProGPU.Compute" or "ProGPU.Transpiler" =>
+                "ProGPU.Wpf" or "ProGPU.Backend" or "ProGPU.DirectX" or "ProGPU.Scene" or "ProGPU.Vector" or "ProGPU.Text" or "ProGPU.Compute" or "ProGPU.Transpiler" =>
                     TryFindAssembly(_appOutputRoot, fileName) ?? TryFindAssembly(_proGpuRoot, fileName),
                 _ => null
             };

@@ -46,11 +46,13 @@ public partial class App : Application
         Assembly proGpuWpf = LoadRequiredAssembly("ProGPU.Wpf");
         Assembly proGpuScene = LoadRequiredAssembly("ProGPU.Scene");
         Assembly proGpuBackend = LoadRequiredAssembly("ProGPU.Backend");
+        Assembly proGpuDirectX = LoadRequiredAssembly("ProGPU.DirectX");
         Assembly silkNetMaths = LoadRequiredAssembly("Silk.NET.Maths");
         Assembly silkNetWebGpu = LoadRequiredAssembly("Silk.NET.WebGPU");
 
         Type hostType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfWindowHost");
         Type compositionTargetType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfCompositionTarget");
+        Type directXDeviceType = GetRequiredType(proGpuDirectX, "ProGPU.DirectX.ProGpuDirectXDevice");
         Type compositorType = GetRequiredType(proGpuScene, "ProGPU.Scene.Compositor");
         Type renderTargetViewportType = GetRequiredType(proGpuScene, "ProGPU.Scene.RenderTargetViewport");
         Type displayScaleResolverType = GetRequiredType(proGpuBackend, "ProGPU.Backend.DisplayScaleResolver");
@@ -154,8 +156,10 @@ public partial class App : Application
 
         ValidateRetainedOwnerBranchFillsPhysicalTarget(proGpuWpf, proGpuBackend, silkNetWebGpu);
         ValidateRetainedOwnerBranchPreservesLogicalMarkerOrigin(proGpuWpf, proGpuBackend, silkNetWebGpu);
+        RequireProperty(hostType, "DirectXDevice", directXDeviceType);
 
         ValidateRuntimeAssetMatchesLocalPackage(proGpuWpf, "ProGPU.Wpf", "ProGPU.Wpf", "net10.0");
+        ValidateRuntimeAssetMatchesLocalPackage(proGpuDirectX, "ProGPU.DirectX", "ProGPU.DirectX", "net10.0");
         ValidateRuntimeAssetMatchesLocalPackage(proGpuScene, "ProGPU.Scene", "ProGPU.Scene", "net10.0");
         ValidateRuntimeAssetMatchesLocalPackage(proGpuBackend, "ProGPU.Backend", "ProGPU.Backend", "net10.0");
     }
@@ -232,6 +236,20 @@ public partial class App : Application
             ?? throw new MissingMethodException(
                 type.FullName,
                 $"{methodName}({string.Join(", ", parameterNames)})");
+    }
+
+    private static void RequireProperty(Type type, string propertyName, Type propertyType)
+    {
+        PropertyInfo property = type.GetProperty(
+                propertyName,
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
+            ?? throw new MissingMemberException(type.FullName, propertyName);
+
+        if (property.PropertyType != propertyType)
+        {
+            throw new InvalidOperationException(
+                $"{type.FullName}.{propertyName} expected type '{propertyType.FullName}' but got '{property.PropertyType.FullName}'. Rebuild the package-mode SDK smoke output.");
+        }
     }
 
     private static object? GetProperty(object instance, string propertyName)

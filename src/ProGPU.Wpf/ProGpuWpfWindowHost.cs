@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using System.Threading;
 using ProGPU.Backend;
+using ProGPU.DirectX;
 using Silk.NET.Maths;
 using Silk.NET.WebGPU;
 using Silk.NET.Windowing;
@@ -23,6 +24,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private readonly ProGpuWpfWindowOptions _options;
     private IWindow? _window;
     private ProGpuWpfCompositionTarget? _target;
+    private ProGpuDirectXDevice? _directXDevice;
     private IDisposable? _inputSubscription;
     private IWpfInputService? _attachedInputService;
     private IDisposable? _dragDropSubscription;
@@ -110,6 +112,33 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     public IWindow? SilkWindow => _window;
 
     public ProGpuWpfCompositionTarget? CompositionTarget => _target;
+
+    public ProGpuDirectXDevice? DirectXDevice
+    {
+        get
+        {
+            ThrowIfDisposed();
+            if (_target == null)
+            {
+                return null;
+            }
+
+            if (_directXDevice is { Context: var context } && ReferenceEquals(context, _target.Context))
+            {
+                return _directXDevice;
+            }
+
+            _directXDevice?.Dispose();
+            _directXDevice = ProGpuDirectXDevice.FromContext(
+                _target.Context,
+                new ProGpuDirectXDeviceOptions
+                {
+                    Label = "ProGPU WPF DirectX Device",
+                    MinimumFeatureLevel = DxFeatureLevel.Direct3D9_3
+                });
+            return _directXDevice;
+        }
+    }
 
     public bool IsVisible => _window?.IsVisible ?? _isHostVisible;
 
@@ -1977,6 +2006,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return;
         }
 
+        _directXDevice?.Dispose();
+        _directXDevice = null;
         _target.RenderInvalidated -= OnCompositionTargetRenderInvalidated;
         _target.Dispose();
         _target = null;

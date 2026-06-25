@@ -9030,8 +9030,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalToolkitIntegerUpDown", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalToolkitColorPicker", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalToolkitCalculatorUpDown", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalToolkitBusyIndicator", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalToolkitPropertyGrid", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalToolkitDropDownButton", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalToolkitSplitButton", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Xceed BusyIndicator source update", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK Xceed PropertyGrid selected object binding", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateExternalToolkitDropDownButton", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateExternalToolkitSplitButton", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK Xceed DropDownButton dropdown source", externalSdkHarnessProgram, StringComparison.Ordinal);

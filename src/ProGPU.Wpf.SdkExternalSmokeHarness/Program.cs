@@ -1940,6 +1940,18 @@ internal static class Program
                         Increment="0.25"
                         FormatString="F2"
                         Value="{Binding ExternalToolkitEstimate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <xctk:BusyIndicator
+                        x:Name="ExternalToolkitBusyIndicator"
+                        BusyContent="External busy"
+                        IsBusy="{Binding ExternalToolkitIsBusy, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                        <TextBlock
+                            x:Name="ExternalToolkitBusyContent"
+                            Text="External BusyIndicator content" />
+                    </xctk:BusyIndicator>
+                    <xctk:PropertyGrid
+                        x:Name="ExternalToolkitPropertyGrid"
+                        AutoGenerateProperties="True"
+                        SelectedObject="{Binding SelectedExternalItem}" />
                     <xctk:DropDownButton
                         x:Name="ExternalToolkitDropDownButton"
                         Content="External actions">
@@ -3007,6 +3019,8 @@ internal static class Program
                 public Color? ExternalToolkitAccentColor { get; set; } = Colors.SteelBlue;
 
                 public decimal? ExternalToolkitEstimate { get; set; } = 12.50m;
+
+                public bool ExternalToolkitIsBusy { get; set; }
 
                 public string ExternalToolkitActionStatus { get; set; } = "external toolkit idle";
 
@@ -4902,6 +4916,31 @@ internal static class Program
                         "external SDK Xceed CalculatorUpDown ValueProperty");
                     calculatorUpDown.GetBindingExpression(calculatorValueProperty)?.UpdateSource();
                     AssertEqual((decimal?)42.25m, window.ExternalToolkitEstimate, "external SDK Xceed CalculatorUpDown source update");
+
+                    var busyIndicator = RequireType<Xceed.Wpf.Toolkit.BusyIndicator>(
+                        window.FindName("ExternalToolkitBusyIndicator"),
+                        "external SDK Xceed BusyIndicator");
+                    AssertEqual(false, busyIndicator.IsBusy, "external SDK Xceed BusyIndicator initial busy state");
+                    AssertEqual("External busy", Convert.ToString(busyIndicator.BusyContent, CultureInfo.InvariantCulture), "external SDK Xceed BusyIndicator busy content");
+                    var busyContent = RequireType<TextBlock>(
+                        window.FindName("ExternalToolkitBusyContent"),
+                        "external SDK Xceed BusyIndicator content");
+                    AssertEqual("External BusyIndicator content", busyContent.Text, "external SDK Xceed BusyIndicator content text");
+                    busyIndicator.IsBusy = true;
+                    busyIndicator.GetBindingExpression(Xceed.Wpf.Toolkit.BusyIndicator.IsBusyProperty)?.UpdateSource();
+                    AssertEqual(true, window.ExternalToolkitIsBusy, "external SDK Xceed BusyIndicator source update");
+                    busyIndicator.IsBusy = false;
+                    busyIndicator.GetBindingExpression(Xceed.Wpf.Toolkit.BusyIndicator.IsBusyProperty)?.UpdateSource();
+                    AssertEqual(false, window.ExternalToolkitIsBusy, "external SDK Xceed BusyIndicator source reset");
+
+                    var propertyGrid = RequireType<Xceed.Wpf.Toolkit.PropertyGrid.PropertyGrid>(
+                        window.FindName("ExternalToolkitPropertyGrid"),
+                        "external SDK Xceed PropertyGrid");
+                    AssertEqual(window.SelectedExternalItem, propertyGrid.SelectedObject, "external SDK Xceed PropertyGrid selected object binding");
+                    if (BindingOperations.GetBindingExpression(propertyGrid, Xceed.Wpf.Toolkit.PropertyGrid.PropertyGrid.SelectedObjectProperty) is null)
+                    {
+                        throw new InvalidOperationException("Expected external SDK Xceed PropertyGrid SelectedObject binding expression.");
+                    }
 
                     var dropDownButton = RequireType<Xceed.Wpf.Toolkit.DropDownButton>(
                         window.FindName("ExternalToolkitDropDownButton"),

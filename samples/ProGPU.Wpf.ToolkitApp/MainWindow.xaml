@@ -149,6 +149,18 @@
                   Padding="10,4"
                   Content="Toggle properties"
                   Click="TogglePropertyPaneButton_Click" />
+          <Button x:Name="CloseActivityPaneButton"
+                  MinWidth="104"
+                  Margin="0,0,6,0"
+                  Padding="10,4"
+                  Content="Close activity"
+                  Click="CloseActivityPaneButton_Click" />
+          <Button x:Name="ReopenActivityPaneButton"
+                  MinWidth="112"
+                  Margin="0,0,6,0"
+                  Padding="10,4"
+                  Content="Reopen activity"
+                  Click="ReopenActivityPaneButton_Click" />
           <Button x:Name="ToggleActivityAutoHideButton"
                   MinWidth="120"
                   Margin="0,0,6,0"
@@ -970,7 +982,7 @@
           </xcad:LayoutDocumentPaneGroup>
 
           <xcad:LayoutAnchorablePaneGroup DockWidth="260">
-            <xcad:LayoutAnchorablePane>
+            <xcad:LayoutAnchorablePane x:Name="RightAnchorablePane">
               <xcad:LayoutAnchorable x:Name="PropertyPane"
                                      ContentId="property-grid"
                                      Title="PropertyGrid"
@@ -986,6 +998,7 @@
                                      ContentId="activity"
                                      Title="Activity"
                                      IconSource="{StaticResource ToolIcon}"
+                                     CanClose="True"
                                      AutoHideWidth="260">
                 <ListBox x:Name="ActivityList"
                          ItemsSource="{Binding Activity}"

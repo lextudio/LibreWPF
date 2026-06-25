@@ -109,6 +109,8 @@ public partial class MainWindow : Window
         OverviewDocument.Closed += OverviewDocument_Closed;
         PropertyPane.Hiding += PropertyPane_Hiding;
         PropertyPane.IsVisibleChanged += PropertyPane_IsVisibleChanged;
+        ActivityPane.Closing += ActivityPane_Closing;
+        ActivityPane.Closed += ActivityPane_Closed;
         Loaded += OnToolkitWindowLoaded;
         StartLiveValidationIfRequired();
     }
@@ -574,6 +576,48 @@ public partial class MainWindow : Window
         _viewModel.Activity.Add(_viewModel.Status);
     }
 
+    private void CloseActivityPaneButton_Click(object sender, RoutedEventArgs e)
+    {
+        CloseActivityPane();
+    }
+
+    private void ReopenActivityPaneButton_Click(object sender, RoutedEventArgs e)
+    {
+        ReopenActivityPane();
+    }
+
+    private void CloseActivityPane()
+    {
+        if (!RightAnchorablePane.Children.Contains(ActivityPane))
+        {
+            _viewModel.Status = "Activity pane already closed";
+            _viewModel.Activity.Add(_viewModel.Status);
+            return;
+        }
+
+        ActivityPane.Close();
+        if (RightAnchorablePane.Children.Contains(ActivityPane))
+        {
+            return;
+        }
+
+        _viewModel.Status = "Activity pane closed";
+        _viewModel.Activity.Add(_viewModel.Status);
+    }
+
+    private void ReopenActivityPane()
+    {
+        if (!RightAnchorablePane.Children.Contains(ActivityPane))
+        {
+            RightAnchorablePane.Children.Add(ActivityPane);
+        }
+
+        ActivityPane.IsSelected = true;
+        ActivityPane.IsActive = true;
+        _viewModel.Status = "Activity pane reopened";
+        _viewModel.Activity.Add(_viewModel.Status);
+    }
+
     private void DockManager_ActiveContentChanged(object? sender, EventArgs e)
     {
         _viewModel.AvalonDockActiveContentChangedCount++;
@@ -648,6 +692,18 @@ public partial class MainWindow : Window
     {
         _viewModel.AvalonDockAnchorableIsVisibleChangedCount++;
         _viewModel.LastAvalonDockAnchorableLifecycleTarget = PropertyPane.ContentId ?? PropertyPane.Title;
+    }
+
+    private void ActivityPane_Closing(object? sender, CancelEventArgs e)
+    {
+        _viewModel.AvalonDockAnchorableClosingCount++;
+        _viewModel.LastClosingAnchorableContentId = ActivityPane.ContentId ?? string.Empty;
+    }
+
+    private void ActivityPane_Closed(object? sender, EventArgs e)
+    {
+        _viewModel.AvalonDockAnchorableClosedCount++;
+        _viewModel.LastClosedAnchorableContentId = ActivityPane.ContentId ?? string.Empty;
     }
 
     private void ToggleEditorFloatButton_Click(object sender, RoutedEventArgs e)
@@ -2092,6 +2148,36 @@ public partial class MainWindow : Window
                 throw new InvalidOperationException("Expected AvalonDock property pane IsVisibleChanged event to fire while showing.");
             }
         }
+    }
+
+    internal void ValidateActivityPaneClosedState(int closingCountBefore, int closedCountBefore)
+    {
+        if (RightAnchorablePane.Children.Contains(ActivityPane))
+        {
+            throw new InvalidOperationException("Expected AvalonDock activity anchorable to leave its pane after close.");
+        }
+
+        AssertEqual("activity", ViewModel.LastClosingAnchorableContentId, "AvalonDock last closing anchorable content id");
+        AssertEqual("activity", ViewModel.LastClosedAnchorableContentId, "AvalonDock last closed anchorable content id");
+        AssertEqual(
+            closingCountBefore + 1,
+            ViewModel.AvalonDockAnchorableClosingCount,
+            "AvalonDock activity anchorable Closing event count");
+        AssertEqual(
+            closedCountBefore + 1,
+            ViewModel.AvalonDockAnchorableClosedCount,
+            "AvalonDock activity anchorable Closed event count");
+    }
+
+    internal void ValidateActivityPaneReopenedState()
+    {
+        if (!RightAnchorablePane.Children.Contains(ActivityPane))
+        {
+            throw new InvalidOperationException("Expected AvalonDock activity anchorable to be restored to its pane.");
+        }
+
+        AssertEqual(true, ActivityPane.IsSelected, "AvalonDock activity anchorable selected state after reopen");
+        AssertEqual(true, ActivityPane.IsActive, "AvalonDock activity anchorable active state after reopen");
     }
 
     internal void ValidateOverviewDocumentLifecycleState(bool expectedOpen)
@@ -3651,6 +3737,31 @@ public partial class MainWindow : Window
                 expectedHidden: false),
             DispatcherPriority.Send);
 
+        int activityPaneCountBeforeClose = RightAnchorablePane.ChildrenCount;
+        int activityPaneClosingCountBefore = ViewModel.AvalonDockAnchorableClosingCount;
+        int activityPaneClosedCountBefore = ViewModel.AvalonDockAnchorableClosedCount;
+        await ClickLiveControlAsync(liveHost, CloseActivityPaneButton, "CloseActivityPaneButton");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                ValidateActivityPaneClosedState(activityPaneClosingCountBefore, activityPaneClosedCountBefore);
+                AssertEqual(activityPaneCountBeforeClose - 1, RightAnchorablePane.ChildrenCount, "Toolkit live activity anchorable count after close");
+                AssertEqual("Activity pane closed", ViewModel.Status, "Toolkit live activity close status");
+            },
+            DispatcherPriority.Send);
+
+        await ClickLiveControlAsync(liveHost, ReopenActivityPaneButton, "ReopenActivityPaneButton");
+        await InvokeWithLiveHostWakeAsync(
+            liveHost,
+            () =>
+            {
+                ValidateActivityPaneReopenedState();
+                AssertEqual(activityPaneCountBeforeClose, RightAnchorablePane.ChildrenCount, "Toolkit live activity anchorable count after reopen");
+                AssertEqual("Activity pane reopened", ViewModel.Status, "Toolkit live activity reopen status");
+            },
+            DispatcherPriority.Send);
+
         await ClickLiveControlAsync(liveHost, ToggleActivityAutoHideButton, "ToggleActivityAutoHideButton");
         await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -3701,7 +3812,7 @@ public partial class MainWindow : Window
 
                 ValidateAvalonDockLayoutReplacementEvents(ViewModel.LastSerializedLayout);
 
-                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit resource theme updates, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit/AvalonDock automation peers, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock keyboard navigation, AvalonDock anchorable keyboard navigation, AvalonDock auto-hide overlay keyboard navigation, AvalonDock theme switching, AvalonDock document context menu commands and close cancellation, AvalonDock anchorable context menu commands, AvalonDock anchorable lifecycle events, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
+                return "host mouse/text input, binding update, Toolkit popup/dropdown editors, Toolkit masked/time/updown/checklist/rich/multiline/spinner editors, Toolkit auto-select/password/numeric/color-canvas controls, Toolkit selector/range/split controls, Toolkit resource theme updates, Toolkit wizard navigation, Toolkit child window lifecycle, Toolkit message box lifecycle, Toolkit window control primitive, Toolkit zoombox and magnifier, Toolkit panels, Toolkit/AvalonDock automation peers, Toolkit collection control and dialog button, AvalonDock source-backed documents/anchorables, AvalonDock layout update strategy and dynamic metadata, AvalonDock title selectors and layout item commands, AvalonDock tab group commands, AvalonDock keyboard navigation, AvalonDock anchorable keyboard navigation, AvalonDock auto-hide overlay keyboard navigation, AvalonDock theme switching, AvalonDock document context menu commands and close cancellation, AvalonDock anchorable context menu commands, AvalonDock anchorable lifecycle events, AvalonDock anchorable close/reopen, document activation, document close/reopen, floating document window, anchorable hide/show, auto-hide side groups, layout replacement events, and layout serialization updated";
             },
             DispatcherPriority.Send);
     }
@@ -4845,6 +4956,8 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private int _avalonDockAnchorableHidingCount;
     private int _avalonDockAnchorableIsVisibleChangedCount;
     private string _lastAvalonDockAnchorableLifecycleTarget = string.Empty;
+    private int _avalonDockAnchorableClosingCount;
+    private int _avalonDockAnchorableClosedCount;
     private int _avalonDockContextMenuCommandCanExecuteCount;
     private int _avalonDockContextMenuCommandExecutedCount;
     private string _lastAvalonDockContextMenuCommand = string.Empty;
@@ -4863,6 +4976,8 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
     private bool _cancelNextOverviewClose;
     private string _lastClosingDocumentContentId = string.Empty;
     private string _lastClosedDocumentContentId = string.Empty;
+    private string _lastClosingAnchorableContentId = string.Empty;
+    private string _lastClosedAnchorableContentId = string.Empty;
     private object? _sourceActiveContent;
     private int _sourceActiveContentChangedCount;
     private string _lastSourceActiveTitle = string.Empty;
@@ -5970,6 +6085,32 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
         }
     }
 
+    public int AvalonDockAnchorableClosingCount
+    {
+        get => _avalonDockAnchorableClosingCount;
+        set
+        {
+            if (_avalonDockAnchorableClosingCount != value)
+            {
+                _avalonDockAnchorableClosingCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int AvalonDockAnchorableClosedCount
+    {
+        get => _avalonDockAnchorableClosedCount;
+        set
+        {
+            if (_avalonDockAnchorableClosedCount != value)
+            {
+                _avalonDockAnchorableClosedCount = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public int AvalonDockContextMenuCommandCanExecuteCount
     {
         get => _avalonDockContextMenuCommandCanExecuteCount;
@@ -6199,6 +6340,32 @@ internal sealed class ToolkitViewModel : INotifyPropertyChanged
             if (!string.Equals(_lastClosedDocumentContentId, value, StringComparison.Ordinal))
             {
                 _lastClosedDocumentContentId = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string LastClosingAnchorableContentId
+    {
+        get => _lastClosingAnchorableContentId;
+        set
+        {
+            if (!string.Equals(_lastClosingAnchorableContentId, value, StringComparison.Ordinal))
+            {
+                _lastClosingAnchorableContentId = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string LastClosedAnchorableContentId
+    {
+        get => _lastClosedAnchorableContentId;
+        set
+        {
+            if (!string.Equals(_lastClosedAnchorableContentId, value, StringComparison.Ordinal))
+            {
+                _lastClosedAnchorableContentId = value;
                 OnPropertyChanged();
             }
         }
@@ -6705,6 +6872,7 @@ internal static class ToolkitSelfTest
         Require<DockingManager>(window, "SourceDockManager");
         Require<LayoutDocumentPane>(window, "SourceDocumentPane");
         Require<LayoutAnchorablePane>(window, "SourceAnchorablePane");
+        Require<LayoutAnchorablePane>(window, "RightAnchorablePane");
         Require<ContextMenu>(window, "DockDocumentContextMenu");
         Require<MenuItem>(window, "DockContextActivateEditorMenuItem");
         Require<MenuItem>(window, "DockContextCloseOverviewMenuItem");
@@ -6717,6 +6885,8 @@ internal static class ToolkitSelfTest
         Require<Button>(window, "ReopenOverviewDocumentButton");
         Require<Button>(window, "ToggleEditorFloatButton");
         Require<Button>(window, "TogglePropertyPaneButton");
+        Require<Button>(window, "CloseActivityPaneButton");
+        Require<Button>(window, "ReopenActivityPaneButton");
         Require<Button>(window, "ToggleActivityAutoHideButton");
         Require<Button>(window, "ToggleAgendaAutoHideButton");
         Require<Button>(window, "CycleDockThemeButton");
@@ -7098,6 +7268,25 @@ internal static class ToolkitSelfTest
             window.ViewModel.AvalonDockAnchorableHidingCount,
             propertyPaneVisibleChangedCountBefore,
             expectedHidden: false);
+
+        int activityPaneCountBeforeClose = window.RightAnchorablePane.ChildrenCount;
+        int activityPaneClosingCountBefore = window.ViewModel.AvalonDockAnchorableClosingCount;
+        int activityPaneClosedCountBefore = window.ViewModel.AvalonDockAnchorableClosedCount;
+        window.CloseActivityPaneButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+        window.ValidateActivityPaneClosedState(activityPaneClosingCountBefore, activityPaneClosedCountBefore);
+        if (window.RightAnchorablePane.ChildrenCount != activityPaneCountBeforeClose - 1 ||
+            !string.Equals(window.ViewModel.Status, "Activity pane closed", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Expected AvalonDock activity anchorable close command to remove the pane and update status.");
+        }
+
+        window.ReopenActivityPaneButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+        window.ValidateActivityPaneReopenedState();
+        if (window.RightAnchorablePane.ChildrenCount != activityPaneCountBeforeClose ||
+            !string.Equals(window.ViewModel.Status, "Activity pane reopened", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Expected AvalonDock activity anchorable reopen command to restore the pane and update status.");
+        }
 
         window.ToggleActivityAutoHideButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
 

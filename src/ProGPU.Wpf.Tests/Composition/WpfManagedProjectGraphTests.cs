@@ -6078,6 +6078,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DockAnchorableContextMenu", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DockAnchorContextActivateToolkitMenuItem", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("DockAnchorContextTogglePropertyMenuItem", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CloseActivityPaneButton", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ReopenActivityPaneButton", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"RightAnchorablePane\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ActivityPane\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CanClose=\"True\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{x:Static local:ToolkitDockCommands.ActivateEditor}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{x:Static local:ToolkitDockCommands.CloseOverview}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Command=\"{x:Static local:ToolkitDockCommands.ActivateToolkitPane}\"", mainWindowXaml, StringComparison.Ordinal);
@@ -6309,10 +6314,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PropertyPane.Show()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PropertyPane.Hiding += PropertyPane_Hiding", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PropertyPane.IsVisibleChanged += PropertyPane_IsVisibleChanged", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ActivityPane.Closing += ActivityPane_Closing", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ActivityPane.Closed += ActivityPane_Closed", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidatePropertyPaneAnchorableLifecycle", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateActivityPaneClosedState", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateActivityPaneReopenedState", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDockAnchorableHidingCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDockAnchorableIsVisibleChangedCount", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastAvalonDockAnchorableLifecycleTarget", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AvalonDockAnchorableClosingCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AvalonDockAnchorableClosedCount", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastClosingAnchorableContentId", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastClosedAnchorableContentId", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("EditorDocument.Float()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("EditorDocument.DockAsDocument()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DockManager.DocumentClosed", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6389,6 +6402,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AvalonDock document context menu commands and close cancellation", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock anchorable context menu commands", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AvalonDock anchorable lifecycle events", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AvalonDock anchorable close/reopen", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("layout replacement events", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("document close/reopen", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PumpDispatcherUntil", mainWindowCodeBehind, StringComparison.Ordinal);

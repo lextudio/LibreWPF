@@ -95,7 +95,10 @@ public partial class MainWindow : Window
         RealSciChartHost.Content = _realSciChartResult.View;
         if (!_realSciChartResult.CreatedRealControls)
         {
-            BackendText.Text = $"Real SciChart native runtime unavailable: {_realSciChartResult.NativeCompatibilitySummary}; exports: {_realSciChartResult.NativeExportSummary}; resolver: {_realSciChartResult.NativeResolverSummary}";
+            var nativeExtraction = _realSciChartResult.LicenseStatus.NativeDependenciesPath
+                ?? _realSciChartResult.LicenseStatus.NativeDependenciesFailure
+                ?? "unavailable";
+            BackendText.Text = $"Real SciChart native runtime unavailable: extraction: {nativeExtraction}; {_realSciChartResult.NativeCompatibilitySummary}; exports: {_realSciChartResult.NativeExportSummary}; facade: {_realSciChartResult.NativeFacadeSummary}; resolver: {_realSciChartResult.NativeResolverSummary}";
         }
     }
 

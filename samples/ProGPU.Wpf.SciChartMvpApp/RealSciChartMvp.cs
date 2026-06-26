@@ -27,6 +27,7 @@ internal sealed record RealSciChartMvpResult(
     string NativeDependencySummary,
     string NativeCompatibilitySummary,
     string NativeExportSummary,
+    string NativeFacadeSummary,
     string NativeResolverSummary,
     FrameworkElement View,
     bool CreatedRealControls,
@@ -36,12 +37,15 @@ internal sealed record RealSciChartMvpResult(
 internal sealed record RealSciChartLicenseStatus(
     bool Configured,
     string? EnvironmentVariable,
-    string? Failure);
+    string? Failure,
+    string? NativeDependenciesPath,
+    string? NativeDependenciesFailure);
 
 internal sealed record RealSciChartNativeDependencyDiagnostics(
     string DependencySummary,
     string CompatibilitySummary,
     string ExportSummary,
+    string FacadeSummary,
     IReadOnlyList<ProGpuDirectXNativeResolverRegistration> ResolverRegistrations)
 {
     internal string ResolverSummary => ResolverRegistrations.Count == 0
@@ -53,6 +57,7 @@ internal static class RealSciChartMvp
 {
     internal const string RuntimeLicenseEnvironmentVariable = "SCICHART_RUNTIME_LICENSE_KEY";
     internal const string LegacyRuntimeLicenseEnvironmentVariable = "PROGPU_WPF_SCICHART_LICENSE_KEY";
+    internal const string NativeDependenciesPathEnvironmentVariable = "PROGPU_WPF_SCICHART_NATIVE_DEPENDENCIES_ROOT";
 
     private const int SampleCount = 96;
     private static readonly object NativeDiagnosticsGate = new();
@@ -61,6 +66,7 @@ internal static class RealSciChartMvp
 
     internal static RealSciChartLicenseStatus ConfigureRuntimeLicenseFromEnvironment()
     {
+        var nativeDependenciesPath = ConfigureNativeDependenciesPath();
         _ = EnsureNativeDiagnostics();
         if (s_licenseStatus is not null)
         {
@@ -80,7 +86,9 @@ internal static class RealSciChartMvp
             s_licenseStatus = new RealSciChartLicenseStatus(
                 Configured: false,
                 EnvironmentVariable: null,
-                Failure: $"Missing {RuntimeLicenseEnvironmentVariable}.");
+                Failure: $"Missing {RuntimeLicenseEnvironmentVariable}.",
+                nativeDependenciesPath.Path,
+                nativeDependenciesPath.Failure);
             return s_licenseStatus;
         }
 
@@ -90,14 +98,18 @@ internal static class RealSciChartMvp
             s_licenseStatus = new RealSciChartLicenseStatus(
                 Configured: true,
                 EnvironmentVariable: source,
-                Failure: null);
+                Failure: null,
+                nativeDependenciesPath.Path,
+                nativeDependenciesPath.Failure);
         }
         catch (Exception ex) when (IsNativeRuntimeFailure(ex))
         {
             s_licenseStatus = new RealSciChartLicenseStatus(
                 Configured: false,
                 EnvironmentVariable: source,
-                Failure: ex.GetBaseException().Message);
+                Failure: ex.GetBaseException().Message,
+                nativeDependenciesPath.Path,
+                nativeDependenciesPath.Failure);
         }
 
         return s_licenseStatus;
@@ -128,7 +140,7 @@ internal static class RealSciChartMvp
         if (!licenseStatus.Configured)
         {
             var fallback = CreateNativeBridgeFallbackView(
-                $"Real SciChart packages restored and data-series APIs ran, but runtime license setup is unavailable: {licenseStatus.Failure}. Native dependencies: {nativeDiagnostics.DependencySummary}. Native compatibility: {nativeDiagnostics.CompatibilitySummary}. Native exports: {nativeDiagnostics.ExportSummary}. Native resolver: {nativeDiagnostics.ResolverSummary}.",
+                $"Real SciChart packages restored and data-series APIs ran, but runtime license setup is unavailable: {licenseStatus.Failure}. Native dependency extraction: {DescribeNativeDependencyPath(licenseStatus)}. Native dependencies: {nativeDiagnostics.DependencySummary}. Native compatibility: {nativeDiagnostics.CompatibilitySummary}. Native exports: {nativeDiagnostics.ExportSummary}. Native facade: {nativeDiagnostics.FacadeSummary}. Native resolver: {nativeDiagnostics.ResolverSummary}.",
                 bridgeSnapshot3D);
 
             return new RealSciChartMvpResult(
@@ -139,6 +151,7 @@ internal static class RealSciChartMvp
                 nativeDiagnostics.DependencySummary,
                 nativeDiagnostics.CompatibilitySummary,
                 nativeDiagnostics.ExportSummary,
+                nativeDiagnostics.FacadeSummary,
                 nativeDiagnostics.ResolverSummary,
                 fallback,
                 CreatedRealControls: false,
@@ -185,6 +198,7 @@ internal static class RealSciChartMvp
                 nativeDiagnostics.DependencySummary,
                 nativeDiagnostics.CompatibilitySummary,
                 nativeDiagnostics.ExportSummary,
+                nativeDiagnostics.FacadeSummary,
                 nativeDiagnostics.ResolverSummary,
                 grid,
                 CreatedRealControls: true,
@@ -194,7 +208,7 @@ internal static class RealSciChartMvp
         catch (Exception ex) when (IsNativeRuntimeFailure(ex))
         {
             var fallback = CreateNativeBridgeFallbackView(
-                $"Real SciChart packages restored and data-series APIs ran, but native runtime is unavailable: {ex.GetType().Name}. Native dependencies: {nativeDiagnostics.DependencySummary}. Native compatibility: {nativeDiagnostics.CompatibilitySummary}. Native exports: {nativeDiagnostics.ExportSummary}. Native resolver: {nativeDiagnostics.ResolverSummary}.",
+                $"Real SciChart packages restored and data-series APIs ran, but native runtime is unavailable: {ex.GetType().Name}. Native dependency extraction: {DescribeNativeDependencyPath(licenseStatus)}. Native dependencies: {nativeDiagnostics.DependencySummary}. Native compatibility: {nativeDiagnostics.CompatibilitySummary}. Native exports: {nativeDiagnostics.ExportSummary}. Native facade: {nativeDiagnostics.FacadeSummary}. Native resolver: {nativeDiagnostics.ResolverSummary}.",
                 bridgeSnapshot3D);
 
             return new RealSciChartMvpResult(
@@ -205,6 +219,7 @@ internal static class RealSciChartMvp
                 nativeDiagnostics.DependencySummary,
                 nativeDiagnostics.CompatibilitySummary,
                 nativeDiagnostics.ExportSummary,
+                nativeDiagnostics.FacadeSummary,
                 nativeDiagnostics.ResolverSummary,
                 fallback,
                 CreatedRealControls: false,
@@ -235,6 +250,12 @@ internal static class RealSciChartMvp
             throw new InvalidOperationException("Expected unavailable real SciChart license setup to report the reason.");
         }
 
+        if (string.IsNullOrWhiteSpace(result.LicenseStatus.NativeDependenciesPath)
+            && string.IsNullOrWhiteSpace(result.LicenseStatus.NativeDependenciesFailure))
+        {
+            throw new InvalidOperationException("Expected real SciChart native dependency extraction path to be configured or report the failure.");
+        }
+
         if (string.IsNullOrWhiteSpace(result.NativeDependencySummary))
         {
             throw new InvalidOperationException("Expected real SciChart native dependencies to be reported explicitly.");
@@ -248,6 +269,11 @@ internal static class RealSciChartMvp
         if (string.IsNullOrWhiteSpace(result.NativeExportSummary))
         {
             throw new InvalidOperationException("Expected real SciChart native ABI export plan to be reported explicitly.");
+        }
+
+        if (string.IsNullOrWhiteSpace(result.NativeFacadeSummary))
+        {
+            throw new InvalidOperationException("Expected real SciChart native facade source plan to be reported explicitly.");
         }
 
         if (string.IsNullOrWhiteSpace(result.NativeResolverSummary))
@@ -274,6 +300,7 @@ internal static class RealSciChartMvp
             var report = ProGpuDirectXNativeDependencyInspector.Inspect(assemblies);
             var plan = ProGpuDirectXNativeCompatibilityPlanner.Create(report);
             var abiPlan = ProGpuDirectXNativeAbiPlanner.Create(report);
+            var facadeSource = ProGpuDirectXNativeFacadeSourceEmitter.Emit(abiPlan);
             var resolverOptions = ProGpuDirectXNativeResolverOptions.FromEnvironment();
             var registrations = new List<ProGpuDirectXNativeResolverRegistration>();
             foreach (var assembly in assemblies)
@@ -290,6 +317,7 @@ internal static class RealSciChartMvp
                 report.DescribeModules(),
                 plan.DescribeRequiredActions(),
                 abiPlan.DescribeActionableExports(maxExportsPerModule: 8),
+                facadeSource.DescribeSupport(),
                 registrations);
             return s_nativeDiagnostics;
         }
@@ -341,6 +369,46 @@ internal static class RealSciChartMvp
         {
             assemblies[assemblyName] = assembly;
         }
+    }
+
+    private static (string? Path, string? Failure) ConfigureNativeDependenciesPath()
+    {
+        try
+        {
+            var path = Environment.GetEnvironmentVariable(NativeDependenciesPathEnvironmentVariable);
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                path = Path.Combine(Path.GetTempPath(), "ProGPU.Wpf.SciChartMvpApp", "SciChartDependencies");
+            }
+
+            Directory.CreateDirectory(path);
+
+            var loaderType = Type.GetType("SciChart.Core.NativeDllLoader, SciChart.Core", throwOnError: false);
+            var property = loaderType?.GetProperty("DependenciesPathRoot", BindingFlags.Public | BindingFlags.Static);
+            if (property is null || property.PropertyType != typeof(string) || !property.CanWrite)
+            {
+                return (path, "SciChart.Core.NativeDllLoader.DependenciesPathRoot was not found.");
+            }
+
+            property.SetValue(null, path);
+            return (path, null);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or TargetInvocationException or ArgumentException)
+        {
+            return (null, ex.GetBaseException().Message);
+        }
+    }
+
+    private static string DescribeNativeDependencyPath(RealSciChartLicenseStatus licenseStatus)
+    {
+        if (!string.IsNullOrWhiteSpace(licenseStatus.NativeDependenciesPath))
+        {
+            return licenseStatus.NativeDependenciesFailure is null
+                ? licenseStatus.NativeDependenciesPath
+                : $"{licenseStatus.NativeDependenciesPath} ({licenseStatus.NativeDependenciesFailure})";
+        }
+
+        return licenseStatus.NativeDependenciesFailure ?? "unavailable";
     }
 
     private static Grid CreateTwoColumnGrid(FrameworkElement surface2D, FrameworkElement surface3D)

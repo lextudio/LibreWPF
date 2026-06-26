@@ -29,7 +29,10 @@ public partial class App : Application
             }
             else
             {
-                Console.WriteLine($"ProGPU WPF real SciChart package MVP restored and validated data APIs; native runtime unavailable. Native dependencies: {realSciChartResult.NativeDependencySummary}. Native compatibility: {realSciChartResult.NativeCompatibilitySummary}. Native exports: {realSciChartResult.NativeExportSummary}. Native resolver: {realSciChartResult.NativeResolverSummary}.");
+                var nativeExtraction = realSciChartResult.LicenseStatus.NativeDependenciesPath
+                    ?? realSciChartResult.LicenseStatus.NativeDependenciesFailure
+                    ?? "unavailable";
+                Console.WriteLine($"ProGPU WPF real SciChart package MVP restored and validated data APIs; native runtime unavailable. Native extraction: {nativeExtraction}. Native dependencies: {realSciChartResult.NativeDependencySummary}. Native compatibility: {realSciChartResult.NativeCompatibilitySummary}. Native exports: {realSciChartResult.NativeExportSummary}. Native facade: {realSciChartResult.NativeFacadeSummary}. Native resolver: {realSciChartResult.NativeResolverSummary}.");
             }
 #endif
             Shutdown();

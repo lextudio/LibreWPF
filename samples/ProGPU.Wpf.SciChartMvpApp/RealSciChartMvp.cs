@@ -1,5 +1,9 @@
 #if PROGPU_WPF_REAL_SCICHART
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -22,6 +26,7 @@ internal sealed record RealSciChartMvpResult(
     int NativeBridgeDrawCount,
     string NativeDependencySummary,
     string NativeCompatibilitySummary,
+    string NativeResolverSummary,
     FrameworkElement View,
     bool CreatedRealControls,
     string? NativeRuntimeFailure,
@@ -34,7 +39,13 @@ internal sealed record RealSciChartLicenseStatus(
 
 internal sealed record RealSciChartNativeDependencyDiagnostics(
     string DependencySummary,
-    string CompatibilitySummary);
+    string CompatibilitySummary,
+    IReadOnlyList<ProGpuDirectXNativeResolverRegistration> ResolverRegistrations)
+{
+    internal string ResolverSummary => ResolverRegistrations.Count == 0
+        ? "none"
+        : string.Join(" | ", ResolverRegistrations.Select(static registration => registration.Describe()));
+}
 
 internal static class RealSciChartMvp
 {
@@ -42,10 +53,13 @@ internal static class RealSciChartMvp
     internal const string LegacyRuntimeLicenseEnvironmentVariable = "PROGPU_WPF_SCICHART_LICENSE_KEY";
 
     private const int SampleCount = 96;
+    private static readonly object NativeDiagnosticsGate = new();
     private static RealSciChartLicenseStatus? s_licenseStatus;
+    private static RealSciChartNativeDependencyDiagnostics? s_nativeDiagnostics;
 
     internal static RealSciChartLicenseStatus ConfigureRuntimeLicenseFromEnvironment()
     {
+        _ = EnsureNativeDiagnostics();
         if (s_licenseStatus is not null)
         {
             return s_licenseStatus;
@@ -90,7 +104,7 @@ internal static class RealSciChartMvp
     internal static RealSciChartMvpResult Create()
     {
         var licenseStatus = ConfigureRuntimeLicenseFromEnvironment();
-        var nativeDiagnostics = DescribeNativeDiagnostics();
+        var nativeDiagnostics = EnsureNativeDiagnostics();
         var dataSeries2D = new XyDataSeries<double, double>();
         for (var i = 0; i < SampleCount; i++)
         {
@@ -112,7 +126,7 @@ internal static class RealSciChartMvp
         if (!licenseStatus.Configured)
         {
             var fallback = CreateNativeBridgeFallbackView(
-                $"Real SciChart packages restored and data-series APIs ran, but runtime license setup is unavailable: {licenseStatus.Failure}. Native dependencies: {nativeDiagnostics.DependencySummary}. Native compatibility: {nativeDiagnostics.CompatibilitySummary}.",
+                $"Real SciChart packages restored and data-series APIs ran, but runtime license setup is unavailable: {licenseStatus.Failure}. Native dependencies: {nativeDiagnostics.DependencySummary}. Native compatibility: {nativeDiagnostics.CompatibilitySummary}. Native resolver: {nativeDiagnostics.ResolverSummary}.",
                 bridgeSnapshot3D);
 
             return new RealSciChartMvpResult(
@@ -122,6 +136,7 @@ internal static class RealSciChartMvp
                 bridgeSnapshot3D.DrawCount,
                 nativeDiagnostics.DependencySummary,
                 nativeDiagnostics.CompatibilitySummary,
+                nativeDiagnostics.ResolverSummary,
                 fallback,
                 CreatedRealControls: false,
                 NativeRuntimeFailure: licenseStatus.Failure,
@@ -166,6 +181,7 @@ internal static class RealSciChartMvp
                 bridgeSnapshot3D.DrawCount,
                 nativeDiagnostics.DependencySummary,
                 nativeDiagnostics.CompatibilitySummary,
+                nativeDiagnostics.ResolverSummary,
                 grid,
                 CreatedRealControls: true,
                 NativeRuntimeFailure: null,
@@ -174,7 +190,7 @@ internal static class RealSciChartMvp
         catch (Exception ex) when (IsNativeRuntimeFailure(ex))
         {
             var fallback = CreateNativeBridgeFallbackView(
-                $"Real SciChart packages restored and data-series APIs ran, but native runtime is unavailable: {ex.GetType().Name}. Native dependencies: {nativeDiagnostics.DependencySummary}. Native compatibility: {nativeDiagnostics.CompatibilitySummary}.",
+                $"Real SciChart packages restored and data-series APIs ran, but native runtime is unavailable: {ex.GetType().Name}. Native dependencies: {nativeDiagnostics.DependencySummary}. Native compatibility: {nativeDiagnostics.CompatibilitySummary}. Native resolver: {nativeDiagnostics.ResolverSummary}.",
                 bridgeSnapshot3D);
 
             return new RealSciChartMvpResult(
@@ -184,6 +200,7 @@ internal static class RealSciChartMvp
                 bridgeSnapshot3D.DrawCount,
                 nativeDiagnostics.DependencySummary,
                 nativeDiagnostics.CompatibilitySummary,
+                nativeDiagnostics.ResolverSummary,
                 fallback,
                 CreatedRealControls: false,
                 NativeRuntimeFailure: ex.GetBaseException().Message,
@@ -223,22 +240,95 @@ internal static class RealSciChartMvp
             throw new InvalidOperationException("Expected real SciChart native compatibility plan to be reported explicitly.");
         }
 
+        if (string.IsNullOrWhiteSpace(result.NativeResolverSummary))
+        {
+            throw new InvalidOperationException("Expected real SciChart native resolver state to be reported explicitly.");
+        }
+
         if (!result.CreatedRealControls && string.IsNullOrWhiteSpace(result.NativeRuntimeFailure))
         {
             throw new InvalidOperationException("Expected real SciChart native-runtime failures to be reported explicitly.");
         }
     }
 
-    private static RealSciChartNativeDependencyDiagnostics DescribeNativeDiagnostics()
+    private static RealSciChartNativeDependencyDiagnostics EnsureNativeDiagnostics()
     {
-        var report = ProGpuDirectXNativeDependencyInspector.Inspect(
-            typeof(SciChartSurface).Assembly,
-            typeof(SciChart3DSurface).Assembly);
-        var plan = ProGpuDirectXNativeCompatibilityPlanner.Create(report);
+        lock (NativeDiagnosticsGate)
+        {
+            if (s_nativeDiagnostics is not null)
+            {
+                return s_nativeDiagnostics;
+            }
 
-        return new RealSciChartNativeDependencyDiagnostics(
-            report.DescribeModules(),
-            plan.DescribeRequiredActions());
+            var assemblies = GetSciChartAssemblies();
+            var report = ProGpuDirectXNativeDependencyInspector.Inspect(assemblies);
+            var plan = ProGpuDirectXNativeCompatibilityPlanner.Create(report);
+            var resolverOptions = ProGpuDirectXNativeResolverOptions.FromEnvironment();
+            var registrations = new List<ProGpuDirectXNativeResolverRegistration>();
+            foreach (var assembly in assemblies)
+            {
+                ProGpuDirectXNativeResolver.TryRegister(
+                    assembly,
+                    plan,
+                    resolverOptions,
+                    out var registration);
+                registrations.Add(registration);
+            }
+
+            s_nativeDiagnostics = new RealSciChartNativeDependencyDiagnostics(
+                report.DescribeModules(),
+                plan.DescribeRequiredActions(),
+                registrations);
+            return s_nativeDiagnostics;
+        }
+    }
+
+    private static IReadOnlyList<Assembly> GetSciChartAssemblies()
+    {
+        var assemblies = new Dictionary<string, Assembly>(StringComparer.OrdinalIgnoreCase);
+        AddAssembly(assemblies, typeof(SciChartSurface).Assembly);
+        AddAssembly(assemblies, typeof(SciChart3DSurface).Assembly);
+        foreach (var assemblyName in new[]
+        {
+            "SciChart.Core",
+            "SciChart.Data",
+            "SciChart.Drawing",
+            "SciChart.Charting",
+            "SciChart.Charting3D"
+        })
+        {
+            TryAddAssembly(assemblies, assemblyName);
+        }
+
+        return assemblies.Values
+            .OrderBy(static assembly => assembly.GetName().Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static void TryAddAssembly(IDictionary<string, Assembly> assemblies, string assemblyName)
+    {
+        try
+        {
+            AddAssembly(assemblies, Assembly.Load(new AssemblyName(assemblyName)));
+        }
+        catch (FileNotFoundException)
+        {
+        }
+        catch (FileLoadException)
+        {
+        }
+        catch (BadImageFormatException)
+        {
+        }
+    }
+
+    private static void AddAssembly(IDictionary<string, Assembly> assemblies, Assembly assembly)
+    {
+        var assemblyName = assembly.GetName().Name;
+        if (!string.IsNullOrWhiteSpace(assemblyName))
+        {
+            assemblies[assemblyName] = assembly;
+        }
     }
 
     private static Grid CreateTwoColumnGrid(FrameworkElement surface2D, FrameworkElement surface3D)

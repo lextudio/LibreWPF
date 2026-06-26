@@ -8075,6 +8075,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public sealed record ProGpuDirectXSciChartTriangleStrip3DDraw", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public sealed record ProGpuDirectXSciChartColoredSpriteDraw", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public void DrawColoredSprites(", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("DrawInstanced(6, submittedInstanceCount)", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("SciChart Instanced Sprite Pipeline", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public void DrawLineList(", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public void DrawLineStrip(", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public void DrawTriangleStrip(", proGpuDirectXSciChart, StringComparison.Ordinal);

@@ -26,6 +26,7 @@ internal sealed record RealSciChartMvpResult(
     int NativeBridgeDrawCount,
     string NativeDependencySummary,
     string NativeCompatibilitySummary,
+    string NativeExportSummary,
     string NativeResolverSummary,
     FrameworkElement View,
     bool CreatedRealControls,
@@ -40,6 +41,7 @@ internal sealed record RealSciChartLicenseStatus(
 internal sealed record RealSciChartNativeDependencyDiagnostics(
     string DependencySummary,
     string CompatibilitySummary,
+    string ExportSummary,
     IReadOnlyList<ProGpuDirectXNativeResolverRegistration> ResolverRegistrations)
 {
     internal string ResolverSummary => ResolverRegistrations.Count == 0
@@ -126,7 +128,7 @@ internal static class RealSciChartMvp
         if (!licenseStatus.Configured)
         {
             var fallback = CreateNativeBridgeFallbackView(
-                $"Real SciChart packages restored and data-series APIs ran, but runtime license setup is unavailable: {licenseStatus.Failure}. Native dependencies: {nativeDiagnostics.DependencySummary}. Native compatibility: {nativeDiagnostics.CompatibilitySummary}. Native resolver: {nativeDiagnostics.ResolverSummary}.",
+                $"Real SciChart packages restored and data-series APIs ran, but runtime license setup is unavailable: {licenseStatus.Failure}. Native dependencies: {nativeDiagnostics.DependencySummary}. Native compatibility: {nativeDiagnostics.CompatibilitySummary}. Native exports: {nativeDiagnostics.ExportSummary}. Native resolver: {nativeDiagnostics.ResolverSummary}.",
                 bridgeSnapshot3D);
 
             return new RealSciChartMvpResult(
@@ -136,6 +138,7 @@ internal static class RealSciChartMvp
                 bridgeSnapshot3D.DrawCount,
                 nativeDiagnostics.DependencySummary,
                 nativeDiagnostics.CompatibilitySummary,
+                nativeDiagnostics.ExportSummary,
                 nativeDiagnostics.ResolverSummary,
                 fallback,
                 CreatedRealControls: false,
@@ -181,6 +184,7 @@ internal static class RealSciChartMvp
                 bridgeSnapshot3D.DrawCount,
                 nativeDiagnostics.DependencySummary,
                 nativeDiagnostics.CompatibilitySummary,
+                nativeDiagnostics.ExportSummary,
                 nativeDiagnostics.ResolverSummary,
                 grid,
                 CreatedRealControls: true,
@@ -190,7 +194,7 @@ internal static class RealSciChartMvp
         catch (Exception ex) when (IsNativeRuntimeFailure(ex))
         {
             var fallback = CreateNativeBridgeFallbackView(
-                $"Real SciChart packages restored and data-series APIs ran, but native runtime is unavailable: {ex.GetType().Name}. Native dependencies: {nativeDiagnostics.DependencySummary}. Native compatibility: {nativeDiagnostics.CompatibilitySummary}. Native resolver: {nativeDiagnostics.ResolverSummary}.",
+                $"Real SciChart packages restored and data-series APIs ran, but native runtime is unavailable: {ex.GetType().Name}. Native dependencies: {nativeDiagnostics.DependencySummary}. Native compatibility: {nativeDiagnostics.CompatibilitySummary}. Native exports: {nativeDiagnostics.ExportSummary}. Native resolver: {nativeDiagnostics.ResolverSummary}.",
                 bridgeSnapshot3D);
 
             return new RealSciChartMvpResult(
@@ -200,6 +204,7 @@ internal static class RealSciChartMvp
                 bridgeSnapshot3D.DrawCount,
                 nativeDiagnostics.DependencySummary,
                 nativeDiagnostics.CompatibilitySummary,
+                nativeDiagnostics.ExportSummary,
                 nativeDiagnostics.ResolverSummary,
                 fallback,
                 CreatedRealControls: false,
@@ -240,6 +245,11 @@ internal static class RealSciChartMvp
             throw new InvalidOperationException("Expected real SciChart native compatibility plan to be reported explicitly.");
         }
 
+        if (string.IsNullOrWhiteSpace(result.NativeExportSummary))
+        {
+            throw new InvalidOperationException("Expected real SciChart native ABI export plan to be reported explicitly.");
+        }
+
         if (string.IsNullOrWhiteSpace(result.NativeResolverSummary))
         {
             throw new InvalidOperationException("Expected real SciChart native resolver state to be reported explicitly.");
@@ -263,6 +273,7 @@ internal static class RealSciChartMvp
             var assemblies = GetSciChartAssemblies();
             var report = ProGpuDirectXNativeDependencyInspector.Inspect(assemblies);
             var plan = ProGpuDirectXNativeCompatibilityPlanner.Create(report);
+            var abiPlan = ProGpuDirectXNativeAbiPlanner.Create(report);
             var resolverOptions = ProGpuDirectXNativeResolverOptions.FromEnvironment();
             var registrations = new List<ProGpuDirectXNativeResolverRegistration>();
             foreach (var assembly in assemblies)
@@ -278,6 +289,7 @@ internal static class RealSciChartMvp
             s_nativeDiagnostics = new RealSciChartNativeDependencyDiagnostics(
                 report.DescribeModules(),
                 plan.DescribeRequiredActions(),
+                abiPlan.DescribeActionableExports(maxExportsPerModule: 8),
                 registrations);
             return s_nativeDiagnostics;
         }

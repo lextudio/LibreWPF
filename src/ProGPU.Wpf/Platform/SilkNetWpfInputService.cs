@@ -6,8 +6,16 @@ using SilkInput = Silk.NET.Input;
 
 namespace System.Windows.Media.ProGPU.Platform;
 
-public sealed class SilkNetWpfInputService : IWpfInputService
+internal interface ISilkNetWpfInputContextProvider
 {
+    bool TryGetInputContext(object window, out SilkInput.IInputContext inputContext);
+}
+
+public sealed class SilkNetWpfInputService : IWpfInputService, ISilkNetWpfInputContextProvider
+{
+    private readonly object _sync = new();
+    private readonly Dictionary<IView, SilkInput.IInputContext> _inputContexts = new();
+
     public event EventHandler<WpfInputEventArgs>? InputReceived;
 
     public IDisposable Attach(object window)
@@ -17,10 +25,50 @@ public sealed class SilkNetWpfInputService : IWpfInputService
             throw new ArgumentException("Silk.NET input services require a Silk.NET view instance.", nameof(window));
         }
 
-        return Attach(SilkInput.InputWindowExtensions.CreateInput(silkView));
+        var inputContext = SilkInput.InputWindowExtensions.CreateInput(silkView);
+        lock (_sync)
+        {
+            _inputContexts[silkView] = inputContext;
+        }
+
+        return Attach(
+            inputContext,
+            () =>
+            {
+                lock (_sync)
+                {
+                    if (_inputContexts.TryGetValue(silkView, out var registeredContext) &&
+                        ReferenceEquals(registeredContext, inputContext))
+                    {
+                        _inputContexts.Remove(silkView);
+                    }
+                }
+            });
     }
 
     public IDisposable Attach(SilkInput.IInputContext inputContext)
+    {
+        return Attach(inputContext, onDispose: null);
+    }
+
+    bool ISilkNetWpfInputContextProvider.TryGetInputContext(object window, out SilkInput.IInputContext inputContext)
+    {
+        if (window is IView silkView)
+        {
+            lock (_sync)
+            {
+                if (_inputContexts.TryGetValue(silkView, out inputContext!))
+                {
+                    return true;
+                }
+            }
+        }
+
+        inputContext = null!;
+        return false;
+    }
+
+    private IDisposable Attach(SilkInput.IInputContext inputContext, Action? onDispose)
     {
         ArgumentNullException.ThrowIfNull(inputContext);
 
@@ -184,7 +232,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService
         inputContext.ConnectionChanged += ConnectionChanged;
         TrackSubscription(() => inputContext.ConnectionChanged -= ConnectionChanged);
 
-        return new InputSubscription(inputContext, subscriptions);
+        return new InputSubscription(inputContext, subscriptions, onDispose);
     }
 
     public static WpfInputEventArgs CreateKeyEvent(
@@ -382,12 +430,14 @@ public sealed class SilkNetWpfInputService : IWpfInputService
     {
         private readonly SilkInput.IInputContext _inputContext;
         private readonly List<Action> _unsubscribe;
+        private readonly Action? _onDispose;
         private bool _isDisposed;
 
-        public InputSubscription(SilkInput.IInputContext inputContext, List<Action> unsubscribe)
+        public InputSubscription(SilkInput.IInputContext inputContext, List<Action> unsubscribe, Action? onDispose)
         {
             _inputContext = inputContext;
             _unsubscribe = unsubscribe;
+            _onDispose = onDispose;
         }
 
         public void Dispose()
@@ -402,6 +452,7 @@ public sealed class SilkNetWpfInputService : IWpfInputService
                 unsubscribe();
             }
 
+            _onDispose?.Invoke();
             _inputContext.Dispose();
             _isDisposed = true;
         }

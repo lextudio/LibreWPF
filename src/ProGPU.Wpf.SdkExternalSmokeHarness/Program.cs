@@ -2562,7 +2562,7 @@ internal static class Program
                     typeof(MainWindow));
 
                 private const string LiveValidationEnvironmentVariable = "PROGPU_WPF_EXTERNAL_LIVE_VALIDATE";
-                private const int LiveValidationMaxAttempts = 400;
+                private const int LiveValidationMaxAttempts = 1000;
                 private static readonly TimeSpan LiveValidationRetryDelay = TimeSpan.FromMilliseconds(16);
                 private bool _externalLiveValidationStarted;
 

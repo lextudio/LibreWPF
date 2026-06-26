@@ -424,7 +424,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private bool SetCursorCore(WpfCursor cursor)
     {
-        return _window != null && PlatformServices.Cursors.SetCursor(_window, cursor);
+        if (_window == null)
+        {
+            return false;
+        }
+
+        if (_attachedInputService is ISilkNetWpfInputContextProvider inputContextProvider &&
+            inputContextProvider.TryGetInputContext(_window, out var inputContext))
+        {
+            return PlatformServices.Cursors.SetCursor(inputContext, cursor);
+        }
+
+        return PlatformServices.Cursors.SetCursor(_window, cursor);
     }
 
     public bool TryBeginDragMove()

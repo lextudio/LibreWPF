@@ -52,7 +52,8 @@ clean_sdk_smoke_outputs() {
     "ProGPU.Wpf.SdkSwitchRuntimeHarness" \
     "ProGPU.Wpf.SdkExternalSmokeHarness" \
     "ProGPU.Wpf.HelloApp" \
-    "ProGPU.Wpf.MvpApp"
+    "ProGPU.Wpf.MvpApp" \
+    "ProGPU.Wpf.SciChartMvpApp"
   do
     rm -rf \
       "${repo_root}/artifacts/bin/${project}" \
@@ -61,7 +62,8 @@ clean_sdk_smoke_outputs() {
 
   rm -rf \
     "${repo_root}/artifacts/nuget/ProGPU.Wpf.SdkSwitchSmoke" \
-    "${repo_root}/artifacts/nuget/ProGPU.Wpf.MvpApp"
+    "${repo_root}/artifacts/nuget/ProGPU.Wpf.MvpApp" \
+    "${repo_root}/artifacts/nuget/ProGPU.Wpf.SciChartMvpApp"
 }
 
 echo "Packing ProGPU packages for ProGPU.Wpf.Sdk feed..."
@@ -183,6 +185,19 @@ PROGPU_WPF_MVP_VALIDATE=0 \
 PROGPU_WPF_MVP_RUN_VALIDATE=0 \
 PROGPU_WPF_MVP_LIVE_VALIDATE=1 \
   "${repo_root}/eng/run-progpu-wpf-mvp.sh"
+
+echo "Building SciChart MVP SDK app..."
+run_dotnet build "${repo_root}/samples/ProGPU.Wpf.SciChartMvpApp/ProGPU.Wpf.SciChartMvpApp.csproj" -v:minimal
+
+echo "Running SciChart MVP SDK app renderer validation..."
+PROGPU_WPF_SCICHART_VALIDATE=1 \
+PROGPU_WPF_SCICHART_RUN_VALIDATE=0 \
+  run_dotnet run --project "${repo_root}/samples/ProGPU.Wpf.SciChartMvpApp/ProGPU.Wpf.SciChartMvpApp.csproj" -v:minimal
+
+echo "Running SciChart MVP SDK app Application.Run validation..."
+PROGPU_WPF_SCICHART_VALIDATE=0 \
+PROGPU_WPF_SCICHART_RUN_VALIDATE=1 \
+  run_dotnet run --project "${repo_root}/samples/ProGPU.Wpf.SciChartMvpApp/ProGPU.Wpf.SciChartMvpApp.csproj" -v:minimal
 
 echo "Building focused WPF graph tests..."
 run_dotnet build "${repo_root}/src/ProGPU.Wpf.Tests/ProGPU.Wpf.Tests.csproj" -v:minimal

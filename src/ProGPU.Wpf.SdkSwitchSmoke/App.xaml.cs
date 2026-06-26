@@ -288,6 +288,7 @@ public partial class App : Application
         Type retainedSinkType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.Composition.ProGpuRetainedCompositionCommandSink");
         Type gpuTextureType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTexture");
         Type gpuTextureAlphaModeType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTextureAlphaMode");
+        Type gpuTextureDimensionType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTextureDimension");
         Type textureFormatType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureFormat");
         Type textureUsageType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureUsage");
         object wpfVisual = CreateRedWpfVisual();
@@ -301,6 +302,7 @@ public partial class App : Application
             Enum.Parse(textureUsageType, "RenderAttachment"),
             Enum.Parse(textureUsageType, "CopySrc"));
         object straightAlphaMode = Enum.Parse(gpuTextureAlphaModeType, "Straight");
+        object dimension2D = Enum.Parse(gpuTextureDimensionType, "Dimension2D");
         object target = InvokeStatic(compositionTargetType, "CreateHeadless", rgba8Unorm);
         object texture = Create(
             gpuTextureType,
@@ -311,7 +313,10 @@ public partial class App : Application
             renderTargetUsage,
             "SDK smoke retained-owner HiDPI framebuffer target",
             1u,
-            straightAlphaMode);
+            straightAlphaMode,
+            1u,
+            1u,
+            dimension2D);
 
         try
         {
@@ -358,7 +363,7 @@ public partial class App : Application
                 2f,
                 GetProperty(texture, "ViewPtr"));
 
-            byte[] pixels = (byte[])Invoke(texture, "ReadPixels");
+            byte[] pixels = (byte[])Invoke(texture, "ReadPixels", 0u);
             AssertRgbaPixelIsRed(
                 pixels,
                 width: 840,
@@ -388,6 +393,7 @@ public partial class App : Application
         Type retainedSinkType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.Composition.ProGpuRetainedCompositionCommandSink");
         Type gpuTextureType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTexture");
         Type gpuTextureAlphaModeType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTextureAlphaMode");
+        Type gpuTextureDimensionType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTextureDimension");
         Type textureFormatType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureFormat");
         Type textureUsageType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureUsage");
         object wpfVisual = CreateLogicalMarkerWpfVisual();
@@ -401,6 +407,7 @@ public partial class App : Application
             Enum.Parse(textureUsageType, "RenderAttachment"),
             Enum.Parse(textureUsageType, "CopySrc"));
         object straightAlphaMode = Enum.Parse(gpuTextureAlphaModeType, "Straight");
+        object dimension2D = Enum.Parse(gpuTextureDimensionType, "Dimension2D");
         object target = InvokeStatic(compositionTargetType, "CreateHeadless", rgba8Unorm);
         object texture = Create(
             gpuTextureType,
@@ -411,7 +418,10 @@ public partial class App : Application
             renderTargetUsage,
             "SDK smoke retained-owner logical marker HiDPI target",
             1u,
-            straightAlphaMode);
+            straightAlphaMode,
+            1u,
+            1u,
+            dimension2D);
 
         try
         {
@@ -458,7 +468,7 @@ public partial class App : Application
                 2f,
                 GetProperty(texture, "ViewPtr"));
 
-            byte[] pixels = (byte[])Invoke(texture, "ReadPixels");
+            byte[] pixels = (byte[])Invoke(texture, "ReadPixels", 0u);
             AssertRgbaPixelIsGreen(
                 pixels,
                 width: 840,

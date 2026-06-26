@@ -16979,6 +16979,7 @@ internal static class Program
         Type retainedSinkType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.Composition.ProGpuRetainedCompositionCommandSink");
         Type gpuTextureType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTexture");
         Type gpuTextureAlphaModeType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTextureAlphaMode");
+        Type gpuTextureDimensionType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTextureDimension");
         Type textureFormatType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureFormat");
         Type textureUsageType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureUsage");
         object wpfVisual = CreateRedWpfVisual(presentationCore, presentationFramework, windowsBase);
@@ -16991,6 +16992,7 @@ internal static class Program
             Enum.Parse(textureUsageType, "RenderAttachment"),
             Enum.Parse(textureUsageType, "CopySrc"));
         object straightAlphaMode = Enum.Parse(gpuTextureAlphaModeType, "Straight");
+        object dimension2D = Enum.Parse(gpuTextureDimensionType, "Dimension2D");
         object target = InvokeStatic(compositionTargetType, "CreateHeadless", rgba8Unorm);
         object texture = Create(
             gpuTextureType,
@@ -17001,7 +17003,10 @@ internal static class Program
             renderTargetUsage,
             $"{descriptionPrefix} packaged HiDPI framebuffer target",
             1u,
-            straightAlphaMode);
+            straightAlphaMode,
+            1u,
+            1u,
+            dimension2D);
 
         try
         {
@@ -17043,7 +17048,7 @@ internal static class Program
                 2f,
                 GetProperty(texture, "ViewPtr"));
 
-            byte[] pixels = (byte[])Invoke(texture, "ReadPixels");
+            byte[] pixels = (byte[])Invoke(texture, "ReadPixels", 0u);
             AssertRgbaPixelIsRed(
                 pixels,
                 width: 840,
@@ -17076,6 +17081,7 @@ internal static class Program
         Type compositionTargetType = GetRequiredType(proGpuWpf, "System.Windows.Media.ProGPU.ProGpuWpfCompositionTarget");
         Type gpuTextureType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTexture");
         Type gpuTextureAlphaModeType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTextureAlphaMode");
+        Type gpuTextureDimensionType = GetRequiredType(proGpuBackend, "ProGPU.Backend.GpuTextureDimension");
         Type textureFormatType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureFormat");
         Type textureUsageType = GetRequiredType(silkNetWebGpu, "Silk.NET.WebGPU.TextureUsage");
         Type solidColorBrushType = GetRequiredType(presentationCore, "System.Windows.Media.SolidColorBrush");
@@ -17093,6 +17099,7 @@ internal static class Program
             Enum.Parse(textureUsageType, "RenderAttachment"),
             Enum.Parse(textureUsageType, "CopySrc"));
         object straightAlphaMode = Enum.Parse(gpuTextureAlphaModeType, "Straight");
+        object dimension2D = Enum.Parse(gpuTextureDimensionType, "Dimension2D");
         object target = InvokeStatic(compositionTargetType, "CreateHeadless", rgba8Unorm);
         object texture = Create(
             gpuTextureType,
@@ -17103,7 +17110,10 @@ internal static class Program
             renderTargetUsage,
             $"{descriptionPrefix} packaged object render-data HiDPI framebuffer target",
             1u,
-            straightAlphaMode);
+            straightAlphaMode,
+            1u,
+            1u,
+            dimension2D);
 
         try
         {
@@ -17141,7 +17151,7 @@ internal static class Program
                 2f,
                 GetProperty(texture, "ViewPtr"));
 
-            byte[] pixels = (byte[])Invoke(texture, "ReadPixels");
+            byte[] pixels = (byte[])Invoke(texture, "ReadPixels", 0u);
             AssertRgbaPixelIsRed(
                 pixels,
                 width: 840,

@@ -6805,6 +6805,49 @@ public sealed class WpfManagedProjectGraphTests
         var mvpRunScriptPath = FindRepoPath(
             "eng",
             "run-progpu-wpf-mvp.sh");
+        var scichartProjectPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.SciChartMvpApp",
+            "ProGPU.Wpf.SciChartMvpApp.csproj");
+        var scichartAppXamlPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.SciChartMvpApp",
+            "App.xaml");
+        var scichartAppCodeBehindPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.SciChartMvpApp",
+            "App.xaml.cs");
+        var scichartMainWindowXamlPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.SciChartMvpApp",
+            "MainWindow.xaml");
+        var scichartMainWindowCodeBehindPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.SciChartMvpApp",
+            "MainWindow.xaml.cs");
+        var scichartRendererPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.SciChartMvpApp",
+            "SciChartMvpRenderer.cs");
+        var scichartReadmePath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.SciChartMvpApp",
+            "README.md");
+        var scichartRunScriptPath = FindRepoPath(
+            "eng",
+            "run-progpu-wpf-scichart.sh");
+        var proGpuDirectXBindingsPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.DirectX",
+            "ProGpuDirectXBindings.cs");
+        var proGpuDirectXDeviceContextPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.DirectX",
+            "ProGpuDirectXDeviceContext.cs");
         var mvpQuickCheckScriptPath = FindRepoPath(
             "eng",
             "progpu-wpf-mvp-quickcheck.sh");
@@ -6887,6 +6930,16 @@ public sealed class WpfManagedProjectGraphTests
         var helloMainWindowCodeBehind = File.ReadAllText(helloMainWindowCodeBehindPath);
         var helloRunScript = File.ReadAllText(helloRunScriptPath);
         var mvpRunScript = File.ReadAllText(mvpRunScriptPath);
+        var scichartProject = File.ReadAllText(scichartProjectPath);
+        var scichartAppXaml = File.ReadAllText(scichartAppXamlPath);
+        var scichartAppCodeBehind = File.ReadAllText(scichartAppCodeBehindPath);
+        var scichartMainWindowXaml = File.ReadAllText(scichartMainWindowXamlPath);
+        var scichartMainWindowCodeBehind = File.ReadAllText(scichartMainWindowCodeBehindPath);
+        var scichartRenderer = File.ReadAllText(scichartRendererPath);
+        var scichartReadme = File.ReadAllText(scichartReadmePath);
+        var scichartRunScript = File.ReadAllText(scichartRunScriptPath);
+        var proGpuDirectXBindings = File.ReadAllText(proGpuDirectXBindingsPath);
+        var proGpuDirectXDeviceContext = File.ReadAllText(proGpuDirectXDeviceContextPath);
         var mvpQuickCheckScript = File.ReadAllText(mvpQuickCheckScriptPath);
         string[] wpfThemeAssemblies =
         [
@@ -6988,6 +7041,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PROGPU_WPF_HELLO_RUN_VALIDATE=0", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_HELLO_LIVE_VALIDATE=0", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("\"${repo_root}/eng/run-progpu-wpf-mvp.sh\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("samples/ProGPU.Wpf.SciChartMvpApp/ProGPU.Wpf.SciChartMvpApp.csproj", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("artifacts/nuget/ProGPU.Wpf.SciChartMvpApp", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_SCICHART_VALIDATE=1", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_SCICHART_RUN_VALIDATE=1", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("Running SciChart MVP SDK app renderer validation", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("Running SciChart MVP SDK app Application.Run validation", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfSdkProvidesSwitchOnlyPackagingSurface", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("dev_package_version=\"${PROGPU_WPF_DEV_PACKAGE_VERSION:-11.0.0-dev}\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("\"${package_output}/${package_id}.${dev_package_version}.nupkg\"", sdkCiScript, StringComparison.Ordinal);
@@ -7946,6 +8005,35 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("logical_width=760", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("logical_height=560", mvpRunScript, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF MVP live geometry validation succeeded", mvpRunScript, StringComparison.Ordinal);
+        Assert.Contains("<Project Sdk=\"ProGPU.Wpf.Sdk/11.0.0-dev\">", scichartProject, StringComparison.Ordinal);
+        Assert.Contains("<TargetFramework>net11.0-windows</TargetFramework>", scichartProject, StringComparison.Ordinal);
+        Assert.Contains("<UseWPF>true</UseWPF>", scichartProject, StringComparison.Ordinal);
+        Assert.Contains("StartupUri=\"MainWindow.xaml\"", scichartAppXaml, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_SCICHART_VALIDATE", scichartAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_SCICHART_RUN_VALIDATE", scichartAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateRunningApplication", scichartAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ChartImage\"", scichartMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ProGPU WPF SciChart MVP", scichartMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ValidateRenderedChart", scichartMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGpuDirectXSciChartRenderContext2D", scichartRenderer, StringComparison.Ordinal);
+        Assert.Contains("ProGpuDirectXSciChartRenderContext3D", scichartRenderer, StringComparison.Ordinal);
+        Assert.Contains("DrawShapedHeatmap", scichartRenderer, StringComparison.Ordinal);
+        Assert.Contains("using var heightsTexture = context.CreateTexture(8, 8, ProGpuDirectXSciChartTextureFormat.Float32)", scichartRenderer, StringComparison.Ordinal);
+        Assert.Contains("DrawHeatmap(context, heightsTexture, gradientTexture)", scichartRenderer, StringComparison.Ordinal);
+        Assert.Contains("context.Flush();", scichartRenderer, StringComparison.Ordinal);
+        Assert.Contains("DrawSurfaceMesh", scichartRenderer, StringComparison.Ordinal);
+        Assert.Contains("DrawPointCloud", scichartRenderer, StringComparison.Ordinal);
+        Assert.Contains("WgpuContext", scichartRenderer, StringComparison.Ordinal);
+        Assert.Contains("SciChart3D", scichartReadme, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_SCICHART_VALIDATE=1", scichartReadme, StringComparison.Ordinal);
+        Assert.Contains("scichart_output=\"${repo_root}/artifacts/bin/ProGPU.Wpf.SciChartMvpApp/Debug/net11.0-windows\"", scichartRunScript, StringComparison.Ordinal);
+        Assert.Contains("apphost_name=\"ProGPU.Wpf.SciChartMvpApp\"", scichartRunScript, StringComparison.Ordinal);
+        Assert.Contains("directx_package=\"${package_output}/ProGPU.DirectX.11.0.0-dev.nupkg\"", scichartRunScript, StringComparison.Ordinal);
+        Assert.Contains("! -f \"${directx_package}\"", scichartRunScript, StringComparison.Ordinal);
+        Assert.Contains("\"${repo_root}/artifacts/nuget/ProGPU.Wpf.SciChartMvpApp\"", scichartRunScript, StringComparison.Ordinal);
+        Assert.Contains("internal string DescribeEntries()", proGpuDirectXBindings, StringComparison.Ordinal);
+        Assert.Contains("GetBackendResourceToken(entry)", proGpuDirectXBindings, StringComparison.Ordinal);
+        Assert.Contains("could not create a pipeline-compatible bind group. Bindings:", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("ValidateRequiredLiveMvpAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveNativeResizeAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SetLiveNativeWindowSize(liveHost, 900, 640)", mvpMainWindowCodeBehind, StringComparison.Ordinal);
@@ -8229,6 +8317,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Assembly silkNetWebGpu = LoadRequiredAssembly(\"Silk.NET.WebGPU\")", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateRetainedOwnerBranchFillsPhysicalTarget(proGpuWpf, proGpuBackend, silkNetWebGpu)", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateRetainedOwnerBranchPreservesLogicalMarkerOrigin(proGpuWpf, proGpuBackend, silkNetWebGpu)", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("GetRequiredType(proGpuBackend, \"ProGPU.Backend.GpuTextureDimension\")", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Enum.Parse(gpuTextureDimensionType, \"Dimension2D\")", smokeAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Invoke(texture, \"ReadPixels\", 0u)", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(proGpuWpf, \"System.Windows.Media.ProGPU.Composition.ProGpuRetainedCompositionCommandSink\")", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Controls;", smokeAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Runtime.InteropServices;", smokeAppCodeBehind, StringComparison.Ordinal);
@@ -10665,6 +10756,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("InvokeObjectDrawRectangle(drawingContext, redBrush, null, rectangle)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PushCurrentDirectory(nativeAssetRoot)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(proGpuScene, \"ProGPU.Scene.DrawingVisual\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetRequiredType(proGpuBackend, \"ProGPU.Backend.GpuTextureDimension\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Enum.Parse(gpuTextureDimensionType, \"Dimension2D\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Invoke(texture, \"ReadPixels\", 0u)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(proGpuWpf, \"System.Windows.Media.ProGPU.Composition.ProGpuRetainedCompositionCommandSink\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(presentationFramework, \"System.Windows.Controls.Border\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(presentationCore, \"System.Windows.Media.SolidColorBrush\")", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -10717,6 +10811,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("InvokeObjectDrawRectangle(drawingContext, redBrush, null, rectangle)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("PushCurrentDirectory(nativeAssetRoot)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(proGpuScene, \"ProGPU.Scene.DrawingVisual\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetRequiredType(proGpuBackend, \"ProGPU.Backend.GpuTextureDimension\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Enum.Parse(gpuTextureDimensionType, \"Dimension2D\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Invoke(texture, \"ReadPixels\", 0u)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(proGpuVector, \"ProGPU.Vector.SolidColorBrush\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(proGpuWpf, \"System.Windows.Media.ProGPU.Composition.ProGpuRetainedCompositionCommandSink\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetRequiredType(presentationFramework, \"System.Windows.Controls.Border\")", runtimeHarnessProgram, StringComparison.Ordinal);

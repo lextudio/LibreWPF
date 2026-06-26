@@ -99,14 +99,14 @@ internal static class SciChartMvpRenderer
         }
 
         var mountain = new ProGpuDirectXSciChartBandVertex[18];
-        var line = new ProGpuDirectXSciChartColorVertex[mountain.Length];
+        var line = new ProGpuDirectXSciChartColoredVertex[mountain.Length];
         for (int i = 0; i < mountain.Length; i++)
         {
             float x = 54 + i * 13.2f;
             float signal = MathF.Sin(i * 0.58f) * 34f + MathF.Cos(i * 0.24f) * 18f;
             float y = 150 - signal;
             mountain[i] = new ProGpuDirectXSciChartBandVertex(x, y, 238);
-            line[i] = new ProGpuDirectXSciChartColorVertex(x, y, 0, 0xFF42C6FF);
+            line[i] = new ProGpuDirectXSciChartColoredVertex(x, y, 0, 0xFF42C6FF);
         }
 
         context.DrawMountainBatch(
@@ -116,23 +116,21 @@ internal static class SciChartMvpRenderer
             context.CreateLinearGradientBrush(0x9335C2FF, 0x182087FF, 90),
             isDigital: false,
             default);
-        context.DrawLinesBatch(
-            line,
-            line.Length,
+        context.DrawLineStrip(
             context.CreatePen(0xFFEDEFF7, 2.25f),
-            isStrips: true,
-            isDigital: false,
-            isDrawNanAsGaps: true,
-            default);
+            line,
+            startIndex: 0,
+            count: line.Length,
+            transform: default);
         using var markerSprite = context.CreateSprite(7, 7);
         markerSprite.SetData(CreateMarkerSprite(7));
-        ProGpuDirectXSciChartColoredSpriteVertex[] markers =
+        ProGpuDirectXSciChartColoredVertex[] markers =
         [
-            new(line[1].X, line[1].Y, 0xFF23B87D),
-            new(line[5].X, line[5].Y, 0xFFFFD166),
-            new(line[9].X, line[9].Y, 0xFFE15759),
-            new(line[13].X, line[13].Y, 0xFF42C6FF),
-            new(line[16].X, line[16].Y, 0xFFB18CFF)
+            new(line[1].X, line[1].Y, 0, 0xFF23B87D),
+            new(line[5].X, line[5].Y, 0, 0xFFFFD166),
+            new(line[9].X, line[9].Y, 0, 0xFFE15759),
+            new(line[13].X, line[13].Y, 0, 0xFF42C6FF),
+            new(line[16].X, line[16].Y, 0, 0xFFB18CFF)
         ];
         context.DrawColoredSprites(
             markerSprite,

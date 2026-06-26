@@ -76,7 +76,28 @@ internal static class SciChart3DBridgeSnapshotRenderer
             ColorArgb = 0xFF42C6FF,
             Normal = new Vector3(0f, 0f, 1f)
         };
+        float[] waterfallHeights =
+        [
+            -0.65f, -0.48f, -0.36f, -0.42f, -0.57f, -0.70f,
+            -0.44f, -0.22f, -0.08f, -0.18f, -0.32f, -0.50f,
+            -0.26f, -0.04f,  0.12f,  0.04f, -0.10f, -0.30f
+        ];
 
+        context.DrawWaterfallDataSeries(
+            waterfallHeights,
+            columns: 6,
+            rows: 3,
+            worldViewProjection,
+            new ProGpuDirectXSciChartWaterfall3DOptions
+            {
+                YRange = new ProGpuDirectXSciChartDoubleRange(-0.75d, 0.22d),
+                BaseY = -0.9f,
+                LowColorArgb = 0xFF1B6CA8,
+                HighColorArgb = 0xFFFFD166,
+                Normal = new Vector3(0f, 0f, 1f)
+            },
+            new Vector3(0.25f, 0.45f, 1f),
+            DxCullMode.None);
         context.DrawXyzDataSeriesLineStrip(
             points,
             worldViewProjection,
@@ -101,7 +122,7 @@ internal static class SciChart3DBridgeSnapshotRenderer
             Width,
             Height,
             pixels,
-            context.LineDraws.Count + context.TriangleStripDraws.Count + context.PointCloudDraws.Count,
+            context.LineDraws.Count + context.TriangleStripDraws.Count + context.PointCloudDraws.Count + context.WaterfallDraws.Count,
             context.ImmediateContext.SubmittedDrawCount,
             CountBrightPixels(pixels));
     }
@@ -118,9 +139,9 @@ internal static class SciChart3DBridgeSnapshotRenderer
             throw new InvalidOperationException("SciChart 3D XYZ bridge produced a bitmap with an invalid stride.");
         }
 
-        if (snapshot.DrawCount < 3 || snapshot.SubmittedDrawCount < 3)
+        if (snapshot.DrawCount < 4 || snapshot.SubmittedDrawCount < 4)
         {
-            throw new InvalidOperationException("Expected SciChart 3D XYZ bridge to submit native line, ribbon, and point draws.");
+            throw new InvalidOperationException("Expected SciChart 3D bridge to submit native waterfall, line, ribbon, and point draws.");
         }
 
         if (snapshot.BrightPixelCount < 40)

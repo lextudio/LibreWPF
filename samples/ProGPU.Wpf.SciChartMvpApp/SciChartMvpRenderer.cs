@@ -68,7 +68,7 @@ internal static class SciChartMvpRenderer
                 context2D.VerticalPixelsDraws.Count +
                 context2D.ShapedHeatmapDraws.Count + context2D.PrimitiveDraws.Count,
             context3D.PointCloudDraws.Count + context3D.LineDraws.Count + context3D.MeshDraws.Count +
-                context3D.TriangleStripDraws.Count + context3D.SurfaceMeshDraws.Count,
+                context3D.TriangleStripDraws.Count + context3D.SurfaceMeshDraws.Count + context3D.WaterfallDraws.Count,
             context2D.ImmediateContext.SubmittedDrawCount + context3D.ImmediateContext.SubmittedDrawCount,
             context2D.ImmediateContext.SubmittedClearCount + context3D.ImmediateContext.SubmittedClearCount,
             $"Backend: GPU-backed DirectX shim, clears {context2D.ImmediateContext.SubmittedClearCount + context3D.ImmediateContext.SubmittedClearCount}");
@@ -309,6 +309,35 @@ internal static class SciChartMvpRenderer
             lightDirection: new Vector3(-0.3f, -0.6f, -1f),
             cullMode: DxCullMode.None);
 
+        const int waterfallColumns = 14;
+        const int waterfallRows = 6;
+        var waterfallHeights = new float[waterfallColumns * waterfallRows];
+        for (int row = 0; row < waterfallRows; row++)
+        {
+            for (int column = 0; column < waterfallColumns; column++)
+            {
+                float normalizedX = (column / (float)(waterfallColumns - 1) - 0.5f) * 2f;
+                waterfallHeights[(row * waterfallColumns) + column] =
+                    -0.58f + (0.11f * row) + (0.24f * MathF.Sin((normalizedX * MathF.PI * 1.35f) + (row * 0.42f)));
+            }
+        }
+
+        context.DrawWaterfallDataSeries(
+            waterfallHeights,
+            waterfallColumns,
+            waterfallRows,
+            worldViewProjection,
+            new ProGpuDirectXSciChartWaterfall3DOptions
+            {
+                YRange = new ProGpuDirectXSciChartDoubleRange(-0.84d, 0.34d),
+                BaseY = -0.86f,
+                LowColorArgb = 0xFF1B6CA8,
+                HighColorArgb = 0xFFFFD166,
+                Normal = new Vector3(0f, 0f, 1f)
+            },
+            new Vector3(0.18f, 0.38f, 1f),
+            DxCullMode.None);
+
         var xyzSeries = SciChart3DBridgeSnapshotRenderer.CreateSamplePoints();
         var xyzOptions = new ProGpuDirectXSciChartXyzSeries3DOptions
         {
@@ -397,7 +426,7 @@ internal static class SciChartMvpSelfTest
             throw new InvalidOperationException("SciChart MVP renderer produced a bitmap with an invalid stride.");
         }
 
-        if (result.TwoDimensionalDraws < 8 || result.ThreeDimensionalDraws < 4)
+        if (result.TwoDimensionalDraws < 8 || result.ThreeDimensionalDraws < 6)
         {
             throw new InvalidOperationException("Expected both 2D and 3D SciChart bridge draws to be recorded.");
         }

@@ -8032,6 +8032,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<PackageReference Include=\"SciChart3D\" Version=\"$(RealSciChartPackageVersion)\" />", scichartProject, StringComparison.Ordinal);
         Assert.Contains("StartupUri=\"MainWindow.xaml\"", scichartAppXaml, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_SCICHART_VALIDATE", scichartAppCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("RealSciChartMvp.ConfigureRuntimeLicenseFromEnvironment()", scichartAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("var realSciChartResult = RealSciChartMvp.Create()", scichartAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("native runtime unavailable", scichartAppCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_SCICHART_RUN_VALIDATE", scichartAppCodeBehind, StringComparison.Ordinal);
@@ -8043,6 +8044,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AttachRealSciChartPackageSurface", scichartMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("XyDataSeries<double, double>", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("XyzDataSeries3D<double>", scichartRealMvp, StringComparison.Ordinal);
+        Assert.Contains("SCICHART_RUNTIME_LICENSE_KEY", scichartRealMvp, StringComparison.Ordinal);
+        Assert.Contains("SciChartSurface.SetRuntimeLicenseKey(key)", scichartRealMvp, StringComparison.Ordinal);
+        Assert.Contains("RealSciChartLicenseStatus", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("FastLineRenderableSeries", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("PointLineRenderableSeries3D", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("AbtLicensingNative", scichartRealMvp, StringComparison.Ordinal);
@@ -8062,6 +8066,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("context3D.LineDraws.Count", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("WgpuContext", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("SciChart3D", scichartReadme, StringComparison.Ordinal);
+        Assert.Contains("SCICHART_RUNTIME_LICENSE_KEY", scichartReadme, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_SCICHART_VALIDATE=1", scichartReadme, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_SCICHART_REAL_PACKAGES=1", scichartReadme, StringComparison.Ordinal);
         Assert.Contains("scichart_output=\"${repo_root}/artifacts/bin/ProGPU.Wpf.SciChartMvpApp/Debug/net11.0-windows\"", scichartRunScript, StringComparison.Ordinal);

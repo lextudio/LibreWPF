@@ -18,14 +18,68 @@ internal sealed record RealSciChartMvpResult(
     int ThreeDimensionalPointCount,
     FrameworkElement View,
     bool CreatedRealControls,
-    string? NativeRuntimeFailure);
+    string? NativeRuntimeFailure,
+    RealSciChartLicenseStatus LicenseStatus);
+
+internal sealed record RealSciChartLicenseStatus(
+    bool Configured,
+    string? EnvironmentVariable,
+    string? Failure);
 
 internal static class RealSciChartMvp
 {
+    internal const string RuntimeLicenseEnvironmentVariable = "SCICHART_RUNTIME_LICENSE_KEY";
+    internal const string LegacyRuntimeLicenseEnvironmentVariable = "PROGPU_WPF_SCICHART_LICENSE_KEY";
+
     private const int SampleCount = 96;
+    private static RealSciChartLicenseStatus? s_licenseStatus;
+
+    internal static RealSciChartLicenseStatus ConfigureRuntimeLicenseFromEnvironment()
+    {
+        if (s_licenseStatus is not null)
+        {
+            return s_licenseStatus;
+        }
+
+        var key = Environment.GetEnvironmentVariable(RuntimeLicenseEnvironmentVariable);
+        var source = RuntimeLicenseEnvironmentVariable;
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            key = Environment.GetEnvironmentVariable(LegacyRuntimeLicenseEnvironmentVariable);
+            source = LegacyRuntimeLicenseEnvironmentVariable;
+        }
+
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            s_licenseStatus = new RealSciChartLicenseStatus(
+                Configured: false,
+                EnvironmentVariable: null,
+                Failure: $"Missing {RuntimeLicenseEnvironmentVariable}.");
+            return s_licenseStatus;
+        }
+
+        try
+        {
+            SciChartSurface.SetRuntimeLicenseKey(key);
+            s_licenseStatus = new RealSciChartLicenseStatus(
+                Configured: true,
+                EnvironmentVariable: source,
+                Failure: null);
+        }
+        catch (Exception ex) when (IsNativeRuntimeFailure(ex))
+        {
+            s_licenseStatus = new RealSciChartLicenseStatus(
+                Configured: false,
+                EnvironmentVariable: source,
+                Failure: ex.GetBaseException().Message);
+        }
+
+        return s_licenseStatus;
+    }
 
     internal static RealSciChartMvpResult Create()
     {
+        var licenseStatus = ConfigureRuntimeLicenseFromEnvironment();
         var dataSeries2D = new XyDataSeries<double, double>();
         for (var i = 0; i < SampleCount; i++)
         {
@@ -39,6 +93,24 @@ internal static class RealSciChartMvp
         {
             var angle = i * Math.PI * 2.0 / (SampleCount - 1);
             dataSeries3D.Append(Math.Cos(angle) * 4.0, Math.Sin(angle * 3.0), Math.Sin(angle) * 4.0, null);
+        }
+
+        if (!licenseStatus.Configured)
+        {
+            var fallback = new TextBlock
+            {
+                Text = $"Real SciChart packages restored and data-series APIs ran, but runtime license setup is unavailable: {licenseStatus.Failure}",
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(8)
+            };
+
+            return new RealSciChartMvpResult(
+                SampleCount,
+                SampleCount,
+                fallback,
+                CreatedRealControls: false,
+                NativeRuntimeFailure: licenseStatus.Failure,
+                licenseStatus);
         }
 
         try
@@ -72,7 +144,13 @@ internal static class RealSciChartMvp
             surface3D.RenderableSeries.Add(lineSeries3D);
 
             var grid = CreateTwoColumnGrid(surface2D, surface3D);
-            return new RealSciChartMvpResult(SampleCount, SampleCount, grid, CreatedRealControls: true, NativeRuntimeFailure: null);
+            return new RealSciChartMvpResult(
+                SampleCount,
+                SampleCount,
+                grid,
+                CreatedRealControls: true,
+                NativeRuntimeFailure: null,
+                licenseStatus);
         }
         catch (Exception ex) when (IsNativeRuntimeFailure(ex))
         {
@@ -88,7 +166,8 @@ internal static class RealSciChartMvp
                 SampleCount,
                 fallback,
                 CreatedRealControls: false,
-                NativeRuntimeFailure: ex.GetBaseException().Message);
+                NativeRuntimeFailure: ex.GetBaseException().Message,
+                licenseStatus);
         }
     }
 
@@ -102,6 +181,11 @@ internal static class RealSciChartMvp
         if (result.CreatedRealControls && result.View is not Grid { Children.Count: 2 })
         {
             throw new InvalidOperationException("Expected real SciChart package MVP to create 2D and 3D chart controls.");
+        }
+
+        if (!result.LicenseStatus.Configured && string.IsNullOrWhiteSpace(result.LicenseStatus.Failure))
+        {
+            throw new InvalidOperationException("Expected unavailable real SciChart license setup to report the reason.");
         }
 
         if (!result.CreatedRealControls && string.IsNullOrWhiteSpace(result.NativeRuntimeFailure))

@@ -13,6 +13,10 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+#if PROGPU_WPF_REAL_SCICHART
+        RealSciChartMvp.ConfigureRuntimeLicenseFromEnvironment();
+#endif
+
         if (Environment.GetEnvironmentVariable("PROGPU_WPF_SCICHART_VALIDATE") == "1")
         {
             SciChartMvpSelfTest.Validate(SciChartMvpRenderer.Render());

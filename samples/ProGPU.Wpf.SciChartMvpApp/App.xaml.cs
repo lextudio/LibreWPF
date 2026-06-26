@@ -16,6 +16,18 @@ public partial class App : Application
         if (Environment.GetEnvironmentVariable("PROGPU_WPF_SCICHART_VALIDATE") == "1")
         {
             SciChartMvpSelfTest.Validate(SciChartMvpRenderer.Render());
+#if PROGPU_WPF_REAL_SCICHART
+            var realSciChartResult = RealSciChartMvp.Create();
+            RealSciChartMvp.Validate(realSciChartResult);
+            if (realSciChartResult.CreatedRealControls)
+            {
+                Console.WriteLine("ProGPU WPF real SciChart package MVP validation succeeded.");
+            }
+            else
+            {
+                Console.WriteLine("ProGPU WPF real SciChart package MVP restored and validated data APIs; native runtime unavailable.");
+            }
+#endif
             Shutdown();
             Console.WriteLine("ProGPU WPF SciChart MVP validation succeeded.");
             return;

@@ -55,6 +55,8 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -89,6 +91,23 @@
                             Stretch="None" />
                     </ScrollViewer>
                 </Border>
+
+                <TextBlock
+                    x:Name="RealSciChartLabel"
+                    Grid.Row="2"
+                    Grid.ColumnSpan="2"
+                    Margin="0,12,0,0"
+                    FontWeight="SemiBold"
+                    Text="Real SciChart package MVP"
+                    Visibility="Collapsed" />
+
+                <ContentControl
+                    x:Name="RealSciChartHost"
+                    Grid.Row="3"
+                    Grid.ColumnSpan="2"
+                    Margin="0,8,0,0"
+                    MinHeight="170"
+                    Visibility="Collapsed" />
             </Grid>
         </Border>
 

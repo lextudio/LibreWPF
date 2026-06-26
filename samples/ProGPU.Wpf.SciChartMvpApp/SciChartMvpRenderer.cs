@@ -65,7 +65,8 @@ internal static class SciChartMvpRenderer
             output,
             context2D.LineBatchDraws.Count + context2D.MountainBatchDraws.Count + context2D.ColumnBatchDraws.Count +
                 context2D.FinancialBatchDraws.Count + context2D.ShapedHeatmapDraws.Count + context2D.PrimitiveDraws.Count,
-            context3D.PointCloudDraws.Count + context3D.LineDraws.Count + context3D.MeshDraws.Count + context3D.SurfaceMeshDraws.Count,
+            context3D.PointCloudDraws.Count + context3D.LineDraws.Count + context3D.MeshDraws.Count +
+                context3D.TriangleStripDraws.Count + context3D.SurfaceMeshDraws.Count,
             context2D.ImmediateContext.SubmittedDrawCount + context3D.ImmediateContext.SubmittedDrawCount,
             context2D.ImmediateContext.SubmittedClearCount + context3D.ImmediateContext.SubmittedClearCount,
             $"Backend: GPU-backed DirectX shim, clears {context2D.ImmediateContext.SubmittedClearCount + context3D.ImmediateContext.SubmittedClearCount}");
@@ -237,6 +238,15 @@ internal static class SciChartMvpRenderer
         ];
         context.DrawLineStrip(trendLine, worldViewProjection, new Vector3(0, 0, -1));
 
+        ProGpuDirectXSciChartVertex3D[] strip =
+        [
+            new(-0.76f, -0.62f, -0.05f, 0, 0, 1, 0x8896F2D7),
+            new(-0.30f, -0.58f,  0.02f, 0, 0, 1, 0x8896F2D7),
+            new(-0.68f, -0.32f,  0.10f, 0, 0, 1, 0x8896F2D7),
+            new(-0.18f, -0.28f,  0.18f, 0, 0, 1, 0x8896F2D7)
+        ];
+        context.DrawTriangleStrip(strip, worldViewProjection, new Vector3(0, 0, -1), DxCullMode.None);
+
         ProGpuDirectXSciChartVertex3D[] points =
         [
             new(-0.82f, 0.64f, 0.12f, 0, 0, 1, 0xFFFFF4B8),
@@ -301,7 +311,7 @@ internal static class SciChartMvpSelfTest
             throw new InvalidOperationException("SciChart MVP renderer produced a bitmap with an invalid stride.");
         }
 
-        if (result.TwoDimensionalDraws < 8 || result.ThreeDimensionalDraws < 3)
+        if (result.TwoDimensionalDraws < 8 || result.ThreeDimensionalDraws < 4)
         {
             throw new InvalidOperationException("Expected both 2D and 3D SciChart bridge draws to be recorded.");
         }

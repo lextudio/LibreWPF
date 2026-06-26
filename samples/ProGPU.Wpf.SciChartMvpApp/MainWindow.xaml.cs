@@ -1,5 +1,6 @@
 using System;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -37,6 +38,10 @@ public partial class MainWindow : Window
         {
             throw new InvalidOperationException("Expected SciChart MVP Image.Source to hold a populated BitmapSource.");
         }
+
+#if PROGPU_WPF_REAL_SCICHART
+        ValidateRealSciChartPackageSurface();
+#endif
     }
 
     private void RenderMvpScene()
@@ -49,6 +54,9 @@ public partial class MainWindow : Window
             StatusText.Text = $"Rendered {result.Width}x{result.Height} ProGPU SciChart MVP surface";
             DrawCountText.Text = $"Draws: {result.SubmittedDrawCount}";
             BackendText.Text = result.BackendSummary;
+#if PROGPU_WPF_REAL_SCICHART
+            AttachRealSciChartPackageSurface();
+#endif
         }
         catch (Exception ex)
         {
@@ -74,4 +82,37 @@ public partial class MainWindow : Window
         bitmap.Freeze();
         return bitmap;
     }
+
+#if PROGPU_WPF_REAL_SCICHART
+    private RealSciChartMvpResult? _realSciChartResult;
+
+    private void AttachRealSciChartPackageSurface()
+    {
+        _realSciChartResult ??= RealSciChartMvp.Create();
+        RealSciChartMvp.Validate(_realSciChartResult);
+        RealSciChartLabel.Visibility = Visibility.Visible;
+        RealSciChartHost.Visibility = Visibility.Visible;
+        RealSciChartHost.Content = _realSciChartResult.View;
+        if (!_realSciChartResult.CreatedRealControls)
+        {
+            BackendText.Text = "Real SciChart native runtime unavailable";
+        }
+    }
+
+    private void ValidateRealSciChartPackageSurface()
+    {
+        AttachRealSciChartPackageSurface();
+        if (RealSciChartHost.Content is not FrameworkElement view || view.Parent != RealSciChartHost)
+        {
+            throw new InvalidOperationException("Expected real SciChart package controls to be hosted by the MVP sample.");
+        }
+    }
+#else
+    private void AttachRealSciChartPackageSurface()
+    {
+        RealSciChartLabel.Visibility = Visibility.Collapsed;
+        RealSciChartHost.Visibility = Visibility.Collapsed;
+        RealSciChartHost.Content = null;
+    }
+#endif
 }

@@ -15,6 +15,11 @@ sdk_package="${package_output}/ProGPU.Wpf.Sdk.11.0.0-dev.nupkg"
 directx_package="${package_output}/ProGPU.DirectX.11.0.0-dev.nupkg"
 scichart_project="${repo_root}/samples/ProGPU.Wpf.SciChartMvpApp/ProGPU.Wpf.SciChartMvpApp.csproj"
 scichart_output="${repo_root}/artifacts/bin/ProGPU.Wpf.SciChartMvpApp/Debug/net11.0-windows"
+scichart_build_args=(-v:minimal)
+
+if [[ "${PROGPU_WPF_SCICHART_REAL_PACKAGES:-0}" == "1" ]]; then
+  scichart_build_args+=("-p:ProGpuWpfUseRealSciChartPackages=true")
+fi
 
 apphost_name="ProGPU.Wpf.SciChartMvpApp"
 case "$(uname -s 2>/dev/null || echo unknown)" in
@@ -44,7 +49,7 @@ rm -rf \
   "${repo_root}/artifacts/nuget/ProGPU.Wpf.SciChartMvpApp"
 
 echo "Building ProGPU WPF SciChart MVP app..."
-"${dotnet}" build "${scichart_project}" -v:minimal
+"${dotnet}" build "${scichart_project}" "${scichart_build_args[@]}"
 
 echo "Launching ProGPU WPF SciChart MVP apphost..."
 (

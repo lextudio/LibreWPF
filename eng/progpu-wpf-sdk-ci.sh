@@ -62,6 +62,7 @@ clean_sdk_smoke_outputs() {
 
   rm -rf \
     "${repo_root}/artifacts/nuget/ProGPU.Wpf.SdkSwitchSmoke" \
+    "${repo_root}/artifacts/nuget/ProGPU.Wpf.HelloApp" \
     "${repo_root}/artifacts/nuget/ProGPU.Wpf.MvpApp" \
     "${repo_root}/artifacts/nuget/ProGPU.Wpf.SciChartMvpApp"
 }

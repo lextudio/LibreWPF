@@ -7042,6 +7042,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("src/ProGPU.Wpf.SdkSwitchRuntimeHarness/ProGPU.Wpf.SdkSwitchRuntimeHarness.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/ProGPU.Wpf.SdkExternalSmokeHarness/ProGPU.Wpf.SdkExternalSmokeHarness.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("artifacts/nuget/ProGPU.Wpf.SdkSwitchSmoke", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("artifacts/nuget/ProGPU.Wpf.HelloApp", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("samples/ProGPU.Wpf.MvpApp/ProGPU.Wpf.MvpApp.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("artifacts/nuget/ProGPU.Wpf.MvpApp", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("apphost_name()", sdkCiScript, StringComparison.Ordinal);
@@ -8048,6 +8049,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGpuDirectXSciChartRenderContext2D", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("ProGpuDirectXSciChartRenderContext3D", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("DrawShapedHeatmap", scichartRenderer, StringComparison.Ordinal);
+        Assert.Contains("DrawColoredSprites", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("using var heightsTexture = context.CreateTexture(8, 8, ProGpuDirectXSciChartTextureFormat.Float32)", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("DrawHeatmap(context, heightsTexture, gradientTexture)", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("context.Flush();", scichartRenderer, StringComparison.Ordinal);
@@ -8055,6 +8057,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DrawLineStrip", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("DrawTriangleStrip", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("DrawPointCloud", scichartRenderer, StringComparison.Ordinal);
+        Assert.Contains("context2D.ColoredSpriteDraws.Count", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("context3D.TriangleStripDraws.Count", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("context3D.LineDraws.Count", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("WgpuContext", scichartRenderer, StringComparison.Ordinal);
@@ -8070,6 +8073,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"${repo_root}/artifacts/nuget/ProGPU.Wpf.SciChartMvpApp\"", scichartRunScript, StringComparison.Ordinal);
         Assert.Contains("public sealed record ProGpuDirectXSciChartLine3DDraw", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public sealed record ProGpuDirectXSciChartTriangleStrip3DDraw", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("public sealed record ProGpuDirectXSciChartColoredSpriteDraw", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("public void DrawColoredSprites(", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public void DrawLineList(", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public void DrawLineStrip(", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public void DrawTriangleStrip(", proGpuDirectXSciChart, StringComparison.Ordinal);

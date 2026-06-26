@@ -64,7 +64,8 @@ internal static class SciChartMvpRenderer
             height,
             output,
             context2D.LineBatchDraws.Count + context2D.MountainBatchDraws.Count + context2D.ColumnBatchDraws.Count +
-                context2D.FinancialBatchDraws.Count + context2D.ShapedHeatmapDraws.Count + context2D.PrimitiveDraws.Count,
+                context2D.ColoredSpriteDraws.Count + context2D.FinancialBatchDraws.Count +
+                context2D.ShapedHeatmapDraws.Count + context2D.PrimitiveDraws.Count,
             context3D.PointCloudDraws.Count + context3D.LineDraws.Count + context3D.MeshDraws.Count +
                 context3D.TriangleStripDraws.Count + context3D.SurfaceMeshDraws.Count,
             context2D.ImmediateContext.SubmittedDrawCount + context3D.ImmediateContext.SubmittedDrawCount,
@@ -123,6 +124,24 @@ internal static class SciChartMvpRenderer
             isDigital: false,
             isDrawNanAsGaps: true,
             default);
+        using var markerSprite = context.CreateSprite(7, 7);
+        markerSprite.SetData(CreateMarkerSprite(7));
+        ProGpuDirectXSciChartColoredSpriteVertex[] markers =
+        [
+            new(line[1].X, line[1].Y, 0xFF23B87D),
+            new(line[5].X, line[5].Y, 0xFFFFD166),
+            new(line[9].X, line[9].Y, 0xFFE15759),
+            new(line[13].X, line[13].Y, 0xFF42C6FF),
+            new(line[16].X, line[16].Y, 0xFFB18CFF)
+        ];
+        context.DrawColoredSprites(
+            markerSprite,
+            markers,
+            startIndex: 0,
+            count: markers.Length,
+            transform: default,
+            centeredAmount: 0.5f,
+            filtering: ProGpuDirectXSciChartTextureFiltering.Point);
 
         ProGpuDirectXSciChartColumnVertex[] columns =
         [
@@ -146,6 +165,26 @@ internal static class SciChartMvpRenderer
         using var gradientTexture = context.CreateTexture(5, 1);
         DrawHeatmap(context, heightsTexture, gradientTexture);
         context.Flush();
+    }
+
+    private static int[] CreateMarkerSprite(int size)
+    {
+        var pixels = new int[checked(size * size)];
+        var center = (size - 1) * 0.5f;
+        var radius = size * 0.48f;
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                var dx = x - center;
+                var dy = y - center;
+                pixels[(y * size) + x] = (dx * dx) + (dy * dy) <= radius * radius
+                    ? unchecked((int)0xFFFFFFFF)
+                    : 0;
+            }
+        }
+
+        return pixels;
     }
 
     private static void DrawHeatmap(

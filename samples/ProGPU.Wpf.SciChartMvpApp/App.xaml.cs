@@ -29,7 +29,7 @@ public partial class App : Application
             }
             else
             {
-                Console.WriteLine("ProGPU WPF real SciChart package MVP restored and validated data APIs; native runtime unavailable.");
+                Console.WriteLine($"ProGPU WPF real SciChart package MVP restored and validated data APIs; native runtime unavailable. Native dependencies: {realSciChartResult.NativeDependencySummary}.");
             }
 #endif
             Shutdown();

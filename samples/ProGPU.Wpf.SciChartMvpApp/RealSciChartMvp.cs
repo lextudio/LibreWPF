@@ -3,6 +3,7 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using ProGPU.DirectX;
 using SciChart.Charting.Model.DataSeries;
 using SciChart.Charting.Visuals;
 using SciChart.Charting.Visuals.Axes;
@@ -19,6 +20,7 @@ internal sealed record RealSciChartMvpResult(
     int ThreeDimensionalPointCount,
     bool RenderedNativeBridgeSnapshot,
     int NativeBridgeDrawCount,
+    string NativeDependencySummary,
     FrameworkElement View,
     bool CreatedRealControls,
     string? NativeRuntimeFailure,
@@ -83,6 +85,7 @@ internal static class RealSciChartMvp
     internal static RealSciChartMvpResult Create()
     {
         var licenseStatus = ConfigureRuntimeLicenseFromEnvironment();
+        var nativeDependencySummary = DescribeNativeDependencies();
         var dataSeries2D = new XyDataSeries<double, double>();
         for (var i = 0; i < SampleCount; i++)
         {
@@ -104,7 +107,7 @@ internal static class RealSciChartMvp
         if (!licenseStatus.Configured)
         {
             var fallback = CreateNativeBridgeFallbackView(
-                $"Real SciChart packages restored and data-series APIs ran, but runtime license setup is unavailable: {licenseStatus.Failure}",
+                $"Real SciChart packages restored and data-series APIs ran, but runtime license setup is unavailable: {licenseStatus.Failure}. Native dependencies: {nativeDependencySummary}.",
                 bridgeSnapshot3D);
 
             return new RealSciChartMvpResult(
@@ -112,6 +115,7 @@ internal static class RealSciChartMvp
                 SampleCount,
                 true,
                 bridgeSnapshot3D.DrawCount,
+                nativeDependencySummary,
                 fallback,
                 CreatedRealControls: false,
                 NativeRuntimeFailure: licenseStatus.Failure,
@@ -154,6 +158,7 @@ internal static class RealSciChartMvp
                 SampleCount,
                 true,
                 bridgeSnapshot3D.DrawCount,
+                nativeDependencySummary,
                 grid,
                 CreatedRealControls: true,
                 NativeRuntimeFailure: null,
@@ -162,7 +167,7 @@ internal static class RealSciChartMvp
         catch (Exception ex) when (IsNativeRuntimeFailure(ex))
         {
             var fallback = CreateNativeBridgeFallbackView(
-                $"Real SciChart packages restored and data-series APIs ran, but native runtime is unavailable: {ex.GetType().Name}",
+                $"Real SciChart packages restored and data-series APIs ran, but native runtime is unavailable: {ex.GetType().Name}. Native dependencies: {nativeDependencySummary}.",
                 bridgeSnapshot3D);
 
             return new RealSciChartMvpResult(
@@ -170,6 +175,7 @@ internal static class RealSciChartMvp
                 SampleCount,
                 true,
                 bridgeSnapshot3D.DrawCount,
+                nativeDependencySummary,
                 fallback,
                 CreatedRealControls: false,
                 NativeRuntimeFailure: ex.GetBaseException().Message,
@@ -199,10 +205,24 @@ internal static class RealSciChartMvp
             throw new InvalidOperationException("Expected unavailable real SciChart license setup to report the reason.");
         }
 
+        if (string.IsNullOrWhiteSpace(result.NativeDependencySummary))
+        {
+            throw new InvalidOperationException("Expected real SciChart native dependencies to be reported explicitly.");
+        }
+
         if (!result.CreatedRealControls && string.IsNullOrWhiteSpace(result.NativeRuntimeFailure))
         {
             throw new InvalidOperationException("Expected real SciChart native-runtime failures to be reported explicitly.");
         }
+    }
+
+    private static string DescribeNativeDependencies()
+    {
+        var report = ProGpuDirectXNativeDependencyInspector.Inspect(
+            typeof(SciChartSurface).Assembly,
+            typeof(SciChart3DSurface).Assembly);
+
+        return report.DescribeModules();
     }
 
     private static Grid CreateTwoColumnGrid(FrameworkElement surface2D, FrameworkElement surface3D)

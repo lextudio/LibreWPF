@@ -65,6 +65,7 @@ internal static class SciChartMvpRenderer
             output,
             context2D.LineBatchDraws.Count + context2D.MountainBatchDraws.Count + context2D.ColumnBatchDraws.Count +
                 context2D.ColoredSpriteDraws.Count + context2D.FinancialBatchDraws.Count +
+                context2D.VerticalPixelsDraws.Count +
                 context2D.ShapedHeatmapDraws.Count + context2D.PrimitiveDraws.Count,
             context3D.PointCloudDraws.Count + context3D.LineDraws.Count + context3D.MeshDraws.Count +
                 context3D.TriangleStripDraws.Count + context3D.SurfaceMeshDraws.Count,
@@ -159,6 +160,7 @@ internal static class SciChartMvpRenderer
             new(428, 92, 58, 126, 74, 0xFF23B87D, 0xFF8BF2D3)
         ];
         context.DrawCandlesBatch(candles, candles.Length, width: 18, default);
+        DrawVerticalPixelStrips(context);
         using var heightsTexture = context.CreateTexture(8, 8, ProGpuDirectXSciChartTextureFormat.Float32);
         using var gradientTexture = context.CreateTexture(5, 1);
         DrawHeatmap(context, heightsTexture, gradientTexture);
@@ -183,6 +185,48 @@ internal static class SciChartMvpRenderer
         }
 
         return pixels;
+    }
+
+    private static void DrawVerticalPixelStrips(ProGpuDirectXSciChartRenderContext2D context)
+    {
+        int[] gradientPixels =
+        [
+            unchecked((int)0xFF243A8F),
+            unchecked((int)0xFF1668C7),
+            unchecked((int)0xFF20B486),
+            unchecked((int)0xFFFFD166),
+            unchecked((int)0xFFE15759),
+            unchecked((int)0xFFFF9F1C),
+            unchecked((int)0xFFED6A5A),
+            unchecked((int)0xFFB24C63)
+        ];
+        context.DrawPixelsVertically(
+            xLeft: 292,
+            xRight: 304,
+            yStartBottom: 254,
+            yEndTop: 34,
+            gradientPixels,
+            opacity: 0.92d,
+            yAxisIsFlipped: false);
+
+        int[] yCoordinates = [34, 68, 102, 136, 176, 214, 254];
+        int[] runColors =
+        [
+            unchecked((int)0xFF42C6FF),
+            unchecked((int)0xFF23B87D),
+            unchecked((int)0xFFFFD166),
+            unchecked((int)0xFFE15759),
+            unchecked((int)0xFFB18CFF),
+            unchecked((int)0xFF5AC8FA)
+        ];
+        context.DrawPixelsVertically(
+            xLeft: 306,
+            xRight: 312,
+            yCoordinates,
+            runColors,
+            opacity: 0.86d,
+            isUniform: false,
+            yAxisIsFlipped: true);
     }
 
     private static void DrawHeatmap(

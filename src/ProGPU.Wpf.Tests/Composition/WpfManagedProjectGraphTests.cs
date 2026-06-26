@@ -8054,6 +8054,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGpuDirectXSciChartRenderContext3D", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("DrawShapedHeatmap", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("DrawColoredSprites", scichartRenderer, StringComparison.Ordinal);
+        Assert.Contains("DrawPixelsVertically", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("using var heightsTexture = context.CreateTexture(8, 8, ProGpuDirectXSciChartTextureFormat.Float32)", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("DrawHeatmap(context, heightsTexture, gradientTexture)", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("context.Flush();", scichartRenderer, StringComparison.Ordinal);
@@ -8062,6 +8063,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DrawTriangleStrip", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("DrawPointCloud", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("context2D.ColoredSpriteDraws.Count", scichartRenderer, StringComparison.Ordinal);
+        Assert.Contains("context2D.VerticalPixelsDraws.Count", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("context3D.TriangleStripDraws.Count", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("context3D.LineDraws.Count", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("WgpuContext", scichartRenderer, StringComparison.Ordinal);
@@ -8079,9 +8081,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public sealed record ProGpuDirectXSciChartLine3DDraw", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public sealed record ProGpuDirectXSciChartTriangleStrip3DDraw", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public sealed record ProGpuDirectXSciChartColoredSpriteDraw", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("public sealed record ProGpuDirectXSciChartVerticalPixelsDraw", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public readonly record struct ProGpuDirectXSciChartColoredVertex", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public void DrawLineStrip(", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public void DrawColoredSprites(", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("public void DrawPixelsVertically(", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("DrawInstanced(6, submittedInstanceCount)", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("SciChart Instanced Sprite Pipeline", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public void DrawLineList(", proGpuDirectXSciChart, StringComparison.Ordinal);

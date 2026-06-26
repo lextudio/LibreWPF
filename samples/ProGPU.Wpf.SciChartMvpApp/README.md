@@ -2,6 +2,8 @@
 
 This is the first executable SciChart-focused SDK smoke lane. It uses the normal `ProGPU.Wpf.Sdk` project shape and renders Visual Xccelerator-style 2D and 3D chart primitives through the reusable `ProGPU.DirectX` SciChart bridge into a WPF `WriteableBitmap`.
 
+The 3D panel exercises native surface-mesh, point-cloud, and line-strip draw paths so future SciChart3D axes, grids, and line-series adapters can land in `ProGPU.DirectX` instead of managed WPF bitmap fallbacks.
+
 The sample intentionally does not reference the commercial SciChart packages yet. The local workspace does not include licensed SciChart assemblies, so the current MVP validates the ProGPU-side render context that a future binary adapter can call. Public package discovery for the real integration lane currently points at `SciChart` and `SciChart3D` version `9.0.0.29196`.
 
 Run from the repository root:

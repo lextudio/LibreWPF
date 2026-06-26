@@ -6842,6 +6842,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.DirectX",
             "ProGpuDirectXBindings.cs");
+        var proGpuDirectXSciChartPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.DirectX",
+            "ProGpuDirectXSciChart.cs");
         var proGpuDirectXDeviceContextPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -6939,6 +6945,7 @@ public sealed class WpfManagedProjectGraphTests
         var scichartReadme = File.ReadAllText(scichartReadmePath);
         var scichartRunScript = File.ReadAllText(scichartRunScriptPath);
         var proGpuDirectXBindings = File.ReadAllText(proGpuDirectXBindingsPath);
+        var proGpuDirectXSciChart = File.ReadAllText(proGpuDirectXSciChartPath);
         var proGpuDirectXDeviceContext = File.ReadAllText(proGpuDirectXDeviceContextPath);
         var mvpQuickCheckScript = File.ReadAllText(mvpQuickCheckScriptPath);
         string[] wpfThemeAssemblies =
@@ -8022,7 +8029,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DrawHeatmap(context, heightsTexture, gradientTexture)", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("context.Flush();", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("DrawSurfaceMesh", scichartRenderer, StringComparison.Ordinal);
+        Assert.Contains("DrawLineStrip", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("DrawPointCloud", scichartRenderer, StringComparison.Ordinal);
+        Assert.Contains("context3D.LineDraws.Count", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("WgpuContext", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("SciChart3D", scichartReadme, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_SCICHART_VALIDATE=1", scichartReadme, StringComparison.Ordinal);
@@ -8031,6 +8040,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("directx_package=\"${package_output}/ProGPU.DirectX.11.0.0-dev.nupkg\"", scichartRunScript, StringComparison.Ordinal);
         Assert.Contains("! -f \"${directx_package}\"", scichartRunScript, StringComparison.Ordinal);
         Assert.Contains("\"${repo_root}/artifacts/nuget/ProGPU.Wpf.SciChartMvpApp\"", scichartRunScript, StringComparison.Ordinal);
+        Assert.Contains("public sealed record ProGpuDirectXSciChartLine3DDraw", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("public void DrawLineList(", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("public void DrawLineStrip(", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("DxPrimitiveTopology.LineStrip", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("internal string DescribeEntries()", proGpuDirectXBindings, StringComparison.Ordinal);
         Assert.Contains("GetBackendResourceToken(entry)", proGpuDirectXBindings, StringComparison.Ordinal);
         Assert.Contains("could not create a pipeline-compatible bind group. Bindings:", proGpuDirectXDeviceContext, StringComparison.Ordinal);

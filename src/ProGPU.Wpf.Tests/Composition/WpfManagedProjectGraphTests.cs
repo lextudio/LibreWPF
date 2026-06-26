@@ -6834,6 +6834,10 @@ public sealed class WpfManagedProjectGraphTests
             "samples",
             "ProGPU.Wpf.SciChartMvpApp",
             "SciChartMvpRenderer.cs");
+        var scichart3DBridgeSnapshotRendererPath = FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.SciChartMvpApp",
+            "SciChart3DBridgeSnapshotRenderer.cs");
         var scichartRealMvpPath = FindRepoPath(
             "samples",
             "ProGPU.Wpf.SciChartMvpApp",
@@ -6952,6 +6956,7 @@ public sealed class WpfManagedProjectGraphTests
         var scichartMainWindowXaml = File.ReadAllText(scichartMainWindowXamlPath);
         var scichartMainWindowCodeBehind = File.ReadAllText(scichartMainWindowCodeBehindPath);
         var scichartRenderer = File.ReadAllText(scichartRendererPath);
+        var scichart3DBridgeSnapshotRenderer = File.ReadAllText(scichart3DBridgeSnapshotRendererPath);
         var scichartRealMvp = File.ReadAllText(scichartRealMvpPath);
         var scichartReadme = File.ReadAllText(scichartReadmePath);
         var scichartRunScript = File.ReadAllText(scichartRunScriptPath);
@@ -8047,6 +8052,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SCICHART_RUNTIME_LICENSE_KEY", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("SciChartSurface.SetRuntimeLicenseKey(key)", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("RealSciChartLicenseStatus", scichartRealMvp, StringComparison.Ordinal);
+        Assert.Contains("SciChart3DBridgeSnapshotRenderer.CreateSamplePoints(SampleCount)", scichartRealMvp, StringComparison.Ordinal);
+        Assert.Contains("SciChart3DBridgeSnapshotRenderer.Render(bridgePoints3D)", scichartRealMvp, StringComparison.Ordinal);
+        Assert.Contains("Expected real SciChart 3D package data to render through the ProGPU DirectX/WebGPU bridge.", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("FastLineRenderableSeries", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("PointLineRenderableSeries3D", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("AbtLicensingNative", scichartRealMvp, StringComparison.Ordinal);
@@ -8059,9 +8067,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DrawHeatmap(context, heightsTexture, gradientTexture)", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("context.Flush();", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("DrawSurfaceMesh", scichartRenderer, StringComparison.Ordinal);
-        Assert.Contains("DrawLineStrip", scichartRenderer, StringComparison.Ordinal);
+        Assert.Contains("DrawXyzDataSeriesLineStrip", scichartRenderer, StringComparison.Ordinal);
+        Assert.Contains("DrawXyzDataSeriesRibbon", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("DrawTriangleStrip", scichartRenderer, StringComparison.Ordinal);
-        Assert.Contains("DrawPointCloud", scichartRenderer, StringComparison.Ordinal);
+        Assert.Contains("DrawXyzDataSeriesPointCloud", scichartRenderer, StringComparison.Ordinal);
+        Assert.Contains("SciChart3DBridgeSnapshotRenderer.CreateSamplePoints()", scichartRenderer, StringComparison.Ordinal);
+        Assert.Contains("SciChart3DBridgeSnapshotRenderer", scichart3DBridgeSnapshotRenderer, StringComparison.Ordinal);
+        Assert.Contains("ProGpuDirectXSciChartXyzPoint3D[] CreateSamplePoints", scichart3DBridgeSnapshotRenderer, StringComparison.Ordinal);
+        Assert.Contains("DrawXyzDataSeriesLineStrip", scichart3DBridgeSnapshotRenderer, StringComparison.Ordinal);
+        Assert.Contains("DrawXyzDataSeriesRibbon", scichart3DBridgeSnapshotRenderer, StringComparison.Ordinal);
+        Assert.Contains("DrawXyzDataSeriesPointCloud", scichart3DBridgeSnapshotRenderer, StringComparison.Ordinal);
+        Assert.Contains("Expected SciChart 3D XYZ bridge to submit native line, ribbon, and point draws.", scichart3DBridgeSnapshotRenderer, StringComparison.Ordinal);
         Assert.Contains("context2D.ColoredSpriteDraws.Count", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("context2D.VerticalPixelsDraws.Count", scichartRenderer, StringComparison.Ordinal);
         Assert.Contains("context3D.TriangleStripDraws.Count", scichartRenderer, StringComparison.Ordinal);
@@ -8083,7 +8099,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public sealed record ProGpuDirectXSciChartColoredSpriteDraw", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public sealed record ProGpuDirectXSciChartVerticalPixelsDraw", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public readonly record struct ProGpuDirectXSciChartColoredVertex", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("public readonly record struct ProGpuDirectXSciChartXyzPoint3D", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("public sealed record ProGpuDirectXSciChartXyzSeries3DOptions", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public void DrawLineStrip(", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("public void DrawXyzDataSeriesLineStrip(", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("public void DrawXyzDataSeriesRibbon(", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("public void DrawXyzDataSeriesPointCloud(", proGpuDirectXSciChart, StringComparison.Ordinal);
+        Assert.Contains("CreateXyzSeriesVertices", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public void DrawColoredSprites(", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public void DrawPixelsVertically(", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("DrawInstanced(6, submittedInstanceCount)", proGpuDirectXSciChart, StringComparison.Ordinal);

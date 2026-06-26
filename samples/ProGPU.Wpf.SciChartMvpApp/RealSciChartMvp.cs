@@ -2,6 +2,7 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using SciChart.Charting.Model.DataSeries;
 using SciChart.Charting.Visuals;
 using SciChart.Charting.Visuals.Axes;
@@ -16,6 +17,8 @@ namespace ProGPU.Wpf.SciChartMvpApp;
 internal sealed record RealSciChartMvpResult(
     int TwoDimensionalPointCount,
     int ThreeDimensionalPointCount,
+    bool RenderedNativeBridgeSnapshot,
+    int NativeBridgeDrawCount,
     FrameworkElement View,
     bool CreatedRealControls,
     string? NativeRuntimeFailure,
@@ -89,24 +92,26 @@ internal static class RealSciChartMvp
         }
 
         var dataSeries3D = new XyzDataSeries3D<double>();
-        for (var i = 0; i < SampleCount; i++)
+        var bridgePoints3D = SciChart3DBridgeSnapshotRenderer.CreateSamplePoints(SampleCount);
+        foreach (var point in bridgePoints3D)
         {
-            var angle = i * Math.PI * 2.0 / (SampleCount - 1);
-            dataSeries3D.Append(Math.Cos(angle) * 4.0, Math.Sin(angle * 3.0), Math.Sin(angle) * 4.0, null);
+            dataSeries3D.Append(point.X, point.Y, point.Z, null);
         }
+
+        var bridgeSnapshot3D = SciChart3DBridgeSnapshotRenderer.Render(bridgePoints3D);
+        SciChart3DBridgeSnapshotRenderer.Validate(bridgeSnapshot3D);
 
         if (!licenseStatus.Configured)
         {
-            var fallback = new TextBlock
-            {
-                Text = $"Real SciChart packages restored and data-series APIs ran, but runtime license setup is unavailable: {licenseStatus.Failure}",
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(8)
-            };
+            var fallback = CreateNativeBridgeFallbackView(
+                $"Real SciChart packages restored and data-series APIs ran, but runtime license setup is unavailable: {licenseStatus.Failure}",
+                bridgeSnapshot3D);
 
             return new RealSciChartMvpResult(
                 SampleCount,
                 SampleCount,
+                true,
+                bridgeSnapshot3D.DrawCount,
                 fallback,
                 CreatedRealControls: false,
                 NativeRuntimeFailure: licenseStatus.Failure,
@@ -147,6 +152,8 @@ internal static class RealSciChartMvp
             return new RealSciChartMvpResult(
                 SampleCount,
                 SampleCount,
+                true,
+                bridgeSnapshot3D.DrawCount,
                 grid,
                 CreatedRealControls: true,
                 NativeRuntimeFailure: null,
@@ -154,16 +161,15 @@ internal static class RealSciChartMvp
         }
         catch (Exception ex) when (IsNativeRuntimeFailure(ex))
         {
-            var fallback = new TextBlock
-            {
-                Text = $"Real SciChart packages restored and data-series APIs ran, but native runtime is unavailable: {ex.GetType().Name}",
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(8)
-            };
+            var fallback = CreateNativeBridgeFallbackView(
+                $"Real SciChart packages restored and data-series APIs ran, but native runtime is unavailable: {ex.GetType().Name}",
+                bridgeSnapshot3D);
 
             return new RealSciChartMvpResult(
                 SampleCount,
                 SampleCount,
+                true,
+                bridgeSnapshot3D.DrawCount,
                 fallback,
                 CreatedRealControls: false,
                 NativeRuntimeFailure: ex.GetBaseException().Message,
@@ -176,6 +182,11 @@ internal static class RealSciChartMvp
         if (result.TwoDimensionalPointCount < SampleCount || result.ThreeDimensionalPointCount < SampleCount)
         {
             throw new InvalidOperationException("Expected real SciChart package data series to contain the MVP sample points.");
+        }
+
+        if (!result.RenderedNativeBridgeSnapshot || result.NativeBridgeDrawCount < 2)
+        {
+            throw new InvalidOperationException("Expected real SciChart 3D package data to render through the ProGPU DirectX/WebGPU bridge.");
         }
 
         if (result.CreatedRealControls && result.View is not Grid { Children.Count: 2 })
@@ -206,6 +217,28 @@ internal static class RealSciChartMvp
         grid.Children.Add(surface2D);
         grid.Children.Add(surface3D);
         return grid;
+    }
+
+    private static FrameworkElement CreateNativeBridgeFallbackView(string message, SciChart3DBridgeSnapshot bridgeSnapshot)
+    {
+        var stackPanel = new StackPanel
+        {
+            Margin = new Thickness(8)
+        };
+        stackPanel.Children.Add(new TextBlock
+        {
+            Text = message,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 0, 0, 8)
+        });
+        stackPanel.Children.Add(new Image
+        {
+            Source = SciChart3DBridgeSnapshotRenderer.CreateBitmap(bridgeSnapshot),
+            Width = bridgeSnapshot.Width,
+            Height = bridgeSnapshot.Height,
+            Stretch = Stretch.None
+        });
+        return stackPanel;
     }
 
     private static bool IsNativeRuntimeFailure(Exception ex)

@@ -309,15 +309,24 @@ internal static class SciChartMvpRenderer
             lightDirection: new Vector3(-0.3f, -0.6f, -1f),
             cullMode: DxCullMode.None);
 
-        ProGpuDirectXSciChartVertex3D[] trendLine =
-        [
-            new(-0.88f, -0.44f, 0.14f, 0, 0, 1, 0xFF78DCE8),
-            new(-0.46f, -0.24f, 0.18f, 0, 0, 1, 0xFF78DCE8),
-            new(-0.06f, -0.02f, 0.23f, 0, 0, 1, 0xFF78DCE8),
-            new( 0.38f,  0.18f, 0.28f, 0, 0, 1, 0xFF78DCE8),
-            new( 0.84f,  0.34f, 0.31f, 0, 0, 1, 0xFF78DCE8)
-        ];
-        context.DrawLineStrip(trendLine, worldViewProjection, new Vector3(0, 0, -1));
+        var xyzSeries = SciChart3DBridgeSnapshotRenderer.CreateSamplePoints();
+        var xyzOptions = new ProGpuDirectXSciChartXyzSeries3DOptions
+        {
+            ColorArgb = 0xFF78DCE8,
+            Normal = new Vector3(0, 0, 1)
+        };
+        context.DrawXyzDataSeriesLineStrip(
+            xyzSeries,
+            worldViewProjection,
+            xyzOptions,
+            new Vector3(0, 0, 1));
+        context.DrawXyzDataSeriesRibbon(
+            xyzSeries,
+            worldViewProjection,
+            halfThickness: 0.028f,
+            xyzOptions with { ColorArgb = 0xCC78DCE8 },
+            new Vector3(0, 0, 1),
+            DxCullMode.None);
 
         ProGpuDirectXSciChartVertex3D[] strip =
         [
@@ -328,15 +337,11 @@ internal static class SciChartMvpRenderer
         ];
         context.DrawTriangleStrip(strip, worldViewProjection, new Vector3(0, 0, -1), DxCullMode.None);
 
-        ProGpuDirectXSciChartVertex3D[] points =
-        [
-            new(-0.82f, 0.64f, 0.12f, 0, 0, 1, 0xFFFFF4B8),
-            new(-0.48f, 0.58f, 0.26f, 0, 0, 1, 0xFFFFF4B8),
-            new(-0.12f, 0.72f, 0.05f, 0, 0, 1, 0xFFFFF4B8),
-            new(0.28f, 0.54f, 0.18f, 0, 0, 1, 0xFFFFF4B8),
-            new(0.64f, 0.68f, 0.32f, 0, 0, 1, 0xFFFFF4B8)
-        ];
-        context.DrawPointCloud(points, Matrix4x4.Identity, new Vector3(0, 0, -1));
+        context.DrawXyzDataSeriesPointCloud(
+            xyzSeries,
+            worldViewProjection,
+            xyzOptions with { ColorArgb = 0xFFFFF4B8 },
+            new Vector3(0, 0, 1));
         context.Flush();
     }
 

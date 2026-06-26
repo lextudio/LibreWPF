@@ -6867,6 +6867,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.DirectX",
             "ProGpuDirectXNativeDependencyInspector.cs");
+        var proGpuDirectXNativeCompatibilityPlanPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.DirectX",
+            "ProGpuDirectXNativeCompatibilityPlan.cs");
         var proGpuDirectXDeviceContextPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -6969,6 +6975,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuDirectXBindings = File.ReadAllText(proGpuDirectXBindingsPath);
         var proGpuDirectXSciChart = File.ReadAllText(proGpuDirectXSciChartPath);
         var proGpuDirectXNativeDependencyInspector = File.ReadAllText(proGpuDirectXNativeDependencyInspectorPath);
+        var proGpuDirectXNativeCompatibilityPlan = File.ReadAllText(proGpuDirectXNativeCompatibilityPlanPath);
         var proGpuDirectXDeviceContext = File.ReadAllText(proGpuDirectXDeviceContextPath);
         var mvpQuickCheckScript = File.ReadAllText(mvpQuickCheckScriptPath);
         string[] wpfThemeAssemblies =
@@ -8054,14 +8061,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGPU WPF SciChart MVP", scichartMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ValidateRenderedChart", scichartMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AttachRealSciChartPackageSurface", scichartMainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("NativeDependencySummary", scichartMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("NativeCompatibilitySummary", scichartMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("XyDataSeries<double, double>", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("XyzDataSeries3D<double>", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("SCICHART_RUNTIME_LICENSE_KEY", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("SciChartSurface.SetRuntimeLicenseKey(key)", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("RealSciChartLicenseStatus", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("NativeDependencySummary", scichartRealMvp, StringComparison.Ordinal);
+        Assert.Contains("NativeCompatibilitySummary", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("ProGpuDirectXNativeDependencyInspector.Inspect", scichartRealMvp, StringComparison.Ordinal);
+        Assert.Contains("ProGpuDirectXNativeCompatibilityPlanner.Create", scichartRealMvp, StringComparison.Ordinal);
+        Assert.Contains("plan.DescribeRequiredActions()", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("typeof(SciChartSurface).Assembly", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("typeof(SciChart3DSurface).Assembly", scichartRealMvp, StringComparison.Ordinal);
         Assert.Contains("SciChart3DBridgeSnapshotRenderer.CreateSamplePoints(SampleCount)", scichartRealMvp, StringComparison.Ordinal);
@@ -8114,6 +8124,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DllImportAttribute", proGpuDirectXNativeDependencyInspector, StringComparison.Ordinal);
         Assert.Contains("ReflectionTypeLoadException", proGpuDirectXNativeDependencyInspector, StringComparison.Ordinal);
         Assert.Contains("AssemblyString", proGpuDirectXNativeDependencyInspector, StringComparison.Ordinal);
+        Assert.Contains("public static class ProGpuDirectXNativeCompatibilityPlanner", proGpuDirectXNativeCompatibilityPlan, StringComparison.Ordinal);
+        Assert.Contains("ProGpuDirectXNativeCompatibilityAction.ImplementProGpuNativeFacade", proGpuDirectXNativeCompatibilityPlan, StringComparison.Ordinal);
+        Assert.Contains("ProGpuDirectXNativeCompatibilityAction.ImplementHostOsAbstraction", proGpuDirectXNativeCompatibilityPlan, StringComparison.Ordinal);
+        Assert.Contains("SciChartVisualXccelerator", proGpuDirectXNativeCompatibilityPlan, StringComparison.Ordinal);
         Assert.Contains("public sealed record ProGpuDirectXSciChartLine3DDraw", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public sealed record ProGpuDirectXSciChartTriangleStrip3DDraw", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("public sealed record ProGpuDirectXSciChartColoredSpriteDraw", proGpuDirectXSciChart, StringComparison.Ordinal);

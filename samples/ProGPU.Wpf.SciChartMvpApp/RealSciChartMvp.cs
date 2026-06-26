@@ -21,6 +21,7 @@ internal sealed record RealSciChartMvpResult(
     bool RenderedNativeBridgeSnapshot,
     int NativeBridgeDrawCount,
     string NativeDependencySummary,
+    string NativeCompatibilitySummary,
     FrameworkElement View,
     bool CreatedRealControls,
     string? NativeRuntimeFailure,
@@ -30,6 +31,10 @@ internal sealed record RealSciChartLicenseStatus(
     bool Configured,
     string? EnvironmentVariable,
     string? Failure);
+
+internal sealed record RealSciChartNativeDependencyDiagnostics(
+    string DependencySummary,
+    string CompatibilitySummary);
 
 internal static class RealSciChartMvp
 {
@@ -85,7 +90,7 @@ internal static class RealSciChartMvp
     internal static RealSciChartMvpResult Create()
     {
         var licenseStatus = ConfigureRuntimeLicenseFromEnvironment();
-        var nativeDependencySummary = DescribeNativeDependencies();
+        var nativeDiagnostics = DescribeNativeDiagnostics();
         var dataSeries2D = new XyDataSeries<double, double>();
         for (var i = 0; i < SampleCount; i++)
         {
@@ -107,7 +112,7 @@ internal static class RealSciChartMvp
         if (!licenseStatus.Configured)
         {
             var fallback = CreateNativeBridgeFallbackView(
-                $"Real SciChart packages restored and data-series APIs ran, but runtime license setup is unavailable: {licenseStatus.Failure}. Native dependencies: {nativeDependencySummary}.",
+                $"Real SciChart packages restored and data-series APIs ran, but runtime license setup is unavailable: {licenseStatus.Failure}. Native dependencies: {nativeDiagnostics.DependencySummary}. Native compatibility: {nativeDiagnostics.CompatibilitySummary}.",
                 bridgeSnapshot3D);
 
             return new RealSciChartMvpResult(
@@ -115,7 +120,8 @@ internal static class RealSciChartMvp
                 SampleCount,
                 true,
                 bridgeSnapshot3D.DrawCount,
-                nativeDependencySummary,
+                nativeDiagnostics.DependencySummary,
+                nativeDiagnostics.CompatibilitySummary,
                 fallback,
                 CreatedRealControls: false,
                 NativeRuntimeFailure: licenseStatus.Failure,
@@ -158,7 +164,8 @@ internal static class RealSciChartMvp
                 SampleCount,
                 true,
                 bridgeSnapshot3D.DrawCount,
-                nativeDependencySummary,
+                nativeDiagnostics.DependencySummary,
+                nativeDiagnostics.CompatibilitySummary,
                 grid,
                 CreatedRealControls: true,
                 NativeRuntimeFailure: null,
@@ -167,7 +174,7 @@ internal static class RealSciChartMvp
         catch (Exception ex) when (IsNativeRuntimeFailure(ex))
         {
             var fallback = CreateNativeBridgeFallbackView(
-                $"Real SciChart packages restored and data-series APIs ran, but native runtime is unavailable: {ex.GetType().Name}. Native dependencies: {nativeDependencySummary}.",
+                $"Real SciChart packages restored and data-series APIs ran, but native runtime is unavailable: {ex.GetType().Name}. Native dependencies: {nativeDiagnostics.DependencySummary}. Native compatibility: {nativeDiagnostics.CompatibilitySummary}.",
                 bridgeSnapshot3D);
 
             return new RealSciChartMvpResult(
@@ -175,7 +182,8 @@ internal static class RealSciChartMvp
                 SampleCount,
                 true,
                 bridgeSnapshot3D.DrawCount,
-                nativeDependencySummary,
+                nativeDiagnostics.DependencySummary,
+                nativeDiagnostics.CompatibilitySummary,
                 fallback,
                 CreatedRealControls: false,
                 NativeRuntimeFailure: ex.GetBaseException().Message,
@@ -210,19 +218,27 @@ internal static class RealSciChartMvp
             throw new InvalidOperationException("Expected real SciChart native dependencies to be reported explicitly.");
         }
 
+        if (string.IsNullOrWhiteSpace(result.NativeCompatibilitySummary))
+        {
+            throw new InvalidOperationException("Expected real SciChart native compatibility plan to be reported explicitly.");
+        }
+
         if (!result.CreatedRealControls && string.IsNullOrWhiteSpace(result.NativeRuntimeFailure))
         {
             throw new InvalidOperationException("Expected real SciChart native-runtime failures to be reported explicitly.");
         }
     }
 
-    private static string DescribeNativeDependencies()
+    private static RealSciChartNativeDependencyDiagnostics DescribeNativeDiagnostics()
     {
         var report = ProGpuDirectXNativeDependencyInspector.Inspect(
             typeof(SciChartSurface).Assembly,
             typeof(SciChart3DSurface).Assembly);
+        var plan = ProGpuDirectXNativeCompatibilityPlanner.Create(report);
 
-        return report.DescribeModules();
+        return new RealSciChartNativeDependencyDiagnostics(
+            report.DescribeModules(),
+            plan.DescribeRequiredActions());
     }
 
     private static Grid CreateTwoColumnGrid(FrameworkElement surface2D, FrameworkElement surface3D)

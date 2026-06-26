@@ -95,7 +95,7 @@ public partial class MainWindow : Window
         RealSciChartHost.Content = _realSciChartResult.View;
         if (!_realSciChartResult.CreatedRealControls)
         {
-            BackendText.Text = $"Real SciChart native runtime unavailable: {_realSciChartResult.NativeDependencySummary}";
+            BackendText.Text = $"Real SciChart native runtime unavailable: {_realSciChartResult.NativeCompatibilitySummary}";
         }
     }
 

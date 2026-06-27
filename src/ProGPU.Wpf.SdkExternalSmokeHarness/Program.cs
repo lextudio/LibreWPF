@@ -15825,6 +15825,8 @@ internal static class Program
                     Require(
                         ConfigurationManager.AppSettings["DefaultItemsSdkSetting"] == "Default item SDK app config value",
                         "Expected default-item app config setting.");
+                    ValidateDefaultItemsMessageBox();
+                    ValidateDefaultItemsPrintDialog();
                     ValidateDefaultItemsFileDialogs();
                     Require(
                         DefaultItemsPanel.Caption == "Default item panel caption",
@@ -16947,6 +16949,116 @@ internal static class Program
                     }
 
                     return count;
+                }
+
+                private void ValidateDefaultItemsMessageBox()
+                {
+                    Type serviceType = typeof(MessageBox).Assembly.GetType(
+                            "System.Windows.PortableMessageBoxService",
+                            throwOnError: false)
+                        ?? throw new TypeLoadException("System.Windows.PortableMessageBoxService");
+                    var isEnabledProperty = serviceType.GetProperty(
+                            "IsEnabled",
+                            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                        ?? throw new MissingMemberException(serviceType.FullName, "IsEnabled");
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        Require(
+                            (bool)(isEnabledProperty.GetValue(null) ?? false),
+                            "Expected default-item portable MessageBox service to be enabled.");
+                    }
+
+                    IDisposable? registration = RegisterDefaultItemsDeterministicMessageBox(serviceType);
+                    try
+                    {
+                        var noOwnerResult = MessageBox.Show(
+                            "default-item SDK message",
+                            "default-item SDK caption",
+                            MessageBoxButton.YesNoCancel,
+                            MessageBoxImage.Warning,
+                            MessageBoxResult.No,
+                            MessageBoxOptions.None);
+                        Require(
+                            noOwnerResult == MessageBoxResult.No,
+                            "Expected default-item MessageBox no-owner default result.");
+
+                        var ownerResult = MessageBox.Show(
+                            this,
+                            "default-item SDK owner message",
+                            "default-item SDK owner caption",
+                            MessageBoxButton.OKCancel,
+                            MessageBoxImage.Information,
+                            MessageBoxResult.None,
+                            MessageBoxOptions.None);
+                        Require(
+                            ownerResult == MessageBoxResult.OK,
+                            "Expected default-item MessageBox owner fallback result.");
+                    }
+                    finally
+                    {
+                        registration?.Dispose();
+                    }
+                }
+
+                private static IDisposable? RegisterDefaultItemsDeterministicMessageBox(Type serviceType)
+                {
+                    var registerMethod = serviceType.GetMethod(
+                            "Register",
+                            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                            binder: null,
+                            types: new[] { typeof(Func<object, object>) },
+                            modifiers: null)
+                        ?? throw new MissingMethodException(serviceType.FullName, "Register");
+
+                    return registerMethod.Invoke(
+                        null,
+                        new object[] { (Func<object, object>)ShowDefaultItemsDeterministicMessageBox }) as IDisposable;
+                }
+
+                private static object ShowDefaultItemsDeterministicMessageBox(object request)
+                {
+                    return ReadDefaultItemsPortableRequestString(request, "FallbackResult");
+                }
+
+                private static void ValidateDefaultItemsPrintDialog()
+                {
+                    if (OperatingSystem.IsWindows())
+                    {
+                        return;
+                    }
+
+                    var printDialog = new PrintDialog
+                    {
+                        UserPageRangeEnabled = true,
+                        SelectedPagesEnabled = true,
+                        CurrentPageEnabled = true,
+                        PageRangeSelection = PageRangeSelection.UserPages,
+                        PageRange = new PageRange(9, 4),
+                        MinPage = 2,
+                        MaxPage = 12
+                    };
+
+                    Require(printDialog.UserPageRangeEnabled, "Expected default-item PrintDialog user page range enabled.");
+                    Require(printDialog.SelectedPagesEnabled, "Expected default-item PrintDialog selected pages enabled.");
+                    Require(printDialog.CurrentPageEnabled, "Expected default-item PrintDialog current page enabled.");
+                    Require(
+                        printDialog.PageRangeSelection == PageRangeSelection.UserPages,
+                        "Expected default-item PrintDialog page range selection.");
+                    Require(printDialog.PageRange.PageFrom == 4, "Expected default-item PrintDialog normalized page range start.");
+                    Require(printDialog.PageRange.PageTo == 9, "Expected default-item PrintDialog normalized page range end.");
+                    Require(printDialog.MinPage == 2u, "Expected default-item PrintDialog minimum page.");
+                    Require(printDialog.MaxPage == 12u, "Expected default-item PrintDialog maximum page.");
+                    Require(printDialog.PrintQueue is null, "Expected default-item PrintDialog portable print queue.");
+                    Require(printDialog.PrintTicket is not null, "Expected default-item PrintDialog portable print ticket.");
+                    Require(
+                        Math.Abs(printDialog.PrintableAreaWidth - 816.0) < 0.001,
+                        "Expected default-item PrintDialog portable printable width.");
+                    Require(
+                        Math.Abs(printDialog.PrintableAreaHeight - 1056.0) < 0.001,
+                        "Expected default-item PrintDialog portable printable height.");
+                    Require(
+                        printDialog.ShowDialog().GetValueOrDefault(true) == false,
+                        "Expected default-item PrintDialog portable dialog result.");
                 }
 
                 private void ValidateDefaultItemsFileDialogs()

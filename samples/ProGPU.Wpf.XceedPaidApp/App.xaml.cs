@@ -200,6 +200,7 @@ internal static class XceedPaidSelfTest
         AssertType<Xceed.Wpf.DataGrid.MergedColumn>("Xceed DataGrid merged column");
         AssertType<Xceed.Wpf.DataGrid.MergedColumnManagerRow>("Xceed DataGrid merged-column manager row");
         AssertType<Xceed.Wpf.DataGrid.ColumnChooserControl>("Xceed DataGrid column chooser control");
+        AssertType<Xceed.Wpf.DataGrid.ColumnChooserContextMenu>("Xceed DataGrid column chooser context menu");
         AssertType<Xceed.Wpf.DataGrid.SearchControl>("Xceed DataGrid search control");
         AssertType<Xceed.Wpf.DataGrid.StatRow>("Xceed DataGrid stat row");
         AssertType<Xceed.Wpf.DataGrid.StatCell>("Xceed DataGrid stat cell");
@@ -226,6 +227,9 @@ internal static class XceedPaidSelfTest
             "LoadUserSettings",
             typeof(Xceed.Wpf.DataGrid.Settings.SettingsRepository),
             typeof(Xceed.Wpf.DataGrid.Settings.UserSettings));
+        AssertPublicProperty<Xceed.Wpf.DataGrid.ColumnChooserControl>("Columns");
+        AssertPublicProperty<Xceed.Wpf.DataGrid.ColumnChooserControl>("VisibleColumnsSectionTitle");
+        AssertPublicProperty<Xceed.Wpf.DataGrid.ColumnChooserControl>("HiddenColumnsSectionTitle");
         AssertAssembly("Xceed.Wpf.DataGrid.Views3D");
         AssertAssembly("Xceed.Wpf.DataGrid.ThemePack.1");
         AssertAssembly("Xceed.Wpf.DataGrid.Workbooks");
@@ -276,6 +280,18 @@ internal static class XceedPaidSelfTest
         AssertEqual(Xceed.Wpf.DataGrid.ItemScrollingBehavior.Immediate, window.PaidDataGrid.ItemScrollingBehavior, "paid DataGrid scroll behavior");
         AssertEqual(Xceed.Wpf.DataGrid.NavigationBehavior.RowOnly, window.PaidDataGrid.NavigationBehavior, "paid DataGrid navigation behavior");
         AssertEqual(8, window.PaidDataGrid.Columns.Count, "paid DataGrid explicit columns");
+        AssertEqual(8, window.PaidDataGrid.VisibleColumns.Count, "paid DataGrid visible column count");
+        AssertEqual(true, ReferenceEquals(window.PaidDataGrid.Columns, window.PaidColumnChooser.Columns), "paid DataGrid column chooser column source");
+        AssertEqual(true, window.PaidTableView.AllowColumnChooser, "paid DataGrid table view column chooser");
+        AssertEqual(Xceed.Wpf.DataGrid.Views.ColumnChooserSortOrder.TitleAscending, window.PaidTableView.ColumnChooserSortOrder, "paid DataGrid column chooser sort order");
+        var idColumn = MainWindow.FindPaidColumn(window.PaidDataGrid, "Id");
+        var statusColumn = MainWindow.FindPaidColumn(window.PaidDataGrid, "Status");
+        AssertEqual(false, idColumn.ShowInColumnChooser, "paid DataGrid fixed Id column chooser visibility");
+        AssertEqual(true, statusColumn.ShowInColumnChooser, "paid DataGrid Status column chooser visibility");
+        statusColumn.Visible = false;
+        AssertEqual(7, window.PaidDataGrid.VisibleColumns.Count, "paid DataGrid hidden Status visible column count");
+        statusColumn.Visible = true;
+        AssertEqual(8, window.PaidDataGrid.VisibleColumns.Count, "paid DataGrid restored Status visible column count");
         AssertEqual(false, window.VirtualPaidDataGrid.AutoCreateColumns, "paid virtual DataGrid auto columns");
         AssertEqual(true, window.VirtualPaidDataGrid.ReadOnly, "paid virtual DataGrid read-only state");
         AssertEqual(Xceed.Wpf.DataGrid.ItemScrollingBehavior.Deferred, window.VirtualPaidDataGrid.ItemScrollingBehavior, "paid virtual DataGrid scroll behavior");
@@ -325,6 +341,15 @@ internal static class XceedPaidSelfTest
         if (method is null)
         {
             throw new InvalidOperationException($"Expected public {typeof(T).FullName}.{methodName} method.");
+        }
+    }
+
+    private static void AssertPublicProperty<T>(string propertyName)
+    {
+        var property = typeof(T).GetProperty(propertyName);
+        if (property is null)
+        {
+            throw new InvalidOperationException($"Expected public {typeof(T).FullName}.{propertyName} property.");
         }
     }
 

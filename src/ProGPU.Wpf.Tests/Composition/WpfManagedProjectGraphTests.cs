@@ -6567,6 +6567,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.MergedColumn>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.MergedColumnManagerRow>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.ColumnChooserControl>", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertType<Xceed.Wpf.DataGrid.ColumnChooserContextMenu>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.SearchControl>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.StatRow>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.StatCell>", appCodeBehind, StringComparison.Ordinal);
@@ -6587,6 +6588,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AssertPublicMethod<Xceed.Wpf.DataGrid.DataGridControl>(\"ExportToXps\"", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"SaveUserSettings\"", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("\"LoadUserSettings\"", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertPublicProperty<Xceed.Wpf.DataGrid.ColumnChooserControl>(\"Columns\"", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertPublicProperty<Xceed.Wpf.DataGrid.ColumnChooserControl>(\"VisibleColumnsSectionTitle\"", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertPublicProperty<Xceed.Wpf.DataGrid.ColumnChooserControl>(\"HiddenColumnsSectionTitle\"", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertAssembly(\"Xceed.Wpf.DataGrid.Views3D\")", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertAssembly(\"Xceed.Wpf.DataGrid.ThemePack.1\")", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertAssembly(\"Xceed.Wpf.DataGrid.Workbooks\")", appCodeBehind, StringComparison.Ordinal);
@@ -6657,14 +6661,22 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<xcdg:FilterRow x:Name=\"PaidFilterRow\" />", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:TableView.FixedFooters>", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:StatCell FieldName=\"Score\"", mainWindowXaml, StringComparison.Ordinal);
-        Assert.Contains("<xcdg:Column FieldName=\"Id\" />", mainWindowXaml, StringComparison.Ordinal);
-        Assert.Contains("<xcdg:Column FieldName=\"Active\" />", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcdg:Column FieldName=\"Id\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcdg:Column FieldName=\"Active\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"ExportCsvButton_Click\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"ExportExcelButton_Click\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"SaveSettingsButton_Click\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"LoadSettingsButton_Click\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Click=\"ToggleStatusColumnButton_Click\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"TableflowViewButton_Click\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"CardflowViewButton_Click\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("AllowColumnChooser=\"True\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ColumnChooserSortOrder=\"TitleAscending\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ShowInColumnChooser=\"False\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcdg:ColumnChooserControl x:Name=\"PaidColumnChooser\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Columns=\"{Binding ElementName=PaidDataGrid, Path=Columns}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("VisibleColumnsSectionTitle=\"Visible\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("HiddenColumnsSectionTitle=\"Hidden\"", mainWindowXaml, StringComparison.Ordinal);
 
         Assert.Contains("Rows = CreateRows(100_000)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal DataGridVirtualizingQueryableCollectionViewSource VirtualPaidRowsViewSource", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6678,7 +6690,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PaidDataGrid.ExportToExcel(stream)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PaidDataGrid.SaveUserSettings(_savedSettings, UserSettings.All)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PaidDataGrid.LoadUserSettings(_savedSettings, UserSettings.All)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PaidColumnChooser.Columns = PaidDataGrid.Columns", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("statusColumn.Visible = !statusColumn.Visible", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PaidDataGrid.VisibleColumns.Count", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("internal static ColumnBase FindPaidColumn", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("new TableflowView", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ColumnChooserSortOrder = ColumnChooserSortOrder.TitleAscending", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("new CardflowView3D", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_XCEED_PAID_EXPORT_DIR", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int ActiveRowCount", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6689,7 +6706,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SelectRow(ViewModel.Rows.Count - 1", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Configured explicit Xceed DataGrid columns", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Configured Toolkit Plus Material controls", mainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("Configured paid DataGrid merged headers, search, export, settings, and view commands", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Configured paid DataGrid merged headers, search, export, settings, column chooser, and view commands", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Configured paid DataGrid virtualizing queryable source", mainWindowCodeBehind, StringComparison.Ordinal);
 
         Assert.Contains("The direct Toolkit references are intentional", readme, StringComparison.Ordinal);
@@ -6699,6 +6716,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DataGridVirtualizingQueryableCollectionViewSource", readme, StringComparison.Ordinal);
         Assert.Contains("merged headers", readme, StringComparison.Ordinal);
         Assert.Contains("SearchControl", readme, StringComparison.Ordinal);
+        Assert.Contains("ColumnChooserControl", readme, StringComparison.Ordinal);
         Assert.Contains("ExportToCsv", readme, StringComparison.Ordinal);
         Assert.Contains("SaveUserSettings", readme, StringComparison.Ordinal);
         Assert.Contains("ProGPU owns windowing, input, invalidation, clipping, image/layer texture trimming, shaders, and final WebGPU rendering", readme, StringComparison.Ordinal);

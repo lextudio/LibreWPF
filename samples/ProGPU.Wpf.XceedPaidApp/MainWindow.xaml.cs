@@ -29,6 +29,7 @@ public partial class MainWindow : Window
         ViewModel = new XceedPaidViewModel(licenseStatus);
         DataContext = ViewModel;
         InitializeComponent();
+        PaidColumnChooser.Columns = PaidDataGrid.Columns;
         Loaded += OnLoaded;
     }
 
@@ -45,8 +46,9 @@ public partial class MainWindow : Window
         ViewModel.Status = "Paid Xceed Toolkit/DataGrid loaded";
         ViewModel.Activity.Add("Loaded paid Toolkit Plus, AvalonDock Windows10 theme, and Xceed DataGrid document");
         ViewModel.Activity.Add("Paid DataGrid view applies active-row filtering, category grouping, updated-date sorting, stats, details, search, merged headers, and Office2007 theme");
-        ViewModel.Activity.Add("Paid DataGrid export, settings persistence, Tableflow, and Cardflow 3D commands are available");
+        ViewModel.Activity.Add("Paid DataGrid export, settings persistence, column chooser, Tableflow, and Cardflow 3D commands are available");
         ViewModel.Activity.Add("Paid DataGrid virtualizing queryable source uses bounded pages and realized-item cache");
+        UpdateColumnChooserStatus("Paid DataGrid column chooser initialized");
     }
 
     private void PaidRowsView_Filter(object sender, FilterEventArgs e)
@@ -117,6 +119,15 @@ public partial class MainWindow : Window
         ViewModel.Activity.Add(ViewModel.LastAction);
     }
 
+    private void ToggleStatusColumnButton_Click(object sender, RoutedEventArgs e)
+    {
+        var statusColumn = FindPaidColumn(PaidDataGrid, "Status");
+        statusColumn.Visible = !statusColumn.Visible;
+        UpdateColumnChooserStatus(statusColumn.Visible
+            ? "Showed paid DataGrid Status column"
+            : "Hid paid DataGrid Status column");
+    }
+
     private void TableViewButton_Click(object sender, RoutedEventArgs e)
     {
         PaidDataGrid.View = PaidTableView;
@@ -129,7 +140,9 @@ public partial class MainWindow : Window
     {
         PaidDataGrid.View = new TableflowView
         {
-            Theme = new Office2007BlueTheme()
+            Theme = new Office2007BlueTheme(),
+            AllowColumnChooser = true,
+            ColumnChooserSortOrder = ColumnChooserSortOrder.TitleAscending
         };
         ViewModel.LastAction = "Activated paid DataGrid TableflowView";
         ViewModel.Status = ViewModel.LastAction;
@@ -151,6 +164,14 @@ public partial class MainWindow : Window
         ViewModel.Activity.Add(ViewModel.LastAction);
     }
 
+    internal static ColumnBase FindPaidColumn(DataGridControl grid, string fieldName)
+    {
+        return grid.Columns
+            .Cast<ColumnBase>()
+            .FirstOrDefault(column => string.Equals(column.FieldName, fieldName, StringComparison.Ordinal))
+            ?? throw new InvalidOperationException($"Expected paid DataGrid column '{fieldName}'.");
+    }
+
     private void SelectRow(int index, string action)
     {
         if (index < 0 || index >= ViewModel.Rows.Count)
@@ -162,6 +183,13 @@ public partial class MainWindow : Window
         ViewModel.SelectedRow = item;
         PaidDataGrid.BringItemIntoView(item);
         ViewModel.LastAction = $"{action}: {item.Title}";
+        ViewModel.Status = ViewModel.LastAction;
+        ViewModel.Activity.Add(ViewModel.LastAction);
+    }
+
+    private void UpdateColumnChooserStatus(string action)
+    {
+        ViewModel.LastAction = $"{action}; visible columns: {PaidDataGrid.VisibleColumns.Count}";
         ViewModel.Status = ViewModel.LastAction;
         ViewModel.Activity.Add(ViewModel.LastAction);
     }
@@ -213,7 +241,7 @@ internal sealed class XceedPaidViewModel : INotifyPropertyChanged
     internal XceedPaidViewModel(XceedPaidLicenseStatus licenseStatus)
     {
         LicenseStatusText = licenseStatus.DescribePublic();
-        PackageStatus = "Toolkit Plus 5.2, DataGrid 7.3, AvalonDock Windows10 theme, virtualization, export/settings APIs, Views3D/theme-pack assemblies";
+        PackageStatus = "Toolkit Plus 5.2, DataGrid 7.3, AvalonDock Windows10 theme, virtualization, export/settings APIs, column chooser, Views3D/theme-pack assemblies";
         Rows = CreateRows(100_000);
         _selectedRow = Rows[0];
         Activity =
@@ -221,7 +249,7 @@ internal sealed class XceedPaidViewModel : INotifyPropertyChanged
             "Created 100,000 paid DataGrid rows",
             "Configured explicit Xceed DataGrid columns",
             "Configured Toolkit Plus Material controls",
-            "Configured paid DataGrid merged headers, search, export, settings, and view commands",
+            "Configured paid DataGrid merged headers, search, export, settings, column chooser, and view commands",
             "Configured paid DataGrid virtualizing queryable source"
         ];
     }

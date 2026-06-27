@@ -115,6 +115,11 @@
                   Padding="10,4"
                   Content="Load view"
                   Click="LoadSettingsButton_Click" />
+          <Button MinWidth="128"
+                  Margin="0,0,6,0"
+                  Padding="10,4"
+                  Content="Toggle status"
+                  Click="ToggleStatusColumnButton_Click" />
           <Button MinWidth="96"
                   Margin="0,0,6,0"
                   Padding="10,4"
@@ -322,6 +327,8 @@
                     <xcdg:TableView x:Name="PaidTableView"
                                     ColumnStretchMode="StretchAll"
                                     FixedColumnCount="1"
+                                    AllowColumnChooser="True"
+                                    ColumnChooserSortOrder="TitleAscending"
                                     UseDefaultHeadersFooters="False">
                       <xcdg:TableView.Theme>
                         <xcdgtheme:Office2007BlueTheme />
@@ -358,14 +365,23 @@
                     </xcdg:TableView>
                   </xcdg:DataGridControl.View>
                   <xcdg:DataGridControl.Columns>
-                    <xcdg:Column FieldName="Id" />
-                    <xcdg:Column FieldName="Title" />
-                    <xcdg:Column FieldName="Owner" />
-                    <xcdg:Column FieldName="Category" />
-                    <xcdg:Column FieldName="Status" />
-                    <xcdg:Column FieldName="Score" />
-                    <xcdg:Column FieldName="Updated" />
-                    <xcdg:Column FieldName="Active" />
+                    <xcdg:Column FieldName="Id"
+                                 Title="Id"
+                                 ShowInColumnChooser="False" />
+                    <xcdg:Column FieldName="Title"
+                                 Title="Title" />
+                    <xcdg:Column FieldName="Owner"
+                                 Title="Owner" />
+                    <xcdg:Column FieldName="Category"
+                                 Title="Category" />
+                    <xcdg:Column FieldName="Status"
+                                 Title="Status" />
+                    <xcdg:Column FieldName="Score"
+                                 Title="Score" />
+                    <xcdg:Column FieldName="Updated"
+                                 Title="Updated" />
+                    <xcdg:Column FieldName="Active"
+                                 Title="Active" />
                   </xcdg:DataGridControl.Columns>
                 </xcdg:DataGridControl>
               </Grid>
@@ -402,6 +418,8 @@
                   <xcdg:DataGridControl.View>
                     <xcdg:TableView ColumnStretchMode="StretchAll"
                                     FixedColumnCount="1"
+                                    AllowColumnChooser="True"
+                                    ColumnChooserSortOrder="TitleAscending"
                                     UseDefaultHeadersFooters="False">
                       <xcdg:TableView.Theme>
                         <xcdgtheme:Office2007BlueTheme />
@@ -431,11 +449,12 @@
 
           <xcad:LayoutAnchorablePane DockWidth="260">
             <xcad:LayoutAnchorable x:Name="MetricsPane"
-                                   Title="Metrics"
+                                   Title="Metrics + Columns"
                                    CanClose="False"
                                    CanHide="False">
               <Grid Margin="12">
                 <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
                   <RowDefinition Height="Auto" />
                   <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
@@ -446,7 +465,29 @@
                   <TextBlock Margin="0,8,0,0"
                              Text="{Binding LastAction}" />
                 </StackPanel>
-                <ListBox Grid.Row="1"
+                <Border Grid.Row="1"
+                        Margin="0,12,0,0"
+                        Padding="6"
+                        BorderBrush="#B4C7CE"
+                        BorderThickness="1"
+                        Background="White">
+                  <StackPanel>
+                    <TextBlock Style="{StaticResource PanelHeaderText}"
+                               Text="Column chooser" />
+                    <xcdg:ColumnChooserControl x:Name="PaidColumnChooser"
+                                              Height="220"
+                                              Columns="{Binding ElementName=PaidDataGrid, Path=Columns}"
+                                              VisibleColumnsSectionTitle="Visible"
+                                              HiddenColumnsSectionTitle="Hidden"
+                                              NameColumnTitle="Column"
+                                              OrderColumnTitle="Order"
+                                              OkButtonContent="Apply"
+                                              CancelButtonContent="Reset"
+                                              ShowColumnButtonToolTip="Show paid DataGrid column"
+                                              HideColumnButtonToolTip="Hide paid DataGrid column" />
+                  </StackPanel>
+                </Border>
+                <ListBox Grid.Row="2"
                          Margin="0,12,0,0"
                          ItemsSource="{Binding Activity}" />
               </Grid>

@@ -273,6 +273,11 @@ public sealed class WpfManagedProjectGraphTests
             "Composition",
             "Mil",
             "WpfVisualInvalidationTracker.cs");
+        var proGpuRetainedCompositionCommandSinkPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "ProGpuRetainedCompositionCommandSink.cs");
         var proGpuCompositorPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -323,6 +328,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuDrawingFrame = File.ReadAllText(proGpuDrawingFramePath);
         var proGpuCompositionTarget = File.ReadAllText(proGpuCompositionTargetPath);
         var proGpuInvalidationTracker = File.ReadAllText(proGpuInvalidationTrackerPath);
+        var proGpuRetainedCompositionCommandSink = File.ReadAllText(proGpuRetainedCompositionCommandSinkPath);
         var proGpuCompositor = File.ReadAllText(proGpuCompositorPath);
         var proGpuCompositorReviewTests = File.ReadAllText(proGpuCompositorReviewTestsPath);
         var proGpuDrawingFrameTests = File.ReadAllText(proGpuDrawingFrameTestsPath);
@@ -592,7 +598,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private GpuHitTestDeviceIndex? _lastHitTestDeviceIndex;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("public GpuHitTestIndex? LastHitTestIndex", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("public GpuHitTestDeviceIndex? LastHitTestDeviceIndex => _lastHitTestDeviceIndex;", proGpuCompositor, StringComparison.Ordinal);
-        Assert.Contains("_hitTestCacheBuilder.AddCommand(cmd, activeTransform);", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("private bool _suspendHitTestCacheWrites;", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("private void AddHitTestCommand(RenderCommand command, Matrix4x4 transform)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("AddHitTestCommand(cmd, activeTransform);", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("_suspendHitTestCacheWrites = true;", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("SetLastHitTestIndex(_hitTestCacheBuilder.BuildIndex());", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestDeviceIndex.TryCreate(_context, index, out GpuHitTestDeviceIndex? deviceIndex)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestEngine.TryHitTestPoint(_context, _pipelineCache, _lastHitTestDeviceIndex, point, out result)", proGpuCompositor, StringComparison.Ordinal);
@@ -611,7 +620,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("WpfGpuHitTestOwnerMap? hitTestOwnerMap = null", proGpuDrawingFrame, StringComparison.Ordinal);
         Assert.Contains("_hitTestOwnerMap?.Clear();", proGpuDrawingFrame, StringComparison.Ordinal);
         Assert.Contains("internal int GetOrCreateHitTestOwnerId(object ownerVisual)", proGpuDrawingFrame, StringComparison.Ordinal);
+        Assert.Contains("ownerVisual.HitTestId = hitTestOwnerId;", proGpuRetainedCompositionCommandSink, StringComparison.Ordinal);
+        Assert.Contains("visual.HitTestId = hitTestId;", proGpuRetainedCompositionCommandSink, StringComparison.Ordinal);
         Assert.Contains("RetainedSinkStampsSourceOwnerHitTestIdOnCommands", proGpuDrawingFrameTests, StringComparison.Ordinal);
+        Assert.Contains("RetainedSinkPropagatesSourceOwnerHitTestIdToCacheScopes", proGpuDrawingFrameTests, StringComparison.Ordinal);
+        Assert.Contains("RetainedSinkPropagatesSourceOwnerHitTestIdToEffectScopes", proGpuDrawingFrameTests, StringComparison.Ordinal);
         Assert.Contains("RenderPassEncoderSetViewport(\n            pass,\n            viewport.X,\n            viewport.Y,\n            viewport.Width,\n            viewport.Height", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("CurrentCanvasPixelX => _explicitRenderTargetViewport.HasValue", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("CurrentCanvasPixelY => _explicitRenderTargetViewport.HasValue", proGpuCompositor, StringComparison.Ordinal);

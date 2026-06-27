@@ -118,6 +118,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
 
         Current.Visual.AddChild(ownerVisual);
         int hitTestOwnerId = _drawingFrame.GetOrCreateHitTestOwnerId(sourceVisual);
+        ownerVisual.HitTestId = hitTestOwnerId;
         _visualScopes.Push(new VisualScope(
             ownerVisual,
             Current.Context,
@@ -534,7 +535,9 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         Current.Visual.AddChild(visual);
 
         var visualScopeKind = scopeKind == ScopeKind.VisualEffect ? VisualScopeKind.Effect : VisualScopeKind.Cache;
-        var scope = new VisualScope(visual, Current.Context, Current.Viewport3DTextureCache, visualScopeKind, _scopeStack.Count);
+        var hitTestId = Current.HitTestId;
+        visual.HitTestId = hitTestId;
+        var scope = new VisualScope(visual, Current.Context, Current.Viewport3DTextureCache, visualScopeKind, _scopeStack.Count, hitTestId);
         if (bounds.X != 0 || bounds.Y != 0)
         {
             scope.Sink.PushNativeTransform(Matrix4x4.CreateTranslation((float)-bounds.X, (float)-bounds.Y, 0f));
@@ -584,6 +587,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
             Viewport3DTextureCache = viewport3DTextureCache;
             ScopeKind = scopeKind;
             ScopeStackDepth = scopeStackDepth;
+            HitTestId = hitTestId;
             Sink = new ProGpuCompositionCommandSink(visual.Context, context, viewport3DTextureCache, hitTestId: hitTestId);
         }
 
@@ -596,6 +600,8 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         public VisualScopeKind ScopeKind { get; }
 
         public int ScopeStackDepth { get; }
+
+        public int HitTestId { get; }
 
         public MediaDrawingContext? DrawingContext => Sink.DrawingContext;
 

@@ -661,6 +661,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryQueryEllipseAllRejectsEllipseFillQueryBoundsFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryEllipseAllClassifiesSameCenterEllipseFillDetailOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryEllipseAllRejectsEllipseStrokeHoleOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryEllipseAllRejectsRoundedRectangleCornerFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryEllipseAllKeepsRoundedRectangleFillOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryEllipseAllRejectsRectangleStrokeHoleOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryEllipseAllKeepsRectangleStrokeOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("LineStrokeCachesDirectionAndLengthForGpuHitTesting", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("EllipseCachesCenterAndInverseRadiiForGpuHitTesting", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("RenderCommandCacheCachesLineStrokeHelperDataForGpuHitTesting", proGpuHitTestingTests, StringComparison.Ordinal);
@@ -689,6 +693,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("fn rect_intersects_ellipse_stroke(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn rect_intersects_rounded_rect(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn rect_intersects_rect_stroke(", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn rounded_rect_intersects_ellipse_region(", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn rect_stroke_intersects_ellipse_region(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn segment_intersects_rect(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("data2: vec4<f32>,", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("let direction = primitive.data2.xy;", proGpuHitTesting, StringComparison.Ordinal);

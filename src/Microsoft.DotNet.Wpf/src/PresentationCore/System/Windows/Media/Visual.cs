@@ -1966,6 +1966,12 @@ namespace System.Windows.Media
 #endif // DEBUG
                     try
                     {
+                        if (PresentationSource.CriticalFromVisual(this) is PortablePresentationSource portableSource &&
+                            portableSource.TryGeometryHitTestOverride(this, geometryParams, filterCallback, resultCallback, out _))
+                        {
+                            return;
+                        }
+
                         HitTestGeometry(filterCallback, resultCallback, geometryParams);
                     }
                     catch
@@ -5369,4 +5375,3 @@ namespace System.Windows.Media
         #endregion Private Fields
     }
 }
-

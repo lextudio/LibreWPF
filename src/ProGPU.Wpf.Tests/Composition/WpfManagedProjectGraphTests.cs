@@ -556,17 +556,23 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TraceInputEvent(\"wpf\", input)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryHitTestOwner(double x, double y, out object? owner)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryHitTestOwners(double x, double y, out object?[] owners)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("internal bool TryQueryHitTestBoundsOwners(double minX, double minY, double maxX, double maxY, out object?[] owners)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool HasGpuHitTestCache => _target?.LastGpuHitTestIndex != null;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_target.TryHitTestOwner(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_target.TryHitTestOwners(", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_target.TryQueryHitTestBoundsOwners(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("private const string HitTestOverridePropertyName = \"HitTestOverride\";", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private const string HitTestAllOverridePropertyName = \"HitTestAllOverride\";", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("private const string HitTestBoundsOverridePropertyName = \"HitTestBoundsOverride\";", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("bridge.TryInstallHitTestOverride();", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("bridge.TryInstallHitTestAllOverride();", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("bridge.TryInstallHitTestBoundsOverride();", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private object? TryHitTestOwner(System.Windows.Point rootPoint)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private object?[]? HitTestOwners(System.Windows.Point rootPoint)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("private object?[]? HitTestBoundsOwners(System.Windows.Point rootMin, System.Windows.Point rootMax)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.TryHitTestOwner(rootPoint.X, rootPoint.Y, out object? owner)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.TryHitTestOwners(rootPoint.X, rootPoint.Y, out object?[] owners)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("_host.TryQueryHitTestBoundsOwners(", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.HasGpuHitTestCache ? Source : null", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.HasGpuHitTestCache ? Array.Empty<object>() : null", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("TryBindInstallsGpuHitTestOverrideWhenSourceExposesHook", proGpuPortablePresentationSourceBridgeTests, StringComparison.Ordinal);
@@ -815,22 +821,27 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("portableSource.TryHitTestOverride(rootPt, out enabledHit, out originalHit)", mouseDevice, StringComparison.Ordinal);
         Assert.Contains("ReferenceEquals(hitTestResult, this)", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal Func<Point, object[]> HitTestAllOverride { get; set; }", portableSource, StringComparison.Ordinal);
+        Assert.Contains("internal Func<Point, Point, object[]> HitTestBoundsOverride { get; set; }", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal bool TryInputHitTestOverride(UIElement reference, Point referencePoint, out DependencyObject candidate, out HitTestResult hitTestResult)", portableSource, StringComparison.Ordinal);
         Assert.Contains("IsInputHitTestVisibleDescendantOf(visualHit, reference)", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal bool TryPointHitTestOverride(Visual reference, Point referencePoint, bool include2DOn3D, out HitTestResult hitTestResult)", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal bool TryPointHitTestOverride(Visual reference, Point referencePoint, HitTestFilterCallback filterCallback, HitTestResultCallback resultCallback, out HitTestResultBehavior result)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("internal bool TryGeometryHitTestOverride(Visual reference, GeometryHitTestParameters geometryParams, HitTestFilterCallback filterCallback, HitTestResultCallback resultCallback, out HitTestResultBehavior result)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("HitTestBoundsOverride(rootBounds.TopLeft, rootBounds.BottomRight)", portableSource, StringComparison.Ordinal);
         Assert.Contains("IsPointHitVisibleByFilter(", portableSource, StringComparison.Ordinal);
         Assert.Contains("portableSource.TryInputHitTestOverride(this, pt, out DependencyObject portableCandidate, out rawHitResult)", uiElement, StringComparison.Ordinal);
         Assert.Contains("private void PromoteInputHit(Point pt, DependencyObject candidate, out IInputElement enabledHit, out IInputElement rawHit, ref HitTestResult rawHitResult)", uiElement, StringComparison.Ordinal);
         Assert.Contains("portableSource.TryPointHitTestOverride(reference, point, include2DOn3D, out HitTestResult hitTestResult)", visualTreeHelper, StringComparison.Ordinal);
         Assert.DoesNotContain("filterCallback == null &&", visual, StringComparison.Ordinal);
         Assert.Contains("portableSource.TryPointHitTestOverride(this, pointParams.HitPoint, filterCallback, resultCallback, out _)", visual, StringComparison.Ordinal);
+        Assert.Contains("portableSource.TryGeometryHitTestOverride(this, geometryParams, filterCallback, resultCallback, out _)", visual, StringComparison.Ordinal);
         AssertGuardBefore(mouseDevice, "if (OperatingSystem.IsWindows() && source != null", "UnsafeNativeMethods.WindowFromPoint");
         AssertGuardBefore(mouseDevice, "if (OperatingSystem.IsWindows() && source != null", "SafeNativeMethods.IsWindowEnabled");
         AssertGuardBefore(mouseDevice, "portableSource.TryHitTestOverride(rootPt, out enabledHit, out originalHit)", "root.InputHitTest(rootPt, out enabledHit, out originalHit)");
         AssertGuardBefore(uiElement, "portableSource.TryInputHitTestOverride(this, pt, out DependencyObject portableCandidate, out rawHitResult)", "VisualTreeHelper.HitTest(this");
         AssertGuardBefore(visualTreeHelper, "portableSource.TryPointHitTestOverride(reference, point, include2DOn3D, out HitTestResult hitTestResult)", "return reference.HitTest(point, include2DOn3D);");
         AssertGuardBefore(visual, "portableSource.TryPointHitTestOverride(this, pointParams.HitPoint, filterCallback, resultCallback, out _)", "HitTestPoint(filterCallback, resultCallback, pointParams)");
+        AssertGuardBefore(visual, "portableSource.TryGeometryHitTestOverride(this, geometryParams, filterCallback, resultCallback, out _)", "HitTestGeometry(filterCallback, resultCallback, geometryParams)");
         Assert.True(
             inputManager.IndexOf("if (OperatingSystem.IsWindows())", StringComparison.Ordinal)
                 < inputManager.IndexOf("new Win32KeyboardDevice(this)", StringComparison.Ordinal),

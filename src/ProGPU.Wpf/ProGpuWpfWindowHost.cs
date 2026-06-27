@@ -1696,6 +1696,46 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return true;
     }
 
+    internal bool TryQueryHitTestBoundsOwners(double minX, double minY, double maxX, double maxY, out object?[] owners)
+    {
+        owners = Array.Empty<object?>();
+        if (_target == null ||
+            !double.IsFinite(minX) ||
+            !double.IsFinite(minY) ||
+            !double.IsFinite(maxX) ||
+            !double.IsFinite(maxY) ||
+            minX < float.MinValue ||
+            minX > float.MaxValue ||
+            minY < float.MinValue ||
+            minY > float.MaxValue ||
+            maxX < float.MinValue ||
+            maxX > float.MaxValue ||
+            maxY < float.MinValue ||
+            maxY > float.MaxValue)
+        {
+            return false;
+        }
+
+        object?[] ownerBuffer = new object?[64];
+        if (!_target.TryQueryHitTestBoundsOwners(
+                new System.Numerics.Vector2((float)minX, (float)minY),
+                new System.Numerics.Vector2((float)maxX, (float)maxY),
+                ownerBuffer,
+                out int ownerCount,
+                out _))
+        {
+            return false;
+        }
+
+        if (ownerCount == 0)
+        {
+            return true;
+        }
+
+        owners = ownerBuffer[..ownerCount];
+        return true;
+    }
+
     private void AttachInputService()
     {
         if (_window == null)

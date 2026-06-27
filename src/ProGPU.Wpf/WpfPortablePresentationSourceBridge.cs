@@ -15,6 +15,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     private const string RequestedCursorPropertyName = "RequestedCursor";
     private const string HitTestOverridePropertyName = "HitTestOverride";
     private const string HitTestAllOverridePropertyName = "HitTestAllOverride";
+    private const string HitTestBoundsOverridePropertyName = "HitTestBoundsOverride";
     private const string SetDeviceScaleMethodName = "SetDeviceScale";
     private const string SetClientSizeMethodName = "SetClientSize";
 
@@ -25,6 +26,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     private readonly PropertyInfo? _requestedCursorProperty;
     private readonly PropertyInfo? _hitTestOverrideProperty;
     private readonly PropertyInfo? _hitTestAllOverrideProperty;
+    private readonly PropertyInfo? _hitTestBoundsOverrideProperty;
     private readonly MethodInfo? _setDeviceScaleMethod;
     private readonly MethodInfo? _setClientSizeMethod;
     private readonly MethodInfo? _disposeMethod;
@@ -35,6 +37,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     private Delegate? _cursorRequestedHandler;
     private Delegate? _hitTestOverrideHandler;
     private Delegate? _hitTestAllOverrideHandler;
+    private Delegate? _hitTestBoundsOverrideHandler;
     private bool _isDisposed;
 
     private WpfPortablePresentationSourceBridge(
@@ -46,6 +49,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         PropertyInfo? requestedCursorProperty,
         PropertyInfo? hitTestOverrideProperty,
         PropertyInfo? hitTestAllOverrideProperty,
+        PropertyInfo? hitTestBoundsOverrideProperty,
         MethodInfo? setDeviceScaleMethod,
         MethodInfo? setClientSizeMethod,
         MethodInfo? disposeMethod,
@@ -59,6 +63,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         _requestedCursorProperty = requestedCursorProperty;
         _hitTestOverrideProperty = hitTestOverrideProperty;
         _hitTestAllOverrideProperty = hitTestAllOverrideProperty;
+        _hitTestBoundsOverrideProperty = hitTestBoundsOverrideProperty;
         _setDeviceScaleMethod = setDeviceScaleMethod;
         _setClientSizeMethod = setClientSizeMethod;
         _disposeMethod = disposeMethod;
@@ -224,6 +229,13 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
             _hitTestAllOverrideProperty.SetValue(Source, null);
         }
 
+        if (_hitTestBoundsOverrideProperty != null &&
+            _hitTestBoundsOverrideHandler != null &&
+            ReferenceEquals(_hitTestBoundsOverrideProperty.GetValue(Source), _hitTestBoundsOverrideHandler))
+        {
+            _hitTestBoundsOverrideProperty.SetValue(Source, null);
+        }
+
         object? rootVisual = _rootVisualProperty.GetValue(Source);
         if (ReferenceEquals(_host.WpfRootVisual, rootVisual))
         {
@@ -255,6 +267,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         PropertyInfo? requestedCursorProperty = FindProperty(sourceType, RequestedCursorPropertyName);
         PropertyInfo? hitTestOverrideProperty = FindProperty(sourceType, HitTestOverridePropertyName);
         PropertyInfo? hitTestAllOverrideProperty = FindProperty(sourceType, HitTestAllOverridePropertyName);
+        PropertyInfo? hitTestBoundsOverrideProperty = FindProperty(sourceType, HitTestBoundsOverridePropertyName);
         if (rootVisualProperty == null ||
             !rootVisualProperty.CanRead ||
             !rootVisualProperty.CanWrite ||
@@ -298,6 +311,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
             requestedCursorProperty,
             hitTestOverrideProperty,
             hitTestAllOverrideProperty,
+            hitTestBoundsOverrideProperty,
             setDeviceScaleMethod,
             setClientSizeMethod,
             disposeMethod,
@@ -306,6 +320,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         bridge.TrySubscribeToCursorRequested(cursorRequestedEvent);
         bridge.TryInstallHitTestOverride();
         bridge.TryInstallHitTestAllOverride();
+        bridge.TryInstallHitTestBoundsOverride();
 
         bridge.SyncHostRootVisual();
         return true;
@@ -468,6 +483,38 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         return true;
     }
 
+    private bool TryInstallHitTestBoundsOverride()
+    {
+        if (_hitTestBoundsOverrideProperty == null ||
+            !_hitTestBoundsOverrideProperty.CanWrite ||
+            !typeof(Delegate).IsAssignableFrom(_hitTestBoundsOverrideProperty.PropertyType))
+        {
+            return false;
+        }
+
+        MethodInfo? method = GetType().GetMethod(
+            nameof(HitTestBoundsOwners),
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        if (method == null)
+        {
+            return false;
+        }
+
+        Delegate? handler = Delegate.CreateDelegate(
+            _hitTestBoundsOverrideProperty.PropertyType,
+            this,
+            method,
+            throwOnBindFailure: false);
+        if (handler == null)
+        {
+            return false;
+        }
+
+        _hitTestBoundsOverrideProperty.SetValue(Source, handler);
+        _hitTestBoundsOverrideHandler = handler;
+        return true;
+    }
+
     private object? TryHitTestOwner(System.Windows.Point rootPoint)
     {
         return _host.TryHitTestOwner(rootPoint.X, rootPoint.Y, out object? owner) &&
@@ -479,6 +526,21 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     private object?[]? HitTestOwners(System.Windows.Point rootPoint)
     {
         if (_host.TryHitTestOwners(rootPoint.X, rootPoint.Y, out object?[] owners))
+        {
+            return owners;
+        }
+
+        return _host.HasGpuHitTestCache ? Array.Empty<object>() : null;
+    }
+
+    private object?[]? HitTestBoundsOwners(System.Windows.Point rootMin, System.Windows.Point rootMax)
+    {
+        if (_host.TryQueryHitTestBoundsOwners(
+                rootMin.X,
+                rootMin.Y,
+                rootMax.X,
+                rootMax.Y,
+                out object?[] owners))
         {
             return owners;
         }

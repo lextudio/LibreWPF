@@ -175,13 +175,16 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         Assert.NotNull(bridge);
         Assert.NotNull(source.HitTestOverride);
         Assert.NotNull(source.HitTestAllOverride);
+        Assert.NotNull(source.HitTestBoundsOverride);
         Assert.Null(source.HitTestOverride(new System.Windows.Point(12, 24)));
         Assert.Null(source.HitTestAllOverride(new System.Windows.Point(12, 24)));
+        Assert.Null(source.HitTestBoundsOverride(new System.Windows.Point(0, 0), new System.Windows.Point(12, 24)));
 
         bridge!.Dispose();
 
         Assert.Null(source.HitTestOverride);
         Assert.Null(source.HitTestAllOverride);
+        Assert.Null(source.HitTestBoundsOverride);
     }
 
     [Fact]
@@ -212,6 +215,8 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         internal Func<System.Windows.Point, object?>? HitTestOverride { get; set; }
 
         internal Func<System.Windows.Point, object?[]?>? HitTestAllOverride { get; set; }
+
+        internal Func<System.Windows.Point, System.Windows.Point, object?[]?>? HitTestBoundsOverride { get; set; }
 
         public object? RootVisual
         {

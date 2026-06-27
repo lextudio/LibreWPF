@@ -65,6 +65,8 @@ namespace System.Windows
 
         internal Func<Point, object[]> HitTestAllOverride { get; set; }
 
+        internal Func<Point, Point, object[]> HitTestBoundsOverride { get; set; }
+
         public override bool IsDisposed
         {
             get { return _isDisposed; }
@@ -455,6 +457,71 @@ namespace System.Windows
             return true;
         }
 
+        internal bool TryGeometryHitTestOverride(Visual reference, GeometryHitTestParameters geometryParams, HitTestFilterCallback filterCallback, HitTestResultCallback resultCallback, out HitTestResultBehavior result)
+        {
+            result = HitTestResultBehavior.Continue;
+            if (_isDisposed ||
+                HitTestBoundsOverride == null ||
+                reference == null ||
+                geometryParams == null ||
+                resultCallback == null ||
+                _rootVisual == null)
+            {
+                return false;
+            }
+
+            Rect bounds = geometryParams.Bounds;
+            if (bounds.IsEmpty ||
+                !TryTransformBounds(reference, _rootVisual, bounds, out Rect rootBounds) ||
+                rootBounds.IsEmpty)
+            {
+                return false;
+            }
+
+            object[] hitTestResults = HitTestBoundsOverride(rootBounds.TopLeft, rootBounds.BottomRight);
+            if (hitTestResults == null)
+            {
+                return false;
+            }
+
+            Dictionary<Visual, HitTestFilterBehavior> filterResults = filterCallback == null
+                ? null
+                : new Dictionary<Visual, HitTestFilterBehavior>();
+
+            for (int i = 0; i < hitTestResults.Length; i++)
+            {
+                if (hitTestResults[i] is not Visual visualHit ||
+                    !IsVisualDescendantOf(visualHit, reference))
+                {
+                    continue;
+                }
+
+                if (!IsPointHitVisibleByFilter(
+                        reference,
+                        visualHit,
+                        filterCallback,
+                        filterResults,
+                        out bool stopFilter))
+                {
+                    if (stopFilter)
+                    {
+                        result = HitTestResultBehavior.Stop;
+                        return true;
+                    }
+
+                    continue;
+                }
+
+                result = resultCallback(new GeometryHitTestResult(visualHit, IntersectionDetail.Intersects));
+                if (result == HitTestResultBehavior.Stop)
+                {
+                    return true;
+                }
+            }
+
+            return true;
+        }
+
         private static bool IsPointHitVisibleByFilter(
             Visual reference,
             Visual visualHit,
@@ -584,6 +651,29 @@ namespace System.Windows
                 transformedPoint = default;
                 return false;
             }
+        }
+
+        private static bool TryTransformBounds(Visual fromVisual, Visual toVisual, Rect bounds, out Rect transformedBounds)
+        {
+            transformedBounds = Rect.Empty;
+            if (bounds.IsEmpty)
+            {
+                return false;
+            }
+
+            if (!TryTransformPoint(fromVisual, toVisual, bounds.TopLeft, out Point topLeft) ||
+                !TryTransformPoint(fromVisual, toVisual, bounds.TopRight, out Point topRight) ||
+                !TryTransformPoint(fromVisual, toVisual, bounds.BottomRight, out Point bottomRight) ||
+                !TryTransformPoint(fromVisual, toVisual, bounds.BottomLeft, out Point bottomLeft))
+            {
+                return false;
+            }
+
+            transformedBounds = new Rect(topLeft, topLeft);
+            transformedBounds.Union(topRight);
+            transformedBounds.Union(bottomRight);
+            transformedBounds.Union(bottomLeft);
+            return true;
         }
 
         private static bool IsVisualDescendantOf(Visual visual, Visual ancestor)

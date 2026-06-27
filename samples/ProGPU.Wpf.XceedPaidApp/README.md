@@ -16,6 +16,11 @@ The project references the paid Toolkit/AvalonDock packages directly plus the se
 - `Xceed.Wpf.Toolkit.Themes.MaterialDesign` `5.2.26322.8434`
 - `Xceed.Products.Wpf.DataGrid.Full` `7.3.26322.8481`
 
+The sample also pins patched direct versions of transitive packages pulled by the paid Xceed dependency graph so restore validation does not rely on vulnerable legacy transitive versions:
+
+- `System.Data.SqlClient` `4.9.1`
+- `System.Drawing.Common` `10.0.9`
+
 The direct Toolkit references are intentional. The complete Toolkit metapackage also brings the Toolkit-era `Xceed.Wpf.DataGrid.Toolkit` assembly, which collides with the separate `Xceed.Wpf.DataGrid` product's `DataGridControl` type. This sample keeps the paid DataGrid surface on the 7.3 DataGrid product and uses Toolkit Plus/AvalonDock packages for the Toolkit side.
 
 Runtime licensing is loaded only from environment variables:

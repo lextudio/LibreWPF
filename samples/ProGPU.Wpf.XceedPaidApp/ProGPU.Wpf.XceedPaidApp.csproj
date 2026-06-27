@@ -5,6 +5,8 @@
     <UseWPF>true</UseWPF>
     <XceedPaidToolkitPackageVersion>5.2.26322.8434</XceedPaidToolkitPackageVersion>
     <XceedPaidDataGridPackageVersion>7.3.26322.8481</XceedPaidDataGridPackageVersion>
+    <XceedPaidSystemDataSqlClientPackageVersion>4.9.1</XceedPaidSystemDataSqlClientPackageVersion>
+    <XceedPaidSystemDrawingCommonPackageVersion>10.0.9</XceedPaidSystemDrawingCommonPackageVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,5 +15,7 @@
     <PackageReference Include="Xceed.Wpf.AvalonDock.Themes.Windows10" Version="$(XceedPaidToolkitPackageVersion)" />
     <PackageReference Include="Xceed.Wpf.Toolkit.Themes.MaterialDesign" Version="$(XceedPaidToolkitPackageVersion)" />
     <PackageReference Include="Xceed.Products.Wpf.DataGrid.Full" Version="$(XceedPaidDataGridPackageVersion)" />
+    <PackageReference Include="System.Data.SqlClient" Version="$(XceedPaidSystemDataSqlClientPackageVersion)" />
+    <PackageReference Include="System.Drawing.Common" Version="$(XceedPaidSystemDrawingCommonPackageVersion)" />
   </ItemGroup>
 </Project>

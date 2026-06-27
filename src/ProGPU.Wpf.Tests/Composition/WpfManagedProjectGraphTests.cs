@@ -5493,9 +5493,14 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(pathGeometry, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.MilCoreApi.MilUtility_PathGeometryBounds");
         AssertGuardBefore(pathGeometry, "if (!OperatingSystem.IsWindows())\n            {\n                return InternalCombineManaged", "UnsafeNativeMethods.MilCoreApi.MilUtility_PathGeometryCombine");
         Assert.Contains("private static PathGeometry InternalCombineManaged(", pathGeometry, StringComparison.Ordinal);
-        AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())\n            {\n                return ContainsManagedByBounds", "MilCoreApi.MilUtility_PathGeometryHitTest");
-        AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())\n            {\n                return ContainsPolygonManagedByBounds", "MilCoreApi.MilUtility_PolygonHitTest");
-        Assert.Contains("private bool ContainsManagedByBounds(", geometry, StringComparison.Ordinal);
+        AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())\n            {\n                return ContainsProGpuBounds", "MilCoreApi.MilUtility_PathGeometryHitTest");
+        AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())\n            {\n                return ContainsPolygonProGpuBounds", "MilCoreApi.MilUtility_PolygonHitTest");
+        Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\BoundsHitTesting.cs", presentationCoreProject, StringComparison.Ordinal);
+        Assert.Contains("private bool ContainsProGpuBounds(", geometry, StringComparison.Ordinal);
+        Assert.Contains("ProGpuBoundsHitTesting.ContainsPoint(", geometry, StringComparison.Ordinal);
+        Assert.DoesNotContain("InflateForHitTolerance", geometry, StringComparison.Ordinal);
+        Assert.DoesNotContain("ContainsManagedByBounds", geometry, StringComparison.Ordinal);
+        Assert.DoesNotContain("ContainsPolygonManagedByBounds", geometry, StringComparison.Ordinal);
         AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())", "MilCoreApi.MilUtility_PolygonBounds");
         Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\PolygonGeometryBounds.cs", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains("return GetProGpuPolygonBounds(", geometry, StringComparison.Ordinal);

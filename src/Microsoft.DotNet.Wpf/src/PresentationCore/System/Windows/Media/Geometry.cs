@@ -15,6 +15,7 @@ using System.Windows.Media.Composition;
 using System.Windows.Media.Animation;
 using System.Runtime.InteropServices;
 
+using ProGpuBoundsHitTesting = ProGPU.Vector.BoundsHitTesting;
 using ProGpuPolygonGeometryBounds = ProGPU.Vector.PolygonGeometryBounds;
 
 namespace System.Windows.Media
@@ -466,7 +467,7 @@ namespace System.Windows.Media
 
             if (!OperatingSystem.IsWindows())
             {
-                return ContainsManagedByBounds(pen, hitPoint, tolerance, type);
+                return ContainsProGpuBounds(pen, hitPoint, tolerance, type);
             }
 
             bool contains = false;
@@ -522,7 +523,7 @@ namespace System.Windows.Media
         {
             if (!OperatingSystem.IsWindows())
             {
-                return ContainsPolygonManagedByBounds(
+                return ContainsPolygonProGpuBounds(
                     pen,
                     hitPoint,
                     tolerance,
@@ -572,14 +573,13 @@ namespace System.Windows.Media
             return contains;
         }
 
-        private bool ContainsManagedByBounds(Pen pen, Point hitPoint, double tolerance, ToleranceType type)
+        private bool ContainsProGpuBounds(Pen pen, Point hitPoint, double tolerance, ToleranceType type)
         {
             Rect bounds = GetBoundsInternal(pen, Matrix.Identity, tolerance, type);
-            InflateForHitTolerance(ref bounds, tolerance, type);
-            return !bounds.IsEmpty && bounds.Contains(hitPoint);
+            return ContainsProGpuBounds(bounds, hitPoint, tolerance, type);
         }
 
-        private unsafe bool ContainsPolygonManagedByBounds(
+        private unsafe bool ContainsPolygonProGpuBounds(
             Pen pen,
             Point hitPoint,
             double tolerance,
@@ -604,27 +604,22 @@ namespace System.Windows.Media
                 tolerance,
                 type,
                 fSkipHollows: false);
-            InflateForHitTolerance(ref bounds, tolerance, type);
-            return !bounds.IsEmpty && bounds.Contains(hitPoint);
+            return ContainsProGpuBounds(bounds, hitPoint, tolerance, type);
         }
 
-        private static void InflateForHitTolerance(ref Rect bounds, double tolerance, ToleranceType type)
+        private static bool ContainsProGpuBounds(Rect bounds, Point hitPoint, double tolerance, ToleranceType type)
         {
-            if (bounds.IsEmpty || tolerance <= 0.0)
+            if (bounds.IsEmpty)
             {
-                return;
+                return false;
             }
 
-            double padding = tolerance;
-            if (type == ToleranceType.Relative)
-            {
-                padding *= Math.Max(Math.Abs(bounds.Width), Math.Abs(bounds.Height));
-            }
-
-            if (padding > 0.0)
-            {
-                bounds.Inflate(padding, padding);
-            }
+            return ProGpuBoundsHitTesting.ContainsPoint(
+                new Vector2((float)hitPoint.X, (float)hitPoint.Y),
+                new Vector2((float)bounds.Left, (float)bounds.Top),
+                new Vector2((float)bounds.Right, (float)bounds.Bottom),
+                (float)tolerance,
+                type == ToleranceType.Relative);
         }
 
         /// <summary>

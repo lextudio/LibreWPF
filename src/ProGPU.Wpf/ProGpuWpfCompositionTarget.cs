@@ -9,6 +9,9 @@ using MediaDrawingContext = System.Windows.Media.DrawingContext;
 using ProGpuContainerVisual = global::ProGPU.Scene.ContainerVisual;
 using ProGpuCompositor = global::ProGPU.Scene.Compositor;
 using ProGpuDrawingVisual = global::ProGPU.Scene.DrawingVisual;
+using ProGpuHitTestDeviceIndex = global::ProGPU.Vector.GpuHitTestDeviceIndex;
+using ProGpuHitTestIndex = global::ProGPU.Vector.GpuHitTestIndex;
+using ProGpuHitTestResult = global::ProGPU.Vector.GpuHitTestResult;
 using ProGpuRenderTargetViewport = global::ProGPU.Scene.RenderTargetViewport;
 using ProGpuWgpuContext = global::ProGPU.Backend.WgpuContext;
 
@@ -53,6 +56,9 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
     public int RetainedVisualBranchSourceCount => RetainedVisualBranchMap.SourceCount;
 
     public int RetainedVisualBranchCount => RetainedVisualBranchMap.VisualCount;
+
+    public ProGpuHitTestIndex? LastGpuHitTestIndex => Compositor.LastHitTestIndex;
+    public ProGpuHitTestDeviceIndex? LastGpuHitTestDeviceIndex => Compositor.LastHitTestDeviceIndex;
 
     public int LastRetainedBranchInvalidationCount { get; private set; }
 
@@ -327,6 +333,12 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
             renderTargetViewport,
             dpiScale,
             targetView);
+    }
+
+    public bool TryHitTestPoint(Vector2 logicalPoint, out ProGpuHitTestResult result)
+    {
+        ThrowIfDisposed();
+        return Compositor.TryHitTestPoint(logicalPoint, out result);
     }
 
     private static uint ResolveLogicalRenderDimension(

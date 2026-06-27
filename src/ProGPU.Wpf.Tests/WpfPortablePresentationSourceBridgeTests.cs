@@ -1,5 +1,6 @@
 using System.Windows.Media.ProGPU;
 using System.Windows.Media.ProGPU.Platform;
+using ProGPU.Vector;
 using Xunit;
 
 namespace ProGPU.Wpf.Tests;
@@ -188,6 +189,27 @@ public sealed class WpfPortablePresentationSourceBridgeTests
     }
 
     [Fact]
+    public void GpuHitTestOverridesReturnHandledMissWhenCacheExists()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        using var target = ProGpuWpfCompositionTarget.CreateHeadless();
+        var source = new FakePortablePresentationSource();
+        InstallCompositionTarget(host, target);
+        InstallEmptyGpuHitTestCache(target);
+
+        var bound = WpfPortablePresentationSourceBridge.TryBind(host, source, out var bridge);
+
+        Assert.True(bound);
+        Assert.NotNull(bridge);
+        Assert.NotNull(source.HitTestOverride);
+        Assert.NotNull(source.HitTestAllOverride);
+        Assert.NotNull(source.HitTestBoundsOverride);
+        Assert.Same(source, source.HitTestOverride(new System.Windows.Point(12, 24)));
+        Assert.Empty(source.HitTestAllOverride(new System.Windows.Point(12, 24))!);
+        Assert.Empty(source.HitTestBoundsOverride(new System.Windows.Point(0, 0), new System.Windows.Point(12, 24))!);
+    }
+
+    [Fact]
     public void TryBindReturnsFalseWhenSourceShapeIsMissing()
     {
         using var host = new ProGpuWpfWindowHost();
@@ -196,6 +218,21 @@ public sealed class WpfPortablePresentationSourceBridgeTests
 
         Assert.False(bound);
         Assert.Null(bridge);
+    }
+
+    private static void InstallCompositionTarget(ProGpuWpfWindowHost host, ProGpuWpfCompositionTarget target)
+    {
+        typeof(ProGpuWpfWindowHost)
+            .GetField("_target", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .SetValue(host, target);
+    }
+
+    private static void InstallEmptyGpuHitTestCache(ProGpuWpfCompositionTarget target)
+    {
+        var index = GpuHitTestIndex.Build(Array.Empty<GpuHitTestPrimitive>());
+        typeof(global::ProGPU.Scene.Compositor)
+            .GetMethod("SetLastHitTestIndex", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .Invoke(target.Compositor, new object[] { index });
     }
 
     private sealed class FakePortablePresentationSource : IDisposable

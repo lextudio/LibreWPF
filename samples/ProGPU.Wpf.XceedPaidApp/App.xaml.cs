@@ -194,6 +194,8 @@ internal static class XceedPaidSelfTest
         AssertType<Xceed.Wpf.DataGrid.Column>("Xceed DataGrid Column");
         AssertType<Xceed.Wpf.DataGrid.DataGridGroupDescription>("Xceed DataGrid group description");
         AssertType<Xceed.Wpf.DataGrid.DataGridItemProperty>("Xceed DataGrid item property");
+        AssertType<Xceed.Wpf.DataGrid.DataGridUnboundItemProperty>("Xceed DataGrid unbound item property");
+        AssertType<Xceed.Wpf.DataGrid.UnboundColumn>("Xceed DataGrid unbound column");
         AssertType<Xceed.Wpf.DataGrid.DetailConfiguration>("Xceed DataGrid detail configuration");
         AssertType<Xceed.Wpf.DataGrid.FilterRow>("Xceed DataGrid filter row");
         AssertType<Xceed.Wpf.DataGrid.MergedHeader>("Xceed DataGrid merged header");
@@ -263,7 +265,14 @@ internal static class XceedPaidSelfTest
         AssertEqual(false, rowsView.AutoCreateItemProperties, "paid DataGrid explicit item properties");
         AssertEqual(false, rowsView.DefaultCalculateDistinctValues, "paid DataGrid distinct value calculation");
         AssertEqual(true, rowsView.AutoCreateDetailDescriptions, "paid DataGrid auto detail descriptions");
-        AssertEqual(8, rowsView.ItemProperties.Count, "paid DataGrid item-property metadata");
+        AssertEqual(9, rowsView.ItemProperties.Count, "paid DataGrid item-property metadata");
+        var priorityProperty = rowsView.ItemProperties
+            .Cast<Xceed.Wpf.DataGrid.DataGridItemPropertyBase>()
+            .Single(itemProperty => itemProperty.Name == "PriorityBand");
+        AssertEqual(true, priorityProperty is Xceed.Wpf.DataGrid.DataGridUnboundItemProperty, "paid DataGrid priority unbound property");
+        AssertEqual("Low", priorityProperty.GetValue(viewModel.Rows[0]), "paid DataGrid low priority unbound value");
+        AssertEqual("Critical", MainWindow.GetPriorityBand(viewModel.Rows[4]), "paid DataGrid critical priority helper value");
+        AssertEqual(true, window.PriorityBandQueryCount > 0, "paid DataGrid unbound priority query event");
         AssertEqual(1, rowsView.GroupDescriptions.Count, "paid DataGrid group description count");
         AssertEqual(1, rowsView.SortDescriptions.Count, "paid DataGrid sort description count");
         AssertEqual(2, rowsView.StatFunctions.Count, "paid DataGrid stat function count");
@@ -279,19 +288,21 @@ internal static class XceedPaidSelfTest
         AssertEqual(true, window.PaidDataGrid.ClipboardExporters.Count >= 3, "paid DataGrid clipboard exporters");
         AssertEqual(Xceed.Wpf.DataGrid.ItemScrollingBehavior.Immediate, window.PaidDataGrid.ItemScrollingBehavior, "paid DataGrid scroll behavior");
         AssertEqual(Xceed.Wpf.DataGrid.NavigationBehavior.RowOnly, window.PaidDataGrid.NavigationBehavior, "paid DataGrid navigation behavior");
-        AssertEqual(8, window.PaidDataGrid.Columns.Count, "paid DataGrid explicit columns");
-        AssertEqual(8, window.PaidDataGrid.VisibleColumns.Count, "paid DataGrid visible column count");
+        AssertEqual(9, window.PaidDataGrid.Columns.Count, "paid DataGrid explicit columns");
+        AssertEqual(9, window.PaidDataGrid.VisibleColumns.Count, "paid DataGrid visible column count");
         AssertEqual(true, ReferenceEquals(window.PaidDataGrid.Columns, window.PaidColumnChooser.Columns), "paid DataGrid column chooser column source");
         AssertEqual(true, window.PaidTableView.AllowColumnChooser, "paid DataGrid table view column chooser");
         AssertEqual(Xceed.Wpf.DataGrid.Views.ColumnChooserSortOrder.TitleAscending, window.PaidTableView.ColumnChooserSortOrder, "paid DataGrid column chooser sort order");
         var idColumn = MainWindow.FindPaidColumn(window.PaidDataGrid, "Id");
+        var priorityColumn = MainWindow.FindPaidColumn(window.PaidDataGrid, "PriorityBand");
         var statusColumn = MainWindow.FindPaidColumn(window.PaidDataGrid, "Status");
+        AssertEqual(true, priorityColumn is Xceed.Wpf.DataGrid.UnboundColumn, "paid DataGrid priority unbound column");
         AssertEqual(false, idColumn.ShowInColumnChooser, "paid DataGrid fixed Id column chooser visibility");
         AssertEqual(true, statusColumn.ShowInColumnChooser, "paid DataGrid Status column chooser visibility");
         statusColumn.Visible = false;
-        AssertEqual(7, window.PaidDataGrid.VisibleColumns.Count, "paid DataGrid hidden Status visible column count");
+        AssertEqual(8, window.PaidDataGrid.VisibleColumns.Count, "paid DataGrid hidden Status visible column count");
         statusColumn.Visible = true;
-        AssertEqual(8, window.PaidDataGrid.VisibleColumns.Count, "paid DataGrid restored Status visible column count");
+        AssertEqual(9, window.PaidDataGrid.VisibleColumns.Count, "paid DataGrid restored Status visible column count");
         AssertEqual(false, window.VirtualPaidDataGrid.AutoCreateColumns, "paid virtual DataGrid auto columns");
         AssertEqual(true, window.VirtualPaidDataGrid.ReadOnly, "paid virtual DataGrid read-only state");
         AssertEqual(Xceed.Wpf.DataGrid.ItemScrollingBehavior.Deferred, window.VirtualPaidDataGrid.ItemScrollingBehavior, "paid virtual DataGrid scroll behavior");

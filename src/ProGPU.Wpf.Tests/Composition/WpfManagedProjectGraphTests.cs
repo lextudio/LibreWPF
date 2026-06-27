@@ -6561,6 +6561,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.Views.TableView>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.DataGridGroupDescription>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.DataGridItemProperty>", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertType<Xceed.Wpf.DataGrid.DataGridUnboundItemProperty>", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertType<Xceed.Wpf.DataGrid.UnboundColumn>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.DetailConfiguration>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.FilterRow>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.MergedHeader>", appCodeBehind, StringComparison.Ordinal);
@@ -6601,6 +6603,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("xmlns:xcdg=\"http://schemas.xceed.com/wpf/xaml/datagrid\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:xcdgtheme=\"clr-namespace:Xceed.Wpf.DataGrid.ThemePack;assembly=Xceed.Wpf.DataGrid.ThemePack.1\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:scm=\"clr-namespace:System.ComponentModel;assembly=WindowsBase\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("xmlns:sys=\"clr-namespace:System;assembly=mscorlib\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:xcad=\"http://schemas.xceed.com/wpf/xaml/avalondock\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Xceed.Wpf.AvalonDock.Themes.Windows10", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("AutoCreateDetailDescriptions=\"True\"", mainWindowXaml, StringComparison.Ordinal);
@@ -6611,6 +6614,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Filter=\"PaidRowsView_Filter\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:DataGridCollectionViewSource.ItemProperties>", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:DataGridItemProperty Name=\"Owner\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcdg:DataGridUnboundItemProperty Name=\"PriorityBand\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("QueryValue=\"PriorityBand_QueryValue\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:DataGridCollectionViewSource.GroupDescriptions>", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:DataGridGroupDescription PropertyName=\"Category\" />", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:DataGridCollectionViewSource.SortDescriptions>", mainWindowXaml, StringComparison.Ordinal);
@@ -6650,6 +6655,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<xcdg:DataGridControl.MergedHeaders>", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:MergedColumn FieldName=\"Identity\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:MergedColumn FieldName=\"Execution\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ChildColumnNames=\"Category,Status,Score,PriorityBand,Updated,Active\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:DataGridControl.View>", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:TableView x:Name=\"PaidTableView\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdgtheme:Office2007BlueTheme />", mainWindowXaml, StringComparison.Ordinal);
@@ -6662,6 +6668,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<xcdg:TableView.FixedFooters>", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:StatCell FieldName=\"Score\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:Column FieldName=\"Id\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcdg:UnboundColumn FieldName=\"PriorityBand\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:Column FieldName=\"Active\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"ExportCsvButton_Click\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Click=\"ExportExcelButton_Click\"", mainWindowXaml, StringComparison.Ordinal);
@@ -6685,6 +6692,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public sealed class PaidGridDetail", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PaidRowsView_Filter", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("e.Accepted = item.Active", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PriorityBand_QueryValue", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("e.Value = GetPriorityBand(item)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("internal static string GetPriorityBand", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal DataGridCollectionViewSource PaidRowsViewSource", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PaidDataGrid.ExportToCsv(stream)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PaidDataGrid.ExportToExcel(stream)", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6705,6 +6715,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PaidDataGrid.BringItemIntoView(item)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SelectRow(ViewModel.Rows.Count - 1", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Configured explicit Xceed DataGrid columns", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Configured computed paid DataGrid unbound priority column", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Configured Toolkit Plus Material controls", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Configured paid DataGrid merged headers, search, export, settings, column chooser, and view commands", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Configured paid DataGrid virtualizing queryable source", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6714,6 +6725,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Do not put license values in this repository.", readme, StringComparison.Ordinal);
         Assert.Contains("100,000 rows", readme, StringComparison.Ordinal);
         Assert.Contains("DataGridVirtualizingQueryableCollectionViewSource", readme, StringComparison.Ordinal);
+        Assert.Contains("DataGridUnboundItemProperty", readme, StringComparison.Ordinal);
+        Assert.Contains("UnboundColumn", readme, StringComparison.Ordinal);
         Assert.Contains("merged headers", readme, StringComparison.Ordinal);
         Assert.Contains("SearchControl", readme, StringComparison.Ordinal);
         Assert.Contains("ColumnChooserControl", readme, StringComparison.Ordinal);

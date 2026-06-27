@@ -17,6 +17,7 @@ namespace ProGPU.Wpf.XceedPaidApp;
 public partial class MainWindow : Window
 {
     private SettingsRepository? _savedSettings;
+    private int _priorityBandQueryCount;
 
     public MainWindow()
         : this(XceedPaidLicenseBootstrap.ConfigureFromEnvironment())
@@ -37,6 +38,8 @@ public partial class MainWindow : Window
 
     internal XceedPaidViewModel ViewModel { get; }
 
+    internal int PriorityBandQueryCount => _priorityBandQueryCount;
+
     internal DataGridCollectionViewSource PaidRowsViewSource => (DataGridCollectionViewSource)FindResource("PaidRowsView");
 
     internal DataGridVirtualizingQueryableCollectionViewSource VirtualPaidRowsViewSource => (DataGridVirtualizingQueryableCollectionViewSource)FindResource("VirtualPaidRowsView");
@@ -56,6 +59,15 @@ public partial class MainWindow : Window
         if (e.Item is PaidGridItem item)
         {
             e.Accepted = item.Active;
+        }
+    }
+
+    private void PriorityBand_QueryValue(object sender, DataGridItemPropertyQueryValueEventArgs e)
+    {
+        if (e.Item is PaidGridItem item)
+        {
+            _priorityBandQueryCount++;
+            e.Value = GetPriorityBand(item);
         }
     }
 
@@ -172,6 +184,17 @@ public partial class MainWindow : Window
             ?? throw new InvalidOperationException($"Expected paid DataGrid column '{fieldName}'.");
     }
 
+    internal static string GetPriorityBand(PaidGridItem item)
+    {
+        return item.Score switch
+        {
+            >= 80 => "Critical",
+            >= 60 => "High",
+            >= 35 => "Medium",
+            _ => "Low"
+        };
+    }
+
     private void SelectRow(int index, string action)
     {
         if (index < 0 || index >= ViewModel.Rows.Count)
@@ -241,13 +264,14 @@ internal sealed class XceedPaidViewModel : INotifyPropertyChanged
     internal XceedPaidViewModel(XceedPaidLicenseStatus licenseStatus)
     {
         LicenseStatusText = licenseStatus.DescribePublic();
-        PackageStatus = "Toolkit Plus 5.2, DataGrid 7.3, AvalonDock Windows10 theme, virtualization, export/settings APIs, column chooser, Views3D/theme-pack assemblies";
+        PackageStatus = "Toolkit Plus 5.2, DataGrid 7.3, AvalonDock Windows10 theme, virtualization, unbound columns, export/settings APIs, column chooser, Views3D/theme-pack assemblies";
         Rows = CreateRows(100_000);
         _selectedRow = Rows[0];
         Activity =
         [
             "Created 100,000 paid DataGrid rows",
             "Configured explicit Xceed DataGrid columns",
+            "Configured computed paid DataGrid unbound priority column",
             "Configured Toolkit Plus Material controls",
             "Configured paid DataGrid merged headers, search, export, settings, column chooser, and view commands",
             "Configured paid DataGrid virtualizing queryable source"

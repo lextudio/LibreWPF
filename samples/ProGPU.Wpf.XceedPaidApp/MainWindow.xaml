@@ -8,6 +8,7 @@
         xmlns:xcad="http://schemas.xceed.com/wpf/xaml/avalondock"
         xmlns:xcadthemes="clr-namespace:Xceed.Wpf.AvalonDock.Themes;assembly=Xceed.Wpf.AvalonDock.Themes.Windows10"
         xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
         Title="ProGPU WPF Paid Xceed Toolkit + DataGrid"
         Width="1180"
         Height="760"
@@ -48,6 +49,10 @@
         <xcdg:DataGridItemProperty Name="Active"
                                    Title="Active"
                                    CalculateDistinctValues="True" />
+        <xcdg:DataGridUnboundItemProperty Name="PriorityBand"
+                                          DataType="{x:Type sys:String}"
+                                          IsReadOnly="True"
+                                          QueryValue="PriorityBand_QueryValue" />
       </xcdg:DataGridCollectionViewSource.ItemProperties>
       <xcdg:DataGridCollectionViewSource.GroupDescriptions>
         <xcdg:DataGridGroupDescription PropertyName="Category" />
@@ -319,7 +324,7 @@
                                            ChildColumnNames="Id,Title,Owner" />
                         <xcdg:MergedColumn FieldName="Execution"
                                            Title="Execution"
-                                           ChildColumnNames="Category,Status,Score,Updated,Active" />
+                                           ChildColumnNames="Category,Status,Score,PriorityBand,Updated,Active" />
                       </xcdg:MergedHeader.MergedColumns>
                     </xcdg:MergedHeader>
                   </xcdg:DataGridControl.MergedHeaders>
@@ -378,6 +383,8 @@
                                  Title="Status" />
                     <xcdg:Column FieldName="Score"
                                  Title="Score" />
+                    <xcdg:UnboundColumn FieldName="PriorityBand"
+                                        Title="Priority" />
                     <xcdg:Column FieldName="Updated"
                                  Title="Updated" />
                     <xcdg:Column FieldName="Active"

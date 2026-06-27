@@ -10,9 +10,12 @@
 using MS.Internal;
 using MS.Win32.PresentationCore;
 using System.ComponentModel;
+using System.Numerics;
 using System.Windows.Media.Composition;
 using System.Windows.Media.Animation;
 using System.Runtime.InteropServices;
+
+using ProGpuPolygonGeometryBounds = ProGPU.Vector.PolygonGeometryBounds;
 
 namespace System.Windows.Media
 {
@@ -165,7 +168,7 @@ namespace System.Windows.Media
 
             if (!OperatingSystem.IsWindows())
             {
-                return GetManagedPolygonBounds(
+                return GetProGpuPolygonBounds(
                     pen,
                     fPenContributesToBounds,
                     pWorldMatrix,
@@ -226,7 +229,7 @@ namespace System.Windows.Media
             return bounds;
         }
 
-        private static unsafe Rect GetManagedPolygonBounds(
+        private static unsafe Rect GetProGpuPolygonBounds(
             Pen pen,
             bool penContributesToBounds,
             Matrix* pWorldMatrix,
@@ -239,74 +242,52 @@ namespace System.Windows.Media
                 return Rect.Empty;
             }
 
-            Matrix geometryMatrix = pGeometryMatrix == null ? Matrix.Identity : *pGeometryMatrix;
-            Matrix worldMatrix = pWorldMatrix == null ? Matrix.Identity : *pWorldMatrix;
-
-            Point firstPoint = TransformManagedPoint(pPoints[0], geometryMatrix, worldMatrix);
-            if (!IsFinite(firstPoint.X) || !IsFinite(firstPoint.Y))
+            if (pointCount > int.MaxValue)
             {
                 return Rect.Empty;
             }
 
-            Rect bounds = new Rect(firstPoint, firstPoint);
-            for (uint i = 1; i < pointCount; i++)
+            Span<Vector2> points = pointCount <= 256
+                ? stackalloc Vector2[(int)pointCount]
+                : new Vector2[(int)pointCount];
+            for (int i = 0; i < points.Length; i++)
             {
-                Point point = TransformManagedPoint(pPoints[i], geometryMatrix, worldMatrix);
-                if (!IsFinite(point.X) || !IsFinite(point.Y))
-                {
-                    return Rect.Empty;
-                }
-
-                bounds.Union(point);
+                points[i] = new Vector2((float)pPoints[i].X, (float)pPoints[i].Y);
             }
 
+            Matrix4x4 geometryMatrix = pGeometryMatrix == null ? Matrix4x4.Identity : ToProGpuMatrix(*pGeometryMatrix);
+            Matrix4x4 worldMatrix = pWorldMatrix == null ? Matrix4x4.Identity : ToProGpuMatrix(*pWorldMatrix);
+            float strokeThickness = 0.0f;
             if (penContributesToBounds)
             {
-                double strokeThickness = Math.Abs(pen.Thickness)
-                    * GetManagedStrokeScale(geometryMatrix)
-                    * GetManagedStrokeScale(worldMatrix);
-
-                if (!IsFinite(strokeThickness))
+                strokeThickness = (float)Math.Abs(pen.Thickness);
+                if (!float.IsFinite(strokeThickness))
                 {
                     return Rect.Empty;
                 }
-
-                bounds.Inflate(strokeThickness * 0.5, strokeThickness * 0.5);
             }
 
-            return bounds;
+            if (!ProGpuPolygonGeometryBounds.TryGetBounds(
+                    points,
+                    geometryMatrix,
+                    worldMatrix,
+                    strokeThickness,
+                    out Vector2 min,
+                    out Vector2 max))
+            {
+                return Rect.Empty;
+            }
+
+            return new Rect(new Point(min.X, min.Y), new Point(max.X, max.Y));
         }
 
-        private static Point TransformManagedPoint(Point point, Matrix geometryMatrix, Matrix worldMatrix)
+        private static Matrix4x4 ToProGpuMatrix(Matrix matrix)
         {
-            if (!geometryMatrix.IsIdentity)
-            {
-                point = geometryMatrix.Transform(point);
-            }
-
-            if (!worldMatrix.IsIdentity)
-            {
-                point = worldMatrix.Transform(point);
-            }
-
-            return point;
-        }
-
-        private static double GetManagedStrokeScale(Matrix matrix)
-        {
-            if (matrix.IsIdentity)
-            {
-                return 1.0;
-            }
-
-            double firstColumnScale = Math.Sqrt((matrix.M11 * matrix.M11) + (matrix.M12 * matrix.M12));
-            double secondColumnScale = Math.Sqrt((matrix.M21 * matrix.M21) + (matrix.M22 * matrix.M22));
-            return Math.Max(firstColumnScale, secondColumnScale);
-        }
-
-        private static bool IsFinite(double value)
-        {
-            return !double.IsNaN(value) && !double.IsInfinity(value);
+            return new Matrix4x4(
+                (float)matrix.M11, (float)matrix.M12, 0.0f, 0.0f,
+                (float)matrix.M21, (float)matrix.M22, 0.0f, 0.0f,
+                0.0f, 0.0f, 1.0f, 0.0f,
+                (float)matrix.OffsetX, (float)matrix.OffsetY, 0.0f, 1.0f);
         }
 
         internal virtual void TransformPropertyChangedHook(DependencyPropertyChangedEventArgs e)

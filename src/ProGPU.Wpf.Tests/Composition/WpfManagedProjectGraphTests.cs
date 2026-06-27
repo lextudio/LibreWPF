@@ -5497,8 +5497,12 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())\n            {\n                return ContainsPolygonManagedByBounds", "MilCoreApi.MilUtility_PolygonHitTest");
         Assert.Contains("private bool ContainsManagedByBounds(", geometry, StringComparison.Ordinal);
         AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())", "MilCoreApi.MilUtility_PolygonBounds");
-        Assert.Contains("return GetManagedPolygonBounds(", geometry, StringComparison.Ordinal);
-        Assert.Contains("private static unsafe Rect GetManagedPolygonBounds", geometry, StringComparison.Ordinal);
+        Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\PolygonGeometryBounds.cs", presentationCoreProject, StringComparison.Ordinal);
+        Assert.Contains("return GetProGpuPolygonBounds(", geometry, StringComparison.Ordinal);
+        Assert.Contains("private static unsafe Rect GetProGpuPolygonBounds", geometry, StringComparison.Ordinal);
+        Assert.Contains("ProGpuPolygonGeometryBounds.TryGetBounds(", geometry, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetManagedStrokeScale", geometry, StringComparison.Ordinal);
+        Assert.DoesNotContain("TransformManagedPoint", geometry, StringComparison.Ordinal);
         Assert.Contains("PROGPU_VECTOR_INTERNAL", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\DashPattern.cs", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\ArcSegmentGeometry.cs", presentationCoreProject, StringComparison.Ordinal);

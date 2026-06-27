@@ -295,6 +295,8 @@
              Link="MS\Internal\Media\ProGPU\ArcSegmentGeometry.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Vector\PathGeometry.cs"
              Link="MS\Internal\Media\ProGPU\PathGeometry.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Vector\PolygonGeometryBounds.cs"
+             Link="MS\Internal\Media\ProGPU\PolygonGeometryBounds.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Vector\TransformMetrics.cs"
              Link="MS\Internal\Media\ProGPU\TransformMetrics.cs" />
     <Compile Include="MS\Internal\Text\TextInterface\PortableTextInterface.cs"

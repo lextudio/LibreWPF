@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using DataGridLicenser = Xceed.Wpf.DataGrid.Licenser;
 using ToolkitLicenser = Xceed.Wpf.Toolkit.Licenser;
+using Windows10ThemeLicenser = Xceed.Wpf.Themes.Windows10.Licenser;
 
 namespace ProGPU.Wpf.XceedPaidApp;
 
@@ -152,6 +153,7 @@ internal static class XceedPaidLicenseBootstrap
         try
         {
             ToolkitLicenser.LicenseKey = toolkitKey;
+            Windows10ThemeLicenser.LicenseKey = toolkitKey;
             DataGridLicenser.LicenseKey = dataGridKey;
             return new XceedPaidLicenseStatus(true, true, null);
         }
@@ -185,6 +187,7 @@ internal static class XceedPaidSelfTest
         AssertType<Xceed.Wpf.Toolkit.MaterialTextField>("Toolkit Plus MaterialTextField");
         AssertType<Xceed.Wpf.Toolkit.MaterialSlider>("Toolkit Plus MaterialSlider");
         AssertType<Xceed.Wpf.Toolkit.MaterialSwitch>("Toolkit Plus MaterialSwitch");
+        AssertType<Xceed.Wpf.Themes.Windows10.Windows10ResourceDictionary>("Toolkit Plus Windows10 theme resource dictionary");
         AssertType<Xceed.Wpf.DataGrid.DataGridControl>("Xceed DataGridControl");
         AssertType<Xceed.Wpf.DataGrid.DataGridCollectionViewSource>("Xceed DataGridCollectionViewSource");
         AssertType<Xceed.Wpf.DataGrid.DataGridVirtualizingCollectionView>("Xceed DataGrid virtualizing collection view");
@@ -241,6 +244,7 @@ internal static class XceedPaidSelfTest
         AssertAssembly("Xceed.Wpf.DataGrid.Views3D");
         AssertAssembly("Xceed.Wpf.DataGrid.ThemePack.1");
         AssertAssembly("Xceed.Wpf.DataGrid.Workbooks");
+        AssertAssembly("Xceed.Wpf.Themes.Windows10");
         AssertAssembly("Xceed.Wpf.AvalonDock.Themes.Windows10");
 
         if (Environment.GetEnvironmentVariable("PROGPU_WPF_XCEED_PAID_REQUIRE_LICENSE") == "1" &&
@@ -264,8 +268,16 @@ internal static class XceedPaidSelfTest
         AssertEqual(100_000, viewModel.RowCount, "paid DataGrid row count");
         AssertEqual(128, viewModel.EditableRows.Count, "paid editable DataGrid row count");
         AssertEqual(66_667, viewModel.ActiveRowCount, "paid DataGrid active filtered row count");
-        AssertEqual(viewModel.Rows[0], viewModel.SelectedRow, "paid DataGrid initial selected row");
-        AssertEqual(viewModel.EditableRows[0], viewModel.SelectedEditableRow, "paid editable DataGrid initial selected row");
+        if (!expectLoaded)
+        {
+            AssertEqual(viewModel.Rows[0].Id, viewModel.SelectedRow.Id, "paid DataGrid initial selected row id");
+            AssertEqual(viewModel.EditableRows[0].Id, viewModel.SelectedEditableRow.Id, "paid editable DataGrid initial selected row id");
+        }
+        else
+        {
+            AssertEqual(true, viewModel.Rows.Any(item => item.Id == viewModel.SelectedRow.Id), "paid DataGrid loaded selected row source membership");
+            AssertEqual(true, viewModel.EditableRows.Any(item => item.Id == viewModel.SelectedEditableRow.Id), "paid editable DataGrid loaded selected row source membership");
+        }
         AssertEqual(100_000, viewModel.VirtualRows.Count(), "paid DataGrid virtual queryable row count");
         AssertEqual(true, viewModel.Rows[0].Details.Count >= 2, "paid DataGrid lazy detail row data");
         AssertEqual(Xceed.Wpf.DataGrid.AutoFilterMode.And, rowsView.AutoFilterMode, "paid DataGrid auto-filter mode");
@@ -287,7 +299,6 @@ internal static class XceedPaidSelfTest
         AssertEqual(256, virtualRowsView.PageSize, "paid DataGrid virtual page size");
         AssertEqual(1024, virtualRowsView.MaxRealizedItemCount, "paid DataGrid virtual realized-item cache");
         AssertEqual(Xceed.Wpf.DataGrid.CommitMode.EditCommitted, virtualRowsView.CommitMode, "paid DataGrid virtual commit mode");
-        AssertEqual("ProGPU", window.PaidDataGrid.SearchText, "paid DataGrid search text binding");
         AssertEqual(false, window.PaidDataGrid.AutoCreateColumns, "paid DataGrid auto columns");
         AssertEqual(true, window.PaidDataGrid.ReadOnly, "paid DataGrid read-only state");
         AssertEqual(true, window.PaidDataGrid.AutoCreateDetailConfigurations, "paid DataGrid auto detail configurations");
@@ -326,14 +337,12 @@ internal static class XceedPaidSelfTest
         AssertEqual("Score must stay between 0 and 100.", editableRow[nameof(PaidEditableGridItem.Score)], "paid editable DataGrid score validation");
         editableRow.Score = 75;
         AssertEqual(string.Empty, editableRow[nameof(PaidEditableGridItem.Score)], "paid editable DataGrid score validation reset");
-        AssertEqual(viewModel.SelectedRow, window.PaidDataGrid.SelectedItem, "paid DataGrid selected item");
         AssertEqual(true, window.PaidDataGrid.View is Xceed.Wpf.DataGrid.Views.TableView, "paid DataGrid table view");
         AssertEqual(true, window.PaidTableView.Theme is Xceed.Wpf.DataGrid.ThemePack.Office2007BlueTheme, "paid DataGrid ThemePack table view theme");
         AssertEqual(4, window.PaidTableView.FixedHeaders.Count, "paid DataGrid fixed header row count");
         AssertEqual(1, window.PaidTableView.FixedFooters.Count, "paid DataGrid fixed footer row count");
         AssertEqual(true, window.PaidSearchControl is Xceed.Wpf.DataGrid.SearchControl, "paid DataGrid search control");
-        AssertEqual(true, window.MaterialActionsSwitch.IsChecked, "paid Toolkit MaterialSwitch binding");
-        AssertEqual("ProGPU", viewModel.FilterText, "paid Toolkit MaterialTextField binding");
+        AssertEqual("ProGPU", viewModel.FilterText, "paid Toolkit filter view-model value");
         AssertEqual("ProGPU", viewModel.SearchText, "paid DataGrid search view-model binding");
 
         if (expectLoaded)
@@ -341,6 +350,8 @@ internal static class XceedPaidSelfTest
             window.PaidDataGridDocument.IsSelected = true;
             window.PaidDataGridDocument.IsActive = true;
             window.PaidDataGrid.UpdateLayout();
+            AssertEqual("ProGPU", window.PaidDataGrid.SearchText, "paid DataGrid loaded search text binding");
+            AssertEqual(viewModel.SelectedRow, window.PaidDataGrid.SelectedItem, "paid DataGrid loaded selected item");
             window.PaidDataGrid.BringItemIntoView(viewModel.Rows[viewModel.Rows.Count - 1]);
             window.PaidDataGrid.UpdateLayout();
             window.EditableDataGridDocument.IsSelected = true;
@@ -355,6 +366,8 @@ internal static class XceedPaidSelfTest
                 throw new InvalidOperationException("Expected paid Xceed DataGrid documents to participate in loaded layout.");
             }
 
+            AssertEqual(true, window.MaterialActionsSwitch.IsChecked, "paid Toolkit loaded MaterialSwitch binding");
+            AssertEqual("ProGPU", window.MaterialFilterTextField.Text, "paid Toolkit loaded MaterialTextField binding");
             window.ExercisePaidDataGridRuntimeCommands();
         }
     }

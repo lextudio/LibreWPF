@@ -302,7 +302,7 @@
                                       Grid.Row="1"
                                       AutomationProperties.AutomationId="PaidXceedDataGridAutomation"
                                       AutoCreateColumns="False"
-                                      SearchText="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      SearchText="{Binding DataContext.SearchText, RelativeSource={RelativeSource AncestorType={x:Type Window}}, Mode=OneWay}"
                                       ReadOnly="True"
                                       ItemScrollingBehavior="Immediate"
                                       NavigationBehavior="RowOnly"
@@ -352,7 +352,7 @@
                   </xcdg:DataGridControl.MergedHeaders>
                   <xcdg:DataGridControl.View>
                     <xcdg:TableView x:Name="PaidTableView"
-                                    ColumnStretchMode="StretchAll"
+                                    ColumnStretchMode="All"
                                     FixedColumnCount="1"
                                     AllowColumnChooser="True"
                                     ColumnChooserSortOrder="TitleAscending"
@@ -447,7 +447,7 @@
                                       ItemsSource="{Binding Source={StaticResource EditableRowsView}}"
                                       SelectedItem="{Binding SelectedEditableRow, Mode=TwoWay}">
                   <xcdg:DataGridControl.View>
-                    <xcdg:TableView ColumnStretchMode="StretchAll"
+                    <xcdg:TableView ColumnStretchMode="All"
                                     FixedColumnCount="1"
                                     UseDefaultHeadersFooters="False">
                       <xcdg:TableView.Theme>
@@ -512,7 +512,7 @@
                                       SelectionMode="Single"
                                       ItemsSource="{Binding Source={StaticResource VirtualPaidRowsView}}">
                   <xcdg:DataGridControl.View>
-                    <xcdg:TableView ColumnStretchMode="StretchAll"
+                    <xcdg:TableView ColumnStretchMode="All"
                                     FixedColumnCount="1"
                                     AllowColumnChooser="True"
                                     ColumnChooserSortOrder="TitleAscending"

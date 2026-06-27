@@ -13,6 +13,7 @@ The project references the paid Toolkit/AvalonDock packages directly plus the se
 - `Xceed.Wpf.Toolkit` `5.2.26322.8434`
 - `Xceed.Wpf.AvalonDock` `5.2.26322.8434`
 - `Xceed.Wpf.AvalonDock.Themes.Windows10` `5.2.26322.8434`
+- `Xceed.Wpf.Themes.Windows10` `5.2.26322.8434`
 - `Xceed.Wpf.Toolkit.Themes.MaterialDesign` `5.2.26322.8434`
 - `Xceed.Products.Wpf.DataGrid.Full` `7.3.26322.8481`
 
@@ -28,7 +29,7 @@ Runtime licensing is loaded only from environment variables:
 - `XCEED_TOOLKIT_LICENSE_KEY`
 - `XCEED_DATAGRID_LICENSE_KEY`
 
-Do not put license values in this repository. `App.xaml.cs` sets `Xceed.Wpf.Toolkit.Licenser.LicenseKey` and `Xceed.Wpf.DataGrid.Licenser.LicenseKey` before constructing any paid controls.
+Do not put license values in this repository. `App.xaml.cs` sets `Xceed.Wpf.Toolkit.Licenser.LicenseKey`, `Xceed.Wpf.Themes.Windows10.Licenser.LicenseKey`, and `Xceed.Wpf.DataGrid.Licenser.LicenseKey` before constructing any paid controls.
 
 Run:
 

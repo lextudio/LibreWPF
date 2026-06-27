@@ -343,6 +343,84 @@ namespace System.Windows
             return originalHit != null;
         }
 
+        internal bool TryPointHitTestOverride(Visual reference, Point referencePoint, bool include2DOn3D, out HitTestResult hitTestResult)
+        {
+            hitTestResult = null;
+            if (!include2DOn3D ||
+                _isDisposed ||
+                HitTestOverride == null ||
+                reference == null ||
+                _rootVisual == null)
+            {
+                return false;
+            }
+
+            if (!TryTransformPoint(reference, _rootVisual, referencePoint, out Point rootPoint))
+            {
+                return false;
+            }
+
+            object hitTestResultObject = HitTestOverride(rootPoint);
+            if (ReferenceEquals(hitTestResultObject, this))
+            {
+                return true;
+            }
+
+            if (hitTestResultObject is not Visual visualHit)
+            {
+                return false;
+            }
+
+            if (!IsVisualDescendantOf(visualHit, reference))
+            {
+                return true;
+            }
+
+            if (!TryTransformPoint(_rootVisual, visualHit, rootPoint, out Point pointHit))
+            {
+                return true;
+            }
+
+            hitTestResult = new PointHitTestResult(visualHit, pointHit);
+            return true;
+        }
+
+        private static bool TryTransformPoint(Visual fromVisual, Visual toVisual, Point point, out Point transformedPoint)
+        {
+            transformedPoint = point;
+            if (fromVisual == toVisual)
+            {
+                return true;
+            }
+
+            try
+            {
+                GeneralTransform transform = fromVisual.TransformToVisual(toVisual);
+                return transform != null && transform.TryTransform(point, out transformedPoint);
+            }
+            catch (InvalidOperationException)
+            {
+                transformedPoint = default;
+                return false;
+            }
+        }
+
+        private static bool IsVisualDescendantOf(Visual visual, Visual ancestor)
+        {
+            DependencyObject current = visual;
+            while (current != null)
+            {
+                if (current == ancestor)
+                {
+                    return true;
+                }
+
+                current = VisualTreeHelper.GetParentInternal(current);
+            }
+
+            return false;
+        }
+
         private sealed class PortableKeyboardInputProvider : IKeyboardInputProvider, IDisposable
         {
             private readonly PortablePresentationSource _source;

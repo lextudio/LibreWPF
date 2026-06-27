@@ -680,6 +680,15 @@ public sealed class WpfManagedProjectGraphTests
             "System",
             "Windows",
             "PortablePresentationSource.cs");
+        var visualTreeHelperPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "VisualTreeHelper.cs");
         var portableKeyboardPath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -703,6 +712,7 @@ public sealed class WpfManagedProjectGraphTests
         var inputManager = File.ReadAllText(inputManagerPath);
         var mouseDevice = File.ReadAllText(mouseDevicePath);
         var portableSource = File.ReadAllText(portableSourcePath);
+        var visualTreeHelper = File.ReadAllText(visualTreeHelperPath);
         var portableKeyboard = File.ReadAllText(portableKeyboardPath);
         var portableMouse = File.ReadAllText(portableMousePath);
 
@@ -724,9 +734,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("LocalHitTest(clientUnits, pt, inputSource, out enabledHit, out originalHit)", mouseDevice, StringComparison.Ordinal);
         Assert.Contains("portableSource.TryHitTestOverride(rootPt, out enabledHit, out originalHit)", mouseDevice, StringComparison.Ordinal);
         Assert.Contains("ReferenceEquals(hitTestResult, this)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("internal bool TryPointHitTestOverride(Visual reference, Point referencePoint, bool include2DOn3D, out HitTestResult hitTestResult)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("portableSource.TryPointHitTestOverride(reference, point, include2DOn3D, out HitTestResult hitTestResult)", visualTreeHelper, StringComparison.Ordinal);
         AssertGuardBefore(mouseDevice, "if (OperatingSystem.IsWindows() && source != null", "UnsafeNativeMethods.WindowFromPoint");
         AssertGuardBefore(mouseDevice, "if (OperatingSystem.IsWindows() && source != null", "SafeNativeMethods.IsWindowEnabled");
         AssertGuardBefore(mouseDevice, "portableSource.TryHitTestOverride(rootPt, out enabledHit, out originalHit)", "root.InputHitTest(rootPt, out enabledHit, out originalHit)");
+        AssertGuardBefore(visualTreeHelper, "portableSource.TryPointHitTestOverride(reference, point, include2DOn3D, out HitTestResult hitTestResult)", "return reference.HitTest(point, include2DOn3D);");
         Assert.True(
             inputManager.IndexOf("if (OperatingSystem.IsWindows())", StringComparison.Ordinal)
                 < inputManager.IndexOf("new Win32KeyboardDevice(this)", StringComparison.Ordinal),

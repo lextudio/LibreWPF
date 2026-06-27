@@ -290,6 +290,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Scene",
             "GpuRenderCommandHitTestCache.cs");
+        var proGpuHitTestingPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Vector",
+            "GpuHitTesting.cs");
         var proGpuHitTestingTestsPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -343,6 +349,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuRetainedCompositionCommandSink = File.ReadAllText(proGpuRetainedCompositionCommandSinkPath);
         var proGpuCompositor = File.ReadAllText(proGpuCompositorPath);
         var proGpuHitTestCache = File.ReadAllText(proGpuHitTestCachePath);
+        var proGpuHitTesting = File.ReadAllText(proGpuHitTestingPath);
         var proGpuHitTestingTests = File.ReadAllText(proGpuHitTestingTestsPath);
         var proGpuCompositorReviewTests = File.ReadAllText(proGpuCompositorReviewTestsPath);
         var proGpuDrawingFrameTests = File.ReadAllText(proGpuDrawingFrameTestsPath);
@@ -624,11 +631,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryAddPathStrokePrimitive(strokePath, transform, id, zIndex, Compositor.CreateUndashedPen(pen));", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("AddPathStrokePrimitive(path, transform, id, zIndex, pen);", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("RenderCommandCacheUsesDashedPathSegmentsForStrokeHitTesting", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryBoundsAllReturnsIntersectingBroadPhaseHitsInDescendingZOrder", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryBoundsAllReturnsBoundsCandidateWithoutPointPreciseTesting", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("const QUERY_MODE_BOUNDS: u32", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn intersects_bounds(", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("query_result_capacity()", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestDeviceIndex.TryCreate(_context, index, out GpuHitTestDeviceIndex? deviceIndex)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestEngine.TryHitTestPoint(_context, _pipelineCache, _lastHitTestDeviceIndex, point, out result)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestEngine.TryHitTestPointAll(", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("GpuHitTestEngine.TryQueryBoundsAll(", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("public bool TryHitTestPoint(Vector2 point, out GpuHitTestResult result)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("public bool TryHitTestPointAll(", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("public bool TryQueryHitTestBoundsAll(", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("public ProGpuHitTestIndex? LastGpuHitTestIndex => Compositor.LastHitTestIndex;", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("public ProGpuHitTestDeviceIndex? LastGpuHitTestDeviceIndex => Compositor.LastHitTestDeviceIndex;", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("public WpfGpuHitTestOwnerMap GpuHitTestOwnerMap { get; } = new();", proGpuCompositionTarget, StringComparison.Ordinal);
@@ -637,6 +651,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public bool TryHitTestOwner(Vector2 logicalPoint, out object? owner, out ProGpuHitTestResult result)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("public bool TryHitTestOwners(", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("Compositor.TryHitTestPointAll(logicalPoint, results, out int hitCount, out summary)", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("public bool TryQueryHitTestBoundsOwners(", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("Compositor.TryQueryHitTestBoundsAll(logicalMin, logicalMax, results, out int hitCount, out summary)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("return GpuHitTestOwnerMap.TryGetOwner(result.Id, out owner);", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("WpfGpuHitTestOwnerMap? hitTestOwnerMap = null", proGpuDrawingFrame, StringComparison.Ordinal);
         Assert.Contains("_hitTestOwnerMap?.Clear();", proGpuDrawingFrame, StringComparison.Ordinal);

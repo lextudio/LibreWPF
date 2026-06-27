@@ -284,6 +284,18 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Scene",
             "Compositor.cs");
+        var proGpuHitTestCachePath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Scene",
+            "GpuRenderCommandHitTestCache.cs");
+        var proGpuHitTestingTestsPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Tests",
+            "GpuHitTestingTests.cs");
         var proGpuCompositorReviewTestsPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -330,6 +342,8 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuInvalidationTracker = File.ReadAllText(proGpuInvalidationTrackerPath);
         var proGpuRetainedCompositionCommandSink = File.ReadAllText(proGpuRetainedCompositionCommandSinkPath);
         var proGpuCompositor = File.ReadAllText(proGpuCompositorPath);
+        var proGpuHitTestCache = File.ReadAllText(proGpuHitTestCachePath);
+        var proGpuHitTestingTests = File.ReadAllText(proGpuHitTestingTestsPath);
         var proGpuCompositorReviewTests = File.ReadAllText(proGpuCompositorReviewTestsPath);
         var proGpuDrawingFrameTests = File.ReadAllText(proGpuDrawingFrameTestsPath);
         var proGpuInvalidationTrackerTests = File.ReadAllText(proGpuInvalidationTrackerTestsPath);
@@ -602,7 +616,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void AddHitTestCommand(RenderCommand command, Matrix4x4 transform)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("AddHitTestCommand(cmd, activeTransform);", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("_suspendHitTestCacheWrites = true;", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TryCreateDashedStrokePath(PathGeometry source, Pen pen, out PathGeometry dashedPath)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("internal static Pen CreateUndashedPen(Pen pen)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("SetLastHitTestIndex(_hitTestCacheBuilder.BuildIndex());", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("if (pen?.HasDashPattern != true)", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("Compositor.TryCreateDashedStrokePath(command.Path, pen, out var strokePath)", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("TryAddPathStrokePrimitive(strokePath, transform, id, zIndex, Compositor.CreateUndashedPen(pen));", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("AddPathStrokePrimitive(path, transform, id, zIndex, pen);", proGpuHitTestCache, StringComparison.Ordinal);
+        Assert.Contains("RenderCommandCacheUsesDashedPathSegmentsForStrokeHitTesting", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestDeviceIndex.TryCreate(_context, index, out GpuHitTestDeviceIndex? deviceIndex)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestEngine.TryHitTestPoint(_context, _pipelineCache, _lastHitTestDeviceIndex, point, out result)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestEngine.TryHitTestPointAll(", proGpuCompositor, StringComparison.Ordinal);

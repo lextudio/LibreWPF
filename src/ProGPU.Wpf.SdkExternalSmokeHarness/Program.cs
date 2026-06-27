@@ -2036,6 +2036,38 @@ internal static class Program
                             <TextBlock Text="{Binding ExternalToolkitWizardStatus}" />
                         </xctk:WizardPage>
                     </xctk:Wizard>
+                    <xctk:WindowContainer
+                        x:Name="ExternalToolkitWindowContainer"
+                        Height="130"
+                        Background="#FFEFF4F8"
+                        ModalBackgroundBrush="#33000000">
+                        <xctk:WindowControl
+                            x:Name="ExternalToolkitWindowControl"
+                            Caption="External toolkit window"
+                            Width="230"
+                            Height="104"
+                            Left="12"
+                            Top="10"
+                            CloseButtonVisibility="Visible"
+                            WindowStyle="SingleBorderWindow"
+                            WindowBackground="#FFFFFFFF"
+                            WindowInactiveBackground="#FFEFF4F8"
+                            WindowBorderBrush="#5B8DEF"
+                            WindowBorderThickness="1"
+                            WindowThickness="2"
+                            Visibility="{Binding ExternalToolkitWindowControlVisibility, Mode=TwoWay}"
+                            Activated="OnExternalToolkitWindowControlActivated"
+                            HeaderMouseLeftButtonClicked="OnExternalToolkitWindowControlHeaderMouseLeftButtonClicked"
+                            HeaderDragDelta="OnExternalToolkitWindowControlHeaderDragDelta"
+                            CloseButtonClicked="OnExternalToolkitWindowControlCloseButtonClicked">
+                            <StackPanel Margin="8">
+                                <TextBlock Text="External WindowControl primitive" />
+                                <TextBox
+                                    x:Name="ExternalToolkitWindowControlInputTextBox"
+                                    Text="{Binding ExternalToolkitWindowControlText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                        </xctk:WindowControl>
+                    </xctk:WindowContainer>
                     <xcad:DockingManager
                         x:Name="ExternalDockManager"
                         AllowMixedOrientation="True"
@@ -3093,6 +3125,20 @@ internal static class Program
 
                 public string ExternalToolkitWizardStatus { get; private set; } = "external toolkit wizard idle";
 
+                public Visibility ExternalToolkitWindowControlVisibility { get; set; } = Visibility.Visible;
+
+                public string ExternalToolkitWindowControlText { get; set; } = "external toolkit window text";
+
+                public int ExternalToolkitWindowControlActivatedCount { get; private set; }
+
+                public int ExternalToolkitWindowControlHeaderClickCount { get; private set; }
+
+                public int ExternalToolkitWindowControlHeaderDragCount { get; private set; }
+
+                public int ExternalToolkitWindowControlCloseButtonClickCount { get; private set; }
+
+                public string ExternalToolkitWindowControlStatus { get; private set; } = "external toolkit window visible";
+
                 public string ValidationText { get; set; } = "valid external text";
 
                 public string DataErrorText { get; set; } = "data: valid initial";
@@ -4056,6 +4102,99 @@ internal static class Program
                     ExternalToolkitWizardCancels++;
                     ExternalToolkitWizardStatus = "external toolkit wizard canceled";
                     OnPropertyChanged(nameof(ExternalToolkitWizardStatus));
+                }
+
+                private void OnExternalToolkitWindowControlActivated(object sender, RoutedEventArgs e)
+                {
+                    ExternalToolkitWindowControlActivatedCount++;
+                    ExternalToolkitWindowControlStatus = "external toolkit window activated";
+                    OnPropertyChanged(nameof(ExternalToolkitWindowControlStatus));
+                }
+
+                private void OnExternalToolkitWindowControlHeaderMouseLeftButtonClicked(object sender, MouseButtonEventArgs e)
+                {
+                    ExternalToolkitWindowControlHeaderClickCount++;
+                    ExternalToolkitWindowControlStatus = "external toolkit window header clicked";
+                    OnPropertyChanged(nameof(ExternalToolkitWindowControlStatus));
+                }
+
+                private void OnExternalToolkitWindowControlHeaderDragDelta(object sender, DragDeltaEventArgs e)
+                {
+                    ExternalToolkitWindowControlHeaderDragCount++;
+                    ExternalToolkitWindowControlStatus = "external toolkit window header dragged";
+                    OnPropertyChanged(nameof(ExternalToolkitWindowControlStatus));
+                }
+
+                private void OnExternalToolkitWindowControlCloseButtonClicked(object sender, RoutedEventArgs e)
+                {
+                    ExternalToolkitWindowControlCloseButtonClickCount++;
+                    HideExternalToolkitWindowControl("external toolkit window closed");
+                }
+
+                internal void ShowExternalToolkitWindowControl()
+                {
+                    ExternalToolkitWindowControlVisibility = Visibility.Visible;
+                    ExternalToolkitWindowControl.SetCurrentValue(VisibilityProperty, Visibility.Visible);
+                    ExternalToolkitWindowControlStatus = "external toolkit window visible";
+                    OnPropertyChanged(nameof(ExternalToolkitWindowControlVisibility));
+                    OnPropertyChanged(nameof(ExternalToolkitWindowControlStatus));
+                }
+
+                internal void HideExternalToolkitWindowControl(string status)
+                {
+                    ExternalToolkitWindowControlVisibility = Visibility.Collapsed;
+                    ExternalToolkitWindowControl.SetCurrentValue(VisibilityProperty, Visibility.Collapsed);
+                    ExternalToolkitWindowControlStatus = status;
+                    OnPropertyChanged(nameof(ExternalToolkitWindowControlVisibility));
+                    OnPropertyChanged(nameof(ExternalToolkitWindowControlStatus));
+                }
+
+                internal void ActivateExternalToolkitWindowControl()
+                {
+                    if (ExternalToolkitWindowControl.Visibility != Visibility.Visible)
+                    {
+                        ShowExternalToolkitWindowControl();
+                    }
+
+                    ExternalToolkitWindowControl.IsActive = false;
+                    ExternalToolkitWindowControl.IsActive = true;
+                    ExternalToolkitWindowControl.Focus();
+                    ExternalToolkitWindowControlInputTextBox.Focus();
+                }
+
+                internal void RaiseExternalToolkitWindowControlHeaderClick()
+                {
+                    RaiseExternalToolkitWindowControlMouseEvent(
+                        Xceed.Wpf.Toolkit.Primitives.WindowControl.HeaderMouseLeftButtonClickedEvent,
+                        MouseButton.Left);
+                }
+
+                internal void RaiseExternalToolkitWindowControlHeaderDrag()
+                {
+                    var args = new DragDeltaEventArgs(6.0, 3.0)
+                    {
+                        RoutedEvent = Xceed.Wpf.Toolkit.Primitives.WindowControl.HeaderDragDeltaEvent,
+                        Source = ExternalToolkitWindowControl,
+                    };
+                    ExternalToolkitWindowControl.RaiseEvent(args);
+                }
+
+                internal Button GetExternalToolkitWindowControlButton(string partName)
+                {
+                    ExternalToolkitWindowControl.ApplyTemplate();
+                    ExternalToolkitWindowControl.UpdateLayout();
+                    return ExternalToolkitWindowControl.Template?.FindName(partName, ExternalToolkitWindowControl) as Button
+                        ?? throw new InvalidOperationException($"Expected external SDK Xceed WindowControl template button '{partName}'.");
+                }
+
+                private void RaiseExternalToolkitWindowControlMouseEvent(RoutedEvent routedEvent, MouseButton mouseButton)
+                {
+                    var args = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, mouseButton)
+                    {
+                        RoutedEvent = routedEvent,
+                        Source = ExternalToolkitWindowControl,
+                    };
+                    ExternalToolkitWindowControl.RaiseEvent(args);
                 }
 
                 private void OnExternalStyleEventButtonClick(object sender, RoutedEventArgs e)
@@ -5105,6 +5244,8 @@ internal static class Program
                         ValidateExternalToolkitWizard(window, wizard, reviewPage);
                     }
 
+                    ValidateExternalToolkitWindowControl(window, expectLoaded);
+
                     var dockManager = RequireType<Xceed.Wpf.AvalonDock.DockingManager>(
                         window.FindName("ExternalDockManager"),
                         "external SDK AvalonDock DockingManager");
@@ -5192,6 +5333,80 @@ internal static class Program
                     }
 
                     AssertEqual(1, documentPane.ChildrenCount, "external SDK AvalonDock document pane preserved child count");
+                }
+
+                private static void ValidateExternalToolkitWindowControl(MainWindow window, bool expectLoaded)
+                {
+                    var windowContainer = RequireType<Xceed.Wpf.Toolkit.Primitives.WindowContainer>(
+                        window.FindName("ExternalToolkitWindowContainer"),
+                        "external SDK Xceed WindowContainer");
+                    var windowControl = RequireType<Xceed.Wpf.Toolkit.Primitives.WindowControl>(
+                        window.FindName("ExternalToolkitWindowControl"),
+                        "external SDK Xceed WindowControl");
+                    var inputTextBox = RequireType<TextBox>(
+                        window.FindName("ExternalToolkitWindowControlInputTextBox"),
+                        "external SDK Xceed WindowControl input TextBox");
+
+                    AssertEqual(true, windowContainer.Children.Contains(windowControl), "external SDK Xceed WindowControl WindowContainer membership");
+                    AssertEqual(Visibility.Visible, windowControl.Visibility, "external SDK Xceed WindowControl initial visibility");
+                    AssertEqual(window.ExternalToolkitWindowControlVisibility, windowControl.Visibility, "external SDK Xceed WindowControl visibility binding value");
+                    AssertEqual("External toolkit window", Convert.ToString(windowControl.Caption, CultureInfo.InvariantCulture), "external SDK Xceed WindowControl caption");
+                    AssertEqual(Visibility.Visible, windowControl.CloseButtonVisibility, "external SDK Xceed WindowControl close button visibility");
+                    AssertEqual(WindowStyle.SingleBorderWindow, windowControl.WindowStyle, "external SDK Xceed WindowControl style");
+                    AssertEqual(new Thickness(1), windowControl.WindowBorderThickness, "external SDK Xceed WindowControl border thickness");
+                    AssertEqual(new Thickness(2), windowControl.WindowThickness, "external SDK Xceed WindowControl window thickness");
+                    AssertEqual("external toolkit window text", inputTextBox.Text, "external SDK Xceed WindowControl input initial binding");
+                    if (BindingOperations.GetBindingExpression(windowControl, UIElement.VisibilityProperty) is null)
+                    {
+                        throw new InvalidOperationException("Expected external SDK Xceed WindowControl visibility binding expression.");
+                    }
+
+                    inputTextBox.Text = "external toolkit window updated";
+                    inputTextBox.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+                    AssertEqual("external toolkit window updated", window.ExternalToolkitWindowControlText, "external SDK Xceed WindowControl text source update");
+
+                    if (!expectLoaded)
+                    {
+                        return;
+                    }
+
+                    windowControl.ApplyTemplate();
+                    windowControl.UpdateLayout();
+                    if (windowControl.ActualWidth <= 0 || windowControl.ActualHeight <= 0)
+                    {
+                        throw new InvalidOperationException("Expected external SDK Xceed WindowControl to participate in layout.");
+                    }
+
+                    _ = window.GetExternalToolkitWindowControlButton("PART_CloseButton");
+                    if (windowControl.Template?.FindName("PART_HeaderThumb", windowControl) is not Thumb)
+                    {
+                        throw new InvalidOperationException("Expected external SDK Xceed WindowControl template to expose the header thumb.");
+                    }
+
+                    int activatedBefore = window.ExternalToolkitWindowControlActivatedCount;
+                    window.ActivateExternalToolkitWindowControl();
+                    DrainDispatcher();
+                    AssertAtLeast(activatedBefore + 1, window.ExternalToolkitWindowControlActivatedCount, "external SDK Xceed WindowControl activated count");
+                    AssertEqual(true, windowControl.IsActive, "external SDK Xceed WindowControl active state");
+
+                    int headerClickBefore = window.ExternalToolkitWindowControlHeaderClickCount;
+                    window.RaiseExternalToolkitWindowControlHeaderClick();
+                    AssertEqual(headerClickBefore + 1, window.ExternalToolkitWindowControlHeaderClickCount, "external SDK Xceed WindowControl header click count");
+
+                    int headerDragBefore = window.ExternalToolkitWindowControlHeaderDragCount;
+                    window.RaiseExternalToolkitWindowControlHeaderDrag();
+                    AssertEqual(headerDragBefore + 1, window.ExternalToolkitWindowControlHeaderDragCount, "external SDK Xceed WindowControl header drag count");
+
+                    int closeClickBefore = window.ExternalToolkitWindowControlCloseButtonClickCount;
+                    Button closeButton = window.GetExternalToolkitWindowControlButton("PART_CloseButton");
+                    closeButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, closeButton));
+                    DrainDispatcher();
+                    AssertEqual(closeClickBefore + 1, window.ExternalToolkitWindowControlCloseButtonClickCount, "external SDK Xceed WindowControl close button count");
+                    AssertEqual(Visibility.Collapsed, windowControl.Visibility, "external SDK Xceed WindowControl collapsed after close button");
+                    AssertEqual("external toolkit window closed", window.ExternalToolkitWindowControlStatus, "external SDK Xceed WindowControl close status");
+
+                    window.ShowExternalToolkitWindowControl();
+                    AssertEqual(Visibility.Visible, windowControl.Visibility, "external SDK Xceed WindowControl restored visibility");
                 }
 
                 private static void ValidateExternalToolkitButtonSpinner(MainWindow window)

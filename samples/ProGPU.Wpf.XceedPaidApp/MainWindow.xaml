@@ -90,6 +90,41 @@
         </StackPanel>
         <WrapPanel Grid.Column="1"
                    HorizontalAlignment="Right">
+          <Button MinWidth="96"
+                  Margin="0,0,6,0"
+                  Padding="10,4"
+                  Content="CSV"
+                  Click="ExportCsvButton_Click" />
+          <Button MinWidth="96"
+                  Margin="0,0,6,0"
+                  Padding="10,4"
+                  Content="Excel"
+                  Click="ExportExcelButton_Click" />
+          <Button MinWidth="112"
+                  Margin="0,0,6,0"
+                  Padding="10,4"
+                  Content="Save view"
+                  Click="SaveSettingsButton_Click" />
+          <Button MinWidth="112"
+                  Margin="0,0,6,0"
+                  Padding="10,4"
+                  Content="Load view"
+                  Click="LoadSettingsButton_Click" />
+          <Button MinWidth="96"
+                  Margin="0,0,6,0"
+                  Padding="10,4"
+                  Content="Table"
+                  Click="TableViewButton_Click" />
+          <Button MinWidth="96"
+                  Margin="0,0,6,0"
+                  Padding="10,4"
+                  Content="Flow"
+                  Click="TableflowViewButton_Click" />
+          <Button MinWidth="96"
+                  Margin="0,0,6,0"
+                  Padding="10,4"
+                  Content="3D"
+                  Click="CardflowViewButton_Click" />
           <Button MinWidth="104"
                   Margin="0,0,6,0"
                   Padding="10,4"
@@ -208,17 +243,29 @@
                                FontWeight="SemiBold"
                                Text="Xceed DataGrid 100k" />
                     <TextBlock Foreground="#60727C"
-                               Text="Commercial Xceed DataGridControl with explicit columns, active-row filtering, category grouping, stats, details, row selection, scrolling, and package themes restored through the custom SDK." />
+                               Text="Commercial Xceed DataGridControl with explicit columns, active-row filtering, category grouping, stats, details, row selection, search, merged headers, export, settings persistence, scrolling, and package themes restored through the custom SDK." />
                   </StackPanel>
-                  <TextBlock DockPanel.Dock="Right"
+                  <StackPanel DockPanel.Dock="Right"
+                              Orientation="Horizontal"
+                              VerticalAlignment="Center">
+                    <TextBlock Margin="0,0,10,0"
+                               VerticalAlignment="Center"
+                               Foreground="#60727C"
+                               Text="{Binding RowCount, StringFormat=Items: {0:N0}}" />
+                    <TextBox Width="160"
+                             Margin="0,0,8,0"
                              VerticalAlignment="Center"
-                             Foreground="#60727C"
-                             Text="{Binding RowCount, StringFormat=Items: {0:N0}}" />
+                             Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <xcdg:SearchControl x:Name="PaidSearchControl"
+                                        Width="220"
+                                        VerticalAlignment="Center" />
+                  </StackPanel>
                 </DockPanel>
                 <xcdg:DataGridControl x:Name="PaidDataGrid"
                                       Grid.Row="1"
                                       AutomationProperties.AutomationId="PaidXceedDataGridAutomation"
                                       AutoCreateColumns="False"
+                                      SearchText="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                       ReadOnly="True"
                                       ItemScrollingBehavior="Immediate"
                                       NavigationBehavior="RowOnly"
@@ -254,6 +301,18 @@
                       </xcdg:DetailConfiguration.Columns>
                     </xcdg:DetailConfiguration>
                   </xcdg:DataGridControl.DetailConfigurations>
+                  <xcdg:DataGridControl.MergedHeaders>
+                    <xcdg:MergedHeader>
+                      <xcdg:MergedHeader.MergedColumns>
+                        <xcdg:MergedColumn FieldName="Identity"
+                                           Title="Identity"
+                                           ChildColumnNames="Id,Title,Owner" />
+                        <xcdg:MergedColumn FieldName="Execution"
+                                           Title="Execution"
+                                           ChildColumnNames="Category,Status,Score,Updated,Active" />
+                      </xcdg:MergedHeader.MergedColumns>
+                    </xcdg:MergedHeader>
+                  </xcdg:DataGridControl.MergedHeaders>
                   <xcdg:DataGridControl.View>
                     <xcdg:TableView x:Name="PaidTableView"
                                     ColumnStretchMode="StretchAll"
@@ -267,7 +326,12 @@
                           <xcdg:GroupByControl />
                         </DataTemplate>
                         <DataTemplate>
+                          <xcdg:MergedColumnManagerRow AllowColumnReorder="True"
+                                                       AllowColumnResize="True" />
+                        </DataTemplate>
+                        <DataTemplate>
                           <xcdg:ColumnManagerRow AllowColumnReorder="True"
+                                                 AllowColumnResize="True"
                                                  AllowSort="True"
                                                  AllowAutoFilter="True" />
                         </DataTemplate>

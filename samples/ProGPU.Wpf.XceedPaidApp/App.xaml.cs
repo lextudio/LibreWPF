@@ -193,14 +193,36 @@ internal static class XceedPaidSelfTest
         AssertType<Xceed.Wpf.DataGrid.DataGridItemProperty>("Xceed DataGrid item property");
         AssertType<Xceed.Wpf.DataGrid.DetailConfiguration>("Xceed DataGrid detail configuration");
         AssertType<Xceed.Wpf.DataGrid.FilterRow>("Xceed DataGrid filter row");
+        AssertType<Xceed.Wpf.DataGrid.MergedHeader>("Xceed DataGrid merged header");
+        AssertType<Xceed.Wpf.DataGrid.MergedColumn>("Xceed DataGrid merged column");
+        AssertType<Xceed.Wpf.DataGrid.MergedColumnManagerRow>("Xceed DataGrid merged-column manager row");
+        AssertType<Xceed.Wpf.DataGrid.ColumnChooserControl>("Xceed DataGrid column chooser control");
+        AssertType<Xceed.Wpf.DataGrid.SearchControl>("Xceed DataGrid search control");
         AssertType<Xceed.Wpf.DataGrid.StatRow>("Xceed DataGrid stat row");
         AssertType<Xceed.Wpf.DataGrid.StatCell>("Xceed DataGrid stat cell");
         AssertType<Xceed.Wpf.DataGrid.Stats.CountFunction>("Xceed DataGrid count stat function");
         AssertType<Xceed.Wpf.DataGrid.Stats.AverageFunction>("Xceed DataGrid average stat function");
+        AssertType<Xceed.Wpf.DataGrid.Export.CsvExporter>("Xceed DataGrid CSV exporter");
+        AssertType<Xceed.Wpf.DataGrid.Export.ExcelExporter>("Xceed DataGrid Excel exporter");
+        AssertType<Xceed.Wpf.DataGrid.Export.HtmlClipboardExporter>("Xceed DataGrid HTML clipboard exporter");
+        AssertType<Xceed.Wpf.DataGrid.Settings.SettingsRepository>("Xceed DataGrid settings repository");
         AssertType<Xceed.Wpf.DataGrid.ThemePack.Office2007BlueTheme>("Xceed DataGrid ThemePack Office2007BlueTheme");
+        AssertType<Xceed.Wpf.DataGrid.Views.TableflowView>("Xceed DataGrid TableflowView");
+        AssertType<Xceed.Wpf.DataGrid.Views.TreeGridflowView>("Xceed DataGrid TreeGridflowView");
         AssertType<Xceed.Wpf.DataGrid.Views.CardflowView3D>("Xceed DataGrid Views3D CardflowView3D");
         AssertType<Xceed.Wpf.DataGrid.Views.ElementalBlackTheme>("Xceed DataGrid Views3D ElementalBlackTheme");
         AssertType<Xceed.Wpf.DataGrid.Workbooks.WorkbooksExporter>("Xceed DataGrid Workbooks exporter");
+        AssertPublicMethod<Xceed.Wpf.DataGrid.DataGridControl>("ExportToCsv", typeof(System.IO.Stream));
+        AssertPublicMethod<Xceed.Wpf.DataGrid.DataGridControl>("ExportToExcel", typeof(System.IO.Stream));
+        AssertPublicMethod<Xceed.Wpf.DataGrid.DataGridControl>("ExportToXps", typeof(System.IO.Stream), typeof(Size));
+        AssertPublicMethod<Xceed.Wpf.DataGrid.DataGridControl>(
+            "SaveUserSettings",
+            typeof(Xceed.Wpf.DataGrid.Settings.SettingsRepository),
+            typeof(Xceed.Wpf.DataGrid.Settings.UserSettings));
+        AssertPublicMethod<Xceed.Wpf.DataGrid.DataGridControl>(
+            "LoadUserSettings",
+            typeof(Xceed.Wpf.DataGrid.Settings.SettingsRepository),
+            typeof(Xceed.Wpf.DataGrid.Settings.UserSettings));
         AssertAssembly("Xceed.Wpf.DataGrid.Views3D");
         AssertAssembly("Xceed.Wpf.DataGrid.ThemePack.1");
         AssertAssembly("Xceed.Wpf.DataGrid.Workbooks");
@@ -236,20 +258,25 @@ internal static class XceedPaidSelfTest
         AssertEqual(1, rowsView.GroupDescriptions.Count, "paid DataGrid group description count");
         AssertEqual(1, rowsView.SortDescriptions.Count, "paid DataGrid sort description count");
         AssertEqual(2, rowsView.StatFunctions.Count, "paid DataGrid stat function count");
+        AssertEqual("ProGPU", window.PaidDataGrid.SearchText, "paid DataGrid search text binding");
         AssertEqual(false, window.PaidDataGrid.AutoCreateColumns, "paid DataGrid auto columns");
         AssertEqual(true, window.PaidDataGrid.ReadOnly, "paid DataGrid read-only state");
         AssertEqual(true, window.PaidDataGrid.AutoCreateDetailConfigurations, "paid DataGrid auto detail configurations");
         AssertEqual(1, window.PaidDataGrid.DetailConfigurations.Count, "paid DataGrid explicit detail configuration");
+        AssertEqual(1, window.PaidDataGrid.MergedHeaders.Count, "paid DataGrid merged header count");
+        AssertEqual(true, window.PaidDataGrid.ClipboardExporters.Count >= 3, "paid DataGrid clipboard exporters");
         AssertEqual(Xceed.Wpf.DataGrid.ItemScrollingBehavior.Immediate, window.PaidDataGrid.ItemScrollingBehavior, "paid DataGrid scroll behavior");
         AssertEqual(Xceed.Wpf.DataGrid.NavigationBehavior.RowOnly, window.PaidDataGrid.NavigationBehavior, "paid DataGrid navigation behavior");
         AssertEqual(8, window.PaidDataGrid.Columns.Count, "paid DataGrid explicit columns");
         AssertEqual(viewModel.SelectedRow, window.PaidDataGrid.SelectedItem, "paid DataGrid selected item");
         AssertEqual(true, window.PaidDataGrid.View is Xceed.Wpf.DataGrid.Views.TableView, "paid DataGrid table view");
         AssertEqual(true, window.PaidTableView.Theme is Xceed.Wpf.DataGrid.ThemePack.Office2007BlueTheme, "paid DataGrid ThemePack table view theme");
-        AssertEqual(3, window.PaidTableView.FixedHeaders.Count, "paid DataGrid fixed header row count");
+        AssertEqual(4, window.PaidTableView.FixedHeaders.Count, "paid DataGrid fixed header row count");
         AssertEqual(1, window.PaidTableView.FixedFooters.Count, "paid DataGrid fixed footer row count");
+        AssertEqual(true, window.PaidSearchControl is Xceed.Wpf.DataGrid.SearchControl, "paid DataGrid search control");
         AssertEqual(true, window.MaterialActionsSwitch.IsChecked, "paid Toolkit MaterialSwitch binding");
         AssertEqual("ProGPU", viewModel.FilterText, "paid Toolkit MaterialTextField binding");
+        AssertEqual("ProGPU", viewModel.SearchText, "paid DataGrid search view-model binding");
 
         if (expectLoaded)
         {
@@ -278,6 +305,15 @@ internal static class XceedPaidSelfTest
     private static void AssertAssembly(string assemblyName)
     {
         Assembly.Load(new AssemblyName(assemblyName));
+    }
+
+    private static void AssertPublicMethod<T>(string methodName, params Type[] parameterTypes)
+    {
+        var method = typeof(T).GetMethod(methodName, parameterTypes);
+        if (method is null)
+        {
+            throw new InvalidOperationException($"Expected public {typeof(T).FullName}.{methodName} method.");
+        }
     }
 
     private static void AssertEqual<T>(T expected, T actual, string description)

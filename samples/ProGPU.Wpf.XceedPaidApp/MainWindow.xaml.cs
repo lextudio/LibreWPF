@@ -2,15 +2,21 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Data;
 using Xceed.Wpf.DataGrid;
+using Xceed.Wpf.DataGrid.Settings;
+using Xceed.Wpf.DataGrid.ThemePack;
+using Xceed.Wpf.DataGrid.Views;
 
 namespace ProGPU.Wpf.XceedPaidApp;
 
 public partial class MainWindow : Window
 {
+    private SettingsRepository? _savedSettings;
+
     public MainWindow()
         : this(XceedPaidLicenseBootstrap.ConfigureFromEnvironment())
     {
@@ -35,7 +41,8 @@ public partial class MainWindow : Window
     {
         ViewModel.Status = "Paid Xceed Toolkit/DataGrid loaded";
         ViewModel.Activity.Add("Loaded paid Toolkit Plus, AvalonDock Windows10 theme, and Xceed DataGrid document");
-        ViewModel.Activity.Add("Paid DataGrid view applies active-row filtering, category grouping, updated-date sorting, stats, details, and Office2007 theme");
+        ViewModel.Activity.Add("Paid DataGrid view applies active-row filtering, category grouping, updated-date sorting, stats, details, search, merged headers, and Office2007 theme");
+        ViewModel.Activity.Add("Paid DataGrid export, settings persistence, Tableflow, and Cardflow 3D commands are available");
     }
 
     private void PaidRowsView_Filter(object sender, FilterEventArgs e)
@@ -71,6 +78,75 @@ public partial class MainWindow : Window
         SelectRow(ViewModel.Rows.Count - 1, "Selected last row");
     }
 
+    private void ExportCsvButton_Click(object sender, RoutedEventArgs e)
+    {
+        ExportGrid("CSV", ".csv", stream => PaidDataGrid.ExportToCsv(stream));
+    }
+
+    private void ExportExcelButton_Click(object sender, RoutedEventArgs e)
+    {
+        ExportGrid("Excel XMLSS", ".xml", stream => PaidDataGrid.ExportToExcel(stream));
+    }
+
+    private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        _savedSettings = new SettingsRepository();
+        PaidDataGrid.SaveUserSettings(_savedSettings, UserSettings.All);
+        ViewModel.LastAction = "Saved paid DataGrid user settings in memory";
+        ViewModel.Status = ViewModel.LastAction;
+        ViewModel.Activity.Add(ViewModel.LastAction);
+    }
+
+    private void LoadSettingsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_savedSettings is null)
+        {
+            ViewModel.LastAction = "No saved paid DataGrid user settings";
+            ViewModel.Status = ViewModel.LastAction;
+            ViewModel.Activity.Add(ViewModel.LastAction);
+            return;
+        }
+
+        PaidDataGrid.LoadUserSettings(_savedSettings, UserSettings.All);
+        ViewModel.LastAction = "Reloaded paid DataGrid user settings";
+        ViewModel.Status = ViewModel.LastAction;
+        ViewModel.Activity.Add(ViewModel.LastAction);
+    }
+
+    private void TableViewButton_Click(object sender, RoutedEventArgs e)
+    {
+        PaidDataGrid.View = PaidTableView;
+        ViewModel.LastAction = "Activated paid DataGrid TableView";
+        ViewModel.Status = ViewModel.LastAction;
+        ViewModel.Activity.Add(ViewModel.LastAction);
+    }
+
+    private void TableflowViewButton_Click(object sender, RoutedEventArgs e)
+    {
+        PaidDataGrid.View = new TableflowView
+        {
+            Theme = new Office2007BlueTheme()
+        };
+        ViewModel.LastAction = "Activated paid DataGrid TableflowView";
+        ViewModel.Status = ViewModel.LastAction;
+        ViewModel.Activity.Add(ViewModel.LastAction);
+    }
+
+    private void CardflowViewButton_Click(object sender, RoutedEventArgs e)
+    {
+        PaidDataGrid.View = new CardflowView3D
+        {
+            Theme = new ElementalBlackTheme(),
+            SideCardsCount = 3,
+            ShowReflections = false,
+            IsCardFlippingEnabled = false,
+            CardHeightToViewportRatio = 0.55
+        };
+        ViewModel.LastAction = "Activated paid DataGrid CardflowView3D";
+        ViewModel.Status = ViewModel.LastAction;
+        ViewModel.Activity.Add(ViewModel.LastAction);
+    }
+
     private void SelectRow(int index, string action)
     {
         if (index < 0 || index >= ViewModel.Rows.Count)
@@ -85,6 +161,35 @@ public partial class MainWindow : Window
         ViewModel.Status = ViewModel.LastAction;
         ViewModel.Activity.Add(ViewModel.LastAction);
     }
+
+    private void ExportGrid(string label, string extension, Action<Stream> export)
+    {
+        var directory = ResolveExportDirectory();
+        Directory.CreateDirectory(directory);
+        var fileName = $"progpu-wpf-xceed-paid-{DateTime.UtcNow:yyyyMMdd-HHmmss}{extension}";
+        var path = Path.Combine(directory, fileName);
+
+        using (var stream = File.Create(path))
+        {
+            export(stream);
+        }
+
+        ViewModel.LastExportPath = path;
+        ViewModel.LastAction = $"Exported paid DataGrid {label}: {path}";
+        ViewModel.Status = ViewModel.LastAction;
+        ViewModel.Activity.Add(ViewModel.LastAction);
+    }
+
+    private static string ResolveExportDirectory()
+    {
+        var configured = Environment.GetEnvironmentVariable("PROGPU_WPF_XCEED_PAID_EXPORT_DIR");
+        if (!string.IsNullOrWhiteSpace(configured))
+        {
+            return configured;
+        }
+
+        return Path.Combine(Path.GetTempPath(), "progpu-wpf-xceed-paid");
+    }
 }
 
 internal sealed class XceedPaidViewModel : INotifyPropertyChanged
@@ -92,7 +197,9 @@ internal sealed class XceedPaidViewModel : INotifyPropertyChanged
     private PaidGridItem _selectedRow = null!;
     private string _status = "Paid Xceed ready";
     private string _lastAction = "Idle";
+    private string _lastExportPath = "No export yet";
     private string _filterText = "ProGPU";
+    private string _searchText = "ProGPU";
     private bool _actionsEnabled = true;
     private int _batchSize = 50;
     private double _scoreBias = 35.0;
@@ -102,14 +209,15 @@ internal sealed class XceedPaidViewModel : INotifyPropertyChanged
     internal XceedPaidViewModel(XceedPaidLicenseStatus licenseStatus)
     {
         LicenseStatusText = licenseStatus.DescribePublic();
-        PackageStatus = "Toolkit Plus 5.2, DataGrid 7.3, AvalonDock Windows10 theme, Views3D/theme-pack assemblies";
+        PackageStatus = "Toolkit Plus 5.2, DataGrid 7.3, AvalonDock Windows10 theme, export/settings APIs, Views3D/theme-pack assemblies";
         Rows = CreateRows(100_000);
         _selectedRow = Rows[0];
         Activity =
         [
             "Created 100,000 paid DataGrid rows",
             "Configured explicit Xceed DataGrid columns",
-            "Configured Toolkit Plus Material controls"
+            "Configured Toolkit Plus Material controls",
+            "Configured paid DataGrid merged headers, search, export, settings, and view commands"
         ];
     }
 
@@ -152,10 +260,22 @@ internal sealed class XceedPaidViewModel : INotifyPropertyChanged
         set => SetProperty(ref _lastAction, value);
     }
 
+    public string LastExportPath
+    {
+        get => _lastExportPath;
+        set => SetProperty(ref _lastExportPath, value);
+    }
+
     public string FilterText
     {
         get => _filterText;
         set => SetProperty(ref _filterText, value);
+    }
+
+    public string SearchText
+    {
+        get => _searchText;
+        set => SetProperty(ref _searchText, value);
     }
 
     public bool ActionsEnabled

@@ -31,6 +31,12 @@ Run:
 ./eng/run-progpu-wpf-xceed-paid.sh
 ```
 
+Optional export output:
+
+```bash
+PROGPU_WPF_XCEED_PAID_EXPORT_DIR=/tmp/progpu-wpf-xceed-paid ./eng/run-progpu-wpf-xceed-paid.sh
+```
+
 Validation:
 
 ```bash
@@ -40,4 +46,6 @@ PROGPU_WPF_XCEED_PAID_RUN_VALIDATE=1 ./eng/run-progpu-wpf-xceed-paid.sh
 
 When the license env vars are missing, `PROGPU_WPF_XCEED_PAID_VALIDATE=1` still validates that the paid packages restore and the expected Toolkit Plus/DataGrid/Views3D/theme assemblies load. Set `PROGPU_WPF_XCEED_PAID_REQUIRE_LICENSE=1` to make validation fail unless both license variables are present.
 
-The MVP window hosts an AvalonDock layout with a Toolkit Plus Material-control pane and a paid `Xceed.Wpf.DataGrid.DataGridControl` document backed by 100,000 rows. The DataGrid lane now exercises explicit `xcdg:Column` definitions, `DataGridCollectionViewSource`, explicit item-property metadata, active-row filtering, category grouping, updated-date sorting, statistical functions, `FilterRow`, `StatRow`/`StatCell`, `TableView`, fixed headers/footers, `Office2007BlueTheme` from ThemePack 1, auto-created detail descriptions, an explicit `DetailConfiguration`, row selection, `BringItemIntoView(...)` navigation, and package surface checks for Views3D `CardflowView3D` plus Workbooks export types. WPF remains responsible for the managed Xceed control tree, binding, collection views, filtering/grouping/sorting/stats/details, and docking state; ProGPU owns windowing, input, invalidation, clipping, image/layer texture trimming, shaders, and final WebGPU rendering.
+The MVP window hosts an AvalonDock layout with a Toolkit Plus Material-control pane and a paid `Xceed.Wpf.DataGrid.DataGridControl` document backed by 100,000 rows. The DataGrid lane now exercises explicit `xcdg:Column` definitions, `DataGridCollectionViewSource`, explicit item-property metadata, active-row filtering, category grouping, updated-date sorting, statistical functions, `FilterRow`, `StatRow`/`StatCell`, `TableView`, `TableflowView`, fixed headers/footers, merged headers, `SearchControl`/`SearchText`, `Office2007BlueTheme` from ThemePack 1, auto-created detail descriptions, an explicit `DetailConfiguration`, row selection, `BringItemIntoView(...)` navigation, `ExportToCsv(...)`, `ExportToExcel(...)`, in-memory `SaveUserSettings(...)`/`LoadUserSettings(...)`, and package surface checks for Views3D `CardflowView3D`, `ColumnChooserControl`, export, settings, theme-pack, and Workbooks types. The CSV/Excel buttons use Xceed's own export APIs and write to `PROGPU_WPF_XCEED_PAID_EXPORT_DIR` or a temp directory.
+
+WPF remains responsible for the managed Xceed control tree, binding, collection views, filtering/grouping/sorting/stats/details, search, merged-header metadata, settings persistence, export policy, and docking state. ProGPU owns windowing, input, invalidation, clipping, image/layer texture trimming, shaders, and final WebGPU rendering.

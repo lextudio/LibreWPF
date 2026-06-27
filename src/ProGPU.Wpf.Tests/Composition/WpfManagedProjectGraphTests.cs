@@ -6480,6 +6480,132 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void ProGpuWpfXceedPaidSampleUsesCommercialToolkitAndDataGridPackages()
+    {
+        var project = XDocument.Load(FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.XceedPaidApp",
+            "ProGPU.Wpf.XceedPaidApp.csproj"));
+        var directoryBuildProps = File.ReadAllText(FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.XceedPaidApp",
+            "Directory.Build.props"));
+        var nugetConfig = File.ReadAllText(FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.XceedPaidApp",
+            "NuGet.config"));
+        var appXaml = File.ReadAllText(FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.XceedPaidApp",
+            "App.xaml"));
+        var appCodeBehind = File.ReadAllText(FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.XceedPaidApp",
+            "App.xaml.cs"));
+        var mainWindowXaml = File.ReadAllText(FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.XceedPaidApp",
+            "MainWindow.xaml"));
+        var mainWindowCodeBehind = File.ReadAllText(FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.XceedPaidApp",
+            "MainWindow.xaml.cs"));
+        var readme = File.ReadAllText(FindRepoPath(
+            "samples",
+            "ProGPU.Wpf.XceedPaidApp",
+            "README.md"));
+        var runScript = File.ReadAllText(FindRepoPath(
+            "eng",
+            "run-progpu-wpf-xceed-paid.sh"));
+
+        Assert.Equal("ProGPU.Wpf.Sdk/11.0.0-dev", project.Root?.Attribute("Sdk")?.Value);
+        Assert.Contains("<TargetFramework>net11.0-windows</TargetFramework>", project.ToString(), StringComparison.Ordinal);
+        Assert.Contains("<UseWPF>true</UseWPF>", project.ToString(), StringComparison.Ordinal);
+        Assert.Contains("<XceedPaidToolkitPackageVersion>5.2.26322.8434</XceedPaidToolkitPackageVersion>", project.ToString(), StringComparison.Ordinal);
+        Assert.Contains("<XceedPaidDataGridPackageVersion>7.3.26322.8481</XceedPaidDataGridPackageVersion>", project.ToString(), StringComparison.Ordinal);
+        Assert.Equal("$(XceedPaidToolkitPackageVersion)", AssertPackageReference(project, "Xceed.Wpf.Toolkit").Attribute("Version")?.Value);
+        Assert.Equal("$(XceedPaidToolkitPackageVersion)", AssertPackageReference(project, "Xceed.Wpf.AvalonDock").Attribute("Version")?.Value);
+        Assert.Equal("$(XceedPaidToolkitPackageVersion)", AssertPackageReference(project, "Xceed.Wpf.AvalonDock.Themes.Windows10").Attribute("Version")?.Value);
+        Assert.Equal("$(XceedPaidToolkitPackageVersion)", AssertPackageReference(project, "Xceed.Wpf.Toolkit.Themes.MaterialDesign").Attribute("Version")?.Value);
+        Assert.Equal("$(XceedPaidDataGridPackageVersion)", AssertPackageReference(project, "Xceed.Products.Wpf.DataGrid.Full").Attribute("Version")?.Value);
+        Assert.DoesNotContain(
+            project.Descendants("PackageReference"),
+            item => string.Equals(item.Attribute("Include")?.Value, "Xceed.Products.Wpf.Toolkit.Full", StringComparison.Ordinal));
+
+        Assert.Contains("RestorePackagesPath", directoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("artifacts/nuget/ProGPU.Wpf.XceedPaidApp", directoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("xceed.products.wpf.datagrid.full/$(XceedPaidDataGridPackageVersion)", directoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("xceed.wpf.datagrid/$(XceedPaidDataGridPackageVersion)", directoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("xceed.wpf.toolkit.themes.materialdesign/$(XceedPaidToolkitPackageVersion)", directoryBuildProps, StringComparison.Ordinal);
+        Assert.Contains("globalPackagesFolder", nugetConfig, StringComparison.Ordinal);
+        Assert.Contains("ProGPUWpfLocalArtifacts", nugetConfig, StringComparison.Ordinal);
+        Assert.Contains("nuget.org", nugetConfig, StringComparison.Ordinal);
+
+        Assert.Contains("PaidAccentBrush", appXaml, StringComparison.Ordinal);
+        Assert.Contains("XceedPaidLicenseBootstrap.ConfigureFromEnvironment()", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("XCEED_TOOLKIT_LICENSE_KEY", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("XCEED_DATAGRID_LICENSE_KEY", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ToolkitLicenser.LicenseKey = toolkitKey", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("DataGridLicenser.LicenseKey = dataGridKey", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_XCEED_PAID_VALIDATE", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_XCEED_PAID_REQUIRE_LICENSE", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_XCEED_PAID_RUN_VALIDATE", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertType<Xceed.Wpf.Toolkit.MaterialButton>", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertType<Xceed.Wpf.Toolkit.MaterialTextField>", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertType<Xceed.Wpf.Toolkit.MaterialSwitch>", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertType<Xceed.Wpf.DataGrid.DataGridControl>", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertType<Xceed.Wpf.DataGrid.DataGridCollectionViewSource>", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertType<Xceed.Wpf.DataGrid.Views.TableView>", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertAssembly(\"Xceed.Wpf.DataGrid.Views3D\")", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertAssembly(\"Xceed.Wpf.DataGrid.ThemePack.1\")", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGPU WPF paid Xceed package surface validation succeeded", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ProGPU WPF paid Xceed Application.Run validation succeeded.", appCodeBehind, StringComparison.Ordinal);
+
+        Assert.Contains("xmlns:xctk=\"http://schemas.xceed.com/wpf/xaml/toolkit\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("xmlns:xcdg=\"http://schemas.xceed.com/wpf/xaml/datagrid\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("xmlns:xcad=\"http://schemas.xceed.com/wpf/xaml/avalondock\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Xceed.Wpf.AvalonDock.Themes.Windows10", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcad:DockingManager x:Name=\"DockManager\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcadthemes:Windows10Theme />", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xctk:MaterialTextField x:Name=\"MaterialFilterTextField\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xctk:MaterialButton x:Name=\"MaterialAddButton\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xctk:MaterialSwitch x:Name=\"MaterialActionsSwitch\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xctk:MaterialSlider x:Name=\"MaterialScoreSlider\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xctk:MaterialProgressBar x:Name=\"MaterialProgressBar\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xctk:BusyIndicator x:Name=\"PaidBusyIndicator\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcdg:DataGridCollectionViewSource x:Key=\"PaidRowsView\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcdg:DataGridControl x:Name=\"PaidDataGrid\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.AutomationId=\"PaidXceedDataGridAutomation\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemScrollingBehavior=\"Immediate\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("NavigationBehavior=\"RowOnly\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SelectionMode=\"Single\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding Source={StaticResource PaidRowsView}}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcdg:TableView ColumnStretchMode=\"StretchAll\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("FixedColumnCount=\"1\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("UseDefaultHeadersFooters=\"False\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcdg:GroupByControl />", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcdg:ColumnManagerRow AllowColumnReorder=\"True\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcdg:Column FieldName=\"Id\" />", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcdg:Column FieldName=\"Active\" />", mainWindowXaml, StringComparison.Ordinal);
+
+        Assert.Contains("Rows = CreateRows(100_000)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class PaidGridItem", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PaidDataGrid.BringItemIntoView(item)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SelectRow(ViewModel.Rows.Count - 1", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Configured explicit Xceed DataGrid columns", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Configured Toolkit Plus Material controls", mainWindowCodeBehind, StringComparison.Ordinal);
+
+        Assert.Contains("The direct Toolkit references are intentional", readme, StringComparison.Ordinal);
+        Assert.Contains("collides with the separate `Xceed.Wpf.DataGrid` product's `DataGridControl` type", readme, StringComparison.Ordinal);
+        Assert.Contains("Do not put license values in this repository.", readme, StringComparison.Ordinal);
+        Assert.Contains("100,000 rows", readme, StringComparison.Ordinal);
+        Assert.Contains("ProGPU owns windowing, input, invalidation, clipping, image/layer texture trimming, shaders, and final WebGPU rendering", readme, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_XCEED_PAID_VALIDATE", runScript, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_WPF_XCEED_PAID_RUN_VALIDATE", runScript, StringComparison.Ordinal);
+        Assert.Contains("Running ProGPU WPF paid Xceed apphost validation", runScript, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ProGpuWpfSdkProvidesSwitchOnlyPackagingSurface()
     {
         var sdkProjectPath = FindRepoPath(

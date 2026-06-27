@@ -2586,6 +2586,89 @@ internal static class Program
             """);
 
         WriteFile(
+            Path.Combine(appRoot, "ExternalNavigationWindow.xaml"),
+            """
+            <NavigationWindow
+                x:Class="ExternalSdkApp.ExternalNavigationWindow"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                Title="External SDK NavigationWindow"
+                Width="180"
+                Height="120"
+                Source="ExternalPage.xaml"
+                ShowsNavigationUI="False"
+                Navigating="OnExternalNavigationWindowNavigating"
+                Navigated="OnExternalNavigationWindowNavigated"
+                LoadCompleted="OnExternalNavigationWindowLoadCompleted" />
+            """);
+
+        WriteFile(
+            Path.Combine(appRoot, "ExternalNavigationWindow.xaml.cs"),
+            """
+            using System;
+            using System.Windows.Navigation;
+
+            namespace ExternalSdkApp;
+
+            public partial class ExternalNavigationWindow : NavigationWindow
+            {
+                public int NavigatingCount { get; private set; }
+
+                public int NavigatedCount { get; private set; }
+
+                public int LoadCompletedCount { get; private set; }
+
+                public int ClosingCount { get; private set; }
+
+                public int ClosedCount { get; private set; }
+
+                public string? LastNavigatingUri { get; private set; }
+
+                public string? LastNavigatedUri { get; private set; }
+
+                public string? LastLoadCompletedUri { get; private set; }
+
+                public string? LastNavigationMode { get; private set; }
+
+                public string? LastContentType { get; private set; }
+
+                public ExternalNavigationWindow()
+                {
+                    InitializeComponent();
+                    Closing += (_, e) =>
+                    {
+                        ClosingCount++;
+                        if (e.Cancel)
+                        {
+                            throw new InvalidOperationException("External NavigationWindow close should not be canceled.");
+                        }
+                    };
+                    Closed += (_, _) => ClosedCount++;
+                }
+
+                private void OnExternalNavigationWindowNavigating(object sender, NavigatingCancelEventArgs e)
+                {
+                    NavigatingCount++;
+                    LastNavigatingUri = e.Uri?.ToString();
+                    LastNavigationMode = e.NavigationMode.ToString();
+                }
+
+                private void OnExternalNavigationWindowNavigated(object sender, NavigationEventArgs e)
+                {
+                    NavigatedCount++;
+                    LastNavigatedUri = e.Uri?.ToString();
+                    LastContentType = e.Content?.GetType().FullName;
+                }
+
+                private void OnExternalNavigationWindowLoadCompleted(object sender, NavigationEventArgs e)
+                {
+                    LoadCompletedCount++;
+                    LastLoadCompletedUri = e.Uri?.ToString();
+                }
+            }
+            """);
+
+        WriteFile(
             Path.Combine(appRoot, "ExternalLoadComponentView.xaml"),
             """
             <UserControl
@@ -6102,6 +6185,96 @@ internal static class Program
                     AssertEqual(false, sizeToContentWindow.IsVisible, "external SDK size-to-content window visibility after close");
                     AssertEqual(false, ApplicationContainsWindow(app, sizeToContentWindow), "external SDK application windows excludes size-to-content window");
                     AssertEqual(true, ApplicationContainsWindow(app, window), "external SDK application windows keeps main window after size-to-content close");
+
+                    var navigationWindow = new ExternalNavigationWindow
+                    {
+                        Owner = window
+                    };
+
+                    navigationWindow.Show();
+                    PumpDispatcherUntil(
+                        () => navigationWindow.Content is ExternalPage,
+                        TimeSpan.FromSeconds(1),
+                        "external SDK NavigationWindow initial page");
+                    DrainDispatcher();
+
+                    AssertEqual(true, navigationWindow.IsVisible, "external SDK NavigationWindow visibility after show");
+                    AssertEqual(true, ApplicationContainsWindow(app, navigationWindow), "external SDK application windows contains NavigationWindow");
+                    AssertEqual(false, navigationWindow.ShowsNavigationUI, "external SDK NavigationWindow UI metadata");
+                    AssertEqual(window, navigationWindow.Owner, "external SDK NavigationWindow owner");
+                    AssertAtLeast(1, navigationWindow.NavigatingCount, "external SDK NavigationWindow initial navigating count");
+                    AssertAtLeast(1, navigationWindow.NavigatedCount, "external SDK NavigationWindow initial navigated count");
+                    AssertAtLeast(1, navigationWindow.LoadCompletedCount, "external SDK NavigationWindow initial load completed count");
+                    AssertEndsWith(navigationWindow.LastNavigatingUri, "ExternalPage.xaml", "external SDK NavigationWindow initial navigating URI");
+                    AssertEndsWith(navigationWindow.LastNavigatedUri, "ExternalPage.xaml", "external SDK NavigationWindow initial navigated URI");
+                    AssertEndsWith(navigationWindow.LastLoadCompletedUri, "ExternalPage.xaml", "external SDK NavigationWindow initial load completed URI");
+                    AssertEqual("New", navigationWindow.LastNavigationMode, "external SDK NavigationWindow initial navigation mode");
+                    AssertEqual(typeof(ExternalPage).FullName, navigationWindow.LastContentType, "external SDK NavigationWindow initial content type");
+
+                    var navigationWindowPage = RequireType<ExternalPage>(
+                        navigationWindow.Content,
+                        "external SDK NavigationWindow initial content");
+                    AssertEqual(
+                        "External SDK page",
+                        RequireType<TextBlock>(
+                            navigationWindowPage.FindName("ExternalPageTitle"),
+                            "external SDK NavigationWindow initial page title").Text,
+                        "external SDK NavigationWindow initial page text");
+
+                    int navigationWindowNavigatingBeforeSecond = navigationWindow.NavigatingCount;
+                    int navigationWindowNavigatedBeforeSecond = navigationWindow.NavigatedCount;
+                    int navigationWindowLoadCompletedBeforeSecond = navigationWindow.LoadCompletedCount;
+                    AssertEqual(
+                        true,
+                        navigationWindow.Navigate(new Uri("ExternalSecondPage.xaml", UriKind.Relative)),
+                        "external SDK NavigationWindow second page navigate result");
+                    PumpDispatcherUntil(
+                        () => navigationWindow.Content is ExternalSecondPage,
+                        TimeSpan.FromSeconds(1),
+                        "external SDK NavigationWindow second page");
+
+                    AssertAtLeast(navigationWindowNavigatingBeforeSecond + 1, navigationWindow.NavigatingCount, "external SDK NavigationWindow second navigating count");
+                    AssertAtLeast(navigationWindowNavigatedBeforeSecond + 1, navigationWindow.NavigatedCount, "external SDK NavigationWindow second navigated count");
+                    AssertAtLeast(navigationWindowLoadCompletedBeforeSecond + 1, navigationWindow.LoadCompletedCount, "external SDK NavigationWindow second load completed count");
+                    AssertEqual("New", navigationWindow.LastNavigationMode, "external SDK NavigationWindow second navigation mode");
+                    AssertEqual(typeof(ExternalSecondPage).FullName, navigationWindow.LastContentType, "external SDK NavigationWindow second content type");
+                    AssertEqual(true, navigationWindow.CanGoBack, "external SDK NavigationWindow can go back");
+
+                    int navigationWindowNavigatingBeforeBack = navigationWindow.NavigatingCount;
+                    int navigationWindowNavigatedBeforeBack = navigationWindow.NavigatedCount;
+                    navigationWindow.GoBack();
+                    PumpDispatcherUntil(
+                        () => navigationWindow.Content is ExternalPage,
+                        TimeSpan.FromSeconds(1),
+                        "external SDK NavigationWindow back page");
+
+                    AssertAtLeast(navigationWindowNavigatingBeforeBack + 1, navigationWindow.NavigatingCount, "external SDK NavigationWindow back navigating count");
+                    AssertAtLeast(navigationWindowNavigatedBeforeBack + 1, navigationWindow.NavigatedCount, "external SDK NavigationWindow back navigated count");
+                    AssertEqual("Back", navigationWindow.LastNavigationMode, "external SDK NavigationWindow back navigation mode");
+                    AssertEqual(typeof(ExternalPage).FullName, navigationWindow.LastContentType, "external SDK NavigationWindow back content type");
+                    AssertEqual(true, navigationWindow.CanGoForward, "external SDK NavigationWindow can go forward");
+
+                    int navigationWindowNavigatingBeforeForward = navigationWindow.NavigatingCount;
+                    int navigationWindowNavigatedBeforeForward = navigationWindow.NavigatedCount;
+                    navigationWindow.GoForward();
+                    PumpDispatcherUntil(
+                        () => navigationWindow.Content is ExternalSecondPage,
+                        TimeSpan.FromSeconds(1),
+                        "external SDK NavigationWindow forward page");
+
+                    AssertAtLeast(navigationWindowNavigatingBeforeForward + 1, navigationWindow.NavigatingCount, "external SDK NavigationWindow forward navigating count");
+                    AssertAtLeast(navigationWindowNavigatedBeforeForward + 1, navigationWindow.NavigatedCount, "external SDK NavigationWindow forward navigated count");
+                    AssertEqual("Forward", navigationWindow.LastNavigationMode, "external SDK NavigationWindow forward navigation mode");
+                    AssertEqual(typeof(ExternalSecondPage).FullName, navigationWindow.LastContentType, "external SDK NavigationWindow forward content type");
+
+                    navigationWindow.Close();
+                    DrainDispatcher();
+
+                    AssertEqual(1, navigationWindow.ClosingCount, "external SDK NavigationWindow Closing count");
+                    AssertEqual(1, navigationWindow.ClosedCount, "external SDK NavigationWindow Closed count");
+                    AssertEqual(false, navigationWindow.IsVisible, "external SDK NavigationWindow visibility after close");
+                    AssertEqual(false, ApplicationContainsWindow(app, navigationWindow), "external SDK application windows excludes closed NavigationWindow");
+                    AssertEqual(true, ApplicationContainsWindow(app, window), "external SDK application windows keeps main window after NavigationWindow close");
 
                     var ownedWindow = new Window
                     {

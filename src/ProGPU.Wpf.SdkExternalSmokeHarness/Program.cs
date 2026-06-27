@@ -2448,6 +2448,20 @@ internal static class Program
                     <library:ExternalThemedControl
                         x:Name="ExternalThemedControl"
                         Text="External SDK themed control" />
+                    <StackPanel
+                        x:Name="ExternalNavigationCommandPanel"
+                        Orientation="Horizontal">
+                        <Button
+                            x:Name="ExternalNavigationBackButton"
+                            Command="NavigationCommands.BrowseBack"
+                            CommandTarget="{Binding ElementName=ExternalFrame}"
+                            Content="Back" />
+                        <Button
+                            x:Name="ExternalNavigationForwardButton"
+                            Command="NavigationCommands.BrowseForward"
+                            CommandTarget="{Binding ElementName=ExternalFrame}"
+                            Content="Forward" />
+                    </StackPanel>
                     <Frame
                         x:Name="ExternalFrame"
                         Source="ExternalPage.xaml"
@@ -5073,6 +5087,16 @@ internal static class Program
                     var frame = RequireType<Frame>(
                         window.FindName("ExternalFrame"),
                         "external SDK compiled page frame");
+                    var navigationBackButton = RequireType<Button>(
+                        window.FindName("ExternalNavigationBackButton"),
+                        "external SDK navigation back command button");
+                    var navigationForwardButton = RequireType<Button>(
+                        window.FindName("ExternalNavigationForwardButton"),
+                        "external SDK navigation forward command button");
+                    AssertEqual(NavigationCommands.BrowseBack, navigationBackButton.Command, "external SDK navigation back button command");
+                    AssertEqual(frame, navigationBackButton.CommandTarget, "external SDK navigation back button target");
+                    AssertEqual(NavigationCommands.BrowseForward, navigationForwardButton.Command, "external SDK navigation forward button command");
+                    AssertEqual(frame, navigationForwardButton.CommandTarget, "external SDK navigation forward button target");
                     DrainDispatcher();
 
                     var page = RequireType<ExternalPage>(
@@ -5148,6 +5172,39 @@ internal static class Program
                     AssertEqual(typeof(ExternalSecondPage).FullName, window.LastExternalFrameContentType, "external SDK forward frame content type");
                     AssertEqual(true, frame.CanGoBack, "external SDK frame can go back after forward");
                     AssertEqual(false, frame.CanGoForward, "external SDK frame cannot go forward after forward");
+
+                    int navigatingCountBeforeCommandBack = window.ExternalFrameNavigatingCount;
+                    int navigatedCountBeforeCommandBack = window.ExternalFrameNavigatedCount;
+                    AssertEqual(true, NavigationCommands.BrowseBack.CanExecute(null, frame), "external SDK navigation command back can execute");
+                    NavigationCommands.BrowseBack.Execute(null, frame);
+                    DrainDispatcher();
+
+                    RequireType<ExternalPage>(
+                        frame.Content,
+                        "external SDK command returned compiled page");
+                    AssertAtLeast(navigatingCountBeforeCommandBack + 1, window.ExternalFrameNavigatingCount, "external SDK command back frame navigating count");
+                    AssertAtLeast(navigatedCountBeforeCommandBack + 1, window.ExternalFrameNavigatedCount, "external SDK command back frame navigated count");
+                    AssertEqual("Back", window.LastExternalFrameNavigationMode, "external SDK command back frame navigation mode");
+                    AssertEqual(typeof(ExternalPage).FullName, window.LastExternalFrameContentType, "external SDK command back frame content type");
+                    AssertEqual(true, frame.CanGoForward, "external SDK frame can go forward after navigation command back");
+
+                    int navigatingCountBeforeCommandForward = window.ExternalFrameNavigatingCount;
+                    int navigatedCountBeforeCommandForward = window.ExternalFrameNavigatedCount;
+                    int loadCompletedCountBeforeCommandForward = window.ExternalFrameLoadCompletedCount;
+                    AssertEqual(true, NavigationCommands.BrowseForward.CanExecute(null, frame), "external SDK navigation command forward can execute");
+                    NavigationCommands.BrowseForward.Execute(null, frame);
+                    DrainDispatcher();
+
+                    RequireType<ExternalSecondPage>(
+                        frame.Content,
+                        "external SDK command forwarded compiled page");
+                    AssertAtLeast(navigatingCountBeforeCommandForward + 1, window.ExternalFrameNavigatingCount, "external SDK command forward frame navigating count");
+                    AssertAtLeast(navigatedCountBeforeCommandForward + 1, window.ExternalFrameNavigatedCount, "external SDK command forward frame navigated count");
+                    AssertAtLeast(loadCompletedCountBeforeCommandForward + 1, window.ExternalFrameLoadCompletedCount, "external SDK command forward frame load completed count");
+                    AssertEqual("Forward", window.LastExternalFrameNavigationMode, "external SDK command forward frame navigation mode");
+                    AssertEqual(typeof(ExternalSecondPage).FullName, window.LastExternalFrameContentType, "external SDK command forward frame content type");
+                    AssertEqual(true, frame.CanGoBack, "external SDK frame can go back after navigation command forward");
+                    AssertEqual(false, frame.CanGoForward, "external SDK frame cannot go forward after navigation command forward");
 
                     int navigatingCountBeforeCanceled = window.ExternalFrameNavigatingCount;
                     int navigatedCountBeforeCanceled = window.ExternalFrameNavigatedCount;

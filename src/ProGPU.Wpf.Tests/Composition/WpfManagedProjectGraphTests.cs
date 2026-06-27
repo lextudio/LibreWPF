@@ -10971,6 +10971,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public partial class ExternalPageFunction : PageFunction<string>", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("public const string DefaultResult = \"External PageFunction return\";", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("OnReturn(new ReturnEventArgs<string>(result ?? DefaultResult));", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalNavigationBackButton\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Command=\"NavigationCommands.BrowseBack\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"ExternalNavigationForwardButton\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Command=\"NavigationCommands.BrowseForward\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("CommandTarget=\"{Binding ElementName=ExternalFrame}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Source=\"ExternalPage.xaml\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Navigating=\"OnExternalFrameNavigating\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Navigated=\"OnExternalFrameNavigated\"", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -10983,6 +10988,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("frame.GoBack()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("frame.GoForward()", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("frame.CanGoForward", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("NavigationCommands.BrowseBack.CanExecute(null, frame)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("NavigationCommands.BrowseBack.Execute(null, frame)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("NavigationCommands.BrowseForward.CanExecute(null, frame)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("NavigationCommands.BrowseForward.Execute(null, frame)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ExternalFrameNavigationCanceledCount", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("e.Cancel = true", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("frame.Navigate(new Uri(\"ExternalBlockedPage.xaml\", UriKind.Relative))", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -11000,6 +11009,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK second frame content type", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK back frame navigation mode", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK forward frame navigation mode", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK command back frame navigation mode", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK command forward frame navigation mode", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK canceled frame navigation mode", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK PageFunction frame navigation mode", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK PageFunction return result", externalSdkHarnessProgram, StringComparison.Ordinal);

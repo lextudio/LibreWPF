@@ -558,23 +558,29 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal bool TryHitTestOwners(double x, double y, out object?[] owners)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryQueryHitTestBoundsOwners(double minX, double minY, double maxX, double maxY, out object?[] owners)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryQueryHitTestBoundsCandidates(double minX, double minY, double maxX, double maxY, out object?[] candidates)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("internal bool TryQueryHitTestEllipseCandidates(double minX, double minY, double maxX, double maxY, out object?[] candidates)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool HasGpuHitTestCache => _target?.LastGpuHitTestIndex != null;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_target.TryHitTestOwner(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_target.TryHitTestOwners(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_target.TryQueryHitTestBoundsOwners(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_target.TryQueryHitTestBoundsCandidates(", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_target.TryQueryHitTestEllipseCandidates(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("private const string HitTestOverridePropertyName = \"HitTestOverride\";", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private const string HitTestAllOverridePropertyName = \"HitTestAllOverride\";", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private const string HitTestBoundsOverridePropertyName = \"HitTestBoundsOverride\";", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("private const string HitTestEllipseBoundsOverridePropertyName = \"HitTestEllipseBoundsOverride\";", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("bridge.TryInstallHitTestOverride();", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("bridge.TryInstallHitTestAllOverride();", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("bridge.TryInstallHitTestBoundsOverride();", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("bridge.TryInstallHitTestEllipseBoundsOverride();", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private object? TryHitTestOwner(System.Windows.Point rootPoint)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private object?[]? HitTestOwners(System.Windows.Point rootPoint)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private object?[]? HitTestBoundsOwners(System.Windows.Point rootMin, System.Windows.Point rootMax)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("private object?[]? HitTestEllipseBoundsOwners(System.Windows.Point rootMin, System.Windows.Point rootMax)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.TryHitTestOwner(rootPoint.X, rootPoint.Y, out object? owner)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.TryHitTestOwners(rootPoint.X, rootPoint.Y, out object?[] owners)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.TryQueryHitTestBoundsCandidates(", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("_host.TryQueryHitTestEllipseCandidates(", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.HasGpuHitTestCache ? Source : null", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.HasGpuHitTestCache ? Array.Empty<object>() : null", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("TryBindInstallsGpuHitTestOverrideWhenSourceExposesHook", proGpuPortablePresentationSourceBridgeTests, StringComparison.Ordinal);
@@ -649,6 +655,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Assert.Equal(112, Marshal.SizeOf<GpuHitTestPrimitive>());", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsRoundedRectangleCornerFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsRectangleStrokeHoleOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryEllipseAllRejectsQueryBoundsCornerFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryEllipseAllClassifiesRectangleFillIntersectionDetailOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("LineStrokeCachesDirectionAndLengthForGpuHitTesting", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsLineStrokeBoundsFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsLineStrokeFlatCapFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
@@ -657,7 +665,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryQueryBoundsAllRejectsPathStrokeBoundsFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsCombinedPathDifferenceHoleOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("const QUERY_MODE_BOUNDS: u32", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("const QUERY_MODE_ELLIPSE_REGION: u32", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("const INTERSECTION_DETAIL_FULLY_INSIDE: u32", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn query_uses_ellipse_region()", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn classify_ellipse_region_intersection_detail(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn classify_bounds_intersection_detail(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn rect_intersects_ellipse(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn rect_intersects_ellipse_stroke(", proGpuHitTesting, StringComparison.Ordinal);
@@ -676,9 +687,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GpuHitTestEngine.TryHitTestPoint(_context, _pipelineCache, _lastHitTestDeviceIndex, point, out result)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestEngine.TryHitTestPointAll(", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestEngine.TryQueryBoundsAll(", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("GpuHitTestEngine.TryQueryEllipseAll(", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("public bool TryHitTestPoint(Vector2 point, out GpuHitTestResult result)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("public bool TryHitTestPointAll(", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("public bool TryQueryHitTestBoundsAll(", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("public bool TryQueryHitTestEllipseAll(", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("public ProGpuHitTestIndex? LastGpuHitTestIndex => Compositor.LastHitTestIndex;", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("public ProGpuHitTestDeviceIndex? LastGpuHitTestDeviceIndex => Compositor.LastHitTestDeviceIndex;", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("public WpfGpuHitTestOwnerMap GpuHitTestOwnerMap { get; } = new();", proGpuCompositionTarget, StringComparison.Ordinal);
@@ -689,8 +702,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Compositor.TryHitTestPointAll(logicalPoint, results, out int hitCount, out summary)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("public bool TryQueryHitTestBoundsOwners(", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("public bool TryQueryHitTestBoundsCandidates(", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("public bool TryQueryHitTestEllipseCandidates(", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("new ProGpuWpfGeometryHitTestCandidate(", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("Compositor.TryQueryHitTestBoundsAll(logicalMin, logicalMax, results, out int hitCount, out summary)", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("Compositor.TryQueryHitTestEllipseAll(logicalMin, logicalMax, results, out int hitCount, out summary)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("return GpuHitTestOwnerMap.TryGetOwner(result.Id, out owner);", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("WpfGpuHitTestOwnerMap? hitTestOwnerMap = null", proGpuDrawingFrame, StringComparison.Ordinal);
         Assert.Contains("_hitTestOwnerMap?.Clear();", proGpuDrawingFrame, StringComparison.Ordinal);
@@ -805,6 +820,15 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Media",
             "Visual.cs");
+        var geometryHitTestParametersPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "GeometryHitTestParameters.cs");
         var portableKeyboardPath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -831,6 +855,7 @@ public sealed class WpfManagedProjectGraphTests
         var uiElement = File.ReadAllText(uiElementPath);
         var visualTreeHelper = File.ReadAllText(visualTreeHelperPath);
         var visual = File.ReadAllText(visualPath);
+        var geometryHitTestParameters = File.ReadAllText(geometryHitTestParametersPath);
         var portableKeyboard = File.ReadAllText(portableKeyboardPath);
         var portableMouse = File.ReadAllText(portableMousePath);
 
@@ -854,15 +879,25 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ReferenceEquals(hitTestResult, this)", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal Func<Point, object[]> HitTestAllOverride { get; set; }", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal Func<Point, Point, object[]> HitTestBoundsOverride { get; set; }", portableSource, StringComparison.Ordinal);
+        Assert.Contains("internal Func<Point, Point, object[]> HitTestEllipseBoundsOverride { get; set; }", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal bool TryInputHitTestOverride(UIElement reference, Point referencePoint, out DependencyObject candidate, out HitTestResult hitTestResult)", portableSource, StringComparison.Ordinal);
         Assert.Contains("IsInputHitTestVisibleDescendantOf(visualHit, reference)", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal bool TryPointHitTestOverride(Visual reference, Point referencePoint, bool include2DOn3D, out HitTestResult hitTestResult)", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal bool TryPointHitTestOverride(Visual reference, Point referencePoint, HitTestFilterCallback filterCallback, HitTestResultCallback resultCallback, out HitTestResultBehavior result)", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal bool TryGeometryHitTestOverride(Visual reference, GeometryHitTestParameters geometryParams, HitTestFilterCallback filterCallback, HitTestResultCallback resultCallback, out HitTestResultBehavior result)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("geometryParams.PortableHitTestGeometryKind == PortableHitTestGeometryKind.AxisAlignedEllipse", portableSource, StringComparison.Ordinal);
+        Assert.Contains("HitTestEllipseBoundsOverride(rootBounds.TopLeft, rootBounds.BottomRight)", portableSource, StringComparison.Ordinal);
         Assert.Contains("HitTestBoundsOverride(rootBounds.TopLeft, rootBounds.BottomRight)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("TryTransformBounds(reference, _rootVisual, bounds, out Rect rootBounds, out bool preservesAxisAlignedBounds)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("preservesAxisAlignedBounds = IsAxisAlignedRectangle(topLeft, topRight, bottomRight, bottomLeft);", portableSource, StringComparison.Ordinal);
         Assert.Contains("TryGetGeometryHitCandidate(hitTestResults[i], out Visual visualHit, out IntersectionDetail intersectionDetail)", portableSource, StringComparison.Ordinal);
         Assert.Contains("ToIntersectionDetail(reflectedDetail)", portableSource, StringComparison.Ordinal);
         Assert.Contains("IsPointHitVisibleByFilter(", portableSource, StringComparison.Ordinal);
+        Assert.Contains("private readonly PortableHitTestGeometryKind _portableHitTestGeometryKind;", geometryHitTestParameters, StringComparison.Ordinal);
+        Assert.Contains("internal PortableHitTestGeometryKind PortableHitTestGeometryKind", geometryHitTestParameters, StringComparison.Ordinal);
+        Assert.Contains("geometry is EllipseGeometry ellipseGeometry", geometryHitTestParameters, StringComparison.Ordinal);
+        Assert.Contains("return PortableHitTestGeometryKind.AxisAlignedEllipse;", geometryHitTestParameters, StringComparison.Ordinal);
+        Assert.Contains("internal enum PortableHitTestGeometryKind", geometryHitTestParameters, StringComparison.Ordinal);
         Assert.Contains("portableSource.TryInputHitTestOverride(this, pt, out DependencyObject portableCandidate, out rawHitResult)", uiElement, StringComparison.Ordinal);
         Assert.Contains("private void PromoteInputHit(Point pt, DependencyObject candidate, out IInputElement enabledHit, out IInputElement rawHit, ref HitTestResult rawHitResult)", uiElement, StringComparison.Ordinal);
         Assert.Contains("portableSource.TryPointHitTestOverride(reference, point, include2DOn3D, out HitTestResult hitTestResult)", visualTreeHelper, StringComparison.Ordinal);

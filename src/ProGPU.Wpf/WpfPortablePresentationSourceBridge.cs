@@ -16,6 +16,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     private const string HitTestOverridePropertyName = "HitTestOverride";
     private const string HitTestAllOverridePropertyName = "HitTestAllOverride";
     private const string HitTestBoundsOverridePropertyName = "HitTestBoundsOverride";
+    private const string HitTestEllipseBoundsOverridePropertyName = "HitTestEllipseBoundsOverride";
     private const string SetDeviceScaleMethodName = "SetDeviceScale";
     private const string SetClientSizeMethodName = "SetClientSize";
 
@@ -27,6 +28,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     private readonly PropertyInfo? _hitTestOverrideProperty;
     private readonly PropertyInfo? _hitTestAllOverrideProperty;
     private readonly PropertyInfo? _hitTestBoundsOverrideProperty;
+    private readonly PropertyInfo? _hitTestEllipseBoundsOverrideProperty;
     private readonly MethodInfo? _setDeviceScaleMethod;
     private readonly MethodInfo? _setClientSizeMethod;
     private readonly MethodInfo? _disposeMethod;
@@ -38,6 +40,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     private Delegate? _hitTestOverrideHandler;
     private Delegate? _hitTestAllOverrideHandler;
     private Delegate? _hitTestBoundsOverrideHandler;
+    private Delegate? _hitTestEllipseBoundsOverrideHandler;
     private bool _isDisposed;
 
     private WpfPortablePresentationSourceBridge(
@@ -50,6 +53,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         PropertyInfo? hitTestOverrideProperty,
         PropertyInfo? hitTestAllOverrideProperty,
         PropertyInfo? hitTestBoundsOverrideProperty,
+        PropertyInfo? hitTestEllipseBoundsOverrideProperty,
         MethodInfo? setDeviceScaleMethod,
         MethodInfo? setClientSizeMethod,
         MethodInfo? disposeMethod,
@@ -64,6 +68,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         _hitTestOverrideProperty = hitTestOverrideProperty;
         _hitTestAllOverrideProperty = hitTestAllOverrideProperty;
         _hitTestBoundsOverrideProperty = hitTestBoundsOverrideProperty;
+        _hitTestEllipseBoundsOverrideProperty = hitTestEllipseBoundsOverrideProperty;
         _setDeviceScaleMethod = setDeviceScaleMethod;
         _setClientSizeMethod = setClientSizeMethod;
         _disposeMethod = disposeMethod;
@@ -236,6 +241,13 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
             _hitTestBoundsOverrideProperty.SetValue(Source, null);
         }
 
+        if (_hitTestEllipseBoundsOverrideProperty != null &&
+            _hitTestEllipseBoundsOverrideHandler != null &&
+            ReferenceEquals(_hitTestEllipseBoundsOverrideProperty.GetValue(Source), _hitTestEllipseBoundsOverrideHandler))
+        {
+            _hitTestEllipseBoundsOverrideProperty.SetValue(Source, null);
+        }
+
         object? rootVisual = _rootVisualProperty.GetValue(Source);
         if (ReferenceEquals(_host.WpfRootVisual, rootVisual))
         {
@@ -268,6 +280,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         PropertyInfo? hitTestOverrideProperty = FindProperty(sourceType, HitTestOverridePropertyName);
         PropertyInfo? hitTestAllOverrideProperty = FindProperty(sourceType, HitTestAllOverridePropertyName);
         PropertyInfo? hitTestBoundsOverrideProperty = FindProperty(sourceType, HitTestBoundsOverridePropertyName);
+        PropertyInfo? hitTestEllipseBoundsOverrideProperty = FindProperty(sourceType, HitTestEllipseBoundsOverridePropertyName);
         if (rootVisualProperty == null ||
             !rootVisualProperty.CanRead ||
             !rootVisualProperty.CanWrite ||
@@ -312,6 +325,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
             hitTestOverrideProperty,
             hitTestAllOverrideProperty,
             hitTestBoundsOverrideProperty,
+            hitTestEllipseBoundsOverrideProperty,
             setDeviceScaleMethod,
             setClientSizeMethod,
             disposeMethod,
@@ -321,6 +335,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         bridge.TryInstallHitTestOverride();
         bridge.TryInstallHitTestAllOverride();
         bridge.TryInstallHitTestBoundsOverride();
+        bridge.TryInstallHitTestEllipseBoundsOverride();
 
         bridge.SyncHostRootVisual();
         return true;
@@ -515,6 +530,38 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         return true;
     }
 
+    private bool TryInstallHitTestEllipseBoundsOverride()
+    {
+        if (_hitTestEllipseBoundsOverrideProperty == null ||
+            !_hitTestEllipseBoundsOverrideProperty.CanWrite ||
+            !typeof(Delegate).IsAssignableFrom(_hitTestEllipseBoundsOverrideProperty.PropertyType))
+        {
+            return false;
+        }
+
+        MethodInfo? method = GetType().GetMethod(
+            nameof(HitTestEllipseBoundsOwners),
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        if (method == null)
+        {
+            return false;
+        }
+
+        Delegate? handler = Delegate.CreateDelegate(
+            _hitTestEllipseBoundsOverrideProperty.PropertyType,
+            this,
+            method,
+            throwOnBindFailure: false);
+        if (handler == null)
+        {
+            return false;
+        }
+
+        _hitTestEllipseBoundsOverrideProperty.SetValue(Source, handler);
+        _hitTestEllipseBoundsOverrideHandler = handler;
+        return true;
+    }
+
     private object? TryHitTestOwner(System.Windows.Point rootPoint)
     {
         return _host.TryHitTestOwner(rootPoint.X, rootPoint.Y, out object? owner) &&
@@ -536,6 +583,21 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     private object?[]? HitTestBoundsOwners(System.Windows.Point rootMin, System.Windows.Point rootMax)
     {
         if (_host.TryQueryHitTestBoundsCandidates(
+                rootMin.X,
+                rootMin.Y,
+                rootMax.X,
+                rootMax.Y,
+                out object?[] candidates))
+        {
+            return candidates;
+        }
+
+        return _host.HasGpuHitTestCache ? Array.Empty<object>() : null;
+    }
+
+    private object?[]? HitTestEllipseBoundsOwners(System.Windows.Point rootMin, System.Windows.Point rootMax)
+    {
+        if (_host.TryQueryHitTestEllipseCandidates(
                 rootMin.X,
                 rootMin.Y,
                 rootMax.X,

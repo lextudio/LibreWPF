@@ -68,6 +68,8 @@ namespace System.Windows
 
         internal Func<Point, Point, object[]> HitTestBoundsOverride { get; set; }
 
+        internal Func<Point, Point, object[]> HitTestEllipseBoundsOverride { get; set; }
+
         public override bool IsDisposed
         {
             get { return _isDisposed; }
@@ -462,7 +464,7 @@ namespace System.Windows
         {
             result = HitTestResultBehavior.Continue;
             if (_isDisposed ||
-                HitTestBoundsOverride == null ||
+                (HitTestBoundsOverride == null && HitTestEllipseBoundsOverride == null) ||
                 reference == null ||
                 geometryParams == null ||
                 resultCallback == null ||
@@ -473,13 +475,25 @@ namespace System.Windows
 
             Rect bounds = geometryParams.Bounds;
             if (bounds.IsEmpty ||
-                !TryTransformBounds(reference, _rootVisual, bounds, out Rect rootBounds) ||
+                !TryTransformBounds(reference, _rootVisual, bounds, out Rect rootBounds, out bool preservesAxisAlignedBounds) ||
                 rootBounds.IsEmpty)
             {
                 return false;
             }
 
-            object[] hitTestResults = HitTestBoundsOverride(rootBounds.TopLeft, rootBounds.BottomRight);
+            object[] hitTestResults = null;
+            if (geometryParams.PortableHitTestGeometryKind == PortableHitTestGeometryKind.AxisAlignedEllipse &&
+                preservesAxisAlignedBounds &&
+                HitTestEllipseBoundsOverride != null)
+            {
+                hitTestResults = HitTestEllipseBoundsOverride(rootBounds.TopLeft, rootBounds.BottomRight);
+            }
+
+            if (hitTestResults == null && HitTestBoundsOverride != null)
+            {
+                hitTestResults = HitTestBoundsOverride(rootBounds.TopLeft, rootBounds.BottomRight);
+            }
+
             if (hitTestResults == null)
             {
                 return false;
@@ -725,7 +739,13 @@ namespace System.Windows
 
         private static bool TryTransformBounds(Visual fromVisual, Visual toVisual, Rect bounds, out Rect transformedBounds)
         {
+            return TryTransformBounds(fromVisual, toVisual, bounds, out transformedBounds, out _);
+        }
+
+        private static bool TryTransformBounds(Visual fromVisual, Visual toVisual, Rect bounds, out Rect transformedBounds, out bool preservesAxisAlignedBounds)
+        {
             transformedBounds = Rect.Empty;
+            preservesAxisAlignedBounds = false;
             if (bounds.IsEmpty)
             {
                 return false;
@@ -743,7 +763,22 @@ namespace System.Windows
             transformedBounds.Union(topRight);
             transformedBounds.Union(bottomRight);
             transformedBounds.Union(bottomLeft);
+            preservesAxisAlignedBounds = IsAxisAlignedRectangle(topLeft, topRight, bottomRight, bottomLeft);
             return true;
+        }
+
+        private static bool IsAxisAlignedRectangle(Point topLeft, Point topRight, Point bottomRight, Point bottomLeft)
+        {
+            const double epsilon = 0.000001;
+            return AreClose(topLeft.Y, topRight.Y, epsilon) &&
+                AreClose(bottomLeft.Y, bottomRight.Y, epsilon) &&
+                AreClose(topLeft.X, bottomLeft.X, epsilon) &&
+                AreClose(topRight.X, bottomRight.X, epsilon);
+        }
+
+        private static bool AreClose(double left, double right, double epsilon)
+        {
+            return Math.Abs(left - right) <= epsilon;
         }
 
         private static bool IsVisualDescendantOf(Visual visual, Visual ancestor)

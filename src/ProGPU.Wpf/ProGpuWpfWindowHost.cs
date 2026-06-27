@@ -1776,6 +1776,46 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         return true;
     }
 
+    internal bool TryQueryHitTestEllipseCandidates(double minX, double minY, double maxX, double maxY, out object?[] candidates)
+    {
+        candidates = Array.Empty<object?>();
+        if (_target == null ||
+            !double.IsFinite(minX) ||
+            !double.IsFinite(minY) ||
+            !double.IsFinite(maxX) ||
+            !double.IsFinite(maxY) ||
+            minX < float.MinValue ||
+            minX > float.MaxValue ||
+            minY < float.MinValue ||
+            minY > float.MaxValue ||
+            maxX < float.MinValue ||
+            maxX > float.MaxValue ||
+            maxY < float.MinValue ||
+            maxY > float.MaxValue)
+        {
+            return false;
+        }
+
+        object?[] candidateBuffer = new object?[64];
+        if (!_target.TryQueryHitTestEllipseCandidates(
+                new System.Numerics.Vector2((float)minX, (float)minY),
+                new System.Numerics.Vector2((float)maxX, (float)maxY),
+                candidateBuffer,
+                out int candidateCount,
+                out _))
+        {
+            return false;
+        }
+
+        if (candidateCount == 0)
+        {
+            return true;
+        }
+
+        candidates = candidateBuffer[..candidateCount];
+        return true;
+    }
+
     private void AttachInputService()
     {
         if (_window == null)

@@ -653,6 +653,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryQueryBoundsAllRejectsEllipseCornerFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllClassifiesEllipseRectRegionIntersectionDetailOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsEllipseStrokeHoleOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryHitTestPointAllReportsTotalHitCountWhenCallerCapacityTruncates", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("Assert.Equal(112, Marshal.SizeOf<GpuHitTestPrimitive>());", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsRoundedRectangleCornerFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsRectangleStrokeHoleOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
@@ -712,6 +713,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("fn primitive_uses_precise_bounds_region_test(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn intersects_bounds(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("query_result_capacity()", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("let total_count = results[0].hit + 1u;", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestDeviceIndex.TryCreate(_context, index, out GpuHitTestDeviceIndex? deviceIndex)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestEngine.TryHitTestPoint(_context, _pipelineCache, _lastHitTestDeviceIndex, point, out result)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestEngine.TryHitTestPointAll(", proGpuCompositor, StringComparison.Ordinal);

@@ -4695,6 +4695,12 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Media",
             "PathGeometry.cs"));
+        var presentationCoreProject = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "PresentationCore.csproj"));
         var geometry = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -5493,7 +5499,19 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())", "MilCoreApi.MilUtility_PolygonBounds");
         Assert.Contains("return GetManagedPolygonBounds(", geometry, StringComparison.Ordinal);
         Assert.Contains("private static unsafe Rect GetManagedPolygonBounds", geometry, StringComparison.Ordinal);
-        Assert.Contains("private static MilRectD GetManagedPathBoundsAsRB", pathGeometry, StringComparison.Ordinal);
+        Assert.Contains("PROGPU_VECTOR_INTERNAL", presentationCoreProject, StringComparison.Ordinal);
+        Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\DashPattern.cs", presentationCoreProject, StringComparison.Ordinal);
+        Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\ArcSegmentGeometry.cs", presentationCoreProject, StringComparison.Ordinal);
+        Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\PathGeometry.cs", presentationCoreProject, StringComparison.Ordinal);
+        Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\TransformMetrics.cs", presentationCoreProject, StringComparison.Ordinal);
+        Assert.Contains("return GetProGpuPathBoundsAsRB(pathData, pen, worldMatrix);", pathGeometry, StringComparison.Ordinal);
+        Assert.Contains("private static MilRectD GetProGpuPathBoundsAsRB", pathGeometry, StringComparison.Ordinal);
+        Assert.Contains("ProGpuPathGeometry pathGeometry = ToProGpuPathGeometry(context.GetPathGeometry());", pathGeometry, StringComparison.Ordinal);
+        Assert.Contains("pathGeometry.CreateTransformed(proGpuMatrix)", pathGeometry, StringComparison.Ordinal);
+        Assert.Contains("pathGeometry.TryGetBounds(out Vector2 min, out Vector2 max)", pathGeometry, StringComparison.Ordinal);
+        Assert.Contains("new ProGpuArcSegment(", pathGeometry, StringComparison.Ordinal);
+        Assert.Contains("ProGpuTransformMetrics.GetStrokeScale(proGpuMatrix)", pathGeometry, StringComparison.Ordinal);
+        Assert.DoesNotContain("AddArcEndpointRadiusToManagedBounds", pathGeometry, StringComparison.Ordinal);
         Assert.Contains("ParsePathGeometryData(pathData, context)", pathGeometry, StringComparison.Ordinal);
         Assert.Contains("PathStreamGeometryContext", pathGeometry, StringComparison.Ordinal);
         Assert.Contains("if (!OperatingSystem.IsWindows())", rectangleGeometry, StringComparison.Ordinal);

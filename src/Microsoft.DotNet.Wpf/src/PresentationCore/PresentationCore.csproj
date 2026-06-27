@@ -1,7 +1,7 @@
 <Project>
   <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
   <PropertyGroup>
-    <DefineConstants>$(DefineConstants);CORE_NATIVEMETHODS;PRESENTATION_CORE;COMMONDPS</DefineConstants>
+    <DefineConstants>$(DefineConstants);CORE_NATIVEMETHODS;PRESENTATION_CORE;COMMONDPS;PROGPU_VECTOR_INTERNAL</DefineConstants>
     <NoWarn>$(NoWarn);0618;0436;1058;1705;3001;3002;3003;3009;3024</NoWarn>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- SYSLIB5005: System.Formats.Nrbf is experimental -->
@@ -289,6 +289,14 @@
     <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Text\SfntFontSubsetter.cs"
              Link="MS\Internal\Text\TextInterface\ProGPU\SfntFontSubsetter.cs"
              Condition="'$(OS)' != 'Windows_NT'" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Vector\DashPattern.cs"
+             Link="MS\Internal\Media\ProGPU\DashPattern.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Vector\ArcSegmentGeometry.cs"
+             Link="MS\Internal\Media\ProGPU\ArcSegmentGeometry.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Vector\PathGeometry.cs"
+             Link="MS\Internal\Media\ProGPU\PathGeometry.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Vector\TransformMetrics.cs"
+             Link="MS\Internal\Media\ProGPU\TransformMetrics.cs" />
     <Compile Include="MS\Internal\Text\TextInterface\PortableTextInterface.cs"
              Condition="'$(OS)' != 'Windows_NT'" />
     <Compile Include="MS\Internal\TextFormatting\Bidi.cs" />

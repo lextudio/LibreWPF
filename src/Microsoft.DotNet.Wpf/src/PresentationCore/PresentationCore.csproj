@@ -295,6 +295,8 @@
              Link="MS\Internal\Media\ProGPU\BoundsHitTesting.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Vector\RectangleGeometryHitTesting.cs"
              Link="MS\Internal\Media\ProGPU\RectangleGeometryHitTesting.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Vector\EllipseGeometryHitTesting.cs"
+             Link="MS\Internal\Media\ProGPU\EllipseGeometryHitTesting.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Vector\ArcSegmentGeometry.cs"
              Link="MS\Internal\Media\ProGPU\ArcSegmentGeometry.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)..\..\..\..\external\ProGPU\src\ProGPU.Vector\PathGeometry.cs"

@@ -2,7 +2,9 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using MS.Internal;
+using System.Numerics;
 using System.Windows.Media.Composition;
+using ProGpuEllipseGeometryHitTesting = ProGPU.Vector.EllipseGeometryHitTesting;
 
 namespace System.Windows.Media
 {
@@ -186,6 +188,13 @@ namespace System.Windows.Media
 
         internal override bool ContainsInternal(Pen pen, Point hitPoint, double tolerance, ToleranceType type)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return pen == null
+                    ? FillContainsProGpu(Center, RadiusX, RadiusY, hitPoint)
+                    : StrokeContainsProGpu(Center, RadiusX, RadiusY, pen, hitPoint, tolerance, type);
+            }
+
             unsafe
             {
                 Point* pPoints = stackalloc Point[(int)GetPointCount()];
@@ -204,6 +213,60 @@ namespace System.Windows.Media
                         GetSegmentCount());
                 }
             }
+        }
+
+        private bool FillContainsProGpu(Point center, double radiusX, double radiusY, Point hitPoint)
+        {
+            if (!TryTransformHitPointToLocal(ref hitPoint))
+            {
+                return false;
+            }
+
+            return ProGpuEllipseGeometryHitTesting.ContainsFill(
+                ToProGpuPoint(hitPoint),
+                ToProGpuPoint(center),
+                new Vector2((float)radiusX, (float)radiusY));
+        }
+
+        private bool StrokeContainsProGpu(Point center, double radiusX, double radiusY, Pen pen, Point hitPoint, double tolerance, ToleranceType type)
+        {
+            if (pen.Brush == null || pen.Thickness <= 0.0)
+            {
+                return false;
+            }
+
+            if (!TryTransformHitPointToLocal(ref hitPoint))
+            {
+                return false;
+            }
+
+            return ProGpuEllipseGeometryHitTesting.ContainsStroke(
+                ToProGpuPoint(hitPoint),
+                ToProGpuPoint(center),
+                new Vector2((float)radiusX, (float)radiusY),
+                (float)pen.Thickness,
+                (float)tolerance,
+                type == ToleranceType.Relative);
+        }
+
+        private bool TryTransformHitPointToLocal(ref Point hitPoint)
+        {
+            Transform transform = Transform;
+            if (transform != null && transform != Transform.Identity)
+            {
+                GeneralTransform inverse = transform.Inverse;
+                if (inverse == null || !inverse.TryTransform(hitPoint, out hitPoint))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static Vector2 ToProGpuPoint(Point point)
+        {
+            return new Vector2((float)point.X, (float)point.Y);
         }
 
         #region Public Methods
@@ -393,4 +456,3 @@ namespace System.Windows.Media
         #endregion
     }
 }
-

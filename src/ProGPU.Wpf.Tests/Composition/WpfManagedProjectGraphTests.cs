@@ -4719,6 +4719,15 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Media",
             "RectangleGeometry.cs"));
+        var ellipseGeometry = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "EllipseGeometry.cs"));
         var stylusLogic = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -5497,6 +5506,7 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())\n            {\n                return ContainsPolygonProGpuBounds", "MilCoreApi.MilUtility_PolygonHitTest");
         Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\BoundsHitTesting.cs", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\RectangleGeometryHitTesting.cs", presentationCoreProject, StringComparison.Ordinal);
+        Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\EllipseGeometryHitTesting.cs", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains("private bool ContainsProGpuBounds(", geometry, StringComparison.Ordinal);
         Assert.Contains("ProGpuBoundsHitTesting.ContainsPoint(", geometry, StringComparison.Ordinal);
         Assert.DoesNotContain("InflateForHitTolerance", geometry, StringComparison.Ordinal);
@@ -5532,6 +5542,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("GeneralTransform inverse = transform.Inverse", rectangleGeometry, StringComparison.Ordinal);
         Assert.DoesNotContain("FillContainsManaged", rectangleGeometry, StringComparison.Ordinal);
         Assert.DoesNotContain("StrokeContainsManaged", rectangleGeometry, StringComparison.Ordinal);
+        Assert.Contains("FillContainsProGpu(Center, RadiusX, RadiusY, hitPoint)", ellipseGeometry, StringComparison.Ordinal);
+        Assert.Contains("StrokeContainsProGpu(Center, RadiusX, RadiusY, pen, hitPoint, tolerance, type)", ellipseGeometry, StringComparison.Ordinal);
+        Assert.Contains("ProGpuEllipseGeometryHitTesting.ContainsFill(", ellipseGeometry, StringComparison.Ordinal);
+        Assert.Contains("ProGpuEllipseGeometryHitTesting.ContainsStroke(", ellipseGeometry, StringComparison.Ordinal);
+        AssertGuardBefore(ellipseGeometry, "if (!OperatingSystem.IsWindows())", "return ContainsInternal(\n                        pen");
         Assert.Contains("return OperatingSystem.IsWindows() && !CoreAppContextSwitches.DisableStylusAndTouchSupport", stylusLogic, StringComparison.Ordinal);
         AssertGuardBefore(stylusLogic, "if (!OperatingSystem.IsWindows())", "Registry.CurrentUser.OpenSubKey");
         AssertGuardBefore(accessKeyManager, "if (!global::System.OperatingSystem.IsWindows())", "UnsafeNativeMethods.GetActiveWindow()");

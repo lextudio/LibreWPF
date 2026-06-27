@@ -208,7 +208,7 @@ namespace System.Windows
                 return;
             }
 
-            input.Handled = ProcessInput(source, input);
+            input.Handled = ProcessInput(source, window, input);
         }
 
         internal static int ProcessDragDrop(
@@ -265,7 +265,7 @@ namespace System.Windows
             return (int)result;
         }
 
-        private static bool ProcessInput(PresentationSource source, PortableInputEventArgs input)
+        private static bool ProcessInput(PresentationSource source, Window window, PortableInputEventArgs input)
         {
             InputManager inputManager = InputManager.UnsecureCurrent;
             int timestamp = Environment.TickCount;
@@ -280,17 +280,17 @@ namespace System.Windows
                 case PortableInputEventKind.TextInput:
                     return ProcessTextInput(inputManager, source, input, timestamp);
                 case PortableInputEventKind.MouseMove:
-                    return ProcessMouseInput(inputManager, source, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove);
+                    return ProcessMouseInput(inputManager, source, window, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove);
                 case PortableInputEventKind.MouseDown:
                     return TryGetMouseButtonAction(input.Button, isDown: true, out RawMouseActions mouseDownAction)
-                        && ProcessMouseInput(inputManager, source, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | mouseDownAction);
+                        && ProcessMouseInput(inputManager, source, window, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | mouseDownAction);
                 case PortableInputEventKind.MouseUp:
                     return TryGetMouseButtonAction(input.Button, isDown: false, out RawMouseActions mouseUpAction)
-                        && ProcessMouseInput(inputManager, source, input, timestamp, mouseActivation | mouseUpAction);
+                        && ProcessMouseInput(inputManager, source, window, input, timestamp, mouseActivation | mouseUpAction);
                 case PortableInputEventKind.MouseWheel:
                     int wheel = ToMouseWheelDelta(input.DeltaY);
                     return wheel != 0
-                        && ProcessMouseInput(inputManager, source, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | RawMouseActions.VerticalWheelRotate, wheel);
+                        && ProcessMouseInput(inputManager, source, window, input, timestamp, mouseActivation | RawMouseActions.AbsoluteMove | RawMouseActions.VerticalWheelRotate, wheel);
                 default:
                     return false;
             }
@@ -361,6 +361,7 @@ namespace System.Windows
         private static bool ProcessMouseInput(
             InputManager inputManager,
             PresentationSource source,
+            Window window,
             PortableInputEventArgs input,
             int timestamp,
             RawMouseActions actions,
@@ -379,7 +380,7 @@ namespace System.Windows
                 }
             }
 
-            Point clientPoint = ToMouseClientPoint(source, input);
+            Point clientPoint = ToMouseClientPoint(source, window, input);
             RawMouseInputReport report = new RawMouseInputReport(
                 InputMode.Foreground,
                 timestamp,
@@ -393,12 +394,38 @@ namespace System.Windows
             return ProcessInputReport(inputManager, report);
         }
 
-        private static Point ToMouseClientPoint(PresentationSource source, PortableInputEventArgs input)
+        private static Point ToMouseClientPoint(PresentationSource source, Window window, PortableInputEventArgs input)
         {
             Point rootPoint = new Point(input.X, input.Y);
-            return source?.CompositionTarget == null
-                ? rootPoint
-                : PointUtil.RootToClient(rootPoint, source);
+            if (source?.CompositionTarget == null)
+            {
+                return rootPoint;
+            }
+
+            Point clientPoint = PointUtil.RootToClient(rootPoint, source);
+            bool rootHit = (clientPoint.X < 0.0 || clientPoint.Y < 0.0) &&
+                IsHitTestableRootPoint(window, source, rootPoint);
+            if ((clientPoint.X < 0.0 || clientPoint.Y < 0.0) &&
+                rootHit)
+            {
+                clientPoint = new Point(
+                    Math.Max(0.0, clientPoint.X),
+                    Math.Max(0.0, clientPoint.Y));
+            }
+
+            return clientPoint;
+        }
+
+        private static bool IsHitTestableRootPoint(Window window, PresentationSource source, Point rootPoint)
+        {
+            if (window?.InputHitTest(rootPoint) != null)
+            {
+                return true;
+            }
+
+            return source?.RootVisual is UIElement root &&
+                !ReferenceEquals(root, window) &&
+                root.InputHitTest(rootPoint) != null;
         }
 
         private static bool ProcessInputReport(InputManager inputManager, InputReport report)

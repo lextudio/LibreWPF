@@ -1282,7 +1282,16 @@ internal static class Program
                     <TextBlock
                         x:Name="TitleText"
                         MouseLeftButtonDown="OnExternalTitleMouseLeftButtonDown"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True"
                         Text="External SDK app" />
+                    <Border
+                        x:Name="ExternalLiveMouseProbe"
+                        Height="18"
+                        Margin="0,24,0,0"
+                        Background="Transparent"
+                        MouseLeftButtonDown="OnExternalLiveMouseProbeMouseLeftButtonDown">
+                        <TextBlock Text="External live mouse probe" />
+                    </Border>
                     <TextBlock
                         x:Name="ExternalDispatcherTimerText"
                         Text="{Binding ExternalDispatcherTimerStatus}" />
@@ -2806,6 +2815,8 @@ internal static class Program
 
                 public int ExternalTitleMouseDownCount { get; private set; }
 
+                public int ExternalLiveMouseProbeDownCount { get; private set; }
+
                 private void OnExternalLiveValidationLoaded(object sender, RoutedEventArgs e)
                 {
                     StartExternalLiveValidationIfRequired();
@@ -2869,7 +2880,7 @@ internal static class Program
 
                 private async Task<string> ValidateLiveInputAsync(object liveHost)
                 {
-                    TextBlock? titleText = null;
+                    FrameworkElement? mouseProbe = null;
                     TextBox? validationTextBox = null;
                     Point inputPoint = new();
                     object? inputHit = null;
@@ -2882,25 +2893,25 @@ internal static class Program
                             liveHost,
                             () =>
                             {
-                                titleText = RequireType<TextBlock>(
-                                    FindName("TitleText"),
-                                    "external SDK live TitleText");
+                                mouseProbe = RequireType<FrameworkElement>(
+                                    FindName("ExternalLiveMouseProbe"),
+                                    "external SDK live mouse probe");
                                 lastTargetState =
-                                    $"TitleText.IsVisible={titleText.IsVisible}, " +
-                                    $"TitleText.ActualSize={titleText.ActualWidth:0.###}x{titleText.ActualHeight:0.###}, " +
-                                    $"TitleText.IsEnabled={titleText.IsEnabled}, " +
-                                    $"TitleText.IsHitTestVisible={titleText.IsHitTestVisible}";
-                                if (!titleText.IsVisible ||
-                                    titleText.ActualWidth <= 1.0 ||
-                                    titleText.ActualHeight <= 1.0 ||
-                                    !titleText.IsEnabled ||
-                                    !titleText.IsHitTestVisible)
+                                    $"ExternalLiveMouseProbe.IsVisible={mouseProbe.IsVisible}, " +
+                                    $"ExternalLiveMouseProbe.ActualSize={mouseProbe.ActualWidth:0.###}x{mouseProbe.ActualHeight:0.###}, " +
+                                    $"ExternalLiveMouseProbe.IsEnabled={mouseProbe.IsEnabled}, " +
+                                    $"ExternalLiveMouseProbe.IsHitTestVisible={mouseProbe.IsHitTestVisible}";
+                                if (!mouseProbe.IsVisible ||
+                                    mouseProbe.ActualWidth <= 1.0 ||
+                                    mouseProbe.ActualHeight <= 1.0 ||
+                                    !mouseProbe.IsEnabled ||
+                                    !mouseProbe.IsHitTestVisible)
                                 {
                                     return false;
                                 }
 
-                                Point center = titleText.TranslatePoint(
-                                    new Point(Math.Max(1.0, titleText.ActualWidth) / 2.0, Math.Max(1.0, titleText.ActualHeight) / 2.0),
+                                Point center = mouseProbe.TranslatePoint(
+                                    new Point(Math.Max(1.0, mouseProbe.ActualWidth) / 2.0, Math.Max(1.0, mouseProbe.ActualHeight) / 2.0),
                                     this);
                                 object? hit = InputHitTest(center);
                                 lastTargetState += $", Input=({center.X:0.###}, {center.Y:0.###}), InputHitTest={DescribeInputElement(hit)}";
@@ -2928,7 +2939,7 @@ internal static class Program
                     if (!sentPointerInput)
                     {
                         throw new InvalidOperationException(
-                            $"Expected external SDK live TitleText to become visible and hit-testable before injecting input, but last state was: {lastTargetState}.");
+                            $"Expected external SDK live mouse probe to become visible and hit-testable before injecting input, but last state was: {lastTargetState}.");
                     }
 
                     await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
@@ -2936,7 +2947,7 @@ internal static class Program
                         liveHost,
                         () =>
                         {
-                            AssertAtLeast(1, ExternalTitleMouseDownCount, "external SDK live TitleText mouse down count");
+                            AssertAtLeast(1, ExternalLiveMouseProbeDownCount, "external SDK live mouse probe down count");
 
                             validationTextBox = RequireType<TextBox>(
                                 FindName("ExternalValidationTextBox"),
@@ -3932,6 +3943,12 @@ internal static class Program
                 private void OnExternalTitleMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
                 {
                     ExternalTitleMouseDownCount++;
+                    e.Handled = true;
+                }
+
+                private void OnExternalLiveMouseProbeMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+                {
+                    ExternalLiveMouseProbeDownCount++;
                     e.Handled = true;
                 }
 

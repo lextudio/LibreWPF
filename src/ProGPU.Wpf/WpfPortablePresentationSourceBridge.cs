@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -687,6 +688,12 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         object? current = owner;
         for (int depth = 0; current != null && depth < 128; depth++)
         {
+            if (IsTransparentPointerOverlay(current))
+            {
+                current = TryGetVisualParent(current);
+                continue;
+            }
+
             if (IsEnabledInputOwner(current))
             {
                 firstEnabledOwner ??= current;
@@ -738,9 +745,19 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
 
     private static bool IsTransparentPointerOverlay(object owner)
     {
-        string name = owner.GetType().Name;
-        return string.Equals(name, "AdornerLayer", StringComparison.Ordinal) ||
-            string.Equals(name, "AdornerDecorator", StringComparison.Ordinal);
+        Type type = owner.GetType();
+        return IsTransparentPointerOverlayTypeName(type.Name) ||
+            IsTransparentPointerOverlayTypeName(type.FullName);
+    }
+
+    private static bool IsTransparentPointerOverlayTypeName(string? typeName)
+    {
+        return string.Equals(typeName, "AdornerLayer", StringComparison.Ordinal) ||
+            string.Equals(typeName, "AdornerDecorator", StringComparison.Ordinal) ||
+            typeName?.EndsWith(".AdornerLayer", StringComparison.Ordinal) == true ||
+            typeName?.EndsWith("+AdornerLayer", StringComparison.Ordinal) == true ||
+            typeName?.EndsWith(".AdornerDecorator", StringComparison.Ordinal) == true ||
+            typeName?.EndsWith("+AdornerDecorator", StringComparison.Ordinal) == true;
     }
 
     private static bool IsPointerInputInfrastructure(object owner)
@@ -921,10 +938,33 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     {
         if (_host.TryHitTestOwners(rootX, rootY, out object?[] owners))
         {
-            return owners;
+            return FilterTransparentPointerOverlays(owners);
         }
 
         return _host.HasGpuHitTestCache ? Array.Empty<object>() : null;
+    }
+
+    private static object?[] FilterTransparentPointerOverlays(object?[] owners)
+    {
+        List<object?>? filteredOwners = null;
+        for (int i = 0; i < owners.Length; i++)
+        {
+            object? owner = owners[i];
+            if (owner != null && IsTransparentPointerOverlay(owner))
+            {
+                filteredOwners ??= new List<object?>(owners.Length);
+                for (int j = 0; j < i; j++)
+                {
+                    filteredOwners.Add(owners[j]);
+                }
+
+                continue;
+            }
+
+            filteredOwners?.Add(owner);
+        }
+
+        return filteredOwners?.ToArray() ?? owners;
     }
 
     private object?[]? HitTestBoundsOwners(double minX, double minY, double maxX, double maxY)

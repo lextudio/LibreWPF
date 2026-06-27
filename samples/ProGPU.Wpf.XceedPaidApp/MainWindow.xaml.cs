@@ -188,6 +188,47 @@ public partial class MainWindow : Window
         ViewModel.Activity.Add(ViewModel.LastAction);
     }
 
+    internal void ExercisePaidDataGridRuntimeCommands()
+    {
+        var initialRowCount = ViewModel.RowCount;
+        var initialActiveRowCount = ViewModel.ActiveRowCount;
+
+        AddRowButton_Click(this, new RoutedEventArgs());
+        AssertRuntimeCondition(ViewModel.RowCount == initialRowCount + 1, "Add row command should append one paid DataGrid row.");
+        AssertRuntimeCondition(ViewModel.ActiveRowCount == initialActiveRowCount + 1, "Add row command should refresh active-row metadata.");
+        AssertRuntimeCondition(ReferenceEquals(ViewModel.SelectedRow, PaidDataGrid.SelectedItem), "Add row command should synchronize paid DataGrid selection.");
+        AssertRuntimeCondition(ViewModel.LastAction.Contains("Added", StringComparison.Ordinal), "Add row command should report activity.");
+
+        SelectLastButton_Click(this, new RoutedEventArgs());
+        AssertRuntimeCondition(ReferenceEquals(ViewModel.Rows[^1], ViewModel.SelectedRow), "Select last command should update the selected view-model row.");
+        AssertRuntimeCondition(ReferenceEquals(ViewModel.Rows[^1], PaidDataGrid.SelectedItem), "Select last command should update the paid DataGrid selected item.");
+
+        SaveSettingsButton_Click(this, new RoutedEventArgs());
+        AssertRuntimeCondition(_savedSettings is not null, "Save settings command should create an in-memory paid DataGrid settings repository.");
+        LoadSettingsButton_Click(this, new RoutedEventArgs());
+        AssertRuntimeCondition(ViewModel.LastAction.Contains("Reloaded", StringComparison.Ordinal), "Load settings command should restore the saved paid DataGrid settings.");
+
+        var statusColumn = FindPaidColumn(PaidDataGrid, "Status");
+        ToggleStatusColumnButton_Click(this, new RoutedEventArgs());
+        AssertRuntimeCondition(!statusColumn.Visible, "Toggle Status command should hide the paid DataGrid Status column.");
+        AssertRuntimeCondition(PaidDataGrid.VisibleColumns.Count == 8, "Toggle Status command should update paid DataGrid visible-column count when hidden.");
+        ToggleStatusColumnButton_Click(this, new RoutedEventArgs());
+        AssertRuntimeCondition(statusColumn.Visible, "Toggle Status command should restore the paid DataGrid Status column.");
+        AssertRuntimeCondition(PaidDataGrid.VisibleColumns.Count == 9, "Toggle Status command should update paid DataGrid visible-column count when restored.");
+
+        TableflowViewButton_Click(this, new RoutedEventArgs());
+        AssertRuntimeCondition(PaidDataGrid.View is TableflowView, "Tableflow command should activate the paid DataGrid TableflowView.");
+        CardflowViewButton_Click(this, new RoutedEventArgs());
+        AssertRuntimeCondition(PaidDataGrid.View is CardflowView3D, "Cardflow command should activate the paid DataGrid CardflowView3D.");
+        TableViewButton_Click(this, new RoutedEventArgs());
+        AssertRuntimeCondition(ReferenceEquals(PaidDataGrid.View, PaidTableView), "TableView command should restore the XAML-defined paid DataGrid TableView.");
+
+        ValidateEditButton_Click(this, new RoutedEventArgs());
+        AssertRuntimeCondition(
+            ViewModel.LastAction.Contains("Score must stay between 0 and 100.", StringComparison.Ordinal),
+            "Validate edit command should execute the paid editable DataGrid score validation path.");
+    }
+
     internal static ColumnBase FindPaidColumn(DataGridControl grid, string fieldName)
     {
         return grid.Columns
@@ -216,6 +257,7 @@ public partial class MainWindow : Window
 
         var item = ViewModel.Rows[index];
         ViewModel.SelectedRow = item;
+        PaidDataGrid.SelectedItem = item;
         PaidDataGrid.BringItemIntoView(item);
         ViewModel.LastAction = $"{action}: {item.Title}";
         ViewModel.Status = ViewModel.LastAction;
@@ -256,6 +298,14 @@ public partial class MainWindow : Window
         }
 
         return Path.Combine(Path.GetTempPath(), "progpu-wpf-xceed-paid");
+    }
+
+    private static void AssertRuntimeCondition(bool condition, string message)
+    {
+        if (!condition)
+        {
+            throw new InvalidOperationException(message);
+        }
     }
 }
 

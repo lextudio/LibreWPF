@@ -6788,6 +6788,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AssertAssembly(\"Xceed.Wpf.DataGrid.Workbooks\")", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF paid Xceed package surface validation succeeded", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF paid Xceed Application.Run validation succeeded.", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("window.ExercisePaidDataGridRuntimeCommands();", appCodeBehind, StringComparison.Ordinal);
 
         Assert.Contains("xmlns:xctk=\"http://schemas.xceed.com/wpf/xaml/toolkit\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("xmlns:xcdg=\"http://schemas.xceed.com/wpf/xaml/datagrid\"", mainWindowXaml, StringComparison.Ordinal);
@@ -6906,6 +6907,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PaidColumnChooser.Columns = PaidDataGrid.Columns", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("statusColumn.Visible = !statusColumn.Visible", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PaidDataGrid.VisibleColumns.Count", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("internal void ExercisePaidDataGridRuntimeCommands()", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AddRowButton_Click(this, new RoutedEventArgs())", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SelectLastButton_Click(this, new RoutedEventArgs())", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SaveSettingsButton_Click(this, new RoutedEventArgs())", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LoadSettingsButton_Click(this, new RoutedEventArgs())", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ToggleStatusColumnButton_Click(this, new RoutedEventArgs())", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("TableflowViewButton_Click(this, new RoutedEventArgs())", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("CardflowViewButton_Click(this, new RoutedEventArgs())", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("TableViewButton_Click(this, new RoutedEventArgs())", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateEditButton_Click(this, new RoutedEventArgs())", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("PaidDataGrid.SelectedItem = item", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal static ColumnBase FindPaidColumn", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("new TableflowView", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ColumnChooserSortOrder = ColumnChooserSortOrder.TitleAscending", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6938,6 +6950,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ColumnChooserControl", readme, StringComparison.Ordinal);
         Assert.Contains("ExportToCsv", readme, StringComparison.Ordinal);
         Assert.Contains("SaveUserSettings", readme, StringComparison.Ordinal);
+        Assert.Contains("drives the loaded window through the same command handlers", readme, StringComparison.Ordinal);
         Assert.Contains("ProGPU owns windowing, input, invalidation, clipping, image/layer texture trimming, shaders, and final WebGPU rendering", readme, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_XCEED_PAID_VALIDATE", runScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_XCEED_PAID_RUN_VALIDATE", runScript, StringComparison.Ordinal);

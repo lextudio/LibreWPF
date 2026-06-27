@@ -354,6 +354,8 @@ internal static class XceedPaidSelfTest
             {
                 throw new InvalidOperationException("Expected paid Xceed DataGrid documents to participate in loaded layout.");
             }
+
+            window.ExercisePaidDataGridRuntimeCommands();
         }
     }
 

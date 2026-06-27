@@ -732,12 +732,34 @@ public sealed class WpfPortableWindowActivation : IDisposable
         switch (e.Kind)
         {
             case WpfWindowEventKind.Activated:
-                TrySetWindowActivationState(Window, isActive: true);
+                TrySetWindowActivationStateForHostEvent(isActive: true);
                 break;
             case WpfWindowEventKind.Deactivated:
-                TrySetWindowActivationState(Window, isActive: false);
+                TrySetWindowActivationStateForHostEvent(isActive: false);
                 break;
         }
+    }
+
+    private void TrySetWindowActivationStateForHostEvent(bool isActive)
+    {
+        try
+        {
+            TrySetWindowActivationState(Window, isActive);
+        }
+        catch (TargetInvocationException ex) when (!isActive && IsRecoverablePortableDeactivationException(ex.InnerException ?? ex))
+        {
+            // A native focus-loss callback can arrive while a third-party control still owns mouse capture.
+            // Keep the portable host alive if that capture-cancel path rejects an intermediate layout state.
+        }
+        catch (Exception ex) when (!isActive && IsRecoverablePortableDeactivationException(ex))
+        {
+            // See the TargetInvocationException path above.
+        }
+    }
+
+    private static bool IsRecoverablePortableDeactivationException(Exception exception)
+    {
+        return exception is ArgumentException or InvalidOperationException;
     }
 
     private void OnHostRenderWakeupRequested(object? sender, EventArgs e)

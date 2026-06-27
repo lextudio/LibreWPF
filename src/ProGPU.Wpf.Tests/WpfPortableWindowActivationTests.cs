@@ -348,6 +348,33 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void HostDeactivationDoesNotBubblePortableCaptureCleanupFailure()
+    {
+        System.Windows.PortableWindowActivationService.Reset();
+        System.Windows.PortableWindowActivationService.ThrowOnDeactivate = true;
+        try
+        {
+            using var host = new ProGpuWpfWindowHost();
+            var window = new FakePortableServiceActivationWindow();
+            var source = new FakePortablePresentationSource();
+
+            var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+            Assert.True(attached);
+            Assert.NotNull(activation);
+
+            RaiseHostWindowEvent(host, WpfWindowEventKind.Deactivated);
+
+            Assert.Equal(1, System.Windows.PortableWindowActivationService.ActivationStateCallCount);
+            Assert.False(System.Windows.PortableWindowActivationService.LastActivationState);
+        }
+        finally
+        {
+            System.Windows.PortableWindowActivationService.Reset();
+        }
+    }
+
+    [Fact]
     public void DisposingActivationStopsWindowEventForwarding()
     {
         using var host = new ProGpuWpfWindowHost
@@ -810,6 +837,11 @@ public sealed class WpfPortableWindowActivationTests
             LastInputArgs = e;
             e.Handled = true;
         }
+    }
+
+    private sealed class FakePortableServiceActivationWindow :
+        System.Windows.IPortableWindowActivationServiceTestTarget
+    {
     }
 
     private sealed class FakeDispatchingPortableInputWindow :

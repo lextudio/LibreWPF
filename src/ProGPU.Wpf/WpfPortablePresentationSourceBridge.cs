@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Windows.Media.ProGPU.Platform;
 
@@ -41,6 +43,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     private Delegate? _hitTestAllOverrideHandler;
     private Delegate? _hitTestBoundsOverrideHandler;
     private Delegate? _hitTestEllipseBoundsOverrideHandler;
+    private static MethodInfo? s_visualTreeHelperGetParentMethod;
     private bool _isDisposed;
 
     private WpfPortablePresentationSourceBridge(
@@ -436,143 +439,487 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
 
     private bool TryInstallHitTestOverride()
     {
-        if (_hitTestOverrideProperty == null ||
-            !_hitTestOverrideProperty.CanWrite ||
-            !typeof(Delegate).IsAssignableFrom(_hitTestOverrideProperty.PropertyType))
+        if (!TryCreatePointHitTestDelegate(
+                _hitTestOverrideProperty,
+                nameof(TryHitTestOwner),
+                pointParameterCount: 1,
+                out Delegate? handler))
         {
             return false;
         }
 
-        MethodInfo? method = GetType().GetMethod(
-            nameof(TryHitTestOwner),
-            BindingFlags.Instance | BindingFlags.NonPublic);
-        if (method == null)
-        {
-            return false;
-        }
-
-        Delegate? handler = Delegate.CreateDelegate(
-            _hitTestOverrideProperty.PropertyType,
-            this,
-            method,
-            throwOnBindFailure: false);
-        if (handler == null)
-        {
-            return false;
-        }
-
-        _hitTestOverrideProperty.SetValue(Source, handler);
+        _hitTestOverrideProperty!.SetValue(Source, handler);
         _hitTestOverrideHandler = handler;
         return true;
     }
 
     private bool TryInstallHitTestAllOverride()
     {
-        if (_hitTestAllOverrideProperty == null ||
-            !_hitTestAllOverrideProperty.CanWrite ||
-            !typeof(Delegate).IsAssignableFrom(_hitTestAllOverrideProperty.PropertyType))
+        if (!TryCreatePointHitTestDelegate(
+                _hitTestAllOverrideProperty,
+                nameof(HitTestOwners),
+                pointParameterCount: 1,
+                out Delegate? handler))
         {
             return false;
         }
 
-        MethodInfo? method = GetType().GetMethod(
-            nameof(HitTestOwners),
-            BindingFlags.Instance | BindingFlags.NonPublic);
-        if (method == null)
-        {
-            return false;
-        }
-
-        Delegate? handler = Delegate.CreateDelegate(
-            _hitTestAllOverrideProperty.PropertyType,
-            this,
-            method,
-            throwOnBindFailure: false);
-        if (handler == null)
-        {
-            return false;
-        }
-
-        _hitTestAllOverrideProperty.SetValue(Source, handler);
+        _hitTestAllOverrideProperty!.SetValue(Source, handler);
         _hitTestAllOverrideHandler = handler;
         return true;
     }
 
     private bool TryInstallHitTestBoundsOverride()
     {
-        if (_hitTestBoundsOverrideProperty == null ||
-            !_hitTestBoundsOverrideProperty.CanWrite ||
-            !typeof(Delegate).IsAssignableFrom(_hitTestBoundsOverrideProperty.PropertyType))
+        if (!TryCreatePointHitTestDelegate(
+                _hitTestBoundsOverrideProperty,
+                nameof(HitTestBoundsOwners),
+                pointParameterCount: 2,
+                out Delegate? handler))
         {
             return false;
         }
 
-        MethodInfo? method = GetType().GetMethod(
-            nameof(HitTestBoundsOwners),
-            BindingFlags.Instance | BindingFlags.NonPublic);
-        if (method == null)
-        {
-            return false;
-        }
-
-        Delegate? handler = Delegate.CreateDelegate(
-            _hitTestBoundsOverrideProperty.PropertyType,
-            this,
-            method,
-            throwOnBindFailure: false);
-        if (handler == null)
-        {
-            return false;
-        }
-
-        _hitTestBoundsOverrideProperty.SetValue(Source, handler);
+        _hitTestBoundsOverrideProperty!.SetValue(Source, handler);
         _hitTestBoundsOverrideHandler = handler;
         return true;
     }
 
     private bool TryInstallHitTestEllipseBoundsOverride()
     {
-        if (_hitTestEllipseBoundsOverrideProperty == null ||
-            !_hitTestEllipseBoundsOverrideProperty.CanWrite ||
-            !typeof(Delegate).IsAssignableFrom(_hitTestEllipseBoundsOverrideProperty.PropertyType))
+        if (!TryCreatePointHitTestDelegate(
+                _hitTestEllipseBoundsOverrideProperty,
+                nameof(HitTestEllipseBoundsOwners),
+                pointParameterCount: 2,
+                out Delegate? handler))
         {
             return false;
         }
 
-        MethodInfo? method = GetType().GetMethod(
-            nameof(HitTestEllipseBoundsOwners),
+        _hitTestEllipseBoundsOverrideProperty!.SetValue(Source, handler);
+        _hitTestEllipseBoundsOverrideHandler = handler;
+        return true;
+    }
+
+    private bool TryCreatePointHitTestDelegate(
+        PropertyInfo? property,
+        string targetMethodName,
+        int pointParameterCount,
+        out Delegate? handler)
+    {
+        handler = null;
+        if (property == null ||
+            !property.CanWrite ||
+            !typeof(Delegate).IsAssignableFrom(property.PropertyType))
+        {
+            return false;
+        }
+
+        MethodInfo? targetMethod = GetType().GetMethod(
+            targetMethodName,
             BindingFlags.Instance | BindingFlags.NonPublic);
+        MethodInfo? invokeMethod = property.PropertyType.GetMethod(nameof(Action.Invoke));
+        if (targetMethod == null || invokeMethod == null)
+        {
+            return false;
+        }
+
+        ParameterInfo[] delegateParameters = invokeMethod.GetParameters();
+        if (delegateParameters.Length != pointParameterCount ||
+            !IsDelegateReturnCompatible(invokeMethod.ReturnType, targetMethod.ReturnType))
+        {
+            return false;
+        }
+
+        var parameters = new ParameterExpression[delegateParameters.Length];
+        var arguments = new Expression[pointParameterCount * 2];
+        for (int i = 0; i < delegateParameters.Length; i++)
+        {
+            ParameterInfo delegateParameter = delegateParameters[i];
+            ParameterExpression point = Expression.Parameter(
+                delegateParameter.ParameterType,
+                delegateParameter.Name ?? $"point{i}");
+            if (!TryCreatePointCoordinateRead(point, "X", out Expression? x) ||
+                !TryCreatePointCoordinateRead(point, "Y", out Expression? y))
+            {
+                return false;
+            }
+
+            parameters[i] = point;
+            arguments[i * 2] = x!;
+            arguments[(i * 2) + 1] = y!;
+        }
+
+        Expression body = Expression.Call(Expression.Constant(this), targetMethod, arguments);
+        if (body.Type != invokeMethod.ReturnType)
+        {
+            body = Expression.Convert(body, invokeMethod.ReturnType);
+        }
+
+        try
+        {
+            handler = Expression.Lambda(property.PropertyType, body, parameters).Compile();
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+    }
+
+    private static bool IsDelegateReturnCompatible(Type delegateReturnType, Type methodReturnType)
+    {
+        return delegateReturnType == methodReturnType ||
+            delegateReturnType.IsAssignableFrom(methodReturnType);
+    }
+
+    private static bool TryCreatePointCoordinateRead(
+        Expression point,
+        string coordinateName,
+        out Expression? coordinate)
+    {
+        coordinate = null;
+        PropertyInfo? property = point.Type.GetProperty(
+            coordinateName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        if (property == null || !property.CanRead)
+        {
+            return false;
+        }
+
+        Expression value = Expression.Property(point, property);
+        coordinate = value.Type == typeof(double)
+            ? value
+            : Expression.Convert(value, typeof(double));
+        return true;
+    }
+
+    private object? TryHitTestOwner(double rootX, double rootY)
+    {
+        if (_host.TryHitTestOwners(rootX, rootY, out object?[] owners) &&
+            TrySelectPointerInputOwner(owners, out object? selectedOwner))
+        {
+            TraceHitTestOwners(rootX, rootY, owners, selectedOwner);
+            return selectedOwner;
+        }
+
+        object? fallbackOwner = _host.TryHitTestOwner(rootX, rootY, out object? owner) &&
+            owner != null
+                ? NormalizePointerInputOwner(owner)
+                : _host.HasGpuHitTestCache ? Source : null;
+        TraceHitTestOwners(rootX, rootY, owners: null, fallbackOwner);
+        return fallbackOwner;
+    }
+
+    private static bool TrySelectPointerInputOwner(object?[] owners, out object? selectedOwner)
+    {
+        selectedOwner = null;
+        int selectedDepth = -1;
+
+        foreach (object? owner in owners)
+        {
+            if (owner == null)
+            {
+                continue;
+            }
+
+            if (!TryNormalizePointerInputOwner(owner, out object? normalizedOwner) ||
+                normalizedOwner == null)
+            {
+                continue;
+            }
+
+            int depth = GetVisualDepth(normalizedOwner);
+            if (depth > selectedDepth)
+            {
+                selectedOwner = normalizedOwner;
+                selectedDepth = depth;
+            }
+        }
+
+        if (selectedOwner != null)
+        {
+            return true;
+        }
+
+        object? deepestEnabledOwner = null;
+        int deepestEnabledDepth = -1;
+        foreach (object? owner in owners)
+        {
+            if (owner == null || IsTransparentPointerOverlay(owner))
+            {
+                continue;
+            }
+
+            object enabledOwner = NormalizePointerInputOwner(owner);
+            int depth = GetVisualDepth(enabledOwner);
+            if (depth > deepestEnabledDepth)
+            {
+                deepestEnabledOwner = enabledOwner;
+                deepestEnabledDepth = depth;
+            }
+        }
+
+        selectedOwner = deepestEnabledOwner;
+        return selectedOwner != null;
+    }
+
+    private static object NormalizePointerInputOwner(object owner)
+    {
+        return TryNormalizePointerInputOwner(owner, out object? normalizedOwner)
+            ? normalizedOwner!
+            : owner;
+    }
+
+    private static bool TryNormalizePointerInputOwner(object owner, out object? normalizedOwner)
+    {
+        normalizedOwner = null;
+        if (IsTransparentPointerOverlay(owner))
+        {
+            return false;
+        }
+
+        object? firstEnabledOwner = null;
+        object? current = owner;
+        for (int depth = 0; current != null && depth < 128; depth++)
+        {
+            if (IsEnabledInputOwner(current))
+            {
+                firstEnabledOwner ??= current;
+                if (IsWindowOwner(current))
+                {
+                    normalizedOwner = firstEnabledOwner;
+                    return normalizedOwner != null;
+                }
+
+                if (!IsPointerInputInfrastructure(current))
+                {
+                    normalizedOwner = current;
+                    return true;
+                }
+            }
+
+            current = TryGetVisualParent(current);
+        }
+
+        normalizedOwner = firstEnabledOwner;
+        return normalizedOwner != null;
+    }
+
+    private static int GetVisualDepth(object owner)
+    {
+        int depth = 0;
+        object? current = owner;
+        while (current != null && depth < 128)
+        {
+            object? parent = TryGetVisualParent(current);
+            if (parent == null)
+            {
+                break;
+            }
+
+            depth++;
+            current = parent;
+        }
+
+        return depth;
+    }
+
+    private static bool IsEnabledInputOwner(object owner)
+    {
+        return ReadBooleanProperty(owner, "IsEnabled", defaultValue: true) &&
+            ReadBooleanProperty(owner, "IsVisible", defaultValue: true) &&
+            ReadBooleanProperty(owner, "IsHitTestVisible", defaultValue: true);
+    }
+
+    private static bool IsTransparentPointerOverlay(object owner)
+    {
+        string name = owner.GetType().Name;
+        return string.Equals(name, "AdornerLayer", StringComparison.Ordinal) ||
+            string.Equals(name, "AdornerDecorator", StringComparison.Ordinal);
+    }
+
+    private static bool IsPointerInputInfrastructure(object owner)
+    {
+        Type type = owner.GetType();
+        string name = type.Name;
+        if (string.Equals(name, "Border", StringComparison.Ordinal) ||
+            string.Equals(name, "Decorator", StringComparison.Ordinal) ||
+            string.Equals(name, "ContentPresenter", StringComparison.Ordinal) ||
+            string.Equals(name, "ScrollContentPresenter", StringComparison.Ordinal) ||
+            string.Equals(name, "ItemsPresenter", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        for (Type? current = type; current != null; current = current.BaseType)
+        {
+            string currentName = current.Name;
+            string? currentFullName = current.FullName;
+            if (string.Equals(currentName, "Panel", StringComparison.Ordinal) ||
+                string.Equals(currentName, "Grid", StringComparison.Ordinal) ||
+                string.Equals(currentName, "StackPanel", StringComparison.Ordinal) ||
+                string.Equals(currentName, "DockPanel", StringComparison.Ordinal) ||
+                string.Equals(currentName, "Canvas", StringComparison.Ordinal) ||
+                string.Equals(currentName, "WrapPanel", StringComparison.Ordinal) ||
+                string.Equals(currentName, "UniformGrid", StringComparison.Ordinal) ||
+                string.Equals(currentFullName, "System.Windows.Controls.Primitives.ToolBarPanel", StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsWindowOwner(object owner)
+    {
+        for (Type? current = owner.GetType(); current != null; current = current.BaseType)
+        {
+            if (string.Equals(current.FullName, "System.Windows.Window", StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ReadBooleanProperty(object owner, string propertyName, bool defaultValue)
+    {
+        PropertyInfo? property = owner.GetType().GetProperty(
+            propertyName,
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        if (property == null ||
+            property.PropertyType != typeof(bool) ||
+            !property.CanRead)
+        {
+            return defaultValue;
+        }
+
+        return (bool)(property.GetValue(owner) ?? defaultValue);
+    }
+
+    private static object? TryGetVisualParent(object current)
+    {
+        MethodInfo? getParentMethod = ResolveVisualTreeHelperGetParentMethod(current.GetType());
+        if (getParentMethod == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return getParentMethod.Invoke(null, new[] { current });
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException is InvalidOperationException)
+        {
+            return null;
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    private static MethodInfo? ResolveVisualTreeHelperGetParentMethod(Type ownerType)
+    {
+        MethodInfo? cached = s_visualTreeHelperGetParentMethod;
+        if (CanInvokeVisualTreeHelperGetParent(cached, ownerType))
+        {
+            return cached;
+        }
+
+        foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            Type? helperType = assembly.GetType("System.Windows.Media.VisualTreeHelper", throwOnError: false);
+            if (helperType == null)
+            {
+                continue;
+            }
+
+            MethodInfo? method = null;
+            foreach (MethodInfo candidate in helperType.GetMethods(BindingFlags.Static | BindingFlags.Public))
+            {
+                if (string.Equals(candidate.Name, "GetParent", StringComparison.Ordinal) &&
+                    CanInvokeVisualTreeHelperGetParent(candidate, ownerType))
+                {
+                    method = candidate;
+                    break;
+                }
+            }
+
+            if (method == null)
+            {
+                continue;
+            }
+
+            s_visualTreeHelperGetParentMethod = method;
+            return method;
+        }
+
+        return null;
+    }
+
+    private static bool CanInvokeVisualTreeHelperGetParent(MethodInfo? method, Type ownerType)
+    {
         if (method == null)
         {
             return false;
         }
 
-        Delegate? handler = Delegate.CreateDelegate(
-            _hitTestEllipseBoundsOverrideProperty.PropertyType,
-            this,
-            method,
-            throwOnBindFailure: false);
-        if (handler == null)
+        ParameterInfo[] parameters = method.GetParameters();
+        return parameters.Length == 1 &&
+            parameters[0].ParameterType.IsAssignableFrom(ownerType);
+    }
+
+    private static void TraceHitTestOwners(
+        double rootX,
+        double rootY,
+        object?[]? owners,
+        object? selectedOwner)
+    {
+        if (!IsHitTestTraceEnabled())
         {
-            return false;
+            return;
         }
 
-        _hitTestEllipseBoundsOverrideProperty.SetValue(Source, handler);
-        _hitTestEllipseBoundsOverrideHandler = handler;
-        return true;
+        string ownerList = owners == null
+            ? "<none>"
+            : string.Join(", ", owners.Select(DescribeHitTestOwner));
+        Console.Error.WriteLine(
+            $"ProGPU WPF GPU hit-test ({rootX:0.###},{rootY:0.###}) owners=[{ownerList}] selected={DescribeHitTestOwner(selectedOwner)}");
     }
 
-    private object? TryHitTestOwner(System.Windows.Point rootPoint)
+    private static bool IsHitTestTraceEnabled()
     {
-        return _host.TryHitTestOwner(rootPoint.X, rootPoint.Y, out object? owner) &&
-            owner != null
-                ? owner
-                : _host.HasGpuHitTestCache ? Source : null;
+        string? value = Environment.GetEnvironmentVariable("PROGPU_WPF_TRACE_HIT_TEST");
+        return string.Equals(value, "1", StringComparison.Ordinal) ||
+            string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
     }
 
-    private object?[]? HitTestOwners(System.Windows.Point rootPoint)
+    private static string DescribeHitTestOwner(object? owner)
     {
-        if (_host.TryHitTestOwners(rootPoint.X, rootPoint.Y, out object?[] owners))
+        if (owner == null)
+        {
+            return "<null>";
+        }
+
+        string typeName = owner.GetType().Name;
+        string? name = owner.GetType()
+            .GetProperty("Name", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?.GetValue(owner)
+            ?.ToString();
+        return string.IsNullOrWhiteSpace(name) ? typeName : $"{typeName}#{name}";
+    }
+
+    private object?[]? HitTestOwners(double rootX, double rootY)
+    {
+        if (_host.TryHitTestOwners(rootX, rootY, out object?[] owners))
         {
             return owners;
         }
@@ -580,13 +927,13 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         return _host.HasGpuHitTestCache ? Array.Empty<object>() : null;
     }
 
-    private object?[]? HitTestBoundsOwners(System.Windows.Point rootMin, System.Windows.Point rootMax)
+    private object?[]? HitTestBoundsOwners(double minX, double minY, double maxX, double maxY)
     {
         if (_host.TryQueryHitTestBoundsCandidates(
-                rootMin.X,
-                rootMin.Y,
-                rootMax.X,
-                rootMax.Y,
+                minX,
+                minY,
+                maxX,
+                maxY,
                 out object?[] candidates))
         {
             return candidates;
@@ -595,13 +942,13 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         return _host.HasGpuHitTestCache ? Array.Empty<object>() : null;
     }
 
-    private object?[]? HitTestEllipseBoundsOwners(System.Windows.Point rootMin, System.Windows.Point rootMax)
+    private object?[]? HitTestEllipseBoundsOwners(double minX, double minY, double maxX, double maxY)
     {
         if (_host.TryQueryHitTestEllipseCandidates(
-                rootMin.X,
-                rootMin.Y,
-                rootMax.X,
-                rootMax.Y,
+                minX,
+                minY,
+                maxX,
+                maxY,
                 out object?[] candidates))
         {
             return candidates;

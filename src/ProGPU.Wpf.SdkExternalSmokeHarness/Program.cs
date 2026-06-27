@@ -18046,7 +18046,8 @@ internal static class Program
             420u,
             840u,
             2.0,
-            2.0);
+            2.0,
+            null);
 
         AssertEqual(420u, GetProperty(frame, "LogicalWidth"), $"{descriptionPrefix} ProGPU WPF drawing frame logical width");
         AssertEqual(840u, GetProperty(frame, "LogicalHeight"), $"{descriptionPrefix} ProGPU WPF drawing frame logical height");

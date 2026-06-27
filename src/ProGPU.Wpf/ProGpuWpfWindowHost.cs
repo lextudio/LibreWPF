@@ -44,6 +44,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     private bool _hasPresentedFrame;
     private bool _ownsRenderScheduler;
     private bool _isRendering;
+    private bool _isInNativeWindowCloseCallback;
+    private bool _isForwardingPlatformInput;
     private bool _isProcessingRenderSchedulerWakeup;
     private bool _isProcessingDispatcherWorkWakeup;
     private bool _forceFullWpfReplay;
@@ -505,13 +507,16 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return;
         }
 
-        if (_window != null)
+        IWindow? window = _window;
+        bool disposeNativeWindow = window != null && !_isInNativeWindowCloseCallback && !_isRendering;
+
+        if (window != null)
         {
-            _window.Load -= OnLoad;
-            _window.Update -= OnUpdate;
-            _window.Render -= OnRender;
-            _window.Resize -= OnResize;
-            _window.Closing -= OnClosing;
+            window.Load -= OnLoad;
+            window.Update -= OnUpdate;
+            window.Render -= OnRender;
+            window.Resize -= OnResize;
+            window.Closing -= OnClosing;
         }
 
         DetachInputService();
@@ -520,7 +525,11 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         DetachDispatcherService();
         DisposePortablePresentationSourceBridge();
         DisposeTarget();
-        _window?.Dispose();
+        if (disposeNativeWindow)
+        {
+            window!.Dispose();
+        }
+
         DetachRenderScheduler(_wpfRenderScheduler);
         DisposeOwnedRenderScheduler();
 
@@ -1528,22 +1537,30 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private void OnClosing()
     {
-        var args = new ProGpuWpfWindowClosingEventArgs();
-        Closing?.Invoke(this, args);
-        if (args.Cancel)
+        _isInNativeWindowCloseCallback = true;
+        try
         {
-            if (_window != null)
+            var args = new ProGpuWpfWindowClosingEventArgs();
+            Closing?.Invoke(this, args);
+            if (args.Cancel)
             {
-                _window.IsClosing = false;
+                if (_window != null)
+                {
+                    _window.IsClosing = false;
+                }
+
+                _isHostVisible = true;
+                RequestRenderAndWakeNativeLoop();
+                return;
             }
 
-            _isHostVisible = true;
-            RequestRenderAndWakeNativeLoop();
-            return;
+            _isHostVisible = false;
+            DisposeTarget();
         }
-
-        _isHostVisible = false;
-        DisposeTarget();
+        finally
+        {
+            _isInNativeWindowCloseCallback = false;
+        }
     }
 
     private void OnCompositionTargetRenderInvalidated(object? sender, EventArgs e)
@@ -1657,6 +1674,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
+        EnsureGpuHitTestCacheCurrent();
         return _target.TryHitTestOwner(
             new System.Numerics.Vector2((float)x, (float)y),
             out owner,
@@ -1677,6 +1695,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
+        EnsureGpuHitTestCacheCurrent();
         object?[] ownerBuffer = new object?[64];
         if (!_target.TryHitTestOwners(
                 new System.Numerics.Vector2((float)x, (float)y),
@@ -1694,6 +1713,21 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
         owners = ownerBuffer[..ownerCount];
         return true;
+    }
+
+    private void EnsureGpuHitTestCacheCurrent()
+    {
+        if (_target == null || _isRendering || _isForwardingPlatformInput)
+        {
+            return;
+        }
+
+        if (_target.DetectWpfSourceChanges() ||
+            _target.WpfInvalidationTracker.IsDirty ||
+            WpfRenderScheduler.HasPendingRenderRequest)
+        {
+            TryProcessRenderSchedulerWakeup();
+        }
     }
 
     internal bool TryQueryHitTestBoundsOwners(double minX, double minY, double maxX, double maxY, out object?[] owners)
@@ -1716,6 +1750,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
+        EnsureGpuHitTestCacheCurrent();
         object?[] ownerBuffer = new object?[64];
         if (!_target.TryQueryHitTestBoundsOwners(
                 new System.Numerics.Vector2((float)minX, (float)minY),
@@ -1756,6 +1791,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
+        EnsureGpuHitTestCacheCurrent();
         object?[] candidateBuffer = new object?[64];
         if (!_target.TryQueryHitTestBoundsCandidates(
                 new System.Numerics.Vector2((float)minX, (float)minY),
@@ -1796,6 +1832,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
+        EnsureGpuHitTestCacheCurrent();
         object?[] candidateBuffer = new object?[64];
         if (!_target.TryQueryHitTestEllipseCandidates(
                 new System.Numerics.Vector2((float)minX, (float)minY),
@@ -1857,10 +1894,18 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
         TraceInputEvent("native", e);
         var input = NormalizeInputEventForCurrentRenderSurface(e);
         TraceInputEvent("wpf", input);
-        InputReceived?.Invoke(this, input);
-        if (!ReferenceEquals(input, e))
+        _isForwardingPlatformInput = true;
+        try
         {
-            e.Handled = input.Handled;
+            InputReceived?.Invoke(this, input);
+            if (!ReferenceEquals(input, e))
+            {
+                e.Handled = input.Handled;
+            }
+        }
+        finally
+        {
+            _isForwardingPlatformInput = false;
         }
 
         RequestRenderAndWakeNativeLoop();

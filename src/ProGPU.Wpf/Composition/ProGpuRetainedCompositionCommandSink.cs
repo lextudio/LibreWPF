@@ -111,10 +111,7 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         ThrowIfClosed();
         ArgumentNullException.ThrowIfNull(sourceVisual);
 
-        var ownerVisual = new ProGpuRetainedDrawingVisual
-        {
-            Size = Current.Visual.Size
-        };
+        var ownerVisual = new ProGpuRetainedDrawingVisual();
 
         Current.Visual.AddChild(ownerVisual);
         int hitTestOwnerId = _drawingFrame.GetOrCreateHitTestOwnerId(sourceVisual);

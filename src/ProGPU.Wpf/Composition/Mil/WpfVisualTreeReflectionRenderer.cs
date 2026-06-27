@@ -172,14 +172,17 @@ public sealed class WpfVisualTreeReflectionRenderer
             || sink is not IWpfRetainedVisualStateSink retainedVisualStateSink
             || !TryCreateRetainedVisualState(visual, imageSourceAdapter, out var visualState))
         {
+            TraceRetainedVisualOwnerState(visual, "unsupported");
             return false;
         }
 
         if (!retainedVisualBranchSink.PushVisualOwner(visual))
         {
+            TraceRetainedVisualOwnerState(visual, "push-failed");
             return false;
         }
 
+        TraceRetainedVisualOwnerState(visual, "retained");
         var replayed = false;
         try
         {
@@ -385,13 +388,43 @@ public sealed class WpfVisualTreeReflectionRenderer
             return false;
         }
 
+        Vector2? size = null;
+        WpfReplayRect? contentBounds = null;
+        var retainedOffset = offset;
+        var retainedTransform = transform;
+        var retainedClipBounds = clipBounds;
+        var retainedOpacityMaskBounds = opacityMaskBounds;
+        if (TryReadOpacityMaskBounds(visual, out var bounds))
+        {
+            size = new Vector2((float)bounds.Width, (float)bounds.Height);
+            contentBounds = bounds;
+            retainedClipBounds = clipBounds.HasValue
+                ? OffsetBounds(clipBounds.Value, -bounds.X, -bounds.Y)
+                : null;
+            retainedOpacityMaskBounds = opacityMaskBounds.HasValue
+                ? OffsetBounds(opacityMaskBounds.Value, -bounds.X, -bounds.Y)
+                : null;
+
+            var boundsOffset = new Vector2((float)bounds.X, (float)bounds.Y);
+            if (transform == Matrix4x4.Identity)
+            {
+                retainedOffset = offset + boundsOffset;
+            }
+            else
+            {
+                retainedTransform = Matrix4x4.CreateTranslation((float)bounds.X, (float)bounds.Y, 0f) * transform;
+            }
+        }
+
         state = new WpfRetainedVisualState(
-            offset,
-            transform,
+            retainedOffset,
+            retainedTransform,
             opacity,
-            clipBounds,
+            retainedClipBounds,
+            size,
+            contentBounds: contentBounds,
             opacityMask: opacityMask,
-            opacityMaskBounds: opacityMaskBounds,
+            opacityMaskBounds: retainedOpacityMaskBounds,
             outerClipBounds: outerClipBounds);
         return true;
     }
@@ -433,37 +466,7 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static bool HasUnsupportedRetainedVisualOwnerState(object visual)
     {
-        if (HasVisualGuidelines(visual))
-        {
-            return true;
-        }
-
-        if (TryGetPropertyValue(visual, "BitmapScalingMode", out var bitmapScalingMode)
-            && WpfBitmapScalingModeReflection.HasExplicitValue(bitmapScalingMode))
-        {
-            return true;
-        }
-
-        if (TryGetPropertyValue(visual, "EdgeMode", out var edgeMode)
-            && WpfEdgeModeReflection.HasExplicitValue(edgeMode))
-        {
-            return true;
-        }
-
-        if (TryGetPropertyValue(visual, "TextRenderingMode", out var textRenderingMode)
-            && WpfTextRenderingModeReflection.HasExplicitValue(textRenderingMode))
-        {
-            return true;
-        }
-
-        if (TryGetPropertyValue(visual, "ClearTypeHint", out var clearTypeHint)
-            && WpfTextRenderingModeReflection.HasExplicitClearTypeHint(clearTypeHint))
-        {
-            return true;
-        }
-
-        return TryGetPropertyValue(visual, "TextHintingMode", out var textHintingMode)
-            && WpfTextRenderingModeReflection.HasExplicitTextHintingMode(textHintingMode);
+        return false;
     }
 
     private static bool HasNativeRetainedVisualScopeState(object visual)
@@ -1196,6 +1199,31 @@ public sealed class WpfVisualTreeReflectionRenderer
         return false;
     }
 
+    private static void TraceRetainedVisualOwnerState(object visual, string state)
+    {
+        if (!IsRetainedVisualTraceEnabled())
+        {
+            return;
+        }
+
+        if (!TryGetPropertyValue(visual, "Name", out var nameValue) ||
+            nameValue == null ||
+            string.IsNullOrWhiteSpace(nameValue.ToString()))
+        {
+            return;
+        }
+
+        Console.Error.WriteLine(
+            $"ProGPU WPF retained visual {state}: {visual.GetType().Name}#{nameValue}");
+    }
+
+    private static bool IsRetainedVisualTraceEnabled()
+    {
+        string? value = Environment.GetEnvironmentVariable("PROGPU_WPF_TRACE_RETAINED_VISUALS");
+        return string.Equals(value, "1", StringComparison.Ordinal) ||
+            string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static bool TryInferVisualContentBounds(object visual, out WpfReplayRect bounds)
     {
         bounds = default;
@@ -1208,7 +1236,15 @@ public sealed class WpfVisualTreeReflectionRenderer
             var snapshot = WpfRenderDataReflectionBridge.Extract(content);
             var resolver = WpfReflectionResourceResolver.FromDependentResources(snapshot.DependentResources);
             var sink = new BoundsAccumulatingSink();
-            _ = new WpfMilRenderDataDecoder().Decode(snapshot.RenderData, sink, resolver);
+            try
+            {
+                _ = new WpfMilRenderDataDecoder().Decode(snapshot.RenderData, sink, resolver);
+            }
+            catch (TypeLoadException)
+            {
+                return false;
+            }
+
             if (sink.TryGetBounds(out var contentBounds))
             {
                 bounds = contentBounds;
@@ -1398,13 +1434,6 @@ public sealed class WpfVisualTreeReflectionRenderer
     {
         width = 0;
         height = 0;
-
-        if (sizeValue is Size mediaSize)
-        {
-            width = mediaSize.Width;
-            height = mediaSize.Height;
-            return true;
-        }
 
         var hasWidth = TryReadDoubleProperty(sizeValue, "Width", out width);
         var hasHeight = TryReadDoubleProperty(sizeValue, "Height", out height);

@@ -40,6 +40,12 @@ internal static class PortableWindowActivationService
 
     public static int LastAcceptedEffect { get; private set; }
 
+    public static int ActivationStateCallCount { get; private set; }
+
+    public static bool? LastActivationState { get; private set; }
+
+    public static bool ThrowOnDeactivate { get; set; }
+
     public static void Reset()
     {
         DropCount = 0;
@@ -50,6 +56,21 @@ internal static class PortableWindowActivationService
         LastY = 0;
         LastAllowedEffects = 0;
         LastAcceptedEffect = 0;
+        ActivationStateCallCount = 0;
+        LastActivationState = null;
+        ThrowOnDeactivate = false;
+    }
+
+    internal static void SetActivationState(
+        IPortableWindowActivationServiceTestTarget window,
+        bool isActive)
+    {
+        ActivationStateCallCount++;
+        LastActivationState = isActive;
+        if (!isActive && ThrowOnDeactivate)
+        {
+            throw new ArgumentException("Simulated capture-cancel layout failure.");
+        }
     }
 
     internal static int ProcessDragDrop(

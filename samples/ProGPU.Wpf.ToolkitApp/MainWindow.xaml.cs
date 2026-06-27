@@ -3756,10 +3756,12 @@ public partial class MainWindow : Window
                 continue;
             }
 
+            Console.WriteLine("ProGPU WPF Toolkit live input validation frame ready.");
             string geometryStatus = await InvokeWithLiveHostWakeAsync(
                 liveHost,
                 () => ValidateLiveRenderSurfaceGeometryCore(liveHost),
                 DispatcherPriority.Send);
+            Console.WriteLine($"ProGPU WPF Toolkit live input validation geometry ready: {geometryStatus}.");
             string inputStatus = await ValidateLiveInputAsync(liveHost);
             Console.WriteLine($"ProGPU WPF Toolkit live input validation succeeded: {geometryStatus}; {inputStatus}.");
             Environment.Exit(0);
@@ -3772,6 +3774,7 @@ public partial class MainWindow : Window
 
     private async Task<string> ValidateLiveInputAsync(object liveHost)
     {
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: filter focus.");
         string lastTargetState = "not checked";
         bool focusedFilter = false;
         for (int attempt = 0; attempt < LiveValidationMaxAttempts; attempt++)
@@ -3805,6 +3808,7 @@ public partial class MainWindow : Window
                 $"Expected Toolkit live filter TextBox to become visible and hit-testable before injecting input, but last state was: {lastTargetState}.");
         }
 
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: filter text.");
         await InvokeWithLiveHostWakeAsync(liveHost, static () => { }, DispatcherPriority.Background);
         await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -3836,40 +3840,59 @@ public partial class MainWindow : Window
             },
             DispatcherPriority.Send);
 
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: popups.");
         await ValidateLivePopupControlsAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: AvalonDock document menu.");
         await ValidateLiveAvalonDockDocumentContextMenuAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: AvalonDock anchorable menu.");
         await ValidateLiveAvalonDockAnchorableContextMenuAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: editors.");
         await ValidateLiveInputEditorsAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: resources.");
         await ValidateLiveToolkitResourceThemeAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: wizard.");
         await ValidateLiveWizardAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: child window.");
         await ValidateLiveToolkitChildWindowAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: message box.");
         await ValidateLiveToolkitMessageBoxAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: window control.");
         await ValidateLiveToolkitWindowControlAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: zoombox.");
         await ValidateLiveToolkitZoomboxAndMagnifierAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: scroll clips.");
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () => ValidateToolkitScrollClipState(expectLoaded: true),
             DispatcherPriority.Send);
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: panels.");
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () => ValidateToolkitPanelState(expectLoaded: true),
             DispatcherPriority.Send);
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: automation.");
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () => ValidateToolkitAutomationState(expectLoaded: true),
             DispatcherPriority.Send);
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: data grid.");
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () => ValidateToolkitDataGridState(expectLoaded: true),
             DispatcherPriority.Send);
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: collection control.");
         await ValidateLiveToolkitCollectionControlAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: source-backed AvalonDock.");
         await ValidateLiveSourceBackedAvalonDockAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: AvalonDock themes.");
         await ValidateLiveAvalonDockThemeSwitchingAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: AvalonDock options.");
         await InvokeWithLiveHostWakeAsync(
             liveHost,
             () => ValidateAvalonDockManagerOptionState(),
             DispatcherPriority.Send);
 
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: add document.");
         int documentsBeforeAdd = ViewModel.DocumentCount;
         await ClickLiveControlAsync(liveHost, AddDocumentButton, "AddDocumentButton");
         await InvokeWithLiveHostWakeAsync(
@@ -3882,6 +3905,7 @@ public partial class MainWindow : Window
             },
             DispatcherPriority.Send);
 
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: activate editor.");
         await ClickLiveControlAsync(liveHost, ActivateEditorButton, "ActivateEditorButton");
         await InvokeWithLiveHostWakeAsync(
             liveHost,
@@ -3896,12 +3920,17 @@ public partial class MainWindow : Window
             },
             DispatcherPriority.Send);
 
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: AvalonDock keyboard navigation.");
         await ValidateLiveAvalonDockKeyboardNavigationAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: AvalonDock anchorable keyboard navigation.");
         await ValidateLiveAvalonDockAnchorableKeyboardNavigationAsync(liveHost);
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: AvalonDock auto-hide overlay.");
         await ValidateLiveAvalonDockAutoHideOverlayAsync(liveHost);
 
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: overview lifecycle.");
         await ValidateLiveOverviewDocumentLifecycleAsync(liveHost);
 
+        Console.WriteLine("ProGPU WPF Toolkit live input validation step: float editor.");
         await ClickLiveControlAsync(liveHost, ToggleEditorFloatButton, "ToggleEditorFloatButton");
         await WaitForLiveConditionAsync(
             liveHost,
@@ -4819,16 +4848,48 @@ public partial class MainWindow : Window
             this);
         object? hit = InputHitTest(center);
         targetState += $", Input=({center.X:0.###}, {center.Y:0.###}), InputHitTest={DescribeInputElement(hit)}";
-        if (hit == null ||
-            !IsInputElementWithinTarget(hit, target))
+        if (!TryLiveHostGpuHitWithinTarget(liveHost, center.X, center.Y, target, out string gpuHitState))
         {
+            targetState += $", {gpuHitState}";
             return false;
         }
 
+        targetState += $", {gpuHitState}";
         RaiseHostInput(liveHost, "MouseMove", x: center.X, y: center.Y);
         RaiseHostInput(liveHost, "MouseDown", x: center.X, y: center.Y, button: "Left");
         RaiseHostInput(liveHost, "MouseUp", x: center.X, y: center.Y, button: "Left");
         return true;
+    }
+
+    private static bool TryLiveHostGpuHitWithinTarget(
+        object liveHost,
+        double x,
+        double y,
+        FrameworkElement target,
+        out string state)
+    {
+        state = "GpuHitTest=<unavailable>";
+        MethodInfo? method = liveHost.GetType().GetMethod(
+            "TryHitTestOwners",
+            BindingFlags.Instance | BindingFlags.NonPublic,
+            binder: null,
+            types: [typeof(double), typeof(double), typeof(object?[]).MakeByRefType()],
+            modifiers: null);
+        if (method == null)
+        {
+            return false;
+        }
+
+        object?[] arguments = [x, y, null];
+        bool hit = (bool)(method.Invoke(liveHost, arguments) ?? false);
+        object?[] owners = arguments[2] as object?[] ?? Array.Empty<object?>();
+        state = $"GpuHitTest=[{string.Join(", ", owners.Select(DescribeInputElement))}]";
+        if (!hit || owners.Length == 0)
+        {
+            return false;
+        }
+
+        return owners.Any(owner => owner != null && IsInputElementWithinTarget(owner, target));
     }
 
     private static bool IsInputElementWithinTarget(object hit, FrameworkElement target)

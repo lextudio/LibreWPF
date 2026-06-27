@@ -14843,13 +14843,17 @@ internal static class Program
             Path.Combine(appRoot, "MainWindow.xaml.cs"),
             """
             using System;
+            using System.Collections.Generic;
             using System.Collections.ObjectModel;
             using System.Configuration;
             using System.ComponentModel;
             using System.Globalization;
+            using System.IO;
             using System.Linq;
+            using System.Reflection;
             using System.Runtime.CompilerServices;
             using ExternalSdkDefaultItemsLibrary;
+            using Microsoft.Win32;
             using System.Windows;
             using System.Windows.Controls;
             using System.Windows.Controls.Primitives;
@@ -15821,6 +15825,7 @@ internal static class Program
                     Require(
                         ConfigurationManager.AppSettings["DefaultItemsSdkSetting"] == "Default item SDK app config value",
                         "Expected default-item app config setting.");
+                    ValidateDefaultItemsFileDialogs();
                     Require(
                         DefaultItemsPanel.Caption == "Default item panel caption",
                         "Expected default-item UserControl dependency property value.");
@@ -16942,6 +16947,106 @@ internal static class Program
                     }
 
                     return count;
+                }
+
+                private void ValidateDefaultItemsFileDialogs()
+                {
+                    Type serviceType = typeof(OpenFileDialog).Assembly.GetType(
+                            "Microsoft.Win32.PortableFileDialogService",
+                            throwOnError: false)
+                        ?? throw new TypeLoadException("Microsoft.Win32.PortableFileDialogService");
+                    var isEnabledProperty = serviceType.GetProperty(
+                            "IsEnabled",
+                            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                        ?? throw new MissingMemberException(serviceType.FullName, "IsEnabled");
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        Require(
+                            (bool)(isEnabledProperty.GetValue(null) ?? false),
+                            "Expected default-item portable file dialog service to be enabled.");
+                    }
+
+                    var registerMethod = serviceType.GetMethod(
+                            "Register",
+                            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic,
+                            binder: null,
+                            types: new[] { typeof(Func<object, string?>) },
+                            modifiers: null)
+                        ?? throw new MissingMethodException(serviceType.FullName, "Register");
+
+                    string tempDirectory = Path.Combine(
+                        Path.GetTempPath(),
+                        "progpu-wpf-default-items-file-dialog-" + Guid.NewGuid().ToString("N"));
+                    Directory.CreateDirectory(tempDirectory);
+                    string openPath = Path.Combine(tempDirectory, "open.txt");
+                    string savePathWithoutExtension = Path.Combine(tempDirectory, "saved");
+                    string savePath = savePathWithoutExtension + ".txt";
+                    File.WriteAllText(openPath, "default-item SDK file dialog");
+
+                    int requestCount = 0;
+                    var seenKinds = new List<string>();
+                    Func<object, string?> handler = request =>
+                    {
+                        string kind = ReadDefaultItemsPortableRequestString(request, "Kind");
+                        seenKinds.Add(kind);
+                        requestCount++;
+
+                        return kind switch
+                        {
+                            "SaveFile" => savePathWithoutExtension,
+                            "PickFolder" => tempDirectory,
+                            _ => openPath
+                        };
+                    };
+
+                    IDisposable? registration = null;
+                    try
+                    {
+                        registration = (IDisposable?)registerMethod.Invoke(null, new object[] { handler });
+
+                        var openDialog = new OpenFileDialog
+                        {
+                            Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*"
+                        };
+                        Require(openDialog.ShowDialog() == true, "Expected default-item OpenFileDialog result.");
+                        Require(openDialog.FileName == openPath, "Expected default-item OpenFileDialog FileName.");
+                        Require(openDialog.SafeFileName == "open.txt", "Expected default-item OpenFileDialog SafeFileName.");
+
+                        var saveDialog = new SaveFileDialog
+                        {
+                            DefaultExt = "txt",
+                            OverwritePrompt = false
+                        };
+                        Require(saveDialog.ShowDialog(this) == true, "Expected default-item owner SaveFileDialog result.");
+                        Require(saveDialog.FileName == savePath, "Expected default-item owner SaveFileDialog FileName.");
+                        Require(saveDialog.SafeFileName == "saved.txt", "Expected default-item owner SaveFileDialog SafeFileName.");
+
+                        var folderDialog = new OpenFolderDialog();
+                        Require(folderDialog.ShowDialog(this) == true, "Expected default-item owner OpenFolderDialog result.");
+                        Require(folderDialog.FolderName == tempDirectory, "Expected default-item owner OpenFolderDialog FolderName.");
+                        Require(
+                            folderDialog.SafeFolderName == Path.GetFileName(tempDirectory),
+                            "Expected default-item owner OpenFolderDialog SafeFolderName.");
+
+                        Require(requestCount == 3, "Expected default-item file dialog request count.");
+                        Require(seenKinds[0] == "OpenFile", "Expected default-item file dialog open request kind.");
+                        Require(seenKinds[1] == "SaveFile", "Expected default-item file dialog save request kind.");
+                        Require(seenKinds[2] == "PickFolder", "Expected default-item file dialog folder request kind.");
+                    }
+                    finally
+                    {
+                        registration?.Dispose();
+                        Directory.Delete(tempDirectory, recursive: true);
+                    }
+                }
+
+                private static string ReadDefaultItemsPortableRequestString(object request, string propertyName)
+                {
+                    return request.GetType()
+                        .GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                        ?.GetValue(request)
+                        ?.ToString()
+                        ?? string.Empty;
                 }
 
                 private static T RequireType<T>(object? value, string description)

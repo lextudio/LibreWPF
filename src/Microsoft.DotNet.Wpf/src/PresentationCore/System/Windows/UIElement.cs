@@ -2040,6 +2040,13 @@ namespace System.Windows
         /// </param>
         internal void InputHitTest(Point pt, out IInputElement enabledHit, out IInputElement rawHit, out HitTestResult rawHitResult)
         {
+            if (PresentationSource.CriticalFromVisual(this) is PortablePresentationSource portableSource &&
+                portableSource.TryInputHitTestOverride(this, pt, out DependencyObject portableCandidate, out rawHitResult))
+            {
+                PromoteInputHit(pt, portableCandidate, out enabledHit, out rawHit, ref rawHitResult);
+                return;
+            }
+
             PointHitTestParameters hitTestParameters = new PointHitTestParameters(pt);
 
             // We store the result of the hit testing here.  Note that the
@@ -2052,8 +2059,13 @@ namespace System.Windows
                                      hitTestParameters);
 
             DependencyObject candidate = result.Result;
-            rawHit = candidate as IInputElement;
             rawHitResult = result.HitTestResult;
+            PromoteInputHit(pt, candidate, out enabledHit, out rawHit, ref rawHitResult);
+        }
+
+        private void PromoteInputHit(Point pt, DependencyObject candidate, out IInputElement enabledHit, out IInputElement rawHit, ref HitTestResult rawHitResult)
+        {
+            rawHit = candidate as IInputElement;
             enabledHit = null;
             while (candidate != null)
             {
@@ -4833,4 +4845,3 @@ namespace System.Windows
         TouchEnterCache                 = 0x80000000,
     }
 }
-

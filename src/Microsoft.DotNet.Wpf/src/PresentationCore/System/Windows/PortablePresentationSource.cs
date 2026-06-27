@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using MS.Internal;
 using System.Windows.Media;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -429,6 +430,46 @@ namespace System.Windows
             return true;
         }
 
+        internal bool TryInputHitTestOverride(UIElement reference, Point referencePoint, out DependencyObject candidate, out HitTestResult hitTestResult)
+        {
+            candidate = null;
+            hitTestResult = null;
+            if (_isDisposed ||
+                HitTestAllOverride == null ||
+                reference == null ||
+                _rootVisual == null)
+            {
+                return false;
+            }
+
+            if (!TryTransformPoint(reference, _rootVisual, referencePoint, out Point rootPoint))
+            {
+                return false;
+            }
+
+            object[] hitTestResults = HitTestAllOverride(rootPoint);
+            if (hitTestResults == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < hitTestResults.Length; i++)
+            {
+                if (hitTestResults[i] is not Visual visualHit ||
+                    !IsInputHitTestVisibleDescendantOf(visualHit, reference) ||
+                    !TryTransformPoint(_rootVisual, visualHit, rootPoint, out Point pointHit))
+                {
+                    continue;
+                }
+
+                candidate = visualHit;
+                hitTestResult = new PointHitTestResult(visualHit, pointHit);
+                return true;
+            }
+
+            return true;
+        }
+
         private static bool TryTransformPoint(Visual fromVisual, Visual toVisual, Point point, out Point transformedPoint)
         {
             transformedPoint = point;
@@ -454,6 +495,28 @@ namespace System.Windows
             DependencyObject current = visual;
             while (current != null)
             {
+                if (current == ancestor)
+                {
+                    return true;
+                }
+
+                current = VisualTreeHelper.GetParentInternal(current);
+            }
+
+            return false;
+        }
+
+        private static bool IsInputHitTestVisibleDescendantOf(Visual visual, Visual ancestor)
+        {
+            DependencyObject current = visual;
+            while (current != null)
+            {
+                if (UIElementHelper.IsUIElementOrUIElement3D(current) &&
+                    (!UIElementHelper.IsVisible(current) || !UIElementHelper.IsHitTestVisible(current)))
+                {
+                    return false;
+                }
+
                 if (current == ancestor)
                 {
                     return true;

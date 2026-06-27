@@ -8180,6 +8180,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DescribeActionableExports", proGpuDirectXNativeAbiPlan, StringComparison.Ordinal);
         Assert.Contains("ProGpuDirectXNativeAbiExportRequirement", proGpuDirectXNativeAbiPlan, StringComparison.Ordinal);
         Assert.Contains("public static class ProGpuDirectXNativeFacadeSourceEmitter", proGpuDirectXNativeFacadeSourceEmitter, StringComparison.Ordinal);
+        Assert.Contains("public static class ProGpuDirectXNativeFacadeProjectEmitter", proGpuDirectXNativeFacadeSourceEmitter, StringComparison.Ordinal);
+        Assert.Contains("<NativeLib>Shared</NativeLib>", proGpuDirectXNativeFacadeSourceEmitter, StringComparison.Ordinal);
         Assert.Contains("UnmanagedCallersOnly", proGpuDirectXNativeFacadeSourceEmitter, StringComparison.Ordinal);
         Assert.Contains("ProGpuDirectXNativeFacadeSource", proGpuDirectXNativeFacadeSourceEmitter, StringComparison.Ordinal);
         Assert.Contains("public static class ProGpuDirectXNativeResolver", proGpuDirectXNativeResolver, StringComparison.Ordinal);

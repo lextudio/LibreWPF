@@ -467,6 +467,12 @@ namespace System.Windows.Media
 
             if (!OperatingSystem.IsWindows())
             {
+                if (pen == null &&
+                    PathGeometry.TryContainsFillProGpu(pathData, hitPoint, tolerance, type, out bool proGpuContains))
+                {
+                    return proGpuContains;
+                }
+
                 return ContainsProGpuBounds(pen, hitPoint, tolerance, type);
             }
 

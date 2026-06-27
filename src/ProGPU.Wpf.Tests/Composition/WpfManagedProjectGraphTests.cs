@@ -5511,13 +5511,15 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(pathGeometry, "if (!OperatingSystem.IsWindows())", "UnsafeNativeMethods.MilCoreApi.MilUtility_PathGeometryBounds");
         AssertGuardBefore(pathGeometry, "if (!OperatingSystem.IsWindows())\n            {\n                return InternalCombineManaged", "UnsafeNativeMethods.MilCoreApi.MilUtility_PathGeometryCombine");
         Assert.Contains("private static PathGeometry InternalCombineManaged(", pathGeometry, StringComparison.Ordinal);
-        AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())\n            {\n                return ContainsProGpuBounds", "MilCoreApi.MilUtility_PathGeometryHitTest");
+        AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())\n            {\n                if (pen == null &&\n                    PathGeometry.TryContainsFillProGpu", "MilCoreApi.MilUtility_PathGeometryHitTest");
         AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())\n            {\n                return ContainsPolygonProGpuBounds", "MilCoreApi.MilUtility_PolygonHitTest");
         Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\BoundsHitTesting.cs", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\LineGeometryHitTesting.cs", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\RectangleGeometryHitTesting.cs", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\EllipseGeometryHitTesting.cs", presentationCoreProject, StringComparison.Ordinal);
+        Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\PathGeometryHitTesting.cs", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains("private bool ContainsProGpuBounds(", geometry, StringComparison.Ordinal);
+        Assert.Contains("PathGeometry.TryContainsFillProGpu(pathData, hitPoint, tolerance, type, out bool proGpuContains)", geometry, StringComparison.Ordinal);
         Assert.Contains("ProGpuBoundsHitTesting.ContainsPoint(", geometry, StringComparison.Ordinal);
         Assert.DoesNotContain("InflateForHitTolerance", geometry, StringComparison.Ordinal);
         Assert.DoesNotContain("ContainsManagedByBounds", geometry, StringComparison.Ordinal);
@@ -5539,6 +5541,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGpuPathGeometry pathGeometry = ToProGpuPathGeometry(context.GetPathGeometry());", pathGeometry, StringComparison.Ordinal);
         Assert.Contains("pathGeometry.CreateTransformed(proGpuMatrix)", pathGeometry, StringComparison.Ordinal);
         Assert.Contains("pathGeometry.TryGetBounds(out Vector2 min, out Vector2 max)", pathGeometry, StringComparison.Ordinal);
+        Assert.Contains("internal static bool TryContainsFillProGpu(", pathGeometry, StringComparison.Ordinal);
+        Assert.Contains("ProGpuPathGeometryHitTesting.TryContainsFill(", pathGeometry, StringComparison.Ordinal);
         Assert.Contains("new ProGpuArcSegment(", pathGeometry, StringComparison.Ordinal);
         Assert.Contains("ProGpuTransformMetrics.GetStrokeScale(proGpuMatrix)", pathGeometry, StringComparison.Ordinal);
         Assert.DoesNotContain("AddArcEndpointRadiusToManagedBounds", pathGeometry, StringComparison.Ordinal);

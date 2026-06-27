@@ -12,6 +12,7 @@ using ProGpuFillRule = ProGPU.Vector.FillRule;
 using ProGpuLineSegment = ProGPU.Vector.LineSegment;
 using ProGpuPathFigure = ProGPU.Vector.PathFigure;
 using ProGpuPathGeometry = ProGPU.Vector.PathGeometry;
+using ProGpuPathGeometryHitTesting = ProGPU.Vector.PathGeometryHitTesting;
 using ProGpuQuadraticBezierSegment = ProGPU.Vector.QuadraticBezierSegment;
 using ProGpuSweepDirection = ProGPU.Vector.SweepDirection;
 using ProGpuTransformMetrics = ProGPU.Vector.TransformMetrics;
@@ -915,6 +916,34 @@ namespace System.Windows.Media
             }
 
             return new MilRectD(bounds.Left, bounds.Top, bounds.Right, bounds.Bottom);
+        }
+
+        internal static bool TryContainsFillProGpu(
+            PathGeometryData pathData,
+            Point hitPoint,
+            double tolerance,
+            ToleranceType type,
+            out bool contains)
+        {
+            contains = false;
+            if (pathData.IsEmpty())
+            {
+                return true;
+            }
+
+            PathStreamGeometryContext context = new PathStreamGeometryContext();
+            ParsePathGeometryData(pathData, context);
+
+            ProGpuPathGeometry pathGeometry = ToProGpuPathGeometry(context.GetPathGeometry());
+            Matrix geometryMatrix = CompositionResourceManager.MilMatrix3x2DToMatrix(ref pathData.Matrix);
+            pathGeometry = pathGeometry.CreateTransformed(ToProGpuMatrix(geometryMatrix));
+
+            return ProGpuPathGeometryHitTesting.TryContainsFill(
+                pathGeometry,
+                ToProGpuPoint(hitPoint),
+                (float)tolerance,
+                type == ToleranceType.Relative,
+                out contains);
         }
 
         private static ProGpuPathGeometry ToProGpuPathGeometry(PathGeometry pathGeometry)

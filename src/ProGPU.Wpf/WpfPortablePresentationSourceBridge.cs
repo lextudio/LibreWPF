@@ -535,14 +535,14 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
 
     private object?[]? HitTestBoundsOwners(System.Windows.Point rootMin, System.Windows.Point rootMax)
     {
-        if (_host.TryQueryHitTestBoundsOwners(
+        if (_host.TryQueryHitTestBoundsCandidates(
                 rootMin.X,
                 rootMin.Y,
                 rootMax.X,
                 rootMax.Y,
-                out object?[] owners))
+                out object?[] candidates))
         {
-            return owners;
+            return candidates;
         }
 
         return _host.HasGpuHitTestCache ? Array.Empty<object>() : null;

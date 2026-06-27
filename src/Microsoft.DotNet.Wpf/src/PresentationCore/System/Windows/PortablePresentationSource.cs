@@ -3,6 +3,7 @@
 
 using MS.Internal;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Windows.Media;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -490,7 +491,7 @@ namespace System.Windows
 
             for (int i = 0; i < hitTestResults.Length; i++)
             {
-                if (hitTestResults[i] is not Visual visualHit ||
+                if (!TryGetGeometryHitCandidate(hitTestResults[i], out Visual visualHit, out IntersectionDetail intersectionDetail) ||
                     !IsVisualDescendantOf(visualHit, reference))
                 {
                     continue;
@@ -512,7 +513,7 @@ namespace System.Windows
                     continue;
                 }
 
-                result = resultCallback(new GeometryHitTestResult(visualHit, IntersectionDetail.Intersects));
+                result = resultCallback(new GeometryHitTestResult(visualHit, intersectionDetail));
                 if (result == HitTestResultBehavior.Stop)
                 {
                     return true;
@@ -520,6 +521,75 @@ namespace System.Windows
             }
 
             return true;
+        }
+
+        private static bool TryGetGeometryHitCandidate(object candidate, out Visual visualHit, out IntersectionDetail intersectionDetail)
+        {
+            visualHit = null;
+            intersectionDetail = IntersectionDetail.Intersects;
+            if (candidate is GeometryHitTestResult geometryHitResult)
+            {
+                visualHit = geometryHitResult.VisualHit;
+                intersectionDetail = geometryHitResult.IntersectionDetail;
+                return true;
+            }
+
+            if (candidate is Visual visual)
+            {
+                visualHit = visual;
+                return true;
+            }
+
+            if (candidate == null)
+            {
+                return false;
+            }
+
+            Type candidateType = candidate.GetType();
+            object reflectedVisual = candidateType
+                .GetProperty("VisualHit", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                ?.GetValue(candidate);
+            if (reflectedVisual is not Visual reflectedVisualHit)
+            {
+                return false;
+            }
+
+            visualHit = reflectedVisualHit;
+            object reflectedDetail = candidateType
+                .GetProperty("IntersectionDetail", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                ?.GetValue(candidate);
+            intersectionDetail = ToIntersectionDetail(reflectedDetail);
+            return true;
+        }
+
+        private static IntersectionDetail ToIntersectionDetail(object detail)
+        {
+            if (detail is IntersectionDetail intersectionDetail)
+            {
+                return intersectionDetail;
+            }
+
+            uint value;
+            if (detail is uint unsigned)
+            {
+                value = unsigned;
+            }
+            else if (detail is int signed && signed >= 0)
+            {
+                value = (uint)signed;
+            }
+            else
+            {
+                return IntersectionDetail.Intersects;
+            }
+
+            return value switch
+            {
+                2u => IntersectionDetail.FullyInside,
+                3u => IntersectionDetail.FullyContains,
+                4u => IntersectionDetail.Intersects,
+                _ => IntersectionDetail.Intersects
+            };
         }
 
         private static bool IsPointHitVisibleByFilter(

@@ -425,6 +425,43 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         return true;
     }
 
+    public bool TryQueryHitTestBoundsCandidates(
+        Vector2 logicalMin,
+        Vector2 logicalMax,
+        Span<object?> candidates,
+        out int candidateCount,
+        out ProGpuHitTestResult summary)
+    {
+        ThrowIfDisposed();
+        candidateCount = 0;
+        summary = default;
+        if (candidates.IsEmpty)
+        {
+            return false;
+        }
+
+        Span<ProGpuHitTestResult> results = candidates.Length <= 64
+            ? stackalloc ProGpuHitTestResult[candidates.Length]
+            : new ProGpuHitTestResult[candidates.Length];
+        if (!Compositor.TryQueryHitTestBoundsAll(logicalMin, logicalMax, results, out int hitCount, out summary))
+        {
+            return false;
+        }
+
+        for (int i = 0; i < hitCount && candidateCount < candidates.Length; i++)
+        {
+            if (GpuHitTestOwnerMap.TryGetOwner(results[i].Id, out object? owner) &&
+                owner != null)
+            {
+                candidates[candidateCount++] = new ProGpuWpfGeometryHitTestCandidate(
+                    owner,
+                    results[i].IntersectionDetail);
+            }
+        }
+
+        return true;
+    }
+
     private static uint ResolveLogicalRenderDimension(
         float sceneRootDimension,
         float flatRootDimension,
@@ -717,4 +754,17 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         SceneRootVisual.AddChild(RetainedWpfVisualRoot);
         SceneRootVisual.AddChild(RootVisual);
     }
+}
+
+internal sealed class ProGpuWpfGeometryHitTestCandidate
+{
+    internal ProGpuWpfGeometryHitTestCandidate(object visualHit, uint intersectionDetail)
+    {
+        VisualHit = visualHit;
+        IntersectionDetail = intersectionDetail;
+    }
+
+    public object VisualHit { get; }
+
+    public uint IntersectionDetail { get; }
 }

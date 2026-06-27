@@ -657,6 +657,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryQueryBoundsAllRejectsRectangleStrokeHoleOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryEllipseAllRejectsQueryBoundsCornerFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryEllipseAllClassifiesRectangleFillIntersectionDetailOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryEllipseAllRejectsEllipseFillQueryBoundsFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryEllipseAllClassifiesSameCenterEllipseFillDetailOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryEllipseAllRejectsEllipseStrokeHoleOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("LineStrokeCachesDirectionAndLengthForGpuHitTesting", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("EllipseCachesCenterAndInverseRadiiForGpuHitTesting", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsLineStrokeBoundsFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
@@ -670,6 +673,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("const INTERSECTION_DETAIL_FULLY_INSIDE: u32", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn query_uses_ellipse_region()", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn classify_ellipse_region_intersection_detail(", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn ellipses_may_intersect(", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn ellipse_stroke_intersects_ellipse_region(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn classify_bounds_intersection_detail(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn rect_intersects_ellipse(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn rect_intersects_ellipse_stroke(", proGpuHitTesting, StringComparison.Ordinal);

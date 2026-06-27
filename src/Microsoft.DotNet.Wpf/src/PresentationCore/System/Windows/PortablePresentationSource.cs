@@ -61,6 +61,8 @@ namespace System.Windows
 
         internal Func<Point, object> HitTestOverride { get; set; }
 
+        internal Func<Point, object[]> HitTestAllOverride { get; set; }
+
         public override bool IsDisposed
         {
             get { return _isDisposed; }
@@ -382,6 +384,48 @@ namespace System.Windows
             }
 
             hitTestResult = new PointHitTestResult(visualHit, pointHit);
+            return true;
+        }
+
+        internal bool TryPointHitTestOverride(Visual reference, Point referencePoint, HitTestResultCallback resultCallback, out HitTestResultBehavior result)
+        {
+            result = HitTestResultBehavior.Continue;
+            if (_isDisposed ||
+                HitTestAllOverride == null ||
+                reference == null ||
+                resultCallback == null ||
+                _rootVisual == null)
+            {
+                return false;
+            }
+
+            if (!TryTransformPoint(reference, _rootVisual, referencePoint, out Point rootPoint))
+            {
+                return false;
+            }
+
+            object[] hitTestResults = HitTestAllOverride(rootPoint);
+            if (hitTestResults == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < hitTestResults.Length; i++)
+            {
+                if (hitTestResults[i] is not Visual visualHit ||
+                    !IsVisualDescendantOf(visualHit, reference) ||
+                    !TryTransformPoint(_rootVisual, visualHit, rootPoint, out Point pointHit))
+                {
+                    continue;
+                }
+
+                result = resultCallback(new PointHitTestResult(visualHit, pointHit));
+                if (result == HitTestResultBehavior.Stop)
+                {
+                    return true;
+                }
+            }
+
             return true;
         }
 

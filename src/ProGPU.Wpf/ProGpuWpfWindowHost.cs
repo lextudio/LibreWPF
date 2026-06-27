@@ -1663,6 +1663,39 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             out _);
     }
 
+    internal bool TryHitTestOwners(double x, double y, out object?[] owners)
+    {
+        owners = Array.Empty<object?>();
+        if (_target == null ||
+            !double.IsFinite(x) ||
+            !double.IsFinite(y) ||
+            x < float.MinValue ||
+            x > float.MaxValue ||
+            y < float.MinValue ||
+            y > float.MaxValue)
+        {
+            return false;
+        }
+
+        object?[] ownerBuffer = new object?[64];
+        if (!_target.TryHitTestOwners(
+                new System.Numerics.Vector2((float)x, (float)y),
+                ownerBuffer,
+                out int ownerCount,
+                out _))
+        {
+            return false;
+        }
+
+        if (ownerCount == 0)
+        {
+            return true;
+        }
+
+        owners = ownerBuffer[..ownerCount];
+        return true;
+    }
+
     private void AttachInputService()
     {
         if (_window == null)

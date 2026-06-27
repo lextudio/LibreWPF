@@ -528,13 +528,20 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TraceInputEvent(\"native\", e)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("TraceInputEvent(\"wpf\", input)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool TryHitTestOwner(double x, double y, out object? owner)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("internal bool TryHitTestOwners(double x, double y, out object?[] owners)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("internal bool HasGpuHitTestCache => _target?.LastGpuHitTestIndex != null;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("_target.TryHitTestOwner(", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_target.TryHitTestOwners(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("private const string HitTestOverridePropertyName = \"HitTestOverride\";", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("private const string HitTestAllOverridePropertyName = \"HitTestAllOverride\";", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("bridge.TryInstallHitTestOverride();", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("bridge.TryInstallHitTestAllOverride();", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("private object? TryHitTestOwner(System.Windows.Point rootPoint)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("private object?[]? HitTestOwners(System.Windows.Point rootPoint)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.TryHitTestOwner(rootPoint.X, rootPoint.Y, out object? owner)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("_host.TryHitTestOwners(rootPoint.X, rootPoint.Y, out object?[] owners)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("_host.HasGpuHitTestCache ? Source : null", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("_host.HasGpuHitTestCache ? Array.Empty<object>() : null", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
         Assert.Contains("TryBindInstallsGpuHitTestOverrideWhenSourceExposesHook", proGpuPortablePresentationSourceBridgeTests, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_TRACE_RENDER_SURFACE", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("TraceRenderSurfaceGeometryIfRequested(geometry)", proGpuHost, StringComparison.Ordinal);
@@ -589,13 +596,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("SetLastHitTestIndex(_hitTestCacheBuilder.BuildIndex());", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestDeviceIndex.TryCreate(_context, index, out GpuHitTestDeviceIndex? deviceIndex)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestEngine.TryHitTestPoint(_context, _pipelineCache, _lastHitTestDeviceIndex, point, out result)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("GpuHitTestEngine.TryHitTestPointAll(", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("public bool TryHitTestPoint(Vector2 point, out GpuHitTestResult result)", proGpuCompositor, StringComparison.Ordinal);
+        Assert.Contains("public bool TryHitTestPointAll(", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("public ProGpuHitTestIndex? LastGpuHitTestIndex => Compositor.LastHitTestIndex;", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("public ProGpuHitTestDeviceIndex? LastGpuHitTestDeviceIndex => Compositor.LastHitTestDeviceIndex;", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("public WpfGpuHitTestOwnerMap GpuHitTestOwnerMap { get; } = new();", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("public bool TryHitTestPoint(Vector2 logicalPoint, out ProGpuHitTestResult result)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("return Compositor.TryHitTestPoint(logicalPoint, out result);", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("public bool TryHitTestOwner(Vector2 logicalPoint, out object? owner, out ProGpuHitTestResult result)", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("public bool TryHitTestOwners(", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("Compositor.TryHitTestPointAll(logicalPoint, results, out int hitCount, out summary)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("return GpuHitTestOwnerMap.TryGetOwner(result.Id, out owner);", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("WpfGpuHitTestOwnerMap? hitTestOwnerMap = null", proGpuDrawingFrame, StringComparison.Ordinal);
         Assert.Contains("_hitTestOwnerMap?.Clear();", proGpuDrawingFrame, StringComparison.Ordinal);
@@ -689,6 +700,15 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Media",
             "VisualTreeHelper.cs");
+        var visualPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Visual.cs");
         var portableKeyboardPath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -713,6 +733,7 @@ public sealed class WpfManagedProjectGraphTests
         var mouseDevice = File.ReadAllText(mouseDevicePath);
         var portableSource = File.ReadAllText(portableSourcePath);
         var visualTreeHelper = File.ReadAllText(visualTreeHelperPath);
+        var visual = File.ReadAllText(visualPath);
         var portableKeyboard = File.ReadAllText(portableKeyboardPath);
         var portableMouse = File.ReadAllText(portableMousePath);
 
@@ -734,12 +755,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("LocalHitTest(clientUnits, pt, inputSource, out enabledHit, out originalHit)", mouseDevice, StringComparison.Ordinal);
         Assert.Contains("portableSource.TryHitTestOverride(rootPt, out enabledHit, out originalHit)", mouseDevice, StringComparison.Ordinal);
         Assert.Contains("ReferenceEquals(hitTestResult, this)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("internal Func<Point, object[]> HitTestAllOverride { get; set; }", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal bool TryPointHitTestOverride(Visual reference, Point referencePoint, bool include2DOn3D, out HitTestResult hitTestResult)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("internal bool TryPointHitTestOverride(Visual reference, Point referencePoint, HitTestResultCallback resultCallback, out HitTestResultBehavior result)", portableSource, StringComparison.Ordinal);
         Assert.Contains("portableSource.TryPointHitTestOverride(reference, point, include2DOn3D, out HitTestResult hitTestResult)", visualTreeHelper, StringComparison.Ordinal);
+        Assert.Contains("filterCallback == null", visual, StringComparison.Ordinal);
+        Assert.Contains("portableSource.TryPointHitTestOverride(this, pointParams.HitPoint, resultCallback, out _)", visual, StringComparison.Ordinal);
         AssertGuardBefore(mouseDevice, "if (OperatingSystem.IsWindows() && source != null", "UnsafeNativeMethods.WindowFromPoint");
         AssertGuardBefore(mouseDevice, "if (OperatingSystem.IsWindows() && source != null", "SafeNativeMethods.IsWindowEnabled");
         AssertGuardBefore(mouseDevice, "portableSource.TryHitTestOverride(rootPt, out enabledHit, out originalHit)", "root.InputHitTest(rootPt, out enabledHit, out originalHit)");
         AssertGuardBefore(visualTreeHelper, "portableSource.TryPointHitTestOverride(reference, point, include2DOn3D, out HitTestResult hitTestResult)", "return reference.HitTest(point, include2DOn3D);");
+        AssertGuardBefore(visual, "portableSource.TryPointHitTestOverride(this, pointParams.HitPoint, resultCallback, out _)", "HitTestPoint(filterCallback, resultCallback, pointParams)");
         Assert.True(
             inputManager.IndexOf("if (OperatingSystem.IsWindows())", StringComparison.Ordinal)
                 < inputManager.IndexOf("new Win32KeyboardDevice(this)", StringComparison.Ordinal),

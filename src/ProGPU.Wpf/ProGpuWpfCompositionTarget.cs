@@ -356,6 +356,40 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         return GpuHitTestOwnerMap.TryGetOwner(result.Id, out owner);
     }
 
+    public bool TryHitTestOwners(
+        Vector2 logicalPoint,
+        Span<object?> owners,
+        out int ownerCount,
+        out ProGpuHitTestResult summary)
+    {
+        ThrowIfDisposed();
+        ownerCount = 0;
+        summary = default;
+        if (owners.IsEmpty)
+        {
+            return false;
+        }
+
+        Span<ProGpuHitTestResult> results = owners.Length <= 64
+            ? stackalloc ProGpuHitTestResult[owners.Length]
+            : new ProGpuHitTestResult[owners.Length];
+        if (!Compositor.TryHitTestPointAll(logicalPoint, results, out int hitCount, out summary))
+        {
+            return false;
+        }
+
+        for (int i = 0; i < hitCount && ownerCount < owners.Length; i++)
+        {
+            if (GpuHitTestOwnerMap.TryGetOwner(results[i].Id, out object? owner) &&
+                owner != null)
+            {
+                owners[ownerCount++] = owner;
+            }
+        }
+
+        return true;
+    }
+
     private static uint ResolveLogicalRenderDimension(
         float sceneRootDimension,
         float flatRootDimension,

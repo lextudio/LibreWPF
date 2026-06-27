@@ -640,11 +640,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AddPathStrokePrimitive(path, transform, id, zIndex, pen);", proGpuHitTestCache, StringComparison.Ordinal);
         Assert.Contains("RenderCommandCacheUsesDashedPathSegmentsForStrokeHitTesting", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllReturnsIntersectingBroadPhaseHitsInDescendingZOrder", proGpuHitTestingTests, StringComparison.Ordinal);
-        Assert.Contains("TryQueryBoundsAllReturnsBoundsCandidateWithoutPointPreciseTesting", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllClassifiesRectBoundsIntersectionDetailOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryBoundsAllRejectsEllipseCornerFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryBoundsAllClassifiesEllipseRectRegionIntersectionDetailOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryBoundsAllRejectsEllipseStrokeHoleOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("const QUERY_MODE_BOUNDS: u32", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("const INTERSECTION_DETAIL_FULLY_INSIDE: u32", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn classify_bounds_intersection_detail(", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn rect_intersects_ellipse(", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn rect_intersects_ellipse_stroke(", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn primitive_uses_precise_bounds_region_test(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn intersects_bounds(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("query_result_capacity()", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestDeviceIndex.TryCreate(_context, index, out GpuHitTestDeviceIndex? deviceIndex)", proGpuCompositor, StringComparison.Ordinal);

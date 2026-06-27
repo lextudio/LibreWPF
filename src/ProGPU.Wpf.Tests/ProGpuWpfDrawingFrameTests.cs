@@ -1049,6 +1049,34 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void TryHitTestOwnersDeduplicatesGpuPrimitivesAndRetriesForDistinctOwners()
+    {
+        using var target = ProGpuWpfCompositionTarget.CreateHeadless(WgpuTextureFormat.Rgba8Unorm);
+        var firstOwner = new object();
+        var secondOwner = new object();
+        int firstOwnerId = target.GpuHitTestOwnerMap.GetOrCreateId(firstOwner);
+        int secondOwnerId = target.GpuHitTestOwnerMap.GetOrCreateId(secondOwner);
+        var index = GpuHitTestIndex.Build(
+            [
+                GpuHitTestPrimitive.RectangleFill(firstOwnerId, new Vector2(0f, 0f), new Vector2(20f, 20f), Vector2.Zero, zIndex: 2f),
+                GpuHitTestPrimitive.RectangleFill(firstOwnerId, new Vector2(0f, 0f), new Vector2(20f, 20f), Vector2.Zero, zIndex: 1f),
+                GpuHitTestPrimitive.RectangleFill(secondOwnerId, new Vector2(0f, 0f), new Vector2(20f, 20f), Vector2.Zero, zIndex: 0f)
+            ],
+            maxDepth: 2,
+            maxPrimitivesPerNode: 1);
+        InstallGpuHitTestCache(target, index);
+        object?[] owners = new object?[2];
+
+        bool hit = target.TryHitTestOwners(new Vector2(10f, 10f), owners, out int ownerCount, out var summary);
+
+        Assert.True(hit);
+        Assert.Equal(2, ownerCount);
+        Assert.Equal(3u, summary.Hit);
+        Assert.Same(firstOwner, owners[0]);
+        Assert.Same(secondOwner, owners[1]);
+    }
+
+    [Fact]
     public void TryQueryHitTestBoundsCandidatesRetriesGpuResultsWhenUnmappedTopHitUnderfillsCandidates()
     {
         using var target = ProGpuWpfCompositionTarget.CreateHeadless(WgpuTextureFormat.Rgba8Unorm);
@@ -1061,6 +1089,39 @@ public sealed class ProGpuWpfDrawingFrameTests
                 GpuHitTestPrimitive.RectangleFill(firstOwnerId, new Vector2(0f, 0f), new Vector2(20f, 20f), Vector2.Zero, zIndex: 1f),
                 GpuHitTestPrimitive.RectangleFill(secondOwnerId, new Vector2(0f, 0f), new Vector2(20f, 20f), Vector2.Zero, zIndex: 0f),
                 GpuHitTestPrimitive.RectangleFill(999, new Vector2(0f, 0f), new Vector2(20f, 20f), Vector2.Zero, zIndex: 2f)
+            ],
+            maxDepth: 2,
+            maxPrimitivesPerNode: 1);
+        InstallGpuHitTestCache(target, index);
+        object?[] candidates = new object?[2];
+
+        bool hit = target.TryQueryHitTestBoundsCandidates(
+            new Vector2(5f, 5f),
+            new Vector2(15f, 15f),
+            candidates,
+            out int candidateCount,
+            out var summary);
+
+        Assert.True(hit);
+        Assert.Equal(2, candidateCount);
+        Assert.Equal(3u, summary.Hit);
+        Assert.Same(firstOwner, Assert.IsType<ProGpuWpfGeometryHitTestCandidate>(candidates[0]).VisualHit);
+        Assert.Same(secondOwner, Assert.IsType<ProGpuWpfGeometryHitTestCandidate>(candidates[1]).VisualHit);
+    }
+
+    [Fact]
+    public void TryQueryHitTestBoundsCandidatesDeduplicatesGpuPrimitivesAndRetriesForDistinctOwners()
+    {
+        using var target = ProGpuWpfCompositionTarget.CreateHeadless(WgpuTextureFormat.Rgba8Unorm);
+        var firstOwner = new object();
+        var secondOwner = new object();
+        int firstOwnerId = target.GpuHitTestOwnerMap.GetOrCreateId(firstOwner);
+        int secondOwnerId = target.GpuHitTestOwnerMap.GetOrCreateId(secondOwner);
+        var index = GpuHitTestIndex.Build(
+            [
+                GpuHitTestPrimitive.RectangleFill(firstOwnerId, new Vector2(0f, 0f), new Vector2(20f, 20f), Vector2.Zero, zIndex: 2f),
+                GpuHitTestPrimitive.RectangleFill(firstOwnerId, new Vector2(0f, 0f), new Vector2(20f, 20f), Vector2.Zero, zIndex: 1f),
+                GpuHitTestPrimitive.RectangleFill(secondOwnerId, new Vector2(0f, 0f), new Vector2(20f, 20f), Vector2.Zero, zIndex: 0f)
             ],
             maxDepth: 2,
             maxPrimitivesPerNode: 1);

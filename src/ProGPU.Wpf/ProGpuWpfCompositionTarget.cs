@@ -564,7 +564,8 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         for (int i = 0; i < resultCount && ownerCount < owners.Length; i++)
         {
             if (GpuHitTestOwnerMap.TryGetOwner(results[i].Id, out object? owner) &&
-                owner != null)
+                owner != null &&
+                !ContainsHitTestOwner(owners, ownerCount, owner))
             {
                 owners[ownerCount++] = owner;
             }
@@ -595,6 +596,23 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         return false;
     }
 
+    private static bool ContainsHitTestOwner(
+        ReadOnlySpan<object?> owners,
+        int ownerCount,
+        object owner)
+    {
+        int count = Math.Min(ownerCount, owners.Length);
+        for (int i = 0; i < count; i++)
+        {
+            if (ReferenceEquals(owners[i], owner))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private int CopyGeometryHitTestCandidates(
         ReadOnlySpan<ProGpuHitTestResult> results,
         int hitCount,
@@ -605,7 +623,8 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         for (int i = 0; i < resultCount && candidateCount < candidates.Length; i++)
         {
             if (GpuHitTestOwnerMap.TryGetOwner(results[i].Id, out object? owner) &&
-                owner != null)
+                owner != null &&
+                !ContainsGeometryHitTestCandidateOwner(candidates, candidateCount, owner))
             {
                 candidates[candidateCount++] = new ProGpuWpfGeometryHitTestCandidate(
                     owner,
@@ -614,6 +633,33 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
         }
 
         return candidateCount;
+    }
+
+    private static bool ContainsGeometryHitTestCandidateOwner(
+        ReadOnlySpan<object?> candidates,
+        int candidateCount,
+        object owner)
+    {
+        int count = Math.Min(candidateCount, candidates.Length);
+        for (int i = 0; i < count; i++)
+        {
+            if (candidates[i] is ProGpuWpfGeometryHitTestCandidate candidate)
+            {
+                if (ReferenceEquals(candidate.VisualHit, owner))
+                {
+                    return true;
+                }
+
+                continue;
+            }
+
+            if (ReferenceEquals(candidates[i], owner))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static int GetHitTestResultCapacity(int requestedCount)

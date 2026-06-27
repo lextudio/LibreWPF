@@ -734,6 +734,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public bool TryHitTestOwners(", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("Compositor.TryHitTestPointAll(logicalPoint, results, out int hitCount, out summary)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("ShouldRetryHitTestOwnerResolution(ownerCount, owners.Length, hitCount, summary, resultCapacity)", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("!ContainsHitTestOwner(owners, ownerCount, owner)", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("!ContainsGeometryHitTestCandidateOwner(candidates, candidateCount, owner)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("GetExpandedHitTestResultCapacity(summary, resultCapacity)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("summary.Hit > (uint)hitCount", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("ProGpuHitTestDeviceIndex.MaxHitResultCount", proGpuCompositionTarget, StringComparison.Ordinal);

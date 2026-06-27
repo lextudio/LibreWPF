@@ -682,6 +682,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryQueryBoundsAllClassifiesPathFillRectRegionIntersectionDetailOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsPathStrokeBoundsFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsCombinedPathDifferenceHoleOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryHitTestPointAllStoresDistinctIdsAndKeepsHighestZDuplicate", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryBoundsAllStoresDistinctIdsAndKeepsHighestZDuplicate", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("const QUERY_MODE_BOUNDS: u32", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("const QUERY_MODE_ELLIPSE_REGION: u32", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("const INTERSECTION_DETAIL_FULLY_INSIDE: u32", proGpuHitTesting, StringComparison.Ordinal);
@@ -714,6 +716,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("fn intersects_bounds(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("query_result_capacity()", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("let total_count = results[0].hit + 1u;", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn stored_result_count(capacity: u32) -> u32", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn find_stored_hit_slot(id: i32, stored_count: u32) -> u32", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestDeviceIndex.TryCreate(_context, index, out GpuHitTestDeviceIndex? deviceIndex)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestEngine.TryHitTestPoint(_context, _pipelineCache, _lastHitTestDeviceIndex, point, out result)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("GpuHitTestEngine.TryHitTestPointAll(", proGpuCompositor, StringComparison.Ordinal);

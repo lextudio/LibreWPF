@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using MS.Internal;
+using System.Collections.Generic;
 using System.Windows.Media;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -388,7 +389,7 @@ namespace System.Windows
             return true;
         }
 
-        internal bool TryPointHitTestOverride(Visual reference, Point referencePoint, HitTestResultCallback resultCallback, out HitTestResultBehavior result)
+        internal bool TryPointHitTestOverride(Visual reference, Point referencePoint, HitTestFilterCallback filterCallback, HitTestResultCallback resultCallback, out HitTestResultBehavior result)
         {
             result = HitTestResultBehavior.Continue;
             if (_isDisposed ||
@@ -411,11 +412,35 @@ namespace System.Windows
                 return false;
             }
 
+            Dictionary<Visual, HitTestFilterBehavior> filterResults = filterCallback == null
+                ? null
+                : new Dictionary<Visual, HitTestFilterBehavior>();
+
             for (int i = 0; i < hitTestResults.Length; i++)
             {
                 if (hitTestResults[i] is not Visual visualHit ||
-                    !IsVisualDescendantOf(visualHit, reference) ||
-                    !TryTransformPoint(_rootVisual, visualHit, rootPoint, out Point pointHit))
+                    !IsVisualDescendantOf(visualHit, reference))
+                {
+                    continue;
+                }
+
+                if (!IsPointHitVisibleByFilter(
+                        reference,
+                        visualHit,
+                        filterCallback,
+                        filterResults,
+                        out bool stopFilter))
+                {
+                    if (stopFilter)
+                    {
+                        result = HitTestResultBehavior.Stop;
+                        return true;
+                    }
+
+                    continue;
+                }
+
+                if (!TryTransformPoint(_rootVisual, visualHit, rootPoint, out Point pointHit))
                 {
                     continue;
                 }
@@ -424,6 +449,77 @@ namespace System.Windows
                 if (result == HitTestResultBehavior.Stop)
                 {
                     return true;
+                }
+            }
+
+            return true;
+        }
+
+        private static bool IsPointHitVisibleByFilter(
+            Visual reference,
+            Visual visualHit,
+            HitTestFilterCallback filterCallback,
+            Dictionary<Visual, HitTestFilterBehavior> filterResults,
+            out bool stop)
+        {
+            stop = false;
+            if (filterCallback == null)
+            {
+                return true;
+            }
+
+            List<Visual> path = new List<Visual>();
+            DependencyObject current = visualHit;
+            while (current != null)
+            {
+                if (current is Visual currentVisual)
+                {
+                    path.Add(currentVisual);
+                }
+
+                if (current == reference)
+                {
+                    break;
+                }
+
+                current = VisualTreeHelper.GetParentInternal(current);
+            }
+
+            if (path.Count == 0 || path[path.Count - 1] != reference)
+            {
+                return false;
+            }
+
+            for (int i = path.Count - 1; i >= 0; i--)
+            {
+                Visual currentVisual = path[i];
+                if (!filterResults.TryGetValue(currentVisual, out HitTestFilterBehavior filter))
+                {
+                    filter = filterCallback(currentVisual);
+                    filterResults.Add(currentVisual, filter);
+                }
+
+                if (filter == HitTestFilterBehavior.Stop)
+                {
+                    stop = true;
+                    return false;
+                }
+
+                if (filter == HitTestFilterBehavior.ContinueSkipSelfAndChildren)
+                {
+                    return false;
+                }
+
+                if (filter == HitTestFilterBehavior.ContinueSkipChildren &&
+                    currentVisual != visualHit)
+                {
+                    return false;
+                }
+
+                if (filter == HitTestFilterBehavior.ContinueSkipSelf &&
+                    currentVisual == visualHit)
+                {
+                    return false;
                 }
             }
 

@@ -768,18 +768,19 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("internal bool TryInputHitTestOverride(UIElement reference, Point referencePoint, out DependencyObject candidate, out HitTestResult hitTestResult)", portableSource, StringComparison.Ordinal);
         Assert.Contains("IsInputHitTestVisibleDescendantOf(visualHit, reference)", portableSource, StringComparison.Ordinal);
         Assert.Contains("internal bool TryPointHitTestOverride(Visual reference, Point referencePoint, bool include2DOn3D, out HitTestResult hitTestResult)", portableSource, StringComparison.Ordinal);
-        Assert.Contains("internal bool TryPointHitTestOverride(Visual reference, Point referencePoint, HitTestResultCallback resultCallback, out HitTestResultBehavior result)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("internal bool TryPointHitTestOverride(Visual reference, Point referencePoint, HitTestFilterCallback filterCallback, HitTestResultCallback resultCallback, out HitTestResultBehavior result)", portableSource, StringComparison.Ordinal);
+        Assert.Contains("IsPointHitVisibleByFilter(", portableSource, StringComparison.Ordinal);
         Assert.Contains("portableSource.TryInputHitTestOverride(this, pt, out DependencyObject portableCandidate, out rawHitResult)", uiElement, StringComparison.Ordinal);
         Assert.Contains("private void PromoteInputHit(Point pt, DependencyObject candidate, out IInputElement enabledHit, out IInputElement rawHit, ref HitTestResult rawHitResult)", uiElement, StringComparison.Ordinal);
         Assert.Contains("portableSource.TryPointHitTestOverride(reference, point, include2DOn3D, out HitTestResult hitTestResult)", visualTreeHelper, StringComparison.Ordinal);
-        Assert.Contains("filterCallback == null", visual, StringComparison.Ordinal);
-        Assert.Contains("portableSource.TryPointHitTestOverride(this, pointParams.HitPoint, resultCallback, out _)", visual, StringComparison.Ordinal);
+        Assert.DoesNotContain("filterCallback == null &&", visual, StringComparison.Ordinal);
+        Assert.Contains("portableSource.TryPointHitTestOverride(this, pointParams.HitPoint, filterCallback, resultCallback, out _)", visual, StringComparison.Ordinal);
         AssertGuardBefore(mouseDevice, "if (OperatingSystem.IsWindows() && source != null", "UnsafeNativeMethods.WindowFromPoint");
         AssertGuardBefore(mouseDevice, "if (OperatingSystem.IsWindows() && source != null", "SafeNativeMethods.IsWindowEnabled");
         AssertGuardBefore(mouseDevice, "portableSource.TryHitTestOverride(rootPt, out enabledHit, out originalHit)", "root.InputHitTest(rootPt, out enabledHit, out originalHit)");
         AssertGuardBefore(uiElement, "portableSource.TryInputHitTestOverride(this, pt, out DependencyObject portableCandidate, out rawHitResult)", "VisualTreeHelper.HitTest(this");
         AssertGuardBefore(visualTreeHelper, "portableSource.TryPointHitTestOverride(reference, point, include2DOn3D, out HitTestResult hitTestResult)", "return reference.HitTest(point, include2DOn3D);");
-        AssertGuardBefore(visual, "portableSource.TryPointHitTestOverride(this, pointParams.HitPoint, resultCallback, out _)", "HitTestPoint(filterCallback, resultCallback, pointParams)");
+        AssertGuardBefore(visual, "portableSource.TryPointHitTestOverride(this, pointParams.HitPoint, filterCallback, resultCallback, out _)", "HitTestPoint(filterCallback, resultCallback, pointParams)");
         Assert.True(
             inputManager.IndexOf("if (OperatingSystem.IsWindows())", StringComparison.Ordinal)
                 < inputManager.IndexOf("new Win32KeyboardDevice(this)", StringComparison.Ordinal),

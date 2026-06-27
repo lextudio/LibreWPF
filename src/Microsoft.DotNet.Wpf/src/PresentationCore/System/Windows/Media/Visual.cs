@@ -1929,9 +1929,8 @@ namespace System.Windows.Media
 
                 try
                 {
-                    if (filterCallback == null &&
-                        PresentationSource.CriticalFromVisual(this) is PortablePresentationSource portableSource &&
-                        portableSource.TryPointHitTestOverride(this, pointParams.HitPoint, resultCallback, out _))
+                    if (PresentationSource.CriticalFromVisual(this) is PortablePresentationSource portableSource &&
+                        portableSource.TryPointHitTestOverride(this, pointParams.HitPoint, filterCallback, resultCallback, out _))
                     {
                         return;
                     }
@@ -5370,5 +5369,4 @@ namespace System.Windows.Media
         #endregion Private Fields
     }
 }
-
 

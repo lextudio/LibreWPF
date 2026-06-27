@@ -3,7 +3,10 @@
 
 //                                             
 
+using System.Numerics;
 using System.Windows.Media.Composition;
+using ProGpuLineGeometryCap = ProGPU.Vector.LineGeometryCap;
+using ProGpuLineGeometryHitTesting = ProGPU.Vector.LineGeometryHitTesting;
 
 namespace System.Windows.Media
 {
@@ -120,6 +123,13 @@ namespace System.Windows.Media
 
         internal override bool ContainsInternal(Pen pen, Point hitPoint, double tolerance, ToleranceType type)
         {
+            if (!OperatingSystem.IsWindows() && (pen == null || pen.DoesNotContainGaps))
+            {
+                return pen == null
+                    ? ProGpuLineGeometryHitTesting.ContainsFill(ToProGpuPoint(hitPoint), ToProGpuPoint(StartPoint), ToProGpuPoint(EndPoint))
+                    : StrokeContainsProGpu(StartPoint, EndPoint, pen, hitPoint, tolerance, type);
+            }
+
             unsafe
             {
                 Point* pPoints = stackalloc Point[2];
@@ -139,6 +149,60 @@ namespace System.Windows.Media
                         GetSegmentCount());
                 }
             }
+        }
+
+        private bool StrokeContainsProGpu(Point startPoint, Point endPoint, Pen pen, Point hitPoint, double tolerance, ToleranceType type)
+        {
+            if (pen.Brush == null || pen.Thickness <= 0.0)
+            {
+                return false;
+            }
+
+            if (!TryTransformHitPointToLocal(ref hitPoint))
+            {
+                return false;
+            }
+
+            return ProGpuLineGeometryHitTesting.ContainsStroke(
+                ToProGpuPoint(hitPoint),
+                ToProGpuPoint(startPoint),
+                ToProGpuPoint(endPoint),
+                (float)pen.Thickness,
+                (float)tolerance,
+                type == ToleranceType.Relative,
+                ToProGpuLineCap(pen.StartLineCap),
+                ToProGpuLineCap(pen.EndLineCap));
+        }
+
+        private bool TryTransformHitPointToLocal(ref Point hitPoint)
+        {
+            Transform transform = Transform;
+            if (transform != null && transform != Transform.Identity)
+            {
+                GeneralTransform inverse = transform.Inverse;
+                if (inverse == null || !inverse.TryTransform(hitPoint, out hitPoint))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static Vector2 ToProGpuPoint(Point point)
+        {
+            return new Vector2((float)point.X, (float)point.Y);
+        }
+
+        private static ProGpuLineGeometryCap ToProGpuLineCap(PenLineCap lineCap)
+        {
+            return lineCap switch
+            {
+                PenLineCap.Square => ProGpuLineGeometryCap.Square,
+                PenLineCap.Round => ProGpuLineGeometryCap.Round,
+                PenLineCap.Triangle => ProGpuLineGeometryCap.Triangle,
+                _ => ProGpuLineGeometryCap.Flat
+            };
         }
 
         /// <summary>
@@ -260,4 +324,3 @@ namespace System.Windows.Media
         #endregion
     }
 }
-

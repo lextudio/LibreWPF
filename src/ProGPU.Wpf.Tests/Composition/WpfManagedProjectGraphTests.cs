@@ -4710,6 +4710,15 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Media",
             "Geometry.cs"));
+        var lineGeometry = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "LineGeometry.cs"));
         var rectangleGeometry = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -5505,6 +5514,7 @@ public sealed class WpfManagedProjectGraphTests
         AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())\n            {\n                return ContainsProGpuBounds", "MilCoreApi.MilUtility_PathGeometryHitTest");
         AssertGuardBefore(geometry, "if (!OperatingSystem.IsWindows())\n            {\n                return ContainsPolygonProGpuBounds", "MilCoreApi.MilUtility_PolygonHitTest");
         Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\BoundsHitTesting.cs", presentationCoreProject, StringComparison.Ordinal);
+        Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\LineGeometryHitTesting.cs", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\RectangleGeometryHitTesting.cs", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains(@"external\ProGPU\src\ProGPU.Vector\EllipseGeometryHitTesting.cs", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains("private bool ContainsProGpuBounds(", geometry, StringComparison.Ordinal);
@@ -5534,6 +5544,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("AddArcEndpointRadiusToManagedBounds", pathGeometry, StringComparison.Ordinal);
         Assert.Contains("ParsePathGeometryData(pathData, context)", pathGeometry, StringComparison.Ordinal);
         Assert.Contains("PathStreamGeometryContext", pathGeometry, StringComparison.Ordinal);
+        Assert.Contains("ProGpuLineGeometryHitTesting.ContainsFill(", lineGeometry, StringComparison.Ordinal);
+        Assert.Contains("StrokeContainsProGpu(StartPoint, EndPoint, pen, hitPoint, tolerance, type)", lineGeometry, StringComparison.Ordinal);
+        Assert.Contains("ProGpuLineGeometryHitTesting.ContainsStroke(", lineGeometry, StringComparison.Ordinal);
+        Assert.Contains("pen == null || pen.DoesNotContainGaps", lineGeometry, StringComparison.Ordinal);
+        AssertGuardBefore(lineGeometry, "if (!OperatingSystem.IsWindows() && (pen == null || pen.DoesNotContainGaps))", "return ContainsInternal(\n                        pen");
         Assert.Contains("if (!OperatingSystem.IsWindows())", rectangleGeometry, StringComparison.Ordinal);
         Assert.Contains("FillContainsProGpu(rect, radiusX, radiusY, hitPoint)", rectangleGeometry, StringComparison.Ordinal);
         Assert.Contains("StrokeContainsProGpu(rect, radiusX, radiusY, pen, hitPoint, tolerance, type)", rectangleGeometry, StringComparison.Ordinal);

@@ -10964,8 +10964,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK library Generic.xaml source", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Path.Combine(appRoot, \"ExternalPage.xaml\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Path.Combine(appRoot, \"ExternalSecondPage.xaml\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Path.Combine(appRoot, \"ExternalPageFunction.xaml\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Class=\"ExternalSdkApp.ExternalPage\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("x:Class=\"ExternalSdkApp.ExternalSecondPage\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("x:Class=\"ExternalSdkApp.ExternalPageFunction\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("public partial class ExternalPageFunction : PageFunction<string>", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("public const string DefaultResult = \"External PageFunction return\";", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("OnReturn(new ReturnEventArgs<string>(result ?? DefaultResult));", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Source=\"ExternalPage.xaml\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Navigating=\"OnExternalFrameNavigating\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Navigated=\"OnExternalFrameNavigated\"", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -10981,6 +10986,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ExternalFrameNavigationCanceledCount", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("e.Cancel = true", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("frame.Navigate(new Uri(\"ExternalBlockedPage.xaml\", UriKind.Relative))", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("frame.Navigate(new Uri(\"ExternalPageFunction.xaml\", UriKind.Relative))", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("if (e.Content is ExternalPageFunction pageFunction)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("pageFunction.Return += OnExternalPageFunctionReturn", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("private void OnExternalPageFunctionReturn(object sender, ReturnEventArgs<string> e)", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ExternalPageFunctionReturnCount++", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("LastExternalPageFunctionResult = e.Result", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetMethod(\"_OnFinish\"", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new ReturnEventArgs<string>(\"External PageFunction runtime result\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK canceled frame navigated count", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK canceled navigation retained page", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK initial frame navigation mode", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -10988,6 +11001,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external SDK back frame navigation mode", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK forward frame navigation mode", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK canceled frame navigation mode", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK PageFunction frame navigation mode", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("external SDK PageFunction return result", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK app merged resource dictionary source", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("external SDK app compiled page source", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("NuGet.config", externalSdkHarnessProgram, StringComparison.Ordinal);

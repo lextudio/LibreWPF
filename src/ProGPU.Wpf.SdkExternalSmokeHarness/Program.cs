@@ -2528,6 +2528,50 @@ internal static class Program
             """);
 
         WriteFile(
+            Path.Combine(appRoot, "ExternalPageFunction.xaml"),
+            """
+            <PageFunction
+                x:Class="ExternalSdkApp.ExternalPageFunction"
+                x:TypeArguments="sys:String"
+                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                xmlns:sys="clr-namespace:System;assembly=System.Private.CoreLib"
+                Title="External PageFunction">
+                <StackPanel>
+                    <TextBlock
+                        x:Name="ExternalPageFunctionTitle"
+                        Text="External SDK page function" />
+                    <TextBlock
+                        x:Name="ExternalPageFunctionSubtitle"
+                        Text="External SDK PageFunction return path" />
+                </StackPanel>
+            </PageFunction>
+            """);
+
+        WriteFile(
+            Path.Combine(appRoot, "ExternalPageFunction.xaml.cs"),
+            """
+            using System.Windows.Navigation;
+
+            namespace ExternalSdkApp;
+
+            public partial class ExternalPageFunction : PageFunction<string>
+            {
+                public const string DefaultResult = "External PageFunction return";
+
+                public ExternalPageFunction()
+                {
+                    InitializeComponent();
+                }
+
+                public void Complete(string? result = null)
+                {
+                    OnReturn(new ReturnEventArgs<string>(result ?? DefaultResult));
+                }
+            }
+            """);
+
+        WriteFile(
             Path.Combine(appRoot, "ExternalLoadComponentView.xaml"),
             """
             <UserControl
@@ -3677,6 +3721,10 @@ internal static class Program
 
                 public string? LastExternalFrameCanceledNavigationMode { get; private set; }
 
+                public int ExternalPageFunctionReturnCount { get; private set; }
+
+                public string? LastExternalPageFunctionResult { get; private set; }
+
                 public int ExternalWindowClosingCount { get; private set; }
 
                 public int ExternalWindowClosedCount { get; private set; }
@@ -3990,12 +4038,23 @@ internal static class Program
                     ExternalFrameNavigatedCount++;
                     LastExternalFrameNavigatedUri = e.Uri?.ToString();
                     LastExternalFrameContentType = e.Content?.GetType().FullName;
+                    if (e.Content is ExternalPageFunction pageFunction)
+                    {
+                        pageFunction.Return -= OnExternalPageFunctionReturn;
+                        pageFunction.Return += OnExternalPageFunctionReturn;
+                    }
                 }
 
                 private void OnExternalFrameLoadCompleted(object sender, NavigationEventArgs e)
                 {
                     ExternalFrameLoadCompletedCount++;
                     LastExternalFrameLoadCompletedUri = e.Uri?.ToString();
+                }
+
+                private void OnExternalPageFunctionReturn(object sender, ReturnEventArgs<string> e)
+                {
+                    ExternalPageFunctionReturnCount++;
+                    LastExternalPageFunctionResult = e.Result;
                 }
 
                 private void OnExternalCommandCanExecute(object sender, CanExecuteRoutedEventArgs e)
@@ -5110,6 +5169,44 @@ internal static class Program
                     AssertEqual(typeof(ExternalSecondPage).FullName, window.LastExternalFrameContentType, "external SDK canceled frame retained content type");
                     AssertEqual(true, frame.CanGoBack, "external SDK frame can go back after canceled navigation");
                     AssertEqual(false, frame.CanGoForward, "external SDK frame cannot go forward after canceled navigation");
+
+                    int navigatingCountBeforePageFunction = window.ExternalFrameNavigatingCount;
+                    int navigatedCountBeforePageFunction = window.ExternalFrameNavigatedCount;
+                    int loadCompletedCountBeforePageFunction = window.ExternalFrameLoadCompletedCount;
+                    AssertEqual(true, frame.Navigate(new Uri("ExternalPageFunction.xaml", UriKind.Relative)), "external SDK PageFunction navigate result");
+                    DrainDispatcher();
+
+                    var pageFunction = RequireType<ExternalPageFunction>(
+                        frame.Content,
+                        "external SDK compiled PageFunction");
+                    var pageFunctionTitle = RequireType<TextBlock>(
+                        pageFunction.FindName("ExternalPageFunctionTitle"),
+                        "external SDK compiled PageFunction title");
+                    var pageFunctionSubtitle = RequireType<TextBlock>(
+                        pageFunction.FindName("ExternalPageFunctionSubtitle"),
+                        "external SDK compiled PageFunction subtitle");
+                    AssertEqual("External SDK page function", pageFunctionTitle.Text, "external SDK compiled PageFunction title text");
+                    AssertEqual("External SDK PageFunction return path", pageFunctionSubtitle.Text, "external SDK compiled PageFunction subtitle text");
+                    AssertAtLeast(navigatingCountBeforePageFunction + 1, window.ExternalFrameNavigatingCount, "external SDK PageFunction frame navigating count");
+                    AssertAtLeast(navigatedCountBeforePageFunction + 1, window.ExternalFrameNavigatedCount, "external SDK PageFunction frame navigated count");
+                    AssertAtLeast(loadCompletedCountBeforePageFunction + 1, window.ExternalFrameLoadCompletedCount, "external SDK PageFunction frame load completed count");
+                    AssertEndsWith(window.LastExternalFrameNavigatedUri, "ExternalPageFunction.xaml", "external SDK PageFunction frame navigated URI");
+                    AssertEqual("New", window.LastExternalFrameNavigationMode, "external SDK PageFunction frame navigation mode");
+                    AssertEqual(typeof(ExternalPageFunction).FullName, window.LastExternalFrameContentType, "external SDK PageFunction frame content type");
+                    AssertEqual("External PageFunction", pageFunction.Title, "external SDK compiled PageFunction title");
+
+                    int pageFunctionReturnCountBefore = window.ExternalPageFunctionReturnCount;
+                    MethodInfo onFinish = pageFunction.GetType()
+                        .BaseType?
+                        .GetMethod("_OnFinish", BindingFlags.Instance | BindingFlags.NonPublic)
+                        ?? throw new MissingMethodException(pageFunction.GetType().FullName, "_OnFinish");
+                    onFinish.Invoke(
+                        pageFunction,
+                        new object[] { new ReturnEventArgs<string>("External PageFunction runtime result") });
+                    DrainDispatcher();
+
+                    AssertAtLeast(pageFunctionReturnCountBefore + 1, window.ExternalPageFunctionReturnCount, "external SDK PageFunction return count");
+                    AssertEqual("External PageFunction runtime result", window.LastExternalPageFunctionResult, "external SDK PageFunction return result");
                 }
 
                 private static void ValidateXceedToolkitAndAvalonDock(MainWindow window, bool expectLoaded)

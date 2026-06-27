@@ -1984,6 +1984,58 @@ internal static class Program
                             </StackPanel>
                         </xctk:SplitButton.DropDownContent>
                     </xctk:SplitButton>
+                    <xctk:RichTextBox
+                        x:Name="ExternalToolkitRichTextBox"
+                        Height="70"
+                        Text="{Binding ExternalToolkitRichText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                        <xctk:RichTextBox.TextFormatter>
+                            <xctk:PlainTextFormatter />
+                        </xctk:RichTextBox.TextFormatter>
+                    </xctk:RichTextBox>
+                    <xctk:MultiLineTextEditor
+                        x:Name="ExternalToolkitMultiLineTextEditor"
+                        Height="64"
+                        Text="{Binding ExternalToolkitMultilineText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <xctk:ButtonSpinner
+                        x:Name="ExternalToolkitButtonSpinner"
+                        ShowSpinner="True"
+                        SpinnerLocation="Right"
+                        Spin="OnExternalToolkitButtonSpinnerSpin">
+                        <Border Padding="4">
+                            <TextBlock
+                                x:Name="ExternalToolkitButtonSpinnerContent"
+                                Text="{Binding ExternalToolkitSpinnerCount, StringFormat=External spinner count {0}}" />
+                        </Border>
+                    </xctk:ButtonSpinner>
+                    <xctk:Wizard
+                        x:Name="ExternalToolkitWizard"
+                        Height="160"
+                        BackButtonContent="Back"
+                        NextButtonContent="Next"
+                        FinishButtonContent="Finish"
+                        CancelButtonContent="Cancel"
+                        FinishButtonClosesWindow="False"
+                        CancelButtonClosesWindow="False"
+                        PageChanged="OnExternalToolkitWizardPageChanged"
+                        Finish="OnExternalToolkitWizardFinish"
+                        Cancel="OnExternalToolkitWizardCancel">
+                        <xctk:WizardPage
+                            x:Name="ExternalToolkitWizardScopePage"
+                            Title="External scope"
+                            Description="External SDK wizard scope"
+                            PageType="Interior"
+                            CanFinish="False">
+                            <TextBlock Text="{Binding SelectedExternalItem.Name}" />
+                        </xctk:WizardPage>
+                        <xctk:WizardPage
+                            x:Name="ExternalToolkitWizardReviewPage"
+                            Title="External review"
+                            Description="External SDK wizard review"
+                            PageType="Interior"
+                            CanFinish="True">
+                            <TextBlock Text="{Binding ExternalToolkitWizardStatus}" />
+                        </xctk:WizardPage>
+                    </xctk:Wizard>
                     <xcad:DockingManager
                         x:Name="ExternalDockManager"
                         AllowMixedOrientation="True"
@@ -3027,6 +3079,20 @@ internal static class Program
 
                 public string ExternalToolkitActionStatus { get; set; } = "external toolkit idle";
 
+                public string ExternalToolkitRichText { get; set; } = "external toolkit rich initial";
+
+                public string ExternalToolkitMultilineText { get; set; } = "external toolkit multiline initial";
+
+                public int ExternalToolkitSpinnerCount { get; private set; } = 3;
+
+                public int ExternalToolkitWizardPageChanges { get; private set; }
+
+                public int ExternalToolkitWizardFinishes { get; private set; }
+
+                public int ExternalToolkitWizardCancels { get; private set; }
+
+                public string ExternalToolkitWizardStatus { get; private set; } = "external toolkit wizard idle";
+
                 public string ValidationText { get; set; } = "valid external text";
 
                 public string DataErrorText { get; set; } = "data: valid initial";
@@ -3958,6 +4024,38 @@ internal static class Program
                 {
                     ExternalToolkitActionStatus = "external toolkit split dropdown action";
                     ExternalToolkitSplitButton.IsOpen = false;
+                }
+
+                private void OnExternalToolkitButtonSpinnerSpin(object sender, Xceed.Wpf.Toolkit.SpinEventArgs e)
+                {
+                    ApplyExternalToolkitSpinnerDelta(e.Direction == Xceed.Wpf.Toolkit.SpinDirection.Increase ? 1 : -1);
+                }
+
+                internal void ApplyExternalToolkitSpinnerDelta(int delta)
+                {
+                    ExternalToolkitSpinnerCount += delta;
+                    OnPropertyChanged(nameof(ExternalToolkitSpinnerCount));
+                }
+
+                private void OnExternalToolkitWizardPageChanged(object sender, RoutedEventArgs e)
+                {
+                    ExternalToolkitWizardPageChanges++;
+                    ExternalToolkitWizardStatus = ExternalToolkitWizard.CurrentPage?.Title ?? "external toolkit wizard no page";
+                    OnPropertyChanged(nameof(ExternalToolkitWizardStatus));
+                }
+
+                private void OnExternalToolkitWizardFinish(object sender, Xceed.Wpf.Toolkit.Core.CancelRoutedEventArgs e)
+                {
+                    ExternalToolkitWizardFinishes++;
+                    ExternalToolkitWizardStatus = "external toolkit wizard finished";
+                    OnPropertyChanged(nameof(ExternalToolkitWizardStatus));
+                }
+
+                private void OnExternalToolkitWizardCancel(object sender, RoutedEventArgs e)
+                {
+                    ExternalToolkitWizardCancels++;
+                    ExternalToolkitWizardStatus = "external toolkit wizard canceled";
+                    OnPropertyChanged(nameof(ExternalToolkitWizardStatus));
                 }
 
                 private void OnExternalStyleEventButtonClick(object sender, RoutedEventArgs e)
@@ -4954,10 +5052,57 @@ internal static class Program
                     AssertEqual(false, dropDownButton.IsOpen, "external SDK Xceed DropDownButton initial popup state");
                     AssertEqual(false, splitButton.IsOpen, "external SDK Xceed SplitButton initial popup state");
 
+                    var richTextBox = RequireType<Xceed.Wpf.Toolkit.RichTextBox>(
+                        window.FindName("ExternalToolkitRichTextBox"),
+                        "external SDK Xceed RichTextBox");
+                    AssertEqual("external toolkit rich initial", richTextBox.Text, "external SDK Xceed RichTextBox initial binding");
+                    AssertEqual("PlainTextFormatter", richTextBox.TextFormatter.GetType().Name, "external SDK Xceed RichTextBox text formatter");
+                    richTextBox.Text = "external toolkit rich updated";
+                    richTextBox.GetBindingExpression(Xceed.Wpf.Toolkit.RichTextBox.TextProperty)?.UpdateSource();
+                    AssertEqual("external toolkit rich updated", window.ExternalToolkitRichText, "external SDK Xceed RichTextBox source update");
+
+                    var multilineEditor = RequireType<Xceed.Wpf.Toolkit.MultiLineTextEditor>(
+                        window.FindName("ExternalToolkitMultiLineTextEditor"),
+                        "external SDK Xceed MultiLineTextEditor");
+                    AssertEqual("external toolkit multiline initial", multilineEditor.Text, "external SDK Xceed MultiLineTextEditor initial binding");
+                    multilineEditor.Text = "external toolkit multiline updated\nsecond line";
+                    multilineEditor.GetBindingExpression(Xceed.Wpf.Toolkit.MultiLineTextEditor.TextProperty)?.UpdateSource();
+                    AssertEqual("external toolkit multiline updated\nsecond line", window.ExternalToolkitMultilineText, "external SDK Xceed MultiLineTextEditor source update");
+
+                    var buttonSpinner = RequireType<Xceed.Wpf.Toolkit.ButtonSpinner>(
+                        window.FindName("ExternalToolkitButtonSpinner"),
+                        "external SDK Xceed ButtonSpinner");
+                    AssertEqual(true, buttonSpinner.ShowSpinner, "external SDK Xceed ButtonSpinner visible spinner");
+                    AssertEqual("Right", Convert.ToString(buttonSpinner.SpinnerLocation, CultureInfo.InvariantCulture), "external SDK Xceed ButtonSpinner spinner location");
+                    AssertEqual(3, window.ExternalToolkitSpinnerCount, "external SDK Xceed ButtonSpinner initial count");
+
+                    var wizard = RequireType<Xceed.Wpf.Toolkit.Wizard>(
+                        window.FindName("ExternalToolkitWizard"),
+                        "external SDK Xceed Wizard");
+                    var scopePage = RequireType<Xceed.Wpf.Toolkit.WizardPage>(
+                        window.FindName("ExternalToolkitWizardScopePage"),
+                        "external SDK Xceed Wizard scope page");
+                    var reviewPage = RequireType<Xceed.Wpf.Toolkit.WizardPage>(
+                        window.FindName("ExternalToolkitWizardReviewPage"),
+                        "external SDK Xceed Wizard review page");
+                    AssertEqual(2, wizard.Items.Count, "external SDK Xceed Wizard page count");
+                    AssertEqual("External scope", scopePage.Title, "external SDK Xceed Wizard scope title");
+                    AssertEqual("External SDK wizard scope", scopePage.Description, "external SDK Xceed Wizard scope description");
+                    AssertEqual("Interior", scopePage.PageType.ToString(), "external SDK Xceed Wizard scope page type");
+                    AssertEqual(false, scopePage.CanFinish.GetValueOrDefault(), "external SDK Xceed Wizard scope finish capability");
+                    AssertEqual("External review", reviewPage.Title, "external SDK Xceed Wizard review title");
+                    AssertEqual("External SDK wizard review", reviewPage.Description, "external SDK Xceed Wizard review description");
+                    AssertEqual("Interior", reviewPage.PageType.ToString(), "external SDK Xceed Wizard review page type");
+                    AssertEqual(true, reviewPage.CanFinish.GetValueOrDefault(), "external SDK Xceed Wizard review finish capability");
+                    AssertEqual(false, wizard.FinishButtonClosesWindow, "external SDK Xceed Wizard finish close behavior");
+                    AssertEqual(false, wizard.CancelButtonClosesWindow, "external SDK Xceed Wizard cancel close behavior");
+
                     if (expectLoaded)
                     {
                         ValidateExternalToolkitDropDownButton(window, dropDownButton);
                         ValidateExternalToolkitSplitButton(window, splitButton);
+                        ValidateExternalToolkitButtonSpinner(window);
+                        ValidateExternalToolkitWizard(window, wizard, reviewPage);
                     }
 
                     var dockManager = RequireType<Xceed.Wpf.AvalonDock.DockingManager>(
@@ -5047,6 +5192,48 @@ internal static class Program
                     }
 
                     AssertEqual(1, documentPane.ChildrenCount, "external SDK AvalonDock document pane preserved child count");
+                }
+
+                private static void ValidateExternalToolkitButtonSpinner(MainWindow window)
+                {
+                    int countBefore = window.ExternalToolkitSpinnerCount;
+                    window.ApplyExternalToolkitSpinnerDelta(1);
+                    AssertEqual(countBefore + 1, window.ExternalToolkitSpinnerCount, "external SDK Xceed ButtonSpinner increased count");
+                    window.ApplyExternalToolkitSpinnerDelta(-1);
+                    AssertEqual(countBefore, window.ExternalToolkitSpinnerCount, "external SDK Xceed ButtonSpinner restored count");
+                }
+
+                private static void ValidateExternalToolkitWizard(
+                    MainWindow window,
+                    Xceed.Wpf.Toolkit.Wizard wizard,
+                    Xceed.Wpf.Toolkit.WizardPage reviewPage)
+                {
+                    if (wizard.CurrentPage == null)
+                    {
+                        throw new InvalidOperationException("Expected external SDK Xceed Wizard to select an initial page when loaded.");
+                    }
+
+                    int pageChangesBefore = window.ExternalToolkitWizardPageChanges;
+                    wizard.CurrentPage = reviewPage;
+                    DrainDispatcher();
+                    AssertEqual(reviewPage, wizard.CurrentPage, "external SDK Xceed Wizard current page after review navigation");
+                    AssertAtLeast(pageChangesBefore + 1, window.ExternalToolkitWizardPageChanges, "external SDK Xceed Wizard page change count");
+                    AssertEqual("External review", window.ExternalToolkitWizardStatus, "external SDK Xceed Wizard page status");
+
+                    int finishesBefore = window.ExternalToolkitWizardFinishes;
+                    wizard.RaiseEvent(new Xceed.Wpf.Toolkit.Core.CancelRoutedEventArgs
+                    {
+                        RoutedEvent = Xceed.Wpf.Toolkit.Wizard.FinishEvent,
+                    });
+                    DrainDispatcher();
+                    AssertAtLeast(finishesBefore + 1, window.ExternalToolkitWizardFinishes, "external SDK Xceed Wizard finish count");
+                    AssertEqual("external toolkit wizard finished", window.ExternalToolkitWizardStatus, "external SDK Xceed Wizard finish status");
+
+                    int cancelsBefore = window.ExternalToolkitWizardCancels;
+                    wizard.RaiseEvent(new RoutedEventArgs(Xceed.Wpf.Toolkit.Wizard.CancelEvent));
+                    DrainDispatcher();
+                    AssertAtLeast(cancelsBefore + 1, window.ExternalToolkitWizardCancels, "external SDK Xceed Wizard cancel count");
+                    AssertEqual("external toolkit wizard canceled", window.ExternalToolkitWizardStatus, "external SDK Xceed Wizard cancel status");
                 }
 
                 private static string SerializeExternalAvalonDockLayout(

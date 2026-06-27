@@ -8,6 +8,7 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ProGPU.Wpf.SdkSwitchLibrary;component/Resources/LibraryResources.xaml" />
                 <ResourceDictionary Source="SmokeResources.xaml" />
             </ResourceDictionary.MergedDictionaries>
 

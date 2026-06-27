@@ -6515,6 +6515,25 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.SdkSwitchLibrary",
             "LibraryPanel.xaml.cs");
+        var libraryThemedControlPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchLibrary",
+            "LibraryThemedControl.cs");
+        var libraryResourcesXamlPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchLibrary",
+            "Resources",
+            "LibraryResources.xaml");
+        var libraryGenericThemeXamlPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchLibrary",
+            "Themes",
+            "Generic.xaml");
+        var libraryAssemblyInfoPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchLibrary",
+            "Properties",
+            "AssemblyInfo.cs");
         var smokeNuGetConfigPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
@@ -6914,6 +6933,10 @@ public sealed class WpfManagedProjectGraphTests
         var libraryNuGetConfig = File.ReadAllText(libraryNuGetConfigPath);
         var libraryPanelXaml = File.ReadAllText(libraryPanelXamlPath);
         var libraryPanelCodeBehind = File.ReadAllText(libraryPanelCodeBehindPath);
+        var libraryThemedControl = File.ReadAllText(libraryThemedControlPath);
+        var libraryResourcesXaml = File.ReadAllText(libraryResourcesXamlPath);
+        var libraryGenericThemeXaml = File.ReadAllText(libraryGenericThemeXamlPath);
+        var libraryAssemblyInfo = File.ReadAllText(libraryAssemblyInfoPath);
         var smokeNuGetConfig = File.ReadAllText(smokeNuGetConfigPath);
         var smokeAppXaml = File.ReadAllText(smokeAppXamlPath);
         var smokeAppCodeBehind = File.ReadAllText(smokeAppCodeBehindPath);
@@ -8459,6 +8482,16 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public partial class LibraryPanel : UserControl", libraryPanelCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DependencyProperty.Register", libraryPanelCodeBehind, StringComparison.Ordinal);
         Assert.Contains("InitializeComponent();", libraryPanelCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class LibraryThemedControl : Control", libraryThemedControl, StringComparison.Ordinal);
+        Assert.Contains("DefaultStyleKeyProperty.OverrideMetadata", libraryThemedControl, StringComparison.Ordinal);
+        Assert.Contains("[assembly: ThemeInfo(ResourceDictionaryLocation.None, ResourceDictionaryLocation.SourceAssembly)]", libraryAssemblyInfo, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"LibraryMergedAccentBrush\"", libraryResourcesXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"LibraryMergedMessage\"", libraryResourcesXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Key=\"LibraryMergedPadding\"", libraryResourcesXaml, StringComparison.Ordinal);
+        Assert.Contains("ComponentResourceKey TypeInTargetAssembly={x:Type local:LibraryThemedControl}, ResourceId=LibraryThemeBorderBrush", libraryGenericThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("TargetType=\"{x:Type local:LibraryThemedControl}\"", libraryGenericThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"LibraryThemeText\"", libraryGenericThemeXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"LibraryThemeRoot\"", libraryGenericThemeXaml, StringComparison.Ordinal);
         Assert.Contains("artifacts/packages/Release/NonShipping", smokeNuGetConfig, StringComparison.Ordinal);
         Assert.Contains("globalPackagesFolder", smokeNuGetConfig, StringComparison.Ordinal);
         Assert.Contains("artifacts/nuget/ProGPU.Wpf.SdkSwitchSmoke", smokeNuGetConfig, StringComparison.Ordinal);
@@ -8469,6 +8502,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("artifacts/nuget/ProGPU.Wpf.SdkSwitchSmoke", libraryNuGetConfig, StringComparison.Ordinal);
         Assert.Contains("dotnet-eng", libraryNuGetConfig, StringComparison.Ordinal);
         Assert.Contains("dotnet11-transport", libraryNuGetConfig, StringComparison.Ordinal);
+        Assert.Contains("ResourceDictionary Source=\"/ProGPU.Wpf.SdkSwitchLibrary;component/Resources/LibraryResources.xaml\"", smokeAppXaml, StringComparison.Ordinal);
         Assert.Contains("ResourceDictionary Source=\"SmokeResources.xaml\"", smokeAppXaml, StringComparison.Ordinal);
         Assert.Contains("SmokeAccentBrush", smokeAppXaml, StringComparison.Ordinal);
         Assert.Contains("Startup=\"OnAppStartup\"", smokeAppXaml, StringComparison.Ordinal);
@@ -8849,6 +8883,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("library:LibraryPanel", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"CompiledLibraryPanel\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Title=\"SDK library panel\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"LibraryMergedResourceText\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Foreground=\"{DynamicResource LibraryMergedAccentBrush}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Padding=\"{StaticResource LibraryMergedPadding}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{StaticResource LibraryMergedMessage}\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("library:LibraryThemedControl", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"CompiledLibraryThemedControl\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"SDK library themed control\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("local:SmokeThemedControl", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ThemedSmokeControl\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"Generic theme default style\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -11406,6 +11447,21 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("compiled SDK library element-name tag binding", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled SDK library BAML text", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled SDK library resource brush color", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("application referenced library merged accent brush color", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("application referenced library merged string resource", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("application referenced library merged padding left", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"LibraryMergedResourceText\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("referenced library merged foreground color", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("referenced library merged padding bottom", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"CompiledLibraryThemedControl\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.SdkSwitchLibrary.LibraryThemedControl", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled SDK library themed control default template", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"LibraryThemeText\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled SDK library themed control template binding", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("FindName\", \"LibraryThemeRoot\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled SDK library themed control background color", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled SDK library themed control component resource color", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled SDK library themed control border thickness left", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"ThemedSmokeControl\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("themed custom control default template", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"ThemeText\"", runtimeHarnessProgram, StringComparison.Ordinal);

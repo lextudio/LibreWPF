@@ -647,6 +647,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryQueryBoundsAllClassifiesEllipseRectRegionIntersectionDetailOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsEllipseStrokeHoleOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("Assert.Equal(112, Marshal.SizeOf<GpuHitTestPrimitive>());", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryBoundsAllRejectsRoundedRectangleCornerFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryBoundsAllRejectsRectangleStrokeHoleOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("LineStrokeCachesDirectionAndLengthForGpuHitTesting", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsLineStrokeBoundsFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsLineStrokeFlatCapFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
@@ -659,6 +661,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("fn classify_bounds_intersection_detail(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn rect_intersects_ellipse(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn rect_intersects_ellipse_stroke(", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn rect_intersects_rounded_rect(", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn rect_intersects_rect_stroke(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn segment_intersects_rect(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("data2: vec4<f32>,", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("let direction = primitive.data2.xy;", proGpuHitTesting, StringComparison.Ordinal);

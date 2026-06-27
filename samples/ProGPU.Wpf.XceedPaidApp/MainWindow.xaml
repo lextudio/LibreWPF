@@ -63,6 +63,11 @@
                               SourcePropertyName="Score" />
       </xcdg:DataGridCollectionViewSource.StatFunctions>
     </xcdg:DataGridCollectionViewSource>
+    <xcdg:DataGridVirtualizingQueryableCollectionViewSource x:Key="VirtualPaidRowsView"
+                                                            QueryableSource="{Binding VirtualRows}"
+                                                            PageSize="256"
+                                                            MaxRealizedItemCount="1024"
+                                                            CommitMode="EditCommitted" />
     <Style x:Key="PanelHeaderText" TargetType="{x:Type TextBlock}">
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="Foreground" Value="#12333D" />
@@ -361,6 +366,63 @@
                     <xcdg:Column FieldName="Score" />
                     <xcdg:Column FieldName="Updated" />
                     <xcdg:Column FieldName="Active" />
+                  </xcdg:DataGridControl.Columns>
+                </xcdg:DataGridControl>
+              </Grid>
+            </xcad:LayoutDocument>
+            <xcad:LayoutDocument x:Name="VirtualDataGridDocument"
+                                 Title="Virtual DataGrid">
+              <Grid Margin="12">
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <DockPanel Margin="0,0,0,8">
+                  <StackPanel DockPanel.Dock="Left">
+                    <TextBlock FontSize="18"
+                               FontWeight="SemiBold"
+                               Text="Xceed virtualizing DataGrid" />
+                    <TextBlock Foreground="#60727C"
+                               Text="Commercial DataGridVirtualizingQueryableCollectionViewSource over the same 100k-row model, with bounded pages and realized-item cache for performance evaluation." />
+                  </StackPanel>
+                  <TextBlock DockPanel.Dock="Right"
+                             VerticalAlignment="Center"
+                             Foreground="#60727C"
+                             Text="{Binding RowCount, StringFormat=Virtual source items: {0:N0}}" />
+                </DockPanel>
+                <xcdg:DataGridControl x:Name="VirtualPaidDataGrid"
+                                      Grid.Row="1"
+                                      AutomationProperties.AutomationId="VirtualPaidXceedDataGridAutomation"
+                                      AutoCreateColumns="False"
+                                      ReadOnly="True"
+                                      ItemScrollingBehavior="Deferred"
+                                      NavigationBehavior="RowOnly"
+                                      SelectionMode="Single"
+                                      ItemsSource="{Binding Source={StaticResource VirtualPaidRowsView}}">
+                  <xcdg:DataGridControl.View>
+                    <xcdg:TableView ColumnStretchMode="StretchAll"
+                                    FixedColumnCount="1"
+                                    UseDefaultHeadersFooters="False">
+                      <xcdg:TableView.Theme>
+                        <xcdgtheme:Office2007BlueTheme />
+                      </xcdg:TableView.Theme>
+                      <xcdg:TableView.FixedHeaders>
+                        <DataTemplate>
+                          <xcdg:ColumnManagerRow AllowColumnReorder="True"
+                                                 AllowColumnResize="True"
+                                                 AllowSort="True" />
+                        </DataTemplate>
+                      </xcdg:TableView.FixedHeaders>
+                    </xcdg:TableView>
+                  </xcdg:DataGridControl.View>
+                  <xcdg:DataGridControl.Columns>
+                    <xcdg:Column FieldName="Id" />
+                    <xcdg:Column FieldName="Title" />
+                    <xcdg:Column FieldName="Owner" />
+                    <xcdg:Column FieldName="Category" />
+                    <xcdg:Column FieldName="Status" />
+                    <xcdg:Column FieldName="Score" />
+                    <xcdg:Column FieldName="Updated" />
                   </xcdg:DataGridControl.Columns>
                 </xcdg:DataGridControl>
               </Grid>

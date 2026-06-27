@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Data;
@@ -37,12 +38,15 @@ public partial class MainWindow : Window
 
     internal DataGridCollectionViewSource PaidRowsViewSource => (DataGridCollectionViewSource)FindResource("PaidRowsView");
 
+    internal DataGridVirtualizingQueryableCollectionViewSource VirtualPaidRowsViewSource => (DataGridVirtualizingQueryableCollectionViewSource)FindResource("VirtualPaidRowsView");
+
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         ViewModel.Status = "Paid Xceed Toolkit/DataGrid loaded";
         ViewModel.Activity.Add("Loaded paid Toolkit Plus, AvalonDock Windows10 theme, and Xceed DataGrid document");
         ViewModel.Activity.Add("Paid DataGrid view applies active-row filtering, category grouping, updated-date sorting, stats, details, search, merged headers, and Office2007 theme");
         ViewModel.Activity.Add("Paid DataGrid export, settings persistence, Tableflow, and Cardflow 3D commands are available");
+        ViewModel.Activity.Add("Paid DataGrid virtualizing queryable source uses bounded pages and realized-item cache");
     }
 
     private void PaidRowsView_Filter(object sender, FilterEventArgs e)
@@ -209,7 +213,7 @@ internal sealed class XceedPaidViewModel : INotifyPropertyChanged
     internal XceedPaidViewModel(XceedPaidLicenseStatus licenseStatus)
     {
         LicenseStatusText = licenseStatus.DescribePublic();
-        PackageStatus = "Toolkit Plus 5.2, DataGrid 7.3, AvalonDock Windows10 theme, export/settings APIs, Views3D/theme-pack assemblies";
+        PackageStatus = "Toolkit Plus 5.2, DataGrid 7.3, AvalonDock Windows10 theme, virtualization, export/settings APIs, Views3D/theme-pack assemblies";
         Rows = CreateRows(100_000);
         _selectedRow = Rows[0];
         Activity =
@@ -217,13 +221,16 @@ internal sealed class XceedPaidViewModel : INotifyPropertyChanged
             "Created 100,000 paid DataGrid rows",
             "Configured explicit Xceed DataGrid columns",
             "Configured Toolkit Plus Material controls",
-            "Configured paid DataGrid merged headers, search, export, settings, and view commands"
+            "Configured paid DataGrid merged headers, search, export, settings, and view commands",
+            "Configured paid DataGrid virtualizing queryable source"
         ];
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public ObservableCollection<PaidGridItem> Rows { get; }
+
+    public IQueryable<PaidGridItem> VirtualRows => Rows.AsQueryable();
 
     public ObservableCollection<string> Activity { get; }
 

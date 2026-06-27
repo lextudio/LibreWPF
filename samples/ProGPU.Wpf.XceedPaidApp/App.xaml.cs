@@ -187,6 +187,9 @@ internal static class XceedPaidSelfTest
         AssertType<Xceed.Wpf.Toolkit.MaterialSwitch>("Toolkit Plus MaterialSwitch");
         AssertType<Xceed.Wpf.DataGrid.DataGridControl>("Xceed DataGridControl");
         AssertType<Xceed.Wpf.DataGrid.DataGridCollectionViewSource>("Xceed DataGridCollectionViewSource");
+        AssertType<Xceed.Wpf.DataGrid.DataGridVirtualizingCollectionView>("Xceed DataGrid virtualizing collection view");
+        AssertType<Xceed.Wpf.DataGrid.DataGridVirtualizingQueryableCollectionViewSource>("Xceed DataGrid virtualizing queryable collection view source");
+        AssertType<Xceed.Wpf.DataGrid.DataGridVirtualizingPanel>("Xceed DataGrid virtualizing panel");
         AssertType<Xceed.Wpf.DataGrid.Views.TableView>("Xceed DataGrid TableView");
         AssertType<Xceed.Wpf.DataGrid.Column>("Xceed DataGrid Column");
         AssertType<Xceed.Wpf.DataGrid.DataGridGroupDescription>("Xceed DataGrid group description");
@@ -245,9 +248,11 @@ internal static class XceedPaidSelfTest
 
         var viewModel = window.ViewModel;
         var rowsView = window.PaidRowsViewSource;
+        var virtualRowsView = window.VirtualPaidRowsViewSource;
         AssertEqual(100_000, viewModel.RowCount, "paid DataGrid row count");
         AssertEqual(66_667, viewModel.ActiveRowCount, "paid DataGrid active filtered row count");
         AssertEqual(viewModel.Rows[0], viewModel.SelectedRow, "paid DataGrid initial selected row");
+        AssertEqual(100_000, viewModel.VirtualRows.Count(), "paid DataGrid virtual queryable row count");
         AssertEqual(true, viewModel.Rows[0].Details.Count >= 2, "paid DataGrid lazy detail row data");
         AssertEqual(Xceed.Wpf.DataGrid.AutoFilterMode.And, rowsView.AutoFilterMode, "paid DataGrid auto-filter mode");
         AssertEqual(Xceed.Wpf.DataGrid.FilterCriteriaMode.And, rowsView.FilterCriteriaMode, "paid DataGrid filter criteria mode");
@@ -258,6 +263,9 @@ internal static class XceedPaidSelfTest
         AssertEqual(1, rowsView.GroupDescriptions.Count, "paid DataGrid group description count");
         AssertEqual(1, rowsView.SortDescriptions.Count, "paid DataGrid sort description count");
         AssertEqual(2, rowsView.StatFunctions.Count, "paid DataGrid stat function count");
+        AssertEqual(256, virtualRowsView.PageSize, "paid DataGrid virtual page size");
+        AssertEqual(1024, virtualRowsView.MaxRealizedItemCount, "paid DataGrid virtual realized-item cache");
+        AssertEqual(Xceed.Wpf.DataGrid.CommitMode.EditCommitted, virtualRowsView.CommitMode, "paid DataGrid virtual commit mode");
         AssertEqual("ProGPU", window.PaidDataGrid.SearchText, "paid DataGrid search text binding");
         AssertEqual(false, window.PaidDataGrid.AutoCreateColumns, "paid DataGrid auto columns");
         AssertEqual(true, window.PaidDataGrid.ReadOnly, "paid DataGrid read-only state");
@@ -268,6 +276,10 @@ internal static class XceedPaidSelfTest
         AssertEqual(Xceed.Wpf.DataGrid.ItemScrollingBehavior.Immediate, window.PaidDataGrid.ItemScrollingBehavior, "paid DataGrid scroll behavior");
         AssertEqual(Xceed.Wpf.DataGrid.NavigationBehavior.RowOnly, window.PaidDataGrid.NavigationBehavior, "paid DataGrid navigation behavior");
         AssertEqual(8, window.PaidDataGrid.Columns.Count, "paid DataGrid explicit columns");
+        AssertEqual(false, window.VirtualPaidDataGrid.AutoCreateColumns, "paid virtual DataGrid auto columns");
+        AssertEqual(true, window.VirtualPaidDataGrid.ReadOnly, "paid virtual DataGrid read-only state");
+        AssertEqual(Xceed.Wpf.DataGrid.ItemScrollingBehavior.Deferred, window.VirtualPaidDataGrid.ItemScrollingBehavior, "paid virtual DataGrid scroll behavior");
+        AssertEqual(7, window.VirtualPaidDataGrid.Columns.Count, "paid virtual DataGrid explicit columns");
         AssertEqual(viewModel.SelectedRow, window.PaidDataGrid.SelectedItem, "paid DataGrid selected item");
         AssertEqual(true, window.PaidDataGrid.View is Xceed.Wpf.DataGrid.Views.TableView, "paid DataGrid table view");
         AssertEqual(true, window.PaidTableView.Theme is Xceed.Wpf.DataGrid.ThemePack.Office2007BlueTheme, "paid DataGrid ThemePack table view theme");

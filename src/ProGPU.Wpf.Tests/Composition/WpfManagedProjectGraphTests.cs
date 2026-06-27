@@ -6555,6 +6555,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AssertType<Xceed.Wpf.Toolkit.MaterialSwitch>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.DataGridControl>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.DataGridCollectionViewSource>", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertType<Xceed.Wpf.DataGrid.DataGridVirtualizingCollectionView>", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertType<Xceed.Wpf.DataGrid.DataGridVirtualizingQueryableCollectionViewSource>", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertType<Xceed.Wpf.DataGrid.DataGridVirtualizingPanel>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.Views.TableView>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.DataGridGroupDescription>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.DataGridItemProperty>", appCodeBehind, StringComparison.Ordinal);
@@ -6620,7 +6623,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<xctk:MaterialProgressBar x:Name=\"MaterialProgressBar\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xctk:BusyIndicator x:Name=\"PaidBusyIndicator\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:DataGridCollectionViewSource x:Key=\"PaidRowsView\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcdg:DataGridVirtualizingQueryableCollectionViewSource x:Key=\"VirtualPaidRowsView\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("QueryableSource=\"{Binding VirtualRows}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("PageSize=\"256\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("MaxRealizedItemCount=\"1024\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CommitMode=\"EditCommitted\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:DataGridControl x:Name=\"PaidDataGrid\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcad:LayoutDocument x:Name=\"VirtualDataGridDocument\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcdg:DataGridControl x:Name=\"VirtualPaidDataGrid\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.AutomationId=\"VirtualPaidXceedDataGridAutomation\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.AutomationId=\"PaidXceedDataGridAutomation\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SearchText=\"{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemScrollingBehavior=\"Immediate\"", mainWindowXaml, StringComparison.Ordinal);
@@ -6656,6 +6667,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Click=\"CardflowViewButton_Click\"", mainWindowXaml, StringComparison.Ordinal);
 
         Assert.Contains("Rows = CreateRows(100_000)", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("internal DataGridVirtualizingQueryableCollectionViewSource VirtualPaidRowsViewSource", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public IQueryable<PaidGridItem> VirtualRows => Rows.AsQueryable()", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class PaidGridItem", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class PaidGridDetail", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PaidRowsView_Filter", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6677,11 +6690,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Configured explicit Xceed DataGrid columns", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Configured Toolkit Plus Material controls", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Configured paid DataGrid merged headers, search, export, settings, and view commands", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Configured paid DataGrid virtualizing queryable source", mainWindowCodeBehind, StringComparison.Ordinal);
 
         Assert.Contains("The direct Toolkit references are intentional", readme, StringComparison.Ordinal);
         Assert.Contains("collides with the separate `Xceed.Wpf.DataGrid` product's `DataGridControl` type", readme, StringComparison.Ordinal);
         Assert.Contains("Do not put license values in this repository.", readme, StringComparison.Ordinal);
         Assert.Contains("100,000 rows", readme, StringComparison.Ordinal);
+        Assert.Contains("DataGridVirtualizingQueryableCollectionViewSource", readme, StringComparison.Ordinal);
         Assert.Contains("merged headers", readme, StringComparison.Ordinal);
         Assert.Contains("SearchControl", readme, StringComparison.Ordinal);
         Assert.Contains("ExportToCsv", readme, StringComparison.Ordinal);

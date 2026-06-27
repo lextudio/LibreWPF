@@ -14845,6 +14845,7 @@ internal static class Program
             using System;
             using System.Collections.Generic;
             using System.Collections.ObjectModel;
+            using System.Collections.Specialized;
             using System.Configuration;
             using System.ComponentModel;
             using System.Globalization;
@@ -15828,6 +15829,7 @@ internal static class Program
                     ValidateDefaultItemsMessageBox();
                     ValidateDefaultItemsPrintDialog();
                     ValidateDefaultItemsFileDialogs();
+                    ValidateDefaultItemsClipboard();
                     Require(
                         DefaultItemsPanel.Caption == "Default item panel caption",
                         "Expected default-item UserControl dependency property value.");
@@ -17059,6 +17061,90 @@ internal static class Program
                     Require(
                         printDialog.ShowDialog().GetValueOrDefault(true) == false,
                         "Expected default-item PrintDialog portable dialog result.");
+                }
+
+                private static void ValidateDefaultItemsClipboard()
+                {
+                    Clipboard.Clear();
+                    Require(!Clipboard.ContainsText(), "Expected default-item Clipboard initial text state.");
+
+                    Clipboard.SetText("default-item SDK clipboard text");
+                    Require(Clipboard.ContainsText(), "Expected default-item Clipboard text state after SetText.");
+                    Require(
+                        Clipboard.GetText() == "default-item SDK clipboard text",
+                        "Expected default-item Clipboard GetText.");
+                    var textDataObject = Clipboard.GetDataObject()
+                        ?? throw new InvalidOperationException("Expected default-item Clipboard data object.");
+                    Require(
+                        Equals(textDataObject.GetData(DataFormats.UnicodeText), "default-item SDK clipboard text"),
+                        "Expected default-item Clipboard data object Unicode text.");
+                    Require(Clipboard.IsCurrent(textDataObject), "Expected default-item Clipboard current text data object.");
+                    Clipboard.Flush();
+                    Require(
+                        Clipboard.GetText() == "default-item SDK clipboard text",
+                        "Expected default-item Clipboard flushed text.");
+
+                    var customDataObject = new DataObject();
+                    customDataObject.SetData(
+                        DataFormats.UnicodeText,
+                        "default-item SDK data object text",
+                        autoConvert: false);
+                    customDataObject.SetData(
+                        "DefaultItemsCustomFormat",
+                        "default-item SDK custom payload",
+                        autoConvert: false);
+                    Clipboard.SetDataObject(customDataObject, copy: true);
+                    Require(Clipboard.ContainsText(), "Expected default-item Clipboard data object text state.");
+                    Require(
+                        Clipboard.GetText() == "default-item SDK data object text",
+                        "Expected default-item Clipboard data object text.");
+                    Require(
+                        Equals(Clipboard.GetData("DefaultItemsCustomFormat"), "default-item SDK custom payload"),
+                        "Expected default-item Clipboard custom data format.");
+                    var currentDataObject = RequireType<DataObject>(
+                        Clipboard.GetDataObject(),
+                        "default-item Clipboard current data object after SetDataObject");
+                    Require(
+                        currentDataObject.GetDataPresent("DefaultItemsCustomFormat", autoConvert: false),
+                        "Expected default-item Clipboard custom format present.");
+                    Require(
+                        Equals(
+                            currentDataObject.GetData("DefaultItemsCustomFormat", autoConvert: false),
+                            "default-item SDK custom payload"),
+                        "Expected default-item Clipboard custom data object payload.");
+                    Require(
+                        currentDataObject.TryGetData(
+                            "DefaultItemsCustomFormat",
+                            autoConvert: false,
+                            out string typedCustomPayload),
+                        "Expected default-item Clipboard typed custom data retrieval state.");
+                    Require(
+                        typedCustomPayload == "default-item SDK custom payload",
+                        "Expected default-item Clipboard typed custom data retrieval.");
+                    Require(
+                        Clipboard.IsCurrent(currentDataObject),
+                        "Expected default-item Clipboard SetDataObject current state.");
+
+                    var fileDropList = new StringCollection
+                    {
+                        "/tmp/default-item-alpha.txt",
+                        "/tmp/default-item-beta.txt"
+                    };
+                    Clipboard.SetFileDropList(fileDropList);
+                    Require(Clipboard.ContainsFileDropList(), "Expected default-item Clipboard file-drop state.");
+                    var roundTripFileDropList = Clipboard.GetFileDropList();
+                    Require(roundTripFileDropList.Count == 2, "Expected default-item Clipboard file-drop count.");
+                    Require(
+                        roundTripFileDropList[0] == "/tmp/default-item-alpha.txt",
+                        "Expected default-item Clipboard first file-drop item.");
+                    Require(
+                        roundTripFileDropList[1] == "/tmp/default-item-beta.txt",
+                        "Expected default-item Clipboard second file-drop item.");
+
+                    Clipboard.Clear();
+                    Require(!Clipboard.ContainsText(), "Expected default-item Clipboard cleared text state.");
+                    Require(!Clipboard.ContainsFileDropList(), "Expected default-item Clipboard cleared file-drop state.");
+                    Require(Clipboard.GetText() == string.Empty, "Expected default-item Clipboard cleared text.");
                 }
 
                 private void ValidateDefaultItemsFileDialogs()

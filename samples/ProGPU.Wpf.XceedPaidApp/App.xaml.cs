@@ -20,6 +20,7 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         var licenseStatus = XceedPaidLicenseBootstrap.ConfigureFromEnvironment();
+        bool runValidate = Environment.GetEnvironmentVariable("PROGPU_WPF_XCEED_PAID_RUN_VALIDATE") == "1";
 
         if (Environment.GetEnvironmentVariable("PROGPU_WPF_XCEED_PAID_VALIDATE") == "1")
         {
@@ -43,6 +44,13 @@ public partial class App : Application
 
         if (!licenseStatus.IsConfigured)
         {
+            if (runValidate)
+            {
+                Console.Error.WriteLine($"ProGPU WPF paid Xceed Application.Run validation requires license variables: {licenseStatus.DescribePublic()}.");
+                Shutdown(1);
+                return;
+            }
+
             MainWindow = CreateMissingLicenseWindow(licenseStatus);
             MainWindow.Show();
             return;
@@ -52,7 +60,7 @@ public partial class App : Application
         MainWindow = mainWindow;
         mainWindow.Show();
 
-        if (Environment.GetEnvironmentVariable("PROGPU_WPF_XCEED_PAID_RUN_VALIDATE") == "1")
+        if (runValidate)
         {
             Dispatcher.BeginInvoke(
                 DispatcherPriority.ApplicationIdle,

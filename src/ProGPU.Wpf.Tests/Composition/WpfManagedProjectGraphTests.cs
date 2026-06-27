@@ -6948,6 +6948,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AssertAssembly(\"Xceed.Wpf.DataGrid.Workbooks\")", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF paid Xceed package surface validation succeeded", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ProGPU WPF paid Xceed Application.Run validation succeeded.", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Application.Run validation requires license variables", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Shutdown(1)", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("window.ExercisePaidDataGridRuntimeCommands();", appCodeBehind, StringComparison.Ordinal);
 
         Assert.Contains("xmlns:xctk=\"http://schemas.xceed.com/wpf/xaml/toolkit\"", mainWindowXaml, StringComparison.Ordinal);
@@ -7001,7 +7003,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<xcdg:DataGridControl x:Name=\"VirtualPaidDataGrid\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.AutomationId=\"VirtualPaidXceedDataGridAutomation\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.AutomationId=\"PaidXceedDataGridAutomation\"", mainWindowXaml, StringComparison.Ordinal);
-        Assert.Contains("SearchText=\"{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("SearchText=\"{Binding DataContext.SearchText, RelativeSource={RelativeSource AncestorType={x:Type Window}}, Mode=OneWay}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("ItemScrollingBehavior=\"Immediate\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("NavigationBehavior=\"RowOnly\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("SelectionMode=\"Single\"", mainWindowXaml, StringComparison.Ordinal);
@@ -7099,6 +7102,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("The direct Toolkit references are intentional", readme, StringComparison.Ordinal);
         Assert.Contains("collides with the separate `Xceed.Wpf.DataGrid` product's `DataGridControl` type", readme, StringComparison.Ordinal);
         Assert.Contains("Do not put license values in this repository.", readme, StringComparison.Ordinal);
+        Assert.Contains("launchctl getenv", readme, StringComparison.Ordinal);
+        Assert.Contains("fails fast if license variables are still unavailable", readme, StringComparison.Ordinal);
         Assert.Contains("100,000 rows", readme, StringComparison.Ordinal);
         Assert.Contains("DataGridVirtualizingQueryableCollectionViewSource", readme, StringComparison.Ordinal);
         Assert.Contains("IDataErrorInfo", readme, StringComparison.Ordinal);
@@ -7114,6 +7119,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGPU owns windowing, input, invalidation, clipping, image/layer texture trimming, shaders, and final WebGPU rendering", readme, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_XCEED_PAID_VALIDATE", runScript, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_XCEED_PAID_RUN_VALIDATE", runScript, StringComparison.Ordinal);
+        Assert.Contains("hydrate_env_from_launchctl", runScript, StringComparison.Ordinal);
+        Assert.Contains("launchctl getenv", runScript, StringComparison.Ordinal);
+        Assert.Contains("XCEED_TOOLKIT_LICENSE_KEY", runScript, StringComparison.Ordinal);
+        Assert.Contains("XCEED_DATAGRID_LICENSE_KEY", runScript, StringComparison.Ordinal);
         Assert.Contains("Running ProGPU WPF paid Xceed apphost validation", runScript, StringComparison.Ordinal);
     }
 

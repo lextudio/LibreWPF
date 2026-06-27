@@ -1970,6 +1970,13 @@ internal static class Program
             ?? throw new InvalidOperationException("Loose XamlWriter.Save returned null.");
     }
 
+    private static object LoadApplicationComponent(object contextObject, string componentUri)
+    {
+        Assembly presentationFramework = GetAssemblyFromContext(contextObject.GetType().Assembly, "PresentationFramework");
+        Type applicationType = GetRequiredType(presentationFramework, "System.Windows.Application");
+        return InvokeStatic(applicationType, "LoadComponent", new Uri(componentUri, UriKind.Relative));
+    }
+
     private static void ValidateWindow(
         object window,
         bool validateFrameContent,
@@ -3001,6 +3008,27 @@ internal static class Program
         AssertType(libraryBackground, "System.Windows.Media.SolidColorBrush", "compiled SDK library resource brush");
         AssertEqual("#FF3E7B64", GetProperty(libraryBackground, "Color").ToString() ?? string.Empty, "compiled SDK library resource brush color");
 
+        object loadedLibraryPanel = LoadApplicationComponent(window, "/ProGPU.Wpf.SdkSwitchLibrary;component/LibraryPanel.xaml");
+        AssertType(loadedLibraryPanel, "ProGPU.Wpf.SdkSwitchLibrary.LibraryPanel", "Application.LoadComponent SDK library panel");
+        AssertAssignableTo(loadedLibraryPanel, "System.Windows.Controls.UserControl", "Application.LoadComponent SDK library panel base type");
+        SetProperty(loadedLibraryPanel, "Title", "SDK loaded library panel");
+        SetProperty(loadedLibraryPanel, "LibraryTag", "loaded library tag value");
+        InvokeVoid(loadedLibraryPanel, "UpdateLayout");
+        object loadedLibraryTitle = Invoke(loadedLibraryPanel, "FindName", "LibraryTitle");
+        AssertType(loadedLibraryTitle, "System.Windows.Controls.TextBlock", "Application.LoadComponent SDK library panel title element");
+        AssertEqual("SDK loaded library panel", GetProperty(loadedLibraryTitle, "Text"), "Application.LoadComponent SDK library panel title binding");
+        object loadedLibraryRoot = Invoke(loadedLibraryPanel, "FindName", "LibraryRoot");
+        AssertType(loadedLibraryRoot, "System.Windows.Controls.Border", "Application.LoadComponent SDK library panel root");
+        AssertEqual("loaded library tag value", GetProperty(loadedLibraryRoot, "Tag"), "Application.LoadComponent SDK library panel tag binding");
+
+        object loadedLibraryPage = LoadApplicationComponent(window, "/ProGPU.Wpf.SdkSwitchLibrary;component/LibraryPage.xaml");
+        AssertType(loadedLibraryPage, "ProGPU.Wpf.SdkSwitchLibrary.LibraryPage", "Application.LoadComponent SDK library page");
+        AssertAssignableTo(loadedLibraryPage, "System.Windows.Controls.Page", "Application.LoadComponent SDK library page base type");
+        AssertEqual("SDK Library Page", GetProperty(loadedLibraryPage, "Title"), "Application.LoadComponent SDK library page title");
+        object loadedLibraryPageTitle = Invoke(loadedLibraryPage, "FindName", "LibraryPageTitle");
+        AssertType(loadedLibraryPageTitle, "System.Windows.Controls.TextBlock", "Application.LoadComponent SDK library page title element");
+        AssertEqual("SDK library page content", GetProperty(loadedLibraryPageTitle, "Text"), "Application.LoadComponent SDK library page title text");
+
         object libraryMergedResourceText = Invoke(window, "FindName", "LibraryMergedResourceText");
         AssertType(libraryMergedResourceText, "System.Windows.Controls.TextBlock", "referenced library merged resource text");
         AssertEqual("referenced library resource", GetProperty(libraryMergedResourceText, "Text"), "referenced library merged text resource");
@@ -3039,6 +3067,29 @@ internal static class Program
         AssertEqual(2.0, GetProperty(libraryThemedBorderThickness, "Top"), "compiled SDK library themed control border thickness top");
         AssertEqual(2.0, GetProperty(libraryThemedBorderThickness, "Right"), "compiled SDK library themed control border thickness right");
         AssertEqual(2.0, GetProperty(libraryThemedBorderThickness, "Bottom"), "compiled SDK library themed control border thickness bottom");
+
+        object libraryFrame = Invoke(window, "FindName", "LibraryFrame");
+        AssertType(libraryFrame, "System.Windows.Controls.Frame", "compiled SDK library page frame");
+        string libraryFrameSource = GetProperty(libraryFrame, "Source").ToString() ?? string.Empty;
+        AssertEqual(true, libraryFrameSource.Contains("ProGPU.Wpf.SdkSwitchLibrary", StringComparison.Ordinal), "compiled SDK library frame source assembly");
+        AssertEqual(true, libraryFrameSource.EndsWith("component/LibraryPage.xaml", StringComparison.Ordinal), "compiled SDK library frame source component path");
+        if (validateFrameContent)
+        {
+            flushDispatcherOperations?.Invoke(window);
+            object libraryFramePage = GetProperty(libraryFrame, "Content");
+            AssertType(libraryFramePage, "ProGPU.Wpf.SdkSwitchLibrary.LibraryPage", "compiled SDK library frame page");
+            AssertAssignableTo(libraryFramePage, "System.Windows.Controls.Page", "compiled SDK library frame page base type");
+            AssertEqual("SDK Library Page", GetProperty(libraryFramePage, "Title"), "compiled SDK library frame page title");
+            object libraryFramePageTitle = Invoke(libraryFramePage, "FindName", "LibraryPageTitle");
+            AssertType(libraryFramePageTitle, "System.Windows.Controls.TextBlock", "compiled SDK library frame page title element");
+            AssertEqual("SDK library page content", GetProperty(libraryFramePageTitle, "Text"), "compiled SDK library frame page title text");
+            object libraryFramePageResourceText = Invoke(libraryFramePage, "FindName", "LibraryPageResourceText");
+            AssertType(libraryFramePageResourceText, "System.Windows.Controls.TextBlock", "compiled SDK library frame page resource text");
+            AssertEqual("referenced library resource", GetProperty(libraryFramePageResourceText, "Text"), "compiled SDK library frame page resource text");
+            object libraryFramePageResourceForeground = GetProperty(libraryFramePageResourceText, "Foreground");
+            AssertType(libraryFramePageResourceForeground, "System.Windows.Media.SolidColorBrush", "compiled SDK library frame page resource foreground");
+            AssertEqual("#FF4F6F9D", GetProperty(libraryFramePageResourceForeground, "Color").ToString() ?? string.Empty, "compiled SDK library frame page resource foreground color");
+        }
 
         object themedSmokeControl = Invoke(window, "FindName", "ThemedSmokeControl");
         AssertType(themedSmokeControl, "ProGPU.Wpf.SdkSwitchSmoke.SmokeThemedControl", "themed custom control");

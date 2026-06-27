@@ -816,6 +816,12 @@
             x:Name="CompiledLibraryThemedControl"
             Margin="{StaticResource SmokePanelMargin}"
             Text="SDK library themed control" />
+        <Frame
+            x:Name="LibraryFrame"
+            Height="64"
+            Margin="{StaticResource SmokePanelMargin}"
+            NavigationUIVisibility="Hidden"
+            Source="/ProGPU.Wpf.SdkSwitchLibrary;component/LibraryPage.xaml" />
         <local:SmokeThemedControl
             x:Name="ThemedSmokeControl"
             Margin="{StaticResource SmokePanelMargin}"

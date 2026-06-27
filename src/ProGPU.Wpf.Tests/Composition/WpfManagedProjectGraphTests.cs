@@ -6515,6 +6515,14 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.SdkSwitchLibrary",
             "LibraryPanel.xaml.cs");
+        var libraryPageXamlPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchLibrary",
+            "LibraryPage.xaml");
+        var libraryPageCodeBehindPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchLibrary",
+            "LibraryPage.xaml.cs");
         var libraryThemedControlPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.SdkSwitchLibrary",
@@ -6874,6 +6882,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.DirectX",
             "ProGpuDirectXBindings.cs");
+        var proGpuDirectXHlslTranslatorPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.DirectX",
+            "ProGpuDirectXHlslTranslator.cs");
         var proGpuDirectXSciChartPath = FindRepoPath(
             "external",
             "ProGPU",
@@ -6933,6 +6947,8 @@ public sealed class WpfManagedProjectGraphTests
         var libraryNuGetConfig = File.ReadAllText(libraryNuGetConfigPath);
         var libraryPanelXaml = File.ReadAllText(libraryPanelXamlPath);
         var libraryPanelCodeBehind = File.ReadAllText(libraryPanelCodeBehindPath);
+        var libraryPageXaml = File.ReadAllText(libraryPageXamlPath);
+        var libraryPageCodeBehind = File.ReadAllText(libraryPageCodeBehindPath);
         var libraryThemedControl = File.ReadAllText(libraryThemedControlPath);
         var libraryResourcesXaml = File.ReadAllText(libraryResourcesXamlPath);
         var libraryGenericThemeXaml = File.ReadAllText(libraryGenericThemeXamlPath);
@@ -7014,6 +7030,7 @@ public sealed class WpfManagedProjectGraphTests
         var scichartReadme = File.ReadAllText(scichartReadmePath);
         var scichartRunScript = File.ReadAllText(scichartRunScriptPath);
         var proGpuDirectXBindings = File.ReadAllText(proGpuDirectXBindingsPath);
+        var proGpuDirectXHlslTranslator = File.ReadAllText(proGpuDirectXHlslTranslatorPath);
         var proGpuDirectXSciChart = File.ReadAllText(proGpuDirectXSciChartPath);
         var proGpuDirectXNativeDependencyInspector = File.ReadAllText(proGpuDirectXNativeDependencyInspectorPath);
         var proGpuDirectXNativeCompatibilityPlan = File.ReadAllText(proGpuDirectXNativeCompatibilityPlanPath);
@@ -8238,6 +8255,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("DxPrimitiveTopology.TriangleStrip", proGpuDirectXSciChart, StringComparison.Ordinal);
         Assert.Contains("internal string DescribeEntries()", proGpuDirectXBindings, StringComparison.Ordinal);
         Assert.Contains("GetBackendResourceToken(entry)", proGpuDirectXBindings, StringComparison.Ordinal);
+        Assert.Contains("HlslShaderResourceKind.RWTexture2D", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
+        Assert.Contains("TryTranslateRwTexture2DWriteStatement", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
+        Assert.Contains("texture_storage_2d", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
+        Assert.Contains("MapStorageTextureFormat", proGpuDirectXHlslTranslator, StringComparison.Ordinal);
         Assert.Contains("could not create a pipeline-compatible bind group. Bindings:", proGpuDirectXDeviceContext, StringComparison.Ordinal);
         Assert.Contains("ValidateRequiredLiveMvpAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("ValidateLiveNativeResizeAsync", mvpMainWindowCodeBehind, StringComparison.Ordinal);
@@ -8482,6 +8503,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public partial class LibraryPanel : UserControl", libraryPanelCodeBehind, StringComparison.Ordinal);
         Assert.Contains("DependencyProperty.Register", libraryPanelCodeBehind, StringComparison.Ordinal);
         Assert.Contains("InitializeComponent();", libraryPanelCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("x:Class=\"ProGPU.Wpf.SdkSwitchLibrary.LibraryPage\"", libraryPageXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"SDK library page content\"", libraryPageXaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{DynamicResource LibraryMergedMessage}\"", libraryPageXaml, StringComparison.Ordinal);
+        Assert.Contains("Foreground=\"{DynamicResource LibraryMergedAccentBrush}\"", libraryPageXaml, StringComparison.Ordinal);
+        Assert.Contains("public partial class LibraryPage : Page", libraryPageCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("InitializeComponent();", libraryPageCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public sealed class LibraryThemedControl : Control", libraryThemedControl, StringComparison.Ordinal);
         Assert.Contains("DefaultStyleKeyProperty.OverrideMetadata", libraryThemedControl, StringComparison.Ordinal);
         Assert.Contains("[assembly: ThemeInfo(ResourceDictionaryLocation.None, ResourceDictionaryLocation.SourceAssembly)]", libraryAssemblyInfo, StringComparison.Ordinal);
@@ -8890,6 +8917,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("library:LibraryThemedControl", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"CompiledLibraryThemedControl\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"SDK library themed control\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("x:Name=\"LibraryFrame\"", smokeMainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("Source=\"/ProGPU.Wpf.SdkSwitchLibrary;component/LibraryPage.xaml\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("local:SmokeThemedControl", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("x:Name=\"ThemedSmokeControl\"", smokeMainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"Generic theme default style\"", smokeMainWindowXaml, StringComparison.Ordinal);
@@ -11115,6 +11144,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidateSdkLooseXamlReaderWriter(presentationFramework, presentationCore)", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Markup.XamlReader", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Markup.XamlWriter", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("LoadApplicationComponent(object contextObject, string componentUri)", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Application.LoadComponent SDK library panel", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("Application.LoadComponent SDK library page", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled SDK library frame source component path", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled SDK library frame page resource foreground color", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK loose XamlReader style StaticResource brush", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SDK loose XamlReader Binding path", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("SdkLooseInputScopeTextBox", runtimeHarnessProgram, StringComparison.Ordinal);

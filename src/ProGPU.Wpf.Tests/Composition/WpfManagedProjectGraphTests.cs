@@ -658,6 +658,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TryQueryEllipseAllRejectsQueryBoundsCornerFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryEllipseAllClassifiesRectangleFillIntersectionDetailOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("LineStrokeCachesDirectionAndLengthForGpuHitTesting", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("EllipseCachesCenterAndInverseRadiiForGpuHitTesting", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsLineStrokeBoundsFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsLineStrokeFlatCapFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsPathFillBoundsFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
@@ -677,6 +678,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("fn segment_intersects_rect(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("data2: vec4<f32>,", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("let direction = primitive.data2.xy;", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn contains_cached_ellipse(", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn rect_intersects_cached_ellipse(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn line_stroke_intersects_rect(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn classify_path_fill_rect_intersection_detail(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn path_stroke_intersects_rect(", proGpuHitTesting, StringComparison.Ordinal);

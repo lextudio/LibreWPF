@@ -3178,6 +3178,39 @@ internal static class Program
             AssertAtLeast(navigatedCountBeforeBack + 1, GetProperty(window, "SmokeFrameNavigatedCount"), "compiled frame back navigated count");
             AssertEqual("Back", GetProperty(window, "LastSmokeFrameNavigationMode"), "compiled frame back navigation mode");
             AssertEqual("ProGPU.Wpf.SdkSwitchSmoke.SmokePage", GetProperty(window, "LastSmokeFrameNavigatedContentType"), "compiled frame back content type");
+            object smokePageFunction = Create(window.GetType().Assembly, "ProGPU.Wpf.SdkSwitchSmoke.SmokePageFunction");
+            int navigatingCountBeforePageFunction = Convert.ToInt32(GetProperty(window, "SmokeFrameNavigatingCount"));
+            int navigatedCountBeforePageFunction = Convert.ToInt32(GetProperty(window, "SmokeFrameNavigatedCount"));
+            AssertEqual(true, Invoke(smokeFrame, "Navigate", smokePageFunction), "compiled frame PageFunction navigate result");
+            flushDispatcherOperations?.Invoke(window);
+            object currentPageFunction = GetProperty(smokeFrame, "Content");
+            AssertType(currentPageFunction, "ProGPU.Wpf.SdkSwitchSmoke.SmokePageFunction", "compiled frame PageFunction content");
+            AssertAssignableTo(currentPageFunction, "System.Windows.Controls.Page", "compiled frame PageFunction page base type");
+            AssertEqual("Compiled Smoke PageFunction", GetProperty(currentPageFunction, "Title"), "compiled frame PageFunction title");
+            object pageFunctionPanel = GetProperty(currentPageFunction, "Content");
+            AssertType(pageFunctionPanel, "System.Windows.Controls.StackPanel", "compiled frame PageFunction panel");
+            object pageFunctionChildren = GetProperty(pageFunctionPanel, "Children");
+            AssertEqual(2, GetCount(pageFunctionChildren), "compiled frame PageFunction child count");
+            object firstPageFunctionChild = EnumerateObjects(pageFunctionChildren).First();
+            AssertType(firstPageFunctionChild, "System.Windows.Controls.TextBlock", "compiled frame PageFunction first child");
+            AssertEqual("Compiled page function content", GetProperty(firstPageFunctionChild, "Text"), "compiled frame PageFunction title text");
+            AssertAtLeast(navigatingCountBeforePageFunction + 1, GetProperty(window, "SmokeFrameNavigatingCount"), "compiled frame PageFunction navigating count");
+            AssertAtLeast(navigatedCountBeforePageFunction + 1, GetProperty(window, "SmokeFrameNavigatedCount"), "compiled frame PageFunction navigated count");
+            AssertEqual("New", GetProperty(window, "LastSmokeFrameNavigationMode"), "compiled frame PageFunction navigation mode");
+            AssertEqual("ProGPU.Wpf.SdkSwitchSmoke.SmokePageFunction", GetProperty(window, "LastSmokeFrameNavigatedContentType"), "compiled frame PageFunction content type");
+            int pageFunctionReturnCountBefore = Convert.ToInt32(GetProperty(window, "SmokePageFunctionReturnCount"));
+            Assembly pageFunctionPresentationFramework = GetAssemblyFromContext(currentPageFunction.GetType().Assembly, "PresentationFramework");
+            Type returnEventArgsType = GetRequiredType(pageFunctionPresentationFramework, "System.Windows.Navigation.ReturnEventArgs`1").MakeGenericType(typeof(string));
+            object returnEventArgs = Create(returnEventArgsType, "SDK PageFunction runtime result");
+            MethodInfo onFinish = currentPageFunction.GetType()
+                .BaseType?
+                .BaseType?
+                .GetMethod("_OnFinish", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new MissingMethodException(currentPageFunction.GetType().FullName, "_OnFinish");
+            InvokeMethod(onFinish, currentPageFunction, returnEventArgs);
+            flushDispatcherOperations?.Invoke(window);
+            AssertAtLeast(pageFunctionReturnCountBefore + 1, GetProperty(window, "SmokePageFunctionReturnCount"), "compiled frame PageFunction return count");
+            AssertEqual("SDK PageFunction runtime result", GetProperty(window, "LastSmokePageFunctionResult"), "compiled frame PageFunction return result");
         }
 
         object documentBox = Invoke(window, "FindName", "DocumentBox");

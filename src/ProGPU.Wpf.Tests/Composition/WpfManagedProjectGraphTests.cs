@@ -6614,6 +6614,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
             "SmokeSecondPage.xaml.cs");
+        var smokePageFunctionPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.SdkSwitchSmoke",
+            "SmokePageFunction.cs");
         var smokeItemDisplayConverterPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.SdkSwitchSmoke",
@@ -6989,6 +6993,7 @@ public sealed class WpfManagedProjectGraphTests
         var smokePageCodeBehind = File.ReadAllText(smokePageCodeBehindPath);
         var smokeSecondPageXaml = File.ReadAllText(smokeSecondPageXamlPath);
         var smokeSecondPageCodeBehind = File.ReadAllText(smokeSecondPageCodeBehindPath);
+        var smokePageFunction = File.ReadAllText(smokePageFunctionPath);
         var smokeItemDisplayConverter = File.ReadAllText(smokeItemDisplayConverterPath);
         var smokeThemedControl = File.ReadAllText(smokeThemedControlPath);
         var smokeGenericThemeXaml = File.ReadAllText(smokeGenericThemeXamlPath);
@@ -8995,6 +9000,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Frame navigated to SDK-built BAML", smokeSecondPageXaml, StringComparison.Ordinal);
         Assert.Contains("public partial class SmokeSecondPage : Page", smokeSecondPageCodeBehind, StringComparison.Ordinal);
         Assert.Contains("InitializeComponent();", smokeSecondPageCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class SmokePageFunction : PageFunction<string>", smokePageFunction, StringComparison.Ordinal);
+        Assert.Contains("public const string DefaultResult = \"SDK PageFunction return\";", smokePageFunction, StringComparison.Ordinal);
+        Assert.Contains("Title = \"Compiled Smoke PageFunction\";", smokePageFunction, StringComparison.Ordinal);
+        Assert.Contains("Text = \"Compiled page function content\"", smokePageFunction, StringComparison.Ordinal);
+        Assert.Contains("Text = \"Frame navigated to managed PageFunction\"", smokePageFunction, StringComparison.Ordinal);
+        Assert.Contains("OnReturn(new ReturnEventArgs<string>(result ?? DefaultResult));", smokePageFunction, StringComparison.Ordinal);
         Assert.Contains("public sealed class SmokeItemDisplayConverter : IValueConverter", smokeItemDisplayConverter, StringComparison.Ordinal);
         Assert.Contains("item.Name}={item.Value}/{item.Category", smokeItemDisplayConverter, StringComparison.Ordinal);
         Assert.Contains("Binding.DoNothing", smokeItemDisplayConverter, StringComparison.Ordinal);
@@ -9096,6 +9107,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public string? LastSmokeFrameNavigatingUri", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string? LastSmokeFrameNavigationMode", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string? LastSmokeFrameNavigatedContentType", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public int SmokePageFunctionReturnCount", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public string? LastSmokePageFunctionResult", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnSelectorSelectionChanged", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SelectorSelectionChangedCount++", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("selector selected: {SmokeComboBox.SelectedValue}", smokeMainWindowCodeBehind, StringComparison.Ordinal);
@@ -9116,8 +9129,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private void OnSmokeFrameNavigated(object sender, NavigationEventArgs e)", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SmokeFrameNavigatedCount++", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("LastSmokeFrameNavigatedContentType = e.Content?.GetType().FullName", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("if (e.Content is SmokePageFunction pageFunction)", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("pageFunction.Return += OnSmokePageFunctionReturn", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("private void OnSmokeFrameLoadCompleted(object sender, NavigationEventArgs e)", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("SmokeFrameLoadCompletedCount++", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("private void OnSmokePageFunctionReturn(object sender, ReturnEventArgs<string> e)", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("SmokePageFunctionReturnCount++", smokeMainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("LastSmokePageFunctionResult = e.Result", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("using System.Windows.Navigation;", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public int DocumentLinkRequestNavigateCount", smokeMainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("public string? LastDocumentLinkRequestNavigateUri", smokeMainWindowCodeBehind, StringComparison.Ordinal);
@@ -11548,6 +11566,13 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("InvokeVoid(smokeFrame, \"GoBack\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled frame back navigation mode", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled frame back content type", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.SdkSwitchSmoke.SmokePageFunction", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled frame PageFunction navigate result", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled frame PageFunction content", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("System.Windows.Navigation.ReturnEventArgs`1", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("GetMethod(\"_OnFinish\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled frame PageFunction return count", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("compiled frame PageFunction return result", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"PageTitle\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("compiled page dynamic resource foreground", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("FindName\", \"PageSubtitle\"", runtimeHarnessProgram, StringComparison.Ordinal);

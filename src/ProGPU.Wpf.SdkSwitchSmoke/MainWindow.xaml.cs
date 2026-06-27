@@ -96,6 +96,10 @@ public partial class MainWindow : Window
 
     public string? LastSmokeFrameLoadCompletedUri { get; private set; }
 
+    public int SmokePageFunctionReturnCount { get; private set; }
+
+    public string? LastSmokePageFunctionResult { get; private set; }
+
     public int LiveRenderSurfaceValidationCount { get; private set; }
 
     public string? LiveRenderSurfaceValidationStatus { get; private set; }
@@ -960,12 +964,23 @@ public partial class MainWindow : Window
         SmokeFrameNavigatedCount++;
         LastSmokeFrameNavigatedUri = e.Uri?.ToString();
         LastSmokeFrameNavigatedContentType = e.Content?.GetType().FullName;
+        if (e.Content is SmokePageFunction pageFunction)
+        {
+            pageFunction.Return -= OnSmokePageFunctionReturn;
+            pageFunction.Return += OnSmokePageFunctionReturn;
+        }
     }
 
     private void OnSmokeFrameLoadCompleted(object sender, NavigationEventArgs e)
     {
         SmokeFrameLoadCompletedCount++;
         LastSmokeFrameLoadCompletedUri = e.Uri?.ToString();
+    }
+
+    private void OnSmokePageFunctionReturn(object sender, ReturnEventArgs<string> e)
+    {
+        SmokePageFunctionReturnCount++;
+        LastSmokePageFunctionResult = e.Result;
     }
 
     private void OnSmokeBubbled(object sender, RoutedEventArgs e)

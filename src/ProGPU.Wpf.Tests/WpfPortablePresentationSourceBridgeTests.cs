@@ -177,15 +177,18 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         Assert.NotNull(source.HitTestOverride);
         Assert.NotNull(source.HitTestAllOverride);
         Assert.NotNull(source.HitTestBoundsOverride);
+        Assert.NotNull(source.HitTestEllipseBoundsOverride);
         Assert.Null(source.HitTestOverride(new System.Windows.Point(12, 24)));
         Assert.Null(source.HitTestAllOverride(new System.Windows.Point(12, 24)));
         Assert.Null(source.HitTestBoundsOverride(new System.Windows.Point(0, 0), new System.Windows.Point(12, 24)));
+        Assert.Null(source.HitTestEllipseBoundsOverride(new System.Windows.Point(0, 0), new System.Windows.Point(12, 24)));
 
         bridge!.Dispose();
 
         Assert.Null(source.HitTestOverride);
         Assert.Null(source.HitTestAllOverride);
         Assert.Null(source.HitTestBoundsOverride);
+        Assert.Null(source.HitTestEllipseBoundsOverride);
     }
 
     [Fact]
@@ -204,9 +207,11 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         Assert.NotNull(source.HitTestOverride);
         Assert.NotNull(source.HitTestAllOverride);
         Assert.NotNull(source.HitTestBoundsOverride);
+        Assert.NotNull(source.HitTestEllipseBoundsOverride);
         Assert.Same(source, source.HitTestOverride(new System.Windows.Point(12, 24)));
         Assert.Empty(source.HitTestAllOverride(new System.Windows.Point(12, 24))!);
         Assert.Empty(source.HitTestBoundsOverride(new System.Windows.Point(0, 0), new System.Windows.Point(12, 24))!);
+        Assert.Empty(source.HitTestEllipseBoundsOverride(new System.Windows.Point(0, 0), new System.Windows.Point(12, 24))!);
     }
 
     [Fact]
@@ -254,6 +259,8 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         internal Func<System.Windows.Point, object?[]?>? HitTestAllOverride { get; set; }
 
         internal Func<System.Windows.Point, System.Windows.Point, object?[]?>? HitTestBoundsOverride { get; set; }
+
+        internal Func<System.Windows.Point, System.Windows.Point, object?[]?>? HitTestEllipseBoundsOverride { get; set; }
 
         public object? RootVisual
         {

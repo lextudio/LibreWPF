@@ -667,6 +667,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("RenderCommandCacheCachesEllipseHelperDataForGpuHitTesting", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryEllipseAllRejectsLineStrokeBoundsFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryEllipseAllKeepsIntersectingLineStrokeOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryEllipseAllRejectsPathFillDifferenceHoleOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryEllipseAllKeepsIntersectingPathFillOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryEllipseAllRejectsPathStrokeBoundsFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
+        Assert.Contains("TryQueryEllipseAllKeepsIntersectingPathStrokeOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsLineStrokeBoundsFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsLineStrokeFlatCapFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
         Assert.Contains("TryQueryBoundsAllRejectsPathFillBoundsFalsePositiveOnGpu", proGpuHitTestingTests, StringComparison.Ordinal);
@@ -693,6 +697,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("fn rect_intersects_cached_ellipse(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn line_stroke_intersects_rect(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn line_stroke_intersects_ellipse_region(", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn segment_intersects_ellipse_region(", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn path_fill_segments_intersect_ellipse_region(", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn classify_path_fill_ellipse_region_intersection_detail(", proGpuHitTesting, StringComparison.Ordinal);
+        Assert.Contains("fn path_stroke_intersects_ellipse_region(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn classify_path_fill_rect_intersection_detail(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn path_stroke_intersects_rect(", proGpuHitTesting, StringComparison.Ordinal);
         Assert.Contains("fn primitive_uses_precise_bounds_region_test(", proGpuHitTesting, StringComparison.Ordinal);

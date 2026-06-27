@@ -2169,6 +2169,12 @@ namespace System.Windows.Input
                 if(root != null)
                 {
                     Point rootPt = clientUnits ? PointUtil.ClientToRoot(pt, inputSource) : pt;
+                    if (inputSource is PortablePresentationSource portableSource &&
+                        portableSource.TryHitTestOverride(rootPt, out enabledHit, out originalHit))
+                    {
+                        return;
+                    }
+
                     root.InputHitTest(rootPt, out enabledHit, out originalHit);
                 }
             }

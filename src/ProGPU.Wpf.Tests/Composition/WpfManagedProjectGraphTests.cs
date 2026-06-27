@@ -251,6 +251,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf",
             "ProGpuWpfWindowHost.cs");
+        var proGpuPortablePresentationSourceBridgePath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "WpfPortablePresentationSourceBridge.cs");
         var proGpuOptionsPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -295,6 +299,10 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.Tests",
             "ProGpuWpfWindowHostTests.cs");
+        var proGpuPortablePresentationSourceBridgeTestsPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "WpfPortablePresentationSourceBridgeTests.cs");
         var proGpuActivationTestsPath = FindRepoPath(
             "src",
             "ProGPU.Wpf.Tests",
@@ -310,6 +318,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuScheduler = File.ReadAllText(proGpuSchedulerPath);
         var proGpuPlatformServices = File.ReadAllText(proGpuPlatformServicesPath);
         var proGpuHost = File.ReadAllText(proGpuHostPath);
+        var proGpuPortablePresentationSourceBridge = File.ReadAllText(proGpuPortablePresentationSourceBridgePath);
         var proGpuOptions = File.ReadAllText(proGpuOptionsPath);
         var proGpuDrawingFrame = File.ReadAllText(proGpuDrawingFramePath);
         var proGpuCompositionTarget = File.ReadAllText(proGpuCompositionTargetPath);
@@ -319,6 +328,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuDrawingFrameTests = File.ReadAllText(proGpuDrawingFrameTestsPath);
         var proGpuInvalidationTrackerTests = File.ReadAllText(proGpuInvalidationTrackerTestsPath);
         var proGpuWindowHostTests = File.ReadAllText(proGpuWindowHostTestsPath);
+        var proGpuPortablePresentationSourceBridgeTests = File.ReadAllText(proGpuPortablePresentationSourceBridgeTestsPath);
         var proGpuActivationTests = File.ReadAllText(proGpuActivationTestsPath);
 
         Assert.Contains(@"<Compile Include=""System\Windows\Media\PortableMediaContextRenderService.cs"" />", presentationCoreProject, StringComparison.Ordinal);
@@ -517,6 +527,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PROGPU_WPF_TRACE_INPUT", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("TraceInputEvent(\"native\", e)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("TraceInputEvent(\"wpf\", input)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("internal bool TryHitTestOwner(double x, double y, out object? owner)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("internal bool HasGpuHitTestCache => _target?.LastGpuHitTestIndex != null;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_target.TryHitTestOwner(", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("private const string HitTestOverridePropertyName = \"HitTestOverride\";", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("bridge.TryInstallHitTestOverride();", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("private object? TryHitTestOwner(System.Windows.Point rootPoint)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("_host.TryHitTestOwner(rootPoint.X, rootPoint.Y, out object? owner)", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("_host.HasGpuHitTestCache ? Source : null", proGpuPortablePresentationSourceBridge, StringComparison.Ordinal);
+        Assert.Contains("TryBindInstallsGpuHitTestOverrideWhenSourceExposesHook", proGpuPortablePresentationSourceBridgeTests, StringComparison.Ordinal);
         Assert.Contains("PROGPU_WPF_TRACE_RENDER_SURFACE", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("TraceRenderSurfaceGeometryIfRequested(geometry)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("RequestRenderAndWakeNativeLoop();", proGpuHost, StringComparison.Ordinal);
@@ -653,6 +672,14 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Input",
             "MouseDevice.cs");
+        var portableSourcePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "PortablePresentationSource.cs");
         var portableKeyboardPath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -675,6 +702,7 @@ public sealed class WpfManagedProjectGraphTests
         var project = File.ReadAllText(projectPath);
         var inputManager = File.ReadAllText(inputManagerPath);
         var mouseDevice = File.ReadAllText(mouseDevicePath);
+        var portableSource = File.ReadAllText(portableSourcePath);
         var portableKeyboard = File.ReadAllText(portableKeyboardPath);
         var portableMouse = File.ReadAllText(portableMousePath);
 
@@ -694,8 +722,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("_doubleClickDeltaTime = 500;", mouseDevice, StringComparison.Ordinal);
         Assert.Contains("inputSource?.CompositionTarget != null && !inputSource.CompositionTarget.IsDisposed", mouseDevice, StringComparison.Ordinal);
         Assert.Contains("LocalHitTest(clientUnits, pt, inputSource, out enabledHit, out originalHit)", mouseDevice, StringComparison.Ordinal);
+        Assert.Contains("portableSource.TryHitTestOverride(rootPt, out enabledHit, out originalHit)", mouseDevice, StringComparison.Ordinal);
+        Assert.Contains("ReferenceEquals(hitTestResult, this)", portableSource, StringComparison.Ordinal);
         AssertGuardBefore(mouseDevice, "if (OperatingSystem.IsWindows() && source != null", "UnsafeNativeMethods.WindowFromPoint");
         AssertGuardBefore(mouseDevice, "if (OperatingSystem.IsWindows() && source != null", "SafeNativeMethods.IsWindowEnabled");
+        AssertGuardBefore(mouseDevice, "portableSource.TryHitTestOverride(rootPt, out enabledHit, out originalHit)", "root.InputHitTest(rootPt, out enabledHit, out originalHit)");
         Assert.True(
             inputManager.IndexOf("if (OperatingSystem.IsWindows())", StringComparison.Ordinal)
                 < inputManager.IndexOf("new Win32KeyboardDevice(this)", StringComparison.Ordinal),

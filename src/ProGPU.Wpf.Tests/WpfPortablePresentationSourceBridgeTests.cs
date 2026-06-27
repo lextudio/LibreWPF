@@ -164,6 +164,24 @@ public sealed class WpfPortablePresentationSourceBridgeTests
     }
 
     [Fact]
+    public void TryBindInstallsGpuHitTestOverrideWhenSourceExposesHook()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var source = new FakePortablePresentationSource();
+
+        var bound = WpfPortablePresentationSourceBridge.TryBind(host, source, out var bridge);
+
+        Assert.True(bound);
+        Assert.NotNull(bridge);
+        Assert.NotNull(source.HitTestOverride);
+        Assert.Null(source.HitTestOverride(new System.Windows.Point(12, 24)));
+
+        bridge!.Dispose();
+
+        Assert.Null(source.HitTestOverride);
+    }
+
+    [Fact]
     public void TryBindReturnsFalseWhenSourceShapeIsMissing()
     {
         using var host = new ProGpuWpfWindowHost();
@@ -187,6 +205,8 @@ public sealed class WpfPortablePresentationSourceBridgeTests
         public IntPtr Handle { get; init; }
 
         internal object? RequestedCursor { get; private set; }
+
+        internal Func<System.Windows.Point, object?>? HitTestOverride { get; set; }
 
         public object? RootVisual
         {

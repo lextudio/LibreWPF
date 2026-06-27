@@ -13,6 +13,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     private const string RenderRequestedEventName = "RenderRequested";
     private const string CursorRequestedEventName = "CursorRequested";
     private const string RequestedCursorPropertyName = "RequestedCursor";
+    private const string HitTestOverridePropertyName = "HitTestOverride";
     private const string SetDeviceScaleMethodName = "SetDeviceScale";
     private const string SetClientSizeMethodName = "SetClientSize";
 
@@ -21,6 +22,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     private readonly PropertyInfo _compositionTargetProperty;
     private readonly PropertyInfo? _handleProperty;
     private readonly PropertyInfo? _requestedCursorProperty;
+    private readonly PropertyInfo? _hitTestOverrideProperty;
     private readonly MethodInfo? _setDeviceScaleMethod;
     private readonly MethodInfo? _setClientSizeMethod;
     private readonly MethodInfo? _disposeMethod;
@@ -29,6 +31,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
     private MethodInfo? _removeCursorRequestedMethod;
     private Delegate? _renderRequestedHandler;
     private Delegate? _cursorRequestedHandler;
+    private Delegate? _hitTestOverrideHandler;
     private bool _isDisposed;
 
     private WpfPortablePresentationSourceBridge(
@@ -38,6 +41,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         PropertyInfo compositionTargetProperty,
         PropertyInfo? handleProperty,
         PropertyInfo? requestedCursorProperty,
+        PropertyInfo? hitTestOverrideProperty,
         MethodInfo? setDeviceScaleMethod,
         MethodInfo? setClientSizeMethod,
         MethodInfo? disposeMethod,
@@ -49,6 +53,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         _compositionTargetProperty = compositionTargetProperty;
         _handleProperty = handleProperty;
         _requestedCursorProperty = requestedCursorProperty;
+        _hitTestOverrideProperty = hitTestOverrideProperty;
         _setDeviceScaleMethod = setDeviceScaleMethod;
         _setClientSizeMethod = setClientSizeMethod;
         _disposeMethod = disposeMethod;
@@ -200,6 +205,13 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
             _removeCursorRequestedMethod.Invoke(Source, new object[] { _cursorRequestedHandler });
         }
 
+        if (_hitTestOverrideProperty != null &&
+            _hitTestOverrideHandler != null &&
+            ReferenceEquals(_hitTestOverrideProperty.GetValue(Source), _hitTestOverrideHandler))
+        {
+            _hitTestOverrideProperty.SetValue(Source, null);
+        }
+
         object? rootVisual = _rootVisualProperty.GetValue(Source);
         if (ReferenceEquals(_host.WpfRootVisual, rootVisual))
         {
@@ -229,6 +241,7 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
         PropertyInfo? compositionTargetProperty = FindProperty(sourceType, CompositionTargetPropertyName);
         PropertyInfo? handleProperty = FindProperty(sourceType, HandlePropertyName);
         PropertyInfo? requestedCursorProperty = FindProperty(sourceType, RequestedCursorPropertyName);
+        PropertyInfo? hitTestOverrideProperty = FindProperty(sourceType, HitTestOverridePropertyName);
         if (rootVisualProperty == null ||
             !rootVisualProperty.CanRead ||
             !rootVisualProperty.CanWrite ||
@@ -270,12 +283,14 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
             compositionTargetProperty,
             handleProperty,
             requestedCursorProperty,
+            hitTestOverrideProperty,
             setDeviceScaleMethod,
             setClientSizeMethod,
             disposeMethod,
             ownsSource);
         bridge.TrySubscribeToRenderRequested(renderRequestedEvent);
         bridge.TrySubscribeToCursorRequested(cursorRequestedEvent);
+        bridge.TryInstallHitTestOverride();
 
         bridge.SyncHostRootVisual();
         return true;
@@ -372,6 +387,46 @@ public sealed class WpfPortablePresentationSourceBridge : IDisposable
 
         object? cursor = _requestedCursorProperty.GetValue(Source);
         _host.ApplyPortableCursor(ToWpfCursor(cursor));
+    }
+
+    private bool TryInstallHitTestOverride()
+    {
+        if (_hitTestOverrideProperty == null ||
+            !_hitTestOverrideProperty.CanWrite ||
+            !typeof(Delegate).IsAssignableFrom(_hitTestOverrideProperty.PropertyType))
+        {
+            return false;
+        }
+
+        MethodInfo? method = GetType().GetMethod(
+            nameof(TryHitTestOwner),
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        if (method == null)
+        {
+            return false;
+        }
+
+        Delegate? handler = Delegate.CreateDelegate(
+            _hitTestOverrideProperty.PropertyType,
+            this,
+            method,
+            throwOnBindFailure: false);
+        if (handler == null)
+        {
+            return false;
+        }
+
+        _hitTestOverrideProperty.SetValue(Source, handler);
+        _hitTestOverrideHandler = handler;
+        return true;
+    }
+
+    private object? TryHitTestOwner(System.Windows.Point rootPoint)
+    {
+        return _host.TryHitTestOwner(rootPoint.X, rootPoint.Y, out object? owner) &&
+            owner != null
+                ? owner
+                : _host.HasGpuHitTestCache ? Source : null;
     }
 
     private static WpfCursor ToWpfCursor(object? cursor)

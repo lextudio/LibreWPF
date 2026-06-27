@@ -59,6 +59,8 @@ namespace System.Windows
             get { return _isDisposed ? null : _portableHwndSource; }
         }
 
+        internal Func<Point, object> HitTestOverride { get; set; }
+
         public override bool IsDisposed
         {
             get { return _isDisposed; }
@@ -285,6 +287,60 @@ namespace System.Windows
         private bool ProvidesInputForRootVisual(Visual visual)
         {
             return !_isDisposed && _rootVisual == visual;
+        }
+
+        internal bool TryHitTestOverride(Point rootPoint, out IInputElement enabledHit, out IInputElement originalHit)
+        {
+            enabledHit = originalHit = null;
+            if (_isDisposed || HitTestOverride == null)
+            {
+                return false;
+            }
+
+            object hitTestResult = HitTestOverride(rootPoint);
+            if (ReferenceEquals(hitTestResult, this))
+            {
+                // The portable host returns the source itself to mark a GPU-cache miss
+                // that should not fall back to the CPU drawing-content hit-test walk.
+                return true;
+            }
+
+            if (hitTestResult is not DependencyObject candidate)
+            {
+                return false;
+            }
+
+            originalHit = candidate as IInputElement;
+            while (candidate != null)
+            {
+                if (candidate is UIElement element)
+                {
+                    originalHit ??= element;
+                    if (element.IsEnabled)
+                    {
+                        enabledHit = element;
+                        return true;
+                    }
+                }
+                else if (candidate is UIElement3D element3D)
+                {
+                    originalHit ??= element3D;
+                    if (element3D.IsEnabled)
+                    {
+                        enabledHit = element3D;
+                        return true;
+                    }
+                }
+
+                if (candidate == _rootVisual)
+                {
+                    break;
+                }
+
+                candidate = VisualTreeHelper.GetParentInternal(candidate);
+            }
+
+            return originalHit != null;
         }
 
         private sealed class PortableKeyboardInputProvider : IKeyboardInputProvider, IDisposable

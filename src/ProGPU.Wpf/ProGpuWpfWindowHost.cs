@@ -240,6 +240,8 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     internal long NativeLoopWakeupCount { get; private set; }
 
+    internal bool HasGpuHitTestCache => _target?.LastGpuHitTestIndex != null;
+
     public Action<MediaDrawingContext, ProGpuWpfFrameEventArgs>? Draw { get; set; }
 
     public Action<WpfCompositionDrawingContext, ProGpuWpfFrameEventArgs>? WpfDraw { get; set; }
@@ -1639,6 +1641,26 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             sourceDrawingContext.Close();
             LastSourceDrawingResult = sourceDrawingContext.Result;
         }
+    }
+
+    internal bool TryHitTestOwner(double x, double y, out object? owner)
+    {
+        owner = null;
+        if (_target == null ||
+            !double.IsFinite(x) ||
+            !double.IsFinite(y) ||
+            x < float.MinValue ||
+            x > float.MaxValue ||
+            y < float.MinValue ||
+            y > float.MaxValue)
+        {
+            return false;
+        }
+
+        return _target.TryHitTestOwner(
+            new System.Numerics.Vector2((float)x, (float)y),
+            out owner,
+            out _);
     }
 
     private void AttachInputService()

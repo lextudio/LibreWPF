@@ -4,7 +4,9 @@
 //                                             
 
 using MS.Internal;
+using System.Numerics;
 using System.Windows.Media.Composition;
+using ProGpuRectangleGeometryHitTesting = ProGPU.Vector.RectangleGeometryHitTesting;
 
 namespace System.Windows.Media
 {
@@ -241,8 +243,8 @@ namespace System.Windows.Media
             if (!OperatingSystem.IsWindows())
             {
                 return pen == null
-                    ? FillContainsManaged(rect, radiusX, radiusY, hitPoint)
-                    : StrokeContainsManaged(rect, radiusX, radiusY, pen, hitPoint, tolerance, type);
+                    ? FillContainsProGpu(rect, radiusX, radiusY, hitPoint)
+                    : StrokeContainsProGpu(rect, radiusX, radiusY, pen, hitPoint, tolerance, type);
             }
 
             uint pointCount = GetPointCount(rect, radiusX, radiusY);
@@ -268,7 +270,43 @@ namespace System.Windows.Media
             }
         }
 
-        private bool FillContainsManaged(Rect rect, double radiusX, double radiusY, Point hitPoint)
+        private bool FillContainsProGpu(Rect rect, double radiusX, double radiusY, Point hitPoint)
+        {
+            if (!TryTransformHitPointToLocal(ref hitPoint))
+            {
+                return false;
+            }
+
+            return ProGpuRectangleGeometryHitTesting.ContainsFill(
+                ToProGpuPoint(hitPoint),
+                ToProGpuMin(rect),
+                ToProGpuMax(rect),
+                new Vector2((float)radiusX, (float)radiusY));
+        }
+
+        private bool StrokeContainsProGpu(Rect rect, double radiusX, double radiusY, Pen pen, Point hitPoint, double tolerance, ToleranceType type)
+        {
+            if (pen.Brush == null || pen.Thickness <= 0.0)
+            {
+                return false;
+            }
+
+            if (!TryTransformHitPointToLocal(ref hitPoint))
+            {
+                return false;
+            }
+
+            return ProGpuRectangleGeometryHitTesting.ContainsStroke(
+                ToProGpuPoint(hitPoint),
+                ToProGpuMin(rect),
+                ToProGpuMax(rect),
+                new Vector2((float)radiusX, (float)radiusY),
+                (float)pen.Thickness,
+                (float)tolerance,
+                type == ToleranceType.Relative);
+        }
+
+        private bool TryTransformHitPointToLocal(ref Point hitPoint)
         {
             Transform transform = Transform;
             if (transform != null && transform != Transform.Identity)
@@ -280,73 +318,22 @@ namespace System.Windows.Media
                 }
             }
 
-            if (!rect.Contains(hitPoint))
-            {
-                return false;
-            }
-
-            radiusX = Math.Min(Math.Abs(radiusX), rect.Width / 2.0);
-            radiusY = Math.Min(Math.Abs(radiusY), rect.Height / 2.0);
-            if (radiusX <= 0.0 || radiusY <= 0.0)
-            {
-                return true;
-            }
-
-            double left = rect.Left + radiusX;
-            double right = rect.Right - radiusX;
-            double top = rect.Top + radiusY;
-            double bottom = rect.Bottom - radiusY;
-            if ((hitPoint.X >= left && hitPoint.X <= right) ||
-                (hitPoint.Y >= top && hitPoint.Y <= bottom))
-            {
-                return true;
-            }
-
-            double centerX = hitPoint.X < left ? left : right;
-            double centerY = hitPoint.Y < top ? top : bottom;
-            double normalizedX = (hitPoint.X - centerX) / radiusX;
-            double normalizedY = (hitPoint.Y - centerY) / radiusY;
-            return (normalizedX * normalizedX) + (normalizedY * normalizedY) <= 1.0;
+            return true;
         }
 
-        private bool StrokeContainsManaged(Rect rect, double radiusX, double radiusY, Pen pen, Point hitPoint, double tolerance, ToleranceType type)
+        private static Vector2 ToProGpuPoint(Point point)
         {
-            if (pen.Brush == null || pen.Thickness <= 0.0)
-            {
-                return false;
-            }
+            return new Vector2((float)point.X, (float)point.Y);
+        }
 
-            double tolerancePadding = Math.Max(0.0, tolerance);
-            if (type == ToleranceType.Relative)
-            {
-                tolerancePadding *= Math.Max(Math.Abs(rect.Width), Math.Abs(rect.Height));
-            }
+        private static Vector2 ToProGpuMin(Rect rect)
+        {
+            return new Vector2((float)rect.Left, (float)rect.Top);
+        }
 
-            double halfStroke = (Math.Abs(pen.Thickness) / 2.0) + tolerancePadding;
-            if (halfStroke <= 0.0)
-            {
-                return false;
-            }
-
-            Rect outer = rect;
-            outer.Inflate(halfStroke, halfStroke);
-            if (!FillContainsManaged(outer, Math.Abs(radiusX) + halfStroke, Math.Abs(radiusY) + halfStroke, hitPoint))
-            {
-                return false;
-            }
-
-            Rect inner = rect;
-            inner.Inflate(-halfStroke, -halfStroke);
-            if (inner.IsEmpty || inner.Width <= 0.0 || inner.Height <= 0.0)
-            {
-                return true;
-            }
-
-            return !FillContainsManaged(
-                inner,
-                Math.Max(0.0, Math.Abs(radiusX) - halfStroke),
-                Math.Max(0.0, Math.Abs(radiusY) - halfStroke),
-                hitPoint);
+        private static Vector2 ToProGpuMax(Rect rect)
+        {
+            return new Vector2((float)rect.Right, (float)rect.Bottom);
         }
 
         /// <summary>

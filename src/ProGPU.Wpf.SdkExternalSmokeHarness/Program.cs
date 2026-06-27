@@ -5289,6 +5289,49 @@ internal static class Program
                     AssertEqual(true, frame.CanGoBack, "external SDK frame can go back after navigation command forward");
                     AssertEqual(false, frame.CanGoForward, "external SDK frame cannot go forward after navigation command forward");
 
+                    var frameNavigationService = frame.NavigationService
+                        ?? throw new InvalidOperationException("Expected external SDK Frame NavigationService.");
+                    var frameNavigationServiceSecondPage = RequireType<ExternalSecondPage>(
+                        frame.Content,
+                        "external SDK NavigationService second page content");
+                    AssertEqual(frameNavigationService, frameNavigationServiceSecondPage.NavigationService, "external SDK page NavigationService property");
+                    AssertEqual(frameNavigationService, NavigationService.GetNavigationService(frameNavigationServiceSecondPage), "external SDK page NavigationService lookup");
+                    AssertEqual(true, frameNavigationService.CanGoBack, "external SDK Frame NavigationService can go back");
+                    AssertEqual(false, frameNavigationService.CanGoForward, "external SDK Frame NavigationService cannot go forward before service back");
+
+                    int navigatingCountBeforeServiceBack = window.ExternalFrameNavigatingCount;
+                    int navigatedCountBeforeServiceBack = window.ExternalFrameNavigatedCount;
+                    frameNavigationService.GoBack();
+                    DrainDispatcher();
+
+                    var frameNavigationServiceReturnedPage = RequireType<ExternalPage>(
+                        frame.Content,
+                        "external SDK NavigationService returned compiled page");
+                    AssertEqual(frameNavigationService, frameNavigationServiceReturnedPage.NavigationService, "external SDK returned page NavigationService property");
+                    AssertEqual(frameNavigationService, NavigationService.GetNavigationService(frameNavigationServiceReturnedPage), "external SDK returned page NavigationService lookup");
+                    AssertAtLeast(navigatingCountBeforeServiceBack + 1, window.ExternalFrameNavigatingCount, "external SDK NavigationService back frame navigating count");
+                    AssertAtLeast(navigatedCountBeforeServiceBack + 1, window.ExternalFrameNavigatedCount, "external SDK NavigationService back frame navigated count");
+                    AssertEqual("Back", window.LastExternalFrameNavigationMode, "external SDK NavigationService back frame navigation mode");
+                    AssertEqual(typeof(ExternalPage).FullName, window.LastExternalFrameContentType, "external SDK NavigationService back frame content type");
+                    AssertEqual(true, frameNavigationService.CanGoForward, "external SDK Frame NavigationService can go forward after service back");
+
+                    int navigatingCountBeforeServiceForward = window.ExternalFrameNavigatingCount;
+                    int navigatedCountBeforeServiceForward = window.ExternalFrameNavigatedCount;
+                    int loadCompletedCountBeforeServiceForward = window.ExternalFrameLoadCompletedCount;
+                    frameNavigationService.GoForward();
+                    DrainDispatcher();
+
+                    var frameNavigationServiceForwardedPage = RequireType<ExternalSecondPage>(
+                        frame.Content,
+                        "external SDK NavigationService forwarded compiled page");
+                    AssertEqual(frameNavigationService, frameNavigationServiceForwardedPage.NavigationService, "external SDK forwarded page NavigationService property");
+                    AssertEqual(frameNavigationService, NavigationService.GetNavigationService(frameNavigationServiceForwardedPage), "external SDK forwarded page NavigationService lookup");
+                    AssertAtLeast(navigatingCountBeforeServiceForward + 1, window.ExternalFrameNavigatingCount, "external SDK NavigationService forward frame navigating count");
+                    AssertAtLeast(navigatedCountBeforeServiceForward + 1, window.ExternalFrameNavigatedCount, "external SDK NavigationService forward frame navigated count");
+                    AssertAtLeast(loadCompletedCountBeforeServiceForward + 1, window.ExternalFrameLoadCompletedCount, "external SDK NavigationService forward frame load completed count");
+                    AssertEqual("Forward", window.LastExternalFrameNavigationMode, "external SDK NavigationService forward frame navigation mode");
+                    AssertEqual(typeof(ExternalSecondPage).FullName, window.LastExternalFrameContentType, "external SDK NavigationService forward frame content type");
+
                     int navigatingCountBeforeCanceled = window.ExternalFrameNavigatingCount;
                     int navigatedCountBeforeCanceled = window.ExternalFrameNavigatedCount;
                     int loadCompletedCountBeforeCanceled = window.ExternalFrameLoadCompletedCount;
@@ -6202,6 +6245,13 @@ internal static class Program
                     AssertEqual(true, ApplicationContainsWindow(app, navigationWindow), "external SDK application windows contains NavigationWindow");
                     AssertEqual(false, navigationWindow.ShowsNavigationUI, "external SDK NavigationWindow UI metadata");
                     AssertEqual(window, navigationWindow.Owner, "external SDK NavigationWindow owner");
+                    var navigationWindowService = navigationWindow.NavigationService
+                        ?? throw new InvalidOperationException("Expected external SDK NavigationWindow NavigationService.");
+                    var navigationWindowInitialPage = RequireType<ExternalPage>(
+                        navigationWindow.Content,
+                        "external SDK NavigationWindow initial content");
+                    AssertEqual(navigationWindowService, navigationWindowInitialPage.NavigationService, "external SDK NavigationWindow page NavigationService property");
+                    AssertEqual(navigationWindowService, NavigationService.GetNavigationService(navigationWindowInitialPage), "external SDK NavigationWindow page NavigationService lookup");
                     AssertAtLeast(1, navigationWindow.NavigatingCount, "external SDK NavigationWindow initial navigating count");
                     AssertAtLeast(1, navigationWindow.NavigatedCount, "external SDK NavigationWindow initial navigated count");
                     AssertAtLeast(1, navigationWindow.LoadCompletedCount, "external SDK NavigationWindow initial load completed count");
@@ -6211,13 +6261,10 @@ internal static class Program
                     AssertEqual("New", navigationWindow.LastNavigationMode, "external SDK NavigationWindow initial navigation mode");
                     AssertEqual(typeof(ExternalPage).FullName, navigationWindow.LastContentType, "external SDK NavigationWindow initial content type");
 
-                    var navigationWindowPage = RequireType<ExternalPage>(
-                        navigationWindow.Content,
-                        "external SDK NavigationWindow initial content");
                     AssertEqual(
                         "External SDK page",
                         RequireType<TextBlock>(
-                            navigationWindowPage.FindName("ExternalPageTitle"),
+                            navigationWindowInitialPage.FindName("ExternalPageTitle"),
                             "external SDK NavigationWindow initial page title").Text,
                         "external SDK NavigationWindow initial page text");
 
@@ -6239,33 +6286,50 @@ internal static class Program
                     AssertEqual("New", navigationWindow.LastNavigationMode, "external SDK NavigationWindow second navigation mode");
                     AssertEqual(typeof(ExternalSecondPage).FullName, navigationWindow.LastContentType, "external SDK NavigationWindow second content type");
                     AssertEqual(true, navigationWindow.CanGoBack, "external SDK NavigationWindow can go back");
+                    var navigationWindowSecondPage = RequireType<ExternalSecondPage>(
+                        navigationWindow.Content,
+                        "external SDK NavigationWindow second content");
+                    AssertEqual(navigationWindowService, navigationWindowSecondPage.NavigationService, "external SDK NavigationWindow second page NavigationService property");
+                    AssertEqual(navigationWindowService, NavigationService.GetNavigationService(navigationWindowSecondPage), "external SDK NavigationWindow second page NavigationService lookup");
 
                     int navigationWindowNavigatingBeforeBack = navigationWindow.NavigatingCount;
                     int navigationWindowNavigatedBeforeBack = navigationWindow.NavigatedCount;
-                    navigationWindow.GoBack();
+                    AssertEqual(true, navigationWindowService.CanGoBack, "external SDK NavigationWindow NavigationService can go back");
+                    navigationWindowService.GoBack();
                     PumpDispatcherUntil(
                         () => navigationWindow.Content is ExternalPage,
                         TimeSpan.FromSeconds(1),
-                        "external SDK NavigationWindow back page");
+                        "external SDK NavigationWindow service back page");
 
                     AssertAtLeast(navigationWindowNavigatingBeforeBack + 1, navigationWindow.NavigatingCount, "external SDK NavigationWindow back navigating count");
                     AssertAtLeast(navigationWindowNavigatedBeforeBack + 1, navigationWindow.NavigatedCount, "external SDK NavigationWindow back navigated count");
                     AssertEqual("Back", navigationWindow.LastNavigationMode, "external SDK NavigationWindow back navigation mode");
                     AssertEqual(typeof(ExternalPage).FullName, navigationWindow.LastContentType, "external SDK NavigationWindow back content type");
                     AssertEqual(true, navigationWindow.CanGoForward, "external SDK NavigationWindow can go forward");
+                    var navigationWindowReturnedPage = RequireType<ExternalPage>(
+                        navigationWindow.Content,
+                        "external SDK NavigationWindow returned content");
+                    AssertEqual(navigationWindowService, navigationWindowReturnedPage.NavigationService, "external SDK NavigationWindow returned page NavigationService property");
+                    AssertEqual(navigationWindowService, NavigationService.GetNavigationService(navigationWindowReturnedPage), "external SDK NavigationWindow returned page NavigationService lookup");
 
                     int navigationWindowNavigatingBeforeForward = navigationWindow.NavigatingCount;
                     int navigationWindowNavigatedBeforeForward = navigationWindow.NavigatedCount;
-                    navigationWindow.GoForward();
+                    AssertEqual(true, navigationWindowService.CanGoForward, "external SDK NavigationWindow NavigationService can go forward");
+                    navigationWindowService.GoForward();
                     PumpDispatcherUntil(
                         () => navigationWindow.Content is ExternalSecondPage,
                         TimeSpan.FromSeconds(1),
-                        "external SDK NavigationWindow forward page");
+                        "external SDK NavigationWindow service forward page");
 
                     AssertAtLeast(navigationWindowNavigatingBeforeForward + 1, navigationWindow.NavigatingCount, "external SDK NavigationWindow forward navigating count");
                     AssertAtLeast(navigationWindowNavigatedBeforeForward + 1, navigationWindow.NavigatedCount, "external SDK NavigationWindow forward navigated count");
                     AssertEqual("Forward", navigationWindow.LastNavigationMode, "external SDK NavigationWindow forward navigation mode");
                     AssertEqual(typeof(ExternalSecondPage).FullName, navigationWindow.LastContentType, "external SDK NavigationWindow forward content type");
+                    var navigationWindowForwardedPage = RequireType<ExternalSecondPage>(
+                        navigationWindow.Content,
+                        "external SDK NavigationWindow forwarded content");
+                    AssertEqual(navigationWindowService, navigationWindowForwardedPage.NavigationService, "external SDK NavigationWindow forwarded page NavigationService property");
+                    AssertEqual(navigationWindowService, NavigationService.GetNavigationService(navigationWindowForwardedPage), "external SDK NavigationWindow forwarded page NavigationService lookup");
 
                     navigationWindow.Close();
                     DrainDispatcher();

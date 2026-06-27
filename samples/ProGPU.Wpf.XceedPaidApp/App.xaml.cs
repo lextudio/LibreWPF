@@ -196,6 +196,12 @@ internal static class XceedPaidSelfTest
         AssertType<Xceed.Wpf.DataGrid.DataGridItemProperty>("Xceed DataGrid item property");
         AssertType<Xceed.Wpf.DataGrid.DataGridUnboundItemProperty>("Xceed DataGrid unbound item property");
         AssertType<Xceed.Wpf.DataGrid.UnboundColumn>("Xceed DataGrid unbound column");
+        AssertType<Xceed.Wpf.DataGrid.CellEditor>("Xceed DataGrid cell editor");
+        AssertType<Xceed.Wpf.DataGrid.CellEditorSelector>("Xceed DataGrid cell editor selector");
+        AssertType<Xceed.Wpf.DataGrid.CellValidationContext>("Xceed DataGrid cell validation context");
+        AssertType<Xceed.Wpf.DataGrid.CellValidationError>("Xceed DataGrid cell validation error");
+        AssertType<Xceed.Wpf.DataGrid.RowValidationError>("Xceed DataGrid row validation error");
+        AssertType<Xceed.Wpf.DataGrid.ValidationRules.CellValidationRule>("Xceed DataGrid cell validation rule");
         AssertType<Xceed.Wpf.DataGrid.DetailConfiguration>("Xceed DataGrid detail configuration");
         AssertType<Xceed.Wpf.DataGrid.FilterRow>("Xceed DataGrid filter row");
         AssertType<Xceed.Wpf.DataGrid.MergedHeader>("Xceed DataGrid merged header");
@@ -256,8 +262,10 @@ internal static class XceedPaidSelfTest
         var rowsView = window.PaidRowsViewSource;
         var virtualRowsView = window.VirtualPaidRowsViewSource;
         AssertEqual(100_000, viewModel.RowCount, "paid DataGrid row count");
+        AssertEqual(128, viewModel.EditableRows.Count, "paid editable DataGrid row count");
         AssertEqual(66_667, viewModel.ActiveRowCount, "paid DataGrid active filtered row count");
         AssertEqual(viewModel.Rows[0], viewModel.SelectedRow, "paid DataGrid initial selected row");
+        AssertEqual(viewModel.EditableRows[0], viewModel.SelectedEditableRow, "paid editable DataGrid initial selected row");
         AssertEqual(100_000, viewModel.VirtualRows.Count(), "paid DataGrid virtual queryable row count");
         AssertEqual(true, viewModel.Rows[0].Details.Count >= 2, "paid DataGrid lazy detail row data");
         AssertEqual(Xceed.Wpf.DataGrid.AutoFilterMode.And, rowsView.AutoFilterMode, "paid DataGrid auto-filter mode");
@@ -307,6 +315,17 @@ internal static class XceedPaidSelfTest
         AssertEqual(true, window.VirtualPaidDataGrid.ReadOnly, "paid virtual DataGrid read-only state");
         AssertEqual(Xceed.Wpf.DataGrid.ItemScrollingBehavior.Deferred, window.VirtualPaidDataGrid.ItemScrollingBehavior, "paid virtual DataGrid scroll behavior");
         AssertEqual(7, window.VirtualPaidDataGrid.Columns.Count, "paid virtual DataGrid explicit columns");
+        AssertEqual(false, window.EditablePaidDataGrid.AutoCreateColumns, "paid editable DataGrid auto columns");
+        AssertEqual(false, window.EditablePaidDataGrid.ReadOnly, "paid editable DataGrid read-only state");
+        AssertEqual(Xceed.Wpf.DataGrid.EditTriggers.CellIsCurrent, window.EditablePaidDataGrid.EditTriggers, "paid editable DataGrid edit trigger");
+        AssertEqual(5, window.EditablePaidDataGrid.Columns.Count, "paid editable DataGrid explicit columns");
+        AssertEqual(true, MainWindow.FindPaidColumn(window.EditablePaidDataGrid, "Id").ReadOnly, "paid editable DataGrid id read-only column");
+        AssertEqual(true, MainWindow.FindPaidColumn(window.EditablePaidDataGrid, "Score").CellEditorDisplayConditions == Xceed.Wpf.DataGrid.CellEditorDisplayConditions.CellIsCurrent, "paid editable DataGrid score editor condition");
+        var editableRow = viewModel.EditableRows[1];
+        editableRow.Score = 125;
+        AssertEqual("Score must stay between 0 and 100.", editableRow[nameof(PaidEditableGridItem.Score)], "paid editable DataGrid score validation");
+        editableRow.Score = 75;
+        AssertEqual(string.Empty, editableRow[nameof(PaidEditableGridItem.Score)], "paid editable DataGrid score validation reset");
         AssertEqual(viewModel.SelectedRow, window.PaidDataGrid.SelectedItem, "paid DataGrid selected item");
         AssertEqual(true, window.PaidDataGrid.View is Xceed.Wpf.DataGrid.Views.TableView, "paid DataGrid table view");
         AssertEqual(true, window.PaidTableView.Theme is Xceed.Wpf.DataGrid.ThemePack.Office2007BlueTheme, "paid DataGrid ThemePack table view theme");
@@ -324,11 +343,16 @@ internal static class XceedPaidSelfTest
             window.PaidDataGrid.UpdateLayout();
             window.PaidDataGrid.BringItemIntoView(viewModel.Rows[viewModel.Rows.Count - 1]);
             window.PaidDataGrid.UpdateLayout();
+            window.EditableDataGridDocument.IsSelected = true;
+            window.EditableDataGridDocument.IsActive = true;
+            window.EditablePaidDataGrid.UpdateLayout();
 
             if (window.PaidDataGrid.ActualWidth <= 0 ||
-                window.PaidDataGrid.ActualHeight <= 0)
+                window.PaidDataGrid.ActualHeight <= 0 ||
+                window.EditablePaidDataGrid.ActualWidth <= 0 ||
+                window.EditablePaidDataGrid.ActualHeight <= 0)
             {
-                throw new InvalidOperationException("Expected paid Xceed DataGrid to participate in loaded layout.");
+                throw new InvalidOperationException("Expected paid Xceed DataGrid documents to participate in loaded layout.");
             }
         }
     }

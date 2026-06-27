@@ -51,6 +51,7 @@ public partial class MainWindow : Window
         ViewModel.Activity.Add("Paid DataGrid view applies active-row filtering, category grouping, updated-date sorting, stats, details, search, merged headers, and Office2007 theme");
         ViewModel.Activity.Add("Paid DataGrid export, settings persistence, column chooser, Tableflow, and Cardflow 3D commands are available");
         ViewModel.Activity.Add("Paid DataGrid virtualizing queryable source uses bounded pages and realized-item cache");
+        ViewModel.Activity.Add("Paid editable DataGrid uses current-cell edit triggers and IDataErrorInfo validation");
         UpdateColumnChooserStatus("Paid DataGrid column chooser initialized");
     }
 
@@ -84,6 +85,17 @@ public partial class MainWindow : Window
         PaidDataGrid.SelectedItem = item;
         PaidDataGrid.BringItemIntoView(item);
         ViewModel.Status = $"Added {item.Title}";
+    }
+
+    private void ValidateEditButton_Click(object sender, RoutedEventArgs e)
+    {
+        var item = ViewModel.SelectedEditableRow;
+        item.Score = 125;
+        var error = item[nameof(PaidEditableGridItem.Score)];
+        item.Score = 75;
+        ViewModel.LastAction = $"Validated paid editable DataGrid score rule: {error}";
+        ViewModel.Status = ViewModel.LastAction;
+        ViewModel.Activity.Add(ViewModel.LastAction);
     }
 
     private void SelectMiddleButton_Click(object sender, RoutedEventArgs e)
@@ -260,20 +272,24 @@ internal sealed class XceedPaidViewModel : INotifyPropertyChanged
     private double _scoreBias = 35.0;
     private double _progress = 35.0;
     private bool _isRefreshing;
+    private PaidEditableGridItem _selectedEditableRow = null!;
 
     internal XceedPaidViewModel(XceedPaidLicenseStatus licenseStatus)
     {
         LicenseStatusText = licenseStatus.DescribePublic();
-        PackageStatus = "Toolkit Plus 5.2, DataGrid 7.3, AvalonDock Windows10 theme, virtualization, unbound columns, export/settings APIs, column chooser, Views3D/theme-pack assemblies";
+        PackageStatus = "Toolkit Plus 5.2, DataGrid 7.3, AvalonDock Windows10 theme, virtualization, editing/validation, unbound columns, export/settings APIs, column chooser, Views3D/theme-pack assemblies";
         Rows = CreateRows(100_000);
+        EditableRows = CreateEditableRows(128);
         _selectedRow = Rows[0];
+        _selectedEditableRow = EditableRows[0];
         Activity =
         [
             "Created 100,000 paid DataGrid rows",
+            "Created paid editable DataGrid validation rows",
             "Configured explicit Xceed DataGrid columns",
             "Configured computed paid DataGrid unbound priority column",
             "Configured Toolkit Plus Material controls",
-            "Configured paid DataGrid merged headers, search, export, settings, column chooser, and view commands",
+            "Configured paid DataGrid merged headers, search, export, settings, editing, validation, column chooser, and view commands",
             "Configured paid DataGrid virtualizing queryable source"
         ];
     }
@@ -284,7 +300,11 @@ internal sealed class XceedPaidViewModel : INotifyPropertyChanged
 
     public IQueryable<PaidGridItem> VirtualRows => Rows.AsQueryable();
 
+    public ObservableCollection<PaidEditableGridItem> EditableRows { get; }
+
     public ObservableCollection<string> Activity { get; }
+
+    public string[] StatusOptions { get; } = ["Ready", "Queued", "Running", "Reviewed", "Pinned"];
 
     public string LicenseStatusText { get; }
 
@@ -302,6 +322,19 @@ internal sealed class XceedPaidViewModel : INotifyPropertyChanged
             if (!ReferenceEquals(_selectedRow, value) && value is not null)
             {
                 _selectedRow = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public PaidEditableGridItem SelectedEditableRow
+    {
+        get => _selectedEditableRow;
+        set
+        {
+            if (!ReferenceEquals(_selectedEditableRow, value) && value is not null)
+            {
+                _selectedEditableRow = value;
                 OnPropertyChanged();
             }
         }
@@ -392,6 +425,23 @@ internal sealed class XceedPaidViewModel : INotifyPropertyChanged
         for (int i = 1; i <= count; i++)
         {
             rows.Add(CreateRow(i));
+        }
+
+        return rows;
+    }
+
+    private static ObservableCollection<PaidEditableGridItem> CreateEditableRows(int count)
+    {
+        var rows = new ObservableCollection<PaidEditableGridItem>();
+        for (int i = 1; i <= count; i++)
+        {
+            var row = CreateRow(i);
+            rows.Add(new PaidEditableGridItem(
+                row.Id,
+                row.Title,
+                row.Status,
+                row.Score,
+                row.Active));
         }
 
         return rows;
@@ -499,4 +549,105 @@ public sealed class PaidGridDetail
     public string Owner { get; }
 
     public int Score { get; }
+}
+
+public sealed class PaidEditableGridItem : INotifyPropertyChanged, IDataErrorInfo
+{
+    private string _title;
+    private string _status;
+    private int _score;
+    private bool _active;
+
+    public PaidEditableGridItem(
+        int id,
+        string title,
+        string status,
+        int score,
+        bool active)
+    {
+        Id = id;
+        _title = title;
+        _status = status;
+        _score = score;
+        _active = active;
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public int Id { get; }
+
+    public string Title
+    {
+        get => _title;
+        set => SetProperty(ref _title, value);
+    }
+
+    public string Status
+    {
+        get => _status;
+        set => SetProperty(ref _status, value);
+    }
+
+    public int Score
+    {
+        get => _score;
+        set => SetProperty(ref _score, value);
+    }
+
+    public bool Active
+    {
+        get => _active;
+        set => SetProperty(ref _active, value);
+    }
+
+    public string Error
+    {
+        get
+        {
+            string titleError = this[nameof(Title)];
+            if (!string.IsNullOrEmpty(titleError))
+            {
+                return titleError;
+            }
+
+            string statusError = this[nameof(Status)];
+            if (!string.IsNullOrEmpty(statusError))
+            {
+                return statusError;
+            }
+
+            return this[nameof(Score)];
+        }
+    }
+
+    public string this[string columnName]
+    {
+        get
+        {
+            return columnName switch
+            {
+                nameof(Title) when string.IsNullOrWhiteSpace(Title) => "Title is required.",
+                nameof(Status) when !IsKnownStatus(Status) => "Status must be one of the paid sample states.",
+                nameof(Score) when Score < 0 || Score > 100 => "Score must stay between 0 and 100.",
+                _ => string.Empty
+            };
+        }
+    }
+
+    private static bool IsKnownStatus(string status)
+    {
+        return status is "Ready" or "Queued" or "Running" or "Reviewed" or "Pinned";
+    }
+
+    private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (Equals(field, value))
+        {
+            return false;
+        }
+
+        field = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        return true;
+    }
 }

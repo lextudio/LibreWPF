@@ -73,6 +73,23 @@
                                                             PageSize="256"
                                                             MaxRealizedItemCount="1024"
                                                             CommitMode="EditCommitted" />
+    <xcdg:DataGridCollectionViewSource x:Key="EditableRowsView"
+                                       Source="{Binding EditableRows}"
+                                       AutoCreateItemProperties="False"
+                                       DefaultCalculateDistinctValues="False">
+      <xcdg:DataGridCollectionViewSource.ItemProperties>
+        <xcdg:DataGridItemProperty Name="Id"
+                                   Title="Id" />
+        <xcdg:DataGridItemProperty Name="Title"
+                                   Title="Title" />
+        <xcdg:DataGridItemProperty Name="Status"
+                                   Title="Status" />
+        <xcdg:DataGridItemProperty Name="Score"
+                                   Title="Score" />
+        <xcdg:DataGridItemProperty Name="Active"
+                                   Title="Active" />
+      </xcdg:DataGridCollectionViewSource.ItemProperties>
+    </xcdg:DataGridCollectionViewSource>
     <Style x:Key="PanelHeaderText" TargetType="{x:Type TextBlock}">
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="Foreground" Value="#12333D" />
@@ -145,6 +162,11 @@
                   Padding="10,4"
                   Content="Add row"
                   Click="AddRowButton_Click" />
+          <Button MinWidth="112"
+                  Margin="0,0,6,0"
+                  Padding="10,4"
+                  Content="Validate edit"
+                  Click="ValidateEditButton_Click" />
           <Button MinWidth="120"
                   Margin="0,0,6,0"
                   Padding="10,4"
@@ -389,6 +411,73 @@
                                  Title="Updated" />
                     <xcdg:Column FieldName="Active"
                                  Title="Active" />
+                  </xcdg:DataGridControl.Columns>
+                </xcdg:DataGridControl>
+              </Grid>
+            </xcad:LayoutDocument>
+            <xcad:LayoutDocument x:Name="EditableDataGridDocument"
+                                 Title="Editing + validation">
+              <Grid Margin="12">
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <DockPanel Margin="0,0,0,8">
+                  <StackPanel DockPanel.Dock="Left">
+                    <TextBlock FontSize="18"
+                               FontWeight="SemiBold"
+                               Text="Xceed editable DataGrid" />
+                    <TextBlock Foreground="#60727C"
+                               Text="Commercial Xceed edit triggers, cell-ending validation, mutable rows, IDataErrorInfo validation, current-cell editing, selection, and column read-only policy." />
+                  </StackPanel>
+                  <TextBlock DockPanel.Dock="Right"
+                             VerticalAlignment="Center"
+                             Foreground="#60727C"
+                             Text="{Binding EditableRows.Count, StringFormat=Editable rows: {0:N0}}" />
+                </DockPanel>
+                <xcdg:DataGridControl x:Name="EditablePaidDataGrid"
+                                      Grid.Row="1"
+                                      AutomationProperties.AutomationId="EditablePaidXceedDataGridAutomation"
+                                      AutoCreateColumns="False"
+                                      ReadOnly="False"
+                                      EditTriggers="CellIsCurrent"
+                                      ItemScrollingBehavior="Immediate"
+                                      NavigationBehavior="CellOnly"
+                                      SelectionMode="Single"
+                                      ItemsSource="{Binding Source={StaticResource EditableRowsView}}"
+                                      SelectedItem="{Binding SelectedEditableRow, Mode=TwoWay}">
+                  <xcdg:DataGridControl.View>
+                    <xcdg:TableView ColumnStretchMode="StretchAll"
+                                    FixedColumnCount="1"
+                                    UseDefaultHeadersFooters="False">
+                      <xcdg:TableView.Theme>
+                        <xcdgtheme:Office2007BlueTheme />
+                      </xcdg:TableView.Theme>
+                      <xcdg:TableView.FixedHeaders>
+                        <DataTemplate>
+                          <xcdg:ColumnManagerRow AllowColumnReorder="True"
+                                                 AllowColumnResize="True"
+                                                 AllowSort="True" />
+                        </DataTemplate>
+                      </xcdg:TableView.FixedHeaders>
+                    </xcdg:TableView>
+                  </xcdg:DataGridControl.View>
+                  <xcdg:DataGridControl.Columns>
+                    <xcdg:Column FieldName="Id"
+                                 Title="Id"
+                                 ReadOnly="True" />
+                    <xcdg:Column FieldName="Title"
+                                 Title="Title"
+                                 CellEditorDisplayConditions="CellIsCurrent" />
+                    <xcdg:Column FieldName="Status"
+                                 Title="Status"
+                                 CellEditorDisplayConditions="CellIsCurrent" />
+                    <xcdg:Column FieldName="Score"
+                                 Title="Score"
+                                 CellEditorDisplayConditions="CellIsCurrent" />
+                    <xcdg:Column FieldName="Active"
+                                 Title="Active"
+                                 CellEditorDisplayConditions="CellIsCurrent" />
                   </xcdg:DataGridControl.Columns>
                 </xcdg:DataGridControl>
               </Grid>

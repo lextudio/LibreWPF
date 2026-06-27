@@ -6625,6 +6625,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.DataGridItemProperty>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.DataGridUnboundItemProperty>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.UnboundColumn>", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertType<Xceed.Wpf.DataGrid.CellEditor>", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertType<Xceed.Wpf.DataGrid.CellEditorSelector>", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertType<Xceed.Wpf.DataGrid.CellValidationContext>", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertType<Xceed.Wpf.DataGrid.CellValidationError>", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertType<Xceed.Wpf.DataGrid.RowValidationError>", appCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("AssertType<Xceed.Wpf.DataGrid.ValidationRules.CellValidationRule>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.DetailConfiguration>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.FilterRow>", appCodeBehind, StringComparison.Ordinal);
         Assert.Contains("AssertType<Xceed.Wpf.DataGrid.MergedHeader>", appCodeBehind, StringComparison.Ordinal);
@@ -6695,11 +6701,19 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<xctk:BusyIndicator x:Name=\"PaidBusyIndicator\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:DataGridCollectionViewSource x:Key=\"PaidRowsView\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:DataGridVirtualizingQueryableCollectionViewSource x:Key=\"VirtualPaidRowsView\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcdg:DataGridCollectionViewSource x:Key=\"EditableRowsView\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("QueryableSource=\"{Binding VirtualRows}\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("PageSize=\"256\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("MaxRealizedItemCount=\"1024\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("CommitMode=\"EditCommitted\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:DataGridControl x:Name=\"PaidDataGrid\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcad:LayoutDocument x:Name=\"EditableDataGridDocument\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("<xcdg:DataGridControl x:Name=\"EditablePaidDataGrid\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("AutomationProperties.AutomationId=\"EditablePaidXceedDataGridAutomation\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("ReadOnly=\"False\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("EditTriggers=\"CellIsCurrent\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("NavigationBehavior=\"CellOnly\"", mainWindowXaml, StringComparison.Ordinal);
+        Assert.Contains("CellEditorDisplayConditions=\"CellIsCurrent\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcad:LayoutDocument x:Name=\"VirtualDataGridDocument\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("<xcdg:DataGridControl x:Name=\"VirtualPaidDataGrid\"", mainWindowXaml, StringComparison.Ordinal);
         Assert.Contains("AutomationProperties.AutomationId=\"VirtualPaidXceedDataGridAutomation\"", mainWindowXaml, StringComparison.Ordinal);
@@ -6758,6 +6772,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("e.Value = GetPriorityBand(item)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal static string GetPriorityBand", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("internal DataGridCollectionViewSource PaidRowsViewSource", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public ObservableCollection<PaidEditableGridItem> EditableRows", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public PaidEditableGridItem SelectedEditableRow", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("public sealed class PaidEditableGridItem : INotifyPropertyChanged, IDataErrorInfo", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Score must stay between 0 and 100.", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("ValidateEditButton_Click", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PaidDataGrid.ExportToCsv(stream)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PaidDataGrid.ExportToExcel(stream)", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("PaidDataGrid.SaveUserSettings(_savedSettings, UserSettings.All)", mainWindowCodeBehind, StringComparison.Ordinal);
@@ -6779,7 +6798,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Configured explicit Xceed DataGrid columns", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Configured computed paid DataGrid unbound priority column", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Configured Toolkit Plus Material controls", mainWindowCodeBehind, StringComparison.Ordinal);
-        Assert.Contains("Configured paid DataGrid merged headers, search, export, settings, column chooser, and view commands", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Created paid editable DataGrid validation rows", mainWindowCodeBehind, StringComparison.Ordinal);
+        Assert.Contains("Configured paid DataGrid merged headers, search, export, settings, editing, validation, column chooser, and view commands", mainWindowCodeBehind, StringComparison.Ordinal);
         Assert.Contains("Configured paid DataGrid virtualizing queryable source", mainWindowCodeBehind, StringComparison.Ordinal);
 
         Assert.Contains("The direct Toolkit references are intentional", readme, StringComparison.Ordinal);
@@ -6787,6 +6807,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("Do not put license values in this repository.", readme, StringComparison.Ordinal);
         Assert.Contains("100,000 rows", readme, StringComparison.Ordinal);
         Assert.Contains("DataGridVirtualizingQueryableCollectionViewSource", readme, StringComparison.Ordinal);
+        Assert.Contains("IDataErrorInfo", readme, StringComparison.Ordinal);
+        Assert.Contains("EditTriggers", readme, StringComparison.Ordinal);
         Assert.Contains("DataGridUnboundItemProperty", readme, StringComparison.Ordinal);
         Assert.Contains("UnboundColumn", readme, StringComparison.Ordinal);
         Assert.Contains("merged headers", readme, StringComparison.Ordinal);

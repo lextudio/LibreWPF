@@ -71,6 +71,7 @@ public sealed class ProGpuCompositionCommandSink :
     private readonly WpfViewport3DTextureCache? _viewport3DTextureCache;
     private readonly Func<VectorPathGeometry, VectorPathGeometry?>? _pathOperationResolver;
     private readonly MediaDrawingContext? _drawingContext;
+    private readonly int _hitTestId;
     private bool _isClosed;
 
     public ProGpuCompositionCommandSink(MediaDrawingContext drawingContext)
@@ -82,13 +83,15 @@ public sealed class ProGpuCompositionCommandSink :
         MediaDrawingContext drawingContext,
         global::ProGPU.Backend.WgpuContext? context,
         WpfViewport3DTextureCache? viewport3DTextureCache,
-        Func<VectorPathGeometry, VectorPathGeometry?>? pathOperationResolver = null)
+        Func<VectorPathGeometry, VectorPathGeometry?>? pathOperationResolver = null,
+        int hitTestId = 0)
         : this(
             drawingContext?.NativeContext ?? throw new ArgumentNullException(nameof(drawingContext)),
             context,
             viewport3DTextureCache,
             pathOperationResolver,
-            drawingContext)
+            drawingContext,
+            hitTestId)
     {
     }
 
@@ -101,8 +104,9 @@ public sealed class ProGpuCompositionCommandSink :
         global::ProGPU.Scene.DrawingContext nativeContext,
         global::ProGPU.Backend.WgpuContext? context,
         WpfViewport3DTextureCache? viewport3DTextureCache,
-        Func<VectorPathGeometry, VectorPathGeometry?>? pathOperationResolver = null)
-        : this(nativeContext, context, viewport3DTextureCache, pathOperationResolver, drawingContext: null)
+        Func<VectorPathGeometry, VectorPathGeometry?>? pathOperationResolver = null,
+        int hitTestId = 0)
+        : this(nativeContext, context, viewport3DTextureCache, pathOperationResolver, drawingContext: null, hitTestId)
     {
     }
 
@@ -111,13 +115,15 @@ public sealed class ProGpuCompositionCommandSink :
         global::ProGPU.Backend.WgpuContext? context,
         WpfViewport3DTextureCache? viewport3DTextureCache,
         Func<VectorPathGeometry, VectorPathGeometry?>? pathOperationResolver,
-        MediaDrawingContext? drawingContext)
+        MediaDrawingContext? drawingContext,
+        int hitTestId)
     {
         NativeContext = nativeContext ?? throw new ArgumentNullException(nameof(nativeContext));
         _drawingContext = drawingContext;
         _context = context;
         _viewport3DTextureCache = viewport3DTextureCache;
         _pathOperationResolver = pathOperationResolver;
+        _hitTestId = hitTestId;
         _transformStack.Push(Matrix4x4.Identity);
         _bitmapScalingModeStack.Push(global::ProGPU.Scene.TextureSamplingMode.Linear);
         _edgeModeStack.Push(false);
@@ -128,6 +134,12 @@ public sealed class ProGpuCompositionCommandSink :
     public MediaDrawingContext? DrawingContext => _drawingContext;
 
     internal global::ProGPU.Scene.DrawingContext NativeContext { get; }
+
+    private void AddNativeCommand(global::ProGPU.Scene.RenderCommand command)
+    {
+        command.HitTestId = _hitTestId;
+        NativeContext.Commands.Add(command);
+    }
 
     public int UnsupportedStateCount { get; private set; }
 
@@ -151,7 +163,7 @@ public sealed class ProGpuCompositionCommandSink :
             return false;
         }
 
-        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawExtension,
             ExtensionId = global::ProGPU.Scene.CompositorBuiltInExtensions.Mesh3D,
@@ -161,7 +173,7 @@ public sealed class ProGpuCompositionCommandSink :
             DataParam = replayData.Payload
         });
 
-        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawTexture,
             Texture = replayData.Payload.ColorTexture,
@@ -199,7 +211,7 @@ public sealed class ProGpuCompositionCommandSink :
         var originalPoint1 = point1;
         ApplySquareLineCaps(pen, ref point0, ref point1, startLineCap, endLineCap);
 
-        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawLine,
             Pen = pen,
@@ -288,7 +300,7 @@ public sealed class ProGpuCompositionCommandSink :
         var center = isStart ? start : end;
         var outward = isStart ? -direction : direction;
 
-        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.FillTriangle,
             Brush = pen.Brush,
@@ -312,7 +324,7 @@ public sealed class ProGpuCompositionCommandSink :
 
     private void AddNativeRect(VectorBrush? brush, VectorPen? pen, Rect rectangle)
     {
-        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawRect,
             Brush = brush,
@@ -335,7 +347,7 @@ public sealed class ProGpuCompositionCommandSink :
 
     private void AddNativeRoundedRect(VectorBrush? brush, VectorPen? pen, Rect rectangle, double radiusX, double radiusY)
     {
-        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawRoundedRect,
             Brush = brush,
@@ -364,7 +376,7 @@ public sealed class ProGpuCompositionCommandSink :
 
     private void AddNativeEllipse(VectorBrush? brush, VectorPen? pen, Point center, double radiusX, double radiusY)
     {
-        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawEllipse,
             Brush = brush,
@@ -406,7 +418,7 @@ public sealed class ProGpuCompositionCommandSink :
 
     private void AddNativePath(VectorBrush? brush, VectorPen? pen, VectorPathGeometry path)
     {
-        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawPath,
             Brush = brush,
@@ -424,7 +436,7 @@ public sealed class ProGpuCompositionCommandSink :
         if (imageSource is MediaBitmapSource bitmapSource
             && WpfBitmapSourceImageAdapter.TryGetGpuTexture(bitmapSource, out var texture))
         {
-            NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+            AddNativeCommand(new global::ProGPU.Scene.RenderCommand
             {
                 Type = global::ProGPU.Scene.RenderCommandType.DrawTexture,
                 Texture = texture,
@@ -452,7 +464,7 @@ public sealed class ProGpuCompositionCommandSink :
         if (imageSource is MediaBitmapSource bitmapSource
             && WpfBitmapSourceImageAdapter.TryGetGpuTexture(bitmapSource, out var texture))
         {
-            NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+            AddNativeCommand(new global::ProGPU.Scene.RenderCommand
             {
                 Type = global::ProGPU.Scene.RenderCommandType.DrawTexture,
                 Texture = texture,
@@ -478,7 +490,7 @@ public sealed class ProGpuCompositionCommandSink :
             (float)origin.X,
             (float)(origin.Y + formattedText.Height * 0.8));
 
-        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawText,
             Text = formattedText.Text,
@@ -501,7 +513,7 @@ public sealed class ProGpuCompositionCommandSink :
             return;
         }
 
-        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawGlyphRun,
             GlyphIndices = glyphRun.GlyphIndices,
@@ -544,7 +556,7 @@ public sealed class ProGpuCompositionCommandSink :
     void IWpfNativeClipCommandSink.PushNativeClip(WpfReplayRect bounds)
     {
         ThrowIfClosed();
-        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.PushClip,
             Rect = ToNativeRect(bounds),
@@ -576,7 +588,7 @@ public sealed class ProGpuCompositionCommandSink :
             (float)bounds.Width,
             (float)bounds.Height);
 
-        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.PushOpacityMask,
             Brush = AdaptNativeBrush(opacityMask, bounds, count => UnsupportedStateCount += count),
@@ -614,7 +626,7 @@ public sealed class ProGpuCompositionCommandSink :
             return;
         }
 
-        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawLine,
             Pen = nativePen,
@@ -629,7 +641,7 @@ public sealed class ProGpuCompositionCommandSink :
     {
         ThrowIfClosed();
 
-        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawRect,
             Brush = ToNativeBrush(brush, rectangle),
@@ -644,7 +656,7 @@ public sealed class ProGpuCompositionCommandSink :
     {
         ThrowIfClosed();
 
-        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawRoundedRect,
             Brush = ToNativeBrush(brush, rectangle),
@@ -661,7 +673,7 @@ public sealed class ProGpuCompositionCommandSink :
     {
         ThrowIfClosed();
 
-        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawEllipse,
             Brush = ToNativeBrush(brush, new WpfReplayRect(center.X - radiusX, center.Y - radiusY, radiusX * 2, radiusY * 2)),
@@ -681,7 +693,7 @@ public sealed class ProGpuCompositionCommandSink :
         if (imageSource is MediaBitmapSource bitmapSource
             && WpfBitmapSourceImageAdapter.TryGetGpuTexture(bitmapSource, out var texture))
         {
-            NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+            AddNativeCommand(new global::ProGPU.Scene.RenderCommand
             {
                 Type = global::ProGPU.Scene.RenderCommandType.DrawTexture,
                 Texture = texture,
@@ -702,7 +714,7 @@ public sealed class ProGpuCompositionCommandSink :
         if (imageSource is MediaBitmapSource bitmapSource
             && WpfBitmapSourceImageAdapter.TryGetGpuTexture(bitmapSource, out var texture))
         {
-            NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+            AddNativeCommand(new global::ProGPU.Scene.RenderCommand
             {
                 Type = global::ProGPU.Scene.RenderCommandType.DrawTexture,
                 Texture = texture,
@@ -733,7 +745,7 @@ public sealed class ProGpuCompositionCommandSink :
             return;
         }
 
-        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.DrawGlyphRun,
             GlyphIndices = glyphRun.GlyphIndices,
@@ -760,7 +772,7 @@ public sealed class ProGpuCompositionCommandSink :
             return;
         }
 
-        NativeContext.Commands.Add(new global::ProGPU.Scene.RenderCommand
+        AddNativeCommand(new global::ProGPU.Scene.RenderCommand
         {
             Type = global::ProGPU.Scene.RenderCommandType.PushOpacityMask,
             Brush = ToNativeBrush(opacityMask, bounds),

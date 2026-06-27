@@ -43,6 +43,8 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
 
     public WpfRetainedVisualBranchMap RetainedVisualBranchMap { get; } = new();
 
+    public WpfGpuHitTestOwnerMap GpuHitTestOwnerMap { get; } = new();
+
     public long SceneChangeVersion => SceneRootVisual.ChangeVersion;
 
     public long RetainedWpfChangeVersion => RetainedWpfVisualRoot.ChangeVersion;
@@ -176,7 +178,8 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
             logicalWidth,
             logicalHeight,
             dpiScaleX,
-            dpiScaleY);
+            dpiScaleY,
+            GpuHitTestOwnerMap);
     }
 
     public WpfCompositionDrawingContext OpenCompositionDrawingContext(uint pixelWidth, uint pixelHeight)
@@ -339,6 +342,18 @@ public unsafe sealed class ProGpuWpfCompositionTarget : IDisposable
     {
         ThrowIfDisposed();
         return Compositor.TryHitTestPoint(logicalPoint, out result);
+    }
+
+    public bool TryHitTestOwner(Vector2 logicalPoint, out object? owner, out ProGpuHitTestResult result)
+    {
+        ThrowIfDisposed();
+        if (!Compositor.TryHitTestPoint(logicalPoint, out result))
+        {
+            owner = null;
+            return false;
+        }
+
+        return GpuHitTestOwnerMap.TryGetOwner(result.Id, out owner);
     }
 
     private static uint ResolveLogicalRenderDimension(

@@ -573,8 +573,15 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public bool TryHitTestPoint(Vector2 point, out GpuHitTestResult result)", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("public ProGpuHitTestIndex? LastGpuHitTestIndex => Compositor.LastHitTestIndex;", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("public ProGpuHitTestDeviceIndex? LastGpuHitTestDeviceIndex => Compositor.LastHitTestDeviceIndex;", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("public WpfGpuHitTestOwnerMap GpuHitTestOwnerMap { get; } = new();", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("public bool TryHitTestPoint(Vector2 logicalPoint, out ProGpuHitTestResult result)", proGpuCompositionTarget, StringComparison.Ordinal);
         Assert.Contains("return Compositor.TryHitTestPoint(logicalPoint, out result);", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("public bool TryHitTestOwner(Vector2 logicalPoint, out object? owner, out ProGpuHitTestResult result)", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("return GpuHitTestOwnerMap.TryGetOwner(result.Id, out owner);", proGpuCompositionTarget, StringComparison.Ordinal);
+        Assert.Contains("WpfGpuHitTestOwnerMap? hitTestOwnerMap = null", proGpuDrawingFrame, StringComparison.Ordinal);
+        Assert.Contains("_hitTestOwnerMap?.Clear();", proGpuDrawingFrame, StringComparison.Ordinal);
+        Assert.Contains("internal int GetOrCreateHitTestOwnerId(object ownerVisual)", proGpuDrawingFrame, StringComparison.Ordinal);
+        Assert.Contains("RetainedSinkStampsSourceOwnerHitTestIdOnCommands", proGpuDrawingFrameTests, StringComparison.Ordinal);
         Assert.Contains("RenderPassEncoderSetViewport(\n            pass,\n            viewport.X,\n            viewport.Y,\n            viewport.Width,\n            viewport.Height", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("CurrentCanvasPixelX => _explicitRenderTargetViewport.HasValue", proGpuCompositor, StringComparison.Ordinal);
         Assert.Contains("CurrentCanvasPixelY => _explicitRenderTargetViewport.HasValue", proGpuCompositor, StringComparison.Ordinal);

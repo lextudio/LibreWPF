@@ -896,6 +896,36 @@ public sealed class ProGpuWpfDrawingFrameTests
     }
 
     [Fact]
+    public void RetainedSinkStampsSourceOwnerHitTestIdOnCommands()
+    {
+        var sceneRoot = new ProGpuContainerVisual();
+        var retainedRoot = new ProGpuContainerVisual();
+        var flatRoot = new ProGpuDrawingVisual();
+        var ownerMap = new WpfGpuHitTestOwnerMap();
+        var sourceOwner = new object();
+        var frame = new ProGpuWpfDrawingFrame(
+            sceneRoot,
+            retainedRoot,
+            flatRoot,
+            200,
+            100,
+            retainedVisualBranchMap: new WpfRetainedVisualBranchMap(),
+            hitTestOwnerMap: ownerMap);
+        using var sink = new ProGpuRetainedCompositionCommandSink(frame, context: null, viewport3DTextureCache: null);
+
+        Assert.True(sink.PushVisualOwner(sourceOwner));
+        sink.DrawRectangle(Brushes.Red, null, new Rect(5, 6, 10, 11));
+        sink.PopVisualOwner();
+
+        var retainedRootVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRoot.Children));
+        var ownerVisual = Assert.IsType<ProGpuRetainedDrawingVisual>(Assert.Single(retainedRootVisual.Children));
+        var command = Assert.Single(ownerVisual.Context.Commands);
+        Assert.Equal(1, command.HitTestId);
+        Assert.True(ownerMap.TryGetOwner(command.HitTestId, out object? mappedOwner));
+        Assert.Same(sourceOwner, mappedOwner);
+    }
+
+    [Fact]
     public void RetainedSinkCreatesBoundedNativeCacheVisual()
     {
         var sceneRoot = new ProGpuContainerVisual();

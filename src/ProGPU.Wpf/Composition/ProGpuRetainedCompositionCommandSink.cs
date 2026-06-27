@@ -117,12 +117,14 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
         };
 
         Current.Visual.AddChild(ownerVisual);
+        int hitTestOwnerId = _drawingFrame.GetOrCreateHitTestOwnerId(sourceVisual);
         _visualScopes.Push(new VisualScope(
             ownerVisual,
             Current.Context,
             Current.Viewport3DTextureCache,
             VisualScopeKind.SourceOwner,
-            _scopeStack.Count));
+            _scopeStack.Count,
+            hitTestOwnerId));
         _drawingFrame.RegisterRetainedWpfVisualOwner(sourceVisual, ownerVisual);
         return true;
     }
@@ -574,14 +576,15 @@ internal sealed class ProGpuRetainedCompositionCommandSink :
             global::ProGPU.Backend.WgpuContext? context,
             WpfViewport3DTextureCache? viewport3DTextureCache,
             VisualScopeKind scopeKind,
-            int scopeStackDepth)
+            int scopeStackDepth,
+            int hitTestId = 0)
         {
             Visual = visual;
             Context = context;
             Viewport3DTextureCache = viewport3DTextureCache;
             ScopeKind = scopeKind;
             ScopeStackDepth = scopeStackDepth;
-            Sink = new ProGpuCompositionCommandSink(visual.Context, context, viewport3DTextureCache);
+            Sink = new ProGpuCompositionCommandSink(visual.Context, context, viewport3DTextureCache, hitTestId: hitTestId);
         }
 
         public ProGpuRetainedDrawingVisual Visual { get; }

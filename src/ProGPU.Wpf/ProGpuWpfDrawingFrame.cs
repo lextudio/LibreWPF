@@ -18,6 +18,7 @@ public sealed class ProGpuWpfDrawingFrame
     private readonly ProGpuWgpuContext? _context;
     private readonly WpfViewport3DTextureCache? _viewport3DTextureCache;
     private readonly WpfRetainedVisualBranchMap? _retainedVisualBranchMap;
+    private readonly WpfGpuHitTestOwnerMap? _hitTestOwnerMap;
     private readonly bool _allowRetainedOwnerContexts;
 
     internal ProGpuWpfDrawingFrame(
@@ -29,7 +30,8 @@ public sealed class ProGpuWpfDrawingFrame
         uint logicalWidth = 0,
         uint logicalHeight = 0,
         double dpiScaleX = 1.0,
-        double dpiScaleY = 1.0)
+        double dpiScaleY = 1.0,
+        WpfGpuHitTestOwnerMap? hitTestOwnerMap = null)
         : this(
             sceneRootVisual: null,
             retainedWpfVisualRoot: null,
@@ -41,7 +43,8 @@ public sealed class ProGpuWpfDrawingFrame
             logicalWidth: logicalWidth,
             logicalHeight: logicalHeight,
             dpiScaleX: dpiScaleX,
-            dpiScaleY: dpiScaleY)
+            dpiScaleY: dpiScaleY,
+            hitTestOwnerMap: hitTestOwnerMap)
     {
     }
 
@@ -58,7 +61,8 @@ public sealed class ProGpuWpfDrawingFrame
         uint logicalWidth = 0,
         uint logicalHeight = 0,
         double dpiScaleX = 1.0,
-        double dpiScaleY = 1.0)
+        double dpiScaleY = 1.0,
+        WpfGpuHitTestOwnerMap? hitTestOwnerMap = null)
     {
         _sceneRootVisual = sceneRootVisual;
         _retainedWpfVisualRoot = retainedWpfVisualRoot;
@@ -66,6 +70,7 @@ public sealed class ProGpuWpfDrawingFrame
         _context = context;
         _viewport3DTextureCache = viewport3DTextureCache;
         _retainedVisualBranchMap = retainedVisualBranchMap;
+        _hitTestOwnerMap = hitTestOwnerMap;
         _allowRetainedOwnerContexts = clearRetainedWpfVisualRoot;
 
         PixelWidth = Math.Max(1, pixelWidth);
@@ -84,6 +89,7 @@ public sealed class ProGpuWpfDrawingFrame
             {
                 _retainedWpfVisualRoot.ClearChildren();
                 _retainedVisualBranchMap?.Clear();
+                _hitTestOwnerMap?.Clear();
             }
 
             _retainedWpfVisualRoot.Size = new Vector2(LogicalWidth, LogicalHeight);
@@ -128,6 +134,8 @@ public sealed class ProGpuWpfDrawingFrame
 
     public WpfRetainedVisualBranchMap? RetainedVisualBranchMap => _retainedVisualBranchMap;
 
+    public WpfGpuHitTestOwnerMap? HitTestOwnerMap => _hitTestOwnerMap;
+
     internal bool AddRetainedWpfVisual(ProGpuVisual visual)
     {
         ArgumentNullException.ThrowIfNull(visual);
@@ -155,6 +163,11 @@ public sealed class ProGpuWpfDrawingFrame
         ArgumentNullException.ThrowIfNull(visual);
 
         _retainedVisualBranchMap?.RegisterDependency(dependency, visual);
+    }
+
+    internal int GetOrCreateHitTestOwnerId(object ownerVisual)
+    {
+        return _hitTestOwnerMap?.GetOrCreateId(ownerVisual) ?? 0;
     }
 
     public MediaDrawingContext OpenDrawingContext()
@@ -258,7 +271,8 @@ public sealed class ProGpuWpfDrawingFrame
         return new ProGpuCompositionCommandSink(
             _rootVisual.Context,
             _context,
-            _viewport3DTextureCache);
+            _viewport3DTextureCache,
+            hitTestId: ownerVisual != null ? GetOrCreateHitTestOwnerId(ownerVisual) : 0);
     }
 
     private static double NormalizeDpiScale(double dpiScale)

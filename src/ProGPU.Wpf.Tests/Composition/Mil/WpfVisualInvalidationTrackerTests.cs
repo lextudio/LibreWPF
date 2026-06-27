@@ -176,6 +176,34 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
+    public void LayoutClipChangeMarksTrackerDirtyWithoutEvent()
+    {
+        var root = new FakeVisual();
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        root.LayoutClip = new RectangleGeometry(new Rect(0, 0, 100, 40));
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+        Assert.Contains(root, tracker.DirtySources);
+
+        tracker.ConsumeDirty();
+        root.LayoutClip = new RectangleGeometry(new Rect(0, 0, 100, 40));
+
+        Assert.False(tracker.DetectVersionChanges());
+        Assert.False(tracker.IsDirty);
+
+        root.LayoutClip = new RectangleGeometry(new Rect(0, 0, 100, 56));
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+    }
+
+    [Fact]
     public void PrivateVersionFieldChangeMarksTrackerDirtyWithoutEvent()
     {
         var brush = new FakePrivateVersionResource();
@@ -481,6 +509,8 @@ public sealed class WpfVisualInvalidationTrackerTests
 
         public object? VisualClip { get; set; }
 
+        public object? LayoutClip { get; set; }
+
         public object? Effect { get; init; }
 
         public double Opacity { get; set; } = 1;
@@ -488,6 +518,11 @@ public sealed class WpfVisualInvalidationTrackerTests
         public System.Windows.Vector VisualOffset { get; set; }
 
         public Rect? VisualScrollableAreaClip { get; set; }
+
+        private object? GetLayoutClipInternal()
+        {
+            return LayoutClip;
+        }
 
         public void RaiseChanged()
         {

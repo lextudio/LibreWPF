@@ -545,6 +545,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TrySubscribeInvalidationCallback(", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("TryRunInvalidationSubscriptionAction", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("IsIgnorableInvalidationSubscriptionFailure", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("TryGetLayoutClip(source, out var layoutClip)", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("SetLayoutClip(object? clip)", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("LayoutClipChangeMarksTrackerDirtyWithoutEvent", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("logicalWidth,\n                logicalHeight,\n                dpiScaleX,\n                dpiScaleY", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("Present(\n                    logicalWidth,\n                    logicalHeight,\n                    pixelWidth,\n                    pixelHeight,\n                    viewportX,\n                    viewportY,\n                    viewportWidth,\n                    viewportHeight,\n                    dpiScale)", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("new ProGpuRenderTargetViewport(", proGpuHost, StringComparison.Ordinal);
@@ -5153,6 +5156,23 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Threading",
             "Dispatcher.cs"));
+        var dispatcherSynchronizationContext = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "WindowsBase",
+            "System",
+            "Windows",
+            "Threading",
+            "DispatcherSynchronizationContext.cs"));
+        var readerWriterLockWrapper = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "Shared",
+            "MS",
+            "Internal",
+            "ReaderWriterLockWrapper.cs"));
         var dpiAwareness = File.ReadAllText(FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -5769,6 +5789,10 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("HasPendingManagedOperation()", dispatcher, StringComparison.Ordinal);
         AssertGuardBefore(dispatcher, "if (!_useWin32MessagePump)", "UnsafeNativeMethods.MsgWaitForMultipleObjectsEx");
         Assert.Contains("return !_useWin32MessagePump;", dispatcher, StringComparison.Ordinal);
+        AssertGuardBefore(dispatcherSynchronizationContext, "if(!OperatingSystem.IsWindows())", "UnsafeNativeMethods.WaitForMultipleObjectsEx");
+        Assert.Contains("return SynchronizationContext.WaitHelper(waitHandles, waitAll, millisecondsTimeout);", dispatcherSynchronizationContext, StringComparison.Ordinal);
+        AssertGuardBefore(readerWriterLockWrapper, "if(!OperatingSystem.IsWindows())", "UnsafeNativeMethods.WaitForMultipleObjectsEx");
+        Assert.Contains("return SynchronizationContext.WaitHelper(waitHandles, waitAll, millisecondsTimeout);", readerWriterLockWrapper, StringComparison.Ordinal);
     }
 
     [Theory]

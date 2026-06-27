@@ -583,6 +583,11 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             builder.SetClip(clip);
         }
 
+        if (TryGetLayoutClip(source, out var layoutClip))
+        {
+            builder.SetLayoutClip(layoutClip);
+        }
+
         if (TryGetPropertyValue(source, "Transform", out var transform) ||
             TryGetPropertyValue(source, "VisualTransform", out transform) ||
             TryGetFieldValue(source, "_transform", out transform))
@@ -629,6 +634,53 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         return TryGetPropertyValue(source, "Clip", out value);
+    }
+
+    private static bool TryGetLayoutClip(object source, out object? value)
+    {
+        value = null;
+        var method = source.GetType().GetMethod(
+            "GetLayoutClipInternal",
+            MemberFlags,
+            binder: null,
+            types: Type.EmptyTypes,
+            modifiers: null);
+        if (method == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            value = method.Invoke(source, null);
+            return true;
+        }
+        catch (TargetInvocationException)
+        {
+            value = null;
+            return false;
+        }
+    }
+
+    private static bool TryReadRectangleClipBounds(object? clip, out double x, out double y, out double width, out double height)
+    {
+        x = 0;
+        y = 0;
+        width = 0;
+        height = 0;
+        if (clip == null)
+        {
+            return false;
+        }
+
+        if (TryReadRect(clip, out x, out y, out width, out height))
+        {
+            return true;
+        }
+
+        return TryGetPropertyValue(clip, "Rect", out var rectValue)
+            && rectValue != null
+            && TryReadRect(rectValue, out x, out y, out width, out height);
     }
 
     private static bool TryReadVectorLikeProperty(object instance, string propertyName, out double x, out double y)
@@ -877,6 +929,13 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             double offsetY,
             bool hasClipProperty,
             object? clipReference,
+            bool hasLayoutClipProperty,
+            bool hasLayoutClipBounds,
+            double layoutClipX,
+            double layoutClipY,
+            double layoutClipWidth,
+            double layoutClipHeight,
+            object? layoutClipReference,
             bool hasTransformProperty,
             object? transformReference,
             bool hasScrollableAreaClipProperty,
@@ -897,6 +956,13 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             OffsetY = offsetY;
             HasClipProperty = hasClipProperty;
             ClipReference = clipReference;
+            HasLayoutClipProperty = hasLayoutClipProperty;
+            HasLayoutClipBounds = hasLayoutClipBounds;
+            LayoutClipX = layoutClipX;
+            LayoutClipY = layoutClipY;
+            LayoutClipWidth = layoutClipWidth;
+            LayoutClipHeight = layoutClipHeight;
+            LayoutClipReference = layoutClipReference;
             HasTransformProperty = hasTransformProperty;
             TransformReference = transformReference;
             HasScrollableAreaClipProperty = hasScrollableAreaClipProperty;
@@ -922,6 +988,20 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         private bool HasClipProperty { get; }
 
         private object? ClipReference { get; }
+
+        private bool HasLayoutClipProperty { get; }
+
+        private bool HasLayoutClipBounds { get; }
+
+        private double LayoutClipX { get; }
+
+        private double LayoutClipY { get; }
+
+        private double LayoutClipWidth { get; }
+
+        private double LayoutClipHeight { get; }
+
+        private object? LayoutClipReference { get; }
 
         private bool HasTransformProperty { get; }
 
@@ -958,6 +1038,13 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 OffsetY.Equals(other.OffsetY) &&
                 HasClipProperty == other.HasClipProperty &&
                 ReferenceEquals(ClipReference, other.ClipReference) &&
+                HasLayoutClipProperty == other.HasLayoutClipProperty &&
+                HasLayoutClipBounds == other.HasLayoutClipBounds &&
+                LayoutClipX.Equals(other.LayoutClipX) &&
+                LayoutClipY.Equals(other.LayoutClipY) &&
+                LayoutClipWidth.Equals(other.LayoutClipWidth) &&
+                LayoutClipHeight.Equals(other.LayoutClipHeight) &&
+                (HasLayoutClipBounds || ReferenceEquals(LayoutClipReference, other.LayoutClipReference)) &&
                 HasTransformProperty == other.HasTransformProperty &&
                 ReferenceEquals(TransformReference, other.TransformReference) &&
                 HasScrollableAreaClipProperty == other.HasScrollableAreaClipProperty &&
@@ -987,6 +1074,13 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             hash.Add(OffsetY);
             hash.Add(HasClipProperty);
             hash.Add(GetReferenceHashCode(ClipReference));
+            hash.Add(HasLayoutClipProperty);
+            hash.Add(HasLayoutClipBounds);
+            hash.Add(LayoutClipX);
+            hash.Add(LayoutClipY);
+            hash.Add(LayoutClipWidth);
+            hash.Add(LayoutClipHeight);
+            hash.Add(HasLayoutClipBounds ? 0 : GetReferenceHashCode(LayoutClipReference));
             hash.Add(HasTransformProperty);
             hash.Add(GetReferenceHashCode(TransformReference));
             hash.Add(HasScrollableAreaClipProperty);
@@ -1017,6 +1111,13 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         private double _offsetY;
         private bool _hasClipProperty;
         private object? _clipReference;
+        private bool _hasLayoutClipProperty;
+        private bool _hasLayoutClipBounds;
+        private double _layoutClipX;
+        private double _layoutClipY;
+        private double _layoutClipWidth;
+        private double _layoutClipHeight;
+        private object? _layoutClipReference;
         private bool _hasTransformProperty;
         private object? _transformReference;
         private bool _hasScrollableAreaClipProperty;
@@ -1047,6 +1148,21 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             HasState = true;
             _hasClipProperty = true;
             _clipReference = clip;
+        }
+
+        public void SetLayoutClip(object? clip)
+        {
+            HasState = true;
+            _hasLayoutClipProperty = true;
+            _layoutClipReference = clip;
+            if (TryReadRectangleClipBounds(clip, out var x, out var y, out var width, out var height))
+            {
+                _hasLayoutClipBounds = true;
+                _layoutClipX = x;
+                _layoutClipY = y;
+                _layoutClipWidth = width;
+                _layoutClipHeight = height;
+            }
         }
 
         public void SetTransform(object? transform)
@@ -1094,6 +1210,13 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 _offsetY,
                 _hasClipProperty,
                 _clipReference,
+                _hasLayoutClipProperty,
+                _hasLayoutClipBounds,
+                _layoutClipX,
+                _layoutClipY,
+                _layoutClipWidth,
+                _layoutClipHeight,
+                _layoutClipReference,
                 _hasTransformProperty,
                 _transformReference,
                 _hasScrollableAreaClipProperty,

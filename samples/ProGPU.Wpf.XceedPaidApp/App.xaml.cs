@@ -189,8 +189,21 @@ internal static class XceedPaidSelfTest
         AssertType<Xceed.Wpf.DataGrid.DataGridCollectionViewSource>("Xceed DataGridCollectionViewSource");
         AssertType<Xceed.Wpf.DataGrid.Views.TableView>("Xceed DataGrid TableView");
         AssertType<Xceed.Wpf.DataGrid.Column>("Xceed DataGrid Column");
+        AssertType<Xceed.Wpf.DataGrid.DataGridGroupDescription>("Xceed DataGrid group description");
+        AssertType<Xceed.Wpf.DataGrid.DataGridItemProperty>("Xceed DataGrid item property");
+        AssertType<Xceed.Wpf.DataGrid.DetailConfiguration>("Xceed DataGrid detail configuration");
+        AssertType<Xceed.Wpf.DataGrid.FilterRow>("Xceed DataGrid filter row");
+        AssertType<Xceed.Wpf.DataGrid.StatRow>("Xceed DataGrid stat row");
+        AssertType<Xceed.Wpf.DataGrid.StatCell>("Xceed DataGrid stat cell");
+        AssertType<Xceed.Wpf.DataGrid.Stats.CountFunction>("Xceed DataGrid count stat function");
+        AssertType<Xceed.Wpf.DataGrid.Stats.AverageFunction>("Xceed DataGrid average stat function");
+        AssertType<Xceed.Wpf.DataGrid.ThemePack.Office2007BlueTheme>("Xceed DataGrid ThemePack Office2007BlueTheme");
+        AssertType<Xceed.Wpf.DataGrid.Views.CardflowView3D>("Xceed DataGrid Views3D CardflowView3D");
+        AssertType<Xceed.Wpf.DataGrid.Views.ElementalBlackTheme>("Xceed DataGrid Views3D ElementalBlackTheme");
+        AssertType<Xceed.Wpf.DataGrid.Workbooks.WorkbooksExporter>("Xceed DataGrid Workbooks exporter");
         AssertAssembly("Xceed.Wpf.DataGrid.Views3D");
         AssertAssembly("Xceed.Wpf.DataGrid.ThemePack.1");
+        AssertAssembly("Xceed.Wpf.DataGrid.Workbooks");
         AssertAssembly("Xceed.Wpf.AvalonDock.Themes.Windows10");
 
         if (Environment.GetEnvironmentVariable("PROGPU_WPF_XCEED_PAID_REQUIRE_LICENSE") == "1" &&
@@ -209,15 +222,32 @@ internal static class XceedPaidSelfTest
         }
 
         var viewModel = window.ViewModel;
+        var rowsView = window.PaidRowsViewSource;
         AssertEqual(100_000, viewModel.RowCount, "paid DataGrid row count");
+        AssertEqual(66_667, viewModel.ActiveRowCount, "paid DataGrid active filtered row count");
         AssertEqual(viewModel.Rows[0], viewModel.SelectedRow, "paid DataGrid initial selected row");
+        AssertEqual(true, viewModel.Rows[0].Details.Count >= 2, "paid DataGrid lazy detail row data");
+        AssertEqual(Xceed.Wpf.DataGrid.AutoFilterMode.And, rowsView.AutoFilterMode, "paid DataGrid auto-filter mode");
+        AssertEqual(Xceed.Wpf.DataGrid.FilterCriteriaMode.And, rowsView.FilterCriteriaMode, "paid DataGrid filter criteria mode");
+        AssertEqual(false, rowsView.AutoCreateItemProperties, "paid DataGrid explicit item properties");
+        AssertEqual(false, rowsView.DefaultCalculateDistinctValues, "paid DataGrid distinct value calculation");
+        AssertEqual(true, rowsView.AutoCreateDetailDescriptions, "paid DataGrid auto detail descriptions");
+        AssertEqual(8, rowsView.ItemProperties.Count, "paid DataGrid item-property metadata");
+        AssertEqual(1, rowsView.GroupDescriptions.Count, "paid DataGrid group description count");
+        AssertEqual(1, rowsView.SortDescriptions.Count, "paid DataGrid sort description count");
+        AssertEqual(2, rowsView.StatFunctions.Count, "paid DataGrid stat function count");
         AssertEqual(false, window.PaidDataGrid.AutoCreateColumns, "paid DataGrid auto columns");
         AssertEqual(true, window.PaidDataGrid.ReadOnly, "paid DataGrid read-only state");
+        AssertEqual(true, window.PaidDataGrid.AutoCreateDetailConfigurations, "paid DataGrid auto detail configurations");
+        AssertEqual(1, window.PaidDataGrid.DetailConfigurations.Count, "paid DataGrid explicit detail configuration");
         AssertEqual(Xceed.Wpf.DataGrid.ItemScrollingBehavior.Immediate, window.PaidDataGrid.ItemScrollingBehavior, "paid DataGrid scroll behavior");
         AssertEqual(Xceed.Wpf.DataGrid.NavigationBehavior.RowOnly, window.PaidDataGrid.NavigationBehavior, "paid DataGrid navigation behavior");
         AssertEqual(8, window.PaidDataGrid.Columns.Count, "paid DataGrid explicit columns");
         AssertEqual(viewModel.SelectedRow, window.PaidDataGrid.SelectedItem, "paid DataGrid selected item");
         AssertEqual(true, window.PaidDataGrid.View is Xceed.Wpf.DataGrid.Views.TableView, "paid DataGrid table view");
+        AssertEqual(true, window.PaidTableView.Theme is Xceed.Wpf.DataGrid.ThemePack.Office2007BlueTheme, "paid DataGrid ThemePack table view theme");
+        AssertEqual(3, window.PaidTableView.FixedHeaders.Count, "paid DataGrid fixed header row count");
+        AssertEqual(1, window.PaidTableView.FixedFooters.Count, "paid DataGrid fixed footer row count");
         AssertEqual(true, window.MaterialActionsSwitch.IsChecked, "paid Toolkit MaterialSwitch binding");
         AssertEqual("ProGPU", viewModel.FilterText, "paid Toolkit MaterialTextField binding");
 

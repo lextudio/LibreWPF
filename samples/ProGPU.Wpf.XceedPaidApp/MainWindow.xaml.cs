@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Data;
 using Xceed.Wpf.DataGrid;
 
 namespace ProGPU.Wpf.XceedPaidApp;
@@ -27,10 +29,21 @@ public partial class MainWindow : Window
 
     internal XceedPaidViewModel ViewModel { get; }
 
+    internal DataGridCollectionViewSource PaidRowsViewSource => (DataGridCollectionViewSource)FindResource("PaidRowsView");
+
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         ViewModel.Status = "Paid Xceed Toolkit/DataGrid loaded";
         ViewModel.Activity.Add("Loaded paid Toolkit Plus, AvalonDock Windows10 theme, and Xceed DataGrid document");
+        ViewModel.Activity.Add("Paid DataGrid view applies active-row filtering, category grouping, updated-date sorting, stats, details, and Office2007 theme");
+    }
+
+    private void PaidRowsView_Filter(object sender, FilterEventArgs e)
+    {
+        if (e.Item is PaidGridItem item)
+        {
+            e.Accepted = item.Active;
+        }
     }
 
     private void AddRowButton_Click(object sender, RoutedEventArgs e)
@@ -112,6 +125,8 @@ internal sealed class XceedPaidViewModel : INotifyPropertyChanged
 
     public int RowCount => Rows.Count;
 
+    public int ActiveRowCount => (Rows.Count / 3 * 2) + (Rows.Count % 3 == 0 ? 0 : Math.Min(Rows.Count % 3, 2));
+
     public PaidGridItem SelectedRow
     {
         get => _selectedRow;
@@ -185,6 +200,7 @@ internal sealed class XceedPaidViewModel : INotifyPropertyChanged
         var item = CreateRow(nextId);
         Rows.Add(item);
         OnPropertyChanged(nameof(RowCount));
+        OnPropertyChanged(nameof(ActiveRowCount));
         SelectedRow = item;
         LastAction = $"Added {item.Title}";
         Activity.Add(LastAction);
@@ -258,6 +274,8 @@ public sealed class PaidGridItem
         Active = active;
     }
 
+    private IReadOnlyList<PaidGridDetail>? _details;
+
     public int Id { get; }
 
     public string Title { get; }
@@ -273,4 +291,33 @@ public sealed class PaidGridItem
     public DateTime Updated { get; }
 
     public bool Active { get; }
+
+    public IReadOnlyList<PaidGridDetail> Details => _details ??=
+    [
+        new PaidGridDetail(1, $"Inspect {Title}", Owner, Score),
+        new PaidGridDetail(2, $"Render {Title}", Category, (Score + 11) % 100)
+    ];
+}
+
+public sealed class PaidGridDetail
+{
+    public PaidGridDetail(
+        int step,
+        string note,
+        string owner,
+        int score)
+    {
+        Step = step;
+        Note = note;
+        Owner = owner;
+        Score = score;
+    }
+
+    public int Step { get; }
+
+    public string Note { get; }
+
+    public string Owner { get; }
+
+    public int Score { get; }
 }

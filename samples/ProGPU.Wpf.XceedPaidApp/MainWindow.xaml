@@ -4,8 +4,10 @@
         xmlns:local="clr-namespace:ProGPU.Wpf.XceedPaidApp"
         xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
         xmlns:xcdg="http://schemas.xceed.com/wpf/xaml/datagrid"
+        xmlns:xcdgtheme="clr-namespace:Xceed.Wpf.DataGrid.ThemePack;assembly=Xceed.Wpf.DataGrid.ThemePack.1"
         xmlns:xcad="http://schemas.xceed.com/wpf/xaml/avalondock"
         xmlns:xcadthemes="clr-namespace:Xceed.Wpf.AvalonDock.Themes;assembly=Xceed.Wpf.AvalonDock.Themes.Windows10"
+        xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
         Title="ProGPU WPF Paid Xceed Toolkit + DataGrid"
         Width="1180"
         Height="760"
@@ -14,7 +16,53 @@
         Background="#F7FAFB">
   <Window.Resources>
     <xcdg:DataGridCollectionViewSource x:Key="PaidRowsView"
-                                       Source="{Binding Rows}" />
+                                       Source="{Binding Rows}"
+                                       AutoCreateDetailDescriptions="True"
+                                       AutoCreateItemProperties="False"
+                                       AutoFilterMode="And"
+                                       DefaultCalculateDistinctValues="False"
+                                       FilterCriteriaMode="And"
+                                       Filter="PaidRowsView_Filter">
+      <xcdg:DataGridCollectionViewSource.ItemProperties>
+        <xcdg:DataGridItemProperty Name="Id"
+                                   Title="Id"
+                                   CalculateDistinctValues="False" />
+        <xcdg:DataGridItemProperty Name="Title"
+                                   Title="Title"
+                                   CalculateDistinctValues="False" />
+        <xcdg:DataGridItemProperty Name="Owner"
+                                   Title="Owner"
+                                   CalculateDistinctValues="True" />
+        <xcdg:DataGridItemProperty Name="Category"
+                                   Title="Category"
+                                   CalculateDistinctValues="True" />
+        <xcdg:DataGridItemProperty Name="Status"
+                                   Title="Status"
+                                   CalculateDistinctValues="True" />
+        <xcdg:DataGridItemProperty Name="Score"
+                                   Title="Score"
+                                   CalculateDistinctValues="False" />
+        <xcdg:DataGridItemProperty Name="Updated"
+                                   Title="Updated"
+                                   CalculateDistinctValues="False" />
+        <xcdg:DataGridItemProperty Name="Active"
+                                   Title="Active"
+                                   CalculateDistinctValues="True" />
+      </xcdg:DataGridCollectionViewSource.ItemProperties>
+      <xcdg:DataGridCollectionViewSource.GroupDescriptions>
+        <xcdg:DataGridGroupDescription PropertyName="Category" />
+      </xcdg:DataGridCollectionViewSource.GroupDescriptions>
+      <xcdg:DataGridCollectionViewSource.SortDescriptions>
+        <scm:SortDescription PropertyName="Updated"
+                             Direction="Descending" />
+      </xcdg:DataGridCollectionViewSource.SortDescriptions>
+      <xcdg:DataGridCollectionViewSource.StatFunctions>
+        <xcdg:CountFunction ResultPropertyName="paid_row_count"
+                            SourcePropertyName="Id" />
+        <xcdg:AverageFunction ResultPropertyName="paid_score_average"
+                              SourcePropertyName="Score" />
+      </xcdg:DataGridCollectionViewSource.StatFunctions>
+    </xcdg:DataGridCollectionViewSource>
     <Style x:Key="PanelHeaderText" TargetType="{x:Type TextBlock}">
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="Foreground" Value="#12333D" />
@@ -67,6 +115,10 @@
       <Separator />
       <StatusBarItem>
         <TextBlock Text="{Binding RowCount, StringFormat=Rows: {0:N0}}" />
+      </StatusBarItem>
+      <Separator />
+      <StatusBarItem>
+        <TextBlock Text="{Binding ActiveRowCount, StringFormat=Filtered active rows: {0:N0}}" />
       </StatusBarItem>
       <Separator />
       <StatusBarItem>
@@ -156,7 +208,7 @@
                                FontWeight="SemiBold"
                                Text="Xceed DataGrid 100k" />
                     <TextBlock Foreground="#60727C"
-                               Text="Commercial Xceed DataGridControl with explicit columns, row selection, scrolling, and package themes restored through the custom SDK." />
+                               Text="Commercial Xceed DataGridControl with explicit columns, active-row filtering, category grouping, stats, details, row selection, scrolling, and package themes restored through the custom SDK." />
                   </StackPanel>
                   <TextBlock DockPanel.Dock="Right"
                              VerticalAlignment="Center"
@@ -171,12 +223,45 @@
                                       ItemScrollingBehavior="Immediate"
                                       NavigationBehavior="RowOnly"
                                       SelectionMode="Single"
+                                      AutoCreateDetailConfigurations="True"
                                       ItemsSource="{Binding Source={StaticResource PaidRowsView}}"
                                       SelectedItem="{Binding SelectedRow, Mode=TwoWay}">
+                  <xcdg:DataGridControl.DefaultGroupConfiguration>
+                    <xcdg:GroupConfiguration>
+                      <xcdg:GroupConfiguration.Footers>
+                        <DataTemplate>
+                          <xcdg:StatRow>
+                            <xcdg:StatCell FieldName="Id"
+                                           ResultPropertyName="paid_row_count" />
+                            <xcdg:StatCell FieldName="Score"
+                                           ResultPropertyName="paid_score_average"
+                                           ResultConverterParameter="F1" />
+                          </xcdg:StatRow>
+                        </DataTemplate>
+                      </xcdg:GroupConfiguration.Footers>
+                    </xcdg:GroupConfiguration>
+                  </xcdg:DataGridControl.DefaultGroupConfiguration>
+                  <xcdg:DataGridControl.DetailConfigurations>
+                    <xcdg:DetailConfiguration RelationName="Details"
+                                              Title="Row details"
+                                              AutoCreateDetailConfigurations="False"
+                                              UseDefaultHeadersFooters="False">
+                      <xcdg:DetailConfiguration.Columns>
+                        <xcdg:Column FieldName="Step" />
+                        <xcdg:Column FieldName="Note" />
+                        <xcdg:Column FieldName="Owner" />
+                        <xcdg:Column FieldName="Score" />
+                      </xcdg:DetailConfiguration.Columns>
+                    </xcdg:DetailConfiguration>
+                  </xcdg:DataGridControl.DetailConfigurations>
                   <xcdg:DataGridControl.View>
-                    <xcdg:TableView ColumnStretchMode="StretchAll"
+                    <xcdg:TableView x:Name="PaidTableView"
+                                    ColumnStretchMode="StretchAll"
                                     FixedColumnCount="1"
                                     UseDefaultHeadersFooters="False">
+                      <xcdg:TableView.Theme>
+                        <xcdgtheme:Office2007BlueTheme />
+                      </xcdg:TableView.Theme>
                       <xcdg:TableView.FixedHeaders>
                         <DataTemplate>
                           <xcdg:GroupByControl />
@@ -186,7 +271,21 @@
                                                  AllowSort="True"
                                                  AllowAutoFilter="True" />
                         </DataTemplate>
+                        <DataTemplate>
+                          <xcdg:FilterRow x:Name="PaidFilterRow" />
+                        </DataTemplate>
                       </xcdg:TableView.FixedHeaders>
+                      <xcdg:TableView.FixedFooters>
+                        <DataTemplate>
+                          <xcdg:StatRow>
+                            <xcdg:StatCell FieldName="Id"
+                                           ResultPropertyName="paid_row_count" />
+                            <xcdg:StatCell FieldName="Score"
+                                           ResultPropertyName="paid_score_average"
+                                           ResultConverterParameter="F1" />
+                          </xcdg:StatRow>
+                        </DataTemplate>
+                      </xcdg:TableView.FixedFooters>
                     </xcdg:TableView>
                   </xcdg:DataGridControl.View>
                   <xcdg:DataGridControl.Columns>

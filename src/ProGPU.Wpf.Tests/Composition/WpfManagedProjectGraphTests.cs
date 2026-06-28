@@ -737,6 +737,20 @@ public sealed class WpfManagedProjectGraphTests
             proGpuInvalidationTracker.IndexOf("foreach (var dependency in EnumeratePortableDependencies(source))", StringComparison.Ordinal)
                 < proGpuInvalidationTracker.IndexOf("foreach (var fieldName in s_fieldNames)", StringComparison.Ordinal),
             "The invalidation tracker must traverse typed retained-content dependencies before reflected private fields.");
+        Assert.Contains("using PortableVisualStateSource = ProGPU.Wpf.Interop.IPortableVisualStateSource;", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("TryGetPortableVisualState(source, out var visualState)", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("source is PortableVisualStateSource visualStateSource", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("hasPortableVisualState && visualState.HasOffset", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("hasPortableVisualState && visualState.HasTransform", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("hasPortableVisualState && visualState.HasClip", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("builder.SetScrollableAreaClip(scrollClip.X, scrollClip.Y, scrollClip.Width, scrollClip.Height);", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("hasPortableVisualState && visualState.HasOpacityMask", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("SetOpacityMask(object? opacityMask)", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("PortableVisualStateChangeMarksTrackerDirtyWithoutEvent", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
+        Assert.True(
+            proGpuInvalidationTracker.IndexOf("hasPortableVisualState && visualState.HasOffset", StringComparison.Ordinal)
+                < proGpuInvalidationTracker.IndexOf("TryReadVectorLikeProperty(source, \"Offset\"", StringComparison.Ordinal),
+            "The invalidation tracker must snapshot typed visual state before probing reflected offset properties.");
         Assert.Contains("source is PortableVisualLayoutStateSource visualLayoutSource", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("layoutState.HasLayoutClip", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("!hasPortableLayoutState && TryGetLayoutClip(source, out var layoutClip)", proGpuInvalidationTracker, StringComparison.Ordinal);

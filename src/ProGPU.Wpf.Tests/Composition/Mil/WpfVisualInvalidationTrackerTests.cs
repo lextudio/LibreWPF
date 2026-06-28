@@ -4,12 +4,16 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using Xunit;
+using PortablePoint = ProGPU.Wpf.Interop.PortablePoint;
+using PortableRect = ProGPU.Wpf.Interop.PortableRect;
 using PortableSize = ProGPU.Wpf.Interop.PortableSize;
 using PortableRenderDataSnapshot = ProGPU.Wpf.Interop.PortableRenderDataSnapshot;
 using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;
 using PortableDrawingContentSource = ProGPU.Wpf.Interop.IPortableDrawingContentSource;
 using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
+using PortableVisualState = ProGPU.Wpf.Interop.PortableVisualState;
+using PortableVisualStateSource = ProGPU.Wpf.Interop.IPortableVisualStateSource;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
 
@@ -241,6 +245,45 @@ public sealed class WpfVisualInvalidationTrackerTests
 
         tracker.ConsumeDirty();
         state.ClipToBounds = true;
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+    }
+
+    [Fact]
+    public void PortableVisualStateChangeMarksTrackerDirtyWithoutEvent()
+    {
+        var state = new PortableVisualState
+        {
+            HasOffset = true,
+            Offset = new PortablePoint(0, 0),
+            HasOpacity = true,
+            Opacity = 1.0
+        };
+        var root = new FakePortableStateVisual(state);
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        state.Offset = new PortablePoint(0, -120);
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+        Assert.Contains(root, tracker.DirtySources);
+
+        tracker.ConsumeDirty();
+        state.HasScrollableAreaClip = true;
+        state.ScrollableAreaClip = new PortableRect(0, 0, 100, 40);
+
+        Assert.True(tracker.DetectVersionChanges());
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+
+        tracker.ConsumeDirty();
+        state.HasOpacityMask = true;
+        state.OpacityMask = new FakeResource();
 
         Assert.True(tracker.DetectVersionChanges());
         Assert.True(tracker.IsDirty);
@@ -640,6 +683,22 @@ public sealed class WpfVisualInvalidationTrackerTests
         }
 
         public bool TryGetPortableVisualLayoutState(out PortableVisualLayoutState state)
+        {
+            state = _state;
+            return true;
+        }
+    }
+
+    private sealed class FakePortableStateVisual : PortableVisualStateSource
+    {
+        private readonly PortableVisualState _state;
+
+        public FakePortableStateVisual(PortableVisualState state)
+        {
+            _state = state;
+        }
+
+        public bool TryGetPortableVisualState(out PortableVisualState state)
         {
             state = _state;
             return true;

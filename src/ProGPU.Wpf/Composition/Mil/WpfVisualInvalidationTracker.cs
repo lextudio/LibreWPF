@@ -8,6 +8,8 @@ using PortableDrawingContentSource = ProGPU.Wpf.Interop.IPortableDrawingContentS
 using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;
 using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
+using PortableVisualState = ProGPU.Wpf.Interop.PortableVisualState;
+using PortableVisualStateSource = ProGPU.Wpf.Interop.IPortableVisualStateSource;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
 
@@ -594,16 +596,25 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
     private static bool TryReadVisualStateSnapshot(object source, out VisualStateSnapshot snapshot)
     {
         var builder = new VisualStateSnapshotBuilder();
+        var hasPortableVisualState = TryGetPortableVisualState(source, out var visualState);
         var hasPortableLayoutState = TryGetPortableVisualLayoutState(source, out var layoutState);
 
-        if (TryReadVectorLikeProperty(source, "Offset", out var offsetX, out var offsetY) ||
+        if (hasPortableVisualState && visualState.HasOffset)
+        {
+            builder.SetOffset(visualState.Offset.X, visualState.Offset.Y);
+        }
+        else if (TryReadVectorLikeProperty(source, "Offset", out var offsetX, out var offsetY) ||
             TryReadVectorLikeProperty(source, "VisualOffset", out offsetX, out offsetY) ||
             TryReadVectorLikeField(source, "_offset", out offsetX, out offsetY))
         {
             builder.SetOffset(offsetX, offsetY);
         }
 
-        if (TryGetVisualClip(source, out var clip))
+        if (hasPortableVisualState && visualState.HasClip)
+        {
+            builder.SetClip(visualState.Clip);
+        }
+        else if (!hasPortableVisualState && TryGetVisualClip(source, out var clip))
         {
             builder.SetClip(clip);
         }
@@ -626,21 +637,47 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             builder.SetLayoutClip(layoutClip);
         }
 
-        if (TryGetPropertyValue(source, "Transform", out var transform) ||
+        if (hasPortableVisualState && visualState.HasTransform)
+        {
+            builder.SetTransform(visualState.Transform);
+        }
+        else if (!hasPortableVisualState &&
+            (TryGetPropertyValue(source, "Transform", out var transform) ||
             TryGetPropertyValue(source, "VisualTransform", out transform) ||
-            TryGetFieldValue(source, "_transform", out transform))
+            TryGetFieldValue(source, "_transform", out transform)))
         {
             builder.SetTransform(transform);
         }
 
-        if (TryGetScrollableAreaClip(source, out var scrollClip))
+        if (hasPortableVisualState && visualState.HasScrollableAreaClip)
+        {
+            var scrollClip = visualState.ScrollableAreaClip;
+            builder.SetScrollableAreaClip(scrollClip.X, scrollClip.Y, scrollClip.Width, scrollClip.Height);
+        }
+        else if (!hasPortableVisualState && TryGetScrollableAreaClip(source, out var scrollClip))
         {
             builder.SetScrollableAreaClip(scrollClip);
         }
 
-        if (TryReadDoubleProperty(source, "Opacity", out var opacity))
+        if (hasPortableVisualState && visualState.HasOpacity)
+        {
+            builder.SetOpacity(visualState.Opacity);
+        }
+        else if (!hasPortableVisualState && TryReadDoubleProperty(source, "Opacity", out var opacity))
         {
             builder.SetOpacity(opacity);
+        }
+
+        if (hasPortableVisualState && visualState.HasOpacityMask)
+        {
+            builder.SetOpacityMask(visualState.OpacityMask);
+        }
+        else if (!hasPortableVisualState &&
+            (TryGetPropertyValue(source, "OpacityMask", out var opacityMask) ||
+             TryGetPropertyValue(source, "VisualOpacityMask", out opacityMask)) &&
+            opacityMask != null)
+        {
+            builder.SetOpacityMask(opacityMask);
         }
 
         if (hasPortableLayoutState && TryReadPortableRenderSize(layoutState, out var width, out var height))
@@ -657,6 +694,18 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         snapshot = builder.ToSnapshot();
         return builder.HasState;
+    }
+
+    private static bool TryGetPortableVisualState(object source, out PortableVisualState state)
+    {
+        if (source is PortableVisualStateSource visualStateSource
+            && visualStateSource.TryGetPortableVisualState(out state))
+        {
+            return true;
+        }
+
+        state = null!;
+        return false;
     }
 
     private static bool TryGetPortableVisualLayoutState(object source, out PortableVisualLayoutState state)
@@ -1154,6 +1203,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             object? scrollClipReference,
             bool hasOpacity,
             double opacity,
+            bool hasOpacityMaskProperty,
+            object? opacityMaskReference,
             bool hasRenderSize,
             double renderWidth,
             double renderHeight)
@@ -1183,6 +1234,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             ScrollClipReference = scrollClipReference;
             HasOpacity = hasOpacity;
             Opacity = opacity;
+            HasOpacityMaskProperty = hasOpacityMaskProperty;
+            OpacityMaskReference = opacityMaskReference;
             HasRenderSize = hasRenderSize;
             RenderWidth = renderWidth;
             RenderHeight = renderHeight;
@@ -1238,6 +1291,10 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
         private double Opacity { get; }
 
+        private bool HasOpacityMaskProperty { get; }
+
+        private object? OpacityMaskReference { get; }
+
         private bool HasRenderSize { get; }
 
         private double RenderWidth { get; }
@@ -1271,6 +1328,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 ReferenceEquals(ScrollClipReference, other.ScrollClipReference) &&
                 HasOpacity == other.HasOpacity &&
                 Opacity.Equals(other.Opacity) &&
+                HasOpacityMaskProperty == other.HasOpacityMaskProperty &&
+                ReferenceEquals(OpacityMaskReference, other.OpacityMaskReference) &&
                 HasRenderSize == other.HasRenderSize &&
                 RenderWidth.Equals(other.RenderWidth) &&
                 RenderHeight.Equals(other.RenderHeight);
@@ -1309,6 +1368,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             hash.Add(GetReferenceHashCode(ScrollClipReference));
             hash.Add(HasOpacity);
             hash.Add(Opacity);
+            hash.Add(HasOpacityMaskProperty);
+            hash.Add(GetReferenceHashCode(OpacityMaskReference));
             hash.Add(HasRenderSize);
             hash.Add(RenderWidth);
             hash.Add(RenderHeight);
@@ -1348,6 +1409,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         private object? _scrollClipReference;
         private bool _hasOpacity;
         private double _opacity;
+        private bool _hasOpacityMaskProperty;
+        private object? _opacityMaskReference;
         private bool _hasRenderSize;
         private double _renderWidth;
         private double _renderHeight;
@@ -1413,11 +1476,30 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             }
         }
 
+        public void SetScrollableAreaClip(double x, double y, double width, double height)
+        {
+            HasState = true;
+            _hasScrollableAreaClipProperty = true;
+            _hasScrollableAreaClipRect = true;
+            _scrollClipX = x;
+            _scrollClipY = y;
+            _scrollClipWidth = width;
+            _scrollClipHeight = height;
+            _scrollClipReference = null;
+        }
+
         public void SetOpacity(double opacity)
         {
             HasState = true;
             _hasOpacity = true;
             _opacity = opacity;
+        }
+
+        public void SetOpacityMask(object? opacityMask)
+        {
+            HasState = true;
+            _hasOpacityMaskProperty = true;
+            _opacityMaskReference = opacityMask;
         }
 
         public void SetRenderSize(double width, double height)
@@ -1456,6 +1538,8 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
                 _scrollClipReference,
                 _hasOpacity,
                 _opacity,
+                _hasOpacityMaskProperty,
+                _opacityMaskReference,
                 _hasRenderSize,
                 _renderWidth,
                 _renderHeight);

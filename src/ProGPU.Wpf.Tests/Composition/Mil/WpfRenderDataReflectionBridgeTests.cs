@@ -1,8 +1,10 @@
 using System.Buffers.Binary;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.ProGPU.Composition;
 using System.Windows.Media.ProGPU.Composition.Mil;
+using ProGPU.Wpf.Interop;
 using Xunit;
 using MediaBrush = System.Windows.Media.Brush;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
@@ -29,6 +31,22 @@ public sealed class WpfRenderDataReflectionBridgeTests
         Assert.Equal(record, snapshot.RenderData);
         Assert.NotSame(pooledBuffer, snapshot.RenderData);
         Assert.Equal(new object?[] { brush }, snapshot.DependentResources);
+    }
+
+    [Fact]
+    public void ExtractPrefersPortableRenderDataSnapshotBeforeReflectionFields()
+    {
+        var brush = Brushes.Green;
+        var record = CreateRectangleRecord(1, 0);
+        var portableBuffer = record.Concat(new byte[] { 0xAA, 0xBB, 0xCC, 0xDD }).ToArray();
+        var renderData = new TypedPortableRenderDataSource(portableBuffer, new object?[] { brush });
+
+        var snapshot = WpfRenderDataReflectionBridge.Extract(renderData);
+
+        Assert.Equal(portableBuffer, snapshot.RenderData);
+        Assert.NotSame(portableBuffer, snapshot.RenderData);
+        Assert.Equal(new object?[] { brush }, snapshot.DependentResources);
+        Assert.Equal(1, renderData.TypedSnapshotCount);
     }
 
     [Fact]
@@ -130,6 +148,27 @@ public sealed class WpfRenderDataReflectionBridgeTests
             _buffer = buffer;
             _curOffset = curOffset;
             _dependentResources = dependentResources;
+        }
+    }
+
+    private sealed class TypedPortableRenderDataSource : IPortableRenderDataSource
+    {
+        private readonly byte[] _renderData;
+        private readonly IReadOnlyList<object?> _dependentResources;
+
+        public TypedPortableRenderDataSource(byte[] renderData, IReadOnlyList<object?> dependentResources)
+        {
+            _renderData = renderData;
+            _dependentResources = dependentResources;
+        }
+
+        public int TypedSnapshotCount { get; private set; }
+
+        public bool TryGetPortableRenderDataSnapshot(out PortableRenderDataSnapshot snapshot)
+        {
+            TypedSnapshotCount++;
+            snapshot = new PortableRenderDataSnapshot(_renderData, _dependentResources);
+            return true;
         }
     }
 

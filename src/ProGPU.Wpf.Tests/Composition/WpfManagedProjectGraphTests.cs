@@ -5227,6 +5227,46 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void RenderDataBridgePrefersPortableRenderDataSnapshot()
+    {
+        var bridgeSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfRenderDataReflectionBridge.cs"));
+        var interopSource = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableRenderData.cs"));
+        var renderDataSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "RenderData.cs"));
+
+        Assert.Contains("public sealed class PortableRenderDataSnapshot", interopSource, StringComparison.Ordinal);
+        Assert.Contains("public interface IPortableRenderDataSource", interopSource, StringComparison.Ordinal);
+        Assert.Contains("RenderData : Freezable, DUCE.IResource, IDrawingContent, IPortableRenderDataSource", renderDataSource, StringComparison.Ordinal);
+        Assert.Contains("IPortableRenderDataSource.TryGetPortableRenderDataSnapshot(out PortableRenderDataSnapshot snapshot)", renderDataSource, StringComparison.Ordinal);
+        Assert.Contains("Buffer.BlockCopy(_buffer, 0, renderData, 0, _curOffset);", renderDataSource, StringComparison.Ordinal);
+        Assert.Contains("renderData is PortableRenderDataSource portableSource", bridgeSource, StringComparison.Ordinal);
+        Assert.Contains("portableSource.TryGetPortableRenderDataSnapshot(out var portableSnapshot)", bridgeSource, StringComparison.Ordinal);
+        Assert.Contains("return CreateSnapshot(portableSnapshot);", bridgeSource, StringComparison.Ordinal);
+        Assert.Contains("GetFieldValue<byte[]?>(renderDataType, renderData, \"_buffer\")", bridgeSource, StringComparison.Ordinal);
+        Assert.True(
+            bridgeSource.IndexOf("renderData is PortableRenderDataSource portableSource", StringComparison.Ordinal)
+                < bridgeSource.IndexOf("GetFieldValue<byte[]?>(renderDataType, renderData, \"_buffer\")", StringComparison.Ordinal),
+            "The typed RenderData snapshot must be attempted before the transitional private-field fallback.");
+    }
+
+    [Fact]
     public void VisualTreeRendererPrefersPortableVisualChildren()
     {
         var rendererSource = File.ReadAllText(FindRepoPath(

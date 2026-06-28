@@ -13,6 +13,7 @@
 
 using MS.Internal;
 using MS.Utility;
+using ProGPU.Wpf.Interop;
 using System.Buffers;
 using System.Runtime.InteropServices;
 using System.Windows.Media.Animation;
@@ -28,7 +29,7 @@ namespace System.Windows.Media
     ///
     /// NOTE: RenderData is a not a fully functional Freezable
     /// </summary>
-    internal partial class RenderData : Freezable, DUCE.IResource, IDrawingContent
+    internal partial class RenderData : Freezable, DUCE.IResource, IDrawingContent, IPortableRenderDataSource
     {
         /// <summary>
         /// Default constructor.
@@ -507,6 +508,35 @@ namespace System.Windows.Media
         }
 
         #endregion Private Methods
+
+        bool IPortableRenderDataSource.TryGetPortableRenderDataSnapshot(out PortableRenderDataSnapshot snapshot)
+        {
+            if (_curOffset < 0 || _buffer == null && _curOffset != 0 || _buffer != null && _curOffset > _buffer.Length)
+            {
+                snapshot = null;
+                return false;
+            }
+
+            byte[] renderData;
+            if (_curOffset == 0)
+            {
+                renderData = Array.Empty<byte>();
+            }
+            else
+            {
+                renderData = new byte[_curOffset];
+                Buffer.BlockCopy(_buffer, 0, renderData, 0, _curOffset);
+            }
+
+            object[] dependentResources = new object[_dependentResources.Count];
+            for (int i = 0; i < dependentResources.Length; i++)
+            {
+                dependentResources[i] = _dependentResources[i];
+            }
+
+            snapshot = new PortableRenderDataSnapshot(renderData, dependentResources);
+            return true;
+        }
 
         #region Private Fields
 

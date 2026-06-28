@@ -1,5 +1,4 @@
 using System;
-using System.Reflection;
 using System.Threading;
 using ProGPU.Backend;
 using ProGPU.DirectX;
@@ -11,6 +10,7 @@ using System.Windows.Media.ProGPU.Composition.Mil;
 using System.Windows.Media.ProGPU.Platform;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
 using ProGpuRenderTargetViewport = global::ProGPU.Scene.RenderTargetViewport;
+using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
 using SilkWindowBorder = Silk.NET.Windowing.WindowBorder;
 using SilkWindowState = Silk.NET.Windowing.WindowState;
 
@@ -456,7 +456,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
     }
 
     public bool TryCreatePortablePresentationSource(
-        Assembly presentationCoreAssembly,
+        System.Reflection.Assembly presentationCoreAssembly,
         object? rootVisual = null,
         double dpiScaleX = 1.0,
         double dpiScaleY = 1.0)
@@ -1184,12 +1184,19 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             return false;
         }
 
-        var renderSizeProperty = _wpfRootVisual.GetType().GetProperty(
-            "RenderSize",
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        object? rawRenderSize = renderSizeProperty?.GetValue(_wpfRootVisual);
-        if (!TryReadPositiveFiniteDimension(rawRenderSize, "Width", out var width) ||
-            !TryReadPositiveFiniteDimension(rawRenderSize, "Height", out var height))
+        if (_wpfRootVisual is not PortableVisualLayoutStateSource layoutStateSource ||
+            !layoutStateSource.TryGetPortableVisualLayoutState(out var layoutState) ||
+            !layoutState.HasRenderSize)
+        {
+            return false;
+        }
+
+        var width = layoutState.RenderSize.Width;
+        var height = layoutState.RenderSize.Height;
+        if (!double.IsFinite(width) ||
+            !double.IsFinite(height) ||
+            width <= 0.0 ||
+            height <= 0.0)
         {
             return false;
         }
@@ -1198,37 +1205,6 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
             Math.Max(1, (int)Math.Ceiling(width)),
             Math.Max(1, (int)Math.Ceiling(height)));
         return true;
-    }
-
-    private static bool TryReadPositiveFiniteDimension(
-        object? value,
-        string propertyName,
-        out double dimension)
-    {
-        dimension = 0.0;
-        if (value == null)
-        {
-            return false;
-        }
-
-        var property = value.GetType().GetProperty(
-            propertyName,
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        object? rawDimension = property?.GetValue(value);
-        try
-        {
-            dimension = Convert.ToDouble(rawDimension);
-        }
-        catch (FormatException)
-        {
-            return false;
-        }
-        catch (InvalidCastException)
-        {
-            return false;
-        }
-
-        return double.IsFinite(dimension) && dimension > 0.0;
     }
 
     internal static int ResolveCachedLogicalClientDimension(
@@ -2404,7 +2380,7 @@ public unsafe sealed class ProGpuWpfWindowHost : IDisposable
 
     private static bool IsRecoverableDispatcherRenderException(Exception exception)
     {
-        while (exception is TargetInvocationException { InnerException: { } innerException })
+        while (exception is System.Reflection.TargetInvocationException { InnerException: { } innerException })
         {
             exception = innerException;
         }

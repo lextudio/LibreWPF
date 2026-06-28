@@ -494,9 +494,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ResolveLogicalClientDpiScale(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("ReconcileResolvedLogicalClientSizeWithRootRenderSize(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("TryGetWpfRootRenderSize(out var rootRenderSize)", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("\"RenderSize\"", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("TryReadPositiveFiniteDimension(rawRenderSize, \"Width\", out var width)", proGpuHost, StringComparison.Ordinal);
-        Assert.Contains("TryReadPositiveFiniteDimension(rawRenderSize, \"Height\", out var height)", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("_wpfRootVisual is not PortableVisualLayoutStateSource layoutStateSource", proGpuHost, StringComparison.Ordinal);
+        Assert.Contains("layoutState.RenderSize.Width", proGpuHost, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Reflection;", proGpuHost, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("UpdateClientSizeFromNativeResize(size, framebufferSize, monitorDpiScale);", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var clientSize = _window.Size;", proGpuHost, StringComparison.Ordinal);
         Assert.Contains("var framebufferSize = _window.FramebufferSize;", proGpuHost, StringComparison.Ordinal);

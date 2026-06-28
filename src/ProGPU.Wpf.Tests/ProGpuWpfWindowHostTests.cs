@@ -7,6 +7,9 @@ using System.Windows.Media.ProGPU.Platform;
 using Silk.NET.Maths;
 using Xunit;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
+using PortableSize = ProGPU.Wpf.Interop.PortableSize;
+using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
+using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
 using ProGpuDrawingContext = ProGPU.Scene.DrawingContext;
 using ProGpuRenderCommandType = ProGPU.Scene.RenderCommandType;
 
@@ -1411,14 +1414,18 @@ public sealed class ProGpuWpfWindowHostTests
     }
 
     [Fact]
-    public void DefaultRenderDataSinkProviderRegistrationReturnsNullWhenProviderIsAbsent()
+    public void DefaultRenderDataSinkProviderRegistrationScopesTypedProvider()
     {
         using var host = new ProGpuWpfWindowHost();
         var frame = new ProGpuWpfDrawingFrame(new ProGPU.Scene.DrawingVisual(), 100, 50);
 
-        using IDisposable? registration = host.RegisterRenderDataSinkProvider(frame);
+        using (IDisposable? registration = host.RegisterRenderDataSinkProvider(frame))
+        {
+            Assert.NotNull(registration);
+            Assert.NotNull(PortableRenderDataDrawingContextSinkProvider.ObjectSinkFactory);
+        }
 
-        Assert.Null(registration);
+        Assert.Null(PortableRenderDataDrawingContextSinkProvider.ObjectSinkFactory);
     }
 
     [Fact]
@@ -1845,13 +1852,23 @@ public sealed class ProGpuWpfWindowHostTests
         }
     }
 
-    private sealed class TestRootElement
+    private sealed class TestRootElement : PortableVisualLayoutStateSource
     {
         public TestRenderSize RenderSize { get; private set; }
 
         public void SetRenderSize(double width, double height)
         {
             RenderSize = new TestRenderSize(width, height);
+        }
+
+        public bool TryGetPortableVisualLayoutState(out PortableVisualLayoutState state)
+        {
+            state = new PortableVisualLayoutState
+            {
+                HasRenderSize = true,
+                RenderSize = new PortableSize(RenderSize.Width, RenderSize.Height)
+            };
+            return true;
         }
     }
 

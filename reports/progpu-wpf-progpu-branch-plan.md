@@ -8,6 +8,12 @@ The ProGPU branch should add reusable native primitives and shim behavior only w
 
 The deliverable shape is a custom `ProGPU.Wpf.Sdk` that existing WPF applications can select by changing only the project `Sdk`. The SDK must hide the portable WPF transport, ProGPU/Silk.NET package graph, runtime assets, and bootstrap registration behind MSBuild imports while preserving normal WPF `ApplicationDefinition`, `Page`, `Resource`, BAML, theme, code-behind, dependency-property, binding, command, layout, and control-manager behavior. Any required source or XAML edit in a normal app is a compatibility bug unless it is an explicitly documented Windows-only interop exception. ProGPU branch work should therefore favor native primitives and platform services that let this SDK contract keep upstream managed WPF code active, not managed bridge workarounds that customers would need to opt into. This is now a hard delivery criterion for the port: repo-local smoke apps, external package-mode harnesses, and CI/package validation should prove that app projects need no ProGPU-specific properties or source edits beyond the SDK selection.
 
+## Reflection-Free Implementation Requirement
+
+The next top priority after the focused paid Xceed DataGrid/App stabilization is removing reflection hacks from the WPF port and ProGPU support code. Runtime reflection is permitted only as temporary scaffolding for diagnostics, compatibility probes, or transitional adapters with a documented removal path. The target architecture is typed, generated, or source-integrated access to WPF/MIL/resource/visual state, with rendering, clipping, hit testing, shader effects, text, cache metadata, DirectX shims, and platform services implemented in reusable ProGPU/Silk.NET layers instead of managed WPF bridge workarounds.
+
+This requirement does not reduce managed WPF reuse. The port should keep upstream WPF managers, controls, XAML, resources, themes, layout, binding, routed events, commands, and document systems active, while replacing only the Windows-only or MIL/native seams needed to run cross-platform through ProGPU.
+
 ## Current Branch State
 
 The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and-leaks`. The branch has been fast-forwarded to the latest origin commits and now includes:
@@ -180,6 +186,7 @@ The WPF superproject tracks ProGPU submodule branch `fix/render-invalidation-and
 
 ## Decisions
 
+- Make reflection-free bridge/backend implementation a hard near-term cleanup gate. Existing reflection-heavy WPF visual/MIL/resource adapters may remain only as transitional scaffolding while typed seams, generated accessors, source-integrated WPF internals, and ProGPU-native scene/vector/text/shader/platform primitives are built; new feature work should not deepen reflection dependency unless it includes an explicit removal path.
 - Keep feature work that accelerates WPF rendering fidelity in the ProGPU branch when it improves the backend model directly, instead of compensating in the WPF bridge.
 - Keep WPF arc semantics in ProGPU vector primitives. The WPF bridge may adapt WPF types, but affine arc math, sweep flipping, and shader-rasterized arc records belong in `ProGPU.Vector`/`ProGPU.Scene`.
 - Preserve API-level rounded-rectangle radii before they reach the bridge. WPF `radiusX`/`radiusY` and Skia per-corner radii should remain native ProGPU command/path data, with only uniform scalar cases using the compositor's fast rounded-rect primitive path.

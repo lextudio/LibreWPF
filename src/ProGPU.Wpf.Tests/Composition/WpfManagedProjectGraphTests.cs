@@ -211,6 +211,18 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Media",
             "PortableMediaContextRenderService.cs");
+        var moduleInitializerPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "ModuleInitializer.cs");
+        var portableWpfServiceRegistryPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableWpfServiceRegistry.cs");
         var dragDropPath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -339,6 +351,8 @@ public sealed class WpfManagedProjectGraphTests
         var mediaContext = File.ReadAllText(mediaContextPath);
         var visual = File.ReadAllText(visualPath);
         var renderService = File.ReadAllText(renderServicePath);
+        var moduleInitializer = File.ReadAllText(moduleInitializerPath);
+        var portableWpfServiceRegistry = File.ReadAllText(portableWpfServiceRegistryPath);
         var dragDrop = File.ReadAllText(dragDropPath);
         var presentationCoreProject = File.ReadAllText(presentationCoreProjectPath);
         var activationService = File.ReadAllText(activationServicePath);
@@ -366,7 +380,14 @@ public sealed class WpfManagedProjectGraphTests
 
         Assert.Contains(@"<Compile Include=""System\Windows\Media\PortableMediaContextRenderService.cs"" />", presentationCoreProject, StringComparison.Ordinal);
         Assert.Contains("internal static class PortableMediaContextRenderService", renderService, StringComparison.Ordinal);
+        Assert.Contains("using ProGPU.Wpf.Interop;", renderService, StringComparison.Ordinal);
         Assert.Contains("RuntimeInformation.IsOSPlatform(OSPlatform.Windows)", renderService, StringComparison.Ordinal);
+        Assert.Contains("internal static void RegisterPortableInteropService()", renderService, StringComparison.Ordinal);
+        Assert.Contains("PortableWpfServiceRegistry.RegisterMediaContextRenderService(s_registrar)", renderService, StringComparison.Ordinal);
+        Assert.Contains("private sealed class MediaContextRenderServiceRegistrar : IPortableMediaContextRenderServiceRegistrar", renderService, StringComparison.Ordinal);
+        Assert.Contains("PortableMediaContextRenderService.RegisterPortableInteropService();", moduleInitializer, StringComparison.Ordinal);
+        Assert.Contains("public interface IPortableMediaContextRenderServiceRegistrar", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("public static bool TryGetMediaContextRenderService(", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("List<Action<object, TimeSpan>>", renderService, StringComparison.Ordinal);
         Assert.Contains("internal static IDisposable Register(Action requestRender)", renderService, StringComparison.Ordinal);
         Assert.Contains("internal static IDisposable Register(Action<TimeSpan> requestRender)", renderService, StringComparison.Ordinal);
@@ -400,6 +421,12 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("void RequestRender(TimeSpan delay)", proGpuScheduler, StringComparison.Ordinal);
         Assert.Contains("PortableMediaContextRenderServiceTypeName", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("TryRegisterMediaContextRenderService(presentationCoreAssembly)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("PortableWpfServiceRegistry.TryGetMediaContextRenderService(", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("TryRegisterMediaContextRenderServiceByReflection(presentationCoreAssembly)", proGpuActivation, StringComparison.Ordinal);
+        Assert.True(
+            proGpuActivation.IndexOf("PortableWpfServiceRegistry.TryGetMediaContextRenderService(", StringComparison.Ordinal)
+                < proGpuActivation.IndexOf("TryRegisterMediaContextRenderServiceByReflection(presentationCoreAssembly)", StringComparison.Ordinal),
+            "The typed media-context render service registry must be tried before the transitional reflected service adapter.");
         Assert.Contains("typeof(Action<object, TimeSpan>)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("typeof(Action<TimeSpan>)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("IWpfDelayedRenderScheduler delayedScheduler", proGpuActivation, StringComparison.Ordinal);

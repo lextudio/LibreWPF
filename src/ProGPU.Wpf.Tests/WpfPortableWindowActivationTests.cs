@@ -54,6 +54,28 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void AttachUsesTypedMediaContextRenderInteropServiceBeforeReflectionFallback()
+    {
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource();
+        var service = new TestMediaContextRenderServiceRegistrar();
+        using var registration = PortableWpfServiceRegistry.RegisterMediaContextRenderService(service);
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+        Assert.Equal(1, service.RegisterCount);
+        Assert.NotNull(service.RequestRender);
+        Assert.False(service.LastRegistration?.IsDisposed);
+
+        activation.Dispose();
+
+        Assert.True(service.LastRegistration?.IsDisposed);
+    }
+
+    [Fact]
     public void SetTitleAndClientSizeForwardWindowPropertyChangesToHost()
     {
         var scheduler = new TestRenderScheduler();
@@ -1300,10 +1322,43 @@ public sealed class WpfPortableWindowActivationTests
         }
     }
 
+    private sealed class TestMediaContextRenderServiceRegistrar : IPortableMediaContextRenderServiceRegistrar
+    {
+        public int RegisterCount { get; private set; }
+
+        public Action<object?, TimeSpan>? RequestRender { get; private set; }
+
+        public TestPortableServiceRegistration? LastRegistration { get; private set; }
+
+        public Assembly SourceAssembly
+        {
+            get
+            {
+                return typeof(TestMediaContextRenderServiceRegistrar).Assembly;
+            }
+        }
+
+        public IDisposable Register(Action<object?, TimeSpan> requestRender)
+        {
+            RegisterCount++;
+            RequestRender = requestRender;
+            LastRegistration = new TestPortableServiceRegistration();
+            return LastRegistration;
+        }
+
+        public void Clear()
+        {
+            RequestRender = null;
+        }
+    }
+
     private sealed class TestPortableServiceRegistration : IDisposable
     {
+        public bool IsDisposed { get; private set; }
+
         public void Dispose()
         {
+            IsDisposed = true;
         }
     }
 

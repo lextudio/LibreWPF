@@ -1360,6 +1360,20 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private bool TryRegisterMediaContextRenderService(Assembly presentationCoreAssembly)
     {
+        if (PortableWpfServiceRegistry.TryGetMediaContextRenderService(
+                presentationCoreAssembly,
+                out var renderService))
+        {
+            _mediaContextRenderRegistration?.Dispose();
+            _mediaContextRenderRegistration = renderService.Register(RequestRenderFromMediaContext);
+            return _mediaContextRenderRegistration != null;
+        }
+
+        return TryRegisterMediaContextRenderServiceByReflection(presentationCoreAssembly);
+    }
+
+    private bool TryRegisterMediaContextRenderServiceByReflection(Assembly presentationCoreAssembly)
+    {
         var serviceType = presentationCoreAssembly.GetType(
             PortableMediaContextRenderServiceTypeName,
             throwOnError: false);

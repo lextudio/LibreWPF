@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Windows.Media.Imaging;
 using ProGPU.Backend;
+using ProGPU.Wpf.Interop;
 using Silk.NET.WebGPU;
 using MediaImageSource = System.Windows.Media.ImageSource;
 
@@ -29,17 +30,35 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
             return mediaImageSource;
         }
 
-        if (!TryReadIntProperty(imageSource, "PixelWidth", out var width)
-            || !TryReadIntProperty(imageSource, "PixelHeight", out var height)
+        int width;
+        int height;
+        double dpiX;
+        double dpiY;
+        Pbgra32PixelBuffer pixelBuffer;
+        if (TryCopyPortableBitmapSourceAsPbgra32Buffer(
+                imageSource,
+                out var portablePixels,
+                out pixelBuffer))
+        {
+            width = portablePixels.Width;
+            height = portablePixels.Height;
+            dpiX = portablePixels.DpiX;
+            dpiY = portablePixels.DpiY;
+        }
+        else if (!TryReadIntProperty(imageSource, "PixelWidth", out width)
+            || !TryReadIntProperty(imageSource, "PixelHeight", out height)
             || width <= 0
             || height <= 0
-            || !TryCopyPixelsAsPbgra32Buffer(imageSource, width, height, out var pixelBuffer))
+            || !TryCopyPixelsAsPbgra32Buffer(imageSource, width, height, out pixelBuffer))
         {
             return null;
         }
+        else
+        {
+            dpiX = TryReadDoubleProperty(imageSource, "DpiX", out var readDpiX) ? readDpiX : 96;
+            dpiY = TryReadDoubleProperty(imageSource, "DpiY", out var readDpiY) ? readDpiY : 96;
+        }
 
-        var dpiX = TryReadDoubleProperty(imageSource, "DpiX", out var readDpiX) ? readDpiX : 96;
-        var dpiY = TryReadDoubleProperty(imageSource, "DpiY", out var readDpiY) ? readDpiY : 96;
         var context = ResolveGpuContext();
         if (imageSource is MediaImageSource mediaSource
             && TryCreateGpuTexture(context, width, height, pixelBuffer, out var adaptedTexture))
@@ -350,6 +369,21 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
     {
         pixelBuffer = default;
 
+        if (imageSource is IPortableBitmapSourcePixelsSource portableSource
+            && TryCopyPortableBitmapSourceAsPbgra32Buffer(
+                portableSource,
+                out var portablePixels,
+                out pixelBuffer))
+        {
+            if (portablePixels.Width == width && portablePixels.Height == height)
+            {
+                return true;
+            }
+
+            pixelBuffer = default;
+            return false;
+        }
+
         if (width <= 0
             || height <= 0
             || !TryReadPixelFormat(imageSource, out var formatKind, out _))
@@ -410,6 +444,170 @@ public sealed class WpfBitmapSourceImageAdapter : IWpfImageSourceAdapter
 
         pixelBuffer = pbgra32Buffer;
         return true;
+    }
+
+    private static bool TryCopyPortableBitmapSourceAsPbgra32Buffer(
+        object imageSource,
+        out PortableBitmapSourcePixels portablePixels,
+        out Pbgra32PixelBuffer pixelBuffer)
+    {
+        if (imageSource is IPortableBitmapSourcePixelsSource portableSource)
+        {
+            return TryCopyPortableBitmapSourceAsPbgra32Buffer(
+                portableSource,
+                out portablePixels,
+                out pixelBuffer);
+        }
+
+        portablePixels = null!;
+        pixelBuffer = default;
+        return false;
+    }
+
+    private static bool TryCopyPortableBitmapSourceAsPbgra32Buffer(
+        IPortableBitmapSourcePixelsSource portableSource,
+        out PortableBitmapSourcePixels portablePixels,
+        out Pbgra32PixelBuffer pixelBuffer)
+    {
+        portablePixels = null!;
+        pixelBuffer = default;
+
+        if (!portableSource.TryGetPortableBitmapSourcePixels(out portablePixels)
+            || portablePixels == null
+            || portablePixels.Width <= 0
+            || portablePixels.Height <= 0
+            || portablePixels.Stride <= 0
+            || portablePixels.Pixels == null
+            || !TryMapPixelDataFormat(portablePixels.Format, out var formatKind))
+        {
+            return false;
+        }
+
+        var palette = CreatePalette(portablePixels.Palette);
+        if (PixelDataConverter.RequiresPalette(formatKind) && palette.Length == 0)
+        {
+            return false;
+        }
+
+        var sourceBuffer = new PixelDataBuffer(
+            portablePixels.Width,
+            portablePixels.Height,
+            portablePixels.Stride,
+            formatKind,
+            portablePixels.Pixels,
+            palette);
+        if (!sourceBuffer.TryConvertToPbgra32(out var pbgra32Buffer))
+        {
+            return false;
+        }
+
+        pixelBuffer = pbgra32Buffer;
+        return true;
+    }
+
+    private static bool TryMapPixelDataFormat(
+        PortablePixelDataFormat portableFormat,
+        out PixelDataFormat format)
+    {
+        switch (portableFormat)
+        {
+            case PortablePixelDataFormat.Pbgra32:
+                format = PixelDataFormat.Pbgra32;
+                return true;
+            case PortablePixelDataFormat.Bgra32:
+                format = PixelDataFormat.Bgra32;
+                return true;
+            case PortablePixelDataFormat.Bgr32:
+                format = PixelDataFormat.Bgr32;
+                return true;
+            case PortablePixelDataFormat.Bgr101010:
+                format = PixelDataFormat.Bgr101010;
+                return true;
+            case PortablePixelDataFormat.Bgr24:
+                format = PixelDataFormat.Bgr24;
+                return true;
+            case PortablePixelDataFormat.Rgb24:
+                format = PixelDataFormat.Rgb24;
+                return true;
+            case PortablePixelDataFormat.BlackWhite:
+                format = PixelDataFormat.BlackWhite;
+                return true;
+            case PortablePixelDataFormat.Gray2:
+                format = PixelDataFormat.Gray2;
+                return true;
+            case PortablePixelDataFormat.Gray4:
+                format = PixelDataFormat.Gray4;
+                return true;
+            case PortablePixelDataFormat.Gray8:
+                format = PixelDataFormat.Gray8;
+                return true;
+            case PortablePixelDataFormat.Gray16:
+                format = PixelDataFormat.Gray16;
+                return true;
+            case PortablePixelDataFormat.Bgr555:
+                format = PixelDataFormat.Bgr555;
+                return true;
+            case PortablePixelDataFormat.Bgr565:
+                format = PixelDataFormat.Bgr565;
+                return true;
+            case PortablePixelDataFormat.Rgb48:
+                format = PixelDataFormat.Rgb48;
+                return true;
+            case PortablePixelDataFormat.Rgba64:
+                format = PixelDataFormat.Rgba64;
+                return true;
+            case PortablePixelDataFormat.Prgba64:
+                format = PixelDataFormat.Prgba64;
+                return true;
+            case PortablePixelDataFormat.Cmyk32:
+                format = PixelDataFormat.Cmyk32;
+                return true;
+            case PortablePixelDataFormat.Gray32Float:
+                format = PixelDataFormat.Gray32Float;
+                return true;
+            case PortablePixelDataFormat.Rgb128Float:
+                format = PixelDataFormat.Rgb128Float;
+                return true;
+            case PortablePixelDataFormat.Rgba128Float:
+                format = PixelDataFormat.Rgba128Float;
+                return true;
+            case PortablePixelDataFormat.Prgba128Float:
+                format = PixelDataFormat.Prgba128Float;
+                return true;
+            case PortablePixelDataFormat.Indexed1:
+                format = PixelDataFormat.Indexed1;
+                return true;
+            case PortablePixelDataFormat.Indexed2:
+                format = PixelDataFormat.Indexed2;
+                return true;
+            case PortablePixelDataFormat.Indexed4:
+                format = PixelDataFormat.Indexed4;
+                return true;
+            case PortablePixelDataFormat.Indexed8:
+                format = PixelDataFormat.Indexed8;
+                return true;
+            default:
+                format = default;
+                return false;
+        }
+    }
+
+    private static Pbgra32Color[] CreatePalette(PortablePbgra32Color[]? portablePalette)
+    {
+        if (portablePalette == null || portablePalette.Length == 0)
+        {
+            return Array.Empty<Pbgra32Color>();
+        }
+
+        int count = Math.Min(256, portablePalette.Length);
+        var palette = new Pbgra32Color[count];
+        for (var i = 0; i < count; i++)
+        {
+            var color = portablePalette[i];
+            palette[i] = new Pbgra32Color(color.B, color.G, color.R, color.A);
+        }
+
+        return palette;
     }
 
     internal static bool TryReadPixelFormat(

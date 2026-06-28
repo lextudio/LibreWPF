@@ -1,5 +1,6 @@
 using System.Windows.Media.ProGPU.Composition.Mil;
 using ProGPU.Backend;
+using ProGPU.Wpf.Interop;
 using Xunit;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
@@ -45,6 +46,56 @@ public sealed class WpfBitmapSourceImageAdapterTests
         Assert.True(buffer.IsCompact);
         Assert.Equal(new byte[] { 1, 2, 3, 255, 4, 5, 6, 255 }, buffer.Pixels);
         Assert.Equal(6, source.LastStride);
+    }
+
+    [Fact]
+    public void CopyPixelsAsPbgra32UsesTypedPortableBitmapSourceBeforeReflectionFallback()
+    {
+        var source = new TypedPortableBitmapSource(
+            new PortableBitmapSourcePixels(
+                width: 2,
+                height: 1,
+                dpiX: 144,
+                dpiY: 120,
+                stride: 6,
+                format: PortablePixelDataFormat.Bgr24,
+                pixels: new byte[] { 1, 2, 3, 4, 5, 6 }));
+
+        Assert.True(WpfBitmapSourceImageAdapter.TryCopyPixelsAsPbgra32Buffer(
+            source,
+            2,
+            1,
+            out var buffer));
+
+        Assert.Equal(1, source.TypedCopyCount);
+        Assert.Equal(2, buffer.Width);
+        Assert.Equal(1, buffer.Height);
+        Assert.Equal(8, buffer.Stride);
+        Assert.Equal(new byte[] { 1, 2, 3, 255, 4, 5, 6, 255 }, buffer.Pixels);
+    }
+
+    [Fact]
+    public void CopyPixelsAsPbgra32UsesTypedPortableBitmapPalette()
+    {
+        var source = new TypedPortableBitmapSource(
+            new PortableBitmapSourcePixels(
+                width: 2,
+                height: 1,
+                dpiX: 96,
+                dpiY: 96,
+                stride: 1,
+                format: PortablePixelDataFormat.Indexed1,
+                pixels: new byte[] { 0b1000_0000 },
+                palette: new[]
+                {
+                    new PortablePbgra32Color(1, 2, 3, 255),
+                    new PortablePbgra32Color(10, 25, 50, 128)
+                }));
+
+        Assert.True(WpfBitmapSourceImageAdapter.TryCopyPixelsAsPbgra32(source, 2, 1, out var pixels, out _));
+
+        Assert.Equal(new byte[] { 10, 25, 50, 128, 1, 2, 3, 255 }, pixels);
+        Assert.Equal(1, source.TypedCopyCount);
     }
 
     [Fact]
@@ -502,4 +553,23 @@ public sealed class WpfBitmapSourceImageAdapterTests
     }
 
     private readonly record struct FakeColor(byte A, byte R, byte G, byte B);
+
+    private sealed class TypedPortableBitmapSource : IPortableBitmapSourcePixelsSource
+    {
+        private readonly PortableBitmapSourcePixels _pixels;
+
+        public TypedPortableBitmapSource(PortableBitmapSourcePixels pixels)
+        {
+            _pixels = pixels;
+        }
+
+        public int TypedCopyCount { get; private set; }
+
+        public bool TryGetPortableBitmapSourcePixels(out PortableBitmapSourcePixels pixels)
+        {
+            TypedCopyCount++;
+            pixels = _pixels;
+            return true;
+        }
+    }
 }

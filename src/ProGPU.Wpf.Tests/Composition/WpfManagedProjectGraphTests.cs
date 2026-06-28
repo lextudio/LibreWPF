@@ -7782,6 +7782,22 @@ public sealed class WpfManagedProjectGraphTests
             "Composition",
             "Mil",
             "WpfBitmapSourceImageAdapter.cs");
+        var portableBitmapSourcePixelsPath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableBitmapSourcePixels.cs");
+        var sourceBitmapSourcePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Imaging",
+            "BitmapSource.cs");
         var wpfTransportTargetsPath = FindRepoPath(
             "packaging",
             "Microsoft.DotNet.Wpf.GitHub",
@@ -8076,6 +8092,8 @@ public sealed class WpfManagedProjectGraphTests
         var wpfMilRenderDataDecoder = File.ReadAllText(wpfMilRenderDataDecoderPath);
         var wpfReflectionResourceResolver = File.ReadAllText(wpfReflectionResourceResolverPath);
         var wpfBitmapSourceImageAdapter = File.ReadAllText(wpfBitmapSourceImageAdapterPath);
+        var portableBitmapSourcePixels = File.ReadAllText(portableBitmapSourcePixelsPath);
+        var sourceBitmapSource = File.ReadAllText(sourceBitmapSourcePath);
         var wpfTransportTargets = File.ReadAllText(wpfTransportTargetsPath);
         var wpfTransportArchNeutralProject = File.ReadAllText(wpfTransportArchNeutralProjectPath);
         var runtimeHarnessProject = File.ReadAllText(runtimeHarnessProjectPath);
@@ -10330,6 +10348,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("bitmapSource.GpuTexture", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("HasGpuTextureProperty(imageSource)", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("&& HasGpuTextureProperty(mediaImageSource)", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("public sealed class PortableBitmapSourcePixels", portableBitmapSourcePixels, StringComparison.Ordinal);
+        Assert.Contains("public interface IPortableBitmapSourcePixelsSource", portableBitmapSourcePixels, StringComparison.Ordinal);
+        Assert.Contains("public enum PortablePixelDataFormat", portableBitmapSourcePixels, StringComparison.Ordinal);
+        Assert.Contains("BitmapSource : ImageSource, DUCE.IResource, IPortableBitmapSourcePixelsSource", sourceBitmapSource, StringComparison.Ordinal);
+        Assert.Contains("TryGetPortableBitmapSourcePixels(out PortableBitmapSourcePixels pixels)", sourceBitmapSource, StringComparison.Ordinal);
+        Assert.Contains("TryMapPortablePixelDataFormat(pixelFormat.Format", sourceBitmapSource, StringComparison.Ordinal);
+        Assert.Contains("CopyPixels(sourcePixels, stride, 0);", sourceBitmapSource, StringComparison.Ordinal);
+        Assert.Contains("using ProGPU.Wpf.Interop;", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("imageSource is IPortableBitmapSourcePixelsSource portableSource", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("TryCopyPortableBitmapSourceAsPbgra32Buffer(", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
+        Assert.Contains("TryMapPixelDataFormat(portablePixels.Format", wpfBitmapSourceImageAdapter, StringComparison.Ordinal);
         Assert.False(
             File.Exists(Path.Combine(Path.GetDirectoryName(proGpuWpfCommandSinkPath)!, "ProGpuWpfPen.cs")),
             "The transition ProGpuWpfPen wrapper should stay removed; WPF pen dash metadata belongs on native ProGPU.Vector.Pen.");

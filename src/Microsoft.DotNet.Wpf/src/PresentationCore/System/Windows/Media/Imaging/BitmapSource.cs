@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.IO;
 using MS.Internal;
 using MS.Win32;
+using ProGPU.Wpf.Interop;
 
 using UnsafeNativeMethods = MS.Win32.PresentationCore.UnsafeNativeMethods;
 
@@ -18,7 +19,7 @@ namespace System.Windows.Media.Imaging
     /// Interface for Bitmap Sources, included decoders and effects
     /// </summary>
     [Localizability(LocalizationCategory.None, Readability = Readability.Unreadable)]
-    public abstract class BitmapSource : ImageSource, DUCE.IResource
+    public abstract class BitmapSource : ImageSource, DUCE.IResource, IPortableBitmapSourcePixelsSource
     {
         #region Constructor
 
@@ -390,6 +391,166 @@ namespace System.Windows.Media.Imaging
             CheckIfSiteOfOrigin();
 
             CriticalCopyPixels(sourceRect, buffer, (uint)bufferSize, stride);
+        }
+
+        bool IPortableBitmapSourcePixelsSource.TryGetPortableBitmapSourcePixels(out PortableBitmapSourcePixels pixels)
+        {
+            pixels = null;
+
+            try
+            {
+                int width = PixelWidth;
+                int height = PixelHeight;
+                PixelFormat pixelFormat = Format;
+
+                if (width <= 0 ||
+                    height <= 0 ||
+                    !TryMapPortablePixelDataFormat(pixelFormat.Format, out PortablePixelDataFormat portableFormat))
+                {
+                    return false;
+                }
+
+                int stride = checked(((width * pixelFormat.BitsPerPixel) + 7) / 8);
+                byte[] sourcePixels = new byte[checked(stride * height)];
+                CopyPixels(sourcePixels, stride, 0);
+
+                pixels = new PortableBitmapSourcePixels(
+                    width,
+                    height,
+                    DpiX,
+                    DpiY,
+                    stride,
+                    portableFormat,
+                    sourcePixels,
+                    CreatePortablePalette(Palette));
+                return true;
+            }
+            catch (ArgumentException)
+            {
+                return false;
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
+            catch (OverflowException)
+            {
+                return false;
+            }
+        }
+
+        private static bool TryMapPortablePixelDataFormat(
+            PixelFormatEnum format,
+            out PortablePixelDataFormat portableFormat)
+        {
+            switch (format)
+            {
+                case PixelFormatEnum.Pbgra32:
+                    portableFormat = PortablePixelDataFormat.Pbgra32;
+                    return true;
+                case PixelFormatEnum.Bgra32:
+                    portableFormat = PortablePixelDataFormat.Bgra32;
+                    return true;
+                case PixelFormatEnum.Bgr32:
+                    portableFormat = PortablePixelDataFormat.Bgr32;
+                    return true;
+                case PixelFormatEnum.Bgr101010:
+                    portableFormat = PortablePixelDataFormat.Bgr101010;
+                    return true;
+                case PixelFormatEnum.Bgr24:
+                    portableFormat = PortablePixelDataFormat.Bgr24;
+                    return true;
+                case PixelFormatEnum.Rgb24:
+                    portableFormat = PortablePixelDataFormat.Rgb24;
+                    return true;
+                case PixelFormatEnum.BlackWhite:
+                    portableFormat = PortablePixelDataFormat.BlackWhite;
+                    return true;
+                case PixelFormatEnum.Gray2:
+                    portableFormat = PortablePixelDataFormat.Gray2;
+                    return true;
+                case PixelFormatEnum.Gray4:
+                    portableFormat = PortablePixelDataFormat.Gray4;
+                    return true;
+                case PixelFormatEnum.Gray8:
+                    portableFormat = PortablePixelDataFormat.Gray8;
+                    return true;
+                case PixelFormatEnum.Gray16:
+                    portableFormat = PortablePixelDataFormat.Gray16;
+                    return true;
+                case PixelFormatEnum.Bgr555:
+                    portableFormat = PortablePixelDataFormat.Bgr555;
+                    return true;
+                case PixelFormatEnum.Bgr565:
+                    portableFormat = PortablePixelDataFormat.Bgr565;
+                    return true;
+                case PixelFormatEnum.Rgb48:
+                    portableFormat = PortablePixelDataFormat.Rgb48;
+                    return true;
+                case PixelFormatEnum.Rgba64:
+                    portableFormat = PortablePixelDataFormat.Rgba64;
+                    return true;
+                case PixelFormatEnum.Prgba64:
+                    portableFormat = PortablePixelDataFormat.Prgba64;
+                    return true;
+                case PixelFormatEnum.Cmyk32:
+                    portableFormat = PortablePixelDataFormat.Cmyk32;
+                    return true;
+                case PixelFormatEnum.Gray32Float:
+                    portableFormat = PortablePixelDataFormat.Gray32Float;
+                    return true;
+                case PixelFormatEnum.Rgb128Float:
+                    portableFormat = PortablePixelDataFormat.Rgb128Float;
+                    return true;
+                case PixelFormatEnum.Rgba128Float:
+                    portableFormat = PortablePixelDataFormat.Rgba128Float;
+                    return true;
+                case PixelFormatEnum.Prgba128Float:
+                    portableFormat = PortablePixelDataFormat.Prgba128Float;
+                    return true;
+                case PixelFormatEnum.Indexed1:
+                    portableFormat = PortablePixelDataFormat.Indexed1;
+                    return true;
+                case PixelFormatEnum.Indexed2:
+                    portableFormat = PortablePixelDataFormat.Indexed2;
+                    return true;
+                case PixelFormatEnum.Indexed4:
+                    portableFormat = PortablePixelDataFormat.Indexed4;
+                    return true;
+                case PixelFormatEnum.Indexed8:
+                    portableFormat = PortablePixelDataFormat.Indexed8;
+                    return true;
+                default:
+                    portableFormat = default;
+                    return false;
+            }
+        }
+
+        private static PortablePbgra32Color[] CreatePortablePalette(Imaging.BitmapPalette palette)
+        {
+            if (palette == null || palette.Colors.Count == 0)
+            {
+                return Array.Empty<PortablePbgra32Color>();
+            }
+
+            int count = Math.Min(256, palette.Colors.Count);
+            var colors = new PortablePbgra32Color[count];
+            for (int i = 0; i < count; i++)
+            {
+                Color color = palette.Colors[i];
+                colors[i] = new PortablePbgra32Color(
+                    Premultiply(color.B, color.A),
+                    Premultiply(color.G, color.A),
+                    Premultiply(color.R, color.A),
+                    color.A);
+            }
+
+            return colors;
+        }
+
+        private static byte Premultiply(byte channel, byte alpha)
+        {
+            return (byte)((channel * alpha + 127) / 255);
         }
 
         /// <summary>

@@ -54,6 +54,7 @@ internal static class Program
     private static readonly string[] s_requiredProGpuRuntimeAssemblies =
     [
         "ProGPU.Wpf",
+        "ProGPU.Wpf.Interop",
         "ProGPU.Backend",
         "ProGPU.DirectX",
         "ProGPU.Scene",
@@ -109,6 +110,7 @@ internal static class Program
         new("Microsoft.DotNet.Wpf.GitHub", "PresentationFramework.Royale", "net11.0", "WPF"),
         new("Microsoft.DotNet.Wpf.GitHub", "System.Windows.Controls.Ribbon", "net11.0", "Ecma"),
         new("ProGPU.Wpf", "ProGPU.Wpf", "net10.0", "ProGPU"),
+        new("ProGPU.Wpf.Interop", "ProGPU.Wpf.Interop", "net10.0", "ProGPU"),
         new("ProGPU.Backend", "ProGPU.Backend", "net10.0", "ProGPU"),
         new("ProGPU.DirectX", "ProGPU.DirectX", "net10.0", "ProGPU"),
         new("ProGPU.Scene", "ProGPU.Scene", "net10.0", "ProGPU"),
@@ -279,6 +281,7 @@ internal static class Program
         AssertContains(portableTargets, "<None Remove=\"@(_ProGpuWpfDefaultResourceItem)\" />", "SDK default image resource None removal");
         AssertContains(portableTargets, "<PackageReference Include=\"$(ProGpuWpfManagedPackageId)\" Version=\"$(ProGpuWpfManagedPackageVersion)\" />", "SDK managed WPF transport package reference");
         AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.Wpf\" Version=\"$(ProGpuWpfPackageVersion)\" />", "SDK ProGPU WPF package reference");
+        AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.Wpf.Interop\" Version=\"$(ProGpuPackageVersion)\" />", "SDK ProGPU WPF interop package reference");
         AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.DirectX\" Version=\"$(ProGpuPackageVersion)\" />", "SDK ProGPU DirectX package reference");
         AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.Compute\" Version=\"$(ProGpuPackageVersion)\" />", "SDK ProGPU compute package reference");
         AssertContains(portableTargets, "<PackageReference Include=\"ProGPU.Transpiler\" Version=\"$(ProGpuPackageVersion)\" />", "SDK ProGPU transpiler package reference");
@@ -17553,6 +17556,7 @@ internal static class Program
         RequireFile(Path.Combine(outputRoot, "Xceed.Wpf.AvalonDock.Themes.VS2010.dll"), "external SDK output AvalonDock VS2010 theme asset");
 
         ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, "ProGPU.Wpf", "ProGPU.Wpf", "net10.0");
+        ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, "ProGPU.Wpf.Interop", "ProGPU.Wpf.Interop", "net10.0");
         ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, "ProGPU.DirectX", "ProGPU.DirectX", "net10.0");
         ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, "ProGPU.Scene", "ProGPU.Scene", "net10.0");
         foreach (string assemblyName in s_requiredWpfRuntimeAssemblies)
@@ -17571,6 +17575,7 @@ internal static class Program
         string depsJson = File.ReadAllText(Path.Combine(outputRoot, AppOutputAssemblyName + ".deps.json"));
         AssertContains(depsJson, "Microsoft.DotNet.Wpf.GitHub", "external SDK WPF transport package dependency");
         AssertContains(depsJson, "ProGPU.Wpf", "external SDK ProGPU WPF package dependency");
+        AssertContains(depsJson, "ProGPU.Wpf.Interop", "external SDK ProGPU WPF interop package dependency");
         AssertContains(depsJson, "ProGPU.DirectX", "external SDK ProGPU DirectX package dependency");
         AssertContains(depsJson, "ProGPU.Compute", "external SDK ProGPU compute package dependency");
         AssertContains(depsJson, "ProGPU.Transpiler", "external SDK ProGPU transpiler package dependency");
@@ -17609,6 +17614,7 @@ internal static class Program
         string depsJson = File.ReadAllText(Path.Combine(outputRoot, DefaultItemsAssemblyName + ".deps.json"));
         AssertContains(depsJson, "Microsoft.DotNet.Wpf.GitHub", "external SDK default-item WPF transport package dependency");
         AssertContains(depsJson, "ProGPU.Wpf", "external SDK default-item ProGPU WPF package dependency");
+        AssertContains(depsJson, "ProGPU.Wpf.Interop", "external SDK default-item ProGPU WPF interop package dependency");
         AssertContains(depsJson, "ProGPU.DirectX", "external SDK default-item ProGPU DirectX package dependency");
         AssertContains(depsJson, "ProGPU.Compute", "external SDK default-item ProGPU compute package dependency");
         AssertContains(depsJson, "ProGPU.Transpiler", "external SDK default-item ProGPU transpiler package dependency");

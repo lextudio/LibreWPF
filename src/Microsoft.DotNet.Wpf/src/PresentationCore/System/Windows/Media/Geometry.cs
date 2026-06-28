@@ -14,6 +14,7 @@ using System.Numerics;
 using System.Windows.Media.Composition;
 using System.Windows.Media.Animation;
 using System.Runtime.InteropServices;
+using ProGPU.Wpf.Interop;
 
 using ProGpuBoundsHitTesting = ProGPU.Vector.BoundsHitTesting;
 using ProGpuPolygonGeometryBounds = ProGPU.Vector.PolygonGeometryBounds;
@@ -26,7 +27,7 @@ namespace System.Windows.Media
     /// can be used to clip, fill or stroke.
     /// </summary>
     [Localizability(LocalizationCategory.None, Readability = Readability.Unreadable)]
-    public abstract partial class Geometry : Animatable, DUCE.IResource
+    public abstract partial class Geometry : Animatable, DUCE.IResource, IPortableGeometryPathSource
     {
         #region Constructors
 
@@ -118,6 +119,18 @@ namespace System.Windows.Media
         internal virtual bool AreClose(Geometry geometry)
         {
            return false;
+        }
+
+        bool IPortableGeometryPathSource.TryGetPortableGeometryPath(out PortableGeometryPath path)
+        {
+            ReadPreamble();
+            return TryGetPortableGeometryPathCore(out path);
+        }
+
+        internal virtual bool TryGetPortableGeometryPathCore(out PortableGeometryPath path)
+        {
+            path = PortableGeometryPathExporter.FromGeometry(this);
+            return true;
         }
 
         /// <summary>

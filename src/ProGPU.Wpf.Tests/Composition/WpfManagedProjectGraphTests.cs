@@ -1881,7 +1881,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Equal("all", GetItemMetadata(presentationFrameworkReference, "PrivateAssets"));
 
         Assert.Contains("WpfPortableWindowActivation.TryRegisterPresentationFrameworkActivation", harnessProgram, StringComparison.Ordinal);
-        Assert.Contains("WpfRenderDataSinkProviderBridge.TryRegisterRenderDataSinkProvider", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PortableRenderDataDrawingContextSinkProvider", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RegisterRealPortableObjectSinkProvider(", harnessProgram, StringComparison.Ordinal);
+        Assert.Contains("PushObjectSinkFactory", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGpuWpfCompositionTarget.CreateHeadless()", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Controls.TextBox", harnessProgram, StringComparison.Ordinal);
         Assert.Contains("System.Windows.Controls.RichTextBox", harnessProgram, StringComparison.Ordinal);
@@ -7801,6 +7803,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("external/ProGPU/src/ProGPU.Backend/ProGPU.Backend.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("external/ProGPU/src/ProGPU.DirectX/ProGPU.DirectX.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("Building managed WPF transport payload", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/Microsoft.DotNet.Wpf/src/WindowsBase/WindowsBase.csproj", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("src/Microsoft.DotNet.Wpf/src/PresentationFramework/PresentationFramework.csproj", sdkCiScript, StringComparison.Ordinal);
@@ -7854,6 +7857,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("\"${package_output}/${package_id}.${dev_package_version}.nupkg\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.DirectX/ProGPU.DirectX.csproj\" \"ProGPU.DirectX\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.Scene/ProGPU.Scene.csproj\" \"ProGPU.Scene\"", sdkCiScript, StringComparison.Ordinal);
+        Assert.Contains("pack_project \"external/ProGPU/src/ProGPU.Wpf.Interop/ProGPU.Wpf.Interop.csproj\" \"ProGPU.Wpf.Interop\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"src/ProGPU.Wpf/ProGPU.Wpf.csproj\" \"ProGPU.Wpf\"", sdkCiScript, StringComparison.Ordinal);
         Assert.Contains("pack_project \"packaging/ProGPU.Wpf.Sdk/ProGPU.Wpf.Sdk.ArchNeutral.csproj\" \"ProGPU.Wpf.Sdk\"", sdkCiScript, StringComparison.Ordinal);
 
@@ -9092,6 +9096,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<PackageDownload Remove=\"Microsoft.WindowsDesktop.App.Ref\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"$(ProGpuWpfManagedPackageId)\" Version=\"$(ProGpuWpfManagedPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"ProGPU.Wpf\" Version=\"$(ProGpuWpfPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<PackageReference Include=\"ProGPU.Wpf.Interop\" Version=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"ProGPU.Backend\" Version=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"ProGPU.DirectX\" Version=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<PackageReference Include=\"ProGPU.Scene\" Version=\"$(ProGpuPackageVersion)\" />", portableTargets, StringComparison.Ordinal);
@@ -9102,12 +9107,14 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("<Reference Include=\"WindowsBase\" HintPath=\"$(_ProGpuWpfManagedReferenceRoot)WindowsBase.dll\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<Reference Include=\"PresentationFramework\" HintPath=\"$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.dll\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<Reference Include=\"ProGPU.Wpf\" HintPath=\"$(_ProGpuReferenceRoot)ProGPU.Wpf.dll\"", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<Reference Include=\"ProGPU.Wpf.Interop\" HintPath=\"$(_ProGpuReferenceRoot)ProGPU.Wpf.Interop.dll\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<Reference Include=\"ProGPU.DirectX\" HintPath=\"$(_ProGpuReferenceRoot)ProGPU.DirectX.dll\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<Reference Include=\"ProGPU.Compute\" HintPath=\"$(_ProGpuReferenceRoot)ProGPU.Compute.dll\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<Reference Include=\"ProGPU.Transpiler\" HintPath=\"$(_ProGpuReferenceRoot)ProGPU.Transpiler.dll\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("Condition=\"Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationUI.dll')\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("Condition=\"Exists('$(_ProGpuWpfManagedReferenceRoot)UIAutomationTypes.dll')\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("Condition=\"Exists('$(_ProGpuWpfManagedReferenceRoot)PresentationFramework.Fluent.dll')\"", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<_ProGpuWpfLocalRuntimeAsset Include=\"$(_ProGpuReferenceRoot)ProGPU.Wpf.Interop.dll\" TargetPath=\"ProGPU.Wpf.Interop.dll\"", portableTargets, StringComparison.Ordinal);
         foreach (string themeAssembly in wpfThemeAssemblies)
         {
             Assert.Contains($"<Reference Include=\"{themeAssembly}\" HintPath=\"$(_ProGpuWpfManagedReferenceRoot){themeAssembly}.dll\"", portableTargets, StringComparison.Ordinal);
@@ -9123,6 +9130,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("BeforeTargets=\"_ProGpuWpfSdkCopyPackageRuntimeAssets\"", portableTargets, StringComparison.Ordinal);
         Assert.Contains("$(ProGpuWpfClearMutablePackageOutputs)", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<_ProGpuWpfSdkMutablePackageOutput Include=\"$(TargetDir)ProGPU.Wpf.dll\" />", portableTargets, StringComparison.Ordinal);
+        Assert.Contains("<_ProGpuWpfSdkMutablePackageOutput Include=\"$(TargetDir)ProGPU.Wpf.Interop.dll\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<_ProGpuWpfSdkMutablePackageOutput Include=\"$(TargetDir)ProGPU.DirectX.dll\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<_ProGpuWpfSdkMutablePackageOutput Include=\"$(TargetDir)ProGPU.Scene.dll\" />", portableTargets, StringComparison.Ordinal);
         Assert.Contains("<Delete Files=\"@(_ProGpuWpfSdkExistingMutablePackageOutput)\" />", portableTargets, StringComparison.Ordinal);
@@ -9888,20 +9896,26 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("new ProGpuCombinedGeometry", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("TryAssignDashStyle", wpfReflectionResourceResolver, StringComparison.Ordinal);
         Assert.Contains("GetType(\"System.Windows.Media.DashStyle\"", wpfReflectionResourceResolver, StringComparison.Ordinal);
-        Assert.Contains("TryConvertCombinedGeometryToNativePath(geometry", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("TryReadGeometryCombinePathOperation", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("geometry is PortableGeometryPathSource portableGeometry", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("portableGeometry.TryGetPortableGeometryPath(out var portablePath)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("TryConvertPortableGeometryPath(portablePath", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("ConvertPortableGeometryPath(PortableGeometryPath portablePath)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("portablePath.Kind == PortableGeometryPathKind.Combined", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("PathA = portablePath.PathA != null", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("var localTransform = ToMatrix4x4(portablePath.Transform)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("AddPortableSegment(figure, segment)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("geometry is ProGpuCombinedGeometry", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("TryReadGeometryBounds(geometry", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("TryReadReplayRect(boundsValue", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("bounds = ToReplayRect(portablePath.Bounds)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("bounds = GetNativePathBounds(path)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("var bounds = geometry.Bounds;", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("ReadGeometryTransform(geometry)", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("TryReadTransformValue(transformValue", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("TryReadMatrix4x4(matrixValue", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("ReadGeometryTransform(geometry)", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadTransformValue(transformValue", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryReadMatrix4x4(matrixValue", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("geometry.Transform?.Value", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("TryGetPropertyValue(geometry, \"Figures\"", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("foreach (var figure in EnumerateObjects(figuresValue))", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("TryAppendPathSegment(segment", proGpuWpfCommandSink, StringComparison.Ordinal);
-        Assert.Contains("TypeNameEndsWith(segment, \"LineSegment\")", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryGetPropertyValue(geometry, \"Figures\"", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("foreach (var figure in EnumerateObjects(figuresValue))", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("TryAppendPathSegment(segment", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.DoesNotContain("TypeNameEndsWith(segment, \"LineSegment\")", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("foreach (var figure in geometry.Figures)", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("geometry is NativePathGeometrySource nativePathSource", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("nativePathSource.TryGetPathGeometry(out path, out var nativeTransform)", proGpuWpfCommandSink, StringComparison.Ordinal);
@@ -9999,6 +10013,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("local {packageId} package matches {expectedAssemblyDescription}", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("repository WPF transport {assemblyName}.dll", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, \"ProGPU.Wpf\", \"ProGPU.Wpf\", \"net10.0\")", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, \"ProGPU.Wpf.Interop\", \"ProGPU.Wpf.Interop\", \"net10.0\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, \"ProGPU.DirectX\", \"ProGPU.DirectX\", \"net10.0\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RequireOutputAssemblyMatchesLocalPackage(appOutputRoot, packageFeed, \"ProGPU.Scene\", \"ProGPU.Scene\", \"net10.0\")", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("RequireOutputAssemblyMatchesLocalPackage(\n                appOutputRoot,\n                packageFeed,\n                \"Microsoft.DotNet.Wpf.GitHub\",\n                assemblyName,\n                \"net11.0\")", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -10030,6 +10045,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains($"\"{ribbonAssembly}\"", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"ProGPU.Compute\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"ProGPU.DirectX\"", runtimeHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("\"ProGPU.Wpf.Interop\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"ProGPU.Transpiler\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"Silk.NET.Windowing.Common\"", runtimeHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("\"Silk.NET.WebGPU\"", runtimeHarnessProgram, StringComparison.Ordinal);
@@ -11733,6 +11749,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ValidatePackageAssemblyIdentities(packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateExternalOutput(outputRoot, packageFeed)", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, \"ProGPU.Wpf\", \"ProGPU.Wpf\", \"net10.0\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, \"ProGPU.Wpf.Interop\", \"ProGPU.Wpf.Interop\", \"net10.0\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, \"ProGPU.DirectX\", \"ProGPU.DirectX\", \"net10.0\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateOutputAssemblyMatchesLocalPackage(outputRoot, packageFeed, \"ProGPU.Scene\", \"ProGPU.Scene\", \"net10.0\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ValidateOutputAssemblyMatchesLocalPackage(\n                outputRoot,\n                packageFeed,\n                \"Microsoft.DotNet.Wpf.GitHub\",\n                assemblyName,\n                \"net11.0\")", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -11742,6 +11759,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("new(\"Microsoft.DotNet.Wpf.GitHub\", \"PresentationCore\", \"net11.0\", \"WPF\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new(\"Microsoft.DotNet.Wpf.GitHub\", \"System.Windows.Controls.Ribbon\", \"net11.0\", \"Ecma\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new(\"ProGPU.Wpf\", \"ProGPU.Wpf\", \"net10.0\", \"ProGPU\")", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("new(\"ProGPU.Wpf.Interop\", \"ProGPU.Wpf.Interop\", \"net10.0\", \"ProGPU\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new(\"ProGPU.DirectX\", \"ProGPU.DirectX\", \"net10.0\", \"ProGPU\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("new(\"ProGPU.Scene\", \"ProGPU.Scene\", \"net10.0\", \"ProGPU\")", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("AssemblyName.GetAssemblyName(tempPath)", externalSdkHarnessProgram, StringComparison.Ordinal);
@@ -11762,6 +11780,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("ProGpuWpfManagedReferenceRoot", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("Microsoft.DotNet.Wpf.GitHub", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU.DirectX", externalSdkHarnessProgram, StringComparison.Ordinal);
+        Assert.Contains("ProGPU.Wpf.Interop", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Compute", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("ProGPU.Transpiler", externalSdkHarnessProgram, StringComparison.Ordinal);
         Assert.Contains("GetNativeAssetCandidates(\"wgpu\")", externalSdkHarnessProgram, StringComparison.Ordinal);

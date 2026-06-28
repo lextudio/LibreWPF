@@ -4,6 +4,8 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using PortableDrawingContentSource = ProGPU.Wpf.Interop.IPortableDrawingContentSource;
+using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;
 using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
 
@@ -279,6 +281,11 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             SubscribeObject(item, visited);
         }
 
+        foreach (var dependency in EnumeratePortableDependencies(source))
+        {
+            SubscribeObject(dependency, visited);
+        }
+
         foreach (var propertyName in s_referencePropertyNames)
         {
             if (TryGetPropertyValue(source, propertyName, out var value))
@@ -348,6 +355,11 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             CaptureObjectVersions(item, snapshots, visited);
         }
 
+        foreach (var dependency in EnumeratePortableDependencies(source))
+        {
+            CaptureObjectVersions(dependency, snapshots, visited);
+        }
+
         foreach (var propertyName in s_referencePropertyNames)
         {
             if (TryGetPropertyValue(source, propertyName, out var value))
@@ -385,6 +397,11 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
             CaptureObjectVisualStates(item, snapshots, visited);
         }
 
+        foreach (var dependency in EnumeratePortableDependencies(source))
+        {
+            CaptureObjectVisualStates(dependency, snapshots, visited);
+        }
+
         foreach (var propertyName in s_referencePropertyNames)
         {
             if (TryGetPropertyValue(source, propertyName, out var value))
@@ -417,6 +434,11 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         foreach (var item in EnumerateCollection(source))
         {
             CollectTrackedDependencies(item, dependencies, visited);
+        }
+
+        foreach (var dependency in EnumeratePortableDependencies(source))
+        {
+            CollectTrackedDependencies(dependency, dependencies, visited);
         }
 
         foreach (var propertyName in s_referencePropertyNames)
@@ -929,6 +951,35 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
         }
 
         return result;
+    }
+
+    private static IReadOnlyList<object?> EnumeratePortableDependencies(object source)
+    {
+        List<object?>? dependencies = null;
+
+        if (source is PortableDrawingContentSource drawingContentSource
+            && drawingContentSource.TryGetPortableDrawingContent(out var drawingContent)
+            && drawingContent != null)
+        {
+            dependencies = new List<object?> { drawingContent };
+        }
+
+        if (source is PortableRenderDataSource renderDataSource
+            && renderDataSource.TryGetPortableRenderDataSnapshot(out var renderDataSnapshot))
+        {
+            foreach (var dependency in renderDataSnapshot.DependentResources)
+            {
+                if (dependency == null)
+                {
+                    continue;
+                }
+
+                dependencies ??= new List<object?>();
+                dependencies.Add(dependency);
+            }
+        }
+
+        return dependencies ?? (IReadOnlyList<object?>)Array.Empty<object?>();
     }
 
     private static bool TryGetPropertyValue(object instance, string propertyName, out object? value)

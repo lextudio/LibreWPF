@@ -725,6 +725,18 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("TrySubscribeInvalidationCallback(", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("TryRunInvalidationSubscriptionAction", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("IsIgnorableInvalidationSubscriptionFailure", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("using PortableDrawingContentSource = ProGPU.Wpf.Interop.IPortableDrawingContentSource;", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("EnumeratePortableDependencies(source)", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("source is PortableDrawingContentSource drawingContentSource", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("source is PortableRenderDataSource renderDataSource", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("renderDataSnapshot.DependentResources", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("EnumerateTrackedDependenciesUsesPortableDrawingAndRenderDataSources", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
+        Assert.Contains("PortableDrawingRenderDataDependencyChangeMarksTrackerDirty", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
+        Assert.True(
+            proGpuInvalidationTracker.IndexOf("foreach (var dependency in EnumeratePortableDependencies(source))", StringComparison.Ordinal)
+                < proGpuInvalidationTracker.IndexOf("foreach (var fieldName in s_fieldNames)", StringComparison.Ordinal),
+            "The invalidation tracker must traverse typed retained-content dependencies before reflected private fields.");
         Assert.Contains("source is PortableVisualLayoutStateSource visualLayoutSource", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("layoutState.HasLayoutClip", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("!hasPortableLayoutState && TryGetLayoutClip(source, out var layoutClip)", proGpuInvalidationTracker, StringComparison.Ordinal);

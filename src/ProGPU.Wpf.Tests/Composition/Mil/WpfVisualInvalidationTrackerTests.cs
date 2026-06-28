@@ -5,6 +5,9 @@ using System.Windows.Media;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using Xunit;
 using PortableSize = ProGPU.Wpf.Interop.PortableSize;
+using PortableRenderDataSnapshot = ProGPU.Wpf.Interop.PortableRenderDataSnapshot;
+using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;
+using PortableDrawingContentSource = ProGPU.Wpf.Interop.IPortableDrawingContentSource;
 using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
 
@@ -392,6 +395,22 @@ public sealed class WpfVisualInvalidationTrackerTests
     }
 
     [Fact]
+    public void EnumerateTrackedDependenciesUsesPortableDrawingAndRenderDataSources()
+    {
+        var brush = new FakeResource();
+        var renderData = new FakePortableRenderDataSource(new object?[] { brush });
+        var root = new FakePortableDrawingVisual(renderData);
+
+        var dependencies = WpfVisualInvalidationTracker.EnumerateTrackedDependencies(root);
+
+        Assert.Contains(root, dependencies);
+        Assert.Contains(renderData, dependencies);
+        Assert.Contains(brush, dependencies);
+        Assert.Equal(1, root.ContentReadCount);
+        Assert.Equal(1, renderData.SnapshotReadCount);
+    }
+
+    [Fact]
     public void PrivateDrawingContentChangeMarksTrackerDirty()
     {
         var brush = new FakeResource();
@@ -399,6 +418,23 @@ public sealed class WpfVisualInvalidationTrackerTests
         {
             Brush = brush
         });
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        brush.RaiseChanged();
+
+        Assert.True(tracker.IsDirty);
+        Assert.Same(brush, tracker.LastDirtySource);
+        Assert.Contains(brush, tracker.DirtySources);
+    }
+
+    [Fact]
+    public void PortableDrawingRenderDataDependencyChangeMarksTrackerDirty()
+    {
+        var brush = new FakeResource();
+        var renderData = new FakePortableRenderDataSource(new object?[] { brush });
+        var root = new FakePortableDrawingVisual(renderData);
         using var tracker = new WpfVisualInvalidationTracker();
         tracker.Attach(root);
         tracker.ConsumeDirty();
@@ -627,6 +663,44 @@ public sealed class WpfVisualInvalidationTrackerTests
         public FakeUiElementVisual(object? drawingContent)
         {
             _drawingContent = drawingContent;
+        }
+    }
+
+    private sealed class FakePortableDrawingVisual : PortableDrawingContentSource
+    {
+        private readonly object? _drawingContent;
+
+        public FakePortableDrawingVisual(object? drawingContent)
+        {
+            _drawingContent = drawingContent;
+        }
+
+        public int ContentReadCount { get; private set; }
+
+        public bool TryGetPortableDrawingContent(out object? content)
+        {
+            ContentReadCount++;
+            content = _drawingContent;
+            return true;
+        }
+    }
+
+    private sealed class FakePortableRenderDataSource : PortableRenderDataSource
+    {
+        private readonly IReadOnlyList<object?> _dependentResources;
+
+        public FakePortableRenderDataSource(IReadOnlyList<object?> dependentResources)
+        {
+            _dependentResources = dependentResources;
+        }
+
+        public int SnapshotReadCount { get; private set; }
+
+        public bool TryGetPortableRenderDataSnapshot(out PortableRenderDataSnapshot snapshot)
+        {
+            SnapshotReadCount++;
+            snapshot = new PortableRenderDataSnapshot(Array.Empty<byte>(), _dependentResources);
+            return true;
         }
     }
 

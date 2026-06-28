@@ -442,6 +442,31 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void HostActivationEventsUseTypedWindowActivationServiceBeforeReflectionFallback()
+    {
+        var service = new TestWindowActivationServiceRegistrar();
+        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        using var host = new ProGpuWpfWindowHost();
+        var window = new FakeActivatableWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        RaiseHostWindowEvent(host, WpfWindowEventKind.Activated);
+        RaiseHostWindowEvent(host, WpfWindowEventKind.Deactivated);
+
+        Assert.Equal(2, service.SetActivationStateCount);
+        Assert.Same(window, service.LastActivationStateWindow);
+        Assert.False(service.LastActivationState);
+        Assert.False(window.IsActive);
+        Assert.Equal(0, window.ActivatedCount);
+        Assert.Equal(0, window.DeactivatedCount);
+    }
+
+    [Fact]
     public void HostDeactivationDoesNotBubblePortableCaptureCleanupFailure()
     {
         System.Windows.PortableWindowActivationService.Reset();
@@ -654,6 +679,33 @@ public sealed class WpfPortableWindowActivationTests
             window.FlushedPriorities.IndexOf("Input") < window.FlushedPriorities.IndexOf("Render"),
             "Input-priority WPF work must run before render-priority work on a render wakeup.");
         Assert.True(scheduler.RequestCount >= 2);
+    }
+
+    [Fact]
+    public void RenderWakeupUsesTypedDispatcherFlushBeforeReflectionFallback()
+    {
+        var service = new TestWindowActivationServiceRegistrar();
+        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var window = new FakeWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        scheduler.RequestRender();
+
+        Assert.Contains("Input", service.FlushedPriorities);
+        Assert.Contains("Render", service.FlushedPriorities);
+        Assert.Contains("ApplicationIdle", service.FlushedPriorities);
+        Assert.Contains(service.FlushTimeouts, timeout => timeout.HasValue);
+        Assert.Same(window, service.LastFlushWindow);
     }
 
     [Fact]
@@ -1356,6 +1408,18 @@ public sealed class WpfPortableWindowActivationTests
 
         public PortableWindowActivationCallbacks? Callbacks { get; private set; }
 
+        public int SetActivationStateCount { get; private set; }
+
+        public object? LastActivationStateWindow { get; private set; }
+
+        public bool LastActivationState { get; private set; }
+
+        public object? LastFlushWindow { get; private set; }
+
+        public List<string> FlushedPriorities { get; } = new List<string>();
+
+        public List<TimeSpan?> FlushTimeouts { get; } = new List<TimeSpan?>();
+
         public Assembly SourceAssembly
         {
             get
@@ -1370,9 +1434,29 @@ public sealed class WpfPortableWindowActivationTests
             Callbacks = callbacks;
         }
 
+        public bool TrySetActivationState(object window, bool isActive)
+        {
+            SetActivationStateCount++;
+            LastActivationStateWindow = window;
+            LastActivationState = isActive;
+            return true;
+        }
+
+        public bool TryFlushDispatcherOperations(object window, string markerPriorityName, TimeSpan? timeout)
+        {
+            LastFlushWindow = window;
+            FlushedPriorities.Add(markerPriorityName);
+            FlushTimeouts.Add(timeout);
+            return true;
+        }
+
         public void Clear()
         {
             Callbacks = null;
+            LastActivationStateWindow = null;
+            LastFlushWindow = null;
+            FlushedPriorities.Clear();
+            FlushTimeouts.Clear();
         }
     }
 

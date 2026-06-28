@@ -809,6 +809,36 @@ namespace System.Windows
                     callbacks.GetHandle);
             }
 
+            public bool TrySetActivationState(object window, bool isActive)
+            {
+                if (window is not Window typedWindow)
+                {
+                    return false;
+                }
+
+                PortableWindowActivationService.SetActivationState(typedWindow, isActive);
+                return true;
+            }
+
+            public bool TryFlushDispatcherOperations(object window, string markerPriorityName, TimeSpan? timeout)
+            {
+                if (!Enum.TryParse(markerPriorityName, ignoreCase: false, out DispatcherPriority markerPriority))
+                {
+                    return false;
+                }
+
+                if (timeout.HasValue)
+                {
+                    return PortableWindowActivationService.FlushDispatcherOperations(
+                        window,
+                        markerPriority,
+                        timeout.Value);
+                }
+
+                PortableWindowActivationService.FlushDispatcherOperations(window, markerPriority);
+                return true;
+            }
+
             public void Clear()
             {
                 PortableWindowActivationService.Clear();

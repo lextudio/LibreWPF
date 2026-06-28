@@ -1448,6 +1448,12 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private static bool TrySetWindowActivationState(object window, bool isActive)
     {
+        if (TryGetWindowActivationService(window, out var activationService) &&
+            activationService.TrySetActivationState(window, isActive))
+        {
+            return true;
+        }
+
         if (TryInvokePortableWindowActivationService(window, isActive))
         {
             return true;
@@ -1580,6 +1586,21 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private static bool TryFlushDispatcherOperations(object window, string markerPriorityName, TimeSpan? timeout = null)
     {
+        if (TryGetWindowActivationService(window, out var activationService))
+        {
+            try
+            {
+                if (activationService.TryFlushDispatcherOperations(window, markerPriorityName, timeout))
+                {
+                    return true;
+                }
+            }
+            catch (Exception ex) when (IsRecoverableDispatcherFlushException(ex))
+            {
+                return false;
+            }
+        }
+
         Type? serviceType = FindPortableWindowActivationServiceType(window);
         if (serviceType == null)
         {
@@ -1652,6 +1673,24 @@ public sealed class WpfPortableWindowActivation : IDisposable
             }
         }
 
+        return false;
+    }
+
+    private static bool TryGetWindowActivationService(
+        object window,
+        out IPortableWindowActivationServiceRegistrar activationService)
+    {
+        for (Type? currentType = window.GetType(); currentType != null; currentType = currentType.BaseType)
+        {
+            if (PortableWpfServiceRegistry.TryGetWindowActivationService(
+                    currentType.Assembly,
+                    out activationService))
+            {
+                return true;
+            }
+        }
+
+        activationService = null!;
         return false;
     }
 

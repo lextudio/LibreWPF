@@ -57,6 +57,89 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     [Fact]
+    public void DecodeRectangleAdaptsPortableSolidBrushAndPen()
+    {
+        var brush = new FakePortableBrush(
+            PortableBrush.SolidColor(new PortableColor(128, 10, 20, 30), opacity: 0.5));
+        var pen = new FakePortablePen(
+            PortableBrush.SolidColor(new PortableColor(255, 1, 2, 3)),
+            thickness: 4,
+            startLineCap: PortablePenLineCap.Square,
+            endLineCap: PortablePenLineCap.Round,
+            dashCap: PortablePenLineCap.Round,
+            lineJoin: PortablePenLineJoin.Bevel,
+            miterLimit: 2.0,
+            dashArray: new[] { 2.0, 3.0 },
+            dashOffset: 1.5);
+        var resolver = WpfReflectionResourceResolver.FromDependentResources(new object?[] { brush, pen });
+        var sink = new TestSink();
+
+        var payload = new byte[40];
+        WriteRect(payload, 0, 1, 2, 30, 40);
+        WriteUInt32(payload, 32, 1);
+        WriteUInt32(payload, 36, 2);
+
+        var result = new WpfMilRenderDataDecoder().Decode(
+            CreateRecord(WpfMilCommandId.DrawRectangle, payload),
+            sink,
+            resolver);
+
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result);
+        Assert.Single(sink.DrawRectangles);
+        var adaptedBrush = Assert.IsType<SolidColorBrush>(sink.DrawRectangles[0].Brush);
+        Assert.Equal(64, adaptedBrush.Color.A);
+        Assert.Equal(10, adaptedBrush.Color.R);
+        Assert.Equal(20, adaptedBrush.Color.G);
+        Assert.Equal(30, adaptedBrush.Color.B);
+        var adaptedPen = Assert.IsType<MediaPen>(sink.DrawRectangles[0].Pen);
+        Assert.Equal(4, adaptedPen.Thickness);
+        Assert.Equal(PenLineCap.Square, adaptedPen.StartLineCap);
+        Assert.Equal(PenLineCap.Round, adaptedPen.EndLineCap);
+        Assert.Equal(PenLineCap.Round, adaptedPen.DashCap);
+        Assert.Equal(PenLineJoin.Bevel, adaptedPen.LineJoin);
+        Assert.Equal(2.0, adaptedPen.MiterLimit);
+        Assert.NotNull(adaptedPen.DashStyle);
+        Assert.Equal(new[] { 2.0, 3.0 }, adaptedPen.DashStyle!.Dashes);
+        Assert.Equal(1.5, adaptedPen.DashStyle.Offset);
+    }
+
+    [Fact]
+    public void AdaptNativePenUsesPortableSolidBrushAndPen()
+    {
+        var pen = new FakePortablePen(
+            PortableBrush.SolidColor(new PortableColor(128, 10, 20, 30), opacity: 0.5),
+            thickness: 4,
+            startLineCap: PortablePenLineCap.Square,
+            endLineCap: PortablePenLineCap.Round,
+            dashCap: PortablePenLineCap.Triangle,
+            lineJoin: PortablePenLineJoin.Bevel,
+            miterLimit: 2.0,
+            dashArray: new[] { 2.0, 3.0 },
+            dashOffset: 1.5);
+
+        var nativePen = WpfReflectionResourceResolver.AdaptNativePen(
+            pen,
+            new WpfReplayRect(0, 0, 10, 10),
+            out var unsupportedStateCount);
+
+        Assert.Equal(0, unsupportedStateCount);
+        Assert.NotNull(nativePen);
+        Assert.Equal(4, nativePen!.Thickness);
+        Assert.Equal(ProGPU.Vector.PenLineCap.Square, nativePen.StartLineCap);
+        Assert.Equal(ProGPU.Vector.PenLineCap.Round, nativePen.EndLineCap);
+        Assert.Equal(ProGPU.Vector.PenLineCap.Triangle, nativePen.DashCap);
+        Assert.Equal(ProGPU.Vector.PenLineJoin.Bevel, nativePen.LineJoin);
+        Assert.Equal(2.0f, nativePen.MiterLimit);
+        Assert.Equal(new[] { 2.0, 3.0 }, nativePen.DashArray);
+        Assert.Equal(1.5, nativePen.DashOffset);
+        var nativeBrush = Assert.IsType<ProGPU.Vector.SolidColorBrush>(nativePen.Brush);
+        Assert.Equal(10 / 255f, nativeBrush.Color.X, precision: 6);
+        Assert.Equal(20 / 255f, nativeBrush.Color.Y, precision: 6);
+        Assert.Equal(30 / 255f, nativeBrush.Color.Z, precision: 6);
+        Assert.Equal(64 / 255f, nativeBrush.Color.W, precision: 6);
+    }
+
+    [Fact]
     public void DecodeRectanglePreservesPositiveWpfShapedPenDashStyleMetadata()
     {
         var pen = new FakePen(
@@ -2798,6 +2881,56 @@ public sealed class WpfReflectionResourceResolverTests
     }
 
     private readonly record struct FakeColor(byte A, byte R, byte G, byte B);
+
+    private sealed class FakePortableBrush : IPortableBrushSource
+    {
+        private readonly PortableBrush _brush;
+
+        public FakePortableBrush(PortableBrush brush)
+        {
+            _brush = brush;
+        }
+
+        public bool TryGetPortableBrush(out PortableBrush brush)
+        {
+            brush = _brush;
+            return true;
+        }
+    }
+
+    private sealed class FakePortablePen : IPortablePenSource
+    {
+        private readonly PortablePen _pen;
+
+        public FakePortablePen(
+            PortableBrush brush,
+            double thickness,
+            PortablePenLineCap startLineCap = PortablePenLineCap.Flat,
+            PortablePenLineCap endLineCap = PortablePenLineCap.Flat,
+            PortablePenLineCap dashCap = PortablePenLineCap.Flat,
+            PortablePenLineJoin lineJoin = PortablePenLineJoin.Miter,
+            double miterLimit = 10.0,
+            double[]? dashArray = null,
+            double dashOffset = 0.0)
+        {
+            _pen = new PortablePen(
+                brush,
+                thickness,
+                startLineCap,
+                endLineCap,
+                dashCap,
+                lineJoin,
+                miterLimit,
+                dashArray,
+                dashOffset);
+        }
+
+        public bool TryGetPortablePen(out PortablePen pen)
+        {
+            pen = _pen;
+            return true;
+        }
+    }
 
     private sealed class FakePen
     {

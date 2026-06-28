@@ -16,6 +16,13 @@ using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPen = System.Windows.Media.Pen;
 using MediaPenLineCap = System.Windows.Media.PenLineCap;
 using MediaTransform = System.Windows.Media.Transform;
+using PortableBrush = ProGPU.Wpf.Interop.PortableBrush;
+using PortableBrushKind = ProGPU.Wpf.Interop.PortableBrushKind;
+using PortableBrushSource = ProGPU.Wpf.Interop.IPortableBrushSource;
+using PortablePen = ProGPU.Wpf.Interop.PortablePen;
+using PortablePenLineCap = ProGPU.Wpf.Interop.PortablePenLineCap;
+using PortablePenLineJoin = ProGPU.Wpf.Interop.PortablePenLineJoin;
+using PortablePenSource = ProGPU.Wpf.Interop.IPortablePenSource;
 using PortableMatrix3x2 = ProGPU.Wpf.Interop.PortableMatrix3x2;
 using PortableTransformMatrixSource = ProGPU.Wpf.Interop.IPortableTransformMatrixSource;
 
@@ -254,6 +261,12 @@ public sealed class WpfReflectionResourceResolver :
             return brush;
         }
 
+        if (resource is PortableBrushSource portableBrushSource
+            && portableBrushSource.TryGetPortableBrush(out var portableBrush))
+        {
+            return AdaptPortableBrush(portableBrush);
+        }
+
         if (TypeNameEndsWith(resource, "LinearGradientBrush")
             && TryGetPropertyValue(resource, "StartPoint", out var startPointValue)
             && TryGetPropertyValue(resource, "EndPoint", out var endPointValue)
@@ -353,6 +366,12 @@ public sealed class WpfReflectionResourceResolver :
             return null;
         }
 
+        if (resource is PortableBrushSource portableBrushSource
+            && portableBrushSource.TryGetPortableBrush(out var portableBrush))
+        {
+            return AdaptNativePortableBrush(portableBrush, out unsupportedStateCount);
+        }
+
         if (TryInvokeNativeBrush(resource, bounds, out var directBrush))
         {
             return directBrush;
@@ -431,6 +450,12 @@ public sealed class WpfReflectionResourceResolver :
         if (resource == null)
         {
             return null;
+        }
+
+        if (resource is PortablePenSource portablePenSource
+            && portablePenSource.TryGetPortablePen(out var portablePen))
+        {
+            return AdaptNativePortablePen(portablePen, out unsupportedStateCount);
         }
 
         if (TryInvokeNativePen(resource, out var directPen))
@@ -818,6 +843,12 @@ public sealed class WpfReflectionResourceResolver :
             return pen;
         }
 
+        if (resource is PortablePenSource portablePenSource
+            && portablePenSource.TryGetPortablePen(out var portablePen))
+        {
+            return AdaptPortablePen(portablePen);
+        }
+
         if (!TypeNameEndsWith(resource, "Pen")
             || !TryGetPropertyValue(resource, "Brush", out var brushValue)
             || brushValue == null
@@ -850,26 +881,148 @@ public sealed class WpfReflectionResourceResolver :
 
         if (hasSupportedDash)
         {
-            TryAssignDashStyle(adaptedPen, dashArray, dashOffset);
+            adaptedPen.DashStyle = new DashStyle(dashArray, dashOffset);
         }
 
         return adaptedPen;
     }
 
-    private static void TryAssignDashStyle(MediaPen pen, double[] dashArray, double dashOffset)
+    private static MediaBrush? AdaptPortableBrush(PortableBrush brush)
     {
-        var dashStyleType = pen.GetType().Assembly.GetType("System.Windows.Media.DashStyle", throwOnError: false);
-        var dashStyleProperty = pen.GetType().GetProperty("DashStyle", MemberFlags);
-        if (dashStyleType == null || dashStyleProperty == null)
+        if (brush.Kind != PortableBrushKind.SolidColor)
         {
-            return;
+            return null;
         }
 
-        object? dashStyle = Activator.CreateInstance(dashStyleType, new object[] { dashArray, dashOffset });
-        if (dashStyle != null)
+        return new SolidColorBrush(ToMediaColor(brush));
+    }
+
+    private static global::ProGPU.Vector.Brush? AdaptNativePortableBrush(
+        PortableBrush brush,
+        out int unsupportedStateCount)
+    {
+        unsupportedStateCount = 0;
+        if (brush.Kind != PortableBrushKind.SolidColor)
         {
-            dashStyleProperty.SetValue(pen, dashStyle);
+            unsupportedStateCount = 1;
+            return null;
         }
+
+        var color = ToMediaColor(brush);
+        return new global::ProGPU.Vector.SolidColorBrush(
+            new Vector4(color.R / 255f, color.G / 255f, color.B / 255f, color.A / 255f));
+    }
+
+    private static MediaPen? AdaptPortablePen(PortablePen pen)
+    {
+        var brush = AdaptPortableBrush(pen.Brush);
+        if (brush == null)
+        {
+            return null;
+        }
+
+        var adaptedPen = new MediaPen(brush, pen.Thickness)
+        {
+            StartLineCap = ToMediaPenLineCap(pen.StartLineCap),
+            EndLineCap = ToMediaPenLineCap(pen.EndLineCap),
+            DashCap = ToMediaPenLineCap(pen.DashCap),
+            LineJoin = ToMediaPenLineJoin(pen.LineJoin),
+            MiterLimit = ReadMiterLimit(pen.MiterLimit)
+        };
+
+        if (TryUseSupportedDashArray(pen.DashArray, pen.Thickness, pen.DashOffset, out var dashArray, out var dashOffset))
+        {
+            adaptedPen.DashStyle = new DashStyle(dashArray, dashOffset);
+        }
+
+        return adaptedPen;
+    }
+
+    private static global::ProGPU.Vector.Pen? AdaptNativePortablePen(
+        PortablePen pen,
+        out int unsupportedStateCount)
+    {
+        var nativeBrush = AdaptNativePortableBrush(pen.Brush, out unsupportedStateCount);
+        if (nativeBrush == null)
+        {
+            return null;
+        }
+
+        var dashArray = Array.Empty<double>();
+        var dashOffset = 0.0;
+        if (TryUseSupportedDashArray(pen.DashArray, pen.Thickness, pen.DashOffset, out var portableDashArray, out var portableDashOffset))
+        {
+            dashArray = portableDashArray;
+            dashOffset = portableDashOffset;
+        }
+
+        return new global::ProGPU.Vector.Pen(
+            nativeBrush,
+            (float)Math.Max(0, pen.Thickness),
+            ToVectorLineJoin(pen.LineJoin),
+            (float)ReadMiterLimit(pen.MiterLimit),
+            ToVectorLineCap(pen.StartLineCap),
+            ToVectorLineCap(pen.EndLineCap),
+            ToVectorLineCap(pen.DashCap),
+            dashArray,
+            dashOffset);
+    }
+
+    private static Color ToMediaColor(PortableBrush brush)
+    {
+        var color = brush.Color;
+        return Color.FromArgb(
+            ClampToByte(color.A * ClampOpacity(brush.Opacity)),
+            color.R,
+            color.G,
+            color.B);
+    }
+
+    private static double ClampOpacity(double opacity)
+    {
+        return double.IsFinite(opacity) ? Math.Clamp(opacity, 0.0, 1.0) : 1.0;
+    }
+
+    private static MediaPenLineCap ToMediaPenLineCap(PortablePenLineCap lineCap)
+    {
+        return lineCap switch
+        {
+            PortablePenLineCap.Square => MediaPenLineCap.Square,
+            PortablePenLineCap.Round => MediaPenLineCap.Round,
+            PortablePenLineCap.Triangle => MediaPenLineCap.Triangle,
+            _ => MediaPenLineCap.Flat
+        };
+    }
+
+    private static PenLineJoin ToMediaPenLineJoin(PortablePenLineJoin lineJoin)
+    {
+        return lineJoin switch
+        {
+            PortablePenLineJoin.Bevel => PenLineJoin.Bevel,
+            PortablePenLineJoin.Round => PenLineJoin.Round,
+            _ => PenLineJoin.Miter
+        };
+    }
+
+    private static global::ProGPU.Vector.PenLineCap ToVectorLineCap(PortablePenLineCap lineCap)
+    {
+        return lineCap switch
+        {
+            PortablePenLineCap.Square => global::ProGPU.Vector.PenLineCap.Square,
+            PortablePenLineCap.Round => global::ProGPU.Vector.PenLineCap.Round,
+            PortablePenLineCap.Triangle => global::ProGPU.Vector.PenLineCap.Triangle,
+            _ => global::ProGPU.Vector.PenLineCap.Flat
+        };
+    }
+
+    private static global::ProGPU.Vector.PenLineJoin ToVectorLineJoin(PortablePenLineJoin lineJoin)
+    {
+        return lineJoin switch
+        {
+            PortablePenLineJoin.Bevel => global::ProGPU.Vector.PenLineJoin.Bevel,
+            PortablePenLineJoin.Round => global::ProGPU.Vector.PenLineJoin.Round,
+            _ => global::ProGPU.Vector.PenLineJoin.Miter
+        };
     }
 
     private static MediaPenLineCap ReadLineCap(object pen, string propertyName)
@@ -905,7 +1058,17 @@ public sealed class WpfReflectionResourceResolver :
 
     private static double ReadMiterLimit(object pen)
     {
-        if (!TryReadDoubleProperty(pen, "MiterLimit", out var miterLimit) || !double.IsFinite(miterLimit))
+        if (!TryReadDoubleProperty(pen, "MiterLimit", out var miterLimit))
+        {
+            return 10.0;
+        }
+
+        return ReadMiterLimit(miterLimit);
+    }
+
+    private static double ReadMiterLimit(double miterLimit)
+    {
+        if (!double.IsFinite(miterLimit))
         {
             return 10.0;
         }
@@ -937,6 +1100,30 @@ public sealed class WpfReflectionResourceResolver :
             return false;
         }
 
+        var offset = 0.0;
+        if (TryReadDoubleProperty(dashStyle, "Offset", out var reflectedOffset) && double.IsFinite(reflectedOffset))
+        {
+            offset = reflectedOffset;
+        }
+
+        return TryUseSupportedDashArray(values, thickness, offset, out dashArray, out dashOffset);
+    }
+
+    private static bool TryUseSupportedDashArray(
+        double[]? values,
+        double thickness,
+        double offset,
+        out double[] dashArray,
+        out double dashOffset)
+    {
+        dashArray = Array.Empty<double>();
+        dashOffset = 0;
+
+        if (thickness <= 0 || values == null || values.Length == 0)
+        {
+            return false;
+        }
+
         var hasPositiveEntry = false;
         foreach (var value in values)
         {
@@ -953,12 +1140,8 @@ public sealed class WpfReflectionResourceResolver :
             return false;
         }
 
-        if (TryReadDoubleProperty(dashStyle, "Offset", out var offset) && double.IsFinite(offset))
-        {
-            dashOffset = offset;
-        }
-
         dashArray = values;
+        dashOffset = double.IsFinite(offset) ? offset : 0.0;
         return true;
     }
 

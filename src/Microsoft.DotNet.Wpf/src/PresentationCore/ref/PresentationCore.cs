@@ -7079,7 +7079,7 @@ namespace System.Windows.Media
         }
     }
     [System.Windows.LocalizabilityAttribute(System.Windows.LocalizationCategory.None, Readability = System.Windows.Readability.Unreadable)]
-    public sealed partial class Pen : System.Windows.Media.Animation.Animatable
+    public sealed partial class Pen : System.Windows.Media.Animation.Animatable, ProGPU.Wpf.Interop.IPortablePenSource
     {
         public static readonly System.Windows.DependencyProperty BrushProperty;
         public static readonly System.Windows.DependencyProperty DashCapProperty;
@@ -7101,6 +7101,7 @@ namespace System.Windows.Media
         public double Thickness { get { throw null; } set { } }
         public new System.Windows.Media.Pen Clone() { throw null; }
         public new System.Windows.Media.Pen CloneCurrentValue() { throw null; }
+        bool ProGPU.Wpf.Interop.IPortablePenSource.TryGetPortablePen(out ProGPU.Wpf.Interop.PortablePen pen) { throw null; }
         protected override System.Windows.Freezable CreateInstanceCore() { throw null; }
     }
     public enum PenDashCap
@@ -7437,7 +7438,7 @@ namespace System.Windows.Media
         public new System.Windows.Media.SkewTransform CloneCurrentValue() { throw null; }
         protected override System.Windows.Freezable CreateInstanceCore() { throw null; }
     }
-    public sealed partial class SolidColorBrush : System.Windows.Media.Brush
+    public sealed partial class SolidColorBrush : System.Windows.Media.Brush, ProGPU.Wpf.Interop.IPortableBrushSource
     {
         public static readonly System.Windows.DependencyProperty ColorProperty;
         public SolidColorBrush() { }
@@ -7445,6 +7446,7 @@ namespace System.Windows.Media
         public System.Windows.Media.Color Color { get { throw null; } set { } }
         public new System.Windows.Media.SolidColorBrush Clone() { throw null; }
         public new System.Windows.Media.SolidColorBrush CloneCurrentValue() { throw null; }
+        bool ProGPU.Wpf.Interop.IPortableBrushSource.TryGetPortableBrush(out ProGPU.Wpf.Interop.PortableBrush brush) { throw null; }
         protected override System.Windows.Freezable CreateInstanceCore() { throw null; }
         public static object DeserializeFrom(System.IO.BinaryReader reader) { throw null; }
     }

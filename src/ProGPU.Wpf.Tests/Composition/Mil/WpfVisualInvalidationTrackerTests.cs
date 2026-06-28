@@ -10,6 +10,7 @@ using PortableSize = ProGPU.Wpf.Interop.PortableSize;
 using PortableRenderDataSnapshot = ProGPU.Wpf.Interop.PortableRenderDataSnapshot;
 using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;
 using PortableDrawingContentSource = ProGPU.Wpf.Interop.IPortableDrawingContentSource;
+using PortableInvalidationSource = ProGPU.Wpf.Interop.IPortableInvalidationSource;
 using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
 using PortableVisualState = ProGPU.Wpf.Interop.PortableVisualState;
@@ -55,6 +56,23 @@ public sealed class WpfVisualInvalidationTrackerTests
         Assert.True(tracker.IsDirty);
         Assert.Same(root, tracker.LastDirtySource);
         Assert.Contains(root, tracker.DirtySources);
+    }
+
+    [Fact]
+    public void PortableInvalidationSourceMarksTrackerDirtyWithoutReflectedEvent()
+    {
+        var root = new FakePortableInvalidationResource();
+        using var tracker = new WpfVisualInvalidationTracker();
+        tracker.Attach(root);
+        tracker.ConsumeDirty();
+
+        root.RaisePortableInvalidated();
+
+        Assert.True(tracker.IsDirty);
+        Assert.Same(root, tracker.LastDirtySource);
+        Assert.Contains(root, tracker.DirtySources);
+        Assert.True(root.PortableSubscriptionCount > 0);
+        Assert.Equal(0, root.ReflectedChangedSubscriptionCount);
     }
 
     [Fact]
@@ -785,6 +803,53 @@ public sealed class WpfVisualInvalidationTrackerTests
         public void RaiseChanged()
         {
             Changed?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private sealed class FakePortableInvalidationResource : PortableInvalidationSource
+    {
+        private EventHandler? _portableInvalidated;
+
+        public event EventHandler? Changed
+        {
+            add => ReflectedChangedSubscriptionCount++;
+            remove => ReflectedChangedUnsubscriptionCount++;
+        }
+
+        public int PortableSubscriptionCount { get; private set; }
+
+        public int ReflectedChangedSubscriptionCount { get; private set; }
+
+        public int ReflectedChangedUnsubscriptionCount { get; private set; }
+
+        public bool TrySubscribeInvalidated(EventHandler handler, out IDisposable subscription)
+        {
+            PortableSubscriptionCount++;
+            _portableInvalidated += handler;
+            subscription = new Subscription(() => _portableInvalidated -= handler);
+            return true;
+        }
+
+        public void RaisePortableInvalidated()
+        {
+            _portableInvalidated?.Invoke(this, EventArgs.Empty);
+        }
+
+        private sealed class Subscription : IDisposable
+        {
+            private Action? _unsubscribe;
+
+            public Subscription(Action unsubscribe)
+            {
+                _unsubscribe = unsubscribe;
+            }
+
+            public void Dispose()
+            {
+                var unsubscribe = _unsubscribe;
+                _unsubscribe = null;
+                unsubscribe?.Invoke();
+            }
         }
     }
 

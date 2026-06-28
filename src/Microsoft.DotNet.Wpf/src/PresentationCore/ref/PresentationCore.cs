@@ -7939,7 +7939,7 @@ namespace System.Windows.Media
 }
 namespace System.Windows.Media.Animation
 {
-    public abstract partial class Animatable : System.Windows.Freezable, System.Windows.Media.Animation.IAnimatable
+    public abstract partial class Animatable : System.Windows.Freezable, System.Windows.Media.Animation.IAnimatable, ProGPU.Wpf.Interop.IPortableInvalidationSource
     {
         protected Animatable() { }
         public bool HasAnimatedProperties { get { throw null; } }
@@ -7950,6 +7950,7 @@ namespace System.Windows.Media.Animation
         public new System.Windows.Media.Animation.Animatable Clone() { throw null; }
         protected override bool FreezeCore(bool isChecking) { throw null; }
         public object GetAnimationBaseValue(System.Windows.DependencyProperty dp) { throw null; }
+        bool ProGPU.Wpf.Interop.IPortableInvalidationSource.TrySubscribeInvalidated(System.EventHandler handler, out System.IDisposable subscription) { throw null; }
         [System.ComponentModel.EditorBrowsableAttribute(System.ComponentModel.EditorBrowsableState.Never)]
         public static bool ShouldSerializeStoredWeakReference(System.Windows.DependencyObject target) { throw null; }
     }

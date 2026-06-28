@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using PortableDrawingContentSource = ProGPU.Wpf.Interop.IPortableDrawingContentSource;
+using PortableInvalidationSource = ProGPU.Wpf.Interop.IPortableInvalidationSource;
 using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;
 using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
@@ -912,12 +913,27 @@ public sealed class WpfVisualInvalidationTracker : IDisposable
 
     private void SubscribeInvalidationEvents(object source)
     {
+        var hasPortableInvalidationSource = source is PortableInvalidationSource;
+        if (source is PortableInvalidationSource invalidationSource)
+        {
+            EventHandler handler = (_, _) => MarkDirtyAndRefresh(source);
+            if (invalidationSource.TrySubscribeInvalidated(handler, out var subscription))
+            {
+                _unsubscribeActions.Add(() => TryRunInvalidationSubscriptionAction(subscription.Dispose));
+            }
+        }
+
         if (source is INotifyPropertyChanged propertyChanged)
         {
             PropertyChangedEventHandler handler = (_, _) => MarkDirtyAndRefresh(source);
             TrySubscribeInvalidationCallback(
                 () => propertyChanged.PropertyChanged += handler,
                 () => propertyChanged.PropertyChanged -= handler);
+        }
+
+        if (hasPortableInvalidationSource)
+        {
+            return;
         }
 
         foreach (var eventName in s_eventNames)

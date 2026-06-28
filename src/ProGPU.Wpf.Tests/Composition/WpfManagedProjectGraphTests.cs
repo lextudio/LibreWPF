@@ -202,6 +202,23 @@ public sealed class WpfManagedProjectGraphTests
             "Windows",
             "Media",
             "Visual.cs");
+        var animatablePath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Animation",
+            "Animatable.cs");
+        var presentationCoreRefPath = FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "ref",
+            "PresentationCore.cs");
         var renderServicePath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -223,6 +240,12 @@ public sealed class WpfManagedProjectGraphTests
             "src",
             "ProGPU.Wpf.Interop",
             "PortableWpfServiceRegistry.cs");
+        var portableInvalidationSourcePath = FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableInvalidationSource.cs");
         var dragDropPath = FindRepoPath(
             "src",
             "Microsoft.DotNet.Wpf",
@@ -356,9 +379,12 @@ public sealed class WpfManagedProjectGraphTests
 
         var mediaContext = File.ReadAllText(mediaContextPath);
         var visual = File.ReadAllText(visualPath);
+        var animatable = File.ReadAllText(animatablePath);
+        var presentationCoreRef = File.ReadAllText(presentationCoreRefPath);
         var renderService = File.ReadAllText(renderServicePath);
         var moduleInitializer = File.ReadAllText(moduleInitializerPath);
         var portableWpfServiceRegistry = File.ReadAllText(portableWpfServiceRegistryPath);
+        var portableInvalidationSource = File.ReadAllText(portableInvalidationSourcePath);
         var dragDrop = File.ReadAllText(dragDropPath);
         var presentationCoreProject = File.ReadAllText(presentationCoreProjectPath);
         var activationService = File.ReadAllText(activationServicePath);
@@ -727,6 +753,17 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("IsIgnorableInvalidationSubscriptionFailure", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("using PortableDrawingContentSource = ProGPU.Wpf.Interop.IPortableDrawingContentSource;", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("using PortableRenderDataSource = ProGPU.Wpf.Interop.IPortableRenderDataSource;", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("using PortableInvalidationSource = ProGPU.Wpf.Interop.IPortableInvalidationSource;", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("interface IPortableInvalidationSource", portableInvalidationSource, StringComparison.Ordinal);
+        Assert.Contains("PortableInvalidationSubscription", portableInvalidationSource, StringComparison.Ordinal);
+        Assert.Contains("Animatable : Freezable, IAnimatable, DUCE.IResource, IPortableInvalidationSource", animatable, StringComparison.Ordinal);
+        Assert.Contains("IPortableInvalidationSource.TrySubscribeInvalidated(EventHandler handler, out IDisposable subscription)", animatable, StringComparison.Ordinal);
+        Assert.Contains("Animatable : System.Windows.Freezable, System.Windows.Media.Animation.IAnimatable, ProGPU.Wpf.Interop.IPortableInvalidationSource", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("bool ProGPU.Wpf.Interop.IPortableInvalidationSource.TrySubscribeInvalidated(System.EventHandler handler, out System.IDisposable subscription)", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("source is PortableInvalidationSource invalidationSource", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("hasPortableInvalidationSource", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("return;\n        }\n\n        foreach (var eventName in s_eventNames)", proGpuInvalidationTracker, StringComparison.Ordinal);
+        Assert.Contains("PortableInvalidationSourceMarksTrackerDirtyWithoutReflectedEvent", proGpuInvalidationTrackerTests, StringComparison.Ordinal);
         Assert.Contains("EnumeratePortableDependencies(source)", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("source is PortableDrawingContentSource drawingContentSource", proGpuInvalidationTracker, StringComparison.Ordinal);
         Assert.Contains("source is PortableRenderDataSource renderDataSource", proGpuInvalidationTracker, StringComparison.Ordinal);

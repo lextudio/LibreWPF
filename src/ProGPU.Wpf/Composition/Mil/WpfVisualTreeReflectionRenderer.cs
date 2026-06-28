@@ -14,6 +14,8 @@ using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPen = System.Windows.Media.Pen;
 using MediaTransform = System.Windows.Media.Transform;
 using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;
+using PortableVisualState = ProGPU.Wpf.Interop.PortableVisualState;
+using PortableVisualStateSource = ProGPU.Wpf.Interop.IPortableVisualStateSource;
 
 namespace System.Windows.Media.ProGPU.Composition.Mil;
 
@@ -360,13 +362,8 @@ public sealed class WpfVisualTreeReflectionRenderer
             outerClipBounds = scrollableClipBounds;
         }
 
-        if (TryGetPropertyValue(visual, "Opacity", out var opacityValue))
+        if (TryReadOpacity(visual, out var opacityDouble))
         {
-            if (!TryConvertToDouble(opacityValue, out var opacityDouble))
-            {
-                return false;
-            }
-
             opacity = (float)opacityDouble;
         }
 
@@ -571,7 +568,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         opacityMask = null;
         opacityMaskBounds = null;
 
-        if (!TryGetPropertyValue(visual, "OpacityMask", out var opacityMaskValue) || opacityMaskValue == null)
+        if (!TryGetOpacityMask(visual, out var opacityMaskValue) || opacityMaskValue == null)
         {
             return true;
         }
@@ -797,15 +794,14 @@ public sealed class WpfVisualTreeReflectionRenderer
             }
         }
 
-        if (TryGetPropertyValue(visual, "Opacity", out var opacityValue)
-            && TryConvertToDouble(opacityValue, out var opacity)
+        if (TryReadOpacity(visual, out var opacity)
             && opacity != 1)
         {
             sink.PushOpacity(opacity);
             popCount++;
         }
 
-        if (TryGetPropertyValue(visual, "OpacityMask", out var opacityMask) && opacityMask != null)
+        if (TryGetOpacityMask(visual, out var opacityMask) && opacityMask != null)
         {
             var mediaOpacityMask = WpfReflectionResourceResolver.AdaptBrush(opacityMask);
             if (mediaOpacityMask != null && TryReadOpacityMaskBounds(visual, out var opacityMaskBounds))
@@ -1078,6 +1074,18 @@ public sealed class WpfVisualTreeReflectionRenderer
         return result;
     }
 
+    private static bool TryGetPortableVisualState(object visual, out PortableVisualState state)
+    {
+        if (visual is PortableVisualStateSource visualStateSource
+            && visualStateSource.TryGetPortableVisualState(out state))
+        {
+            return true;
+        }
+
+        state = null!;
+        return false;
+    }
+
     private static IReadOnlyList<object> ExtractVisualChildren(object visual)
     {
         if (!TryReadIntProperty(visual, "VisualChildrenCount", out var count) || count <= 0)
@@ -1112,6 +1120,13 @@ public sealed class WpfVisualTreeReflectionRenderer
         x = 0;
         y = 0;
 
+        if (TryGetPortableVisualState(visual, out var visualState) && visualState.HasOffset)
+        {
+            x = visualState.Offset.X;
+            y = visualState.Offset.Y;
+            return true;
+        }
+
         if (TryReadVectorLikeProperty(visual, "Offset", out x, out y) && (x != 0 || y != 0))
         {
             return true;
@@ -1132,6 +1147,12 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static bool TryReadVisualTransform(object visual, out object? transform)
     {
+        if (TryGetPortableVisualState(visual, out var visualState) && visualState.HasTransform)
+        {
+            transform = visualState.Transform;
+            return transform != null;
+        }
+
         if (TryGetPropertyValue(visual, "Transform", out transform) && transform != null)
         {
             return true;
@@ -1143,6 +1164,34 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
 
         return TryGetFieldValue(visual, "_transform", out transform) && transform != null;
+    }
+
+    private static bool TryReadOpacity(object visual, out double opacity)
+    {
+        if (TryGetPortableVisualState(visual, out var visualState) && visualState.HasOpacity)
+        {
+            opacity = visualState.Opacity;
+            return true;
+        }
+
+        if (TryGetPropertyValue(visual, "Opacity", out var opacityValue))
+        {
+            return TryConvertToDouble(opacityValue, out opacity);
+        }
+
+        opacity = 1.0;
+        return false;
+    }
+
+    private static bool TryGetOpacityMask(object visual, out object? opacityMask)
+    {
+        if (TryGetPortableVisualState(visual, out var visualState) && visualState.HasOpacityMask)
+        {
+            opacityMask = visualState.OpacityMask;
+            return opacityMask != null;
+        }
+
+        return TryGetPropertyValue(visual, "OpacityMask", out opacityMask) && opacityMask != null;
     }
 
     private static bool TryReadVectorLikeProperty(object instance, string propertyName, out double x, out double y)
@@ -1419,6 +1468,13 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static bool TryGetScrollableAreaClip(object visual, out object? scrollableAreaClip)
     {
+        if (TryGetPortableVisualState(visual, out var visualState) && visualState.HasScrollableAreaClip)
+        {
+            var bounds = visualState.ScrollableAreaClip;
+            scrollableAreaClip = new ReflectedRectangleClip(bounds.X, bounds.Y, bounds.Width, bounds.Height);
+            return true;
+        }
+
         if (TryGetPropertyValue(visual, "ScrollableAreaClip", out scrollableAreaClip) && scrollableAreaClip != null)
         {
             return true;
@@ -1429,6 +1485,12 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static bool TryGetVisualClip(object visual, out object? clip)
     {
+        if (TryGetPortableVisualState(visual, out var visualState) && visualState.HasClip)
+        {
+            clip = visualState.Clip;
+            return clip != null;
+        }
+
         if (TryGetPropertyValue(visual, "VisualClip", out clip) && clip != null)
         {
             return true;

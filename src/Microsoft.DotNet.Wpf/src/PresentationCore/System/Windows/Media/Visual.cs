@@ -75,7 +75,7 @@ namespace System.Windows.Media
     /// Derived Visuals render their content first and then render the children, or in other
     /// words, the content of a Visual is always behind the content of its children.
     /// </summary>
-    public abstract partial class Visual : DependencyObject, DUCE.IResource, IPortableVisualChildrenSource
+    public abstract partial class Visual : DependencyObject, DUCE.IResource, IPortableVisualChildrenSource, IPortableVisualStateSource
     {
         // --------------------------------------------------------------------
         //
@@ -2546,6 +2546,38 @@ namespace System.Windows.Media
         bool IPortableVisualChildrenSource.TryGetPortableVisualChild(int index, out object child)
         {
             child = GetVisualChild(index);
+            return true;
+        }
+
+        bool IPortableVisualStateSource.TryGetPortableVisualState(out PortableVisualState state)
+        {
+            Vector offset = VisualOffset;
+            Rect? scrollableAreaClip = VisualScrollableAreaClip;
+            Transform transform = VisualTransform;
+            Geometry clip = VisualClip;
+            Brush opacityMask = VisualOpacityMask;
+
+            state = new PortableVisualState
+            {
+                HasOffset = true,
+                Offset = new PortablePoint(offset.X, offset.Y),
+                HasTransform = transform != null,
+                Transform = transform,
+                HasClip = clip != null,
+                Clip = clip,
+                HasScrollableAreaClip = scrollableAreaClip.HasValue,
+                ScrollableAreaClip = scrollableAreaClip.HasValue
+                    ? new PortableRect(
+                        scrollableAreaClip.Value.X,
+                        scrollableAreaClip.Value.Y,
+                        scrollableAreaClip.Value.Width,
+                        scrollableAreaClip.Value.Height)
+                    : PortableRect.Empty,
+                HasOpacity = true,
+                Opacity = VisualOpacity,
+                HasOpacityMask = opacityMask != null,
+                OpacityMask = opacityMask
+            };
             return true;
         }
 

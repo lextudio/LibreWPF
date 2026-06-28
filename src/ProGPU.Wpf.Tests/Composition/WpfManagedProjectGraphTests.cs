@@ -5045,6 +5045,45 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void VisualTreeRendererPrefersPortableVisualState()
+    {
+        var rendererSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfVisualTreeReflectionRenderer.cs"));
+        var visualSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Visual.cs"));
+        var interopSource = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableVisualState.cs"));
+
+        Assert.Contains("using PortableVisualStateSource = ProGPU.Wpf.Interop.IPortableVisualStateSource;", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("visual is PortableVisualStateSource visualStateSource", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryGetPortableVisualState(out state)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryReadOpacity(visual, out", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryGetOpacityMask(visual, out", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("Visual : DependencyObject, DUCE.IResource, IPortableVisualChildrenSource, IPortableVisualStateSource", visualSource, StringComparison.Ordinal);
+        Assert.Contains("IPortableVisualStateSource.TryGetPortableVisualState(out PortableVisualState state)", visualSource, StringComparison.Ordinal);
+        Assert.Contains("VisualOffset", visualSource, StringComparison.Ordinal);
+        Assert.Contains("VisualTransform", visualSource, StringComparison.Ordinal);
+        Assert.Contains("VisualClip", visualSource, StringComparison.Ordinal);
+        Assert.Contains("VisualScrollableAreaClip", visualSource, StringComparison.Ordinal);
+        Assert.Contains("interface IPortableVisualStateSource", interopSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RealPresentationFrameworkSmokeGuardsNativePlatformEntrypoints()
     {
         var compositionExports = File.ReadAllText(FindRepoPath(

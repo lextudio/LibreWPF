@@ -4,6 +4,7 @@ using System.Numerics;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Media.ProGPU.Composition;
+using ProGPU.Wpf.Interop;
 using MediaBrush = System.Windows.Media.Brush;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
 using MediaFormattedText = System.Windows.Media.FormattedText;
@@ -1023,7 +1024,7 @@ public sealed class WpfVisualTreeReflectionRenderer
             return false;
         }
 
-        guidelineSet = new ReflectedGuidelineSet(guidelinesX, guidelinesY);
+        guidelineSet = new VisualGuidelineSet(guidelinesX, guidelinesY);
         return true;
     }
 
@@ -1033,7 +1034,7 @@ public sealed class WpfVisualTreeReflectionRenderer
         {
             if (TryGetPropertyValue(visual, propertyName, out var collection)
                 && collection != null
-                && WpfGuidelineSetReflection.TryReadDoubleCollection(collection, out guidelines))
+                && WpfGuidelineSetReader.TryReadDoubleCollection(collection, out guidelines))
             {
                 return true;
             }
@@ -2090,35 +2091,26 @@ public sealed class WpfVisualTreeReflectionRenderer
         }
     }
 
-    private sealed class ReflectedGuidelineSet
+    private sealed class VisualGuidelineSet : IPortableGuidelineSetSource
     {
-        public ReflectedGuidelineSet(double[] guidelinesX, double[] guidelinesY)
+        private readonly double[] _guidelinesX;
+        private readonly double[] _guidelinesY;
+
+        public VisualGuidelineSet(double[] guidelinesX, double[] guidelinesY)
         {
-            GuidelinesX = new ReflectedGuidelineCollection(guidelinesX);
-            GuidelinesY = new ReflectedGuidelineCollection(guidelinesY);
+            _guidelinesX = guidelinesX;
+            _guidelinesY = guidelinesY;
         }
 
-        public bool IsFrozen => true;
-
-        public bool IsDynamic => true;
-
-        public ReflectedGuidelineCollection GuidelinesX { get; }
-
-        public ReflectedGuidelineCollection GuidelinesY { get; }
-    }
-
-    private sealed class ReflectedGuidelineCollection
-    {
-        private readonly double[] _values;
-
-        public ReflectedGuidelineCollection(double[] values)
+        public bool TryGetPortableGuidelineSet(out PortableGuidelineSet guidelineSet)
         {
-            _values = values;
+            guidelineSet = new PortableGuidelineSet(
+                isFrozen: true,
+                isDynamic: true,
+                _guidelinesX,
+                _guidelinesY);
+            return true;
         }
-
-        public int Count => _values.Length;
-
-        public double this[int index] => _values[index];
     }
 
     private sealed class ReplayStats

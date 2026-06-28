@@ -7356,6 +7356,11 @@ public sealed class WpfManagedProjectGraphTests
             "ProGPU.Wpf",
             "Composition",
             "WpfObjectRenderDataDrawingContext.cs");
+        var wpfGuidelineSetReaderPath = FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "WpfGuidelineSetReader.cs");
         var wpfReflectionDrawingReplayPath = FindRepoPath(
             "src",
             "ProGPU.Wpf",
@@ -7693,6 +7698,7 @@ public sealed class WpfManagedProjectGraphTests
         var proGpuWpfCommandSink = File.ReadAllText(proGpuWpfCommandSinkPath);
         var wpfCompositionDrawingContext = File.ReadAllText(wpfCompositionDrawingContextPath);
         var wpfObjectRenderDataDrawingContext = File.ReadAllText(wpfObjectRenderDataDrawingContextPath);
+        var wpfGuidelineSetReader = File.ReadAllText(wpfGuidelineSetReaderPath);
         var wpfReflectionDrawingReplay = File.ReadAllText(wpfReflectionDrawingReplayPath);
         var wpfPortableCommandSinkBridge = File.ReadAllText(wpfPortableCommandSinkBridgePath);
         var proGpuWpfDrawingFrame = File.ReadAllText(proGpuWpfDrawingFramePath);
@@ -9936,6 +9942,11 @@ public sealed class WpfManagedProjectGraphTests
         Assert.DoesNotContain("geometry.GetType().GetMethod(", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("drawMethod.Invoke(", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("geometry.Draw(recordingContext", proGpuWpfCommandSink, StringComparison.Ordinal);
+        Assert.Contains("guidelines is not IPortableGuidelineSetSource guidelineSource", wpfGuidelineSetReader, StringComparison.Ordinal);
+        Assert.Contains("collection is not IList<double> typedValues", wpfGuidelineSetReader, StringComparison.Ordinal);
+        Assert.DoesNotContain("using System.Reflection", wpfGuidelineSetReader, StringComparison.Ordinal);
+        Assert.DoesNotContain("BindingFlags", wpfGuidelineSetReader, StringComparison.Ordinal);
+        Assert.DoesNotContain("GetProperty(", wpfGuidelineSetReader, StringComparison.Ordinal);
         Assert.Contains("CreateGlyphRunBounds", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.DoesNotContain("ProGpuWpfPen", proGpuWpfCommandSink, StringComparison.Ordinal);
         Assert.Contains("TryReadDashStyle(pen", proGpuWpfCommandSink, StringComparison.Ordinal);

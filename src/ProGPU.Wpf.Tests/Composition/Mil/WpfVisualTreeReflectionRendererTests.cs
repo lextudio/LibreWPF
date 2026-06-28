@@ -1006,7 +1006,7 @@ public sealed class WpfVisualTreeReflectionRendererTests
     {
         var root = new FakeVisual
         {
-            XSnappingGuidelines = new FakeDoubleCollection(10)
+            XSnappingGuidelines = new[] { 10d }
         };
         root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
 
@@ -1852,20 +1852,6 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
     private sealed class FakeVisualChildrenVisual : FakeProtectedVisualChildrenBase
     {
-    }
-
-    private sealed class FakeDoubleCollection
-    {
-        private readonly double[] _values;
-
-        public FakeDoubleCollection(params double[] values)
-        {
-            _values = values;
-        }
-
-        public int Count => _values.Length;
-
-        public double this[int index] => _values[index];
     }
 
     private sealed class FakeDrawingResource

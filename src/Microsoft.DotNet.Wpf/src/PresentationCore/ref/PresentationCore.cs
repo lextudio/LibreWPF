@@ -6526,7 +6526,7 @@ namespace System.Windows.Media
             void System.IDisposable.Dispose() { }
         }
     }
-    public sealed partial class GuidelineSet : System.Windows.Media.Animation.Animatable
+    public sealed partial class GuidelineSet : System.Windows.Media.Animation.Animatable, ProGPU.Wpf.Interop.IPortableGuidelineSetSource
     {
         public static readonly System.Windows.DependencyProperty GuidelinesXProperty;
         public static readonly System.Windows.DependencyProperty GuidelinesYProperty;
@@ -6536,6 +6536,7 @@ namespace System.Windows.Media
         public System.Windows.Media.DoubleCollection GuidelinesY { get { throw null; } set { } }
         public new System.Windows.Media.GuidelineSet Clone() { throw null; }
         public new System.Windows.Media.GuidelineSet CloneCurrentValue() { throw null; }
+        bool ProGPU.Wpf.Interop.IPortableGuidelineSetSource.TryGetPortableGuidelineSet(out ProGPU.Wpf.Interop.PortableGuidelineSet guidelineSet) { throw null; }
         protected override System.Windows.Freezable CreateInstanceCore() { throw null; }
     }
     public enum HitTestFilterBehavior

@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\external\ProGPU\src\PresentationCore\PresentationCore.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\..\external\ProGPU\src\ProGPU.Wpf.Interop\ProGPU.Wpf.Interop.csproj" />
     <ProjectReference Include="..\ProGPU.Wpf\ProGPU.Wpf.csproj" />
   </ItemGroup>
 </Project>

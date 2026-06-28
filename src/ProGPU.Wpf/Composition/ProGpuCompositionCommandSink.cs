@@ -802,7 +802,7 @@ public sealed class ProGpuCompositionCommandSink :
     {
         ThrowIfClosed();
 
-        if (WpfGuidelineSetReflection.TryReadDynamicGuidelineSet(guidelines, out var guidelinesX, out var guidelinesY))
+        if (WpfGuidelineSetReader.TryReadDynamicGuidelineSet(guidelines, out var guidelinesX, out var guidelinesY))
         {
             _guidelineStack.Push(GuidelineState.FromGuidelineSet(guidelinesX, guidelinesY));
             _pushStack.Push(PushKind.Guideline);

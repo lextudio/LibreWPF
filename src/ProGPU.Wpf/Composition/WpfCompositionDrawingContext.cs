@@ -375,15 +375,15 @@ public sealed class WpfCompositionDrawingContext : IWpfGeneratedRenderDataDrawin
         ThrowIfClosed();
 
         RegisterRetainedDependencies(guidelines);
-        if (WpfGuidelineSetReflection.TryReadDynamicGuidelineYPair(guidelines, out var leadingCoordinate, out var drivenCoordinate))
+        if (WpfGuidelineSetReader.TryReadDynamicGuidelineYPair(guidelines, out var leadingCoordinate, out var drivenCoordinate))
         {
             _sink.PushGuidelineY2(leadingCoordinate, drivenCoordinate - leadingCoordinate);
         }
-        else if (WpfGuidelineSetReflection.TryReadDynamicGuidelineY1(guidelines, out var coordinate))
+        else if (WpfGuidelineSetReader.TryReadDynamicGuidelineY1(guidelines, out var coordinate))
         {
             _sink.PushGuidelineY1(coordinate);
         }
-        else if (WpfGuidelineSetReflection.TryReadDynamicGuidelineSet(guidelines, out _, out _))
+        else if (WpfGuidelineSetReader.TryReadDynamicGuidelineSet(guidelines, out _, out _))
         {
             _sink.PushGuidelineSet(guidelines);
         }

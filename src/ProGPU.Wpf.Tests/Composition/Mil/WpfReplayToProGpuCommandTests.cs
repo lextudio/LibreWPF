@@ -9,6 +9,7 @@ using System.Windows.Media.ProGPU.Composition;
 using System.Windows.Media.ProGPU.Composition.Mil;
 using ProGPU.Scene;
 using ProGPU.Backend;
+using ProGPU.Wpf.Interop;
 using Xunit;
 using MediaDrawingContext = System.Windows.Media.DrawingContext;
 using ProGpuDrawingContext = ProGPU.Scene.DrawingContext;
@@ -2377,35 +2378,24 @@ public sealed class WpfReplayToProGpuCommandTests
         public double Offset { get; }
     }
 
-    private sealed class FakeGuidelineSet
+    private sealed class FakeGuidelineSet : IPortableGuidelineSetSource
     {
+        private readonly PortableGuidelineSet _guidelineSet;
+
         public FakeGuidelineSet(double[] guidelinesX, double[] guidelinesY)
         {
-            GuidelinesX = new FakeDoubleCollection(guidelinesX);
-            GuidelinesY = new FakeDoubleCollection(guidelinesY);
+            _guidelineSet = new PortableGuidelineSet(
+                isFrozen: true,
+                isDynamic: true,
+                guidelinesX,
+                guidelinesY);
         }
 
-        public bool IsFrozen { get; init; } = true;
-
-        public bool IsDynamic { get; init; } = true;
-
-        public FakeDoubleCollection GuidelinesX { get; }
-
-        public FakeDoubleCollection GuidelinesY { get; }
-    }
-
-    private sealed class FakeDoubleCollection
-    {
-        private readonly double[] _values;
-
-        public FakeDoubleCollection(double[] values)
+        public bool TryGetPortableGuidelineSet(out PortableGuidelineSet guidelineSet)
         {
-            _values = values;
+            guidelineSet = _guidelineSet;
+            return true;
         }
-
-        public int Count => _values.Length;
-
-        public double this[int index] => _values[index];
     }
 
     private static void WritePoint(byte[] target, int offset, double x, double y)

@@ -14,6 +14,8 @@ using MediaImageSource = System.Windows.Media.ImageSource;
 using MediaPen = System.Windows.Media.Pen;
 using MediaTransform = System.Windows.Media.Transform;
 using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;
+using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
+using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
 using PortableVisualState = ProGPU.Wpf.Interop.PortableVisualState;
 using PortableVisualStateSource = ProGPU.Wpf.Interop.IPortableVisualStateSource;
 
@@ -1086,6 +1088,18 @@ public sealed class WpfVisualTreeReflectionRenderer
         return false;
     }
 
+    private static bool TryGetPortableVisualLayoutState(object visual, out PortableVisualLayoutState state)
+    {
+        if (visual is PortableVisualLayoutStateSource visualLayoutSource
+            && visualLayoutSource.TryGetPortableVisualLayoutState(out state))
+        {
+            return true;
+        }
+
+        state = null!;
+        return false;
+    }
+
     private static IReadOnlyList<object> ExtractVisualChildren(object visual)
     {
         if (!TryReadIntProperty(visual, "VisualChildrenCount", out var count) || count <= 0)
@@ -1229,22 +1243,8 @@ public sealed class WpfVisualTreeReflectionRenderer
             }
         }
 
-        if (TryGetPropertyValue(visual, "RenderSize", out var renderSize)
-            && renderSize != null
-            && TryReadSize(renderSize, out var width, out var height)
-            && width > 0
-            && height > 0)
+        if (TryReadRenderSizeBounds(visual, out bounds))
         {
-            bounds = new WpfReplayRect(0, 0, width, height);
-            return true;
-        }
-
-        if (TryReadDoubleProperty(visual, "ActualWidth", out width)
-            && TryReadDoubleProperty(visual, "ActualHeight", out height)
-            && width > 0
-            && height > 0)
-        {
-            bounds = new WpfReplayRect(0, 0, width, height);
             return true;
         }
 
@@ -1280,6 +1280,12 @@ public sealed class WpfVisualTreeReflectionRenderer
 
     private static bool TryReadRenderSizeBounds(object visual, out WpfReplayRect bounds)
     {
+        if (TryGetPortableVisualLayoutState(visual, out var layoutState)
+            && TryReadPortableRenderSizeBounds(layoutState, out bounds))
+        {
+            return true;
+        }
+
         if (TryGetPropertyValue(visual, "RenderSize", out var renderSize)
             && renderSize != null
             && TryReadSize(renderSize, out var width, out var height)
@@ -1297,6 +1303,20 @@ public sealed class WpfVisualTreeReflectionRenderer
         {
             bounds = new WpfReplayRect(0, 0, width, height);
             return true;
+        }
+
+        bounds = default;
+        return false;
+    }
+
+    private static bool TryReadPortableRenderSizeBounds(PortableVisualLayoutState state, out WpfReplayRect bounds)
+    {
+        if (state.HasRenderSize
+            && state.RenderSize.Width > 0
+            && state.RenderSize.Height > 0)
+        {
+            bounds = new WpfReplayRect(0, 0, state.RenderSize.Width, state.RenderSize.Height);
+            return IsUsableBounds(bounds);
         }
 
         bounds = default;
@@ -1526,6 +1546,22 @@ public sealed class WpfVisualTreeReflectionRenderer
     private static bool TryCreateClipToBoundsClip(object visual, out object? clip)
     {
         clip = null;
+        if (TryGetPortableVisualLayoutState(visual, out var layoutState) && layoutState.HasClipToBounds)
+        {
+            if (!layoutState.ClipToBounds)
+            {
+                return false;
+            }
+
+            if (TryReadPortableRenderSizeBounds(layoutState, out var portableBounds))
+            {
+                clip = new ReflectedRectangleClip(portableBounds);
+                return true;
+            }
+
+            return false;
+        }
+
         if (!TryReadBoolProperty(visual, "ClipToBounds", out var clipToBounds) || !clipToBounds)
         {
             return false;

@@ -5084,6 +5084,42 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void VisualTreeRendererPrefersPortableVisualLayoutState()
+    {
+        var rendererSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfVisualTreeReflectionRenderer.cs"));
+        var uiElementSource = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "UIElement.cs"));
+        var interopSource = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableVisualLayoutState.cs"));
+
+        Assert.Contains("using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("visual is PortableVisualLayoutStateSource visualLayoutSource", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryGetPortableVisualLayoutState(out state)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryReadPortableRenderSizeBounds(layoutState, out bounds)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("TryReadPortableRenderSizeBounds(layoutState, out var portableBounds)", rendererSource, StringComparison.Ordinal);
+        Assert.Contains("UIElement : Visual, IInputElement, IAnimatable, IPortableVisualOwnerHost, IPortableDrawingContentSource, IPortableVisualLayoutStateSource", uiElementSource, StringComparison.Ordinal);
+        Assert.Contains("IPortableVisualLayoutStateSource.TryGetPortableVisualLayoutState(out PortableVisualLayoutState state)", uiElementSource, StringComparison.Ordinal);
+        Assert.Contains("RenderSize = new PortableSize(renderSize.Width, renderSize.Height)", uiElementSource, StringComparison.Ordinal);
+        Assert.Contains("ClipToBounds = ClipToBounds", uiElementSource, StringComparison.Ordinal);
+        Assert.Contains("interface IPortableVisualLayoutStateSource", interopSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RealPresentationFrameworkSmokeGuardsNativePlatformEntrypoints()
     {
         var compositionExports = File.ReadAllText(FindRepoPath(

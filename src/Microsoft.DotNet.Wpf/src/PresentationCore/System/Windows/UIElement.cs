@@ -65,7 +65,7 @@ namespace System.Windows
     /// </remarks>
 
     [UidProperty("Uid")]
-    public partial class UIElement : Visual, IInputElement, IAnimatable, IPortableVisualOwnerHost, IPortableDrawingContentSource
+    public partial class UIElement : Visual, IInputElement, IAnimatable, IPortableVisualOwnerHost, IPortableDrawingContentSource, IPortableVisualLayoutStateSource
     {
         static UIElement()
         {
@@ -141,6 +141,19 @@ namespace System.Windows
         bool IPortableDrawingContentSource.TryGetPortableDrawingContent(out object content)
         {
             content = _drawingContent;
+            return true;
+        }
+
+        bool IPortableVisualLayoutStateSource.TryGetPortableVisualLayoutState(out PortableVisualLayoutState state)
+        {
+            Size renderSize = RenderSize;
+            state = new PortableVisualLayoutState
+            {
+                HasRenderSize = true,
+                RenderSize = new PortableSize(renderSize.Width, renderSize.Height),
+                HasClipToBounds = true,
+                ClipToBounds = ClipToBounds
+            };
             return true;
         }
 

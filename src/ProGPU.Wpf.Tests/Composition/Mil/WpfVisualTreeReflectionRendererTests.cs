@@ -25,6 +25,8 @@ using ProGpuEffectBase = ProGPU.Scene.EffectBase;
 using ProGpuWpfShaderEffect = ProGPU.Scene.WpfShaderEffect;
 using ProGpuWpfShaderEffectSampler = ProGPU.Scene.WpfShaderEffectSampler;
 using ProGpuTextureSamplingMode = ProGPU.Scene.TextureSamplingMode;
+using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
+using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
 using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;
 
 namespace ProGPU.Wpf.Tests.Composition.Mil;
@@ -212,6 +214,31 @@ public sealed class WpfVisualTreeReflectionRendererTests
 
         Assert.Equal(2, sink.RetainedVisualStates.Count);
         AssertReplayRect(0, 0, 80, 35, sink.RetainedVisualStates[0].ClipBounds);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+    }
+
+    [Fact]
+    public void ReplaySubtreeUsesPortableLayoutStateForClipToBoundsAndOpacityMaskBounds()
+    {
+        var root = new FakePortableVisualLayoutVisual(new PortableVisualLayoutState
+        {
+            HasRenderSize = true,
+            RenderSize = new ProGPU.Wpf.Interop.PortableSize(42, 24),
+            HasClipToBounds = true,
+            ClipToBounds = true
+        })
+        {
+            OpacityMask = Brushes.White
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink { AcceptRetainedVisualOwners = true };
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(2, sink.RetainedVisualStates.Count);
+        var state = sink.RetainedVisualStates[0];
+        AssertReplayRect(0, 0, 42, 24, state.ClipBounds);
+        AssertReplayRect(0, 0, 42, 24, state.OpacityMaskBounds);
         Assert.Equal(0, result.UnsupportedVisualStateCount);
     }
 
@@ -1811,6 +1838,22 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public FakeUiElementVisual(object? drawingContent)
         {
             _drawingContent = drawingContent;
+        }
+    }
+
+    private sealed class FakePortableVisualLayoutVisual : FakeVisual, PortableVisualLayoutStateSource
+    {
+        private readonly PortableVisualLayoutState _state;
+
+        public FakePortableVisualLayoutVisual(PortableVisualLayoutState state)
+        {
+            _state = state;
+        }
+
+        public bool TryGetPortableVisualLayoutState(out PortableVisualLayoutState state)
+        {
+            state = _state;
+            return true;
         }
     }
 

@@ -400,6 +400,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("public interface IPortableWindowActivationServiceRegistrar", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("public static bool TryGetWindowActivationService(", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("bool TrySetActivationState(object window, bool isActive);", portableWpfServiceRegistry, StringComparison.Ordinal);
+        Assert.Contains("bool TryBeginInvokeInput(object window, Action callback);", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("bool TryProcessInputEvent(object window, PortableWindowInputEvent input);", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("bool TryFlushDispatcherOperations(object window, string markerPriorityName, TimeSpan? timeout);", portableWpfServiceRegistry, StringComparison.Ordinal);
         Assert.Contains("bool TryProcessDragDropEvent(", portableWpfServiceRegistry, StringComparison.Ordinal);
@@ -429,6 +430,8 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("private sealed class WindowActivationServiceRegistrar : IPortableWindowActivationServiceRegistrar", activationService, StringComparison.Ordinal);
         Assert.Contains("public bool TrySetActivationState(object window, bool isActive)", activationService, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.SetActivationState(typedWindow, isActive);", activationService, StringComparison.Ordinal);
+        Assert.Contains("public bool TryBeginInvokeInput(object window, Action callback)", activationService, StringComparison.Ordinal);
+        Assert.Contains("typedWindow.Dispatcher.BeginInvoke(DispatcherPriority.Input, callback);", activationService, StringComparison.Ordinal);
         Assert.Contains("public bool TryProcessInputEvent(object window, PortableWindowInputEvent input)", activationService, StringComparison.Ordinal);
         Assert.Contains("var mappedInput = new PortableInputEventArgs(", activationService, StringComparison.Ordinal);
         Assert.Contains("PortableWindowActivationService.ProcessInput(typedWindow, mappedInput);", activationService, StringComparison.Ordinal);
@@ -451,6 +454,7 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("PortableWpfServiceRegistry.TryGetWindowActivationService(", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("CreateWindowActivationCallbacks(hostFactory)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TrySetActivationState(window, isActive)", proGpuActivation, StringComparison.Ordinal);
+        Assert.Contains("activationService.TryBeginInvokeInput(Window, callback)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TryProcessInputEvent(window, input)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("private static PortableWindowInputEvent CreatePortableWindowInputEvent(WpfInputEventArgs e)", proGpuActivation, StringComparison.Ordinal);
         Assert.Contains("activationService.TryFlushDispatcherOperations(window, markerPriorityName, timeout)", proGpuActivation, StringComparison.Ordinal);
@@ -1210,6 +1214,9 @@ public sealed class WpfManagedProjectGraphTests
         Assert.Contains("source.GetInputProvider(typeof(MouseDevice))?.NotifyDeactivate()", activationService, StringComparison.Ordinal);
         Assert.Contains("window.HandleActivate(isActive)", activationService, StringComparison.Ordinal);
         Assert.Contains("internal static void ProcessInput(Window window, PortableInputEventArgs input)", activationService, StringComparison.Ordinal);
+        Assert.Contains("public bool TryBeginInvokeInput(object window, Action callback)", activationService, StringComparison.Ordinal);
+        Assert.Contains("typedWindow.Dispatcher.CheckAccess()", activationService, StringComparison.Ordinal);
+        Assert.Contains("typedWindow.Dispatcher.BeginInvoke(DispatcherPriority.Input, callback);", activationService, StringComparison.Ordinal);
         Assert.Contains("public bool TryProcessInputEvent(object window, PortableWindowInputEvent input)", activationService, StringComparison.Ordinal);
         Assert.Contains("(PortableInputEventKind)input.Kind", activationService, StringComparison.Ordinal);
         Assert.Contains("(PortableMouseButton)input.Button", activationService, StringComparison.Ordinal);

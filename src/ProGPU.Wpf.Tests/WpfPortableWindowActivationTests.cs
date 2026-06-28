@@ -621,6 +621,47 @@ public sealed class WpfPortableWindowActivationTests
     }
 
     [Fact]
+    public void HostInputUsesTypedDispatcherQueueBeforeReflectionFallback()
+    {
+        var service = new TestWindowActivationServiceRegistrar
+        {
+            QueueInputCallbacks = true
+        };
+        using var serviceRegistration = PortableWpfServiceRegistry.RegisterWindowActivationService(service);
+        var scheduler = new TestRenderScheduler();
+        using var host = new ProGpuWpfWindowHost
+        {
+            WpfRenderScheduler = scheduler
+        };
+        var window = new FakeDispatchingPortableInputWindow();
+        var source = new FakePortablePresentationSource();
+
+        var attached = WpfPortableWindowActivation.TryAttach(host, window, source, out var activation);
+
+        Assert.True(attached);
+        Assert.NotNull(activation);
+
+        int requestCountBeforeInput = scheduler.RequestCount;
+        var args = new WpfInputEventArgs(WpfInputEventKind.MouseDown, x: 12, y: 24, button: WpfMouseButton.Left);
+        RaiseHostInputEvent(host, args);
+
+        Assert.Equal(1, service.BeginInvokeInputCount);
+        Assert.Same(window, service.LastBeginInvokeInputWindow);
+        Assert.NotNull(service.LastBeginInvokeInputCallback);
+        Assert.Equal(0, window.Dispatcher.BeginInvokeCount);
+        Assert.Equal(0, service.InputCount);
+
+        service.LastBeginInvokeInputCallback.Invoke();
+
+        Assert.Equal(1, service.InputCount);
+        Assert.Same(window, service.LastInputWindow);
+        Assert.NotNull(service.LastInput);
+        Assert.Equal((int)WpfInputEventKind.MouseDown, service.LastInput.Kind);
+        Assert.Equal(0, window.InputCount);
+        Assert.True(scheduler.RequestCount > requestCountBeforeInput);
+    }
+
+    [Fact]
     public void HostInputActivatesWindowBeforeForwardingInput()
     {
         using var host = new ProGpuWpfWindowHost();
@@ -1530,6 +1571,14 @@ public sealed class WpfPortableWindowActivationTests
 
         public bool LastActivationState { get; private set; }
 
+        public bool QueueInputCallbacks { get; set; }
+
+        public int BeginInvokeInputCount { get; private set; }
+
+        public object? LastBeginInvokeInputWindow { get; private set; }
+
+        public Action? LastBeginInvokeInputCallback { get; private set; }
+
         public int InputCount { get; private set; }
 
         public object? LastInputWindow { get; private set; }
@@ -1582,6 +1631,19 @@ public sealed class WpfPortableWindowActivationTests
             return true;
         }
 
+        public bool TryBeginInvokeInput(object window, Action callback)
+        {
+            if (!QueueInputCallbacks)
+            {
+                return false;
+            }
+
+            BeginInvokeInputCount++;
+            LastBeginInvokeInputWindow = window;
+            LastBeginInvokeInputCallback = callback;
+            return true;
+        }
+
         public bool TryProcessInputEvent(object window, PortableWindowInputEvent input)
         {
             InputCount++;
@@ -1627,6 +1689,8 @@ public sealed class WpfPortableWindowActivationTests
         {
             Callbacks = null;
             LastActivationStateWindow = null;
+            LastBeginInvokeInputWindow = null;
+            LastBeginInvokeInputCallback = null;
             LastInputWindow = null;
             LastInput = null;
             LastFlushWindow = null;

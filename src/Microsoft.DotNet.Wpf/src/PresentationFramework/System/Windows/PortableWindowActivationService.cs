@@ -820,6 +820,20 @@ namespace System.Windows
                 return true;
             }
 
+            public bool TryBeginInvokeInput(object window, Action callback)
+            {
+                if (window is not Window typedWindow ||
+                    callback == null ||
+                    typedWindow.Dispatcher == null ||
+                    typedWindow.Dispatcher.CheckAccess())
+                {
+                    return false;
+                }
+
+                typedWindow.Dispatcher.BeginInvoke(DispatcherPriority.Input, callback);
+                return true;
+            }
+
             public bool TryProcessInputEvent(object window, PortableWindowInputEvent input)
             {
                 if (window is not Window typedWindow || input == null)

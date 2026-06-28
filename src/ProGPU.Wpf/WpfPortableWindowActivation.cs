@@ -1021,6 +1021,14 @@ public sealed class WpfPortableWindowActivation : IDisposable
 
     private bool TryDispatchHostInputToWindowDispatcher(WpfInputEventArgs e)
     {
+        var callback = new Action(() => ProcessHostInputAndRequestRender(e));
+        if (TryGetWindowActivationService(Window, out var activationService) &&
+            activationService.TryBeginInvokeInput(Window, callback))
+        {
+            Host.TryRequestNativeLoopWakeup();
+            return true;
+        }
+
         if (!TryReadProperty(Window, "Dispatcher", out object? dispatcher) || dispatcher == null)
         {
             return false;
@@ -1038,7 +1046,6 @@ public sealed class WpfPortableWindowActivation : IDisposable
             return false;
         }
 
-        var callback = new Action(() => ProcessHostInputAndRequestRender(e));
         object? dispatcherPriority = TryCreateDispatcherPriority(dispatcherType, "Input");
         MethodInfo? beginInvokeMethod = null;
         object[]? beginInvokeArgs = null;

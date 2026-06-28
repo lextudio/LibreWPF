@@ -25,6 +25,8 @@ using ProGpuEffectBase = ProGPU.Scene.EffectBase;
 using ProGpuWpfShaderEffect = ProGPU.Scene.WpfShaderEffect;
 using ProGpuWpfShaderEffectSampler = ProGPU.Scene.WpfShaderEffectSampler;
 using ProGpuTextureSamplingMode = ProGPU.Scene.TextureSamplingMode;
+using PortableEffect = ProGPU.Wpf.Interop.PortableEffect;
+using PortableEffectSource = ProGPU.Wpf.Interop.IPortableEffectSource;
 using PortableVisualLayoutState = ProGPU.Wpf.Interop.PortableVisualLayoutState;
 using PortableVisualLayoutStateSource = ProGPU.Wpf.Interop.IPortableVisualLayoutStateSource;
 using PortableVisualChildrenSource = ProGPU.Wpf.Interop.IPortableVisualChildrenSource;
@@ -1240,6 +1242,25 @@ public sealed class WpfVisualTreeReflectionRendererTests
     }
 
     [Fact]
+    public void ReplaySubtreePushesPortableEffectWithoutReflectedTypeName()
+    {
+        var root = new FakeVisual
+        {
+            Effect = new FakePortableEffectSource(PortableEffect.Blur(9.5))
+        };
+        root.Children.Add(new FakeDrawingVisual(CreateRenderData(Brushes.Green)));
+
+        var sink = new TestSink { AcceptVisualEffects = true };
+        var result = new WpfVisualTreeReflectionRenderer().ReplaySubtree(root, sink);
+
+        Assert.Equal(new[] { "PushVisualEffect", "DrawRectangle", "Pop" }, sink.Operations);
+        var effect = Assert.IsType<ProGpuBlurEffect>(Assert.Single(sink.VisualEffects));
+        Assert.Equal(9.5f, effect.BlurRadius);
+        Assert.Equal(0, result.UnsupportedVisualStateCount);
+        Assert.Equal(new WpfMilDecodeResult(1, 1, 0, 0), result.RenderData);
+    }
+
+    [Fact]
     public void ReplaySubtreePushesNativeCacheWhenSinkSupportsVisualCaches()
     {
         var root = new FakeVisual
@@ -2007,6 +2028,22 @@ public sealed class WpfVisualTreeReflectionRendererTests
         public double Opacity { get; init; } = 1;
 
         public Color Color { get; init; } = Colors.Black;
+    }
+
+    private sealed class FakePortableEffectSource : PortableEffectSource
+    {
+        private readonly PortableEffect _effect;
+
+        public FakePortableEffectSource(PortableEffect effect)
+        {
+            _effect = effect;
+        }
+
+        public bool TryGetPortableEffect(out PortableEffect effect)
+        {
+            effect = _effect;
+            return true;
+        }
     }
 
     private sealed class FakeBlurBitmapEffect

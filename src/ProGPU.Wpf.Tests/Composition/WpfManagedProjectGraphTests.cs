@@ -5461,6 +5461,75 @@ public sealed class WpfManagedProjectGraphTests
     }
 
     [Fact]
+    public void EffectReflectionPrefersPortableEffectSource()
+    {
+        var effectReflection = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf",
+            "Composition",
+            "Mil",
+            "WpfEffectReflection.cs"));
+        var portableEffect = File.ReadAllText(FindRepoPath(
+            "external",
+            "ProGPU",
+            "src",
+            "ProGPU.Wpf.Interop",
+            "PortableEffect.cs"));
+        var blurEffect = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Effects",
+            "BlurEffect.cs"));
+        var dropShadowEffect = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "System",
+            "Windows",
+            "Media",
+            "Effects",
+            "DropShadowEffect.cs"));
+        var presentationCoreRef = File.ReadAllText(FindRepoPath(
+            "src",
+            "Microsoft.DotNet.Wpf",
+            "src",
+            "PresentationCore",
+            "ref",
+            "PresentationCore.cs"));
+        var rendererTests = File.ReadAllText(FindRepoPath(
+            "src",
+            "ProGPU.Wpf.Tests",
+            "Composition",
+            "Mil",
+            "WpfVisualTreeReflectionRendererTests.cs"));
+
+        Assert.Contains("interface IPortableEffectSource", portableEffect, StringComparison.Ordinal);
+        Assert.Contains("public sealed class PortableEffect", portableEffect, StringComparison.Ordinal);
+        Assert.Contains("PortableEffectKind.Blur", portableEffect, StringComparison.Ordinal);
+        Assert.Contains("PortableEffectKind.DropShadow", portableEffect, StringComparison.Ordinal);
+        Assert.Contains("public partial class BlurEffect : IPortableEffectSource", blurEffect, StringComparison.Ordinal);
+        Assert.Contains("PortableEffect.Blur(Radius)", blurEffect, StringComparison.Ordinal);
+        Assert.Contains("public partial class DropShadowEffect : IPortableEffectSource", dropShadowEffect, StringComparison.Ordinal);
+        Assert.Contains("PortableEffect.DropShadow(", dropShadowEffect, StringComparison.Ordinal);
+        Assert.Contains("BlurEffect : System.Windows.Media.Effects.Effect, ProGPU.Wpf.Interop.IPortableEffectSource", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("DropShadowEffect : System.Windows.Media.Effects.Effect, ProGPU.Wpf.Interop.IPortableEffectSource", presentationCoreRef, StringComparison.Ordinal);
+        Assert.Contains("using PortableEffectSource = ProGPU.Wpf.Interop.IPortableEffectSource;", effectReflection, StringComparison.Ordinal);
+        Assert.Contains("effect is PortableEffectSource effectSource", effectReflection, StringComparison.Ordinal);
+        Assert.Contains("TryCreatePortableEffect(portableEffect, out proGpuEffect)", effectReflection, StringComparison.Ordinal);
+        Assert.True(
+            effectReflection.IndexOf("effect is PortableEffectSource effectSource", StringComparison.Ordinal)
+                < effectReflection.IndexOf("TypeNameEndsWith(effect, \"BlurEffect\")", StringComparison.Ordinal),
+            "Typed portable effects must be tried before reflected effect type-name/property probing.");
+        Assert.Contains("ReplaySubtreePushesPortableEffectWithoutReflectedTypeName", rendererTests, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RealPresentationFrameworkSmokeGuardsNativePlatformEntrypoints()
     {
         var compositionExports = File.ReadAllText(FindRepoPath(

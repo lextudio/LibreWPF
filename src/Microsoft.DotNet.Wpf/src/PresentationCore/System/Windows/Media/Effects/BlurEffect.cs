@@ -3,12 +3,14 @@
 
 //
 
+using ProGPU.Wpf.Interop;
+
 namespace System.Windows.Media.Effects
 {
     /// <summary>
     /// BlurEffect
     /// </summary>
-    public partial class BlurEffect
+    public partial class BlurEffect : IPortableEffectSource
     {
         #region Constructors
         /// <summary>
@@ -19,6 +21,12 @@ namespace System.Windows.Media.Effects
         }
 
         #endregion
+
+        bool IPortableEffectSource.TryGetPortableEffect(out PortableEffect effect)
+        {
+            effect = PortableEffect.Blur(Radius);
+            return true;
+        }
         
         /// <summary>
         /// Takes in content bounds, and returns the bounds of the rendered
@@ -39,4 +47,3 @@ namespace System.Windows.Media.Effects
         }
     }
 }
-

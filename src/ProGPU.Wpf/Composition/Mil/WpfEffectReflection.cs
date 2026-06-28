@@ -4,6 +4,10 @@ using System.Collections.Generic;
 using System.Numerics;
 using System.Reflection;
 using ProGPU.Scene;
+using PortableColor = ProGPU.Wpf.Interop.PortableColor;
+using PortableEffect = ProGPU.Wpf.Interop.PortableEffect;
+using PortableEffectKind = ProGPU.Wpf.Interop.PortableEffectKind;
+using PortableEffectSource = ProGPU.Wpf.Interop.IPortableEffectSource;
 using MediaBitmapSource = System.Windows.Media.Imaging.BitmapSource;
 using MediaImageSource = System.Windows.Media.ImageSource;
 
@@ -20,6 +24,13 @@ internal static class WpfEffectReflection
     {
         if (effect != null)
         {
+            if (effect is PortableEffectSource effectSource
+                && effectSource.TryGetPortableEffect(out var portableEffect)
+                && TryCreatePortableEffect(portableEffect, out proGpuEffect))
+            {
+                return true;
+            }
+
             if (TypeNameEndsWith(effect, "BlurEffect")
                 && TryCreateBlurEffect(effect, out proGpuEffect))
             {
@@ -61,6 +72,31 @@ internal static class WpfEffectReflection
         }
 
         return TryCreateProGpuEffect(effect, out proGpuEffect, imageSourceAdapter);
+    }
+
+    private static bool TryCreatePortableEffect(PortableEffect effect, out global::ProGPU.Scene.EffectBase proGpuEffect)
+    {
+        switch (effect.Kind)
+        {
+            case PortableEffectKind.Blur:
+                proGpuEffect = new global::ProGPU.Scene.BlurEffect((float)Math.Max(0d, effect.Radius));
+                return true;
+
+            case PortableEffectKind.DropShadow:
+                var radians = effect.Direction * Math.PI / 180d;
+                var offset = new Vector2(
+                    (float)(effect.ShadowDepth * Math.Cos(radians)),
+                    (float)(-effect.ShadowDepth * Math.Sin(radians)));
+                proGpuEffect = new global::ProGPU.Scene.DropShadowEffect(
+                    (float)Math.Max(0d, effect.BlurRadius),
+                    offset,
+                    ToVectorColor(effect.Color, Math.Clamp(effect.Opacity, 0d, 1d)));
+                return true;
+
+            default:
+                proGpuEffect = null!;
+                return false;
+        }
     }
 
     private static bool TryCreateBlurEffect(object effect, out global::ProGPU.Scene.EffectBase proGpuEffect)
@@ -506,6 +542,11 @@ internal static class WpfEffectReflection
         }
 
         return false;
+    }
+
+    private static Vector4 ToVectorColor(PortableColor color, double opacity)
+    {
+        return ToVectorColor(color.A, color.R, color.G, color.B, opacity);
     }
 
     private static Vector4 ToVectorColor(byte a, byte r, byte g, byte b, double opacity)

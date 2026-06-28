@@ -11427,7 +11427,7 @@ namespace System.Windows.Media.Effects
         [System.ObsoleteAttribute("BitmapEffects are deprecated and no longer function.  Consider using Effects where appropriate instead.")]
         protected override void UpdateUnmanagedPropertyState(System.Runtime.InteropServices.SafeHandle unmanagedEffect) { }
     }
-    public sealed partial class BlurEffect : System.Windows.Media.Effects.Effect
+    public sealed partial class BlurEffect : System.Windows.Media.Effects.Effect, ProGPU.Wpf.Interop.IPortableEffectSource
     {
         public static readonly System.Windows.DependencyProperty KernelTypeProperty;
         public static readonly System.Windows.DependencyProperty RadiusProperty;
@@ -11438,6 +11438,7 @@ namespace System.Windows.Media.Effects
         public System.Windows.Media.Effects.RenderingBias RenderingBias { get { throw null; } set { } }
         public new System.Windows.Media.Effects.BlurEffect Clone() { throw null; }
         public new System.Windows.Media.Effects.BlurEffect CloneCurrentValue() { throw null; }
+        bool ProGPU.Wpf.Interop.IPortableEffectSource.TryGetPortableEffect(out ProGPU.Wpf.Interop.PortableEffect effect) { throw null; }
         protected override System.Windows.Freezable CreateInstanceCore() { throw null; }
     }
     public sealed partial class DropShadowBitmapEffect : System.Windows.Media.Effects.BitmapEffect
@@ -11463,7 +11464,7 @@ namespace System.Windows.Media.Effects
         [System.ObsoleteAttribute("BitmapEffects are deprecated and no longer function.  Consider using Effects where appropriate instead.")]
         protected override void UpdateUnmanagedPropertyState(System.Runtime.InteropServices.SafeHandle unmanagedEffect) { }
     }
-    public sealed partial class DropShadowEffect : System.Windows.Media.Effects.Effect
+    public sealed partial class DropShadowEffect : System.Windows.Media.Effects.Effect, ProGPU.Wpf.Interop.IPortableEffectSource
     {
         public static readonly System.Windows.DependencyProperty BlurRadiusProperty;
         public static readonly System.Windows.DependencyProperty ColorProperty;
@@ -11480,6 +11481,7 @@ namespace System.Windows.Media.Effects
         public double ShadowDepth { get { throw null; } set { } }
         public new System.Windows.Media.Effects.DropShadowEffect Clone() { throw null; }
         public new System.Windows.Media.Effects.DropShadowEffect CloneCurrentValue() { throw null; }
+        bool ProGPU.Wpf.Interop.IPortableEffectSource.TryGetPortableEffect(out ProGPU.Wpf.Interop.PortableEffect effect) { throw null; }
         protected override System.Windows.Freezable CreateInstanceCore() { throw null; }
     }
     public enum EdgeProfile

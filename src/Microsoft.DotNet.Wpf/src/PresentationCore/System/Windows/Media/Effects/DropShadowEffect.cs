@@ -3,12 +3,14 @@
 
 //
 
+using ProGPU.Wpf.Interop;
+
 namespace System.Windows.Media.Effects
 {
     /// <summary>
     /// DropShadowEffect
     /// </summary>
-    public partial class DropShadowEffect
+    public partial class DropShadowEffect : IPortableEffectSource
     {
         #region Constructors
         /// <summary>
@@ -19,6 +21,18 @@ namespace System.Windows.Media.Effects
         }
 
         #endregion
+
+        bool IPortableEffectSource.TryGetPortableEffect(out PortableEffect effect)
+        {
+            Color color = Color;
+            effect = PortableEffect.DropShadow(
+                BlurRadius,
+                ShadowDepth,
+                Direction,
+                Opacity,
+                new PortableColor(color.A, color.R, color.G, color.B));
+            return true;
+        }
 
         /// <summary>
         /// Takes in content bounds, and returns the bounds of the rendered
